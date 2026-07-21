@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 4,
+  "stageName": "deterministic_vault funded and issued",
+  "url": "http://127.0.0.1:52683/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-19T04:55:22.369Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "fe1671ca796962d6c60eb4aff75d3a6b5cf4fa65d5e509dfd92a6629c7ffee9b",
+  "byteCount": 158991,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "4:53:53 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 4:53:53 AM pinning wrapper artwork… 4:53:54 AM originating Ravioli pack router (sign in wallet)… 4:54:05 AM Ravioli pack router deployed: KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH 4:54:06 AM approving Ravioli escrow on KT1NJJ5…iaup (sign in wallet)… 4:54:16 AM pinning pack manifest… 4:54:22 AM registering bounded pack config (sign in wallet)… 4:54:35 AM funding recipe 1/1 (sign in wallet)… 4:54:46 AM finalizing pack after all backing is reserved (sign in wallet)… 4:54:57 AM minting 1 backed wrapper edition(s) (sign in wallet)… 4:55:22 AM direct wrapper sale opened ✓ 4:55:22 AM pack 0 is fully reserved and ready — open kit downloaded"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

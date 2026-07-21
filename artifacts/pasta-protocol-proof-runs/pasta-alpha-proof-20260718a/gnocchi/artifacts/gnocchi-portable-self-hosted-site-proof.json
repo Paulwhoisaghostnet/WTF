@@ -1,0 +1,116 @@
+{
+  "app": "gnocchi",
+  "archive": {
+    "config": {
+      "app": "gnocchi",
+      "contract": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "description": "Exported from the actual Gnocchi Studio and served from the extracted standalone ZIP without Objkt, Teia, or wtfOS.",
+      "label": "Gnocchi",
+      "network": "shadownet",
+      "title": "Gnocchi portable Shadownet proof · pasta-alpha-proof-20260718a",
+      "tokenId": 0
+    },
+    "entries": [
+      {
+        "bytes": 2418,
+        "path": "css/site.css",
+        "sha256": "dd81f37a234794c0f73fae3a2d06406a234da282f612e14725a54dbde942ec86"
+      },
+      {
+        "bytes": 3783,
+        "path": "index.html",
+        "sha256": "3b61aca79d6b15a39c566417fa46869e4e801e33b253e09467ec0ba57955a7f1"
+      },
+      {
+        "bytes": 28008,
+        "path": "js/common.js",
+        "sha256": "04e2e3297116c710f418dd4c20eff3c40fb736a6621bc361b24ba8bea70352be"
+      },
+      {
+        "bytes": 10675,
+        "path": "js/octez-wallet.js",
+        "sha256": "3f8e5292420aafb2175564cb341249996c580a93441d0d439f7cd8bedecdb8a8"
+      },
+      {
+        "bytes": 20957,
+        "path": "js/site.js",
+        "sha256": "955100975030c354f1eccffb8db522014229c835e863c99146a56f6b7d1be6e1"
+      },
+      {
+        "bytes": 383,
+        "path": "pasta.config.js",
+        "sha256": "89034531b79711a24fcce0a1f66d59ef87fcb077ebafbe675cfa95f94735a687"
+      },
+      {
+        "bytes": 1718184,
+        "path": "vendor/octez-connect.js",
+        "sha256": "848c967aee086cb444dec51c2baf244ce12ea0490fa66577477f806c4438837c"
+      },
+      {
+        "bytes": 2205519,
+        "path": "vendor/tezos.js",
+        "sha256": "529c8312b3275d1cd372c457ba8457cdbd199f50a28313c977bdf0bdf1bcad97"
+      }
+    ],
+    "path": "artifacts/gnocchi-portable-self-hosted-site.zip",
+    "sha256": "49535c992ca0cc67d3c854ae6536d3d126549ffd4d2feaffa8e76f73140aa44d"
+  },
+  "classification": "UI-LIVE",
+  "independentRuntime": {
+    "appLabel": "Gnocchi · Pasta Protocol",
+    "chainState": "Minting open",
+    "contract": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+    "forbiddenRemoteHosts": [],
+    "itemId": "0",
+    "localRequestedPaths": [
+      "css/site.css",
+      "index.html",
+      "js/common.js",
+      "js/octez-wallet.js",
+      "js/site.js",
+      "pasta.config.js",
+      "vendor/octez-connect.js",
+      "vendor/tezos.js"
+    ],
+    "objktRequests": 0,
+    "remoteOrigins": [
+      "https://ipfs.fileship.xyz",
+      "https://tezos-shadownet.octez.io"
+    ],
+    "reusedStudioOrigin": false,
+    "servedFromExtractedArchive": true,
+    "signerBridgeActions": 0,
+    "sourceApplicationFilesRequested": false,
+    "status": "On-chain state loaded.",
+    "teiaRequests": 0,
+    "wtfosRequests": 0
+  },
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet"
+  },
+  "runId": "pasta-alpha-proof-20260718a",
+  "schema": "pastaprotocol-portable-site-proof@1",
+  "screenshots": [
+    "901-portable-self-hosted-site-actual-studio-export-complete",
+    "902-portable-self-hosted-site-extracted-page-live-independently"
+  ],
+  "studio": {
+    "downloadedFileName": "gnocchi-site.zip",
+    "exportControl": "#btnExportSite",
+    "path": "/creation-tools/gnocchi/index.html"
+  },
+  "subject": {
+    "contract": {
+      "address": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "kind": "open-edition-collection"
+    },
+    "token": {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/0",
+      "id": "gnocchi-token-0",
+      "tokenId": "0"
+    }
+  }
+}

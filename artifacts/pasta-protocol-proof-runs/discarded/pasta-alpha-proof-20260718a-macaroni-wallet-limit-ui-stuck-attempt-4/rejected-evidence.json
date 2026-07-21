@@ -1,0 +1,55 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "attempt": "20260719T0445Z-wallet-limit-ui-stuck",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "status": "REJECTED_AFTER_APPLIED_V2_MINT",
+  "observedAt": "2026-07-19T04:47:09Z",
+  "reason": "The actual Macaroni Studio originated and configured a fresh V2 FA2 contract, exported a standalone collector site, and that exported site successfully minted one sealed token. All four Shadownet operations were independently classified as applied and TzKT indexed the FA2 token and collector balance. The same live page then retained the pre-mint wallet allowance text (0/1) while showing the updated sealed supply (1/2), so the runner correctly stopped before reveal, direct wallet-limit rejection, V1 origination, or acceptance into the aggregate. A fresh storage projection showed the on-chain stage_minted value was already 1; the terminal defect was the collector UI's stale post-mint storage refresh race.",
+  "macaroniEvidence": {
+    "contractAddresses": [
+      "KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT"
+    ],
+    "operationHashes": [
+      "opMTrSSHgX42hf9WfP8DyGVX3pC7Psp1uTnXmCNinzgZRZXCash",
+      "oojPVFRwr8669tCwpdkyZx39rry9EraMtzXJrHRRmTjuQpK9yv1",
+      "oobB1TtZxq9UmcCRyd7L1nEudmqE8QEmjZRZbr63jYyAmB2dntt",
+      "ooLhjQyHnFgcohXvTvpNNjYXYAfEdJmfVk1VJavZEg22s58uGYx"
+    ],
+    "completedVisualStages": [
+      "V2 Studio configuration",
+      "V2 Studio exact media and metadata pinning",
+      "V2 fresh FA2 origination",
+      "V2 two-edition inventory and one-per-wallet stage synchronization",
+      "standalone collector ZIP export",
+      "independent collector website opened"
+    ],
+    "completedChainStages": [
+      "fresh V2 FA2 origination",
+      "add_tokens_v2 quantity 2",
+      "set_stages max_per_wallet 1",
+      "collector mint quantity 1 for 1000 mutez",
+      "sealed token 0 indexed as FA2 with total supply 1",
+      "collector FA2 balance 1",
+      "stage_minted collector key value 1"
+    ],
+    "notExecutedAfterTerminalDefect": [
+      "V2 public reveal",
+      "V2 direct second-mint WALLET_LIMIT rejection",
+      "V1 Studio flow",
+      "final accepted manifest assembly"
+    ],
+    "acceptedForFinalPackage": false
+  },
+  "evidenceFiles": {
+    "chain": "attempt4-chain-evidence.json",
+    "staleUiReproduction": "stale-wallet-limit-reproduction.json",
+    "screenshots": "screenshots/",
+    "screenshotDomEvidence": "artifacts/screenshot-*.json",
+    "exportedSite": "artifacts/self-hosted-site/",
+    "exportedZip": "artifacts/macaroni-site.zip"
+  }
+}

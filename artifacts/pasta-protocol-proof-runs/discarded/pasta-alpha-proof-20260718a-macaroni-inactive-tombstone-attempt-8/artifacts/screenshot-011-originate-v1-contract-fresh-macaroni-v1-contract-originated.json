@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "originate V1 contract",
+  "stageOrdinal": 11,
+  "stageName": "Fresh Macaroni V1 contract originated",
+  "url": "http://127.0.0.1:57257/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:57:20.753Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "ccc2daa423adb7d3c5f9806d80ec2bead30d7f5aa6025c823bae1994da47877e",
+  "byteCount": 145599,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#deployStatus",
+      "name": "deployment",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "deployed ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "fresh contract",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [5:57:04 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [5:57:04 AM] token sheet loaded: 1 tokens [5:57:04 AM] 1 artwork file(s) added (1 total) [5:57:04 AM] stage 1: settings saved [5:57:05 AM] cover pinned: bafkreifaplcaz4jnodkvwzkut2gi6mjld5ofivbnbucfxjd6fivkdldisu [5:57:05 AM] pinning complete: 1 tokens [5:57:06 AM] contract metadata pinned: bafkreid622hnet7n5pns2r4swtzflqoxx3s4klhkxxftyawyx4xziipkd4 [5:57:06 AM] originating contract… [5:57:20 AM] contract deployed at KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe [5:57:20 AM] explorer: https://shadownet.tzkt.io/KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

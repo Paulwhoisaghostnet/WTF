@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "portable self-hosted site",
+  "stageOrdinal": 902,
+  "stageName": "extracted page live independently",
+  "url": "http://127.0.0.1:59536/index.html",
+  "timestampUtc": "2026-07-19T06:30:55.049Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "388916e95ad2288499e5b381107a5cf8ba9b363c8474cce365a09036342ea626",
+  "byteCount": 259613,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "standalone Pasta application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti · Pasta Protocol"
+    },
+    {
+      "selector": "#contract",
+      "name": "same-run Shadownet contract",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara"
+    },
+    {
+      "selector": "#itemId",
+      "name": "same-run token project or revision",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "0"
+    },
+    {
+      "selector": "#status",
+      "name": "independent chain load",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "On-chain state loaded."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

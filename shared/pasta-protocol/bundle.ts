@@ -1,15 +1,15 @@
 /**
- * Pasta Protocol — bundle contents manifest (Ravioli).
+ * Pasta Protocol — atomic pack contents manifest (Ravioli v2).
  *
  * Pure, dependency-free builder for the off-chain bundle manifest pinned alongside a bundle wrapper
- * token. The on-chain `PastaBundleFA2` only stores the manifest URI (`contents_uri`); the member list
- * lives here so it round-trips and can be revealed later for mystery packs. Mirrored byte-for-byte in
+ * token. The on-chain pack router stores the optional public manifest URI while actual delivery is
+ * enforced by escrow and typed mint adapters. The manifest is descriptive, never fulfillment. Mirrored in
  * the browser port (`pasta-foundation.js`) and locked by tests/unit/pasta-foundation-parity.test.mjs.
  */
 import type { OwnershipRelationshipMetadata } from "./types";
 import { sanitizeRelationshipMetadata } from "./relationship";
 
-export const BUNDLE_MANIFEST_SCHEMA_VERSION = "wtfos.pasta.bundle-manifest.v1";
+export const BUNDLE_MANIFEST_SCHEMA_VERSION = "wtfos.pasta.pack-manifest.v2";
 
 export type BundleMember = {
   name?: string;

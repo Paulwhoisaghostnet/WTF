@@ -1,0 +1,154 @@
+{
+  "schema": "pastaprotocol-rejected-chain-evidence@1",
+  "app": "macaroni",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "explorerBaseUrl": "https://shadownet.tzkt.io",
+    "apiBaseUrl": "https://api.shadownet.tzkt.io/v1"
+  },
+  "queriedAt": "2026-07-19T04:58:31Z",
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+  "contract": {
+    "address": "KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT",
+    "url": "https://shadownet.tzkt.io/KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT",
+    "kind": "asset",
+    "tzips": [
+      "fa2"
+    ],
+    "firstActivityLevel": 4254817,
+    "lastActivityLevel": 4254825,
+    "typeHash": -1198466749,
+    "codeHash": -2085531756
+  },
+  "operations": [
+    {
+      "purpose": "originate fresh Macaroni V2 FA2",
+      "hash": "opMTrSSHgX42hf9WfP8DyGVX3pC7Psp1uTnXmCNinzgZRZXCash",
+      "url": "https://shadownet.tzkt.io/opMTrSSHgX42hf9WfP8DyGVX3pC7Psp1uTnXmCNinzgZRZXCash",
+      "type": "origination",
+      "status": "applied",
+      "level": 4254817,
+      "timestamp": "2026-07-19T04:45:51Z",
+      "bakerFeeMutez": 16094,
+      "gasLimit": 14656,
+      "gasUsed": 14556,
+      "storageLimitBytes": 15273,
+      "storageUsedBytes": 14996
+    },
+    {
+      "purpose": "load two delayed-reveal editions",
+      "hash": "oojPVFRwr8669tCwpdkyZx39rry9EraMtzXJrHRRmTjuQpK9yv1",
+      "url": "https://shadownet.tzkt.io/oojPVFRwr8669tCwpdkyZx39rry9EraMtzXJrHRRmTjuQpK9yv1",
+      "type": "transaction",
+      "entrypoint": "add_tokens_v2",
+      "status": "applied",
+      "level": 4254819,
+      "timestamp": "2026-07-19T04:46:03Z",
+      "quantity": "2",
+      "tokenId": "0",
+      "finalMetadataUri": "ipfs://bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi",
+      "bakerFeeMutez": 24880,
+      "gasLimit": 180000,
+      "gasUsed": 16003,
+      "storageLimitBytes": 1300,
+      "storageUsedBytes": 621
+    },
+    {
+      "purpose": "configure live one-per-wallet mint stage",
+      "hash": "oobB1TtZxq9UmcCRyd7L1nEudmqE8QEmjZRZbr63jYyAmB2dntt",
+      "url": "https://shadownet.tzkt.io/oobB1TtZxq9UmcCRyd7L1nEudmqE8QEmjZRZbr63jYyAmB2dntt",
+      "type": "transaction",
+      "entrypoint": "set_stages",
+      "status": "applied",
+      "level": 4254821,
+      "timestamp": "2026-07-19T04:46:15Z",
+      "stage": {
+        "start": "2026-07-18T21:43:00Z",
+        "priceMutez": "1000",
+        "maxPerWallet": "1",
+        "useAllowlist": false
+      },
+      "bakerFeeMutez": 17680,
+      "gasLimit": 120000,
+      "gasUsed": 445,
+      "storageLimitBytes": 600,
+      "storageUsedBytes": 24
+    },
+    {
+      "purpose": "mint one sealed token from exported collector site",
+      "hash": "ooLhjQyHnFgcohXvTvpNNjYXYAfEdJmfVk1VJavZEg22s58uGYx",
+      "url": "https://shadownet.tzkt.io/ooLhjQyHnFgcohXvTvpNNjYXYAfEdJmfVk1VJavZEg22s58uGYx",
+      "type": "transaction",
+      "entrypoint": "mint",
+      "status": "applied",
+      "level": 4254825,
+      "timestamp": "2026-07-19T04:46:39Z",
+      "amountMutez": 1000,
+      "quantity": "1",
+      "bakerFeeMutez": 60880,
+      "gasLimit": 480000,
+      "gasUsed": 4709,
+      "storageLimitBytes": 1300,
+      "storageUsedBytes": 359
+    }
+  ],
+  "indexedToken": {
+    "tokenId": "0",
+    "standard": "fa2",
+    "firstMinter": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "firstLevel": 4254825,
+    "firstTime": "2026-07-19T04:46:39Z",
+    "totalMinted": "1",
+    "totalBurned": "0",
+    "totalSupply": "1",
+    "holdersCount": 1,
+    "balancesCount": 1,
+    "apiUrl": "https://api.shadownet.tzkt.io/v1/tokens?contract=KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT&limit=10"
+  },
+  "collectorBalance": {
+    "tokenId": "0",
+    "balance": "1",
+    "firstLevel": 4254825,
+    "lastLevel": 4254825,
+    "apiUrl": "https://api.shadownet.tzkt.io/v1/tokens/balances?account=tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej&token.contract=KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT&limit=10"
+  },
+  "bigMaps": {
+    "ledger": {
+      "pointer": 28817,
+      "key": {
+        "owner": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+        "token_id": "0"
+      },
+      "value": "1",
+      "lastLevel": 4254825
+    },
+    "stageMinted": {
+      "pointer": 28829,
+      "key": {
+        "stage": "0",
+        "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej"
+      },
+      "value": "1",
+      "lastLevel": 4254825
+    },
+    "tokenMetadata": {
+      "pointer": 28830,
+      "tokenId": "0",
+      "activeUriHex": "697066733a2f2f6261666b72656965766f72333573736876637071693368637072636d6f36726433717a686436356770326e657869676f37707a76636376686d7779",
+      "activeUriDecoded": "ipfs://bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy",
+      "state": "sealed placeholder",
+      "lastLevel": 4254825
+    }
+  },
+  "pinnedArtifacts": {
+    "cover": "ipfs://bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm",
+    "finalMetadata": "ipfs://bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi",
+    "finalArtifact": "ipfs://bafkreib6xhieso3y2vq4n7moy3wl2dz3w33d737ck3cwfv2zm6bikltqtq",
+    "placeholderArtifact": "ipfs://bafkreifuefxja355b3zotq3wh6l5m55uebkbazo5jxit5wqwzibmuevhvm",
+    "placeholderMetadata": "ipfs://bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy",
+    "contractMetadata": "ipfs://bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma"
+  },
+  "classification": "VALID_PARTIAL_CHAIN_EVIDENCE_FROM_REJECTED_UI_ATTEMPT"
+}

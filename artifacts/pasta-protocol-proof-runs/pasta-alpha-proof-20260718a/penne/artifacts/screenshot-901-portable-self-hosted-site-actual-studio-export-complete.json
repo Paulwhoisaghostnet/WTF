@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "portable self-hosted site",
+  "stageOrdinal": 901,
+  "stageName": "actual studio export complete",
+  "url": "http://127.0.0.1:51237/creation-tools/penne/index.html",
+  "timestampUtc": "2026-07-19T04:35:03.967Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "618f3dafd932dc51f7fd29e81a46aa0cf2004788511f176c4b34e20229ee80bb",
+  "byteCount": 99629,
+  "domEvidence": [
+    {
+      "selector": "#btnExportSite",
+      "name": "actual Studio export control",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Download claim site"
+    },
+    {
+      "selector": "#exportSiteStatus",
+      "name": "portable ZIP result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Downloaded site zip. Unzip it on any static web host."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

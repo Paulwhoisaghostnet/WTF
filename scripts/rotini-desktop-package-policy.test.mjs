@@ -70,6 +70,7 @@ test("Rotini desktop asset preparation preserves the static publisher contract",
     "reserve_iteration",
     "finalize_iteration",
     "cancel_expired_reservation",
+    "mint_pack_iteration",
   ]);
   assert.match(commonSource, /window\.MD/);
 });

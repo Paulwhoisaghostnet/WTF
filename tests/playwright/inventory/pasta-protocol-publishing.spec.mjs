@@ -526,13 +526,13 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
     await expect(page.getByTestId("colander-remembered-contracts")).toContainText("Lasagna");
   });
 
-  test("exported buy, mint, claim, redeem, and exhibition pages execute their public contract stories", async ({ page }) => {
+  test("exported buy, mint, claim, atomic-pack, and exhibition pages execute their public contract stories", async ({ page }) => {
     const interactiveApps = [
       { id: "spaghetti", action: "Buy editions", entrypoint: "buy", chainState: "Primary sale open" },
       { id: "gnocchi", action: "Mint editions", entrypoint: "open_mint", chainState: "Minting open" },
       { id: "penne", action: "Claim allocation", entrypoint: "claim", chainState: "Claim open" },
-      { id: "ravioli", mode: "buy", action: "Buy bundle editions", entrypoint: "buy", chainState: "Primary sale open" },
-      { id: "ravioli", mode: "redeem", action: "Redeem editions", entrypoint: "redeem", chainState: "Redeemable" },
+      { id: "ravioli", mode: "buy", action: "Buy pack editions", entrypoint: "buy", chainState: "Primary sale open · fully reserved" },
+      { id: "ravioli", mode: "open", action: "Open pack atomically", entrypoint: "open_pack", chainState: "1 wrappers live · fully reserved" },
     ];
     const metadataUri = `data:application/json,${encodeURIComponent(JSON.stringify({ name: "Harness Exhibition", statement: "A self-hosted exhibition proof." }))}`;
     const metadataHex = Array.from(metadataUri).map((char) => char.charCodeAt(0).toString(16).padStart(2, "0")).join("");
@@ -555,15 +555,15 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
           const methodsObject = {
             open_mint(payload){ return { async send(options){ operations.push({ entrypoint: "open_mint", payload, options }); return operation("open_mint", payload, options); } }; },
             claim(payload){ return { async send(){ operations.push({ entrypoint: "claim", payload }); return operation("claim", payload); } }; },
-            redeem(payload){ return { async send(){ operations.push({ entrypoint: "redeem", payload }); return operation("redeem", payload); } }; },
+            open_pack(payload){ return { async send(){ operations.push({ entrypoint: "open_pack", payload }); return operation("open_pack", payload); } }; },
             buy(payload){ return { async send(options){ operations.push({ entrypoint: "buy", payload, options }); return operation("buy", payload, options); } }; }
           };
           const fixedSale = { active:true, price:1250000, remaining:3, seller:"${PUPPET_ACCOUNT}", treasury:"${PUPPET_ACCOUNT}" };
           const storageByApp = {
             spaghetti: { sales:new Map([["0", fixedSale]]), token_metadata:new Map() },
-            gnocchi: { sales: new Map([["0", { active:true, base_price:1000000, increment:500000, step_size:2, max_supply:100 }]]), total_supply:new Map([["0", 2]]) },
+            gnocchi: { sales: new Map([["0", { active:true, base_price:1000000, increment:500000, step_size:2, start:{Some:"2020-01-01T00:00:00.000Z"}, end:{Some:"2099-01-01T00:00:00.000Z"}, max_supply:{Some:100} }]]), total_supply:new Map([["0", 2]]) },
             penne: { claim_active:true, claim_start:null, claim_end:null },
-            ravioli: { bundles:new Map([["0", { redeemable:true, mystery:false, item_count:3, contents_uri:"697066733a2f2f62616679" }]]), sales: sessionStorage.getItem("pasta.ravioli.mode") === "buy" ? new Map([["0", fixedSale]]) : new Map() },
+            ravioli: { packs:new Map([["0", { finalized:true, cancelled:false, item_count:1, max_supply:1, mode:0, blind:false }]]), opened:new Map([["0", 0]]), total_supply:new Map([["0", 1]]), sales: sessionStorage.getItem("pasta.ravioli.mode") === "buy" ? new Map([["0", fixedSale]]) : new Map() },
             lasagna: { current_revision:0, revision_count:1, revisions:new Map([["0", { metadata_uri:"${metadataHex}", items:[{contract:"${PUPPET_COLLECTION}",token_id:0},{contract:"${PUPPET_COLLECTION}",token_id:1}] }]]) }
           };
           const fakeContract = { async storage(){ return storageByApp["${app}"]; }, methodsObject };
@@ -584,9 +584,31 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
       await page.goto(`/creation-tools/${app.id}/site.html`, { waitUntil: "domcontentloaded" });
       await expect(page.locator("#chainState")).toHaveText(app.chainState);
       await expect(page.locator("#submit")).toHaveText(app.action);
+      if (app.id === "gnocchi") {
+        await expect(page.locator("#actionTitle")).toHaveText("Mint this Limited Edition");
+        await expect(page.locator("#actionDetail")).not.toContainText("NaN");
+        await expect(page.locator("#actionDetail")).not.toContainText("Invalid Date");
+      }
+      if (app.id === "ravioli") {
+        await expect(page.locator("#ravioliOpen")).toBeVisible();
+        await page.locator("#pinProvider").selectOption("node");
+        await expect(page.locator("#pinNodeRow")).toBeVisible();
+        await expect(page.locator("#pinJwtRow")).toBeHidden();
+      } else {
+        await expect(page.locator("#ravioliOpen")).toBeHidden();
+        await expect(page.getByText("Atomic pack opening", { exact: true })).toBeHidden();
+      }
       if (app.id === "ravioli" && app.mode === "buy") {
-        await expect(page.locator("#secondarySubmit")).toHaveText("Redeem held editions");
+        await expect(page.locator("#secondarySubmit")).toHaveText("Open one held pack");
         await expect(page.locator("#secondarySubmit")).toBeVisible();
+      }
+      if (app.id === "ravioli" && app.mode === "open") {
+        await page.locator("#openKit").fill(JSON.stringify({
+          schema: "pasta-ravioli-open-kit@3",
+          contract: PUPPET_COLLECTION,
+          tokenId: 0,
+          recipes: [{ serial: 0, nonce: "11".repeat(32), actions: [{ kind: "escrow", fa2: PUPPET_COLLECTION, tokenId: 7, amount: 1 }] }],
+        }));
       }
       await page.locator("#connect").click();
       if (app.id === "spaghetti") {
@@ -605,6 +627,8 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
     await page.goto("/creation-tools/lasagna/site.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#chainState")).toHaveText("1 revisions · 2 works shown");
     await expect(page.locator("#submit")).toBeHidden();
+    await expect(page.locator("#ravioliOpen")).toBeHidden();
+    await expect(page.getByText("Atomic pack opening", { exact: true })).toBeHidden();
     await expect(page.locator("#actionTitle")).toHaveText("On-chain exhibition");
   });
 
@@ -628,7 +652,7 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
           const layerUri = "data:image/png;base64,${pixel}";
           const manifest = { schema:"pasta-rotini-generator@2", name:"Browser Rotini", description:"Materialized in the collector browser.", creator:"${PUPPET_ACCOUNT}", width:2, height:2, outputMode:mode, seedField:"pasta:seed", selection:"weighted-deterministic", layers:[{ name:"Background", variants:[{ value:"Proof", weight:1, artifactUri:layerUri, mimeType:"image/png" }] }] };
           const generatorUri = "data:application/json," + encodeURIComponent(JSON.stringify(manifest));
-          const project = { active:true, name:MD.utf8ToHex("Browser Rotini"), symbol:MD.utf8ToHex("BROT"), generator_uri:MD.utf8ToHex(generatorUri), display_uri:MD.utf8ToHex(layerUri), output_mode:MD.utf8ToHex(mode), price:1000000, treasury:"${PUPPET_ACCOUNT}", max_supply:10, max_per_wallet:2, reservation_ttl:3600, minted:0, reserved:0 };
+          const project = { active:true, name:MD.utf8ToHex("Browser Rotini"), symbol:MD.utf8ToHex("BROT"), generator_uri:MD.utf8ToHex(generatorUri), display_uri:MD.utf8ToHex(layerUri), output_mode:MD.utf8ToHex(mode), price:1000000, treasury:"${PUPPET_ACCOUNT}", max_supply:{Some:10}, max_per_wallet:{Some:2}, reservation_ttl:3600, minted:0, reserved:0 };
           const reservations = new Map();
           const latestReservation = new Map();
           const storage = { projects:new Map([["0", project]]), reservations, latest_reservation:latestReservation, token_metadata:new Map() };
@@ -674,6 +698,8 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
       await page.evaluate((mode) => sessionStorage.setItem("rotini.output.mode", mode), output.mode);
       await page.goto("/creation-tools/rotini/site.html", { waitUntil: "domcontentloaded" });
       await expect(page.locator("#actionTitle")).toHaveText(`Generate a ${output.mode.toUpperCase()} iteration`);
+      await expect(page.locator("#actionDetail")).toContainText("0 finalized + 0 rendering / 10");
+      await expect(page.locator("#actionDetail")).not.toContainText("NaN");
       await expect(page.locator("#submit")).toHaveText("Reserve, render & mint");
       await expect(page.locator("#rotiniStorage")).toBeVisible();
       await page.locator("#connect").click();

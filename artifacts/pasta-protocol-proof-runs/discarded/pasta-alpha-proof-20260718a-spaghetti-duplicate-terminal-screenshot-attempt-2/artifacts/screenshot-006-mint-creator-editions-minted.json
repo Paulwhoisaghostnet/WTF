@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "mint creator editions",
+  "stageOrdinal": 6,
+  "stageName": "minted",
+  "url": "http://127.0.0.1:60227/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:21:59.315Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "527c6ec9529f8af26c96851cf5668ea09144e79fb10e81a689cca735bfe70251",
+  "byteCount": 138002,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:21:19 AM imported 1 token(s) from CH-EASE handoff 12:21:20 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:21:20 AM pinning collection metadata… 12:21:21 AM originating collection contract (sign in wallet)… 12:21:36 AM collection deployed: KT1CxnMv3RYwAGPYB4dgdn3QDP6J6LWGyPi1 12:21:36 AM explorer: https://shadownet.tzkt.io/KT1CxnMv3RYwAGPYB4dgdn3QDP6J6LWGyPi1 12:21:37 AM pinning token metadata for \"UI-LIVE Proof Token\"… 12:21:37 AM creating 1 token type(s) (sign in wallet)… 12:21:46 AM token types created 12:21:46 AM minting editions (sign in wallet)… 12:21:59 AM editions minted ✓ 12:21:59 AM opening 1 direct sale(s) (sign in wallet)…"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

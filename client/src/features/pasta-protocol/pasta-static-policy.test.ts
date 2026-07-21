@@ -183,9 +183,10 @@ test("every Pasta publisher exports the shared self-hosted collector site vertic
   assert.match(canonicalRuntime, /open_mint/);
   assert.match(canonicalRuntime, /total_minted \|\| state\.storage\.total_supply/);
   assert.match(canonicalRuntime, /methodsObject\.claim/);
-  assert.match(canonicalRuntime, /methodsObject\.redeem/);
+  assert.match(canonicalRuntime, /methodsObject\.open_pack/);
   assert.match(canonicalRuntime, /methodsObject\.buy/);
-  assert.match(canonicalRuntime, /Primary sale open/);
+  assert.match(canonicalRuntime, /Primary sale open · fully reserved/);
+  assert.match(canonicalRuntime, /\$\{supply\} wrappers live · fully reserved/);
   assert.match(canonicalRuntime, /Number\.isSafeInteger\(amount\)/);
   assert.match(canonicalRuntime, /Only \$\{state\.maxAmount\} editions remain/);
   assert.match(canonicalBundle, /recordColanderSite/);
@@ -213,6 +214,11 @@ test("fixed-edition publishers originate the sale-enabled storage shape and conf
     assert(manifest.entrypoints.includes("buy"), `${appId} artifact manifest must expose buy`);
     assert(manifest.entrypoints.includes("transfer_administration"), `${appId} artifact manifest must expose admin transfer`);
     assert(manifest.entrypoints.includes("accept_administration"), `${appId} artifact manifest must expose admin acceptance`);
+    if (appId === "ravioli") {
+      assert(manifest.entrypoints.includes("commit_recipe"), "Ravioli must fully back every recipe before wrapper issue");
+      assert(manifest.entrypoints.includes("finalize_pack"), "Ravioli must finalize backing before wrapper issue");
+      assert(manifest.entrypoints.includes("open_pack"), "Ravioli must atomically fulfill child assets when opened");
+    }
   }
 });
 
@@ -269,7 +275,7 @@ test("Gnocchi publishes and manages timed, forever, and limited editions in one 
   assert.match(studio, /methodsObject\.set_sale_active/);
   assert.match(studio, /gnocchi\.edition_vaulted/);
   assert.match(studio, /gnocchi\.edition_unvaulted/);
-  assert.match(contract, /CAP_BELOW_MINTED/);
+  assert.match(contract, /CAP_BELOW_COMMITTED/);
   assert.match(contract, /POLICY_LOCKED/);
   assert.match(contract, /self\.data\.total_minted/);
   assert(manifest.entrypoints.includes("create_open_edition"));

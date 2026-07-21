@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "pin exact media and metadata",
+  "stageOrdinal": 2,
+  "stageName": "Five media and metadata artifacts pinned through Studio",
+  "url": "http://127.0.0.1:53197/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:01:59.389Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "c8b5b748400bb349c080c3233b256ee584303b4dcbd0322e24f1fe37357cd2f0",
+  "byteCount": 125572,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#pinStatus",
+      "name": "pin result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "all pinned ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "placeholder pin",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [5:01:56 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [5:01:56 AM] token sheet loaded: 1 tokens [5:01:56 AM] 1 artwork file(s) added (1 total) [5:01:56 AM] stage 1: settings saved [5:01:57 AM] cover pinned: bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm [5:01:58 AM] placeholder pinned: bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy [5:01:59 AM] pinning complete: 1 tokens"
+    },
+    {
+      "selector": "#log",
+      "name": "pin count",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [5:01:56 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [5:01:56 AM] token sheet loaded: 1 tokens [5:01:56 AM] 1 artwork file(s) added (1 total) [5:01:56 AM] stage 1: settings saved [5:01:57 AM] cover pinned: bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm [5:01:58 AM] placeholder pinned: bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy [5:01:59 AM] pinning complete: 1 tokens"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

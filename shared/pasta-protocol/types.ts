@@ -14,6 +14,7 @@
 
 /** Every app in the Pasta Protocol suite. */
 export type PastaAppId =
+  | "macaroni"
   | "spaghetti"
   | "gnocchi"
   | "ravioli"

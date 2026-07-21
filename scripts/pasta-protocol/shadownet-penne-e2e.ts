@@ -23,20 +23,23 @@ import {
   buildToolkit,
   collectAnnotations,
   createLogger,
-  dataJsonUri,
   hexToUtf8,
   loadSignerPair,
   normalizeBase,
-  parseDataJsonUri,
+  pinIpfsProofBytes,
+  pinIpfsProofJson,
   pollJson,
   probeRpcChainId,
   ProofBlocked,
+  resolveIpfsProofConfig,
   root,
   SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
   writeProofReport,
+  type IpfsPinnedProof,
+  type IpfsProofConfig,
   type ProofStatus,
 } from "./shadownet-proof-kit";
 
@@ -84,7 +87,7 @@ async function readContractArtifact(): Promise<unknown[]> {
   return code;
 }
 
-function buildMetadata(creator: string) {
+async function buildMetadata(creator: string, ipfs: IpfsProofConfig) {
   const relationship = {
     parent_contract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
     collection_group: `penne-shadownet-e2e-${Date.now().toString(36)}`,
@@ -93,6 +96,12 @@ function buildMetadata(creator: string) {
     { recipient: "collector", amount: 2 },
     { recipient: "creator", amount: 3 },
   ];
+  const artifact = await pinIpfsProofBytes({
+    bytes: Buffer.from("Penne Shadownet distribution proof", "utf8"),
+    fileName: "penne-distribution-proof.txt",
+    mimeType: "text/plain",
+    options: ipfs,
+  });
   const pkg = buildCollectionPackage({
     targetApp: "penne",
     title: "Penne Shadownet E2E",
@@ -103,7 +112,7 @@ function buildMetadata(creator: string) {
       {
         name: "Penne Proof Distribution Token",
         description: "Distributed by the Pasta Protocol signer-backed Shadownet proof.",
-        artifactUri: "data:text/plain;base64,UGVubmUgU2hhZG93bmV0IGRpc3RyaWJ1dGlvbiBwcm9vZg==",
+        artifactUri: artifact.uri,
         mimeType: "text/plain",
         tags: ["penne", "distribution", "claim", "airdrop", "shadownet", "e2e"],
       },
@@ -138,15 +147,30 @@ function buildMetadata(creator: string) {
   });
   assert.deepEqual(extractRelationshipMetadata(collectionMetadata), relationship);
   assert.deepEqual(extractRelationshipMetadata(tokenMetadata), relationship);
+  const collectionMetadataPin = await pinIpfsProofJson({
+    value: collectionMetadata,
+    fileName: "penne-collection.json",
+    options: ipfs,
+  });
+  const tokenMetadataPin = await pinIpfsProofJson({
+    value: tokenMetadata,
+    fileName: "penne-token-0.json",
+    options: ipfs,
+  });
   return {
     relationship,
     allocations,
     package: pkg,
     collectionMetadata,
     tokenMetadata,
-    collectionMetadataUri: dataJsonUri(collectionMetadata),
-    tokenMetadataUri: dataJsonUri(tokenMetadata),
+    collectionMetadataUri: collectionMetadataPin.uri,
+    tokenMetadataUri: tokenMetadataPin.uri,
+    pins: { artifact, collectionMetadata: collectionMetadataPin, tokenMetadata: tokenMetadataPin },
   };
+}
+
+function pinProofLine(label: string, pin: IpfsPinnedProof): string {
+  return `- ${label}: CID \`${pin.cid}\` — \`${pin.uri}\` — ${pin.publicGatewayUrl} — SHA-256 \`${pin.sha256}\``;
 }
 
 function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
@@ -185,6 +209,7 @@ async function main(): Promise<void> {
   if ((process.env.TEZOS_NETWORK || "shadownet") === "mainnet") {
     throw new Error("Refusing to run Pasta Penne Shadownet E2E with TEZOS_NETWORK=mainnet");
   }
+  const ipfs = resolveIpfsProofConfig();
 
   const rpc = await probeRpcChainId();
   reportRpcUrl = rpc.rpcUrl;
@@ -227,7 +252,8 @@ async function main(): Promise<void> {
   assert.ok(availableActions(adapter, [...entrypoints]).some((action) => action.id === "open_claim"));
   assert.ok(availableActions(adapter, [...entrypoints]).some((action) => action.id === "airdrop"));
 
-  const metadata = buildMetadata(creator.address);
+  const metadata = await buildMetadata(creator.address, ipfs);
+  ok("pinned and public-gateway-verified the Penne artifact, collection metadata, and token metadata");
   const storage = buildOriginationStorage(creator.address, metadata.collectionMetadataUri);
   const originationEstimate = await creatorTezos.estimate.originate({ code, storage } as any);
   const estimatedOriginationMutez =
@@ -394,10 +420,16 @@ async function main(): Promise<void> {
   );
   const tokenMetadataEntry = tokenMetadataKeys.find((entry: any) => String(entry?.key) === "0");
   const indexedTokenUri = hexToUtf8(String(tokenMetadataEntry?.value?.token_info?.[""] || ""));
-  const indexedTokenMetadata = parseDataJsonUri(indexedTokenUri) as any;
+  assert.equal(indexedTokenUri, metadata.pins.tokenMetadata.uri);
+  const indexedTokenMetadata = metadata.tokenMetadata;
   assert.equal(indexedTokenMetadata.name, metadata.package.items[0].name);
   assert.deepEqual(extractRelationshipMetadata(indexedTokenMetadata), metadata.relationship);
-  assert.deepEqual(indexedTokenMetadata.penne?.distributionModes, ["claim", "airdrop"]);
+  const indexedPenneMetadata = indexedTokenMetadata.penne;
+  assert.ok(indexedPenneMetadata && typeof indexedPenneMetadata === "object");
+  assert.deepEqual(
+    (indexedPenneMetadata as { distributionModes?: unknown }).distributionModes,
+    ["claim", "airdrop"],
+  );
 
   await writeReport("PASSED", [
     "## Result",
@@ -417,6 +449,12 @@ async function main(): Promise<void> {
     `- Collector claim: \`${claim.hash}\``,
     `- Admin airdrop: \`${airdrop.hash}\``,
     `- Close claim: \`${closeClaim.hash}\``,
+    "",
+    "## Pinned IPFS Proof",
+    "",
+    pinProofLine("Artifact", metadata.pins.artifact),
+    pinProofLine("Collection metadata", metadata.pins.collectionMetadata),
+    pinProofLine("Token metadata", metadata.pins.tokenMetadata),
     "",
     "## Indexed Proof",
     "",

@@ -1,0 +1,61 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "configure blind drop",
+  "stageOrdinal": 1,
+  "stageName": "V2 delayed reveal drop configured",
+  "url": "http://127.0.0.1:53197/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:01:56.593Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2515d45654aa7ad2d08b0aebeba64decd190802c9c091fe76fcd670b49f88c57",
+  "byteCount": 120695,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#log",
+      "name": "creator wallet",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [5:01:56 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [5:01:56 AM] token sheet loaded: 1 tokens [5:01:56 AM] 1 artwork file(s) added (1 total) [5:01:56 AM] stage 1: settings saved"
+    },
+    {
+      "selector": "#contractVersion",
+      "name": "contract version",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni V1 — classic blind mint Macaroni V2 — editions + minter royalties"
+    },
+    {
+      "selector": "#tokenSummary",
+      "name": "edition inventory",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 token row 2 editions 1/1 artworks matched 0/1 pinned avg 14226 bytes / 250 MB"
+    },
+    {
+      "selector": "[data-stage-status=\"0\"]",
+      "name": "stage",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "stage saved"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

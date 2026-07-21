@@ -1,0 +1,58 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "gnocchi",
+  "accepted": false,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "attemptWindow": {
+    "firstScreenshotUtc": "2026-07-19T03:45:57.006Z",
+    "lastScreenshotUtc": "2026-07-19T03:49:37.310Z",
+    "processExitedUtc": "2026-07-19T03:54:15Z"
+  },
+  "rejectedContract": {
+    "address": "KT1TS1mGPQcYa2x3jWmYRAeqKBjzw69BGJyG",
+    "originationHash": "onrqhUMx1VHZUHtTNDsksmeRrDowAZhxqLoofTwf1W7bT87GSBW",
+    "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "kind": "asset",
+    "tzips": ["fa2"],
+    "explorerUrl": "https://shadownet.tzkt.io/KT1TS1mGPQcYa2x3jWmYRAeqKBjzw69BGJyG"
+  },
+  "failure": {
+    "stage": "first independent collector token-0 mint",
+    "error": "page.waitForFunction: Timeout 300000ms exceeded.",
+    "source": "scripts/pasta-protocol/shadownet-gnocchi-ui-live.ts:676",
+    "collectorOperationIndexed": false,
+    "collectorOperationInMempool": false
+  },
+  "concurrentSignerEvidence": {
+    "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "overlappingOperations": [
+      {
+        "hash": "opPCHUcHJhkkGgYy79A3hsZhtRE1Nw2KVSmmCHdW7e52Z5oqvRx",
+        "target": "KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA",
+        "entrypoint": "finalize_iteration",
+        "timestamp": "2026-07-19T03:49:33Z"
+      },
+      {
+        "hash": "oo5jP2Ucj1qzBm1kkXTtqj4xJaTmmA4cDCgT1ypbgHHBc6qvAok",
+        "target": "KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA",
+        "entrypoint": "reserve_iteration",
+        "timestamp": "2026-07-19T03:49:57Z"
+      },
+      {
+        "hash": "oovNSZpXh3ud5FLBoqCs6Ej175hnJm7g38bTR7aDSiCzUJzT2L8",
+        "target": "KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA",
+        "entrypoint": "finalize_iteration",
+        "timestamp": "2026-07-19T03:50:21Z"
+      }
+    ],
+    "assessment": "The same collector signer was used by an overlapping Rotini UI-LIVE lane while Gnocchi attempted its first mint. The Gnocchi operation never reached the mempool or TzKT and the UI timed out. This attempt is quarantined and must never be assembled as accepted evidence."
+  },
+  "partialEvidence": {
+    "screenshotCount": 9,
+    "manifestProduced": false,
+    "receiptProduced": false
+  }
+}

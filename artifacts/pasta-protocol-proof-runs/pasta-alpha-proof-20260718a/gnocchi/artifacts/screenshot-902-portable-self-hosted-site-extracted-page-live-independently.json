@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "portable self-hosted site",
+  "stageOrdinal": 902,
+  "stageName": "extracted page live independently",
+  "url": "http://127.0.0.1:50565/index.html",
+  "timestampUtc": "2026-07-19T04:29:45.192Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2c327a48f4c7fea84de94def97d9bf5d47fbfb2f8efb074b7382e13b51ea286d",
+  "byteCount": 41877,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "standalone Pasta application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Gnocchi · Pasta Protocol"
+    },
+    {
+      "selector": "#contract",
+      "name": "same-run Shadownet contract",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup"
+    },
+    {
+      "selector": "#itemId",
+      "name": "same-run token project or revision",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "0"
+    },
+    {
+      "selector": "#status",
+      "name": "independent chain load",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "On-chain state loaded."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

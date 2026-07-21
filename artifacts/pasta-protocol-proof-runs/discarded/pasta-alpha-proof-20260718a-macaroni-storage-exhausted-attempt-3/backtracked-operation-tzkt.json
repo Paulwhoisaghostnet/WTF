@@ -1,0 +1,45 @@
+{
+  "queriedAtUtc": "2026-07-19T04:34:25Z",
+  "sourceUrl": "https://api.shadownet.tzkt.io/v1/operations/transactions/op3d1v8dvY8eMPkK42SC37cjbjZRgpczGzN6jvJtdCkYyxCCYDD",
+  "type": "transaction",
+  "id": 143370893656064,
+  "level": 4254695,
+  "timestamp": "2026-07-19T04:33:00Z",
+  "block": "BLbDeAFWbKwc7C247GefgqaP34iVPjoQpb9rMfcQsGnVeWPmUyi",
+  "hash": "op3d1v8dvY8eMPkK42SC37cjbjZRgpczGzN6jvJtdCkYyxCCYDD",
+  "counter": 23831372,
+  "sender": {
+    "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+  },
+  "gasLimit": 180000,
+  "gasUsed": 16003,
+  "storageLimit": 320,
+  "storageUsed": 621,
+  "bakerFee": 24880,
+  "storageFee": 155250,
+  "allocationFee": 0,
+  "target": {
+    "address": "KT1Nt7swZ7aY8Ds6DEio5cw9zjUz9Djh94L6"
+  },
+  "targetCodeHash": -2085531756,
+  "amount": 0,
+  "parameter": {
+    "entrypoint": "add_tokens_v2",
+    "value": [
+      {
+        "quantity": "2",
+        "token_id": "0",
+        "token_info": {
+          "": "697066733a2f2f6261666b726569657a637a7a32366b3577676e716e7a6c76686c62333779616b753735696c68336f35686574686c636c7a75336662366676666469"
+        }
+      }
+    ]
+  },
+  "status": "backtracked",
+  "errors": [
+    {
+      "type": "storage_exhausted.operation"
+    }
+  ],
+  "hasInternals": false
+}

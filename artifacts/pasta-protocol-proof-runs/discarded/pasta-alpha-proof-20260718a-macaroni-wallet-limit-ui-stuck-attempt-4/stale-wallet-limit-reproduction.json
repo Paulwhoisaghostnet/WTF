@@ -1,0 +1,85 @@
+{
+  "schema": "pastaprotocol-ui-defect-reproduction@1",
+  "app": "macaroni",
+  "network": "shadownet",
+  "contractAddress": "KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT",
+  "collectorAddress": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+  "terminalRunnerAssertion": {
+    "sourceFile": "scripts/pasta-protocol/shadownet-macaroni-ui-live.ts",
+    "lineAtFailure": 2358,
+    "expectedSelector": "#walletLimitStatus",
+    "expectedSubstring": "1/1",
+    "result": "timeout",
+    "action": "runner stopped; no silent retry"
+  },
+  "liveAttemptFacts": {
+    "mintOperationHash": "ooLhjQyHnFgcohXvTvpNNjYXYAfEdJmfVk1VJavZEg22s58uGYx",
+    "mintStatus": "applied",
+    "postMintSupplyText": "1 / 2 minted · 1 remaining · 1 sealed",
+    "walletLimitTextRemainedPreMint": "This wallet minted 0/1 for this stage · 1 remaining.",
+    "mintButtonDisabled": false
+  },
+  "controlledReproductionOfTerminalState": {
+    "method": "Re-open the exact exported collector site with the bridge's cached pre-mint projection after the already-applied mint; no Shadownet write was made.",
+    "storageProjection": {
+      "stage_minted": {},
+      "ledger": {
+        "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej:0": "1"
+      },
+      "total_supply": {
+        "0": "1"
+      }
+    },
+    "observed": {
+      "walletLimitStatus": "This wallet minted 0/1 for this stage · 1 remaining.",
+      "mintButtonDisabled": false,
+      "supplyText": "1 / 2 minted · 1 remaining · 1 sealed"
+    }
+  },
+  "freshReadOnlyProjection": {
+    "method": "Re-open the same exported page with a fresh read of the contract's TzKT/Taquito storage projection; no Shadownet write was made.",
+    "storageProjection": {
+      "stage_minted": {
+        "0:tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej": "1"
+      },
+      "ledger": {
+        "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej:0": "1"
+      },
+      "total_supply": {
+        "0": "1"
+      }
+    },
+    "observed": {
+      "walletLimitStatus": "This wallet minted 1/1 for this stage · 0 remaining.",
+      "mintButtonDisabled": true,
+      "supplyText": "1 / 2 minted · 1 remaining · 1 sealed"
+    },
+    "taquitoBigMapGetShapesVerified": [
+      {
+        "stage": 0,
+        "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej"
+      },
+      {
+        "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+        "stage": 0
+      }
+    ],
+    "taquitoBigMapValue": "1",
+    "tzktBigMapPointer": 28829,
+    "tzktBigMapValue": "1"
+  },
+  "rootCause": "The production collector page confirmed the mint and then launched refresh work without awaiting a fresh post-mint storage read. The proof bridge could therefore serve its cached pre-mint projection while the page independently refreshed balance/supply, leaving wallet-limit state stale on the same page.",
+  "correction": {
+    "production": "After mint confirmation, clear wallet-status cache, await balance refresh, await contract refresh, recompute the active stage, force-await wallet-limit status, then continue reveal/success handling. Remove the final fire-and-forget refresh.",
+    "proofBridge": "Project storage dynamically from Shadownet on every browser read instead of returning the bootstrap snapshot.",
+    "regression": "The actual exported-page test deliberately caches stale stage_minted after mint, delays the fresh projectStorage result, and requires the 1/1 wallet-limit text to be present at the instant mint success is rendered. It also exercises the Taquito-real composite key object shape."
+  },
+  "regressionGate": {
+    "command": "npx tsx --test scripts/pasta-protocol/pasta-ui-live-bridge-kit.test.ts scripts/pasta-protocol/shadownet-macaroni-ui-live.test.ts",
+    "result": "PASS",
+    "testsPassed": 15,
+    "testsFailed": 0,
+    "completedAt": "2026-07-19T04:57:53Z"
+  },
+  "acceptedForFinalProofPackage": false
+}

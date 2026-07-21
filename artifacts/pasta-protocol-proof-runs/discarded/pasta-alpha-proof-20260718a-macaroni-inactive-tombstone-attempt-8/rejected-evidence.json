@@ -1,0 +1,34 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "runId": "pasta-alpha-proof-20260718a",
+  "attempt": 8,
+  "classification": "REJECTED-NOT-PROOF",
+  "quarantinedAtUtc": "2026-07-19T06:09:52Z",
+  "reason": "The terminal V1 TzKT verifier required key 0 to be absent from pending_tokens, but TzKT correctly retained the consumed key as an inactive historical tombstone. The runner exhausted its bounded poll and exited 1 before producing a manifest or receipt.",
+  "bugBounty": "WTF-BB-449",
+  "acceptedAggregatePath": "artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260718a/macaroni",
+  "acceptedAggregatePathAbsent": true,
+  "manifestPresent": false,
+  "receiptPresent": false,
+  "chainWritesSucceeded": true,
+  "screenshotsPresent": 15,
+  "contracts": [
+    "KT1S3tXv1H376Vgaq6v94dCYJCfyWFfPWFLT",
+    "KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe"
+  ],
+  "operationCount": 9,
+  "tokenCount": 2,
+  "pinCount": 10,
+  "terminalBoundary": {
+    "name": "V1 sold-out boundary",
+    "expectedFailure": "SOLD_OUT",
+    "rejectedBeforeInjection": true,
+    "collectorCounterBefore": 23833807,
+    "collectorCounterAfter": 23833807
+  },
+  "supportingFiles": [
+    "partial-chain-inventory.json",
+    "inactive-tombstone-response.json"
+  ]
+}

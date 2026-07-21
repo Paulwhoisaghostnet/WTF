@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "connect creator signer",
+  "stageOrdinal": 2,
+  "stageName": "creator connected",
+  "url": "http://127.0.0.1:61579/creation-tools/penne/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Apenne-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:39:50.005Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "bd0a5a31ecdaef7d83217ad1bfbca2e609463241cbd4f1c66c7fc70e79a803ed",
+  "byteCount": 106798,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Penne"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:39:48 AM imported \"Penne UI-LIVE Distribution Token\" from CH-EASE handoff 12:39:49 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet"
+    },
+    {
+      "selector": "#account",
+      "name": "creator account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1QBFT…S3cM"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

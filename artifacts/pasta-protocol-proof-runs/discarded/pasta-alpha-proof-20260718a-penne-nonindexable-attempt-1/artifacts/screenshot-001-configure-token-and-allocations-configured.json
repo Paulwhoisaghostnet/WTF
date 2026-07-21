@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "configure token and allocations",
+  "stageOrdinal": 1,
+  "stageName": "configured",
+  "url": "http://127.0.0.1:60440/creation-tools/penne/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Apenne-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:24:33.229Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "3a96c6dc3004cdf3d2b30e7dd0e23bf16e4deb33d5510615cd601ec15a16c105",
+  "byteCount": 106154,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Penne"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:24:32 AM imported \"Penne UI-LIVE Distribution Token\" from CH-EASE handoff"
+    },
+    {
+      "selector": "#sumCount",
+      "name": "allocation count",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "2"
+    },
+    {
+      "selector": "#tokArtifactStatus",
+      "name": "pre-pinned artifact",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "artifact: ipfs://bafkreifywgnbtq6x7e7c5pgu3e4ooq4c6smpmwblqjciz7hwrao23tlj3q"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

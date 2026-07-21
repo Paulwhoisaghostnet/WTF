@@ -1,0 +1,100 @@
+{
+  "schema": "pastaprotocol-rejected-chain-evidence@1",
+  "app": "macaroni",
+  "network": "shadownet",
+  "queriedAt": "2026-07-19T05:07:41Z",
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+  "contract": {
+    "address": "KT1FXzFiRTVMnrtRzorLRVgdkq4SyPgL4TsF",
+    "url": "https://shadownet.tzkt.io/KT1FXzFiRTVMnrtRzorLRVgdkq4SyPgL4TsF",
+    "kind": "asset",
+    "tzips": ["fa2"],
+    "firstActivityLevel": 4254980,
+    "lastActivityLevel": 4254995,
+    "typeHash": -1198466749,
+    "codeHash": -2085531756
+  },
+  "operations": [
+    {
+      "entrypoint": "origination",
+      "hash": "oom7MKNM4djuowDXsF887zV2ihkFhq6LjfcffUBdwauCjT5FxbT",
+      "status": "applied",
+      "level": 4254980,
+      "timestamp": "2026-07-19T05:02:09Z",
+      "storageLimit": 15273,
+      "storageUsed": 14996
+    },
+    {
+      "entrypoint": "add_tokens_v2",
+      "hash": "oogrdpZzvGLn3iKuhg7N5PZpazpcrNy5ouGPUA4KRFAQmrNRbJ5",
+      "status": "applied",
+      "level": 4254983,
+      "timestamp": "2026-07-19T05:02:27Z",
+      "storageLimit": 1300,
+      "storageUsed": 621,
+      "quantity": "2"
+    },
+    {
+      "entrypoint": "set_stages",
+      "hash": "oow66pPxUdSmM99BSg1io8YqzadpJP2ZoHPuk5DCZV6YV2UNDJU",
+      "status": "applied",
+      "level": 4254985,
+      "timestamp": "2026-07-19T05:02:39Z",
+      "maxPerWallet": "1",
+      "priceMutez": "1000"
+    },
+    {
+      "entrypoint": "mint",
+      "hash": "oorbaRMRXrRfJSYTePztffzKuA8M1FiY4jgRWTSH4fJc5GoLCv6",
+      "status": "applied",
+      "level": 4254990,
+      "timestamp": "2026-07-19T05:03:09Z",
+      "amountMutez": 1000,
+      "storageLimit": 1300,
+      "storageUsed": 359
+    },
+    {
+      "entrypoint": "reveal",
+      "hash": "ooUFUqK6Ffpb8HKcSoxCnCPmQ4tYsrkEWYM57GZYEVnKu83j6zA",
+      "status": "applied",
+      "level": 4254995,
+      "timestamp": "2026-07-19T05:03:39Z",
+      "storageLimit": 1300,
+      "storageUsed": 0
+    }
+  ],
+  "storage": {
+    "supply": "2",
+    "minted": "1",
+    "revealed": "1",
+    "revealCursor": "1",
+    "revealTail": "1",
+    "unrevealedSince": null,
+    "ledgerPointer": 28854,
+    "stageMintedPointer": 28866,
+    "tokenMetadataPointer": 28867,
+    "ledgerValue": "1",
+    "stageMintedValue": "1",
+    "tokenMetadataUpdates": 2
+  },
+  "indexedToken": {
+    "tokenId": "0",
+    "standard": "fa2",
+    "totalMinted": "1",
+    "totalSupply": "1",
+    "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "holderBalance": "1"
+  },
+  "finalMetadata": {
+    "uri": "ipfs://bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi",
+    "publicGatewayUrl": "https://ipfs.io/ipfs/bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi",
+    "artifactUri": "ipfs://bafkreib6xhieso3y2vq4n7moy3wl2dz3w33d737ck3cwfv2zm6bikltqtq",
+    "name": "Macaroni Revealed Proof",
+    "supply": 2,
+    "contractVersion": "macaroni-editions-v2",
+    "onChainUriMatches": true,
+    "publicGatewayBytesMatchPinnedSha256": true
+  },
+  "classification": "VALID_COMPLETE_V2_CHAIN_EVIDENCE_FROM_REJECTED_COMBINED_ATTEMPT"
+}

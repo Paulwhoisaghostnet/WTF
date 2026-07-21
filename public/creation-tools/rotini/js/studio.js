@@ -300,6 +300,8 @@ async function originateCollection(provider, me, generatorUri, imageUri) {
     token_artifact: new M(),
     minted_by: new M(),
     reserved_by: new M(),
+    pack_minters: new M(),
+    pack_reserved: new M(),
     next_project_id: 0,
     next_reservation_id: 0,
     next_token_id: 0,
@@ -458,7 +460,10 @@ async function loadProject() {
     if (!project) throw new Error("no generator project at that id");
     const minted = Number(project.minted?.toString?.() ?? project.minted ?? 0);
     const reserved = Number(project.reserved?.toString?.() ?? project.reserved ?? 0);
-    const max = project.max_supply == null ? "∞" : String(project.max_supply);
+    const maxSupply = project.max_supply && typeof project.max_supply === "object" && Object.prototype.hasOwnProperty.call(project.max_supply, "Some")
+      ? project.max_supply.Some
+      : project.max_supply;
+    const max = maxSupply == null ? "∞" : String(maxSupply?.toString?.() ?? maxSupply);
     const price = Number(project.price?.toString?.() ?? project.price ?? 0) / 1_000_000;
     const outputMode = bytesText(project.output_mode || "").toUpperCase() || "ARTIFACT";
     $("mintInfo").textContent = `${project.active ? "minting open" : "minting closed"} · ${minted} finalized + ${reserved} rendering / ${max} · ${outputMode} · ${price.toFixed(6)} tez`;
@@ -483,7 +488,11 @@ function numberValue(value) {
 
 async function mapGet(map, key) {
   if (!map || typeof map.get !== "function") return undefined;
-  return (await map.get(String(key))) ?? (await map.get(Number(key)));
+  const direct = await map.get(key);
+  if (direct !== undefined && direct !== null) return direct;
+  if (typeof key === "number") return map.get(String(key));
+  if (/^\d+$/.test(key)) return map.get(Number(key));
+  return undefined;
 }
 
 async function loadImage(blob) {

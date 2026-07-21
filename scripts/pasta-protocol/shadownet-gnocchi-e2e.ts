@@ -24,20 +24,23 @@ import {
   buildToolkit,
   collectAnnotations,
   createLogger,
-  dataJsonUri,
   hexToUtf8,
   loadSignerSet,
   normalizeBase,
-  parseDataJsonUri,
+  pinIpfsProofBytes,
+  pinIpfsProofJson,
   pollJson,
   probeRpcChainId,
   ProofBlocked,
+  resolveIpfsProofConfig,
   root,
   SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
   writeProofReport,
+  type IpfsPinnedProof,
+  type IpfsProofConfig,
   type ProofStatus,
 } from "./shadownet-proof-kit";
 
@@ -63,31 +66,44 @@ async function readContractArtifact(): Promise<unknown[]> {
   return code;
 }
 
-function buildMetadata(creator: string) {
+async function buildMetadata(creator: string, ipfs: IpfsProofConfig) {
   const relationship = { collection_group: `gnocchi-oe-modes-proof-${Date.now().toString(36)}` };
-  const items = [
+  const itemDefinitions = [
     {
       name: "Gnocchi Timed OE Proof",
       description: "Uncapped timed OE minted by two independent Shadownet collectors before its locked deadline.",
-      artifactUri: "data:text/plain;base64,R25vY2NoaSB0aW1lZCBPRSBwcm9vZg==",
+      artifactText: "Gnocchi timed OE proof",
+      artifactFileName: "gnocchi-timed-oe.txt",
       mimeType: "text/plain",
       tags: ["gnocchi", "timed-oe", "shadownet", "proof"],
     },
     {
       name: "Gnocchi Forever OE Proof",
       description: "Vaultable and reopenable forever OE minted by two independent Shadownet collectors.",
-      artifactUri: "data:text/plain;base64,R25vY2NoaSBmb3JldmVyIE9FIHByb29m",
+      artifactText: "Gnocchi forever OE proof",
+      artifactFileName: "gnocchi-forever-oe.txt",
       mimeType: "text/plain",
       tags: ["gnocchi", "forever-oe", "shadownet", "proof"],
     },
     {
       name: "Gnocchi Limited Edition Proof",
       description: "Capped timed LE with a creator reserve and two independent collector mints.",
-      artifactUri: "data:text/plain;base64,R25vY2NoaSBsaW1pdGVkIGVkaXRpb24gcHJvb2Y=",
+      artifactText: "Gnocchi limited edition proof",
+      artifactFileName: "gnocchi-limited-edition.txt",
       mimeType: "text/plain",
       tags: ["gnocchi", "limited-edition", "shadownet", "proof"],
     },
   ];
+  const artifactPins = await Promise.all(itemDefinitions.map((item) => pinIpfsProofBytes({
+    bytes: Buffer.from(item.artifactText, "utf8"),
+    fileName: item.artifactFileName,
+    mimeType: item.mimeType,
+    options: ipfs,
+  })));
+  const items = itemDefinitions.map(({ artifactText: _artifactText, artifactFileName: _artifactFileName, ...item }, index) => ({
+    ...item,
+    artifactUri: artifactPins[index].uri,
+  }));
   const pkg = buildCollectionPackage({
     targetApp: "gnocchi",
     title: "Gnocchi Shadownet OE Modes Proof",
@@ -117,12 +133,28 @@ function buildMetadata(creator: string) {
   }));
   assert.deepEqual(extractRelationshipMetadata(collectionMetadata), relationship);
   tokenMetadata.forEach((value) => assert.deepEqual(extractRelationshipMetadata(value), relationship));
+  const collectionPin = await pinIpfsProofJson({
+    value: collectionMetadata,
+    fileName: "gnocchi-collection.json",
+    options: ipfs,
+  });
+  const tokenPins = await Promise.all(tokenMetadata.map((value, index) => pinIpfsProofJson({
+    value,
+    fileName: `gnocchi-token-${index}.json`,
+    options: ipfs,
+  })));
   return {
     relationship,
     package: pkg,
-    collectionUri: dataJsonUri(collectionMetadata),
-    tokenUris: tokenMetadata.map(dataJsonUri),
+    tokenMetadata,
+    collectionUri: collectionPin.uri,
+    tokenUris: tokenPins.map((pin) => pin.uri),
+    pins: { artifacts: artifactPins, collection: collectionPin, tokens: tokenPins },
   };
+}
+
+function pinProofLine(label: string, pin: IpfsPinnedProof): string {
+  return `- ${label}: CID \`${pin.cid}\` — \`${pin.uri}\` — ${pin.publicGatewayUrl} — SHA-256 \`${pin.sha256}\``;
 }
 
 function originationStorage(admin: string, collectionUri: string) {
@@ -137,6 +169,8 @@ function originationStorage(admin: string, collectionUri: string) {
     token_metadata: new MichelsonMap(),
     total_supply: new MichelsonMap(),
     total_minted: new MichelsonMap(),
+    total_reserved: new MichelsonMap(),
+    reserved_mints: new MichelsonMap(),
     sales: new MichelsonMap(),
     policy_locked: new MichelsonMap(),
     minters: new MichelsonMap(),
@@ -187,6 +221,7 @@ async function main(): Promise<void> {
     ]);
   }
   assert.notEqual(process.env.TEZOS_NETWORK, "mainnet", "Gnocchi Shadownet proof refuses mainnet");
+  const ipfs = resolveIpfsProofConfig();
 
   const rpc = await probeRpcChainId();
   reportRpcUrl = rpc.rpcUrl;
@@ -230,7 +265,8 @@ async function main(): Promise<void> {
   assert.ok(availableActions(adapter, entrypoints).some((action) => action.id === "open_mint"));
   assert.ok(availableActions(adapter, entrypoints).some((action) => action.id === "set_sale_active"));
 
-  const metadata = buildMetadata(creator.address);
+  const metadata = await buildMetadata(creator.address, ipfs);
+  ok("pinned and public-gateway-verified all Gnocchi collection, token, and artifact bytes");
   const storage = originationStorage(creator.address, metadata.collectionUri);
   const estimate = await creatorTezos.estimate.originate({ code, storage } as any);
   const requiredCreator = Number(estimate.suggestedFeeMutez) + Number(estimate.burnFeeMutez) + 750_000;
@@ -379,9 +415,11 @@ async function main(): Promise<void> {
   const tokenMetadata = await pollJson("Gnocchi token metadata", `${normalizeBase(SHADOWNET_TZKT_API)}/bigmaps/${indexedStorage.token_metadata}/keys?limit=20`, (json) =>
     Array.isArray(json) && [0, 1, 2].every((tokenId) => json.some((entry) => Number(entry.key) === tokenId && entry?.value?.token_info?.[""])),
   );
-  const decodedNames = tokenMetadata
+  const indexedTokenUris = tokenMetadata
     .sort((a: any, b: any) => Number(a.key) - Number(b.key))
-    .map((entry: any) => (parseDataJsonUri(hexToUtf8(entry.value.token_info[""])) as any).name);
+    .map((entry: any) => hexToUtf8(entry.value.token_info[""]));
+  assert.deepEqual(indexedTokenUris, metadata.pins.tokens.map((pin) => pin.uri));
+  const decodedNames = metadata.tokenMetadata.map((value: any) => value.name);
   assert.deepEqual(decodedNames, ["Gnocchi Timed OE Proof", "Gnocchi Forever OE Proof", "Gnocchi Limited Edition Proof"]);
   const mintTransactions = await pollJson(
     "Gnocchi mint transactions",
@@ -414,6 +452,11 @@ async function main(): Promise<void> {
     `- Limited Edition collector two mint: \`${limitedMintTwo.hash}\``,
     `- Limited Edition sold-out rejection: \`${soldOutRejection.slice(0, 200)}\``,
     `- Locked policy expansion rejection: \`${lockedPolicyRejection.slice(0, 200)}\``, "",
+    "## Pinned IPFS proof", "",
+    pinProofLine("Collection metadata", metadata.pins.collection),
+    ...metadata.pins.artifacts.map((pin, index) => pinProofLine(`Token ${index} artifact`, pin)),
+    ...metadata.pins.tokens.map((pin, index) => pinProofLine(`Token ${index} metadata`, pin)),
+    "",
     "## Indexed proof", "",
     `- TzKT indexed both collectors owning timed, forever, and limited tokens plus the creator's declared LE reserve in ledger big-map \`${indexedStorage.ledger}\`.`,
     `- TzKT indexed current supplies and lifetime minted totals for all three token ids in big-maps \`${indexedStorage.total_supply}\` / \`${indexedStorage.total_minted}\`.`,

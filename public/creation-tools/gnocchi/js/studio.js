@@ -135,7 +135,40 @@ function readIssuancePolicy() {
   };
 }
 
-function issuanceLabel(sale) {
+function optionValue(value) {
+  if (value == null) return null;
+  if (typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "Some")) return value.Some;
+  if (typeof value === "object" && value.prim === "Some" && Array.isArray(value.args) && value.args.length === 1) {
+    return value.args[0]?.string ?? value.args[0]?.int ?? value.args[0];
+  }
+  return value;
+}
+
+function optionDate(value) {
+  const unwrapped = optionValue(value);
+  if (unwrapped == null) return null;
+  const candidate = typeof unwrapped === "object" && typeof unwrapped.toISOString === "function"
+    ? unwrapped.toISOString()
+    : typeof unwrapped === "object" && typeof unwrapped.string === "string"
+      ? unwrapped.string
+      : String(unwrapped);
+  return Number.isFinite(Date.parse(candidate)) ? candidate : null;
+}
+
+function readableSale(sale) {
+  if (!sale || typeof sale !== "object") return sale;
+  return {
+    ...sale,
+    start: optionDate(sale.start),
+    end: optionDate(sale.end),
+    min_price: optionValue(sale.min_price),
+    max_price: optionValue(sale.max_price),
+    max_supply: optionValue(sale.max_supply),
+  };
+}
+
+function issuanceLabel(rawSale) {
+  const sale = readableSale(rawSale);
   const hasWindow = sale?.start != null || sale?.end != null;
   const hasCap = sale?.max_supply != null;
   if (hasWindow && hasCap) return "Limited Edition";
@@ -359,6 +392,8 @@ async function publish() {
         token_metadata: new M(),
         total_supply: new M(),
         total_minted: new M(),
+        total_reserved: new M(),
+        reserved_mints: new M(),
         sales: new M(),
         policy_locked: new M(),
         minters: new M(),
@@ -448,16 +483,21 @@ async function publish() {
 // ---------- public mint ----------
 
 function bigToNum(value) {
-  if (value == null) return null;
-  return typeof value === "object" && typeof value.toNumber === "function" ? value.toNumber() : Number(value);
+  const unwrapped = optionValue(value);
+  if (unwrapped == null) return null;
+  const converted = typeof unwrapped === "object" && typeof unwrapped.toNumber === "function"
+    ? unwrapped.toNumber()
+    : Number(unwrapped);
+  return Number.isFinite(converted) ? converted : null;
 }
 
 async function readSale(kt, tokenId) {
   const tezos = MD.getToolkit();
   const c = await tezos.contract.at(kt);
   const st = await c.storage();
-  const sale = await st.sales.get(String(tokenId));
-  if (!sale) throw new Error("no sale configured for that token id");
+  const rawSale = await st.sales.get(String(tokenId));
+  if (!rawSale) throw new Error("no sale configured for that token id");
+  const sale = readableSale(rawSale);
   const currentSupplyRaw = await st.total_supply.get(String(tokenId));
   const mintedRaw = st.total_minted ? await st.total_minted.get(String(tokenId)) : currentSupplyRaw;
   const minted = bigToNum(mintedRaw) || 0;
@@ -500,7 +540,7 @@ async function loadCollectionEditions() {
     const editions = await Promise.all(
       Array.from({ length: visibleTotal }, async (_, tokenId) => {
         const [sale, supplyRaw, mintedRaw, lockedRaw] = await Promise.all([
-          storage.sales.get(String(tokenId)),
+          Promise.resolve(storage.sales.get(String(tokenId))).then(readableSale),
           storage.total_supply.get(String(tokenId)),
           storage.total_minted ? storage.total_minted.get(String(tokenId)) : null,
           storage.policy_locked ? storage.policy_locked.get(String(tokenId)) : null,

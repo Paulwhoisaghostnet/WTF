@@ -137,6 +137,9 @@ function assertEntrypoints(entrypoints: Set<string>): void {
     "mint",
     "burn",
     "set_token_metadata",
+    "set_sale",
+    "set_sale_active",
+    "buy",
     "add_minter",
     "remove_minter",
     "transfer_administration",
@@ -155,6 +158,8 @@ function assertEntrypoints(entrypoints: Set<string>): void {
     "burn",
     "mint",
     "remove_minter",
+    "set_sale",
+    "set_sale_active",
     "transfer",
     "transfer_administration",
   ]);

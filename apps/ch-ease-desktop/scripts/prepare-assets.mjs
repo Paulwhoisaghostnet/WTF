@@ -15,7 +15,7 @@ const tools = [
   { id: "ch-ease", required: ["index.html", "css/theme.css", "js/studio.js", "vendor/jszip.min.js"] },
   { id: "spaghetti", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-standard-collection.contract.json"] },
   { id: "gnocchi", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-open-edition.contract.json"] },
-  { id: "ravioli", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-bundle.contract.json"] },
+  { id: "ravioli", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-bundle.contract.json", "contract/pasta-gnocchi-pack-adapter.contract.json", "contract/pasta-rotini-pack-adapter.contract.json"] },
   { id: "rotini", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-generative-collection.contract.json"] },
   { id: "penne", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-distribution.contract.json"] },
   { id: "lasagna", required: ["index.html", "js/common.js", "js/studio.js", "js/pasta-foundation.js", "vendor/tezos.js", "vendor/octez-connect.js", "contract/pasta-exhibition.contract.json"] },

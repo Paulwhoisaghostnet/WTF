@@ -1,0 +1,68 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "mint blind edition and enforce policy",
+  "stageOrdinal": 7,
+  "stageName": "Blind token minted and wallet limit enforced",
+  "url": "http://127.0.0.1:56055/index.html",
+  "timestampUtc": "2026-07-19T05:43:16.804Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "5dc62f3a5e1f2d06dbf260db0d83e07aa10a6318b3b83fd25bb3851ad61ede18",
+  "byteCount": 102686,
+  "domEvidence": [
+    {
+      "selector": "#brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet"
+    },
+    {
+      "selector": "#title",
+      "name": "drop title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#supplyText",
+      "name": "minted supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 / 2 minted · 1 remaining · 1 sealed"
+    },
+    {
+      "selector": "#mintStatus",
+      "name": "mint result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minted ✓ (check your wallet)"
+    },
+    {
+      "selector": "#walletLimitStatus",
+      "name": "wallet boundary",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "This wallet minted 1/1 for this stage · 0 remaining."
+    },
+    {
+      "selector": "#revealGrid [data-token-id=\"0\"]",
+      "name": "sealed token",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni UI-LIVE pasta-alpha-proof-20260718a — unrevealed · sealed minted by you"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

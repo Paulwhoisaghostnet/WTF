@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "export self-hosted mint site",
+  "stageOrdinal": 5,
+  "stageName": "Standalone collector website exported",
+  "url": "http://127.0.0.1:53197/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:02:47.023Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "69fca135c036ce3d96fbd1a19413a669dab6a74022df356986558bc8ee0775c0",
+  "byteCount": 184178,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#exportStatus",
+      "name": "site package",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Downloaded macaroni-site.zip — unzip and upload; includes index.html, drop.config.js, and wallet stack."
+    },
+    {
+      "selector": "#codeStatus",
+      "name": "generated drop config",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "generated from controls"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

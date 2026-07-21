@@ -11,6 +11,7 @@ export const RELATIONSHIP_METADATA_KEY = "relationships";
 export const CHEASE_PACKAGE_SCHEMA_VERSION = "wtfos.pasta.chease-package.v1";
 
 const PASTA_APP_IDS = [
+  "macaroni",
   "spaghetti",
   "gnocchi",
   "ravioli",
@@ -281,7 +282,7 @@ export function validateBondingCurve(config) {
 
 // ---------- bundle contents manifest (Ravioli) ----------
 
-export const BUNDLE_MANIFEST_SCHEMA_VERSION = "wtfos.pasta.bundle-manifest.v1";
+export const BUNDLE_MANIFEST_SCHEMA_VERSION = "wtfos.pasta.pack-manifest.v2";
 
 function cleanInt(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined;

@@ -10,6 +10,8 @@ const workflowSource = readFileSync(".github/workflows/ravioli-desktop-installer
 const routeSource = readFileSync("server/routes/ravioli-installers.ts", "utf8");
 const routesSource = readFileSync("server/routes.ts", "utf8");
 const studioSource = readFileSync("public/creation-tools/ravioli/js/studio.js", "utf8");
+const siteSource = readFileSync("public/creation-tools/ravioli/js/site.js", "utf8");
+const routerArtifactSource = readFileSync("public/creation-tools/ravioli/contract/pasta-bundle.contract.json", "utf8");
 const commonSource = readFileSync("public/creation-tools/ravioli/js/common.js", "utf8");
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const gitignoreSource = readFileSync(".gitignore", "utf8");
@@ -17,7 +19,7 @@ const liveCheckSource = readFileSync("scripts/check-ravioli-installers-live.mjs"
 const envExampleSource = readFileSync(".env.example", "utf8");
 const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs", "utf8");
 
-test("Ravioli desktop package bundles the bundle publisher in an Electron shell", () => {
+test("Ravioli desktop package bundles the atomic pack publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/ravioli-desktop");
   assert.equal(desktopPackage.version, "1.0.0");
   assert.equal(desktopPackage.main, "src/main.cjs");
@@ -43,17 +45,34 @@ test("Ravioli desktop package bundles the bundle publisher in an Electron shell"
   assert.match(gitignoreSource, /apps\/ravioli-desktop\/release\//);
 });
 
-test("Ravioli desktop asset preparation preserves the static publisher contract", () => {
+test("Ravioli desktop asset preparation preserves the router and typed helper contracts", () => {
   assert.match(prepareSource, /public\/creation-tools\/ravioli/);
   assert.match(prepareSource, /contract\/pasta-bundle\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-gnocchi-pack-adapter\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-rotini-pack-adapter\.contract\.json/);
   assert.match(prepareSource, /js\/pasta-foundation\.js/);
   assert.match(prepareSource, /vendor\/tezos\.js/);
   assert.match(prepareSource, /vendor\/octez-connect\.js/);
   assert.ok(existsSync("public/creation-tools/ravioli/index.html"), "Ravioli source page should exist");
   assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-bundle.contract.json"), "Ravioli contract artifact should exist");
-  assert.match(studioSource, /Pasta Protocol bundle publisher/);
+  assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-gnocchi-pack-adapter.contract.json"), "Gnocchi pack adapter artifact should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-rotini-pack-adapter.contract.json"), "Rotini pack adapter artifact should exist");
+  assert.match(studioSource, /atomic pack publisher/i);
+  assert.match(studioSource, /methodsObject\.commit_recipe/);
+  assert.match(studioSource, /methodsObject\.finalize_pack/);
+  assert.match(studioSource, /methodsObject\.open_pack/);
   assert.match(studioSource, /ravioli\.bundle_published/);
   assert.match(commonSource, /window\.MD/);
+});
+
+test("Ravioli v3 makes adapter payload commitment policy explicit end to end", () => {
+  assert.match(routerArtifactSource, /%payload_commitment/);
+  assert.match(studioSource, /pasta-ravioli-open-kit@3/);
+  assert.match(studioSource, /payload_commitment: action\.kind === "allocated" \? payloadCommitment\(""\) : null/);
+  assert.match(studioSource, /payload_commitment: action\.payloadCommitment \|\| payloadCommitment\(""\)/);
+  assert.match(studioSource, /payload_commitment: action\.payloadCommitment \|\| null/);
+  assert.match(siteSource, /pasta-ravioli-open-kit@3/);
+  assert.match(siteSource, /payload_commitment: action\.payloadCommitment/);
 });
 
 test("Ravioli desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {

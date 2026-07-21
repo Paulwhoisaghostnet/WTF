@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "configure deterministic generator",
+  "stageOrdinal": 1,
+  "stageName": "PNG GIF and ZIP generator configured",
+  "url": "http://127.0.0.1:62842/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-19T01:01:03.100Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "05a312c5067146d2a534e1db21f57c350278e43b2740d45b63e24f71a844c592",
+  "byteCount": 82303,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:01:03 AM generated 3 edition(s) from seed \"rotini-ui-live-proof\""
+    },
+    {
+      "selector": "#genStatus",
+      "name": "preview status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "generated 3 edition(s) from seed \"rotini-ui-live-proof\""
+    }
+  ],
+  "classification": "UI-LIVE"
+}

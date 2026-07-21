@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "permissionless reveal",
+  "stageOrdinal": 8,
+  "stageName": "Collector revealed exact final artwork",
+  "url": "http://127.0.0.1:53300/index.html",
+  "timestampUtc": "2026-07-19T05:03:54.205Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "e7223be5c65622dfb2c399c90a0398676fee3d29df19228465f822e2a83ba6cd",
+  "byteCount": 72330,
+  "domEvidence": [
+    {
+      "selector": "#brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet"
+    },
+    {
+      "selector": "#title",
+      "name": "drop title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#supplyText",
+      "name": "final supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 / 2 minted · 1 remaining"
+    },
+    {
+      "selector": "#revealGrid [data-token-id=\"0\"]",
+      "name": "final metadata",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni Revealed Proof owned · minted by another wallet X Bluesky"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

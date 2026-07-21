@@ -1,0 +1,20 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "app": "rotini",
+  "classification": "REJECTED",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "contractAddress": "KT1JB1BjgT9QaN56BgfvAbrcRTrp6TMU4oCq",
+  "originationOperationHash": "oo7Ksu5ebUBkSVhTacRGEKsCvPisQkkMoA4ytacaypHqyKjYrU3",
+  "reason": "The actual Studio originated a valid FA2 asset, but the proof bridge coerced an absent address-keyed big-map lookup to NaN and never submitted create_project.",
+  "acceptedAsProof": false,
+  "chainEvidence": {
+    "contract": "https://shadownet.tzkt.io/KT1JB1BjgT9QaN56BgfvAbrcRTrp6TMU4oCq",
+    "operation": "https://shadownet.tzkt.io/oo7Ksu5ebUBkSVhTacRGEKsCvPisQkkMoA4ytacaypHqyKjYrU3",
+    "tzktKind": "asset",
+    "tzips": ["fa2"],
+    "tokensCount": 0
+  }
+}

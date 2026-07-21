@@ -22,20 +22,23 @@ import {
   buildToolkit,
   collectAnnotations,
   createLogger,
-  dataJsonUri,
   hexToUtf8,
   loadSignerPair,
   normalizeBase,
-  parseDataJsonUri,
+  pinIpfsProofBytes,
+  pinIpfsProofJson,
   pollJson,
   probeRpcChainId,
   ProofBlocked,
+  resolveIpfsProofConfig,
   root,
   SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
   writeProofReport,
+  type IpfsPinnedProof,
+  type IpfsProofConfig,
   type ProofStatus,
 } from "./shadownet-proof-kit";
 
@@ -78,11 +81,17 @@ async function readContractArtifact(): Promise<unknown[]> {
   return code;
 }
 
-function buildMetadata(creator: string) {
+async function buildMetadata(creator: string, ipfs: IpfsProofConfig) {
   const relationship = {
     parent_contract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
     collection_group: `spaghetti-shadownet-e2e-${Date.now().toString(36)}`,
   };
+  const artifact = await pinIpfsProofBytes({
+    bytes: Buffer.from("Spaghetti Shadownet proof artifact", "utf8"),
+    fileName: "spaghetti-proof.txt",
+    mimeType: "text/plain",
+    options: ipfs,
+  });
   const pkg = buildCollectionPackage({
     targetApp: "spaghetti",
     title: "Spaghetti Shadownet E2E",
@@ -93,7 +102,7 @@ function buildMetadata(creator: string) {
       {
         name: "Spaghetti Proof Token",
         description: "Minted by the Pasta Protocol signer-backed Shadownet proof.",
-        artifactUri: "data:text/plain;base64,U3BhZ2hldHRpIFNoYWRvd25ldCBwcm9vZiBhcnRpZmFjdA==",
+        artifactUri: artifact.uri,
         mimeType: "text/plain",
         tags: ["spaghetti", "shadownet", "e2e"],
       },
@@ -121,14 +130,29 @@ function buildMetadata(creator: string) {
   });
   assert.deepEqual(extractRelationshipMetadata(collectionMetadata), relationship);
   assert.deepEqual(extractRelationshipMetadata(tokenMetadata), relationship);
+  const collectionMetadataPin = await pinIpfsProofJson({
+    value: collectionMetadata,
+    fileName: "spaghetti-collection.json",
+    options: ipfs,
+  });
+  const tokenMetadataPin = await pinIpfsProofJson({
+    value: tokenMetadata,
+    fileName: "spaghetti-token-0.json",
+    options: ipfs,
+  });
   return {
     relationship,
     package: pkg,
     collectionMetadata,
     tokenMetadata,
-    collectionMetadataUri: dataJsonUri(collectionMetadata),
-    tokenMetadataUri: dataJsonUri(tokenMetadata),
+    collectionMetadataUri: collectionMetadataPin.uri,
+    tokenMetadataUri: tokenMetadataPin.uri,
+    pins: { artifact, collectionMetadata: collectionMetadataPin, tokenMetadata: tokenMetadataPin },
   };
+}
+
+function pinProofLine(label: string, pin: IpfsPinnedProof): string {
+  return `- ${label}: CID \`${pin.cid}\` — \`${pin.uri}\` — ${pin.publicGatewayUrl} — SHA-256 \`${pin.sha256}\``;
 }
 
 function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
@@ -163,6 +187,7 @@ async function main(): Promise<void> {
   if ((process.env.TEZOS_NETWORK || "shadownet") === "mainnet") {
     throw new Error("Refusing to run Pasta Shadownet E2E with TEZOS_NETWORK=mainnet");
   }
+  const ipfs = resolveIpfsProofConfig();
 
   const rpc = await probeRpcChainId();
   reportRpcUrl = rpc.rpcUrl;
@@ -195,7 +220,8 @@ async function main(): Promise<void> {
   assert.equal(adapter?.kind, "standard_collection");
   assert.ok(availableActions(adapter, [...entrypoints]).some((action) => action.id === "transfer"));
 
-  const metadata = buildMetadata(creator.address);
+  const metadata = await buildMetadata(creator.address, ipfs);
+  ok("pinned and public-gateway-verified the Spaghetti artifact, collection metadata, and token metadata");
   const storage = buildOriginationStorage(creator.address, metadata.collectionMetadataUri);
   const originationEstimate = await tezos.estimate.originate({ code, storage } as any);
   const estimatedOriginationMutez =
@@ -283,7 +309,8 @@ async function main(): Promise<void> {
   );
   const tokenMetadataEntry = tokenMetadataKeys.find((entry: any) => String(entry?.key) === "0");
   const indexedTokenUri = hexToUtf8(String(tokenMetadataEntry?.value?.token_info?.[""] || ""));
-  const indexedTokenMetadata = parseDataJsonUri(indexedTokenUri) as any;
+  assert.equal(indexedTokenUri, metadata.pins.tokenMetadata.uri);
+  const indexedTokenMetadata = metadata.tokenMetadata;
   assert.equal(indexedTokenMetadata.name, metadata.package.items[0].name);
   assert.deepEqual(extractRelationshipMetadata(indexedTokenMetadata), metadata.relationship);
 
@@ -303,6 +330,12 @@ async function main(): Promise<void> {
     `- Mint: \`${mint.hash}\``,
     `- Configure direct sale: \`${setSale.hash}\``,
     `- Direct purchase: \`${buy.hash}\``,
+    "",
+    "## Pinned IPFS Proof",
+    "",
+    pinProofLine("Artifact", metadata.pins.artifact),
+    pinProofLine("Collection metadata", metadata.pins.collectionMetadata),
+    pinProofLine("Token metadata", metadata.pins.tokenMetadata),
     "",
     "## Indexed Proof",
     "",

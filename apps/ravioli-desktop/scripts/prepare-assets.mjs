@@ -23,6 +23,11 @@ const required = [
   "vendor/tezos.js",
   "vendor/octez-connect.js",
   "contract/pasta-bundle.contract.json",
+  "contract/pasta-bundle.template.json",
+  "contract/pasta-gnocchi-pack-adapter.contract.json",
+  "contract/pasta-gnocchi-pack-adapter.template.json",
+  "contract/pasta-rotini-pack-adapter.contract.json",
+  "contract/pasta-rotini-pack-adapter.template.json",
 ];
 
 if (!existsSync(sourceDir)) {

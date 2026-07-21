@@ -1,0 +1,46 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "attempt": "20260719T0421Z-fees-too-low",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "status": "REJECTED_AFTER_ORIGINATION",
+  "observedAt": "2026-07-19T04:26:42Z",
+  "reason": "The fresh V2 contract originated successfully, but the UI-live adapter supplied a brittle fixed 2500 mutez fee with a 200000 gas limit. Shadownet permanently refused add_tokens_v2 as proto.025-PsUshuai.prefilter.fees_too_low, so the run was terminated and excluded from the accepted aggregate.",
+  "macaroniEvidence": {
+    "contractAddresses": [
+      "KT1U7PDcTMRFwqZHesVeyYK41du7NPjFq2FE"
+    ],
+    "operationHashes": [
+      "oo9aKZHgepi5RcZK5epGLvHKhAgmFuL9NYnPcfsiNfhtpqu2Um2",
+      "ooAvv3yuqC7tdXnhHXs8dD4ArZ3x2DRnuF62g8cSW5C7PNC9NeG"
+    ],
+    "completedStages": [
+      "V2 Studio configuration",
+      "V2 Studio exact media and metadata pinning",
+      "V2 fresh FA2 origination"
+    ],
+    "acceptedForFinalPackage": false
+  },
+  "chainEvidence": {
+    "originatedContract": {
+      "address": "KT1U7PDcTMRFwqZHesVeyYK41du7NPjFq2FE",
+      "operationHash": "oo9aKZHgepi5RcZK5epGLvHKhAgmFuL9NYnPcfsiNfhtpqu2Um2",
+      "tzktKind": "asset",
+      "tzips": ["fa2"],
+      "firstActivityTime": "2026-07-19T04:21:12Z"
+    },
+    "refusedTransaction": {
+      "operationHash": "ooAvv3yuqC7tdXnhHXs8dD4ArZ3x2DRnuF62g8cSW5C7PNC9NeG",
+      "entrypoint": "add_tokens_v2",
+      "feeMutez": 2500,
+      "gasLimit": 200000,
+      "storageLimit": 600,
+      "classification": "refused",
+      "errorId": "proto.025-PsUshuai.prefilter.fees_too_low",
+      "rawEvidenceFile": "refused-operation-rpc.json"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "buy and atomically open five pack modes",
+  "stageOrdinal": 14,
+  "stageName": "collector one opened deterministic_vault",
+  "url": "http://127.0.0.1:50744/creation-tools/ravioli/site.html",
+  "timestampUtc": "2026-07-19T13:46:26.012Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "31f4fcb7b4a517d32b5c4c80fbaf6ff4a30f928c22227c704c23015bec895352",
+  "byteCount": 51998,
+  "domEvidence": [
+    {
+      "selector": "#chainState",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "0 wrappers live · fully reserved"
+    },
+    {
+      "selector": "#status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Confirmed on Tezos. On-chain state refreshed."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

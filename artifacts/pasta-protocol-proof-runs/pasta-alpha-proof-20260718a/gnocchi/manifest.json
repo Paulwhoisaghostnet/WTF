@@ -1,0 +1,629 @@
+{
+  "app": "gnocchi",
+  "artifacts": [
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "id": "token-0-media",
+      "ipfsUri": "ipfs://bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "kind": "token-media",
+      "path": "artifacts/token-0-media.png",
+      "retrievedSha256": "dfa78990f0630983e5f3ebb41ea15556d6524a7d633c61e34c852760ada979f6",
+      "sha256": "dfa78990f0630983e5f3ebb41ea15556d6524a7d633c61e34c852760ada979f6"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+      "id": "collection-metadata",
+      "ipfsUri": "ipfs://bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+      "kind": "collection-metadata",
+      "path": "artifacts/collection-metadata.json",
+      "retrievedSha256": "b721a950727896ab55ba3a6271a4209e2b5e97f011e5cad117d28aeda68ac482",
+      "sha256": "b721a950727896ab55ba3a6271a4209e2b5e97f011e5cad117d28aeda68ac482"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "id": "token-0-metadata",
+      "ipfsUri": "ipfs://bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "kind": "token-metadata",
+      "path": "artifacts/token-0-metadata.json",
+      "retrievedSha256": "0020796ad6fa2759d1f1c52a1dc64b60e4d264b20d4cc99071ae92b01e4e8dfc",
+      "sha256": "0020796ad6fa2759d1f1c52a1dc64b60e4d264b20d4cc99071ae92b01e4e8dfc"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "id": "token-1-media",
+      "ipfsUri": "ipfs://bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "kind": "token-media",
+      "path": "artifacts/token-1-media.png",
+      "retrievedSha256": "9786aa9ccf38dafbceae83a16c19b5a37e7ba25de7f83b2938e2a533b70b0fd0",
+      "sha256": "9786aa9ccf38dafbceae83a16c19b5a37e7ba25de7f83b2938e2a533b70b0fd0"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "id": "token-1-metadata",
+      "ipfsUri": "ipfs://bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "kind": "token-metadata",
+      "path": "artifacts/token-1-metadata.json",
+      "retrievedSha256": "45fb3801000db46a6fdfca3fb62f6b89d1d5b8f3b0791f2c3f447c2d13402de1",
+      "sha256": "45fb3801000db46a6fdfca3fb62f6b89d1d5b8f3b0791f2c3f447c2d13402de1"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "id": "token-2-media",
+      "ipfsUri": "ipfs://bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "kind": "token-media",
+      "path": "artifacts/token-2-media.png",
+      "retrievedSha256": "44034c5d475d9be5eb1ecf422e48196248e084f5c261259c338c1b13562b138c",
+      "sha256": "44034c5d475d9be5eb1ecf422e48196248e084f5c261259c338c1b13562b138c"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "id": "token-2-metadata",
+      "ipfsUri": "ipfs://bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "kind": "token-metadata",
+      "path": "artifacts/token-2-metadata.json",
+      "retrievedSha256": "39403f4c98cc1fadbadcaae3a43863ad183796e2cf54677ccfa37d3f7f3983b8",
+      "sha256": "39403f4c98cc1fadbadcaae3a43863ad183796e2cf54677ccfa37d3f7f3983b8"
+    },
+    {
+      "id": "ui-live-run-receipt",
+      "kind": "run-receipt",
+      "path": "artifacts/gnocchi-ui-live-run.json",
+      "sha256": "c3e78ab3af6269efdc0f71bd789c732629f8d82c07eddb4764c3d852f7f79faa"
+    },
+    {
+      "id": "screenshot-sidecar-001-publish-three-edition-policies-timed-oe-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-publish-three-edition-policies-timed-oe-configured.json",
+      "sha256": "bf4d893938fbc4dab686c163916659d5d72409b0e8ea02a90451213ae0800189"
+    },
+    {
+      "id": "screenshot-sidecar-002-publish-three-edition-policies-creator-connected-on-shadownet",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-publish-three-edition-policies-creator-connected-on-shadownet.json",
+      "sha256": "ad74763508028f3d4444ab2dc6c1281692a4dee378cd4e6305fc75fa8c0a96cc"
+    },
+    {
+      "id": "screenshot-sidecar-003-publish-three-edition-policies-media-and-metadata-pinned",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-publish-three-edition-policies-media-and-metadata-pinned.json",
+      "sha256": "acf7f7401e6d40f31bf6e3efe745f764706caa83f2b72fb994f9d246ea554f3c"
+    },
+    {
+      "id": "screenshot-sidecar-004-publish-three-edition-policies-collection-originated",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-publish-three-edition-policies-collection-originated.json",
+      "sha256": "ab2850b088a8e0d2aea91eeb100b8454e7a4db75af3d5e3feccf12aaa3ff36ea"
+    },
+    {
+      "id": "screenshot-sidecar-005-publish-three-edition-policies-timed-oe-token-zero-live",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-005-publish-three-edition-policies-timed-oe-token-zero-live.json",
+      "sha256": "9f622ca319162039d302634dade2f7ec77cda01a5bd9295d1f305368405ab714"
+    },
+    {
+      "id": "screenshot-sidecar-006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-006-publish-three-edition-policies-existing-collection-verified-for-second-edition.json",
+      "sha256": "3c0a75ab44372e6bd580e9232ab09d1b5c692f50a78e8d698e99c3bd0c824bf0"
+    },
+    {
+      "id": "screenshot-sidecar-007-publish-three-edition-policies-forever-oe-token-one-live",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-007-publish-three-edition-policies-forever-oe-token-one-live.json",
+      "sha256": "b24a7bb8e2861c42ad3732ffddb4137706c37ab72e8367908242a5ac564677cb"
+    },
+    {
+      "id": "screenshot-sidecar-008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-008-publish-three-edition-policies-all-three-policies-live-in-one-collection.json",
+      "sha256": "1f76e97dbff00cd4f53a55cc7ce966111fdf2131f98de74b4ac840428bd82700"
+    },
+    {
+      "id": "screenshot-sidecar-009-independent-collector-mints-collector-one-connected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-009-independent-collector-mints-collector-one-connected.json",
+      "sha256": "b1148fb85a7e0ee46a5e7c96dac723c63d24287b6e59d6cd1cc2b86e0a8e726e"
+    },
+    {
+      "id": "screenshot-sidecar-010-independent-collector-mints-collector-one-minted-token-0",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-010-independent-collector-mints-collector-one-minted-token-0.json",
+      "sha256": "54c0c56f1b2c451f1226ca84053e3092c1af4705f85bcc84042991133174dad7"
+    },
+    {
+      "id": "screenshot-sidecar-011-independent-collector-mints-collector-one-minted-token-1",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-011-independent-collector-mints-collector-one-minted-token-1.json",
+      "sha256": "6d7981ca02b7becca7c4c59d925f4d3679dac6ae356263a20982d2e4333563f2"
+    },
+    {
+      "id": "screenshot-sidecar-012-independent-collector-mints-collector-one-minted-token-2",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-012-independent-collector-mints-collector-one-minted-token-2.json",
+      "sha256": "2f32cf4ea163834db18231d6762849973b92d00c656815f944c2afba8af19f77"
+    },
+    {
+      "id": "screenshot-sidecar-013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-013-vault-and-reopen-forever-issuance-forever-oe-vaulted.json",
+      "sha256": "fc7a9ca01bc66096f7a12cbec3334d64725fc8b0428951014d849e589e2965e1"
+    },
+    {
+      "id": "screenshot-sidecar-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected.json",
+      "sha256": "342b5e5dc659c88723811baca0235281832d1be74c45e5f8dc84594604a667d5"
+    },
+    {
+      "id": "screenshot-sidecar-015-vault-and-reopen-forever-issuance-forever-oe-reopened",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-015-vault-and-reopen-forever-issuance-forever-oe-reopened.json",
+      "sha256": "fc012fd8592b3c64be8780e006b559d8691ea4f2464213b9153b332852cb2ccf"
+    },
+    {
+      "id": "screenshot-sidecar-016-independent-collector-mints-collector-two-minted-token-0",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-016-independent-collector-mints-collector-two-minted-token-0.json",
+      "sha256": "953ea28b46b4f6df0a35538679ddb05295102b69d4e0a1c6960194e75835eab7"
+    },
+    {
+      "id": "screenshot-sidecar-017-independent-collector-mints-collector-two-minted-token-1",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-017-independent-collector-mints-collector-two-minted-token-1.json",
+      "sha256": "7d132ec271044729f94df44258de878d7092f0a9e6e8183ed4e03bed01541a7f"
+    },
+    {
+      "id": "screenshot-sidecar-018-independent-collector-mints-collector-two-minted-token-2",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-018-independent-collector-mints-collector-two-minted-token-2.json",
+      "sha256": "f22684d7b9dc8e49ccd1d9d1c82f52698259ba7916265808554b6c75ed2a126c"
+    },
+    {
+      "id": "screenshot-sidecar-019-independent-collector-mints-limited-edition-cap-enforced",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-019-independent-collector-mints-limited-edition-cap-enforced.json",
+      "sha256": "6f4544325447cc0513494646017cefbd39b3bdb2af01766b1640473dbc80983e"
+    },
+    {
+      "id": "gnocchi-portable-self-hosted-site",
+      "kind": "self-hosted-site-package",
+      "path": "artifacts/gnocchi-portable-self-hosted-site.zip",
+      "sha256": "49535c992ca0cc67d3c854ae6536d3d126549ffd4d2feaffa8e76f73140aa44d"
+    },
+    {
+      "id": "gnocchi-portable-self-hosted-site-proof",
+      "kind": "self-hosted-site-proof",
+      "path": "artifacts/gnocchi-portable-self-hosted-site-proof.json",
+      "sha256": "9f3c16fa342535665b36de91d4a89d6b7b40b5f88ff2b22518c91c0ce30653aa"
+    },
+    {
+      "id": "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-901-portable-self-hosted-site-actual-studio-export-complete.json",
+      "sha256": "65825445ac4166dd5d6dc2828b980738f0d0f67782035c174a2e275b3aa7fde7"
+    },
+    {
+      "id": "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-902-portable-self-hosted-site-extracted-page-live-independently.json",
+      "sha256": "9701524cf5ef76694ad911e8e0ea7e4760e34696e81e4502227bb60646d09e20"
+    },
+    {
+      "id": "gnocchi-proof-time-indexer-snapshot",
+      "kind": "historical-indexer-snapshot",
+      "path": "artifacts/gnocchi-proof-time-indexer-snapshot.json",
+      "sha256": "0a37661d4f2588cb3410426f45591039be92cb1fac03e2f5cdf0aa41e2cb4936",
+      "ipfsUri": "ipfs://bafkreiakg5tb2tzfrdftieccn5cvsebzx2jmwh5maprpltpqvja6fs2jgy",
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiakg5tb2tzfrdftieccn5cvsebzx2jmwh5maprpltpqvja6fs2jgy",
+      "retrievedSha256": "0a37661d4f2588cb3410426f45591039be92cb1fac03e2f5cdf0aa41e2cb4936"
+    }
+  ],
+  "capabilities": [
+    {
+      "description": "Originate one Gnocchi collection, publish timed OE, forever OE, and timed capped LE tokens, mint each from two independent collectors, enforce the LE cap, and vault then reopen forever issuance through the real app UI.",
+      "evidence": {
+        "artifacts": [
+          "token-0-media",
+          "collection-metadata",
+          "token-0-metadata",
+          "token-1-media",
+          "token-1-metadata",
+          "token-2-media",
+          "token-2-metadata",
+          "ui-live-run-receipt",
+          "screenshot-sidecar-001-publish-three-edition-policies-timed-oe-configured",
+          "screenshot-sidecar-002-publish-three-edition-policies-creator-connected-on-shadownet",
+          "screenshot-sidecar-003-publish-three-edition-policies-media-and-metadata-pinned",
+          "screenshot-sidecar-004-publish-three-edition-policies-collection-originated",
+          "screenshot-sidecar-005-publish-three-edition-policies-timed-oe-token-zero-live",
+          "screenshot-sidecar-006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+          "screenshot-sidecar-007-publish-three-edition-policies-forever-oe-token-one-live",
+          "screenshot-sidecar-008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+          "screenshot-sidecar-009-independent-collector-mints-collector-one-connected",
+          "screenshot-sidecar-010-independent-collector-mints-collector-one-minted-token-0",
+          "screenshot-sidecar-011-independent-collector-mints-collector-one-minted-token-1",
+          "screenshot-sidecar-012-independent-collector-mints-collector-one-minted-token-2",
+          "screenshot-sidecar-013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+          "screenshot-sidecar-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+          "screenshot-sidecar-015-vault-and-reopen-forever-issuance-forever-oe-reopened",
+          "screenshot-sidecar-016-independent-collector-mints-collector-two-minted-token-0",
+          "screenshot-sidecar-017-independent-collector-mints-collector-two-minted-token-1",
+          "screenshot-sidecar-018-independent-collector-mints-collector-two-minted-token-2",
+          "screenshot-sidecar-019-independent-collector-mints-limited-edition-cap-enforced",
+          "gnocchi-proof-time-indexer-snapshot"
+        ],
+        "contracts": [
+          "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup"
+        ],
+        "operations": [
+          "ooqQerwmFGorWABitNHN2fHYiTszK9VYB7UJhaRSciFp1pBEXKD",
+          "ooFzVQJ1tbZNtDjdt4gSjrdGLv5AEdFo8PWrPXcgvFHaDLU7HjY",
+          "opQdqZ5iV4A7oEWvouTFZKNBaiNr1shJd954os5kD4L61ZagTR5",
+          "oo1ixGk8MEaJhg5x67CR2TvmWsSnGDEPnPXSk9QxkAHrjZrYmei",
+          "ooQXe4GpTUaSrz1qUHBMSLjJB13cisZCbSdm58PZKb2HRkbATPA",
+          "ooG7Sn5szfTyfPXWcv4m2SDwDhRsBfZU9f1YuwQRMsXAaqv8ybf",
+          "oo4oDCSa8ogK3ToRDZGA2eRRA63f3YhqYM1MjbMSAYeFFTNcFJZ",
+          "ooC44P7JJZdoB7jMmiKo1N5KFRdiSnkExwSptVAfLwZCnA64zCj",
+          "ooATGD89uuUZb1WiS8Ckf3yFeZ6PAHh2FhqTUnKxE5pt41TFnNL",
+          "opF9BADxyx5KFTkQ9rxnKTDCEeGTm2wduoYWEbxYkFneSnFU1EK",
+          "ooVzftet88Z3c9rXNo3HA7G1f9t4tWJkTPoMcw5NbWKbZd7ZwvD",
+          "opAv3ywQ4VpdbJerun4YxfGLpePAroaEigGK724LmTsiQHCcSG2"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "001-publish-three-edition-policies-timed-oe-configured",
+          "002-publish-three-edition-policies-creator-connected-on-shadownet",
+          "003-publish-three-edition-policies-media-and-metadata-pinned",
+          "004-publish-three-edition-policies-collection-originated",
+          "005-publish-three-edition-policies-timed-oe-token-zero-live",
+          "006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+          "007-publish-three-edition-policies-forever-oe-token-one-live",
+          "008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+          "009-independent-collector-mints-collector-one-connected",
+          "010-independent-collector-mints-collector-one-minted-token-0",
+          "011-independent-collector-mints-collector-one-minted-token-1",
+          "012-independent-collector-mints-collector-one-minted-token-2",
+          "013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+          "014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+          "015-vault-and-reopen-forever-issuance-forever-oe-reopened",
+          "016-independent-collector-mints-collector-two-minted-token-0",
+          "017-independent-collector-mints-collector-two-minted-token-1",
+          "018-independent-collector-mints-collector-two-minted-token-2",
+          "019-independent-collector-mints-limited-edition-cap-enforced"
+        ],
+        "tokens": [
+          "gnocchi-token-0",
+          "gnocchi-token-1",
+          "gnocchi-token-2"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+          "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/0",
+          "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/1",
+          "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/2",
+          "https://ipfs.io/ipfs/bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+          "https://ipfs.io/ipfs/bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+          "https://ipfs.io/ipfs/bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+          "https://ipfs.io/ipfs/bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+          "https://ipfs.io/ipfs/bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+          "https://ipfs.io/ipfs/bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+          "https://ipfs.io/ipfs/bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa"
+        ]
+      },
+      "id": "three-policy-collector-and-lifecycle-proof"
+    },
+    {
+      "description": "Use the actual Gnocchi Studio to export the same-run Shadownet contract/token as a dependency-complete ZIP, validate every packaged byte and config value, extract it, and load its on-chain state from an ordinary static loopback host with no Objkt, Teia, or wtfOS dependency.",
+      "evidence": {
+        "artifacts": [
+          "gnocchi-portable-self-hosted-site",
+          "gnocchi-portable-self-hosted-site-proof",
+          "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+          "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "contracts": [
+          "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup"
+        ],
+        "operations": [],
+        "roleEvidence": [],
+        "screenshots": [
+          "901-portable-self-hosted-site-actual-studio-export-complete",
+          "902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "tokens": [
+          "gnocchi-token-0"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/0"
+        ]
+      },
+      "id": "portable-self-hosted-site"
+    }
+  ],
+  "capturedAt": "2026-07-19T04:15:01.231Z",
+  "contracts": [
+    {
+      "address": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "kind": "open-edition-collection"
+    }
+  ],
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet",
+    "rpcUrl": "https://tezos-shadownet.octez.io"
+  },
+  "operations": [
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/ooqQerwmFGorWABitNHN2fHYiTszK9VYB7UJhaRSciFp1pBEXKD",
+      "hash": "ooqQerwmFGorWABitNHN2fHYiTszK9VYB7UJhaRSciFp1pBEXKD",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/ooFzVQJ1tbZNtDjdt4gSjrdGLv5AEdFo8PWrPXcgvFHaDLU7HjY",
+      "hash": "ooFzVQJ1tbZNtDjdt4gSjrdGLv5AEdFo8PWrPXcgvFHaDLU7HjY",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/opQdqZ5iV4A7oEWvouTFZKNBaiNr1shJd954os5kD4L61ZagTR5",
+      "hash": "opQdqZ5iV4A7oEWvouTFZKNBaiNr1shJd954os5kD4L61ZagTR5",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/oo1ixGk8MEaJhg5x67CR2TvmWsSnGDEPnPXSk9QxkAHrjZrYmei",
+      "hash": "oo1ixGk8MEaJhg5x67CR2TvmWsSnGDEPnPXSk9QxkAHrjZrYmei",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooQXe4GpTUaSrz1qUHBMSLjJB13cisZCbSdm58PZKb2HRkbATPA",
+      "hash": "ooQXe4GpTUaSrz1qUHBMSLjJB13cisZCbSdm58PZKb2HRkbATPA",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooG7Sn5szfTyfPXWcv4m2SDwDhRsBfZU9f1YuwQRMsXAaqv8ybf",
+      "hash": "ooG7Sn5szfTyfPXWcv4m2SDwDhRsBfZU9f1YuwQRMsXAaqv8ybf",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/oo4oDCSa8ogK3ToRDZGA2eRRA63f3YhqYM1MjbMSAYeFFTNcFJZ",
+      "hash": "oo4oDCSa8ogK3ToRDZGA2eRRA63f3YhqYM1MjbMSAYeFFTNcFJZ",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "set_sale_active",
+      "explorerUrl": "https://shadownet.tzkt.io/ooC44P7JJZdoB7jMmiKo1N5KFRdiSnkExwSptVAfLwZCnA64zCj",
+      "hash": "ooC44P7JJZdoB7jMmiKo1N5KFRdiSnkExwSptVAfLwZCnA64zCj",
+      "kind": "manage",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "set_sale_active",
+      "explorerUrl": "https://shadownet.tzkt.io/ooATGD89uuUZb1WiS8Ckf3yFeZ6PAHh2FhqTUnKxE5pt41TFnNL",
+      "hash": "ooATGD89uuUZb1WiS8Ckf3yFeZ6PAHh2FhqTUnKxE5pt41TFnNL",
+      "kind": "manage",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/opF9BADxyx5KFTkQ9rxnKTDCEeGTm2wduoYWEbxYkFneSnFU1EK",
+      "hash": "opF9BADxyx5KFTkQ9rxnKTDCEeGTm2wduoYWEbxYkFneSnFU1EK",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooVzftet88Z3c9rXNo3HA7G1f9t4tWJkTPoMcw5NbWKbZd7ZwvD",
+      "hash": "ooVzftet88Z3c9rXNo3HA7G1f9t4tWJkTPoMcw5NbWKbZd7ZwvD",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/opAv3ywQ4VpdbJerun4YxfGLpePAroaEigGK724LmTsiQHCcSG2",
+      "hash": "opAv3ywQ4VpdbJerun4YxfGLpePAroaEigGK724LmTsiQHCcSG2",
+      "kind": "mint",
+      "status": "applied"
+    }
+  ],
+  "role": "token-publisher",
+  "roleEvidence": [],
+  "runId": "pasta-alpha-proof-20260718a",
+  "schema": "pastaprotocol-app-proof@1",
+  "screenshots": [
+    {
+      "caption": "gnocchi: publish three edition policies — Timed OE configured",
+      "path": "screenshots/001-publish-three-edition-policies-timed-oe-configured.png",
+      "sha256": "3d6407dced53f075cf80c67c8ef36da5dbf5f1163b2c38fadfa12cf61c086574",
+      "stage": "001-publish-three-edition-policies-timed-oe-configured"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Creator connected on Shadownet",
+      "path": "screenshots/002-publish-three-edition-policies-creator-connected-on-shadownet.png",
+      "sha256": "0c7f05132779849a3bfb9752055ae4a1caf08991efaa589b7fb4d2ea86823194",
+      "stage": "002-publish-three-edition-policies-creator-connected-on-shadownet"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Media and metadata pinned",
+      "path": "screenshots/003-publish-three-edition-policies-media-and-metadata-pinned.png",
+      "sha256": "c0db854b0e893eda0e8f068d5c791e1311160a6dd9d4433631f74367774a0c17",
+      "stage": "003-publish-three-edition-policies-media-and-metadata-pinned"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Collection originated",
+      "path": "screenshots/004-publish-three-edition-policies-collection-originated.png",
+      "sha256": "da5a2e4ba3f8e08ccbdfbcfd3f36c2bde8abf6f2c27207e50e101c2c7e331fe1",
+      "stage": "004-publish-three-edition-policies-collection-originated"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Timed OE token zero live",
+      "path": "screenshots/005-publish-three-edition-policies-timed-oe-token-zero-live.png",
+      "sha256": "0624736db8125f87b1072d65ca07502078add730088e469f739b06d92db8de96",
+      "stage": "005-publish-three-edition-policies-timed-oe-token-zero-live"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Existing collection verified for second edition",
+      "path": "screenshots/006-publish-three-edition-policies-existing-collection-verified-for-second-edition.png",
+      "sha256": "a7cc6d9921b92f53dca34378c1d71cf459d46230c92d2027594c6268be02073f",
+      "stage": "006-publish-three-edition-policies-existing-collection-verified-for-second-edition"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Forever OE token one live",
+      "path": "screenshots/007-publish-three-edition-policies-forever-oe-token-one-live.png",
+      "sha256": "35b341531084f5f6d5bfd689b44e01511d5e3f9a2c008cbe4875e1cb12dd7f01",
+      "stage": "007-publish-three-edition-policies-forever-oe-token-one-live"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — All three policies live in one collection",
+      "path": "screenshots/008-publish-three-edition-policies-all-three-policies-live-in-one-collection.png",
+      "sha256": "1e0bcd05ac98789c4c389950ff7866fcb5e6d62f9f0193e0576733f61040ecb6",
+      "stage": "008-publish-three-edition-policies-all-three-policies-live-in-one-collection"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one connected",
+      "path": "screenshots/009-independent-collector-mints-collector-one-connected.png",
+      "sha256": "22f974e8d25754833d38ab0c7894d03c18e1eb16f7aec024b1e41ab6b691ab1d",
+      "stage": "009-independent-collector-mints-collector-one-connected"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one minted token 0",
+      "path": "screenshots/010-independent-collector-mints-collector-one-minted-token-0.png",
+      "sha256": "8c8ddbe7d642d80fb53d5bcdf62d0a636b61029de3393b75c8a94f14a82126aa",
+      "stage": "010-independent-collector-mints-collector-one-minted-token-0"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one minted token 1",
+      "path": "screenshots/011-independent-collector-mints-collector-one-minted-token-1.png",
+      "sha256": "377c6167e681633e18e114f92c9ab2efda62ecce4a2a1e6deda321ed0024deec",
+      "stage": "011-independent-collector-mints-collector-one-minted-token-1"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one minted token 2",
+      "path": "screenshots/012-independent-collector-mints-collector-one-minted-token-2.png",
+      "sha256": "3c747e24e19cfb67bc50819bfc5904406cedcb762cb3aca3a66f21979e8ea3c3",
+      "stage": "012-independent-collector-mints-collector-one-minted-token-2"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Forever OE vaulted",
+      "path": "screenshots/013-vault-and-reopen-forever-issuance-forever-oe-vaulted.png",
+      "sha256": "bb2c532dd817e17d66bd36883cf1fc9a74d5bbe3fe1588b82d2f3d2c6b54085c",
+      "stage": "013-vault-and-reopen-forever-issuance-forever-oe-vaulted"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Vaulted collector mint rejected",
+      "path": "screenshots/014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected.png",
+      "sha256": "be3996022b65ac675c7b8c6b796764540ea5f6fb88f6ce828ce02ced71c2f945",
+      "stage": "014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Forever OE reopened",
+      "path": "screenshots/015-vault-and-reopen-forever-issuance-forever-oe-reopened.png",
+      "sha256": "5480a5d2cbc3839144c62e34b8f317621d166bd709758187d4e4bec2e6b0a04a",
+      "stage": "015-vault-and-reopen-forever-issuance-forever-oe-reopened"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two minted token 0",
+      "path": "screenshots/016-independent-collector-mints-collector-two-minted-token-0.png",
+      "sha256": "2a0c6d6cdea141b915b894b771c0c76ec25c2497c8a3cb7968bdcaa40d3305c1",
+      "stage": "016-independent-collector-mints-collector-two-minted-token-0"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two minted token 1",
+      "path": "screenshots/017-independent-collector-mints-collector-two-minted-token-1.png",
+      "sha256": "8cb74b1e348505eb10e3698a3ff6204eb93312aa2f2e0ad047c93ff815e43663",
+      "stage": "017-independent-collector-mints-collector-two-minted-token-1"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two minted token 2",
+      "path": "screenshots/018-independent-collector-mints-collector-two-minted-token-2.png",
+      "sha256": "b36e21a48e131496119205997b480167b052e6b8dd8bfc11f4448ba3351b3c0c",
+      "stage": "018-independent-collector-mints-collector-two-minted-token-2"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Limited edition cap enforced",
+      "path": "screenshots/019-independent-collector-mints-limited-edition-cap-enforced.png",
+      "sha256": "37d117742fc2d74b53320f996c5d71de28cb2cd8bac01f613b536175ad56aea5",
+      "stage": "019-independent-collector-mints-limited-edition-cap-enforced"
+    },
+    {
+      "caption": "gnocchi: portable self-hosted site — actual studio export complete",
+      "path": "screenshots/901-portable-self-hosted-site-actual-studio-export-complete.png",
+      "sha256": "1b812965ae24562dbfff3f3d8cff83ff91a7323fed80c569fa54772e3b883aae",
+      "stage": "901-portable-self-hosted-site-actual-studio-export-complete"
+    },
+    {
+      "caption": "gnocchi: portable self-hosted site — extracted page live independently",
+      "path": "screenshots/902-portable-self-hosted-site-extracted-page-live-independently.png",
+      "sha256": "2c327a48f4c7fea84de94def97d9bf5d47fbfb2f8efb074b7382e13b51ea286d",
+      "stage": "902-portable-self-hosted-site-extracted-page-live-independently"
+    }
+  ],
+  "tokens": [
+    {
+      "artifactUri": "ipfs://bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/0",
+      "id": "gnocchi-token-0",
+      "mediaArtifactId": "token-0-media",
+      "metadataArtifactId": "token-0-metadata",
+      "metadataUri": "ipfs://bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "tokenId": "0",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4254512,
+      "proofTotalSupply": "4",
+      "proofHoldersCount": 3
+    },
+    {
+      "artifactUri": "ipfs://bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/1",
+      "id": "gnocchi-token-1",
+      "mediaArtifactId": "token-1-media",
+      "metadataArtifactId": "token-1-metadata",
+      "metadataUri": "ipfs://bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "tokenId": "1",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4254512,
+      "proofTotalSupply": "4",
+      "proofHoldersCount": 3
+    },
+    {
+      "artifactUri": "ipfs://bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "contractAddress": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup/tokens/2",
+      "id": "gnocchi-token-2",
+      "mediaArtifactId": "token-2-media",
+      "metadataArtifactId": "token-2-metadata",
+      "metadataUri": "ipfs://bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "tokenId": "2",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4254512,
+      "proofTotalSupply": "3",
+      "proofHoldersCount": 3
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "publish ZIP generator",
+  "stageOrdinal": 5,
+  "stageName": "ZIP project pinned and published",
+  "url": "http://127.0.0.1:62842/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-19T01:02:06.465Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "55d9b7772f654a53a50025fa9d4e3b92fef14b0052269f052ec0b74a6c216a57",
+  "byteCount": 170857,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:01:03 AM generated 3 edition(s) from seed \"rotini-ui-live-proof\" 1:01:03 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 1:01:03 AM encoding and pinning collection preview… 1:01:04 AM pinning generator layer Background / Marinara… 1:01:05 AM pinning generator layer Foreground / Pesto… 1:01:05 AM pinning generator manifest… 1:01:06 AM pinning collection metadata… 1:01:06 AM originating collection contract (sign in wallet)… 1:01:18 AM collection deployed: KT1BxNDMnzjdnNdButVigwgVLzSGe6oW66L5 1:01:18 AM explorer: https://shadownet.tzkt.io/KT1BxNDMnzjdnNdButVigwgVLzSGe6oW66L5 1:01:19 AM registering collector-finalized generator project (sign in wallet)… 1:01:29 AM generative project published ✓ — no iteration tokens exist until collectors finalize artifacts 1:01:30 AM encoding and pinning collection preview… 1:01:30 AM pinning generator layer Background / Marinara… 1:01:31 AM pinning generator layer Foreground / Pesto… 1:01:31 AM pinning generator manifest… 1:01:38 AM regi"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "zip publication",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Published ZIP generator project 2. Collector reservations become tokens only after artifact finalization."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

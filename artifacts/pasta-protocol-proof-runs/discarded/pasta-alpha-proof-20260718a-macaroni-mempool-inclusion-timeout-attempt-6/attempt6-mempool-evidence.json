@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "pasta-quarantined-mempool-diagnostic-v1",
+  "operationHash": "ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN",
+  "failureWindow": {
+    "runnerTerminalTimeoutSeconds": 300,
+    "primaryClassification": "validated",
+    "fallbackClassification": "validated",
+    "includedBeforeRunnerTimeout": false,
+    "tzktIndexedBeforeRunnerTimeout": false
+  },
+  "declaredVersusConsumedGas": {
+    "declaredGasLimit": 480000,
+    "eventualGasUsed": 5402,
+    "liveReadOnlyEstimateGasLimit": 6909,
+    "protocolPerBlockGasLimit": 1040000,
+    "observedCompetingRollupDeclaredGasRange": [931000, 938000],
+    "diagnosis": "The fallback declared far more gas than execution required and could not fit beside the dominant rollup manager operation in saturated blocks."
+  },
+  "terminalClassification": {
+    "primary": {
+      "validated": false,
+      "refused": false,
+      "outdated": false,
+      "branchDelayed": false,
+      "branchRefused": false,
+      "unprocessed": false
+    },
+    "fallback": {
+      "validated": false,
+      "refused": false,
+      "outdated": false,
+      "branchDelayed": false,
+      "branchRefused": false,
+      "unprocessed": false
+    },
+    "reason": "The operation left both mempools because it applied at level 4255182."
+  }
+}

@@ -117,7 +117,7 @@ test("buildCollectionMetadata defaults interfaces and embeds relationship", () =
 test("isPastaAppId recognizes known apps only", () => {
   assert.equal(isPastaAppId("spaghetti"), true);
   assert.equal(isPastaAppId("colander"), true);
-  assert.equal(isPastaAppId("macaroni"), false);
+  assert.equal(isPastaAppId("macaroni"), true);
   assert.equal(isPastaAppId(42), false);
 });
 
@@ -180,10 +180,18 @@ test("validateCheasePackage rejects malformed packages with reasons", () => {
   assert.equal(badVersion.ok, false);
   assert.ok(badVersion.errors.some((e) => e.includes("schemaVersion")));
 
-  const badApp = validateCheasePackage({
+  const macaroniPackage = validateCheasePackage({
     schemaVersion: CHEASE_PACKAGE_SCHEMA_VERSION,
     kind: "single_token",
     targetApp: "macaroni",
+    token: { name: "x" },
+  });
+  assert.equal(macaroniPackage.ok, true);
+
+  const badApp = validateCheasePackage({
+    schemaVersion: CHEASE_PACKAGE_SCHEMA_VERSION,
+    kind: "single_token",
+    targetApp: "not-pasta",
     token: { name: "x" },
   });
   assert.equal(badApp.ok, false);
@@ -402,6 +410,21 @@ test("detectPastaContract identifies the standard collection", () => {
   assert.equal(detectPastaContract(eps)?.kind, "standard_collection");
 });
 
+test("detectPastaContract identifies both Macaroni contract generations over generic FA2", () => {
+  const v1 = [...FA2_BASE, "set_stages", "set_allowlist", "set_paused", "reveal"];
+  const v2 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal", "replace_tokens_v2"];
+  for (const entrypoints of [v1, v2]) {
+    const adapter = detectPastaContract(entrypoints)!;
+    assert.equal(adapter.kind, "blind_mint_collection");
+    const actions = availableActions(adapter, entrypoints);
+    assert(actions.some((action) => action.id === "mint" && action.external === "macaroni"));
+    assert(actions.some((action) => action.id === "reveal" && action.external === "macaroni"));
+    assert(actions.some((action) => action.id === "set_stages" && action.external === "macaroni"));
+  }
+  assert(availableActions(detectPastaContract(v1)!, v1).some((action) => action.id === "set_paused"));
+  assert(availableActions(detectPastaContract(v2)!, v2).some((action) => action.id === "set_pause"));
+});
+
 test("detectPastaContract identifies the open edition over generic FA2", () => {
   const eps = [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"];
   assert.equal(detectPastaContract(eps)?.kind, "open_edition_collection");
@@ -426,14 +449,18 @@ test("detectPastaContract identifies the collector-finalized generative collecti
   assert(adapter.actions.some((action) => action.id === "set_project_active"));
 });
 
-test("detectPastaContract identifies the bundle collection", () => {
-  const eps = [...FA2_BASE, "create_bundle", "set_bundle_contents", "redeem"];
+test("detectPastaContract identifies the Ravioli pack router", () => {
+  const eps = [...FA2_BASE, "create_pack", "commit_recipe", "open_pack", "set_pack_contents"];
   assert.equal(detectPastaContract(eps)?.kind, "bundle_collection");
 });
 
 test("detectPastaContract identifies distribution over standard (both have create_token)", () => {
   const eps = [...FA2_BASE, "create_token", "set_allocations", "open_claim", "claim", "airdrop"];
-  assert.equal(detectPastaContract(eps)?.kind, "distribution");
+  const adapter = detectPastaContract(eps)!;
+  assert.equal(adapter.kind, "distribution");
+  const claim = availableActions(adapter, eps).find((action) => action.id === "claim");
+  assert.equal(claim?.access, "public");
+  assert.deepEqual(claim?.inputs, [{ name: "token_id", label: "Token id", type: "nat" }]);
 });
 
 test("detectPastaContract identifies the exhibition registry (no FA2 transfer)", () => {
@@ -461,7 +488,7 @@ test("fixed-edition adapters expose direct-sale management when the contract sup
     ["set_sale", "set_sale_active"]
   );
 
-  const bundleEntrypoints = [...FA2_BASE, "create_bundle", "redeem", "set_sale", "set_sale_active", "buy"];
+  const bundleEntrypoints = [...FA2_BASE, "create_pack", "commit_recipe", "open_pack", "set_sale", "set_sale_active", "buy"];
   const bundle = detectPastaContract(bundleEntrypoints)!;
   assert.deepEqual(
     availableActions(bundle, bundleEntrypoints).filter((action) => action.group === "sale").map((action) => action.id),
@@ -469,11 +496,12 @@ test("fixed-edition adapters expose direct-sale management when the contract sup
   );
 });
 
-test("bundle and open-edition adapters route their complete management stories", () => {
-  const bundleEntrypoints = [...FA2_BASE, "create_bundle", "redeem", "set_bundle_contents", "set_sale", "set_sale_active", "buy"];
+test("pack and open-edition adapters route their complete management stories", () => {
+  const bundleEntrypoints = [...FA2_BASE, "create_pack", "commit_recipe", "open_pack", "set_pack_contents", "cancel_pack", "set_sale", "set_sale_active", "buy"];
   const bundleActions = availableActions(detectPastaContract(bundleEntrypoints)!, bundleEntrypoints);
-  assert(bundleActions.some((action) => action.id === "redeem" && !action.external));
-  assert(bundleActions.some((action) => action.id === "set_bundle_contents" && !action.external));
+  assert(bundleActions.some((action) => action.id === "open_pack" && action.external === "ravioli"));
+  assert(bundleActions.some((action) => action.id === "set_pack_contents" && !action.external));
+  assert(bundleActions.some((action) => action.id === "cancel_pack" && !action.external));
 
   const openEntrypoints = [...FA2_BASE, "create_open_edition", "set_sale", "set_sale_active", "open_mint"];
   const openActions = availableActions(detectPastaContract(openEntrypoints)!, openEntrypoints);

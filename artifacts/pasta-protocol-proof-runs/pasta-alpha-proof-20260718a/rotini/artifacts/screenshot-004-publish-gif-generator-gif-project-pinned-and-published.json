@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "publish GIF generator",
+  "stageOrdinal": 4,
+  "stageName": "GIF project pinned and published",
+  "url": "http://127.0.0.1:49158/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-19T04:16:08.813Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "d1bd375c347c470ff59461060ca74f4e320538981b51f0fa161f14a43d1c6cac",
+  "byteCount": 166953,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "4:15:23 AM generated 3 edition(s) from seed \"rotini-ui-live-proof\" 4:15:24 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 4:15:24 AM encoding and pinning collection preview… 4:15:25 AM pinning generator layer Background / Marinara… 4:15:25 AM pinning generator layer Foreground / Pesto… 4:15:25 AM pinning generator manifest… 4:15:26 AM pinning collection metadata… 4:15:26 AM originating collection contract (sign in wallet)… 4:15:40 AM collection deployed: KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T 4:15:40 AM explorer: https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T 4:15:41 AM registering collector-finalized generator project (sign in wallet)… 4:15:50 AM generative project published ✓ — no iteration tokens exist until collectors finalize artifacts 4:15:50 AM encoding and pinning collection preview… 4:15:51 AM pinning generator layer Background / Marinara… 4:15:51 AM pinning generator layer Foreground / Pesto… 4:15:52 AM pinning generator manifest… 4:15:55 AM regi"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "gif publication",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Published GIF generator project 1. Collector reservations become tokens only after artifact finalization."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

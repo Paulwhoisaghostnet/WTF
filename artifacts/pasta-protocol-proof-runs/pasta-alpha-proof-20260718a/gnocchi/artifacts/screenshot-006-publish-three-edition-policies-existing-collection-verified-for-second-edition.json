@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 6,
+  "stageName": "Existing collection verified for second edition",
+  "url": "http://127.0.0.1:65182/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-19T04:10:28.479Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "a7cc6d9921b92f53dca34378c1d71cf459d46230c92d2027594c6268be02073f",
+  "byteCount": 160550,
+  "domEvidence": [
+    {
+      "selector": "#publishTargetStatus",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Verified administrator · next edition will be token #1"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

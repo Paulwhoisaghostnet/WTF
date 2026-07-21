@@ -1303,6 +1303,12 @@ async function parseAllowlist(file) {
 
 // ---------- deploy & sync ----------
 const CHUNK = 40;
+const STORAGE_PROFILE = Object.freeze({
+  inventory: Object.freeze({ storageBase: 400, storagePerUnit: 900 }),
+  stages: Object.freeze({ storageBase: 300, storagePerUnit: 300 }),
+  allowlist: Object.freeze({ storageBase: 400, storagePerUnit: 260 }),
+  reveal: Object.freeze({ storageBase: 400, storagePerUnit: 900 }),
+});
 
 function tezToMutez(t) {
   return Math.round(parseFloat(t || "0") * 1_000_000);
@@ -1499,6 +1505,7 @@ async function deploy() {
     const op = await tezos.wallet.originate({ code, storage }).send();
     $("deployStatus").textContent = "waiting for confirmation…";
     const contract = await op.contract();
+    await MD.assertOperationApplied(op, { network: state.network, contractAddress: contract.address });
     state.contract = contract.address;
     $("contractAddr").value = contract.address;
     MD.recordColanderContract(contract.address);
@@ -1611,8 +1618,13 @@ async function sync() {
       const chunk = replaceTodo.slice(i, i + CHUNK).map(batchify);
       const ep = contractIsV2 ? "replace_tokens_v2" : "replace_tokens";
       log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
-      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, {
+        ...STORAGE_PROFILE.inventory,
+        gasPerUnit: 180_000,
+        units: chunk.length,
+      });
       await op.confirmation(1);
+      await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: ep });
       bump();
     }
 
@@ -1620,24 +1632,39 @@ async function sync() {
       const chunk = todo.slice(i, i + CHUNK).map(batchify);
       const ep = contractIsV2 ? "add_tokens_v2" : "add_tokens";
       log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
-      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, { gasPerUnit: 180_000, units: chunk.length });
+      const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, {
+        ...STORAGE_PROFILE.inventory,
+        gasPerUnit: 180_000,
+        units: chunk.length,
+      });
       await op.confirmation(1);
+      await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: ep });
       bump();
     }
 
     const sm = new M();
     for (const s of stages) sm.set(s.key, s.value);
     log("set_stages (" + stages.length + ")");
-    const opS = await MD.sendWalletOp(c.methodsObject.set_stages(sm), {}, { gasPerUnit: 120_000, units: stages.length });
+    const opS = await MD.sendWalletOp(c.methodsObject.set_stages(sm), {}, {
+      ...STORAGE_PROFILE.stages,
+      gasPerUnit: 120_000,
+      units: stages.length,
+    });
     await opS.confirmation(1);
+    await MD.assertOperationApplied(opS, { network: state.network, contractAddress: kt, entrypoint: "set_stages" });
     bump();
 
     if (entries.length) {
       for (let i = 0; i < entries.length; i += 200) {
         const chunk = entries.slice(i, i + 200);
         log(`set_allowlist ${i}…${i + chunk.length - 1}`);
-        const op = await MD.sendWalletOp(c.methodsObject.set_allowlist(chunk), {}, { gasPerUnit: 80_000, units: chunk.length });
+        const op = await MD.sendWalletOp(c.methodsObject.set_allowlist(chunk), {}, {
+          ...STORAGE_PROFILE.allowlist,
+          gasPerUnit: 80_000,
+          units: chunk.length,
+        });
         await op.confirmation(1);
+        await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: "set_allowlist" });
         bump();
       }
     } else {
@@ -1673,8 +1700,13 @@ async function revealMinted() {
       const n = Math.min(50, pending);
       $("deployStatus").textContent = `revealing ${n} of ${pending} pending…`;
       log(`reveal(${n}) — ${pending} unrevealed`);
-      const op = await MD.sendWalletOp(c.methodsObject.reveal(n), {}, { gasPerUnit: 420_000, units: n });
+      const op = await MD.sendWalletOp(c.methodsObject.reveal(n), {}, {
+        ...STORAGE_PROFILE.reveal,
+        gasPerUnit: 50_000,
+        units: n,
+      });
       await op.confirmation(1);
+      await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: "reveal" });
     }
     $("deployStatus").textContent = "all revealed ✓";
     log("reveal complete — every minted token has its artwork.");

@@ -17,6 +17,7 @@ import { sanitizeRelationshipMetadata } from "./relationship";
 export const CHEASE_PACKAGE_SCHEMA_VERSION = "wtfos.pasta.chease-package.v1" as const;
 
 const PASTA_APP_IDS: readonly PastaAppId[] = [
+  "macaroni",
   "spaghetti",
   "gnocchi",
   "ravioli",

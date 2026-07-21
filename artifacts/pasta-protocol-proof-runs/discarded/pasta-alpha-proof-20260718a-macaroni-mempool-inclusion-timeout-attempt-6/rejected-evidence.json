@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "pasta-quarantined-proof-attempt-v1",
+  "runId": "pasta-alpha-proof-20260718a",
+  "application": "macaroni",
+  "attempt": 6,
+  "classification": "QUARANTINED_REJECTED_ATTEMPT",
+  "acceptedForAggregate": false,
+  "reason": "The exported collector page submitted its first V2 mint, but the runner's five-minute terminal window expired while the operation remained validated in both configured RPC mempools. The operation later applied after the runner had failed. The attempt never completed wallet-limit rejection, reveal, the V1 lane, final TzKT verification, manifest generation, or the receipt, so none of its partial evidence is acceptable for the aggregate proof package.",
+  "aggregatePathState": {
+    "expectedPath": "artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260718a/macaroni",
+    "state": "absent",
+    "verifiedBeforeAttempt7": true
+  },
+  "partialChainState": {
+    "contract": "KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH",
+    "contractExplorer": "https://shadownet.tzkt.io/KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH",
+    "lateAppliedMint": "ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN",
+    "operationExplorer": "https://shadownet.tzkt.io/ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN",
+    "tokenExplorer": "https://shadownet.tzkt.io/KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH/tokens/0"
+  },
+  "pinnedArtifacts": [
+    {
+      "fileName": "macaroni-cover.png",
+      "uri": "ipfs://bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm"
+    },
+    {
+      "fileName": "macaroni-placeholder.png",
+      "uri": "ipfs://bafkreifuefxja355b3zotq3wh6l5m55uebkbazo5jxit5wqwzibmuevhvm"
+    },
+    {
+      "fileName": "placeholder-1.json",
+      "uri": "ipfs://bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy"
+    },
+    {
+      "fileName": "1.png",
+      "uri": "ipfs://bafkreib6xhieso3y2vq4n7moy3wl2dz3w33d737ck3cwfv2zm6bikltqtq"
+    },
+    {
+      "fileName": "1.json",
+      "uri": "ipfs://bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi"
+    },
+    {
+      "fileName": "contract-metadata.json",
+      "uri": "ipfs://bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma"
+    }
+  ],
+  "retainedPartialScreenshots": [
+    {
+      "path": "screenshots/001-configure-blind-drop-v2-delayed-reveal-drop-configured.png",
+      "sha256": "f55b111d66b3225bf7ec7567e777427a07841849c2ca59bcdb58f12e9c6af1b7"
+    },
+    {
+      "path": "screenshots/002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio.png",
+      "sha256": "b17e80efb06683caa8ceef6b1d21557a3b7e961c4df04399514f2188076d5aa4"
+    },
+    {
+      "path": "screenshots/003-originate-fresh-contract-fresh-macaroni-v2-contract-originated.png",
+      "sha256": "165a04465ea2f0fc64625492f80d86d92413cde98e8af6f3704ba06ad0b3d4c8"
+    },
+    {
+      "path": "screenshots/004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced.png",
+      "sha256": "a80123b5ad3fbedbd0d78ef908927b6474b9a71f8627ccbeba039636aff0933a"
+    },
+    {
+      "path": "screenshots/005-export-self-hosted-mint-site-standalone-collector-website-exported.png",
+      "sha256": "6055db85fce56a496f94fab02b86504534be82dd56294bb93cf2ee4969ed0b6a"
+    },
+    {
+      "path": "screenshots/006-operate-exported-collector-page-independent-collector-opened-exported-website.png",
+      "sha256": "b1d517a3f4864dd0e3dd8e973beaaed87e4c2cd11b013b6e464c0f30ac7b4b13"
+    }
+  ],
+  "retainedSelfHostedSite": {
+    "path": "artifacts/macaroni-site.zip",
+    "sha256": "73cc0fe50dcab982ab24e9bc81aed1f708bb0d132c22a23169db1b1e3f69f3ec"
+  },
+  "terminalEvidence": "late-inclusion-receipt.json"
+}

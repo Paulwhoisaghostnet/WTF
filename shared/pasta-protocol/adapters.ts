@@ -38,6 +38,11 @@ export type PastaContractActionId =
   | "transfer"
   | "mint"
   | "burn"
+  | "reveal"
+  | "set_stages"
+  | "set_allowlist"
+  | "set_pause"
+  | "set_paused"
   | "add_minter"
   | "remove_minter"
   | "set_token_metadata"
@@ -49,6 +54,9 @@ export type PastaContractActionId =
   | "reserve_iteration"
   | "finalize_iteration"
   | "cancel_expired_reservation"
+  | "open_pack"
+  | "cancel_pack"
+  | "set_pack_contents"
   | "redeem"
   | "set_bundle_contents"
   | "open_claim"
@@ -220,6 +228,77 @@ export const STANDARD_COLLECTION_ADAPTER: PastaContractAdapter = {
   actions: STANDARD_ACTIONS,
 };
 
+export const BLIND_MINT_COLLECTION_ADAPTER: PastaContractAdapter = {
+  kind: "blind_mint_collection",
+  label: "Macaroni blind-mint collection",
+  description: "Macaroni V1 or V2 blind-mint collection with staged sales and optional delayed reveal.",
+  signature: ["mint", "reveal", "set_stages", "set_allowlist"],
+  specificity: 4,
+  actions: [
+    A_TRANSFER,
+    {
+      id: "mint",
+      label: "Mint blind drop",
+      group: "mint",
+      entrypoint: "mint",
+      access: "public",
+      inputs: [],
+      external: "macaroni",
+      description: "Open Macaroni so the current stage price, wallet limit, allowlist, and payable amount are calculated before signing.",
+    },
+    {
+      id: "reveal",
+      label: "Reveal queued tokens",
+      group: "metadata",
+      entrypoint: "reveal",
+      access: "public",
+      inputs: [],
+      external: "macaroni",
+      description: "Open Macaroni to reveal eligible delayed-mint tokens from the committed metadata pool.",
+    },
+    {
+      id: "set_stages",
+      label: "Configure sale stages",
+      group: "sale",
+      entrypoint: "set_stages",
+      access: "admin",
+      inputs: [],
+      external: "macaroni",
+      description: "Open Macaroni to edit the complete ordered sale-stage schedule.",
+    },
+    {
+      id: "set_allowlist",
+      label: "Manage allowlist",
+      group: "sale",
+      entrypoint: "set_allowlist",
+      access: "admin",
+      inputs: [],
+      external: "macaroni",
+      description: "Open Macaroni to load or revise staged wallet capacities.",
+    },
+    {
+      id: "set_pause",
+      label: "Pause / resume V2 drop",
+      group: "sale",
+      entrypoint: "set_pause",
+      access: "admin",
+      inputs: [{ name: "paused", label: "Paused", type: "bool" }],
+      description: "Pause or resume a Macaroni V2 blind-mint contract without changing its configured stages.",
+    },
+    {
+      id: "set_paused",
+      label: "Pause / resume V1 drop",
+      group: "sale",
+      entrypoint: "set_paused",
+      access: "admin",
+      inputs: [{ name: "paused", label: "Paused", type: "bool" }],
+      description: "Pause or resume a Macaroni V1 blind-mint contract without changing its configured stages.",
+    },
+    A_TRANSFER_ADMIN,
+    A_ACCEPT_ADMIN,
+  ],
+};
+
 export const GENERATIVE_COLLECTION_ADAPTER: PastaContractAdapter = {
   kind: "generative_collection",
   label: "Generative collection",
@@ -327,37 +406,43 @@ export const OPEN_EDITION_ADAPTER: PastaContractAdapter = {
 
 export const BUNDLE_ADAPTER: PastaContractAdapter = {
   kind: "bundle_collection",
-  label: "Bundle",
-  description: "Ravioli bundle collection with on-chain redemption.",
-  signature: ["redeem", "create_bundle"],
-  specificity: 3,
+  label: "Atomic pack router",
+  description: "Ravioli collection with escrowed, allocation-minted, generative, and hybrid fulfillment.",
+  signature: ["open_pack", "create_pack", "commit_recipe"],
+  specificity: 5,
   actions: [
     A_TRANSFER,
     A_MINT,
-    A_BURN,
     {
-      id: "redeem",
-      label: "Redeem bundle",
+      id: "open_pack",
+      label: "Open pack",
       group: "transfer",
-      entrypoint: "redeem",
+      entrypoint: "open_pack",
       access: "owner",
-      inputs: [
-        { name: "token_id", label: "Token id", type: "nat" },
-        { name: "amount", label: "Amount", type: "nat" },
-      ],
-      description: "Burn wrapper editions you hold and record their redemption on-chain.",
+      inputs: [],
+      external: "ravioli",
+      description: "Open Ravioli with the reveal kit. Every enclosed transfer or mint succeeds atomically before the wrapper burns.",
     },
     {
-      id: "set_bundle_contents",
-      label: "Reveal / update contents",
+      id: "set_pack_contents",
+      label: "Publish contents reveal",
       group: "metadata",
-      entrypoint: "set_bundle_contents",
+      entrypoint: "set_pack_contents",
       access: "admin",
       inputs: [
         { name: "token_id", label: "Token id", type: "nat" },
         { name: "contents_uri", label: "Contents manifest URI", type: "text", placeholder: "ipfs://…" },
       ],
-      description: "Reveal a mystery bundle or point it at a replacement pinned contents manifest.",
+      description: "Publish the one-time contents manifest pointer for a blind pack.",
+    },
+    {
+      id: "cancel_pack",
+      label: "Close pack",
+      group: "sale",
+      entrypoint: "cancel_pack",
+      access: "admin",
+      inputs: [{ name: "token_id", label: "Token id", type: "nat" }],
+      description: "Permanently stop new wrapper issuance before launch or after every issued wrapper has opened.",
     },
     A_SET_FIXED_SALE,
     A_SET_SALE_ACTIVE,
@@ -397,6 +482,15 @@ export const DISTRIBUTION_ADAPTER: PastaContractAdapter = {
       inputs: [],
       external: "penne",
       description: "Loading large recipient lists is done in Penne.",
+    },
+    {
+      id: "claim",
+      label: "Claim allocation",
+      group: "distribution",
+      entrypoint: "claim",
+      access: "public",
+      inputs: [{ name: "token_id", label: "Token id", type: "nat" }],
+      description: "Claim the connected wallet's configured allocation for this token.",
     },
     {
       id: "airdrop",
@@ -481,6 +575,7 @@ export const GENERIC_FA2_ADAPTER: PastaContractAdapter = {
 /** Registry of every known Pasta contract adapter, plus the generic FA2 fallback. */
 export const PASTA_ADAPTERS: PastaContractAdapter[] = [
   GENERATIVE_COLLECTION_ADAPTER,
+  BLIND_MINT_COLLECTION_ADAPTER,
   STANDARD_COLLECTION_ADAPTER,
   OPEN_EDITION_ADAPTER,
   BUNDLE_ADAPTER,

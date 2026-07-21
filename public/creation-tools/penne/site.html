@@ -33,10 +33,20 @@
         <button id="submit" type="button" disabled>Continue</button>
         <button id="secondarySubmit" type="button" hidden>Secondary action</button>
       </section>
+      <section id="ravioliOpen" class="storage" aria-label="Ravioli open kit" hidden>
+        <div>
+          <h2>Atomic pack opening</h2>
+          <p>Import the creator-issued open kit. Generative and hybrid packs also require the finished PNG, GIF, or dependency-complete offline ZIP produced for this opening.</p>
+        </div>
+        <label>Open kit file <input id="openKitFile" type="file" accept="application/json,.json" /></label>
+        <label>Open kit <textarea id="openKit" rows="8" spellcheck="false" placeholder="Paste Ravioli v3 open-kit JSON"></textarea></label>
+        <label>Generated artifact <input id="openArtifact" type="file" accept="image/png,image/gif,application/zip,.zip" /></label>
+        <label>ZIP display / thumbnail <input id="openPreview" type="file" accept="image/png,image/gif" /></label>
+      </section>
       <section id="rotiniStorage" class="storage" aria-label="Iteration artifact storage" hidden>
         <div>
           <h2>Artifact pinning</h2>
-          <p>Rotini renders the reserved iteration here, then pins the finished artifact before the token is finalized. Credentials stay in this browser session.</p>
+          <p>Rotini and generative Ravioli packs pin the finished self-contained artifact before minting. Credentials stay in this browser session.</p>
         </div>
         <label>Provider
           <select id="pinProvider">

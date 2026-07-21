@@ -1,0 +1,129 @@
+{
+  "app": "rotini",
+  "archive": {
+    "config": {
+      "app": "rotini",
+      "contract": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "description": "Exported from the actual Rotini Studio and served from the extracted standalone ZIP without Objkt, Teia, or wtfOS.",
+      "label": "Rotini",
+      "network": "shadownet",
+      "title": "Rotini portable Shadownet proof · pasta-alpha-proof-20260718a",
+      "tokenId": 0
+    },
+    "entries": [
+      {
+        "bytes": 2418,
+        "path": "css/site.css",
+        "sha256": "dd81f37a234794c0f73fae3a2d06406a234da282f612e14725a54dbde942ec86"
+      },
+      {
+        "bytes": 3783,
+        "path": "index.html",
+        "sha256": "3b61aca79d6b15a39c566417fa46869e4e801e33b253e09467ec0ba57955a7f1"
+      },
+      {
+        "bytes": 28006,
+        "path": "js/common.js",
+        "sha256": "f1d3fcb152de14a006e66ecfd0de0fbc42f1a9fca21d1b6bbe3009d151ebee0b"
+      },
+      {
+        "bytes": 10675,
+        "path": "js/octez-wallet.js",
+        "sha256": "3f8e5292420aafb2175564cb341249996c580a93441d0d439f7cd8bedecdb8a8"
+      },
+      {
+        "bytes": 14763,
+        "path": "js/rotini-artifact.js",
+        "sha256": "28d9ccd2d498cc3c7592be216cd0f8ca26e92b1f51836e891f1b8d45986b17de"
+      },
+      {
+        "bytes": 10191,
+        "path": "js/rotini-mint.js",
+        "sha256": "af4f8924fe13b432932cc25a2da870e1b98c6fd9dc756202606abaa51dbdc2f8"
+      },
+      {
+        "bytes": 20957,
+        "path": "js/site.js",
+        "sha256": "955100975030c354f1eccffb8db522014229c835e863c99146a56f6b7d1be6e1"
+      },
+      {
+        "bytes": 379,
+        "path": "pasta.config.js",
+        "sha256": "d65e42b848beaa018c81d497f32e508c8e15fe81f8c26f6d2dd0ece5679ed8ae"
+      },
+      {
+        "bytes": 1718184,
+        "path": "vendor/octez-connect.js",
+        "sha256": "848c967aee086cb444dec51c2baf244ce12ea0490fa66577477f806c4438837c"
+      },
+      {
+        "bytes": 2205519,
+        "path": "vendor/tezos.js",
+        "sha256": "529c8312b3275d1cd372c457ba8457cdbd199f50a28313c977bdf0bdf1bcad97"
+      }
+    ],
+    "path": "artifacts/rotini-portable-self-hosted-site.zip",
+    "sha256": "4964a46aa5f69f99566a6e0bd976406d262184ba5017333eff379681ff922ebf"
+  },
+  "classification": "UI-LIVE",
+  "independentRuntime": {
+    "appLabel": "Rotini · Pasta Protocol",
+    "chainState": "Generation open",
+    "contract": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+    "forbiddenRemoteHosts": [],
+    "itemId": "0",
+    "localRequestedPaths": [
+      "api/auth/user",
+      "css/site.css",
+      "index.html",
+      "js/common.js",
+      "js/octez-wallet.js",
+      "js/rotini-artifact.js",
+      "js/rotini-mint.js",
+      "js/site.js",
+      "pasta.config.js",
+      "vendor/octez-connect.js",
+      "vendor/tezos.js"
+    ],
+    "objktRequests": 0,
+    "remoteOrigins": [
+      "https://ipfs.fileship.xyz",
+      "https://tezos-shadownet.octez.io"
+    ],
+    "reusedStudioOrigin": false,
+    "servedFromExtractedArchive": true,
+    "signerBridgeActions": 0,
+    "sourceApplicationFilesRequested": false,
+    "status": "On-chain state loaded.",
+    "teiaRequests": 0,
+    "wtfosRequests": 0
+  },
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet"
+  },
+  "runId": "pasta-alpha-proof-20260718a",
+  "schema": "pastaprotocol-portable-site-proof@1",
+  "screenshots": [
+    "901-portable-self-hosted-site-actual-studio-export-complete",
+    "902-portable-self-hosted-site-extracted-page-live-independently"
+  ],
+  "studio": {
+    "downloadedFileName": "rotini-site.zip",
+    "exportControl": "#btnExportSite",
+    "path": "/creation-tools/rotini/index.html"
+  },
+  "subject": {
+    "contract": {
+      "address": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "kind": "generative-collection"
+    },
+    "token": {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/0",
+      "id": "rotini-png-token-0",
+      "tokenId": "0"
+    }
+  }
+}

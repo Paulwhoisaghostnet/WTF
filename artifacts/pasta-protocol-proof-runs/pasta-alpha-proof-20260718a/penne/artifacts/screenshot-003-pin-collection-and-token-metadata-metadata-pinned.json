@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "pin collection and token metadata",
+  "stageOrdinal": 3,
+  "stageName": "metadata pinned",
+  "url": "http://127.0.0.1:61579/creation-tools/penne/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Apenne-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:39:51.355Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "26104444352f7902f3d3af8cc520be33c5b8ea098bd1d76eaa2c05fad49b1329",
+  "byteCount": 108304,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Penne"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:39:48 AM imported \"Penne UI-LIVE Distribution Token\" from CH-EASE handoff 12:39:49 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:39:50 AM pinning collection metadata… 12:39:50 AM pinning token metadata… 12:39:51 AM originating distribution contract (sign in wallet)…"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

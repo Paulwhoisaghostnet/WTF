@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 12,
+  "stageName": "hybrid_atomic_pack funded and issued",
+  "url": "http://127.0.0.1:50298/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-19T13:45:47.831Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "40856742e446a72011f05da1208026883716a3c29bbb103529c25e1b59f5d889",
+  "byteCount": 183738,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:36:26 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 1:36:27 PM pinning wrapper artwork… 1:36:28 PM originating Ravioli pack router (sign in wallet)… 1:36:41 PM Ravioli pack router deployed: KT1E1Emw46UTwRiVknHUreNvfcvAd7X8KZ2m 1:36:42 PM approving Ravioli escrow on KT1NJJ5…iaup (sign in wallet)… 1:36:53 PM pinning pack manifest… 1:36:55 PM registering bounded pack config (sign in wallet)… 1:37:04 PM funding recipe 1/1 (sign in wallet)… 1:37:17 PM finalizing pack after all backing is reserved (sign in wallet)… 1:37:29 PM minting 1 backed wrapper edition(s) (sign in wallet)… 1:37:53 PM direct wrapper sale opened ✓ 1:37:54 PM pack 0 is fully reserved and ready — open kit downloaded 1:37:54 PM pinning wrapper artwork… 1:37:58 PM approving Ravioli escrow on KT1NJJ5…iaup (sign in wallet)… 1:38:11 PM pinning pack manifest… 1:38:13 PM registering bounded pack config (sign in wallet)… 1:38:22 PM funding recipe 1/2 (sign in wallet)… 1:38:35 PM funding recipe 2/2 (sign in walle"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "portable self-hosted site",
+  "stageOrdinal": 902,
+  "stageName": "extracted page live independently",
+  "url": "http://127.0.0.1:50856/index.html",
+  "timestampUtc": "2026-07-19T04:31:14.823Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "1e989e34a8885b4e8636bd4dbd3d25203b8ae24ad7c73df987e59a23fced2b40",
+  "byteCount": 65814,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "standalone Pasta application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini · Pasta Protocol"
+    },
+    {
+      "selector": "#contract",
+      "name": "same-run Shadownet contract",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T"
+    },
+    {
+      "selector": "#itemId",
+      "name": "same-run token project or revision",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "0"
+    },
+    {
+      "selector": "#status",
+      "name": "independent chain load",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "On-chain state loaded."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

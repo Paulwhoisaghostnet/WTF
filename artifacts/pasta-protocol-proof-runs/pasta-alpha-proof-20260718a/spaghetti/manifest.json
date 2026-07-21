@@ -1,0 +1,392 @@
+{
+  "app": "spaghetti",
+  "artifacts": [
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreigcitl2l4j6wfi5f3gkmqfixplp3s477p6so4b3tu46ipidxtdchm",
+      "id": "spaghetti-token-0-media",
+      "ipfsUri": "ipfs://bafkreigcitl2l4j6wfi5f3gkmqfixplp3s477p6so4b3tu46ipidxtdchm",
+      "kind": "token-media",
+      "path": "artifacts/spaghetti-ui-live-proof.png",
+      "retrievedSha256": "c244d7a5f13eb151d2ecca640a8bbd6fdcb9ffbfd27703b9d39e43d03bcc623b",
+      "sha256": "c244d7a5f13eb151d2ecca640a8bbd6fdcb9ffbfd27703b9d39e43d03bcc623b"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreifxmuxwomwzpqmz4xujhez4fykpv3ztpsgnumjdrc744vuoy2z2dy",
+      "id": "spaghetti-collection-metadata",
+      "ipfsUri": "ipfs://bafkreifxmuxwomwzpqmz4xujhez4fykpv3ztpsgnumjdrc744vuoy2z2dy",
+      "kind": "collection-metadata",
+      "path": "artifacts/spaghetti-ui-live-collection-metadata.json",
+      "retrievedSha256": "b7652f6732d97c199e5e893933c2e14faef337c8cda312388bfce568ec6b3a1e",
+      "sha256": "b7652f6732d97c199e5e893933c2e14faef337c8cda312388bfce568ec6b3a1e"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreih7w23hv7vag5kvfbhdnkfhbcht6ydp6hlqyjclaxjclanqgqaasi",
+      "id": "spaghetti-token-0-metadata",
+      "ipfsUri": "ipfs://bafkreih7w23hv7vag5kvfbhdnkfhbcht6ydp6hlqyjclaxjclanqgqaasi",
+      "kind": "token-metadata",
+      "path": "artifacts/spaghetti-ui-live-token-0-metadata.json",
+      "retrievedSha256": "ffb6b67afea037555284e36a8a7088f3f606ff1d70c244b05d22581b03400092",
+      "sha256": "ffb6b67afea037555284e36a8a7088f3f606ff1d70c244b05d22581b03400092"
+    },
+    {
+      "id": "screenshot-sidecar-001-configure-collection-and-token-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-configure-collection-and-token-configured.json",
+      "sha256": "be82a50bcee52401f7899e7ff5813a91b35d28724f9ae13a0102b10a45c647a4"
+    },
+    {
+      "id": "screenshot-sidecar-002-connect-creator-signer-connected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-connect-creator-signer-connected.json",
+      "sha256": "9a63988744150349e82b556563eeff1b4943008b953237f63f254bdb2353189f"
+    },
+    {
+      "id": "screenshot-sidecar-003-pin-collection-metadata-metadata-pinned",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-pin-collection-metadata-metadata-pinned.json",
+      "sha256": "2a4205bb8e97b8f5da14447a76b94363b04f8065d8182a84a70a3712653d7ff3"
+    },
+    {
+      "id": "screenshot-sidecar-004-originate-standard-collection-contract-originated",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-originate-standard-collection-contract-originated.json",
+      "sha256": "5089abb006ad336ae45757286aa2e6e79d2f36a6e0f4640fa729b06b069b1381"
+    },
+    {
+      "id": "screenshot-sidecar-005-create-token-type-token-created",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-005-create-token-type-token-created.json",
+      "sha256": "1fe8b2907d9a7c9eed310d2176e596c17eb1f5294c13e252cd5ec8076878ef14"
+    },
+    {
+      "id": "screenshot-sidecar-006-mint-creator-editions-minted",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-006-mint-creator-editions-minted.json",
+      "sha256": "7f483f63cd182f0fe04df0539c0f12133c081ce1e1fed701d5b6f5f1fc13307a"
+    },
+    {
+      "id": "screenshot-sidecar-007-open-direct-primary-sale-sale-opened",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-007-open-direct-primary-sale-sale-opened.json",
+      "sha256": "99967a6e3b4e5348ab0fb681ae719302d817e2cd8e92333c74cbb9739b8dbc80"
+    },
+    {
+      "id": "screenshot-sidecar-008-complete-publishing-lifecycle-complete",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-008-complete-publishing-lifecycle-complete.json",
+      "sha256": "7dfe5df143101819df8c1cb46cc3231ba2e715736616c1bf74a151a8274ce902"
+    },
+    {
+      "id": "screenshot-sidecar-009-load-self-hosted-primary-sale-primary-sale-loaded",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-009-load-self-hosted-primary-sale-primary-sale-loaded.json",
+      "sha256": "23e0f6e25394ae42570fc41f7e5db2bbc4e5f0b047e79d63ba250d3b09d746cb"
+    },
+    {
+      "id": "screenshot-sidecar-010-connect-independent-collector-collector-connected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-010-connect-independent-collector-collector-connected.json",
+      "sha256": "a2bb97e8af878dff0657cce0ea358094378e4af104005cdf6509dc01142a0fcc"
+    },
+    {
+      "id": "screenshot-sidecar-011-buy-from-creator-primary-sale-collector-purchase-confirmed",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-011-buy-from-creator-primary-sale-collector-purchase-confirmed.json",
+      "sha256": "66a4034a5171f9db3a8928d8e1adbc3c77d71a3f73bae4bcb143b9d37689c45d"
+    },
+    {
+      "id": "spaghetti-ui-live-tzkt-index",
+      "kind": "indexer-evidence",
+      "path": "artifacts/spaghetti-ui-live-tzkt-index.json",
+      "sha256": "a633f216c92ff3ec22a711873f75020abfe587e88d3ab699e37fd8343119071b"
+    },
+    {
+      "id": "spaghetti-ui-live-run",
+      "kind": "proof-receipt",
+      "path": "artifacts/spaghetti-ui-live-run.json",
+      "sha256": "d87e6b953104392a496ea6d180df67ad5f9628653854aad4308856178a3711a6"
+    },
+    {
+      "id": "spaghetti-portable-self-hosted-site",
+      "kind": "self-hosted-site-package",
+      "path": "artifacts/spaghetti-portable-self-hosted-site.zip",
+      "sha256": "4e69e91840ea073760a0153989a8224d34e953ec988f125a0148c0cc78527974"
+    },
+    {
+      "id": "spaghetti-portable-self-hosted-site-proof",
+      "kind": "self-hosted-site-proof",
+      "path": "artifacts/spaghetti-portable-self-hosted-site-proof.json",
+      "sha256": "8ae9f571c00f45c9a9f90662d6fe24c53cfd7d2f1efca71c1628693d50ac9203"
+    },
+    {
+      "id": "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-901-portable-self-hosted-site-actual-studio-export-complete.json",
+      "sha256": "7bae3365b7411e5a53e06573ec6fb67d9cdffd1fc8879e0cfa3a9f936b23fbe6"
+    },
+    {
+      "id": "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-902-portable-self-hosted-site-extracted-page-live-independently.json",
+      "sha256": "28127566f1b5e74fa4b5f93a4ebd79cb5c01a389989f434cd9bb47b757cbc6ce"
+    }
+  ],
+  "capabilities": [
+    {
+      "description": "Use the actual Spaghetti studio to import a CH-EASE package, pin exact collection/token/media bytes, originate a fresh standard collection, create and mint token 0, and open a direct primary sale.",
+      "evidence": {
+        "artifacts": [
+          "spaghetti-token-0-media",
+          "spaghetti-collection-metadata",
+          "spaghetti-token-0-metadata",
+          "screenshot-sidecar-001-configure-collection-and-token-configured",
+          "screenshot-sidecar-002-connect-creator-signer-connected",
+          "screenshot-sidecar-003-pin-collection-metadata-metadata-pinned",
+          "screenshot-sidecar-004-originate-standard-collection-contract-originated",
+          "screenshot-sidecar-005-create-token-type-token-created",
+          "screenshot-sidecar-006-mint-creator-editions-minted",
+          "screenshot-sidecar-007-open-direct-primary-sale-sale-opened",
+          "screenshot-sidecar-008-complete-publishing-lifecycle-complete"
+        ],
+        "contracts": [
+          "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara"
+        ],
+        "operations": [
+          "ooCwn7Po9nnWcNgsXQm2WD1BZTKjKzEkEoiT18oHQAD5hzv7rGr",
+          "opZjYmzbdMacbte9VfPFUfX8fzUbFKtmcrH6yr3eiHARfsXKu1v",
+          "ooYuYtCF2aFQjSTTPLLnR8Wxsra1wH534FsKKr63VEqQRUPm56Z",
+          "op3ZHQRjWKtiWUfjV41UcWw1BLt143VRK8KiijCxYWFNovZ9615"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "001-configure-collection-and-token-configured",
+          "002-connect-creator-signer-connected",
+          "003-pin-collection-metadata-metadata-pinned",
+          "004-originate-standard-collection-contract-originated",
+          "005-create-token-type-token-created",
+          "006-mint-creator-editions-minted",
+          "007-open-direct-primary-sale-sale-opened",
+          "008-complete-publishing-lifecycle-complete"
+        ],
+        "tokens": [
+          "spaghetti-token-0"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+          "https://ipfs.io/ipfs/bafkreigcitl2l4j6wfi5f3gkmqfixplp3s477p6so4b3tu46ipidxtdchm",
+          "https://ipfs.io/ipfs/bafkreifxmuxwomwzpqmz4xujhez4fykpv3ztpsgnumjdrc744vuoy2z2dy",
+          "https://ipfs.io/ipfs/bafkreih7w23hv7vag5kvfbhdnkfhbcht6ydp6hlqyjclaxjclanqgqaasi"
+        ]
+      },
+      "id": "publish-standard-collection"
+    },
+    {
+      "description": "Use the actual self-hosted Spaghetti sale page with an independent collector signer, buy one edition, and independently verify every operation, exact metadata URI, sold-out state, supply, and ownership through TzKT.",
+      "evidence": {
+        "artifacts": [
+          "screenshot-sidecar-009-load-self-hosted-primary-sale-primary-sale-loaded",
+          "screenshot-sidecar-010-connect-independent-collector-collector-connected",
+          "screenshot-sidecar-011-buy-from-creator-primary-sale-collector-purchase-confirmed",
+          "spaghetti-ui-live-tzkt-index",
+          "spaghetti-ui-live-run"
+        ],
+        "contracts": [
+          "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara"
+        ],
+        "operations": [
+          "oovEJ1kuJjZQXLNXrVJmj9GWyaS5m81xNRohPYnSFU77WT6R3Sf"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "009-load-self-hosted-primary-sale-primary-sale-loaded",
+          "010-connect-independent-collector-collector-connected",
+          "011-buy-from-creator-primary-sale-collector-purchase-confirmed"
+        ],
+        "tokens": [
+          "spaghetti-token-0"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara/tokens/0"
+        ]
+      },
+      "id": "self-hosted-independent-primary-sale"
+    },
+    {
+      "description": "Use the actual Spaghetti Studio to export the same-run Shadownet contract/token as a dependency-complete ZIP, validate every packaged byte and config value, extract it, and load its on-chain state from an ordinary static loopback host with no Objkt, Teia, or wtfOS dependency.",
+      "evidence": {
+        "artifacts": [
+          "spaghetti-portable-self-hosted-site",
+          "spaghetti-portable-self-hosted-site-proof",
+          "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+          "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "contracts": [
+          "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara"
+        ],
+        "operations": [],
+        "roleEvidence": [],
+        "screenshots": [
+          "901-portable-self-hosted-site-actual-studio-export-complete",
+          "902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "tokens": [
+          "spaghetti-token-0"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara/tokens/0"
+        ]
+      },
+      "id": "portable-self-hosted-site"
+    }
+  ],
+  "capturedAt": "2026-07-19T06:30:28.572Z",
+  "contracts": [
+    {
+      "address": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "kind": "standard-collection"
+    }
+  ],
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet",
+    "rpcUrl": "https://tezos-shadownet.octez.io"
+  },
+  "operations": [
+    {
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "explorerUrl": "https://shadownet.tzkt.io/ooCwn7Po9nnWcNgsXQm2WD1BZTKjKzEkEoiT18oHQAD5hzv7rGr",
+      "hash": "ooCwn7Po9nnWcNgsXQm2WD1BZTKjKzEkEoiT18oHQAD5hzv7rGr",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "entrypoint": "create_token",
+      "explorerUrl": "https://shadownet.tzkt.io/opZjYmzbdMacbte9VfPFUfX8fzUbFKtmcrH6yr3eiHARfsXKu1v",
+      "hash": "opZjYmzbdMacbte9VfPFUfX8fzUbFKtmcrH6yr3eiHARfsXKu1v",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "entrypoint": "mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooYuYtCF2aFQjSTTPLLnR8Wxsra1wH534FsKKr63VEqQRUPm56Z",
+      "hash": "ooYuYtCF2aFQjSTTPLLnR8Wxsra1wH534FsKKr63VEqQRUPm56Z",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "entrypoint": "set_sale",
+      "explorerUrl": "https://shadownet.tzkt.io/op3ZHQRjWKtiWUfjV41UcWw1BLt143VRK8KiijCxYWFNovZ9615",
+      "hash": "op3ZHQRjWKtiWUfjV41UcWw1BLt143VRK8KiijCxYWFNovZ9615",
+      "kind": "sale",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "entrypoint": "buy",
+      "explorerUrl": "https://shadownet.tzkt.io/oovEJ1kuJjZQXLNXrVJmj9GWyaS5m81xNRohPYnSFU77WT6R3Sf",
+      "hash": "oovEJ1kuJjZQXLNXrVJmj9GWyaS5m81xNRohPYnSFU77WT6R3Sf",
+      "kind": "buy",
+      "status": "applied"
+    }
+  ],
+  "role": "token-publisher",
+  "roleEvidence": [],
+  "runId": "pasta-alpha-proof-20260718a",
+  "schema": "pastaprotocol-app-proof@1",
+  "screenshots": [
+    {
+      "caption": "spaghetti: configure collection and token — configured",
+      "path": "screenshots/001-configure-collection-and-token-configured.png",
+      "sha256": "151bb29efb3c66e5f01123880cbc0674addd0e9ee49e4460b4fd8a068f0e23e7",
+      "stage": "001-configure-collection-and-token-configured"
+    },
+    {
+      "caption": "spaghetti: connect creator signer — connected",
+      "path": "screenshots/002-connect-creator-signer-connected.png",
+      "sha256": "08a58d28739bc6e8aa6f7c26b68e25c9306b574e022f5964abf55d28b1636eaf",
+      "stage": "002-connect-creator-signer-connected"
+    },
+    {
+      "caption": "spaghetti: pin collection metadata — metadata pinned",
+      "path": "screenshots/003-pin-collection-metadata-metadata-pinned.png",
+      "sha256": "98604840a29e61a81bcf9f6f977a4a3447ee4b48336bae2615062d966898f8dc",
+      "stage": "003-pin-collection-metadata-metadata-pinned"
+    },
+    {
+      "caption": "spaghetti: originate standard collection — contract originated",
+      "path": "screenshots/004-originate-standard-collection-contract-originated.png",
+      "sha256": "3c4382d5a66cc58872d5a5968f2eedf71cca9d03b487a7480f8a32335b2d3a09",
+      "stage": "004-originate-standard-collection-contract-originated"
+    },
+    {
+      "caption": "spaghetti: create token type — token created",
+      "path": "screenshots/005-create-token-type-token-created.png",
+      "sha256": "828c5157a38688c7b38e2dc553ffc1707c42eb5acc5ea3c0aeeab9e50f4b70a9",
+      "stage": "005-create-token-type-token-created"
+    },
+    {
+      "caption": "spaghetti: mint creator editions — minted",
+      "path": "screenshots/006-mint-creator-editions-minted.png",
+      "sha256": "c98fb764db3c86eda54c2109be7fd59a7348879aefef4bf154f2f978ca5ba056",
+      "stage": "006-mint-creator-editions-minted"
+    },
+    {
+      "caption": "spaghetti: open direct primary sale — sale opened",
+      "path": "screenshots/007-open-direct-primary-sale-sale-opened.png",
+      "sha256": "e42ab4e81888fcd69042c34afab94345ae5e0e5b9f1ff94b148776bb62406263",
+      "stage": "007-open-direct-primary-sale-sale-opened"
+    },
+    {
+      "caption": "spaghetti: complete publishing lifecycle — complete",
+      "path": "screenshots/008-complete-publishing-lifecycle-complete.png",
+      "sha256": "e2243bd5f7ab2101fd286d9d879de4f2e6ec791f3fc7ac470149e0f1f8a08db7",
+      "stage": "008-complete-publishing-lifecycle-complete"
+    },
+    {
+      "caption": "spaghetti: load self-hosted primary sale — primary sale loaded",
+      "path": "screenshots/009-load-self-hosted-primary-sale-primary-sale-loaded.png",
+      "sha256": "85f2981977f40fdb3ee1b0d0cff81427a26a74ef3e2d011f7b63c40620dd4bfd",
+      "stage": "009-load-self-hosted-primary-sale-primary-sale-loaded"
+    },
+    {
+      "caption": "spaghetti: connect independent collector — collector connected",
+      "path": "screenshots/010-connect-independent-collector-collector-connected.png",
+      "sha256": "563ba0b76cf2527e3be6d1e826f0a89788ccdad557e848a6609714ff6d59d9e5",
+      "stage": "010-connect-independent-collector-collector-connected"
+    },
+    {
+      "caption": "spaghetti: buy from creator primary sale — collector purchase confirmed",
+      "path": "screenshots/011-buy-from-creator-primary-sale-collector-purchase-confirmed.png",
+      "sha256": "3fcd39021547e7d78ad9f96c05b0cbac19596074b32855ffcd0f4775367e137a",
+      "stage": "011-buy-from-creator-primary-sale-collector-purchase-confirmed"
+    },
+    {
+      "caption": "spaghetti: portable self-hosted site — actual studio export complete",
+      "path": "screenshots/901-portable-self-hosted-site-actual-studio-export-complete.png",
+      "sha256": "e993fa00845794262061ed1c176fe0376d55e272f33f27ee1b467df0a230948e",
+      "stage": "901-portable-self-hosted-site-actual-studio-export-complete"
+    },
+    {
+      "caption": "spaghetti: portable self-hosted site — extracted page live independently",
+      "path": "screenshots/902-portable-self-hosted-site-extracted-page-live-independently.png",
+      "sha256": "388916e95ad2288499e5b381107a5cf8ba9b363c8474cce365a09036342ea626",
+      "stage": "902-portable-self-hosted-site-extracted-page-live-independently"
+    }
+  ],
+  "tokens": [
+    {
+      "artifactUri": "ipfs://bafkreigcitl2l4j6wfi5f3gkmqfixplp3s477p6so4b3tu46ipidxtdchm",
+      "contractAddress": "KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara/tokens/0",
+      "id": "spaghetti-token-0",
+      "mediaArtifactId": "spaghetti-token-0-media",
+      "metadataArtifactId": "spaghetti-token-0-metadata",
+      "metadataUri": "ipfs://bafkreih7w23hv7vag5kvfbhdnkfhbcht6ydp6hlqyjclaxjclanqgqaasi",
+      "tokenId": "0"
+    }
+  ]
+}

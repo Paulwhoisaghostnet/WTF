@@ -1,0 +1,45 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-BEFORE-SIGNING",
+  "rejectedAt": "2026-07-19T19:24:18Z",
+  "app": "ravioli-native-recovery",
+  "attempt": "null-prototype-call-validation-attempt-1",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "rpcUrl": "https://tezos-shadownet.octez.io"
+  },
+  "failure": {
+    "stage": "first guarded set_sale_active validation before contract lookup, signing, injection, or send",
+    "message": "The exact bridge-decoded payload used a null prototype, so prototype-sensitive strict equality rejected it before submission.",
+    "bugBounty": "WTF-BB-458"
+  },
+  "chainBoundary": {
+    "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "intentInitialCounter": 23831465,
+    "primaryRpcCounterAfterFailure": 23831465,
+    "fallbackRpcCounterAfterFailure": 23831465,
+    "primaryRpcActiveMempoolOperations": 0,
+    "fallbackRpcActiveMempoolOperations": 0,
+    "recoveryProgressCreated": false,
+    "submittedOperationCount": 0,
+    "appliedOperationCount": 0
+  },
+  "retainedEvidence": {
+    "preflightSha256": "e0e52cb4d130681fec8ab6693663071777d1f1720b4204204efd698ba8272f83",
+    "generatedPinProgressSha256": "c4da5f0ea66550e972185d1f44230bb1c32fa4c1064804a4ae6e2f82fbfd445a",
+    "recoveryIntentSha256": "932a4e68b72e777468bfb6cc7f8777d4715b9a97fdec626c84ec988b0d7f414b",
+    "aggregateEstimatedCostMutez": 936768,
+    "publicPins": [
+      "ipfs://bafkreifgfp5zypk5glsgvp6eb4oa3shjpeehlkoxhe47smdxe3qhycxboa",
+      "ipfs://bafkreiee6veg3igj5xh7d6bgbqatawsd6oesgszwpi3d36cubbtp5giqlu",
+      "ipfs://bafkreiae5kmfzsveqytlwdfh47xcp46rimjf57rslvvhpjty5qr3k2d3zm",
+      "ipfs://bafkreiftzz2rztdpfnagvnmjwmb2cjsjzrg3cve73javzgen54vcn6flvi"
+    ]
+  },
+  "acceptance": {
+    "eligibleForProofPackage": false,
+    "eligibleForReconciliation": false,
+    "safeToRetryOnlyAfterFreshPrestateAndSignerLaneChecks": true
+  }
+}

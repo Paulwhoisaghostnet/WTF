@@ -1,0 +1,50 @@
+{
+  "queriedAtUtc": "2026-07-19T04:26:42Z",
+  "rpcUrl": "https://tezos-shadownet.octez.io/chains/main/mempool/pending_operations",
+  "classification": "refused",
+  "hash": "ooAvv3yuqC7tdXnhHXs8dD4ArZ3x2DRnuF62g8cSW5C7PNC9NeG",
+  "branch": "BMMPk52xavGvnBpCjk4KB9cCz5u3qE1bShucbStA3yZSNYafNDb",
+  "errors": [
+    {
+      "kind": "permanent",
+      "id": "proto.025-PsUshuai.prefilter.fees_too_low"
+    }
+  ],
+  "contents": [
+    {
+      "kind": "transaction",
+      "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "destination": "KT1U7PDcTMRFwqZHesVeyYK41du7NPjFq2FE",
+      "counter": "23831371",
+      "fee": "2500",
+      "gas_limit": "200000",
+      "storage_limit": "600",
+      "parameters": {
+        "entrypoint": "add_tokens_v2",
+        "value": [
+          {
+            "prim": "Pair",
+            "args": [
+              { "int": "2" },
+              {
+                "prim": "Pair",
+                "args": [
+                  { "int": "0" },
+                  [
+                    {
+                      "prim": "Elt",
+                      "args": [
+                        { "string": "" },
+                        { "bytes": "697066733a2f2f6261666b726569657a637a7a32366b3577676e716e7a6c76686c62333779616b753735696c68336f35686574686c636c7a75336662366676666469" }
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

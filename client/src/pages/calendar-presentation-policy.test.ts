@@ -23,6 +23,11 @@ test("Calendar has an OS-priority tray reminder and modern calendar workspace", 
   assert.match(taskbarSource, /wm\.openPage\("\/calendar"\)/);
   assert.match(calendarSource, /data-calendar-region="calendar-grid"/);
   assert.match(calendarSource, /data-calendar-view=\{view\}/);
+  assert.match(calendarSource, /type CalendarView = "day" \| "week" \| "month" \| "agenda"/);
+  assert.match(calendarSource, /data-calendar-region="date-navigation"/);
+  assert.match(calendarSource, /Previous \$\{view\}/);
+  assert.match(calendarSource, /Next \$\{view\}/);
+  assert.match(calendarSource, /data-calendar-region="month-day"/);
   assert.match(calendarSource, /Create event/);
 });
 

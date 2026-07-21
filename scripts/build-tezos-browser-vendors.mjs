@@ -79,6 +79,7 @@ await buildBrowserBundle({
     import { BeaconWallet } from "@taquito/beacon-wallet";
     import { TezosToolkit, MichelsonMap, OpKind, MichelCodecPacker } from "@taquito/taquito";
     import { bytesToString, stringToBytes, validateAddress, ValidationResult } from "@taquito/utils";
+    import { blake2b } from "blakejs";
 
     globalThis.Buffer ||= Buffer;
     globalThis.process ||= { env: {}, versions: {} };
@@ -92,6 +93,7 @@ await buildBrowserBundle({
       bytesToString,
       validateAddress,
       ValidationResult,
+      blake2b,
     };
   `,
 });

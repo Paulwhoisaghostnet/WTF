@@ -1,0 +1,84 @@
+{
+  "schema": "pastaprotocol-quarantined-partial-chain-inventory@1",
+  "runId": "pasta-alpha-proof-20260718a",
+  "app": "ravioli",
+  "classification": "QUARANTINED-INCOMPLETE",
+  "acceptedAsProof": false,
+  "queriedAtUtc": "2026-07-19T05:11:58Z",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "tzktApi": "https://api.shadownet.tzkt.io"
+  },
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "failure": {
+    "kind": "node-v8-heap-oom",
+    "stage": "blind_allocated_mint adapter storage read after Gnocchi adapter origination",
+    "stderrPath": "oom-stderr.txt",
+    "completedPackModes": [
+      "deterministic_vault",
+      "blind_funded_pool"
+    ],
+    "collectorPurchases": 0,
+    "packOpenings": 0
+  },
+  "contracts": [
+    {
+      "address": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH",
+      "kind": "asset",
+      "tzips": ["fa2"],
+      "role": "partial-ravioli-router",
+      "originatedAtLevel": 4254899,
+      "originationHash": "ooQWF9HboN3mdxwLiUhsPm4L7jQiU36SNAvM2DshwZq5wn1DrYf",
+      "storageCheckpoint": {
+        "next_token_id": "2",
+        "packsBigMap": 28843,
+        "salesBigMap": 28845,
+        "openedBigMap": 28840,
+        "totalSupplyBigMap": 28847
+      },
+      "explorerUrl": "https://shadownet.tzkt.io/KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH"
+    },
+    {
+      "address": "KT1XCTaDR2mFqZUyYFcm6Rz7pmULuQvhuq8d",
+      "kind": "smart_contract",
+      "role": "partial-gnocchi-pack-adapter",
+      "originatedAtLevel": 4254930,
+      "originationHash": "opF2AYL9CYS6TFGYeGynxHudTu7SKLMvLzk394bY5Ay5N7g67WV",
+      "storageCheckpoint": {
+        "next_resource_id": "0",
+        "allocationsBigMap": 28848,
+        "metadataBigMap": 28849,
+        "reservationsBigMap": 28850,
+        "routersBigMap": 28851
+      },
+      "explorerUrl": "https://shadownet.tzkt.io/KT1XCTaDR2mFqZUyYFcm6Rz7pmULuQvhuq8d"
+    }
+  ],
+  "operations": [
+    {"level": 4254899, "timestamp": "2026-07-19T04:54:03Z", "kind": "origination", "entrypoint": null, "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "ooQWF9HboN3mdxwLiUhsPm4L7jQiU36SNAvM2DshwZq5wn1DrYf", "status": "applied"},
+    {"level": 4254901, "timestamp": "2026-07-19T04:54:15Z", "kind": "transaction", "entrypoint": "update_operators", "target": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup", "hash": "ooDvZAxMVGRYAfrr2oDBNdDVVcS89c7yxa7bNiZkp1P4L5MjLRs", "status": "applied"},
+    {"level": 4254904, "timestamp": "2026-07-19T04:54:33Z", "kind": "transaction", "entrypoint": "create_pack", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "opEquAFS4cRBx8ewxycvonEybw4FC4n2FD7WzcfXMVQ1UsX8VWp", "status": "applied"},
+    {"level": 4254906, "timestamp": "2026-07-19T04:54:45Z", "kind": "transaction", "entrypoint": "commit_recipe", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "opKEGe1zUJxfq1JEmyHfDFWVppedPZsqWT55XQvVVV316UrNnc3", "status": "applied"},
+    {"level": 4254908, "timestamp": "2026-07-19T04:54:57Z", "kind": "transaction", "entrypoint": "finalize_pack", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "onkJeRmcbbabJVPQfi5NQSsTiww3shV9LCHfx5vionViNZFGNQr", "status": "applied"},
+    {"level": 4254910, "timestamp": "2026-07-19T04:55:09Z", "kind": "transaction", "entrypoint": "mint", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "opNKjhunwPZpKysa7amL5wA5s9cf2RUA72vJfzMZKeom8HdHCeW", "status": "applied"},
+    {"level": 4254912, "timestamp": "2026-07-19T04:55:21Z", "kind": "transaction", "entrypoint": "set_sale", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "ooMRGYBdzJM5cbC33QQA6BindeA7oS9eVcXcAQDqYpLcWTWAUwf", "status": "applied"},
+    {"level": 4254915, "timestamp": "2026-07-19T04:55:39Z", "kind": "transaction", "entrypoint": "update_operators", "target": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup", "hash": "onfFZPP1mBncgbHkqwvgmV55yN7VMYR8WXinDMWDHQhFXQPQ5Nw", "status": "applied"},
+    {"level": 4254917, "timestamp": "2026-07-19T04:55:51Z", "kind": "transaction", "entrypoint": "create_pack", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "ooeRrYHXbmRYib8u1pP34YEUndzXKee7A3ii61FQXPSsNk5jx25", "status": "applied"},
+    {"level": 4254919, "timestamp": "2026-07-19T04:56:03Z", "kind": "transaction", "entrypoint": "commit_recipe", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "onhQDtQucPFRiBx2j6DPawLQBPHoe8zfT1jASnXXVVHhgEFTfJA", "status": "applied"},
+    {"level": 4254921, "timestamp": "2026-07-19T04:56:15Z", "kind": "transaction", "entrypoint": "commit_recipe", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "oonFGebgCP9iVvVA8YW1te1NmStBdhStpzGWEJknT2bGc5KH2wd", "status": "applied"},
+    {"level": 4254923, "timestamp": "2026-07-19T04:56:27Z", "kind": "transaction", "entrypoint": "finalize_pack", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "ooMy54eegZgb1n1o12qKCk5teJ8V82quahQe9UjH4zxMX8wsXZQ", "status": "applied"},
+    {"level": 4254925, "timestamp": "2026-07-19T04:56:39Z", "kind": "transaction", "entrypoint": "mint", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "onftavjcnrTVe6C3VQHbQJcumWzKjJx2Vh4EwqJ5jCg6oJv4pA7", "status": "applied"},
+    {"level": 4254927, "timestamp": "2026-07-19T04:56:51Z", "kind": "transaction", "entrypoint": "set_sale", "target": "KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH", "hash": "oozsebH9YXKNNNYApQ6isVC2BQRMNc1fYWqkFW1MF7TGDfKXy5g", "status": "applied"},
+    {"level": 4254930, "timestamp": "2026-07-19T04:57:09Z", "kind": "origination", "entrypoint": null, "target": "KT1XCTaDR2mFqZUyYFcm6Rz7pmULuQvhuq8d", "hash": "opF2AYL9CYS6TFGYeGynxHudTu7SKLMvLzk394bY5Ay5N7g67WV", "status": "applied"}
+  ],
+  "screenshots": [
+    {"ordinal": 1, "file": "screenshots/001-compose-five-atomic-pack-modes-same-run-dependencies-entered.png", "sha256": "7e3b25aac9a5756dcb08cb055428cf10364f33243e0170e18d6681cef3344bc6"},
+    {"ordinal": 2, "file": "screenshots/002-compose-five-atomic-pack-modes-creator-connected-on-shadownet.png", "sha256": "8838845da690b57b01107ac74d2548de7047aa68427019c79f62feac68aadc27"},
+    {"ordinal": 3, "file": "screenshots/003-compose-five-atomic-pack-modes-deterministic-vault-configured.png", "sha256": "84a6abb53afdccd3e7cf54bb33d56689afad314aa8ed5abb6344a1729fae8fd6"},
+    {"ordinal": 4, "file": "screenshots/004-compose-five-atomic-pack-modes-deterministic-vault-funded-and-issued.png", "sha256": "fe1671ca796962d6c60eb4aff75d3a6b5cf4fa65d5e509dfd92a6629c7ffee9b"},
+    {"ordinal": 5, "file": "screenshots/005-compose-five-atomic-pack-modes-blind-funded-pool-configured.png", "sha256": "41af8be29cec0e94ef4e82b8bed95f5af9ffd8a58cd081d8e5c7bd42c3d519d5"},
+    {"ordinal": 6, "file": "screenshots/006-compose-five-atomic-pack-modes-blind-funded-pool-funded-and-issued.png", "sha256": "160babae6bb688f0f29f3c91b33752f4fbcbd7c68c2586f28563dfa106a50248"},
+    {"ordinal": 7, "file": "screenshots/007-compose-five-atomic-pack-modes-blind-allocated-mint-configured.png", "sha256": "a1c4736f66bd02eb2aa0a71bf6f1ecc42769c8a70a937ff55cb9003dbf1b1f9b"}
+  ]
+}

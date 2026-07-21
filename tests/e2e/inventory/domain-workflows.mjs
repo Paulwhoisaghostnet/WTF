@@ -1201,7 +1201,9 @@ export const DOMAIN_WORKFLOWS = [
       "gnocchi.site_exported",
       "ravioli.collection_deployed",
       "ravioli.bundle_published",
+      "ravioli.pack_published",
       "ravioli.redeemed",
+      "ravioli.pack_opened",
       "ravioli.contents_revealed",
       "ravioli.site_exported",
       "rotini.collection_deployed",
@@ -1248,6 +1250,7 @@ export const DOMAIN_WORKFLOWS = [
     behaviorAssertionIds: [
       "pasta-protocol.gnocchi-multi-edition-collection",
       "pasta-protocol.rotini-self-contained-artifacts",
+      "pasta-protocol.fa2-indexer-compliance",
     ],
     apiProbes: [
       { method: "GET", path: "/api/ch-ease/installers", expectedStatuses: [200, 401] },

@@ -1,0 +1,19 @@
+Ravioli UI-LIVE terminal failure record
+Run: pasta-alpha-proof-20260718a
+Classification: QUARANTINED / INCOMPLETE / NOT ACCEPTABLE AS APP PROOF
+Failure time: 2026-07-19T04:58:40Z (quarantine timestamp)
+Process: Node.js / tsx, PID 7753
+
+Captured terminal excerpt:
+
+<--- Last few GCs --->
+
+[7753:0x128008000] 253524 ms: Mark-Compact 4052.2 (4140.3) -> 4039.2 (4143.1) MB, allocation failure
+[7753:0x128008000] 257584 ms: Mark-Compact 4054.9 (4143.1) -> 4041.8 (4145.8) MB, allocation failure
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+
+The native stack terminated in Node's CompressionStream<BrotliDecoderContext>::AfterThreadPoolWork path.
+The process exited before it could write a Ravioli manifest or run receipt. Seven screenshots and their
+sidecars were moved here with the independently indexed partial-chain inventory. No collector purchase or
+pack opening occurred. This directory must never be assembled as successful Pasta Protocol proof.

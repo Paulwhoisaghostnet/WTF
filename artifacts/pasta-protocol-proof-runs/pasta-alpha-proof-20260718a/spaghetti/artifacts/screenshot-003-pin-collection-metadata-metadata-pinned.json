@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "pin collection metadata",
+  "stageOrdinal": 3,
+  "stageName": "metadata pinned",
+  "url": "http://127.0.0.1:59424/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti-ui-live-proof",
+  "timestampUtc": "2026-07-19T06:29:20.424Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "98604840a29e61a81bcf9f6f977a4a3447ee4b48336bae2615062d966898f8dc",
+  "byteCount": 107043,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "6:29:15 AM imported 1 token(s) from CH-EASE handoff 6:29:16 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 6:29:16 AM pinning collection metadata… 6:29:20 AM originating collection contract (sign in wallet)…"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,22 @@
+{
+  "templateName": "PastaGnocchiPackAdapter",
+  "artifactSlug": "pasta-gnocchi-pack-adapter",
+  "source": "contracts/pasta-protocol/PastaGnocchiPackAdapter.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/ravioli/contract/pasta-gnocchi-pack-adapter.contract.json",
+  "storage": {
+    "note": "Origination storage uses an administrator address, TZIP-16 metadata map, app-specific counters, and empty app-specific big_maps."
+  },
+  "entrypoints": [
+    "create_allocation",
+    "set_allocation_active",
+    "add_router",
+    "remove_router",
+    "reserve",
+    "fulfill",
+    "release",
+    "transfer_administration",
+    "accept_administration"
+  ]
+}

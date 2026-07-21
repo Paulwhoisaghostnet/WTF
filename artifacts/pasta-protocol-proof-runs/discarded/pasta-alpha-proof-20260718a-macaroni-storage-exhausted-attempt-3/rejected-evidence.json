@@ -1,0 +1,61 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "attempt": "20260719T0432Z-storage-exhausted",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "status": "REJECTED_AFTER_BACKTRACKED_INVENTORY_LOAD",
+  "observedAt": "2026-07-19T04:34:25Z",
+  "reason": "The fresh V2 contract originated and the corrected fee was accepted, but add_tokens_v2 used the production fallback storage cap of 320 bytes while the operation consumed 621 bytes. TzKT independently classified it as backtracked with storage_exhausted.operation. Studio then applied set_stages and incorrectly displayed sync success because confirmation alone did not fail closed on backtracked status. The runner was stopped before any collector operation, and all five screenshots plus the export were excluded from the accepted aggregate.",
+  "macaroniEvidence": {
+    "contractAddresses": [
+      "KT1Nt7swZ7aY8Ds6DEio5cw9zjUz9Djh94L6"
+    ],
+    "operationHashes": [
+      "onerQbR2magLemEqkY6wmz3rSTaoEruUhr5orG8gyoAyJZ24Hen",
+      "op3d1v8dvY8eMPkK42SC37cjbjZRgpczGzN6jvJtdCkYyxCCYDD",
+      "ooa6WS55oRqJDEMz2RoV1xPkEU3Lva6a5uNenP8WRjgP7kM4RvL"
+    ],
+    "completedVisualStages": [
+      "V2 Studio configuration",
+      "V2 Studio exact media and metadata pinning",
+      "V2 fresh FA2 origination",
+      "Studio-displayed sync success (invalid because inventory operation backtracked)",
+      "self-hosted ZIP export (invalid because underlying inventory was absent)"
+    ],
+    "acceptedForFinalPackage": false
+  },
+  "chainEvidence": {
+    "originatedContract": {
+      "address": "KT1Nt7swZ7aY8Ds6DEio5cw9zjUz9Djh94L6",
+      "operationHash": "onerQbR2magLemEqkY6wmz3rSTaoEruUhr5orG8gyoAyJZ24Hen",
+      "status": "applied",
+      "timestamp": "2026-07-19T04:32:48Z"
+    },
+    "inventoryLoad": {
+      "operationHash": "op3d1v8dvY8eMPkK42SC37cjbjZRgpczGzN6jvJtdCkYyxCCYDD",
+      "entrypoint": "add_tokens_v2",
+      "status": "backtracked",
+      "gasLimit": 180000,
+      "gasUsed": 16003,
+      "storageLimit": 320,
+      "storageUsed": 621,
+      "bakerFeeMutez": 24880,
+      "storageFeeMutez": 155250,
+      "error": "storage_exhausted.operation",
+      "rawEvidenceFile": "backtracked-operation-tzkt.json"
+    },
+    "stageConfiguration": {
+      "operationHash": "ooa6WS55oRqJDEMz2RoV1xPkEU3Lva6a5uNenP8WRjgP7kM4RvL",
+      "entrypoint": "set_stages",
+      "status": "applied",
+      "gasLimit": 120000,
+      "gasUsed": 14127,
+      "storageLimit": 320,
+      "storageUsed": 24
+    },
+    "collectorOperations": []
+  }
+}

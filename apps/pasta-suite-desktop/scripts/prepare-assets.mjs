@@ -79,7 +79,7 @@ const tools = [
   {
     id: "ravioli",
     title: "Ravioli",
-    summary: "Bundle, mystery, redeemable, and wrapped-set publisher.",
+    summary: "Atomic escrow, allocation-mint, generative, blind, and hybrid pack publisher.",
     entry: "/creation-tools/ravioli/index.html",
     required: [
       "index.html",
@@ -94,6 +94,11 @@ const tools = [
       "vendor/tezos.js",
       "vendor/octez-connect.js",
       "contract/pasta-bundle.contract.json",
+      "contract/pasta-bundle.template.json",
+      "contract/pasta-gnocchi-pack-adapter.contract.json",
+      "contract/pasta-gnocchi-pack-adapter.template.json",
+      "contract/pasta-rotini-pack-adapter.contract.json",
+      "contract/pasta-rotini-pack-adapter.template.json",
     ],
   },
   {
@@ -712,8 +717,8 @@ function suiteIndexHtml() {
           { id: "mint", label: "Mint more", entrypoint: "mint", fields: [["to_", "Recipient", "text"], ["token_id", "Token id", "number"], ["amount", "Amount", "number"]] },
           { id: "set_sale", label: "Configure direct sale", entrypoint: "set_sale", fixedSale: true, fields: [["token_id", "Token id", "number"], ["price", "Price (mutez)", "number"], ["remaining", "Quantity", "number"], ["active", "Active", "bool"]] },
           { id: "set_sale_active", label: "Pause / resume sale", entrypoint: "set_sale_active", fields: [["token_id", "Token id", "number"], ["active", "Active", "bool"]] },
-          { id: "redeem", label: "Redeem bundle", entrypoint: "redeem", fields: [["token_id", "Token id", "number"], ["amount", "Amount", "number"]] },
-          { id: "set_bundle_contents", label: "Reveal bundle contents", entrypoint: "set_bundle_contents", fields: [["token_id", "Token id", "number"], ["contents_uri", "Contents URI", "text"]] },
+          { id: "set_pack_contents", label: "Reveal pack contents", entrypoint: "set_pack_contents", fields: [["token_id", "Token id", "number"], ["contents_uri", "Contents URI", "text"]] },
+          { id: "cancel_pack", label: "Close pack issuance", entrypoint: "cancel_pack", fields: [["token_id", "Token id", "number"]] },
           { id: "open_claim", label: "Open / close claim", entrypoint: "open_claim", fields: [["active", "Active", "bool"]] },
           { id: "add_minter", label: "Add minter", entrypoint: "add_minter", fields: [["minter", "Minter", "text"]] },
           { id: "remove_minter", label: "Remove minter", entrypoint: "remove_minter", fields: [["minter", "Minter", "text"]] },
@@ -729,7 +734,7 @@ function suiteIndexHtml() {
           if (entrypoints.has("publish_revision")) return "Lasagna exhibition";
           if (entrypoints.has("set_allocations")) return "Penne distribution";
           if (entrypoints.has("open_mint")) return "Gnocchi open edition";
-          if (entrypoints.has("create_bundle")) return "Ravioli bundle";
+          if (entrypoints.has("create_pack") && entrypoints.has("open_pack")) return "Ravioli atomic pack";
           if (entrypoints.has("create_token")) return "Spaghetti / Rotini collection";
           if (entrypoints.has("transfer")) return "FA2 contract";
           return "Unrecognized contract";
@@ -738,7 +743,7 @@ function suiteIndexHtml() {
           if (entrypoints.has("publish_revision")) return "lasagna";
           if (entrypoints.has("set_allocations")) return "penne";
           if (entrypoints.has("open_mint")) return "gnocchi";
-          if (entrypoints.has("create_bundle")) return "ravioli";
+          if (entrypoints.has("create_pack") && entrypoints.has("open_pack")) return "ravioli";
           if (entrypoints.has("create_token") && project?.toolId === "rotini") return "rotini";
           return "spaghetti";
         }
@@ -748,8 +753,8 @@ function suiteIndexHtml() {
           if (action.id === "mint") return m.mint({ to_: values.to_, token_id: nat(values, "token_id"), amount: nat(values, "amount") });
           if (action.id === "set_sale") return m.set_sale({ token_id: nat(values, "token_id"), sale: { active: bool(values, "active"), seller: walletAddress, treasury: walletAddress, price: nat(values, "price"), remaining: nat(values, "remaining"), start: null, end: null } });
           if (action.id === "set_sale_active") return m.set_sale_active({ token_id: nat(values, "token_id"), active: bool(values, "active") });
-          if (action.id === "redeem") return m.redeem({ token_id: nat(values, "token_id"), amount: nat(values, "amount") });
-          if (action.id === "set_bundle_contents") return m.set_bundle_contents({ token_id: nat(values, "token_id"), contents_uri: MD.utf8ToHex(values.contents_uri) });
+          if (action.id === "set_pack_contents") return m.set_pack_contents({ token_id: nat(values, "token_id"), contents_uri: MD.utf8ToHex(values.contents_uri) });
+          if (action.id === "cancel_pack") return m.cancel_pack(nat(values, "token_id"));
           if (action.id === "open_claim") return m.open_claim({ active: bool(values, "active"), start: null, end: null });
           if (action.id === "add_minter") return m.add_minter(values.minter);
           if (action.id === "remove_minter") return m.remove_minter(values.minter);

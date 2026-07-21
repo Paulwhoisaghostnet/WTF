@@ -111,6 +111,7 @@ test("tool handoffs carry durable Colander project context", () => {
 });
 
 test("contract kinds recover into their matching owner apps", () => {
+  assert.equal(toolIdForContractKind("blind_mint_collection"), "macaroni");
   assert.equal(toolIdForContractKind("open_edition_collection"), "gnocchi");
   assert.equal(toolIdForContractKind("bundle_collection"), "ravioli");
   assert.equal(toolIdForContractKind("generative_collection"), "rotini");

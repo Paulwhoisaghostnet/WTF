@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "pasta-quarantined-partial-chain-inventory-v1",
+  "network": "shadownet",
+  "chainId": "NetXnHfVqm9iesp",
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+  "contracts": [
+    {
+      "generation": "v2",
+      "address": "KT1CKs2TBurscVhedsJ2tU1FifKyV49jgTUJ",
+      "kind": "asset",
+      "standards": ["fa2"],
+      "codeHash": -2085531756,
+      "typeHash": -1198466749,
+      "finalStorage": {
+        "supply": "2",
+        "minted": "1",
+        "revealed": "1",
+        "tokenCount": "1",
+        "revealCursor": "1",
+        "revealTail": "1",
+        "unrevealedSince": null,
+        "stageZeroMaxPerWallet": "1"
+      },
+      "indexedToken": {
+        "tokenId": "0",
+        "totalSupply": "1",
+        "holdersCount": 1,
+        "firstMinter": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+        "explorerUrl": "https://shadownet.tzkt.io/KT1CKs2TBurscVhedsJ2tU1FifKyV49jgTUJ/tokens/0"
+      },
+      "operations": [
+        { "kind": "origination", "hash": "oozn5yf7zzeK4nHheCsYFajnLB7wLXQL8U8WRmFCsTH6KroSNsR", "level": 4255376, "status": "applied", "counter": 23831398 },
+        { "kind": "transaction", "entrypoint": "add_tokens_v2", "hash": "opABxc8LfiJdYpMQN5H1qfCxiCKjcfjQK8qeLdBXYYoXTcZT1Ka", "level": 4255379, "status": "applied", "counter": 23831399, "gasLimit": 66570, "gasUsed": 16003, "storageLimit": 1082, "storageUsed": 621 },
+        { "kind": "transaction", "entrypoint": "set_stages", "hash": "onqjC3NaAgR9sfEVVRJJ4K55x6ojTge6uhGqwy6v7vE2ZLYjhDP", "level": 4255381, "status": "applied", "counter": 23831400, "gasLimit": 40900, "gasUsed": 445, "storageLimit": 186, "storageUsed": 24 },
+        { "kind": "transaction", "entrypoint": "mint", "hash": "ooht5BHxkMUtbCBUQz1oJk448uDvupoCjhD1Sn97cVTTJRYj2kC", "level": 4255387, "status": "applied", "counter": 23833803, "amountMutez": 1000, "gasLimit": 51400, "gasUsed": 4709, "storageLimit": 689, "storageUsed": 359 },
+        { "kind": "transaction", "entrypoint": "reveal", "hash": "opNA7eDZ41r7qX2ciyaiT6Y8mSqjGetoBEseJ8mpvoCJJqdaYEp", "level": 4255394, "status": "applied", "counter": 23833804, "gasLimit": 44264, "gasUsed": 2484, "storageLimit": 120, "storageUsed": 0 }
+      ]
+    },
+    {
+      "generation": "v1",
+      "address": "KT1CkbY1x17qypMDaYSScETKnKPo4MSA9h8j",
+      "kind": "asset",
+      "standards": ["fa2"],
+      "codeHash": -1478651401,
+      "typeHash": -1848308280,
+      "finalStorage": {
+        "supply": "1",
+        "minted": "0",
+        "revealed": "0",
+        "delayedReveal": false,
+        "stageZeroMaxPerWallet": "1"
+      },
+      "indexedTokens": [],
+      "operations": [
+        { "kind": "origination", "hash": "opYNmATJNP5nc6TMs2e1AJsiryocC39WAsvc2c4RRjNs6cPQAZG", "level": 4255400, "status": "applied", "counter": 23831401, "gasLimit": 4596, "gasUsed": 4496, "storageLimit": 8348, "storageUsed": 8071 },
+        { "kind": "transaction", "entrypoint": "add_tokens", "hash": "ooK7tawyAj96bb3KJf3iYvmGAcmqihd9994pEjUkcY6gNZz9Pu1", "level": 4255403, "status": "applied", "counter": 23831402, "gasLimit": 48016, "gasUsed": 4758, "storageLimit": 372, "storageUsed": 148 },
+        { "kind": "transaction", "entrypoint": "set_stages", "hash": "ooosxYUKWGk71swTEzMTQW1mGRmoCfW1DBMeEbN2fujU6s4Mx7N", "level": 4255406, "status": "applied", "counter": 23831403, "gasLimit": 40858, "gasUsed": 420, "storageLimit": 186, "storageUsed": 24 }
+      ]
+    }
+  ],
+  "pinnedArtifacts": [
+    { "lane": "v2", "fileName": "macaroni-cover.png", "uri": "ipfs://bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm" },
+    { "lane": "v2", "fileName": "macaroni-placeholder.png", "uri": "ipfs://bafkreifuefxja355b3zotq3wh6l5m55uebkbazo5jxit5wqwzibmuevhvm" },
+    { "lane": "v2", "fileName": "placeholder-1.json", "uri": "ipfs://bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy" },
+    { "lane": "v2", "fileName": "1.png", "uri": "ipfs://bafkreib6xhieso3y2vq4n7moy3wl2dz3w33d737ck3cwfv2zm6bikltqtq" },
+    { "lane": "v2", "fileName": "1.json", "uri": "ipfs://bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi" },
+    { "lane": "v2", "fileName": "contract_metadata.json", "uri": "ipfs://bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma" },
+    { "lane": "v1", "fileName": "macaroni-v1-cover.png", "uri": "ipfs://bafkreifaplcaz4jnodkvwzkut2gi6mjld5ofivbnbucfxjd6fivkdldisu" },
+    { "lane": "v1", "fileName": "1.png", "uri": "ipfs://bafkreifgntgighrrzrq3btzp3rzeren5wiv3b2y3vrmxkjhacvuqsrz7x4" },
+    { "lane": "v1", "fileName": "1.json", "uri": "ipfs://bafkreibhxi3cknudpns2chrhvwjszduiq5qfmtcffnrqsrgzvvyf3naq6i" },
+    { "lane": "v1", "fileName": "contract_metadata.json", "uri": "ipfs://bafkreid622hnet7n5pns2r4swtzflqoxx3s4klhkxxftyawyx4xziipkd4" }
+  ],
+  "acceptance": {
+    "acceptedAsCapabilityProof": false,
+    "reason": "The partial chain writes are real, but the V1 collector and terminal proof stages never ran."
+  }
+}

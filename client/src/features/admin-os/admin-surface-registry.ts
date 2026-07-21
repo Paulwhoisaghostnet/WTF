@@ -1240,6 +1240,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.studio-draft-recovery",
       "pasta-protocol.gnocchi-multi-edition-collection",
       "pasta-protocol.rotini-self-contained-artifacts",
+      "pasta-protocol.fa2-indexer-compliance",
       "pasta-protocol.contract-resume-ledger",
       "pasta-protocol.native-colander-lifecycle",
       "pasta-protocol.portable-chease-preparation",

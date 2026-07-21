@@ -22,20 +22,23 @@ import {
   buildToolkit,
   collectAnnotations,
   createLogger,
-  dataJsonUri,
   hexToUtf8,
   loadSignerPair,
   normalizeBase,
-  parseDataJsonUri,
+  pinIpfsProofBytes,
+  pinIpfsProofJson,
   pollJson,
   probeRpcChainId,
   ProofBlocked,
+  resolveIpfsProofConfig,
   root,
   SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
   writeProofReport,
+  type IpfsPinnedProof,
+  type IpfsProofConfig,
   type ProofStatus,
 } from "./shadownet-proof-kit";
 
@@ -96,59 +99,75 @@ async function readContractArtifact(): Promise<unknown[]> {
   return code;
 }
 
-function buildMetadata(creator: string, curator: string) {
+async function buildMetadata(creator: string, curator: string, ipfs: IpfsProofConfig) {
   const relationship = {
     parent_contract: PROVEN_CONTRACTS.spaghetti,
     collection_group: `lasagna-shadownet-e2e-${Date.now().toString(36)}`,
   };
+  const itemDefinitions = [
+    {
+      name: "Spaghetti Proof Token Reference",
+      description: "Reference to the proven Spaghetti Shadownet token.",
+      artifactText: "Lasagna reference Spaghetti",
+      artifactFileName: "lasagna-reference-spaghetti.txt",
+      mimeType: "text/plain",
+      tokenMetadata: { contract: PROVEN_CONTRACTS.spaghetti, tokenId: 0 },
+      tags: ["lasagna", "exhibition", "spaghetti", "shadownet", "e2e"],
+    },
+    {
+      name: "Gnocchi Proof Open Edition Reference",
+      description: "Reference to the proven Gnocchi Shadownet token.",
+      artifactText: "Lasagna reference Gnocchi",
+      artifactFileName: "lasagna-reference-gnocchi.txt",
+      mimeType: "text/plain",
+      tokenMetadata: { contract: PROVEN_CONTRACTS.gnocchi, tokenId: 0 },
+      tags: ["lasagna", "exhibition", "gnocchi", "shadownet", "e2e"],
+    },
+    {
+      name: "Ravioli Proof Bundle Reference",
+      description: "Reference to the proven Ravioli Shadownet bundle.",
+      artifactText: "Lasagna reference Ravioli",
+      artifactFileName: "lasagna-reference-ravioli.txt",
+      mimeType: "text/plain",
+      tokenMetadata: { contract: PROVEN_CONTRACTS.ravioli, tokenId: 0 },
+      tags: ["lasagna", "exhibition", "ravioli", "shadownet", "e2e"],
+    },
+    {
+      name: "Rotini Proof Generated Reference",
+      description: "Reference to the proven Rotini Shadownet generated token.",
+      artifactText: "Lasagna reference Rotini",
+      artifactFileName: "lasagna-reference-rotini.txt",
+      mimeType: "text/plain",
+      tokenMetadata: { contract: PROVEN_CONTRACTS.rotini, tokenId: 1 },
+      tags: ["lasagna", "exhibition", "rotini", "shadownet", "e2e"],
+    },
+    {
+      name: "Penne Proof Distribution Reference",
+      description: "Reference to the proven Penne Shadownet distributed token.",
+      artifactText: "Lasagna reference Penne",
+      artifactFileName: "lasagna-reference-penne.txt",
+      mimeType: "text/plain",
+      tokenMetadata: { contract: PROVEN_CONTRACTS.penne, tokenId: 0 },
+      tags: ["lasagna", "exhibition", "penne", "shadownet", "e2e"],
+    },
+  ];
+  const artifactPins = await Promise.all(itemDefinitions.map((item) => pinIpfsProofBytes({
+    bytes: Buffer.from(item.artifactText, "utf8"),
+    fileName: item.artifactFileName,
+    mimeType: item.mimeType,
+    options: ipfs,
+  })));
+  const items = itemDefinitions.map(({ artifactText: _artifactText, artifactFileName: _artifactFileName, ...item }, index) => ({
+    ...item,
+    artifactUri: artifactPins[index].uri,
+  }));
   const pkg = buildCollectionPackage({
     targetApp: "lasagna",
     title: "Lasagna Shadownet E2E",
     description: "Signer-backed Pasta Protocol exhibition registry Shadownet deployment proof.",
     symbol: "LSGE2E",
     relationship,
-    items: [
-      {
-        name: "Spaghetti Proof Token Reference",
-        description: "Reference to the proven Spaghetti Shadownet token.",
-        artifactUri: "data:text/plain;base64,TGFzYWduYSByZWZlcmVuY2UgU3BhZ2hldHRp",
-        mimeType: "text/plain",
-        tokenMetadata: { contract: PROVEN_CONTRACTS.spaghetti, tokenId: 0 },
-        tags: ["lasagna", "exhibition", "spaghetti", "shadownet", "e2e"],
-      },
-      {
-        name: "Gnocchi Proof Open Edition Reference",
-        description: "Reference to the proven Gnocchi Shadownet token.",
-        artifactUri: "data:text/plain;base64,TGFzYWduYSByZWZlcmVuY2UgR25vY2NoaQ==",
-        mimeType: "text/plain",
-        tokenMetadata: { contract: PROVEN_CONTRACTS.gnocchi, tokenId: 0 },
-        tags: ["lasagna", "exhibition", "gnocchi", "shadownet", "e2e"],
-      },
-      {
-        name: "Ravioli Proof Bundle Reference",
-        description: "Reference to the proven Ravioli Shadownet bundle.",
-        artifactUri: "data:text/plain;base64,TGFzYWduYSByZWZlcmVuY2UgUmF2aW9saQ==",
-        mimeType: "text/plain",
-        tokenMetadata: { contract: PROVEN_CONTRACTS.ravioli, tokenId: 0 },
-        tags: ["lasagna", "exhibition", "ravioli", "shadownet", "e2e"],
-      },
-      {
-        name: "Rotini Proof Generated Reference",
-        description: "Reference to the proven Rotini Shadownet generated token.",
-        artifactUri: "data:text/plain;base64,TGFzYWduYSByZWZlcmVuY2UgUm90aW5p",
-        mimeType: "text/plain",
-        tokenMetadata: { contract: PROVEN_CONTRACTS.rotini, tokenId: 1 },
-        tags: ["lasagna", "exhibition", "rotini", "shadownet", "e2e"],
-      },
-      {
-        name: "Penne Proof Distribution Reference",
-        description: "Reference to the proven Penne Shadownet distributed token.",
-        artifactUri: "data:text/plain;base64,TGFzYWduYSByZWZlcmVuY2UgUGVubmU=",
-        mimeType: "text/plain",
-        tokenMetadata: { contract: PROVEN_CONTRACTS.penne, tokenId: 0 },
-        tags: ["lasagna", "exhibition", "penne", "shadownet", "e2e"],
-      },
-    ],
+    items,
   });
   const validation = validateCheasePackage(pkg);
   assert.equal(validation.ok, true, validation.errors.join("; "));
@@ -159,7 +178,18 @@ function buildMetadata(creator: string, curator: string) {
     symbol: pkg.symbol,
     interfaces: ["TZIP-016", "TZIP-021"],
     relationship: pkg.relationship,
-    extra: { lasagna: { curatorCount: 2, revisionPlan: "publish-two-and-rollback-current" } },
+    extra: {
+      lasagna: {
+        curatorCount: 2,
+        revisionPlan: "publish-two-and-rollback-current",
+        referenceArtifacts: items.map((item) => ({
+          name: item.name,
+          artifactUri: item.artifactUri,
+          mimeType: item.mimeType,
+          token: item.tokenMetadata,
+        })),
+      },
+    },
   });
   assert.deepEqual(extractRelationshipMetadata(collectionMetadata), relationship);
 
@@ -188,19 +218,39 @@ function buildMetadata(creator: string, curator: string) {
     items: revision1Items,
     revision: 1,
   });
+  const collectionPin = await pinIpfsProofJson({
+    value: collectionMetadata,
+    fileName: "lasagna-collection.json",
+    options: ipfs,
+  });
+  const revision0Pin = await pinIpfsProofJson({
+    value: revision0Metadata,
+    fileName: "lasagna-revision-0.json",
+    options: ipfs,
+  });
+  const revision1Pin = await pinIpfsProofJson({
+    value: revision1Metadata,
+    fileName: "lasagna-revision-1.json",
+    options: ipfs,
+  });
 
   return {
     relationship,
     package: pkg,
     collectionMetadata,
-    collectionMetadataUri: dataJsonUri(collectionMetadata),
+    collectionMetadataUri: collectionPin.uri,
     revision0Items,
     revision1Items,
     revision0Metadata,
     revision1Metadata,
-    revision0MetadataUri: dataJsonUri(revision0Metadata),
-    revision1MetadataUri: dataJsonUri(revision1Metadata),
+    revision0MetadataUri: revision0Pin.uri,
+    revision1MetadataUri: revision1Pin.uri,
+    pins: { artifacts: artifactPins, collection: collectionPin, revision0: revision0Pin, revision1: revision1Pin },
   };
+}
+
+function pinProofLine(label: string, pin: IpfsPinnedProof): string {
+  return `- ${label}: CID \`${pin.cid}\` — \`${pin.uri}\` — ${pin.publicGatewayUrl} — SHA-256 \`${pin.sha256}\``;
 }
 
 function buildOriginationStorage(admin: string, collectionMetadataUri: string) {
@@ -226,6 +276,7 @@ async function main(): Promise<void> {
   if ((process.env.TEZOS_NETWORK || "shadownet") === "mainnet") {
     throw new Error("Refusing to run Pasta Lasagna Shadownet E2E with TEZOS_NETWORK=mainnet");
   }
+  const ipfs = resolveIpfsProofConfig();
 
   const rpc = await probeRpcChainId();
   reportRpcUrl = rpc.rpcUrl;
@@ -274,7 +325,8 @@ async function main(): Promise<void> {
     availableActions(adapter, [...entrypoints]).some((action) => action.id === "set_current_revision"),
   );
 
-  const metadata = buildMetadata(creator.address, curator.address);
+  const metadata = await buildMetadata(creator.address, curator.address, ipfs);
+  ok("pinned and public-gateway-verified the Lasagna registry metadata, revisions, and reference artifacts");
   const storage = buildOriginationStorage(creator.address, metadata.collectionMetadataUri);
   const originationEstimate = await creatorTezos.estimate.originate({ code, storage } as any);
   const estimatedOriginationMutez =
@@ -366,7 +418,8 @@ async function main(): Promise<void> {
   );
   const metadataEntry = metadataKeys.find((entry: any) => entry?.key === "");
   const indexedMetadataUri = hexToUtf8(String(metadataEntry?.value || ""));
-  const indexedCollectionMetadata = parseDataJsonUri(indexedMetadataUri) as any;
+  assert.equal(indexedMetadataUri, metadata.pins.collection.uri);
+  const indexedCollectionMetadata = metadata.collectionMetadata as any;
   assert.equal(indexedCollectionMetadata.name, metadata.package.title);
   assert.deepEqual(extractRelationshipMetadata(indexedCollectionMetadata), metadata.relationship);
   assert.equal(indexedCollectionMetadata.lasagna?.revisionPlan, "publish-two-and-rollback-current");
@@ -394,12 +447,10 @@ async function main(): Promise<void> {
   );
   const revision0Entry = revisionKeys.find((entry: any) => String(entry?.key) === "0");
   const revision1Entry = revisionKeys.find((entry: any) => String(entry?.key) === "1");
-  const indexedRevision0Metadata = parseDataJsonUri(
-    hexToUtf8(String(revision0Entry?.value?.metadata_uri || "")),
-  ) as any;
-  const indexedRevision1Metadata = parseDataJsonUri(
-    hexToUtf8(String(revision1Entry?.value?.metadata_uri || "")),
-  ) as any;
+  assert.equal(hexToUtf8(String(revision0Entry?.value?.metadata_uri || "")), metadata.pins.revision0.uri);
+  assert.equal(hexToUtf8(String(revision1Entry?.value?.metadata_uri || "")), metadata.pins.revision1.uri);
+  const indexedRevision0Metadata = metadata.revision0Metadata as any;
+  const indexedRevision1Metadata = metadata.revision1Metadata as any;
   assert.equal(indexedRevision0Metadata.exhibition?.itemCount, metadata.revision0Items.length);
   assert.equal(indexedRevision0Metadata.exhibition?.revision, 0);
   assert.equal(indexedRevision1Metadata.exhibition?.itemCount, metadata.revision1Items.length);
@@ -445,6 +496,13 @@ async function main(): Promise<void> {
     `- Transfer administration: \`${transferAdmin.hash}\``,
     `- Accept administration: \`${acceptAdmin.hash}\``,
     "",
+    "## Pinned IPFS Proof",
+    "",
+    pinProofLine("Collection metadata", metadata.pins.collection),
+    pinProofLine("Revision 0 metadata", metadata.pins.revision0),
+    pinProofLine("Revision 1 metadata", metadata.pins.revision1),
+    ...metadata.pins.artifacts.map((pin, index) => pinProofLine(`Reference artifact ${index}`, pin)),
+    "",
     "## Indexed Proof",
     "",
     `- Contract storage indexed metadata big map \`${indexedStorage.metadata}\`, curators big map \`${indexedStorage.curators}\`, and revisions big map \`${indexedStorage.revisions}\`.`,
@@ -460,6 +518,7 @@ async function main(): Promise<void> {
     "",
     "## Scope",
     "",
+    "- Lasagna originated and managed an exhibition registry; it did not mint or claim to mint an FA2 artwork token.",
     "- This proves signer-backed Shadownet origination, curator configuration, revision publication, current-revision rollback, curator removal, two-step administration transfer, referenced-token metadata resolution, and Colander adapter detection for Lasagna exhibitions.",
     "- It does not yet prove WTF.ME page hosting, wtfOS hosted pinning, Colander browser action-state refresh, failure recovery, or mainnet readiness.",
   ]);

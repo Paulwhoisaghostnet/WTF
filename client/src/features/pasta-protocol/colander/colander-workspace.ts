@@ -73,7 +73,7 @@ export const PASTA_TOOL_STORIES: readonly PastaToolStory[] = [
   { id: "macaroni", label: "Macaroni", story: "Run a blind-mint drop with delayed reveals.", route: "/tools/macaroni", phase: "create" },
   { id: "spaghetti", label: "Spaghetti", story: "Publish a standard collection or fixed-edition work.", route: "/tools/spaghetti", phase: "create" },
   { id: "gnocchi", label: "Gnocchi", story: "Publish a timed, forever, capped, or curve-priced open edition.", route: "/tools/gnocchi", phase: "create" },
-  { id: "ravioli", label: "Ravioli", story: "Publish a bundle, redeemable, mystery pack, or wrapped set.", route: "/tools/ravioli", phase: "create" },
+  { id: "ravioli", label: "Ravioli", story: "Publish deterministic, blind-pool, allocation, generative, or hybrid atomic packs.", route: "/tools/ravioli", phase: "create" },
   { id: "rotini", label: "Rotini", story: "Build and publish a trait-layered generative collection.", route: "/tools/rotini", phase: "create" },
   { id: "penne", label: "Penne", story: "Airdrop work or run a claim and participation reward.", route: "/tools/penne", phase: "distribute" },
   { id: "lasagna", label: "Lasagna", story: "Curate an exhibition and publish its revisions on-chain.", route: "/tools/lasagna", phase: "curate" },
@@ -267,6 +267,7 @@ export function attachContract(
 
 export function toolIdForContractKind(kind?: string): PastaToolId {
   switch (kind) {
+    case "blind_mint_collection": return "macaroni";
     case "open_edition_collection": return "gnocchi";
     case "generative_collection": return "rotini";
     case "bundle_collection": return "ravioli";

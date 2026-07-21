@@ -1,0 +1,201 @@
+{
+  "schema": "pastaprotocol-partial-chain-inventory@1",
+  "app": "macaroni",
+  "runId": "pasta-alpha-proof-20260718a",
+  "attempt": 8,
+  "classification": "REJECTED-NOT-PROOF",
+  "network": "tezos-shadownet",
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+  "contracts": [
+    {
+      "generation": "macaroni-editions-v2",
+      "address": "KT1S3tXv1H376Vgaq6v94dCYJCfyWFfPWFLT",
+      "tzktUrl": "https://shadownet.tzkt.io/KT1S3tXv1H376Vgaq6v94dCYJCfyWFfPWFLT",
+      "classification": "asset/fa2",
+      "terminalStorage": {
+        "supply": 2,
+        "minted": 1,
+        "revealed": 1,
+        "revealCursor": 1,
+        "revealTail": 1,
+        "unrevealedSince": null
+      }
+    },
+    {
+      "generation": "macaroni-v1",
+      "address": "KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe",
+      "tzktUrl": "https://shadownet.tzkt.io/KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe",
+      "classification": "asset/fa2",
+      "terminalStorage": {
+        "supply": 1,
+        "minted": 1,
+        "revealed": 1,
+        "locked": true,
+        "delayedReveal": false,
+        "unrevealedSince": null,
+        "pendingTokensBigMap": 28940
+      }
+    }
+  ],
+  "operations": [
+    {
+      "generation": "v2",
+      "action": "originate",
+      "hash": "ootfggWbiBgMATwo8uqvnDCXYZ7uyr4gykzMrvXGsvPb7KKcyVT",
+      "level": 4255510,
+      "counter": 23831404,
+      "status": "applied"
+    },
+    {
+      "generation": "v2",
+      "action": "add_tokens_v2",
+      "hash": "ooCxP2evrqRD9zrmry2Kx9ixjE6Nu6JavJa16Vuhr92d9oiYaPE",
+      "level": 4255513,
+      "counter": 23831405,
+      "status": "applied",
+      "gasUsed": 16003,
+      "storageUsed": 621
+    },
+    {
+      "generation": "v2",
+      "action": "set_stages",
+      "hash": "onfhD5Pj4cBzRa6wQVPHvFauqB9YgK913npu1mxn3jHk88o5onL",
+      "level": 4255515,
+      "counter": 23831406,
+      "status": "applied",
+      "gasUsed": 445,
+      "storageUsed": 24
+    },
+    {
+      "generation": "v2",
+      "action": "mint",
+      "hash": "opGLWWtSDwqFUUdvrwzYjKNmjJ8m2X6WLQxkrBVbziXg42LyhrX",
+      "level": 4255521,
+      "counter": 23833805,
+      "status": "applied",
+      "gasUsed": 4709,
+      "storageUsed": 359
+    },
+    {
+      "generation": "v2",
+      "action": "reveal",
+      "hash": "opMhCuHku1DdCCNVB3gste8jLCCjJZKPCHi5Zvq6Um1DwFrFgcJ",
+      "level": 4255527,
+      "counter": 23833806,
+      "status": "applied",
+      "gasUsed": 2484,
+      "storageUsed": 0
+    },
+    {
+      "generation": "v1",
+      "action": "originate",
+      "hash": "onwFeqCYwpzVouwbfacThAG68rh2iDa7m7fwbuvU7RADqaEohDt",
+      "level": 4255531,
+      "counter": 23831407,
+      "status": "applied"
+    },
+    {
+      "generation": "v1",
+      "action": "add_tokens",
+      "hash": "ootjzsjdwf6PXmwzZx4sMuET87QTWemnY4DqU5B5v4xZAdcGB4F",
+      "level": 4255534,
+      "counter": 23831408,
+      "status": "applied",
+      "gasUsed": 4758,
+      "storageUsed": 148
+    },
+    {
+      "generation": "v1",
+      "action": "set_stages",
+      "hash": "opA7B2t4cNmrq8YmFu1rqY2YtbrxjboXP1MjZPZZHFxXzRZFTxX",
+      "level": 4255536,
+      "counter": 23831409,
+      "status": "applied",
+      "gasUsed": 420,
+      "storageUsed": 24
+    },
+    {
+      "generation": "v1",
+      "action": "mint",
+      "hash": "opZeCi6f8ztukNVxKYWdjsNyExYCc854Pn4QfDPm5gRKgaGoTdL",
+      "level": 4255541,
+      "counter": 23833807,
+      "status": "applied",
+      "gasUsed": 2808,
+      "storageUsed": 163
+    }
+  ],
+  "tokens": [
+    {
+      "generation": "v2",
+      "contract": "KT1S3tXv1H376Vgaq6v94dCYJCfyWFfPWFLT",
+      "tokenId": 0,
+      "tzktUrl": "https://shadownet.tzkt.io/KT1S3tXv1H376Vgaq6v94dCYJCfyWFfPWFLT/tokens/0",
+      "standard": "fa2",
+      "totalSupply": 1,
+      "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+      "holderBalance": 1,
+      "firstLevel": 4255521
+    },
+    {
+      "generation": "v1",
+      "contract": "KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe",
+      "tokenId": 0,
+      "tzktUrl": "https://shadownet.tzkt.io/KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe/tokens/0",
+      "standard": "fa2",
+      "totalSupply": 1,
+      "holder": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+      "holderBalance": 1,
+      "firstLevel": 4255541
+    }
+  ],
+  "pins": [
+    { "generation": "v2", "kind": "cover", "cid": "bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm", "sha256": "4a287e6db27ca20ec9936ae885fa4bd891100dae554d7f038b689f54ee0a911b" },
+    { "generation": "v2", "kind": "placeholder-artifact", "cid": "bafkreifuefxja355b3zotq3wh6l5m55uebkbazo5jxit5wqwzibmuevhvm", "sha256": "b4216e906fbd0ef2e9c3763f97d677b420541065dd4dd13eda16ca02ca12a7ab" },
+    { "generation": "v2", "kind": "placeholder-metadata", "cid": "bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy", "sha256": "957477d948f513e08d9c4f8898ef447b864e3f74cfd3497419df7e6a2154ecb6" },
+    { "generation": "v2", "kind": "final-artifact", "cid": "bafkreib6xhieso3y2vq4n7moy3wl2dz3w33d737ck3cwfv2zm6bikltqtq", "sha256": "3eb9d0493b78d561c6fd8ec6ecbd0f3bb6f63fefe256c562d7596782852e709c" },
+    { "generation": "v2", "kind": "final-metadata", "cid": "bafkreiezczz26k5wgnqnzlvhlb37yaku75ilh3o5hethlclzu3fb6fvfdi", "sha256": "991673af2bb63360dcaea75877fc0154ff50b3eddd3926758979a6ca1f16a51a" },
+    { "generation": "v2", "kind": "contract-metadata", "cid": "bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma", "sha256": "39a17110105aa75627a94274cc4999b1ef0ab6254dea1010ca4071d6a9cfb360" },
+    { "generation": "v1", "kind": "cover", "cid": "bafkreifaplcaz4jnodkvwzkut2gi6mjld5ofivbnbucfxjd6fivkdldisu", "sha256": "a07ac40cf12d70d55b65549e8c8f312b1f5c54542d0d045ba47e2a2aa1ac6895" },
+    { "generation": "v1", "kind": "final-artifact", "cid": "bafkreifgntgighrrzrq3btzp3rzeren5wiv3b2y3vrmxkjhacvuqsrz7x4", "sha256": "a66ccc831e31cc61b0cf2fdc724891bdb22bb0eb1bac597524e0156909473fbf" },
+    { "generation": "v1", "kind": "final-metadata", "cid": "bafkreibhxi3cknudpns2chrhvwjszduiq5qfmtcffnrqsrgzvvyf3naq6i", "sha256": "27ba362536837b65a11e27ad932c8e888760564c452b630944d9ad705db410f2" },
+    { "generation": "v1", "kind": "contract-metadata", "cid": "bafkreid622hnet7n5pns2r4swtzflqoxx3s4klhkxxftyawyx4xziipkd4", "sha256": "7ed68ed24fedebdb2d4792b4f255c1d7bee5c52ceabdcb3c02d8bf2f9421ea1f" }
+  ],
+  "siteArchives": [
+    { "generation": "v2", "path": "artifacts/macaroni-site.zip", "sha256": "f58948dbe3716785a5be5799a3dddc7627d91fefd0cdf388d9d269c8d2f266db" },
+    { "generation": "v1", "path": "artifacts/macaroni-v1-site.zip", "sha256": "cad964696309eba4d64e7a6ec311a2ad91d513b05634c4042c80ebe53292fe44" }
+  ],
+  "screenshots": [
+    { "ordinal": 1, "sha256": "5dc32ee310136b96375e0a75dff075074802fbf5354c5d8dfc45c7b5d6595b99", "path": "screenshots/001-configure-blind-drop-v2-delayed-reveal-drop-configured.png" },
+    { "ordinal": 2, "sha256": "c89a24cd4459fbaa17fc5ecad9b3e39152d5257ef94d559873f3457cda66dd0a", "path": "screenshots/002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio.png" },
+    { "ordinal": 3, "sha256": "25e29d98c2104a2773271156c6081f1aa21470840f64d2fe03e313c52b2ee080", "path": "screenshots/003-originate-fresh-contract-fresh-macaroni-v2-contract-originated.png" },
+    { "ordinal": 4, "sha256": "7d7675ea0f105158b398ca7ab89ae1a5884032132321791ca8f6a2f279ff9f89", "path": "screenshots/004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced.png" },
+    { "ordinal": 5, "sha256": "cc0acd0c27d684d5422eab41e447424eda8de0df617da38e2c088b889669c123", "path": "screenshots/005-export-self-hosted-mint-site-standalone-collector-website-exported.png" },
+    { "ordinal": 6, "sha256": "0b3259ab1dde7bbaf1332601638b8c96688549a187137e9ab0cb988f2f8ed9c0", "path": "screenshots/006-operate-exported-collector-page-independent-collector-opened-exported-website.png" },
+    { "ordinal": 7, "sha256": "1123ef9731a49f484ec80cbf65adbd114bf512c8760e8917affec00b58cc054b", "path": "screenshots/007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced.png" },
+    { "ordinal": 8, "sha256": "2622e2cab91bf9e3a1d4310f1a8b652da5dce09be1f71b7bb337dec207446939", "path": "screenshots/008-permissionless-reveal-collector-revealed-exact-final-artwork.png" },
+    { "ordinal": 9, "sha256": "10336a4d167e34497d2368ecf3ad702a0f005ed4cdca9ecba4e74f2af41fc07d", "path": "screenshots/009-configure-classic-blind-drop-v1-instant-reveal-drop-configured.png" },
+    { "ordinal": 10, "sha256": "f47d608fb052bc77496cbc00dc454e4009fe044b1465df529ef9328e00418407", "path": "screenshots/010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio.png" },
+    { "ordinal": 11, "sha256": "ccc2daa423adb7d3c5f9806d80ec2bead30d7f5aa6025c823bae1994da47877e", "path": "screenshots/011-originate-v1-contract-fresh-macaroni-v1-contract-originated.png" },
+    { "ordinal": 12, "sha256": "9bd880ee300ec78db7d3566f50bfda28b2c6a3850848e547ef270b92d75f5fe0", "path": "screenshots/012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain.png" },
+    { "ordinal": 13, "sha256": "6d3c78875c8b4eb295f1a3f502061b1e6ae39b87e66f4080b77d4b61d8eef0ab", "path": "screenshots/013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer.png" },
+    { "ordinal": 14, "sha256": "3292dc7513a344c5808b9dce429c025985b847d100f273fa7e2c4b04a584d53b", "path": "screenshots/014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website.png" },
+    { "ordinal": 15, "sha256": "5196de78bdab4369261853fa9554c58953c2bf9d3afb3e1f0d734b7da016d5dd", "path": "screenshots/015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly.png" }
+  ],
+  "failureEvidence": {
+    "pendingTokenResponse": "inactive-tombstone-response.json",
+    "key": 0,
+    "active": false,
+    "firstLevel": 4255534,
+    "lastLevel": 4255541,
+    "expectedVerifierMeaning": "consumed"
+  },
+  "terminalBoundary": {
+    "name": "V1 sold-out boundary",
+    "expectedFailure": "SOLD_OUT",
+    "rejectedBeforeInjection": true,
+    "collectorCounterBefore": 23833807,
+    "collectorCounterAfter": 23833807
+  }
+}

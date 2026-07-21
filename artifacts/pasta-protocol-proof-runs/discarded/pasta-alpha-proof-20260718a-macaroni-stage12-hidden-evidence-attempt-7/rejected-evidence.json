@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "pasta-quarantined-proof-attempt-v1",
+  "runId": "pasta-alpha-proof-20260718a",
+  "application": "macaroni",
+  "attempt": 7,
+  "classification": "QUARANTINED_REJECTED_ATTEMPT",
+  "acceptedForAggregate": false,
+  "aggregatePath": "artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260718a/macaroni",
+  "aggregatePathStateAfterQuarantine": "absent",
+  "failure": {
+    "name": "PastaProofScreenshotError",
+    "message": "required evidence selector #deployStatus is present but not visible",
+    "runnerLocation": "scripts/pasta-protocol/shadownet-macaroni-ui-live.ts:1860",
+    "stageOrdinal": 12,
+    "stageIntent": "sync and export V1 site",
+    "rootCause": "The runner switched to the Page Designer tab, then required #deployStatus and #log from the hidden Drop tab together with #exportStatus from the visible Page Designer tab. The mutually exclusive panels cannot provide one honest visible screenshot.",
+    "runnerExitCode": 1
+  },
+  "missingAcceptanceEvidence": [
+    "visible V1 on-chain sync screenshot",
+    "visible V1 self-hosted export screenshot",
+    "V1 independent collector open screenshot",
+    "V1 collector mint screenshot",
+    "V1 collector mint operation",
+    "V1 indexed token and balance evidence",
+    "terminal TzKT verification",
+    "application manifest",
+    "terminal receipt"
+  ],
+  "partialCapabilities": {
+    "v2LifecycleCompleted": true,
+    "v1OriginatedAndSynchronized": true,
+    "v1CollectorMintCompleted": false,
+    "terminalValidationCompleted": false
+  },
+  "contracts": [
+    {
+      "generation": "v2",
+      "address": "KT1CKs2TBurscVhedsJ2tU1FifKyV49jgTUJ",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1CKs2TBurscVhedsJ2tU1FifKyV49jgTUJ"
+    },
+    {
+      "generation": "v1",
+      "address": "KT1CkbY1x17qypMDaYSScETKnKPo4MSA9h8j",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1CkbY1x17qypMDaYSScETKnKPo4MSA9h8j"
+    }
+  ],
+  "retainedScreenshotCount": 11,
+  "retainedScreenshots": [
+    { "ordinal": 1, "sha256": "5d274b5f2887985f71023eef7f0e1ee970ce388b83486ade234b8b600d52ab29" },
+    { "ordinal": 2, "sha256": "a0faf56ccccb8bb3f68d62cabc234a1f87d17cdcd6344bde1ad41f284b45d5a0" },
+    { "ordinal": 3, "sha256": "dce9a55400e1ab81dae6368f3115c28123f8f64b5c1d004bfe926ecf6f4fc4c8" },
+    { "ordinal": 4, "sha256": "78785108ccb97b6280882ed4217ebf9a4f14d5dd16ec6ff0dcd21beae82f0010" },
+    { "ordinal": 5, "sha256": "40567ae96945404f5740ca002ad8914a45915ad92dca8ca1584b6ac20e7dc8da" },
+    { "ordinal": 6, "sha256": "f870541469b490314efd3e213c894afdafd412b3c1e4427a0a7b389b740f4dfa" },
+    { "ordinal": 7, "sha256": "5dc62f3a5e1f2d06dbf260db0d83e07aa10a6318b3b83fd25bb3851ad61ede18" },
+    { "ordinal": 8, "sha256": "a9430cff147a2a08390d35f555a9d24d703e02c1d46cba1f6b5eb4b89e7b9ad8" },
+    { "ordinal": 9, "sha256": "088fe0bf54d18e1c368ae16570fea3b58a68fe81145b770d9f12bd393adfb6fd" },
+    { "ordinal": 10, "sha256": "a6e1d08b9b181226005b343689c66ba3c371f7cee157d2c4a2699be2eec68501" },
+    { "ordinal": 11, "sha256": "4c3c85bd132d25bdf09d5bff96dd266c9395d0593b5f0888730255d3cea3a91f" }
+  ],
+  "retainedSites": [
+    {
+      "generation": "v2",
+      "path": "artifacts/macaroni-site.zip",
+      "sha256": "d06631a1fb57f6ad7dc34101971280216596295cdbcaa91e64dee5e38dd3e606"
+    },
+    {
+      "generation": "v1",
+      "path": "artifacts/macaroni-v1-site.zip",
+      "sha256": "a55e69c64bae57c479c23d137e224c85cf74e75c75cf04ac72a614fd5f6385d9"
+    }
+  ],
+  "partialChainInventory": "partial-chain-inventory.json"
+}

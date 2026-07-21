@@ -1,0 +1,36 @@
+{
+  "schema": "pasta-ravioli-open-kit@3",
+  "network": "shadownet",
+  "contract": "KT1E1Emw46UTwRiVknHUreNvfcvAd7X8KZ2m",
+  "tokenId": 1,
+  "mode": "blind_funded_pool",
+  "manifestUri": "ipfs://bafkreib63jgjvjythn4enovtc5jxrb3njycl57ajcrpx32xlouwuuk3dvi",
+  "blindSecurity": "commit-reveal-ui-hidden-chain-public",
+  "warning": "Do not publish recipe nonces before you intend holders to open. Tezos funding operations remain public.",
+  "recipes": [
+    {
+      "serial": 0,
+      "nonce": "db0e1661601183a15499ff006f644027135b6c9f33ee3b2e75dd85b627ab1784",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+          "tokenId": 0,
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "serial": 1,
+      "nonce": "63ee4129ed0dcf5a8a5934d518ccf5caf557cdbbb25e8b7b862bc13cf974bd15",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+          "tokenId": 1,
+          "amount": 1
+        }
+      ]
+    }
+  ]
+}

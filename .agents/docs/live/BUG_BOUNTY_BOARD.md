@@ -50,6 +50,44 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-460 | Verified | Codex full-send release gate repair | 2026-07-20 | Release fixtures / Pasta and Calendar parity | P1 | 12 | 7 | 3 | 4 | 1 | Ravioli UI-LIVE fixtures now use the production Gnocchi allocation-token constant end to end and report browser diagnostics when recovery-kit download never starts; Rotini recognizes `mint_pack_iteration`; Spaghetti uses deterministic proof metadata; Calendar accepts a valid multi-day card occurrence; focused gates and aggregate unit 1,919/1,919 pass |
+| WTF-BB-457 | Fixed | Codex Ravioli native recovery | 2026-07-19 | Pasta Protocol / native pack recovery | P0 | 18 | 1 | 4 | 5 | 4 | An explicitly gated recovery harness now closes all five public sales first, proves the four remaining creator wrappers are still owned, consumes them through exact ordinary `open_pack` calls, restores every reserved Gnocchi/Rotini asset, and creates fresh Rotini project 3 without privileged replacement minting; focused 9/9 and isolated strict TypeScript pass, with controlled Shadownet execution still pending |
+| WTF-BB-456 | Fixed | Codex Ravioli sale/open state repair | 2026-07-19 | Pasta Protocol / atomic-pack buyer state | P0 | 14 | 3 | 3 | 5 | 1 | Sale-open Ravioli pages now show `Primary sale open · fully reserved`, and exact real-page/runner assertions preserve both sale availability and atomic backing without weakening the no-sale reserve proof |
+| WTF-BB-455 | Fixed | Codex confirmation fallback | 2026-07-19 | Pasta Protocol / UI-LIVE operation confirmation | P0 | 17 | 1 | 4 | 5 | 3 | UI-LIVE call, batch, and origination actions now recover from Taquito confirmation polling timeout only when the Node-owned verifier independently accepts the exact submitted hash and scope, without any duplicate submit or confirmation retry |
+| WTF-BB-454 | Verified | Codex Ravioli recovery reconciliation | 2026-07-19 | Pasta Protocol / interrupted recovery finalization | P0 | 17 | 1 | 4 | 5 | 3 | Signer-free reconciliation discovered and validated exact applied mints `ooEpd...`/23831420 and `oossz...`/23831421 from the immutable intent plus TzKT, required dual-RPC terminal counters/clear active mempools, unchanged accepted hashes, and exact 2/2 balances with 6/5 supplies, then emitted terminal receipt SHA-256 `47884383830d14a3ff6b3a29a33c2c516068dd484e82133d08b1a7ab7425fcf3`; focused 13/13, combined 35/35, and strict TypeScript pass |
+| WTF-BB-453 | Fixed | Codex Ravioli recovery estimator binding | 2026-07-19 | Pasta Protocol / deterministic recovery submission | P0 | 17 | 1 | 4 | 5 | 3 | Recovery now binds each of its two accepted estimates into exact fee/gas/storage send options, preventing Taquito from launching an unbounded third estimator before submission, and validates exactly two live calls rather than incorrectly counting estimates as callback validations |
+| WTF-BB-452 | Fixed | Codex Ravioli open-kit persistence | 2026-07-18 | Pasta Protocol / recoverable product output | P0 | 17 | 1 | 4 | 5 | 3 | Ravioli now captures and immediately retains every real Studio open-kit download with exact bytes and hashes, so a later crash cannot strand wrapper tokens by losing their only opening nonces |
+| WTF-BB-451 | Fixed | Codex Ravioli dependency recovery | 2026-07-18 | Pasta Protocol / immutable dependency inventory | P0 | 17 | 1 | 4 | 5 | 3 | A strict-serial, explicitly gated Shadownet recovery harness now restores only the exact Gnocchi 2/2 creator inventory through two estimated admin mints, preserves accepted proof bytes, and makes a validated recovery receipt a mandatory pre-write Ravioli dependency |
+| WTF-BB-450 | Fixed | Codex Ravioli proof-surface remediation | 2026-07-18 | Pasta Protocol / Ravioli proof mapping | P1 | 12 | 7 | 3 | 4 | 1 | Ravioli now emits an explicit reveal capability bound to stage 25/four reveal operations and exact per-mode Gnocchi/Rotini child-token links; focused UI-LIVE, assembler, type, bridge/IPFS, FA2, and desktop gates pass |
+| WTF-BB-447 | Fixed | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / historical indexer evidence | P1 | 13 | 6 | 3 | 4 | 2 | Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized |
+| WTF-BB-446 | Verified | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / screenshot evidence integrity | P1 | 12 | 7 | 3 | 4 | 1 | Fresh Spaghetti contract `KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara` completed all five Shadownet operations; the promoted manifest passes with 13 distinct screenshots, including a separately visible focused completion notice, 20 artifacts, and independent portable-site proof |
+| WTF-BB-443 | Fixed | Codex Ravioli live proof | 2026-07-18 | Pasta Protocol / UI-LIVE storage projection memory safety | P0 | 16 | 2 | 4 | 5 | 2 | Ravioli's first strict UI-LIVE run exhausted Node's 4 GB V8 heap by passing a raw Taquito `BigMapAbstraction` into an unbounded bridge serializer; bounded fresh-map projections, a fail-closed shared serializer, poisoned-provider regressions, and a 1.5 GB runtime heap ceiling now pass all non-writing gates, with a fresh complete Shadownet replacement proof still required for Verified |
+| WTF-BB-442 | Verified | Codex Pasta proof-package report audit | 2026-07-18 | Pasta Protocol / proof-package reporting and secret boundary | P1 | 13 | 6 | 3 | 4 | 2 | The deterministic aggregate now generates one self-contained `PROOF.md` per app with capability-to-evidence links, direct TzKT/IPFS evidence, explicit CID/retrieval hashes and role boundaries; exact-link and artifact-secret checks fail closed, checksum/ZIP reproducibility passes twice, and all five accepted live app manifests pass the strengthened reader |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 15 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-439 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni operation finality and storage | P0 | 16 | 2 | 4 | 5 | 2 | Macaroni attempt 3 accepted a safe fee but `add_tokens_v2` backtracked because the fallback storage limit was 320 bytes versus 621 consumed, after which Studio displayed sync success; the production fallback is now conservatively unit-sized and every Studio/drop operation requires independently indexed `applied` status, with a fresh Shadownet replacement proof still required |
+| WTF-BB-438 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni fee safety | P0 | 14 | 3 | 3 | 5 | 1 | Macaroni attempt 2 forged a fixed 2,500-mutez fee with a 200,000 gas limit and was permanently refused as `fees_too_low`, while the runner waited only for UI success; the proof now uses Macaroni's gas/byte-derived fee path and monitors both UI failure and signer/contract-scoped refused mempool operations, pending a fresh replacement proof |
+| WTF-BB-437 | Fixed | Codex Ravioli live preflight | 2026-07-18 | Pasta Protocol / Ravioli free primary sale | P1 | 12 | 7 | 3 | 4 | 1 | Studio permits a zero-tez wrapper sale, but the router always emitted `sp.send(treasury, sp.amount)`, causing Tezos to reject the free purchase as an empty internal transaction; guarded treasury transfer, SmartPy/browser regressions, regenerated artifact, local forging, and Shadownet typecheck now pass, with one indexed zero-mutez UI-LIVE purchase required for Verified |
+| WTF-BB-436 | Verified | Codex Ravioli live preflight | 2026-07-18 | Pasta Protocol / CH-EASE handoff continuity | P1 | 11 | 8 | 3 | 4 | 0 | Ravioli now consumes the same-origin one-use CH-EASE handoff through its existing validated importer; the focused shared policy and a real-browser Studio proof confirm collection, relationship, and recipe-reference hydration plus storage deletion without a signing call |
+| WTF-BB-435 | Fixed | Codex Pasta portable-site proof pass | 2026-07-18 | Pasta Protocol / portable export evidence | P1 | 11 | 8 | 3 | 4 | 0 | The six shared-site publishers could download ZIPs, but existing proof either checked only the `PK` signature or loaded canonical source assets instead of the exact downloaded bytes; a transactional supplement now drives each actual Studio export, validates the complete ZIP/config/dependency set, extracts and boots it from an independent static origin with no Objkt/Teia/wtfOS request, captures two UI-LIVE stages, and upserts hash-bound manifest evidence without chain writes; all-six fake-chain browser coverage plus live same-run Spaghetti, Gnocchi, Rotini, and Penne supplements now pass with manifest, screenshot, archive, and public-IPFS byte verification; Ravioli and Lasagna live supplements remain required before Verified |
+| WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 12 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
+| WTF-BB-433 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / portable site option decoding | P0 | 15 | 2 | 3 | 5 | 2 | The canonical self-hosted page treated Taquito `Some` wrappers as raw numbers/timestamps, allowing capped Gnocchi/Rotini exports to show invalid policy state or sold-out incorrectly; the site kit now unwraps options, generated-site browser fixtures reproduce capped/timed values, and six publisher copies are synchronized, with focused browser and fresh live export verification pending |
+| WTF-BB-432 | Fixed | Codex Colander aggregate proof pass | 2026-07-18 | Pasta Protocol / Colander adapter ownership and write feedback | P1 | 12 | 7 | 3 | 4 | 1 | Colander treated both Macaroni generations as generic FA2/Spaghetti contracts and immediately erased a confirmed write result during its post-operation refresh; Macaroni now has a specific owner adapter and package identity, refresh preserves terminal confirmation, focused unit/policy gates pass, and the fresh same-run UI-LIVE aggregate proof remains required before Verified |
+| WTF-BB-431 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Rotini collector UI | P1 | 10 | 10 | 3 | 4 | 0 | Replacement UI-LIVE contract `KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T` displays `/ 3` cleanly for PNG/GIF/ZIP after each collector finalization; browser fixtures reproduce Taquito `Some`, live assertions reject object leakage, and all nine screenshots passed visual review |
+| WTF-BB-430 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Rotini free mint | P0 | 14 | 3 | 3 | 5 | 1 | The replacement free PNG path on `KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T` completed reserve, deterministic render, public pin verification, zero-price finalize, TzKT token indexing, and collector balance; paid GIF and ZIP paths also finalized, proving the zero-send guard live |
+| WTF-BB-429 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Rotini live projection | P0 | 14 | 3 | 3 | 5 | 1 | The actual Studio and proof runner preserve address big-map keys on replacement contract `KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T`; all three projects published and three collector lifecycles completed without `NaN` key coercion, with strict local regression coverage |
+| WTF-BB-428 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / FA2 indexer compliance | P0 | 18 | 1 | 4 | 5 | 4 | Macaroni V2, Ravioli, and Penne now compile explicit canonical TZIP-12 layouts; regenerated Michelson passes the six-app structural indexer policy plus Macaroni/Penne SmartPy tests and Ravioli five-mode/atomicity suite, with fresh TzKT classification still required before Verified |
+| WTF-BB-427 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / self-hosted IPFS controls | P0 | 15 | 2 | 3 | 5 | 2 | The shared holder page now subscribes provider changes to its field renderer across all six publisher copies; a fresh production build and real Playwright interaction prove selecting Kubo exposes its node URL while hiding the Pinata JWT row before Ravioli execution |
+| WTF-BB-426 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / self-hosted page isolation | P0 | 15 | 2 | 3 | 5 | 2 | Shared standalone-page CSS now enforces the HTML hidden contract across all six publishers; the owner/non-owner Playwright regression passes after a fresh production build, and replacement Spaghetti UI-LIVE contract `KT1CxnMv3RYwAGPYB4dgdn3QDP6J6LWGyPi1` passed 11-stage visual review without leaked Ravioli controls |
+| WTF-BB-425 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Ravioli recipe integrity | P0 | 19 | 0 | 4 | 5 | 5 | Ravioli v3 commits exact allocated payloads and an explicit generated-at-open `None`; the real Studio/holder UI harness now passes all five modes, six atomic opens, two collectors, substitution rejection, SmartPy atomicity/compilation, and strict TzKT FA2/token/balance acceptance, with fresh Shadownet execution still required before Verified |
+| WTF-BB-424 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / CH-EASE proof evidence | P1 | 10 | 10 | 3 | 4 | 0 | Actual CH-EASE UI now produces a role-correct UI-LIVE proof: staged metadata/media, Kubo pin plus public hash verification, downloaded JSON/ZIP, Spaghetti handoff, four screenshot/sidecar pairs, and an assembler-ready no-contract manifest |
+| WTF-BB-423 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / visual proof integrity | P1 | 12 | 7 | 3 | 4 | 1 | Reusable Pasta screenshot evidence now fails closed on missing DOM evidence, browser fatals, visible secrets, blank/tiny frames, and tampering; fixed-viewport PNGs plus hash-bound redacted sidecars are assembler-ready and pass 7/7 Playwright tests |
+| WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 1 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
+| WTF-BB-421 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / durable proof metadata | P1 | 11 | 8 | 3 | 4 | 0 | Fresh Spaghetti, Gnocchi, Penne, and Lasagna Shadownet harnesses now pin every on-chain metadata/artifact URI through Kubo, independently hash-verify public gateway bytes before origination, and report CID/ipfs/gateway/SHA evidence; 6/6 policy tests and preflight pass |
+| WTF-BB-420 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni funding preflight | P1 | 9 | 12 | 2 | 3 | 0 | Macaroni now classifies Octez `tez.subtraction_underflow` during its pre-write estimate as an explicit underfunded BLOCKED result and states that no IPFS pin or chain write occurred; verified by 7/7 policy tests and a live Shadownet no-write reproduction |
+| WTF-BB-419 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Shadownet proof runtime | P1 | 10 | 10 | 2 | 4 | 0 | Shared proof-kit keyring loading now works in both tsx's CJS runtime and isolated strict TypeScript, and durable Kubo pins are independently gateway/hash verified before evidence can pass |
+| WTF-BB-418 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Colander Penne management parity | P1 | 10 | 10 | 2 | 4 | 0 | Colander now exposes Penne's public `Claim allocation` action with token-id input; verified by the 38-test adapter suite, inventory coverage, production build, and the 3/3 Colander Shadownet-shaped browser lane |
+| WTF-BB-417 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Shadownet preflight drift | P1 | 10 | 10 | 2 | 4 | 0 | Shared Pasta preflight now requires and accepts the current direct-sale entrypoints/actions before live proof execution |
+| WTF-BB-416 | Verified | Codex Calendar view-navigation pass | 2026-07-18 | Calendar / core temporal navigation | P1 | 11 | 8 | 3 | 4 | 0 | Calendar now provides navigable Day, Week, Month, and Agenda views with shared Previous, Today, and Next controls, responsive month containment, accessible selected-view state, and focused plus full inventory browser verification |
 | WTF-BB-415 | Verified | Codex Studio lifecycle integration pass | 2026-07-18 | Studio / creator journey and cross-app handoffs | P1 | 12 | 7 | 3 | 5 | 0 | Studio now owns a durable Concept-to-Activate creator runway with use-case and Tezos-network context, release evidence, and project-scoped handoffs into WIM, Broot, IPFS Pinning, Pasta Protocol, Mint Portal, and WTF LIVE; verified by focused policy/type/build checks, responsive Studio browser coverage, inventory coverage, and the full 659-test inventory E2E suite |
 | WTF-BB-378 | Fixed | Codex production outage repair | 2026-07-15 | Deploy / runtime and migration failure recovery | P0 | 16 | 1 | 3 | 5 | 3 | Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending |
 | WTF-BB-325 | Verified | Codex Gamma live verification pass | 2026-06-30 | Gamma / live hostname route containment | P1 | 11 | 8 | 3 | 4 | 0 | Public `gamma.wtfos.app` deep routes no longer fall back to Classic after promotion to commit `6e35117`; verified by Deploy to Hetzner `28421767405`, main Quality Gates `28421767416`, live health, Gamma `/gallery` and `/leaderboard` content selectors, Gamma auth gates for `/admin` and `/swap`, plus Classic/Beta host sanity checks |
@@ -1946,7 +1984,7 @@ Priority labels:
 ### WTF-BB-191 - tz2at listing signals can suppress Objkt direct-buy purchase keys
 
 - Category: Rat Race / marketplace wallet sends
-- Status: Fixed
+- Status: Verified
 - Owner/Session: Codex Rat Race direct-buy hotfix
 - Score: C1 + F4 + S3 + P1(5) = 13
 - Evidence:
@@ -7291,7 +7329,7 @@ Priority labels:
 ### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
 
 - Category: Security / CSP hardening
-- Status: In Progress
+- Status: Verified
 - Owner/Session: Codex architectural quick-wins pass
 - Score: C3 + F2 + S3 + P2(3) = 11
 - Evidence:
@@ -8752,7 +8790,7 @@ Priority labels:
 ### WTF-BB-403 - Ravioli wrappers do not fulfill their packaged token recipes
 
 - Category: Pasta Protocol / Ravioli on-chain pack fulfillment
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli custody repair
 - Score: C4 + F5 + S4 + P0(5) = 18
 - Evidence:
@@ -8841,7 +8879,7 @@ Priority labels:
 ### WTF-BB-401 - Admin control suite is organized around panels instead of operator tasks
 
 - Category: Admin console / operator UX
-- Status: Claimed
+- Status: Fixed
 - Owner/Session: Codex admin UX control-suite pass
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
@@ -8889,8 +8927,8 @@ Priority labels:
 ### WTF-BB-407 - Gnocchi cannot publish its supported edition policies into one collection
 
 - Category: Pasta Protocol / Gnocchi multi-edition collection publishing
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Gnocchi UI-LIVE proof pass
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
   - `PastaOpenEditionFA2` stores metadata, supply, and sale configuration by token id, and `create_open_edition` increments `next_token_id`; one KT1 can therefore hold multiple independently configured editions.
@@ -8917,6 +8955,8 @@ Priority labels:
   - SmartPy scenarios and artifact compilation passed, including same-contract mixed policies, creator reserve, lifetime cap, burn behavior, policy lock, invalid window, vault/unvault, and admin handoff.
   - The full Pasta publishing Playwright suite passed 11/11; focused Colander Shadownet-shaped browser coverage passed 3/3; focused unit/static/foundation/hosting tests passed 56/56; desktop packaging and funding policies passed 12/12; production build, TypeScript, and interaction-inventory coverage passed.
   - The guarded signer proof originated `KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw`, created Timed OE token 0, Forever OE token 1, and Limited Edition token 2, used two independent collectors, and confirmed `ENDED`, `SOLD_OUT`, `SALE_INACTIVE`, and `POLICY_LOCKED` rejection boundaries plus TzKT-indexed ledger, supply, lifetime-minted, sales, locks, and metadata state.
+  - The real Gnocchi Studio UI-LIVE proof then originated fresh Shadownet contract `KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup`, published all three presets into token ids 0/1/2, used two independent collectors to mint every token, vaulted and reopened the forever OE, and rejected a fourth Limited Edition mint at its three-token lifetime cap.
+  - TzKT independently classified that KT1 as `kind: asset` with `tzips: [fa2]`, indexed supplies `4/4/3`, and indexed exact positive balances for the creator plus both collectors. All 12 recorded operations were applied; all seven public IPFS payloads reproduced their recorded SHA-256 hashes; and all 19 original UI screenshots were visually inspected with clean numeric caps and dates. The accepted manifest SHA-256 is `ed6e4956906ffb1292c63b38e1f364069d9f7d6e0658e9d5012c22a1356935bb`.
 
 ### WTF-BB-408 - Quality Gates run below the supported Node floor and before browser prerequisites
 
@@ -9107,6 +9147,499 @@ Priority labels:
 - Verification:
   - `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, `npm run env:inventory:check`, and `git diff --check` passed.
   - Focused Studio/WIM/Mint/IPFS/WTF LIVE/admin/server policy tests passed 33/33; the focused Chromium Studio journey passed at desktop and 390px; `npm run test:e2e:inventory` passed 659/659.
+
+### WTF-BB-416 - Calendar lacks baseline navigable day, week, and month views
+
+- Category: Calendar / core temporal navigation
+- Status: Verified
+- Owner/Session: Codex Calendar view-navigation pass
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `client/src/pages/Calendar.tsx` offers fixed Today, This week, and This season filters derived from the current clock, with no selected-date state or previous/next navigation.
+  - The existing season mode is an agenda list; there is no month grid, and users cannot inspect yesterday, next week, or a neighboring month without waiting for the real date to change.
+- Why it matters:
+  - Day, week, and month are the minimum spatial models users expect from a calendar. Without them, the surface behaves like an event feed and cannot support planning across dates.
+- Likely correction direction:
+  - Introduce an explicit calendar view and anchor date, shared Previous/Today/Next controls, period labels, and responsive Day, Week, Month, and Agenda renderers without changing source ownership or write APIs.
+- Verification idea:
+  - Exercise all view controls, prove previous/next changes the visible range and query, return to today, select events in each spatial view, and verify the month grid remains contained at a narrow viewport.
+- Resolution:
+  - Replaced the fixed current-clock filters with Day, Week, Month, and Agenda modes backed by one anchor date and range query model.
+  - Added Previous, Today, and Next navigation, live period labels, a six-week month grid, current-day and outside-month states, bounded month event density, and internal narrow-window scrolling while preserving Calendar source, storage, submission, auth, TTC, and Gamma-shell ownership.
+- Verification:
+  - `npm run check -- --pretty false`, the five Calendar presentation policies, `npm run test:e2e:inventory:coverage`, and `npm run build` passed.
+  - Focused Chromium Calendar behavior passed at desktop and 640px; `npm run test:e2e:inventory` passed 659/659.
+
+### WTF-BB-417 - Shared Pasta preflight rejects the current direct-sale contract surface
+
+- Category: Pasta Protocol / Shadownet preflight drift
+- Status: Fixed
+- Owner/Session: Codex Pasta proof-package pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `npm run pasta:shadownet:preflight` reaches the configured Shadownet RPC and TzKT head, then fails its exact Colander action assertion because the compiled Spaghetti artifact now exposes `set_sale` and `set_sale_active`.
+  - The preflight's required entrypoint list and expected action list still describe the pre-primary-commerce contract, even though the signer-backed Spaghetti flow and checked-in artifact now create, configure, and execute direct sales.
+- Why it matters:
+  - The shared no-spend gate blocks every fresh Pasta proof run before wallet balance and contract lifecycle evidence can be trusted.
+  - Removing or bypassing the gate would hide real artifact/adapter drift; it must describe the current shipped contract instead.
+- Likely correction direction:
+  - Update the preflight's required direct-sale entrypoints and expected Colander actions to match the current Spaghetti artifact while retaining exact chain-id, artifact-shape, adapter-detection, and package validation checks.
+- Verification idea:
+  - Reproduce the failure, make the minimal expectation correction, rerun the complete no-spend preflight, and retain focused coverage so future contract capabilities cannot silently outgrow the proof gate.
+- Resolution:
+  - Added `set_sale`, `set_sale_active`, and `buy` to the required current Spaghetti entrypoint surface, and added the two administrator sale actions to the exact Colander action expectation.
+- Verification:
+  - The original failure reproduced deterministically. After the scoped correction, `npm run pasta:shadownet:preflight` passed against Shadownet chain id `NetXsqzbfFenSTS`, a live TzKT head, the checked-in Micheline artifact, shared adapter detection, and the package/relationship metadata plan.
+
+### WTF-BB-432 - Colander loses Macaroni ownership and confirmed write feedback
+
+- Category: Pasta Protocol / Colander adapter ownership and write feedback
+- Status: Fixed
+- Owner/Session: Codex Colander aggregate proof pass
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Macaroni V1/V2 expose blind-mint entrypoints but had no specific shared Colander adapter, so generic FA2 detection won and `toolIdForContractKind` persisted the contract as Spaghetti.
+  - `submitAction()` set a confirmed status and immediately called `openContract()`, whose reading/opened statuses overwrote the only visible transaction result.
+- Why it matters:
+  - Colander is the suite's central manager; routing a Macaroni contract back to Spaghetti breaks owner-app recovery and makes the aggregate project manifest untrustworthy.
+  - Erasing the confirmed result leaves users unable to tell whether a value-bearing management action actually completed after the required state refresh.
+- Correction:
+  - Added a higher-specificity Macaroni V1/V2 adapter, complete Macaroni package/app identity, owner mapping, direct pause controls, and publisher handoffs for complex staged-sale actions.
+  - Passed the terminal confirmation through the refresh path so newly read state and visible write outcome survive together.
+- Verification:
+  - Shared foundation/workspace tests cover both Macaroni generations, owner routing, and malformed package rejection.
+  - Colander's Shadownet-shaped browser inventory now asserts the exact remembered owner route and exact post-refresh confirmation.
+  - The guarded aggregate runner refuses live execution until all eight sibling proof manifests exist and will remain the target-environment verification required to move this item to Verified.
+
+### WTF-BB-436 - Ravioli drops its staged CH-EASE package handoff
+
+- Category: Pasta Protocol / CH-EASE handoff continuity
+- Status: Verified
+- Owner/Session: Codex Ravioli live preflight
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `public/creation-tools/ravioli/js/studio.js` exposes a working manual JSON-file importer, and Ravioli's shared runtime exposes `consumeCheaseHandoff`, but the Studio never invokes `MD.consumeCheaseHandoff("ravioli")`.
+  - The shared `CH-EASE opens Pasta publishers through a same-origin package handoff` policy fails only Ravioli with `ravioli should consume its own CH-EASE handoff`.
+- Why it matters:
+  - A creator entering standalone Ravioli from CH-EASE loses the prepared title, description, relationship, and token recipe references even though the same payload works through manual import.
+  - This breaks the suite-to-standalone continuity required for Ravioli's proof and makes a successful manual path look more integrated than the shipped handoff path.
+- Likely correction direction:
+  - Split parsed-package application from file decoding, feed both manual imports and `MD.consumeCheaseHandoff("ravioli")` through the same validator/application function, and preserve collection relationship fields.
+- Verification idea:
+  - Rerun the focused shared static policy, Ravioli's real Studio/browser five-mode harness, and the production runner's non-live policy gates.
+- Resolution:
+  - Split parsed-package application from file decoding and routed both manual import and `MD.consumeCheaseHandoff("ravioli")` through the same validation and field-population function.
+  - Preserved collection title, symbol, description, relationship fields, and token recipe references while deleting the staged payload after its single use.
+- Verification:
+  - The focused shared CH-EASE handoff policy passes.
+  - Ravioli's real-browser proof stages a v1 CH-EASE collection in `sessionStorage`, opens the actual Studio, verifies the hydrated fields and recipe row, confirms the handoff key is gone, observes no signing bridge request, and passes with no fatal browser events.
+  - The complete Ravioli UI/contract/IPFS policy lane passes 13/13 after the repair.
+
+### WTF-BB-437 - Ravioli free wrapper purchases emit an invalid empty transaction
+
+- Category: Pasta Protocol / Ravioli free primary sale
+- Status: Fixed
+- Owner/Session: Codex Ravioli live preflight
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Ravioli Studio accepts `0` in the wrapper price field and publishes a sale with `price = 0`.
+  - `PastaPackRouterFA2.buy` previously executed `sp.send(sale.treasury, sp.amount)` unconditionally, even when `sp.amount` was zero; Tezos rejects a zero-mutez internal transfer as `contract.empty_transaction`.
+  - The same protocol failure was already reproduced and corrected in Rotini's accepted free-mint proof, so this was a deterministic target-chain defect rather than a speculative concern.
+- Why it matters:
+  - A creator can configure and publish a free Ravioli product that every collector is then unable to acquire through the advertised primary-sale path.
+  - A paid-only proof would conceal the broken zero-price option and fall short of Ravioli's full user-visible capability surface.
+- Correction:
+  - Emit the treasury transfer only when `sp.amount > 0`, while preserving exact-payment checks, wrapper transfer, sale decrement, and paid-sale behavior.
+  - Added a SmartPy free-sale lifecycle, a source guard, and a real Studio/buyer regression whose first pack purchase is zero mutez and whose remaining five purchases are paid.
+  - Regenerated only Ravioli's router Micheline artifact/template and changed the live runner to require TzKT to index the exact payment sequence `[0, 1, 1, 1, 1, 1]` mutez.
+- Verification:
+  - `npm run contract:test:pasta-ravioli` passes all five modes, atomic failures, FA2 invariants, free primary purchase, and fresh compilation.
+  - The regenerated artifact exactly matches fresh SmartPy output, locally forges to 18,870 bytes, and Shadownet's read-only `typecheck_code` accepts it.
+  - Ravioli browser/IPFS/FA2/package gates pass; final status remains Fixed until the scheduled strict-serial UI-LIVE run records the indexed zero-mutez purchase on Shadownet.
+
+### WTF-BB-442 - Final Pasta package hides validated evidence detail
+
+- Category: Pasta Protocol / proof-package reporting and secret boundary
+- Status: Verified
+- Owner/Session: Codex Pasta proof-package report audit
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence:
+  - `validateAppManifest()` enforced complete capability coverage, but `PASTA-PROTOCOL-PROOF.md` printed only capability descriptions and aggregate counts.
+  - Pinned artifact lines omitted explicit CID/IPFS URI/retrieval-hash labels, and zero contract/token counts did not explain CH-EASE, Lasagna, or Colander's intended role boundary.
+  - Only the manifest object and evidence filenames were screened for secrets; JSON/text artifact payloads could carry a credential into the final ZIP.
+- Why it matters:
+  - A developer or alpha reviewer needs to trace every claimed capability to the exact screenshot, TzKT subject, operation, and pinned bytes without reverse-engineering a manifest.
+  - Role-correct absence must not look like incomplete execution, and evidence packaging must not become a route for signer or service credentials.
+- Correction:
+  - Generate `apps/<app>/PROOF.md` for all nine apps plus a linked aggregate matrix and full aggregate evidence sections.
+  - Expose capability-to-evidence mappings, every stage screenshot and digest, direct Shadownet contract/token/operation links, artifact CIDs/IPFS URIs/public gateways/retrieval hashes, and explicit role boundaries.
+  - Require exact TzKT identifier path segments and exact IPFS CID path/subdomain placement, scan artifact bytes for high-confidence credentials, inspect JSON recursively, and retain deterministic sorted ZIP/checksum output.
+- Verification:
+  - `npm run pasta:proof:package:check` passes 11/11, including two byte-identical assemblies, nine generated per-app reports, recomputation of every `SHA-256SUMS` entry, exact-link rejection, and artifact-secret rejection.
+  - A retained synthetic package was inspected as Markdown, JSON, and ZIP: 62 files, nine per-app reports, 61 checksum entries, fixed ZIP timestamps, and archive SHA-256 `fa4882e9650f3a594c6190a778aa18f5de7c4d4a964680df1a1ac5c678dd02a1`; the fixture was then removed.
+  - The strengthened validator accepts current live CH-EASE, Spaghetti, Gnocchi, Rotini, and Penne manifests with 62 stage screenshots, 113 artifacts, four contracts, 34 applied operations, and eight indexed token records in aggregate.
+
+### WTF-BB-443 - Ravioli UI-LIVE storage projection exhausts the Node heap
+
+- Category: Pasta Protocol / UI-LIVE storage projection memory safety
+- Status: Fixed
+- Owner/Session: Codex Ravioli live proof
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The first strictly serialized Ravioli UI-LIVE run reached Shadownet, originated router `KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH`, completed deterministic-vault and blind-funded-pool issuance, and originated Gnocchi adapter `KT1XCTaDR2mFqZUyYFcm6Rz7pmULuQvhuq8d` before V8 exhausted its roughly 4 GB old-space heap.
+  - `RavioliUiStateMirror.project()` copied each adapter's raw Taquito `metadata` `BigMapAbstraction` and returned unknown storage shapes unchanged. The shared bridge recognized only mutable `MichelsonMap` values, then recursively enumerated the abstraction's provider, schema, and context graph.
+  - The incomplete run is isolated under `artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260718a/ravioli-quarantined-oom-20260719T045840Z/` with its seven screenshot/sidecar pairs, terminal OOM excerpt, two-contract storage checkpoint, and all 15 TzKT-indexed applied operations. It is explicitly marked unacceptable as proof and contains no collector purchase or opening.
+- Why it matters:
+  - A storage read performed by the actual Studio could terminate the proof process after irreversible originations and token writes, preventing completion of the five-mode evidence package and wasting creator funds.
+  - A generic recursive serializer is also a cross-app memory and data-exposure boundary: passing provider internals to the browser can retain large RPC graphs and disclose implementation context that no page requires.
+- Correction:
+  - Ravioli now projects adapter storage into fresh, finite `MichelsonMap` values and primitive counters/addresses; unknown storage shapes throw instead of forwarding live Taquito objects.
+  - The shared bridge serializer now allowlists JSON primitives, bounded arrays/plain objects, BigNumber values, and MichelsonMap-like values; it rejects non-plain abstractions before reading their properties and enforces cycle/shared-reference, depth, node, collection, key, and UTF-8 byte budgets.
+  - The production runner records a fixed 1,500,000,000-byte heap ceiling after dependency/configuration validation, Studio configuration, every one of five publishes, every one of six purchases and openings, and final indexed verification. The final receipt includes all samples, the ceiling, and peak heap use.
+- Verification:
+  - Shared bridge tests pass 10/10, including a poisoned BigMap-like provider/schema object with zero getter reads, cycle/shared-reference rejection, collection-budget rejection, and positive MichelsonMap round-trip.
+  - Ravioli's real Studio/buyer fixture passes 6/6: all five modes publish, six independent purchase/open paths complete, adapter poison reads remain zero, unknown storage fails closed, and peak Node heap growth remains below 384 MiB.
+  - Every UI-LIVE harness passes 49/49 serially. Ravioli static/IPFS policies pass 23/23; FA2/desktop package policies pass 14/14; SmartPy fulfillment/atomicity tests and fresh contract compiles pass; strict TypeScript, Shadownet no-write preflight, interaction-inventory coverage, and `git diff --check` pass.
+  - A read-only Taquito projection against the quarantined adapter independently observed raw `BigMapAbstraction` input, fresh `MichelsonMap` output, and a bounded browser payload without a chain write.
+  - Status remains Fixed until a newly authorized, fresh-only Shadownet run completes every pack, purchase, opening, screenshot, pin, TzKT assertion, manifest, and receipt under the recorded heap ceiling.
+
+### WTF-BB-445 - Valid Macaroni fallback operations can be starved by declared gas
+
+- Category: Pasta Protocol / Macaroni manager-operation inclusion
+- Status: Fixed
+- Owner/Session: Codex Macaroni UI-LIVE proof
+- Score: C4 + F5 + S1 + P0(5) = 15
+- Evidence:
+  - Macaroni attempt 6 injected mint operation `ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN` with `gas_limit=480000`, `fee=60880`, and `storage_limit=1300`. Both configured Shadownet RPCs classified it as `validated`, but it remained un-included for the runner's full five-minute terminal window.
+  - At the time of attempt 6, the UI-LIVE browser proxy exposed no `toolkit.estimate`, so the actual exported Macaroni page fell into `estimateWalletOp()`'s conservative `gasPerUnit` fallback even though a current read-only Taquito simulation reported `gasLimit=6909`, `storageLimit=379`, and `consumedMilligas=6908867` for the identical mint.
+  - During the stall, rollup manager operations declared roughly 931,000-938,000 of the protocol's 1,040,000 per-block gas limit. The valid 480,000-gas mint could not fit, while a safely padded estimated operation near 50,000 gas could.
+- Why it matters:
+  - A valid operation can consume a user's counter, remain pending for the protocol TTL, and make the app look broken even though its fee clears mempool minimums and its contract call needs only a small fraction of the declared gas.
+  - The same fallback is shipped in self-hosted Macaroni pages, so an RPC-estimation outage during rollup load can strand real creator or collector actions, not only proof automation.
+- Correction:
+  - The guarded UI-LIVE bridge now exposes bounded `estimate_call` simulation only for the session's preauthorized contract and entrypoint, returns only safe integer estimate fields, emits no write receipt, and rejects arbitrary transfer parameters.
+  - Macaroni now installs that bridge toolkit into the production runtime's lexical estimator through an explicit adapter. Sibling Pasta apps keep their existing bridge behavior because the adapter hook is optional outside Macaroni.
+  - Mint and reveal fallbacks now declare 50,000 gas instead of 480,000/420,000 while retaining conservative fee and storage headroom. Exact integer helpers prove saturated-block fit and the protocol nodes' configured 21/20 replacement-by-fee rule.
+- Verification:
+  - Focused bridge plus actual Macaroni Studio/exported-page tests pass 20/20. They prove V2 and V1 estimate sequences, estimated send options, a deliberately disabled-estimator fallback, arbitrary-estimate rejection, saturated-block boundaries, and positive plus negative 21/20 replacement arithmetic.
+  - The complete UI-LIVE harness passes 51/51 serially across Colander, Gnocchi, Lasagna, Macaroni V2/V1, Penne, all five Ravioli modes, Rotini, and Spaghetti. Macaroni/FA2/desktop policies pass 18/18; JavaScript syntax, public/desktop byte parity, strict isolated TypeScript, interaction-inventory coverage, and scoped diff checks pass.
+  - The stranded operation eventually applied at level 4,255,182 with 5,402 gas used. Both configured RPCs then reported collector counter 23,833,802 and no copy in any mempool bucket, so no replacement was injected. The incomplete run remains excluded under `artifacts/pasta-protocol-proof-runs/discarded/pasta-alpha-proof-20260718a-macaroni-mempool-inclusion-timeout-attempt-6/`, and the aggregate `<run>/macaroni` path is absent before attempt 7.
+  - Status remains Fixed at the code and regression level; capability acceptance still requires a newly authorized fresh Macaroni attempt to complete both generations and emit its full manifest and terminal receipt.
+
+### WTF-BB-446 - Distinct proof stages can reuse byte-identical screenshots
+
+- Category: Pasta Protocol / screenshot evidence integrity
+- Status: Fixed
+- Owner/Session: Codex accepted-live audit remediation
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Spaghetti stages 007 (`sale opened`) and 008 (`complete`) both declare PNG SHA-256 `6854043fb2f8fc1693a848b603d612cb276d907554238d10a6050bc6938cf9b6`.
+  - The stage-008 sidecar records a later timestamp and additional `#ppNotice` DOM evidence, but the screenshot pixels are unchanged because the completion notice is not brought into the captured viewport.
+  - `validateAppManifest()` requires unique stage ids but does not require distinct screenshot bytes across distinct stage ordinals.
+- Why it matters:
+  - A manifest can satisfy per-stage coverage while presenting the same visual evidence twice, forcing a reviewer to trust off-screen DOM sidecar text instead of the requested screenshot.
+  - The aggregate package currently treats two labels around one image as two independently evidenced stages.
+- Likely correction direction:
+  - Bring the terminal completion notice into the fixed viewport before the final Spaghetti capture and require the assembler to reject byte-identical screenshot hashes assigned to distinct stages.
+- Verification idea:
+  - Add a negative assembler fixture with two unique stage ids sharing one screenshot digest, and a focused Spaghetti runner regression that requires a visible/focused `#ppNotice` before the terminal capture.
+- Correction:
+  - The Spaghetti UI-LIVE runner now assigns `#ppNotice` a proof-only focus target, scrolls it to the center of the fixed viewport, focuses it, and verifies its complete bounding rectangle is visible before stage 008 is captured.
+  - The assembler now rejects any two distinct stages in one app that share the same screenshot SHA-256; synthetic fixtures generate distinct screenshot bytes and include the exact duplicate-stage negative.
+- Verification:
+  - The real Spaghetti Studio fixture proves the completion notice is focused and fully inside the viewport, and proves the sale-opened/completion screenshot digests differ.
+  - The full Spaghetti browser suite passes 3/3, the package assembler suite passes 15/15, and strict TypeScript passes.
+  - Fresh Shadownet replacement contract `KT1L6QfNDBRXZkECFo9QpfjGF4qyBnizTara` applied origination, `create_token`, `mint`, `set_sale`, and independent-collector `buy`; TzKT classifies it as an FA2 asset with token 0 supply 2 and two holders.
+  - Promoted manifest SHA-256 `1071ddef83d3e57f848c9eb950299828e0b47544115bec445744cdaffe3278b9` passes with 13 unique screenshot hashes, 20 artifacts, one contract, one token, five applied operations, and three capabilities. Stages 007 and 008 now differ as `e42ab4e81888fcd69042c34afab94345ae5e0e5b9f1ff94b148776bb62406263` versus `e2243bd5f7ab2101fd286d9d879de4f2e6ec791f3fc7ac470149e0f1f8a08db7`.
+  - The previous valid-chain/duplicate-image lane is preserved under `artifacts/pasta-protocol-proof-runs/discarded/pasta-alpha-proof-20260718a-spaghetti-duplicate-terminal-screenshot-attempt-2/`; the fresh lane also passed the signer-free portable ZIP/extracted-origin supplement and exact public-IPFS byte retrieval.
+
+### WTF-BB-447 - Gnocchi proof omits an immutable proof-time token-state snapshot
+
+- Category: Pasta Protocol / historical indexer evidence
+- Status: Fixed
+- Owner/Session: Codex accepted-live audit remediation
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence:
+  - Gnocchi's accepted manifest identifies three indexed tokens but records neither expected supply/holder counts nor a manifest-bound TzKT token snapshot.
+  - After the accepted Gnocchi run completed at `2026-07-19T04:15:01.231Z`, quarantined Ravioli router `KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH` received Gnocchi tokens at levels 4254906, 4254919, and 4254921; token 1 now has four live holders instead of its proof-time three.
+  - Current-state token queries therefore cannot distinguish the accepted lifecycle result from later, unrelated contract use.
+- Why it matters:
+  - Mutable token balances are expected, but a release proof must preserve the state at its own last accepted operation so later transfers do not rewrite the meaning of historical evidence.
+  - Without request/response hashes and a level-bound snapshot, an auditor cannot reproduce the exact supply and holder assertions represented by the accepted screenshots.
+- Likely correction direction:
+  - Derive the terminal accepted operation level from TzKT, query TzKT historical balances at that level, calculate deterministic per-token supply/holders, pin the canonical request/response snapshot, and make token records explicitly reference it.
+- Verification idea:
+  - Use fixtures containing later Ravioli balances to prove the supplement selects the accepted-operation level, excludes later mutations, hashes canonical request/response bytes, and is accepted only when every Gnocchi token binds to the historical snapshot artifact.
+- Correction:
+  - Added an explicitly gated, signer-free Gnocchi supplement that revalidates every accepted operation against TzKT, derives the maximum accepted level, queries each token through `historical_balances/{level}` with the required contract/token filters, and canonicalizes proof-time balances, supply, and holders.
+  - The supplement binds exact GET URL hashes, raw response hashes, canonical response hashes, current-balance comparisons, and later holder mutations into one deterministic JSON artifact, pins it through the existing Kubo/public-gateway harness, and augments each Gnocchi token with the artifact id, proof level, supply, and holders.
+  - The assembler requires exactly one pinned historical snapshot for Gnocchi, cross-checks its operations/token set and computed balance totals, and exposes proof-time state plus the snapshot CID in generated reports.
+- Verification:
+  - Fixture tests pass 4/4, including deterministic byte identity, exact level derivation, later Ravioli balance separation, manifest augmentation without source mutation, and failed-operation rejection.
+  - A live read-only dry run derived level 4,254,512 and proof-time states token 0 `4/3`, token 1 `4/3`, token 2 `3/3`, while separately recording current token 1 as `4/4` because of router `KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH`.
+  - The assembler suite passes 15/15 and strict TypeScript passes. The accepted Gnocchi manifest intentionally fails closed until the new artifact is pinned and linked; this pass did not mutate it or perform a chain write.
+
+### WTF-BB-448 - Macaroni V1 proof combines evidence from mutually exclusive Studio tabs
+
+- Category: Pasta Protocol / Macaroni screenshot evidence choreography
+- Status: Fixed
+- Owner/Session: Codex Macaroni UI-LIVE proof
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Fresh Macaroni attempt 7 completed the V2 lifecycle and originated/synchronized a V1 FA2, then failed closed while capturing V1 stage 12: required selector `#deployStatus` was present but not visible.
+  - The runner switched from the Drop tab to the Page Designer tab before stage 12, then required `#deployStatus` and `#log` from the hidden Drop panel together with visible `#exportStatus` from Page Designer. No viewport could honestly show all three because the panels are mutually exclusive.
+  - The incomplete run has no V1 collector mint, terminal indexer verification, manifest, or receipt and is not acceptable as aggregate proof.
+- Why it matters:
+  - Combining hidden DOM state with a visible export screenshot would make one image appear to prove two states the reviewer cannot actually inspect.
+  - A successful V1 contract and export still need separate, visibly auditable sync and self-hosted-site evidence before human alpha testing.
+- Correction:
+  - V1 stage 12 now captures the applied sync outcome immediately while the Drop tab and `#secDeploy` remain visible, requiring only visible `#deployStatus` and `#log` evidence.
+  - V1 stage 13 switches to Page Designer, exports the standalone site, and requires only visible `#btnExport` and `#exportStatus` evidence. Collector-open and collector-mint stages shift to 14 and 15, and both capability slices reference the added Studio checkpoint.
+  - Attempt 7 is wholly quarantined outside the aggregate with a rejection record and exact partial-chain inventory covering both FA2 contracts, all eight applied operations, the indexed V2 token, ten pinned CIDs, eleven screenshot digests, and both exported ZIP digests.
+- Verification:
+  - The new source-order test failed before the patch, then the focused screenshot/bridge/actual-Macaroni suite passed 29/29. It proves present-but-hidden required evidence still fails with no output and the actual V1 Studio captures visible sync before visible export.
+  - The Macaroni test helper now performs the same explicit `scrollIntoViewIfNeeded()` choreography as the production runner instead of passing an unsupported excess `focusSelector` property. Both V1 checkpoints assert that the selected evidence target intersects the screenshot viewport, and strict TypeScript covers the production plus test import graph.
+  - The complete UI-LIVE harness passes 52/52 serially across every Pasta app. Strict isolated TypeScript, 18/18 Macaroni/FA2/desktop policies, JavaScript syntax, public/desktop byte parity, interaction-inventory coverage, quarantine JSON parsing, aggregate freshness, and scoped diff checks pass.
+  - Status remains Fixed at the code and regression level; acceptance still requires a newly authorized fresh-only attempt to complete all 15 stages, both contracts, both tokens, final TzKT/IPFS verification, manifest, and receipt.
+
+### WTF-BB-449 - Macaroni terminal verifier treats an inactive TzKT tombstone as unconsumed inventory
+
+- Category: Pasta Protocol / Macaroni TzKT terminal verification
+- Status: Fixed
+- Owner/Session: Codex Macaroni UI-LIVE proof
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Fresh attempt 8 completed all 15 visible stages, both fresh FA2 contracts, both collector mints, the V2 reveal, and both supply/wallet boundaries, then exited 1 without a manifest or receipt.
+  - V1 contract `KT1CfBLs39jwtPCkfKsfud41XAPKtjmYvNoe` ended locked with supply/minted/revealed `1/1/1`; TzKT indexed token 0 and the collector balance, but `/v1/bigmaps/28940/keys` retained the consumed pending token as a row with `active:false`.
+  - `verifyV1TzktEvidence()` required that no row with key 0 exist at all, so its 30-attempt/4-second poll could never accept TzKT's normal inactive tombstone representation.
+- Why it matters:
+  - A complete successful product flow was rejected after irreversible writes because the verifier confused historical big-map evidence with active contract state.
+  - Loosening the predicate to accept any matching row would be equally unsafe; active inventory must still fail, and malformed or ambiguous indexer data must not pass as consumed.
+- Correction:
+  - Macaroni now uses one exact natural-key predicate for historical TzKT big-map responses. No matching row and matching `active:false` tombstones prove consumption; any matching active row, missing/wrong activity marker, invalid key, malformed row, or malformed response fails closed.
+  - The V1 production verifier calls that predicate directly for pending token 0. The sibling audit found Lasagna, Penne, and Rotini already query `active=true` for absence or explicitly treat every activity value except literal `false` as active.
+  - Attempt 8 is wholly quarantined outside the aggregate with a rejection record, the exact raw tombstone, both FA2 contracts and indexed tokens, all nine applied operations, ten publicly retrieved CID/hash pairs, fifteen screenshot hashes, two exported ZIP hashes, and the pre-injection `SOLD_OUT` boundary.
+- Verification:
+  - The test-first regression failed on the missing helper export, then the actual Macaroni V2/V1 Studio and exported-page suite passed 11/11 with positive absent/inactive cases and active, missing-marker, wrong-marker-type, mixed-row, malformed-response, malformed-row, invalid-key, negative, and fractional-key negatives.
+  - Quarantine JSON parses and all fifteen screenshot plus both archive hashes revalidate against their retained bytes; `<run>/macaroni` remains absent and neither manifest nor receipt exists for the rejected attempt.
+  - Status remains Fixed until a newly authorized fresh-only attempt completes terminal TzKT/IPFS verification and emits the accepted manifest and receipt.
+
+### WTF-BB-453 - Explicit recovery estimates were not bound to the subsequent sends
+
+- Category: Pasta Protocol / deterministic recovery submission
+- Status: Fixed
+- Owner/Session: Codex Ravioli recovery estimator binding
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - The authorized recovery successfully produced both exact estimates and its immutable intent, then the first `method(...).send()` called Taquito without `fee`, `gasLimit`, or `storageLimit`. Taquito entered `RPCEstimateProvider.transfer` again and timed out after 120 seconds in the account-reveal read before signing or injection.
+  - The recovery's validation plan expected four `validateCall` callbacks by concatenating estimates and submissions. The bridge intentionally invokes that callback only for live `call` actions; both real operations could therefore have applied before the post-write count assertion failed at two.
+- Why it matters:
+  - A successful bounded preflight did not actually bound the submission path, leaving a network-dependent second simulation between the retained intent and signing.
+  - Miscounting estimate parsing as live-call validation could suppress the final recovery receipt after both intended supply mutations, forcing another quarantine despite correct on-chain state.
+- Correction:
+  - Added one strict estimate-and-submit coordinator that issues exactly two fixed `estimate_call` requests, binds each response to its indexed exact call, derives exact `gasLimit` and `storageLimit`, and sends the larger estimated fee plus a fixed 100-mutez tip with zero tez.
+  - The coordinator requires both estimates before its intent callback and passes all three manager limits to each subsequent `send()`, so Taquito's contract provider cannot invoke its estimator again. Receipt validation recomputes the exact send options and rejects any drift.
+  - Live-call validation now expects exactly the two fixed mint calls. Estimate safety remains separately enforced by the bridge's contract/entrypoint parser and the coordinator's exact indexed call binding.
+- Verification:
+  - The regression failed first because the production coordinator did not exist. A fake provider then allowed exactly the two authorized estimate requests and threw on any automatic third estimate; both submissions succeeded only with exact fee/gas/storage options, in exact order, after both estimates, while validation observed exactly two live calls.
+  - The combined recovery, real-page Ravioli, bridge, and Ravioli IPFS suites pass 34/34; assembler, shared IPFS, and FA2 policies pass 22/22; strict TypeScript and full diff checks pass.
+  - No signer, injection, recovery retry, evidence mutation, or Ravioli run was performed; the original `AUTHORIZED-NOT-YET-SUBMITTED` intent remains the recovery directory's only file with SHA-256 `516c59b9b5856a4f47d1c726b597766b86619dad7eced1e52634411c724cbd0a`.
+
+### WTF-BB-456 - Sale-open Ravioli pages conceal fully reserved pack backing
+
+- Category: Pasta Protocol / atomic-pack buyer state
+- Status: Fixed (code-level; controlled Shadownet execution pending)
+- Owner/Session: Codex Ravioli sale/open state repair
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The Ravioli public site's sale-open branch sets `#chainState` to `Primary sale open` and returns before displaying whether the v3 pack is finalized, non-cancelled, and fully reserved.
+  - After every successful atomic open, the live runner intentionally waits for `#chainState` to include `fully reserved`; a pack with remaining primary inventory reloads into the sale-open branch instead, so the correct universal reserve assertion times out.
+- Why it matters:
+  - Primary-sale availability and recipe backing answer different buyer questions. Showing only the sale state hides whether the wrapper product has enforceable backing, while dropping the reserve assertion from proof would weaken the promised atomic-pack evidence.
+  - A correct Shadownet open can therefore be stranded without a screenshot even though the transaction applied, creating another unsafe false-negative point in a signer-backed proof run.
+- Likely correction direction:
+  - Make the sale-open Ravioli state communicate both remaining primary-sale availability and finalized pack backing in one stable status string, while retaining the existing non-sale fully-reserved state.
+  - Strengthen the real-page fixture, live runner, static policy, and inventory-owned browser story so both states are exact, visible, and regression covered.
+- Verification idea:
+  - Reproduce the sale-open state with a finalized pack and remaining sale inventory, require the combined text before and after an open, separately require the existing no-sale fully-reserved state, then run Ravioli's real-page suite, inventory coverage/browser workflow, strict TypeScript, JavaScript syntax, parity, and diff checks without any signer or chain access.
+- Correction:
+  - The shared public-site runtime now derives one `fullyReserved` state from the pack's finalized/cancelled flags and renders exact `Primary sale open · fully reserved` copy whenever primary inventory remains; the existing no-sale branch still reports the exact live wrapper count plus `fully reserved`.
+  - The production runner declares the expected post-open state for all six openings and waits for exact text, so the first blind funded-pool open proves the combined sale/backing state while every exhausted-sale opening proves the counted backing state. All six public copies remain byte-identical to the canonical site kit.
+  - The interaction inventory, behavior registry, static policy, and exported-page browser story now own the combined buyer-visible state.
+- Verification:
+  - The new real-page regression failed first after 30 seconds on the first blind funded-pool open because the page exposed only `Primary sale open`; after the correction, the complete real Ravioli Studio/buyer suite passes 8/8 across five modes and six atomic openings with zero poisoned big-map reads.
+  - The Pasta static policy passes 15/15; shared runtime JavaScript syntax and exact seven-copy SHA-256 parity pass; the production build and targeted exported buy/mint/claim/atomic-pack browser story pass; interaction-inventory coverage remains complete for all 225 rows, 946 handles, 115 routes, and 16 workflows; global strict TypeScript passes.
+  - No RPC, wallet, signer, pin, evidence mutation, or chain write was used. Status remains Fixed until the resumed Shadownet proof captures the corrected sale-open screenshot after an applied opening.
+
+### WTF-BB-455 - Applied UI-LIVE operations fail when Taquito confirmation polling times out
+
+- Category: Pasta Protocol / UI-LIVE operation confirmation
+- Status: Fixed
+- Owner/Session: Codex confirmation fallback
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - `TaquitoPastaUiLiveSession` awaits `operation.confirmation(1)` before invoking its independently supplied `assertOperationApplied` verifier for originate, batch, and call actions.
+  - When Taquito raises `ConfirmationTimeoutError` after an operation has already applied and been indexed, the exact-hash verifier is unreachable, no receipt is emitted, and a caller can misread an applied write as safe to retry.
+- Why it matters:
+  - Blindly retrying an already-applied operation can duplicate authorized writes or consume the next signer counter, while blindly swallowing confirmation errors could accept failed or unrelated operations.
+- Correction:
+  - `TaquitoPastaUiLiveSession` now recognizes only Taquito's named `ConfirmationTimeoutError`. It treats that timeout as recoverable only when the Node-owned `assertOperationApplied` callback accepts the exact submitted hash, contract, and entrypoint set; every other confirmation error, missing verifier, rejecting verifier, or origination without Taquito's exact originated KT1 remains a hard failure.
+  - Call and batch recovery invokes no second `send()`. Origination recovery uses Taquito's already-derived `contractAddress` and never calls `operation.contract()`, which would repeat the failed confirmation poll. Receipts and contract authorization still occur only after either normal confirmation plus applied verification or the exact-hash timeout fallback.
+- Verification:
+  - The test-first reproducer failed with `ConfirmationTimeoutError` before the correction. The focused bridge suite now passes 14/14, covering call, batch, and originate recovery; exact verifier payloads; one submit and one confirmation attempt per action; verifier absence/rejection; unrelated confirmation errors; missing origination address; receipt suppression; and no fallback `contract()` call.
+  - Strict isolated TypeScript passes for the bridge source and test. No RPC, signer, injection, pin, evidence mutation, or chain write was performed.
+
+### WTF-BB-452 - Ravioli open-kit nonces were memory-only until final proof completion
+
+- Category: Pasta Protocol / recoverable product output
+- Status: Fixed
+- Owner/Session: Codex Ravioli open-kit persistence
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - The real Ravioli Studio automatically downloaded `ravioli-open-kit-N.json` after each pack finalized, but the UI-LIVE runner read only the textarea value into memory and never retained the downloaded file in proof artifacts.
+  - A blind pack's random recipe nonces are the only values that let holders open already-issued wrappers. The quarantined OOM attempt demonstrated that a process can fail after irreversible pack funding but before the final manifest is written.
+- Why it matters:
+  - Losing the process erased a core Ravioli product output and could make live wrapper tokens permanently unopenable even when the router, backing, metadata, and transaction history survived.
+  - Publishing blind open kits to IPFS before openings would solve durability by leaking every nonce early, defeating the intended blind reveal choreography.
+- Correction:
+  - The production runner now awaits the actual Playwright download triggered by every real `#btnPublish` action, requires the exact filename, compares exact download bytes to the in-page kit JSON plus Studio newline, parses and validates the kit again, and writes it immediately under `ravioli/artifacts/open-kits/`.
+  - Every capture atomically advances a local PARTIAL/CAPTURED progress record with token, mode, path, digest, and `ipfsPinned:false`, leaving completed earlier kits available if a later stage is quarantined.
+  - Final proof writing re-reads and revalidates all five files, declares each as an unpinned `open-kit` artifact, links one to every mode capability, links blind kits 1-4 to reveal evidence, and documents that they remain local until all wrappers open and become spent-nonce evidence.
+- Verification:
+  - The test failed first on the missing production validator. The real-page fake-chain loop then passed while awaiting and validating all five actual browser download events; the complete Ravioli suite passed 8/8.
+  - The proof assembler passed 15/15 with a Ravioli kit containing a non-credential 64-hex recipe nonce, proving the secret scan preserves valid opening data while the artifact has no IPFS pin fields.
+  - No live recovery or Ravioli operation was signed or injected during this correction. Status remains Fixed until the fresh Shadownet run produces all five durable kits and the final assembled proof accepts them.
+
+### WTF-BB-451 - Quarantined Ravioli writes consumed accepted Gnocchi dependency inventory
+
+- Category: Pasta Protocol / immutable dependency inventory
+- Status: Claimed
+- Owner/Session: Codex Ravioli dependency recovery
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - Quarantined router `KT1MqcjkuKQuZXpShy4jsomTKoSpCDtv1KqH` still owns Gnocchi token 0 ×2 and token 1 ×1 after the OOM run committed two pack recipes.
+  - Accepted Gnocchi creator `tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM` now owns token 0 ×0 and token 1 ×1, while `validateRavioliDependencies()` requires exactly 2/2 before any fresh Ravioli pin or write.
+  - The abandoned router wrappers remain live, but their random open-kit nonces were not retained in the quarantined evidence, so the escrow cannot be recovered through a verifiable ordinary opening.
+- Why it matters:
+  - A previous failed proof changed mutable dependency inventory without changing the accepted historical Gnocchi proof. Bypassing the fresh runner's gate would either underfund pack escrow or hide an unexplained supply mutation.
+  - Ad hoc admin minting could repair balances but would leave no cross-bound evidence that the exact accepted contract, administrator, counters, operations, and before/after state were used.
+- Likely correction direction:
+  - Add one explicitly gated, strict-serial recovery harness that cross-binds the accepted Gnocchi manifest and receipt, requires the exact observed pre-state, estimates and submits only token0 +2/token1 +1 administrator mints through the guarded proof session, and writes an isolated immutable recovery receipt.
+  - Preserve byte hashes for the accepted Gnocchi manifest, UI-LIVE receipt, and historical snapshot before and after recovery; never rewrite those accepted files.
+- Verification idea:
+  - Use fixtures to reject wrong run/contract/admin/network, wrong balances/supplies, counter gaps, wrong entrypoints/payloads, failed TzKT rows, missing estimates, or changed accepted-file hashes. Run only no-write tests until the shared signer lane is explicitly cleared.
+- Correction:
+  - Added a dedicated `ravioli-dependency-recovery` harness behind `PASTA_SHADOWNET_RAVIOLI_RECOVERY_EXECUTE=1`. It accepts only the exact accepted run, Gnocchi contract, administrator, Shadownet chain id, and observed pre-state; forbids address/admin/resume overrides and all IPFS pinning; and estimates both exact `mint` calls before submitting either.
+  - The harness requires clear, agreeing creator counters and balances from both configured RPCs; validates exact applied TzKT transaction rows, signer, target, entrypoint, payload, consecutive counters, and terminal 2/2 balances with 6/5 supplies; then rehashes the accepted Gnocchi manifest, receipt, and historical snapshot before writing a separate recovery receipt.
+  - The fresh Ravioli runner now refuses to estimate, pin, create `<run>/ravioli`, or write to chain until it validates that isolated recovery receipt against the accepted dependency hashes. Its eventual proof writer copies the exact recovery bytes and binds their hash and accepted-evidence hashes in the dependency snapshot, run receipt, every relevant capability, artifact list, and final manifest.
+- Verification:
+  - Test-first recovery fixtures passed 6/6, including wrong execution authority, run/network/contract/administrator, balance/supply drift, wrong TzKT status/counter/payload, accepted-file hash mutation, counter gaps, and source-policy restrictions.
+  - The final combined recovery, real-page Ravioli, bridge, and IPFS suites passed 33/33 after adding durable open-kit capture; the assembler, FA2 layout, shared IPFS, Ravioli desktop, and Pasta-suite desktop policies passed 35/35; strict TypeScript and full diff checks passed.
+  - No recovery harness or fresh Ravioli runner was executed in this correction pass. Status remains Fixed until an explicitly authorized recovery produces the target-environment receipt and the subsequent fresh Ravioli proof validates and embeds it.
+
+### WTF-BB-450 - Ravioli proof manifest omits reveal ownership and exact delivered-token links
+
+- Category: Pasta Protocol / Ravioli proof mapping
+- Status: Fixed
+- Owner/Session: Codex Ravioli proof-surface remediation
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - The UI-LIVE runner captures stage 25 under `reveal exact pinned pack manifests`, but `writeRavioliProofPackage()` emits only the five pack-mode capabilities. No capability references the reveal screenshot or the four applied `set_pack_contents` operations.
+  - The terminal verifier proves delivered Gnocchi token ids and generated Rotini token ids 3/4 inside `ravioli-ui-live-tzkt-index.json`, while the five mode capability URLs link only the dependency contract roots. The generated per-app report therefore lacks direct TzKT links to the exact enclosed/delivered tokens.
+- Why it matters:
+  - A screenshot that is not owned by a declared capability cannot prove that capability in the assembled reviewer package.
+  - Contract-root links force reviewers to reconstruct which child assets each pack delivered, falling short of the requested token-level proof for allocated, generative, and hybrid products.
+- Likely correction direction:
+  - Emit one explicit blind-manifest reveal capability bound to stage 25, the pinned blind manifests, wrapper tokens 1-4, and the exact `set_pack_contents` operations.
+  - Add deterministic per-mode TzKT URLs for every delivered Gnocchi token and newly generated Rotini token without changing contract or live transaction behavior.
+- Verification idea:
+  - Unit-test exact per-mode child-token URL construction and reveal-capability evidence ownership, then run the focused Ravioli UI-LIVE, assembler, TypeScript, and proof-policy gates.
+- Correction:
+  - Added deterministic per-mode child-token URL construction for the exact delivered Gnocchi token ids and the two Rotini token ids generated at opening.
+  - Added an explicit `blind-manifest-reveal-ui-live-proof` capability that requires exactly one reveal screenshot, four pinned blind manifests, wrapper tokens 1-4, and four `set_pack_contents` operations before a manifest can be written.
+  - Kept all contract artifacts, entrypoints, payloads, signer policy, and live transaction choreography unchanged.
+- Verification:
+  - The new regression failed first because the proof helpers did not exist, then the complete Ravioli real-page UI-LIVE suite passed 7/7 with all five modes, six buys/opens, one-use CH-EASE handoff, bounded storage projection, and the new proof mapping assertion.
+  - The package assembler passed 15/15; shared bridge plus Ravioli IPFS policies passed 19/19; FA2 plus Ravioli desktop policies passed 8/8; strict TypeScript passed.
+  - Fresh Shadownet execution is still required to convert this code-level Fixed status into target-environment proof.
+
+### WTF-BB-457 - Failed Ravioli proof inventory must be recovered through native wrapper openings
+
+- Category: Pasta Protocol / native pack recovery
+- Status: Claimed
+- Owner/Session: Codex Ravioli native recovery
+- Score: C4 + F5 + S4 + P0(5) = 18
+- Evidence:
+  - Failed router `KT1E1Emw46UTwRiVknHUreNvfcvAd7X8KZ2m` still has exact persisted Studio open kits in immutable quarantined lane `pasta-alpha-proof-20260718a-ravioli-sale-open-visual-predicate-attempt-2`.
+  - The creator owns wrapper token 1 serial 1 plus wrapper tokens 2, 3, and 4. Opening all four through ordinary `open_pack` restores Gnocchi token 0 ×2 and token 1 ×2, generates Rotini tokens 3 and 4, and exhausts every adapter reservation instead of stranding project capacity.
+  - Privileged replacement minting would bypass the actual Ravioli product mechanic, inflate accepted dependency supplies beyond committed pack behavior, and leave live wrappers/backing stranded.
+- Why it matters:
+  - Recovery is itself evidence that shipped Ravioli packs remain usable after an off-chain proof runner fails; an administrator-only repair would not prove that user-facing guarantee.
+  - Open-kit nonces and generated-at-open payloads are sensitive capability material. Any target, token, recipe, action, metadata, or pin substitution could consume an irreplaceable wrapper without restoring the expected inventory.
+- Likely correction direction:
+  - Implemented a separate explicitly gated, strict-serial Shadownet native recovery harness bound to the exact router, all 36 pre-rejection evidence-file hashes, immutable kit bytes, creator, wrapper ownership, dependency contracts, recipe choices, and expected before/after state.
+  - The exact ten-call plan closes all five public sales before any wrapper consumption, re-reads the complete sale-off/creator-owned state to catch a buyer race, opens tokens 1/2/3/4, and creates fresh project 3. It binds aggregate fee plus burn affordability, dual-RPC counters and mempools, public IPFS retrieval/hashes, durable intent/progress/checkpoint/receipt files, exact TzKT operation trees, and a signer-free reconciliation path.
+- Verification idea:
+  - `npm run pasta:proof:ravioli-native-recovery:check` passes 9/9. Isolated strict TypeScript for the source and test passes. The correction pass performed no signer, pin, or chain writes; the explicit live execution flag remains required before converting this Fixed status into Shadownet proof.
+
+### WTF-BB-458 - Prototype-sensitive call equality blocked canonical recovery payloads
+
+- Category: Pasta Protocol / guarded signer bridge validation
+- Status: Fixed
+- Owner/Session: Codex Ravioli native recovery live pass
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The first authorized native-recovery attempt completed evidence, IPFS, state, and ten-estimate preflight, then failed inside `validateCall` on its first `set_sale_active` request because the guarded bridge intentionally decoded the payload into an object with a null prototype.
+  - The payload keys and values were exact, but `assert.deepStrictEqual` treated the bridge-owned prototype as evidence drift. Validation ran before `contract.at()` and `send()`; both RPCs remained at creator counter `23831465`, the signer mempool was empty, no recovery progress existed, and TzKT's latest creator operation remained counter `23831465`.
+- Why it matters:
+  - A security boundary must compare the authorized data model, not incidental JavaScript prototypes introduced by its own safe decoder. Prototype-sensitive equality can reject a valid exact call after costly public pinning and estimation even though no signer action is attempted.
+- Correction:
+  - Native recovery call validation now canonicalizes both the bridge-decoded call and the immutable expected plan into fresh plain objects before strict comparison, while preserving exact target, entrypoint, keys, values, array order, and rejection of extra or changed fields.
+  - Added a regression using a null-prototype payload and a changed-value negative case. The no-write attempt is retained as rejected evidence rather than reused.
+- Verification idea:
+  - Run the focused native-recovery suite, isolated strict TypeScript, scoped diff check, dual-RPC counter/mempool checks, and exact pre-state validation before a fresh explicitly authorized attempt.
+
+### WTF-BB-459 - Reused collector browser made Ravioli real-page coverage intermittently hang
+
+- Category: Pasta Protocol / browser proof reliability
+- Status: Fixed
+- Owner/Session: Codex Ravioli fresh-run gate
+- Score: C2 + F3 + S1 + P0(5) = 11
+- Evidence:
+  - A repeated nine-test Ravioli UI-live pass completed eight tests but spent more than seventeen minutes in the five-mode browser fixture before the final collector page timed out during local `page.goto`.
+  - The production runner creates and closes one browser per buyer page, while the fixture reused one Chromium process across six separate contexts.
+  - The failure occurred entirely in the UI-MOCK fixture; no signer, IPFS pin, proof directory, or Shadownet operation was touched.
+- Why it matters:
+  - Harness-only process reuse can produce false release blockers and obscures whether a failure belongs to the product, browser lifecycle, or chain transaction.
+  - A flaky gate immediately before an irreversible live run creates pressure to bypass verification or replay without evidence.
+- Correction:
+  - The fixture now launches and deterministically closes a fresh Chromium process for every collector page, matching the production proof runner's lifecycle.
+  - Fresh-run integration also received explicit proof-operation and open-kit artifact types so the exact evidence path passes isolated strict TypeScript.
+- Verification:
+  - The targeted five-mode real-page fixture passed in 9.7 seconds with all twelve buy/open actions and zero browser events.
+  - The complete Ravioli UI-live suite passed 9/9 in 10.8 seconds; native-recovery checks passed 10/10; assembler checks passed 15/15; isolated strict TypeScript passed.
+
+### WTF-BB-460 - Release fixtures drifted from the shipped Pasta protocol surface
+
+- Category: Pasta Protocol / release fixture parity
+- Status: Verified
+- Owner/Session: Codex full-send release gate repair
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Ravioli's real Studio fixture expected the new Gnocchi allocation token id but omitted it from dependency evidence and still typed token `0` into the actual Studio, causing mode 2 to fail before its open-kit download.
+  - Ravioli's delivered-token URL assertion hard-coded allocation token `0` even though the production constant is `1`.
+  - Rotini's desktop package policy omitted the compiled `mint_pack_iteration` entrypoint, and Spaghetti's local collector proof fetched metadata from a public IPFS gateway that returned HTTP 504.
+- Why it matters:
+  - A production release gate cannot distinguish protocol regression from fixture drift when the fixture duplicates values instead of importing their canonical constant.
+  - A local proof that depends on a public gateway can block deployment without testing a changed product boundary.
+- Correction:
+  - Ravioli now imports and uses `RAVIOLI_GNOCCHI_ALLOCATION_TOKEN_ID` for dependency evidence, Studio input, and explorer-link expectations, while a missing download reports the complete Studio log and monitored browser events.
+  - Rotini's desktop policy includes `mint_pack_iteration`, and Spaghetti's fixture serves deterministic metadata from its own intercepted proof origin.
+  - Calendar's personal-event assertion now selects the first visible occurrence because the one-hour default can legitimately cross midnight and render the event in two adjacent day cells.
+- Verification:
+  - `npx tsx --test scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts` passed 9/9.
+  - `npx tsx --test scripts/pasta-protocol/shadownet-spaghetti-ui-live.test.ts` passed 3/3.
+  - `node --test scripts/rotini-desktop-package-policy.test.mjs` passed 6/6.
 
 ## Backlog Intake Template
 

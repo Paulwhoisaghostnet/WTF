@@ -1,0 +1,67 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "attempt": "20260719T0501Z-tzkt-prototype-mismatch",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "status": "REJECTED_AFTER_COMPLETE_V2_BEFORE_V1",
+  "observedAt": "2026-07-19T05:04:00Z",
+  "reason": "The actual Studio and exported collector site completed the entire V2 lifecycle: fresh FA2 origination, inventory and stage configuration, sealed mint, 1/1 wallet-limit UI state, disabled duplicate submission, exact WALLET_LIMIT direct-chain rejection, permissionless reveal, exact final metadata, and eight screenshots. All five injected operations were applied. The runner then stopped before V1 because its exact metadata verifier used strict deep object equality between semantically identical plain JSON and the hardened bridge's null-prototype JSON objects. The SHA-256 and every key/value matched; only object prototypes differed. The attempt is excluded because the required V1 lane and final manifest were never produced.",
+  "macaroniEvidence": {
+    "contractAddresses": [
+      "KT1FXzFiRTVMnrtRzorLRVgdkq4SyPgL4TsF"
+    ],
+    "operationHashes": [
+      "oom7MKNM4djuowDXsF887zV2ihkFhq6LjfcffUBdwauCjT5FxbT",
+      "oogrdpZzvGLn3iKuhg7N5PZpazpcrNy5ouGPUA4KRFAQmrNRbJ5",
+      "oow66pPxUdSmM99BSg1io8YqzadpJP2ZoHPuk5DCZV6YV2UNDJU",
+      "oorbaRMRXrRfJSYTePztffzKuA8M1FiY4jgRWTSH4fJc5GoLCv6",
+      "ooUFUqK6Ffpb8HKcSoxCnCPmQ4tYsrkEWYM57GZYEVnKu83j6zA"
+    ],
+    "completedVisualStages": [
+      "V2 Studio configuration",
+      "V2 exact media and metadata pinning",
+      "V2 fresh FA2 origination",
+      "V2 inventory and one-per-wallet stage synchronization",
+      "standalone collector ZIP export",
+      "independent exported collector site opened",
+      "sealed token mint and 1/1 wallet-limit enforcement",
+      "permissionless reveal of exact final artwork"
+    ],
+    "completedChainStages": [
+      "fresh V2 FA2 origination",
+      "add_tokens_v2 quantity 2",
+      "set_stages max_per_wallet 1",
+      "collector mint quantity 1 for 1000 mutez",
+      "direct duplicate mint rejected with WALLET_LIMIT before injection",
+      "collector permissionless reveal quantity 1",
+      "TzKT FA2 token total supply 1 and collector balance 1",
+      "final token_metadata URI installed on-chain"
+    ],
+    "notExecutedAfterTerminalDefect": [
+      "V1 fresh origination",
+      "V1 instant-mint path",
+      "V1 SOLD_OUT UI and chain boundary",
+      "combined manifest and receipt assembly"
+    ],
+    "acceptedForFinalPackage": false
+  },
+  "terminalAssertion": {
+    "source": "scripts/pasta-protocol/shadownet-macaroni-ui-live.ts:1291",
+    "assertion": "assert.deepEqual(JSON.parse(retrievedMetadataBytes), finalMetadataPin.value)",
+    "actualRepresentation": "ordinary Object prototypes from JSON.parse",
+    "expectedRepresentation": "Object.create(null) prototypes from the hardened bridge decoder",
+    "keysAndValuesMatch": true,
+    "retrievedSha256MatchesPinnedSha256": true,
+    "classification": "proof-verifier representation defect; no contract, token, metadata, or IPFS mismatch"
+  },
+  "evidenceFiles": {
+    "chain": "attempt5-chain-evidence.json",
+    "screenshots": "screenshots/001-008*.png",
+    "screenshotDomEvidence": "artifacts/screenshot-001-008*.json",
+    "exportedSite": "artifacts/self-hosted-site/",
+    "exportedZip": "artifacts/macaroni-site.zip"
+  }
+}

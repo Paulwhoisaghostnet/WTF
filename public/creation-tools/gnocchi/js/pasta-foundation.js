@@ -11,6 +11,7 @@ export const RELATIONSHIP_METADATA_KEY = "relationships";
 export const CHEASE_PACKAGE_SCHEMA_VERSION = "wtfos.pasta.chease-package.v1";
 
 const PASTA_APP_IDS = [
+  "macaroni",
   "spaghetti",
   "gnocchi",
   "ravioli",

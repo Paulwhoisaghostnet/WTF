@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ch-ease",
+  "capability": "Pin prepared media",
+  "stageOrdinal": 2,
+  "stageName": "Media pinned and verified",
+  "url": "http://127.0.0.1:57722/creation-tools/ch-ease/index.html?network=shadownet",
+  "timestampUtc": "2026-07-18T23:33:24.215Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2086ba123999c03a1e72b7855320b3898b9976f4f2678f09aef7599a31e8a939",
+  "byteCount": 93523,
+  "domEvidence": [
+    {
+      "selector": "#status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 media file pinned. The package is ready for publisher handoff."
+    },
+    {
+      "selector": "#summary",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 item · 1 file loaded · 1 durable · spaghetti collection"
+    },
+    {
+      "selector": ".item-note",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "image/png selected · durable URI ready."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-PRE-SUBMISSION",
+  "app": "ravioli-dependency-recovery",
+  "attempt": 1,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "reason": "Both explicit estimates completed, but the first send started an unintended Taquito estimate and timed out before signing or injection because the accepted estimate limits were not bound to send().",
+  "intentSha256": "516c59b9b5856a4f47d1c726b597766b86619dad7eced1e52634411c724cbd0a",
+  "postFailureAudit": {
+    "auditedAt": "2026-07-19T10:25:56Z",
+    "headLevel": 4258217,
+    "headHash": "BM78oLUyGsPBUPqtNz7P7GZ8F3btZFyNciQk3XPy3oqALoJL8yY",
+    "creatorCounter": 23831419,
+    "creatorMempoolOperations": 0,
+    "appliedRecoveryOperations": 0,
+    "tokenBalances": {
+      "0": 0,
+      "1": 1
+    },
+    "totalSupplies": {
+      "0": 4,
+      "1": 4
+    }
+  },
+  "acceptance": {
+    "mayBeCombinedWithAcceptedProof": false,
+    "mayBeResumed": false,
+    "freshAttemptRequired": true
+  }
+}

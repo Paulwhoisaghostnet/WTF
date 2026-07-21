@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "permissionless reveal",
+  "stageOrdinal": 8,
+  "stageName": "Collector revealed exact final artwork",
+  "url": "http://127.0.0.1:57132/index.html",
+  "timestampUtc": "2026-07-19T05:57:01.168Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2622e2cab91bf9e3a1d4310f1a8b652da5dce09be1f71b7bb337dec207446939",
+  "byteCount": 74606,
+  "domEvidence": [
+    {
+      "selector": "#brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet"
+    },
+    {
+      "selector": "#title",
+      "name": "drop title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#supplyText",
+      "name": "final supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 / 2 minted · 1 remaining"
+    },
+    {
+      "selector": "#revealGrid [data-token-id=\"0\"]",
+      "name": "final metadata",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni Revealed Proof minted by you X Bluesky"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

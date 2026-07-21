@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "configure collector and creator allocations",
+  "stageOrdinal": 6,
+  "stageName": "allocations loaded",
+  "url": "http://127.0.0.1:61579/creation-tools/penne/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Apenne-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:40:21.922Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "132b09824f34506fb41db16a6bc43e1a7480acff3c9924f51b363998717f51b9",
+  "byteCount": 151486,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Penne"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:39:48 AM imported \"Penne UI-LIVE Distribution Token\" from CH-EASE handoff 12:39:49 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:39:50 AM pinning collection metadata… 12:39:50 AM pinning token metadata… 12:39:51 AM originating distribution contract (sign in wallet)… 12:39:59 AM contract deployed: KT1Di38dfxiKXdMyBHUMbA6kYndNXs3Y67gy 12:39:59 AM explorer: https://shadownet.tzkt.io/KT1Di38dfxiKXdMyBHUMbA6kYndNXs3Y67gy 12:39:59 AM registering claimable token product (sign in wallet)… 12:40:10 AM token id 0 registered ✓ 12:40:10 AM loading allocations 1/1 (2 recipients, sign in wallet)… 12:40:21 AM allocations loaded: 2/2 12:40:21 AM done — 2 allocations live on KT1Di38dfxiKXdMyBHUMbA6kYndNXs3Y67gy. Choose a distribution mode below."
+    },
+    {
+      "selector": "#sumTotal",
+      "name": "total allocated editions",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "3"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

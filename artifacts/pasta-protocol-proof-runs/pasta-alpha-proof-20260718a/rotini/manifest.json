@@ -1,0 +1,618 @@
+{
+  "app": "rotini",
+  "artifacts": [
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "id": "pin-001-generator-preview",
+      "ipfsUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "kind": "generator-preview",
+      "path": "artifacts/pins/001-creator-rotini-collection-preview.png",
+      "retrievedSha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027",
+      "sha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "id": "pin-002-generator-layer",
+      "ipfsUri": "ipfs://bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/002-creator-rotini-layer-1.png",
+      "retrievedSha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a",
+      "sha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "id": "pin-003-generator-layer",
+      "ipfsUri": "ipfs://bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/003-creator-rotini-layer-2.png",
+      "retrievedSha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9",
+      "sha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibr4cwbxuchsgfbdsoyviiyajfxbiawwgavrk3j3fzafr5och4vsm",
+      "id": "pin-004-generator-metadata",
+      "ipfsUri": "ipfs://bafkreibr4cwbxuchsgfbdsoyviiyajfxbiawwgavrk3j3fzafr5och4vsm",
+      "kind": "generator-metadata",
+      "path": "artifacts/pins/004-creator-rotini-generator.json",
+      "retrievedSha256": "31e0ac1bd047918a11c9d8aa118024b70a016b18158ab69d97202c7ae11f9593",
+      "sha256": "31e0ac1bd047918a11c9d8aa118024b70a016b18158ab69d97202c7ae11f9593"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreick7x376fzsu5mdv43p6j2okmwhwet5xc2ef5vooh45zxaps3llq4",
+      "id": "pin-005-collection-metadata",
+      "ipfsUri": "ipfs://bafkreick7x376fzsu5mdv43p6j2okmwhwet5xc2ef5vooh45zxaps3llq4",
+      "kind": "collection-metadata",
+      "path": "artifacts/pins/005-creator-collection.json",
+      "retrievedSha256": "4afdf7ff1732a7583af36ff274e532c7b127db8b442f6ae71f9dcdc0f96d6b87",
+      "sha256": "4afdf7ff1732a7583af36ff274e532c7b127db8b442f6ae71f9dcdc0f96d6b87"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "id": "pin-006-generator-preview",
+      "ipfsUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "kind": "generator-preview",
+      "path": "artifacts/pins/006-creator-rotini-collection-preview.png",
+      "retrievedSha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027",
+      "sha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "id": "pin-007-generator-layer",
+      "ipfsUri": "ipfs://bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/007-creator-rotini-layer-1.png",
+      "retrievedSha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a",
+      "sha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "id": "pin-008-generator-layer",
+      "ipfsUri": "ipfs://bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/008-creator-rotini-layer-2.png",
+      "retrievedSha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9",
+      "sha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicalvruxvuojgwdpelc6ggapftl2jnopn3o6nt3i7jfojpfrp4o5y",
+      "id": "pin-009-generator-metadata",
+      "ipfsUri": "ipfs://bafkreicalvruxvuojgwdpelc6ggapftl2jnopn3o6nt3i7jfojpfrp4o5y",
+      "kind": "generator-metadata",
+      "path": "artifacts/pins/009-creator-rotini-generator.json",
+      "retrievedSha256": "405d634bd68e49ac379162f18c07966bd25ae7b76ef367b47d25725e58bf8eee",
+      "sha256": "405d634bd68e49ac379162f18c07966bd25ae7b76ef367b47d25725e58bf8eee"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "id": "pin-010-generator-preview",
+      "ipfsUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "kind": "generator-preview",
+      "path": "artifacts/pins/010-creator-rotini-collection-preview.png",
+      "retrievedSha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027",
+      "sha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "id": "pin-011-generator-layer",
+      "ipfsUri": "ipfs://bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/011-creator-rotini-layer-1.png",
+      "retrievedSha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a",
+      "sha256": "688f5c347f707ec8aebd60066f4c738ba707221882d7847aea3c75ae58e7942a"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "id": "pin-012-generator-layer",
+      "ipfsUri": "ipfs://bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+      "kind": "generator-layer",
+      "path": "artifacts/pins/012-creator-rotini-layer-2.png",
+      "retrievedSha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9",
+      "sha256": "17935ef836f553ce354bb630e45ed39cbe19225dfcdc5bfa76c4b06ef56b89d9"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreie33iypaydku775utnw32fssimcb3rjl53fsdkuezgdyouyvhvv2a",
+      "id": "pin-013-generator-metadata",
+      "ipfsUri": "ipfs://bafkreie33iypaydku775utnw32fssimcb3rjl53fsdkuezgdyouyvhvv2a",
+      "kind": "generator-metadata",
+      "path": "artifacts/pins/013-creator-rotini-generator.json",
+      "retrievedSha256": "9bda30f0606aa7ffda4db6de8b2921820ee295f76590d54264c3c3a98a9eb5d0",
+      "sha256": "9bda30f0606aa7ffda4db6de8b2921820ee295f76590d54264c3c3a98a9eb5d0"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "id": "pin-014-token-media",
+      "ipfsUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "kind": "token-media",
+      "path": "artifacts/pins/014-collector-rotini-0.png",
+      "retrievedSha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027",
+      "sha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaqkidblrui3v4scvaxa5qudsbbzvvknjwnqsukf6farnfkc3ii4i",
+      "id": "pin-015-token-metadata",
+      "ipfsUri": "ipfs://bafkreiaqkidblrui3v4scvaxa5qudsbbzvvknjwnqsukf6farnfkc3ii4i",
+      "kind": "token-metadata",
+      "path": "artifacts/pins/015-collector-rotini-0.json",
+      "retrievedSha256": "10520615c688dd79215417076141c821cd6aa6a6cd84a8a2f8a08b4aa16d08e2",
+      "sha256": "10520615c688dd79215417076141c821cd6aa6a6cd84a8a2f8a08b4aa16d08e2"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreieuyhvxraongjp4rp4ttf4zdg7qi3vjsqdxxwve6pmih25a2xzxym",
+      "id": "pin-016-token-media",
+      "ipfsUri": "ipfs://bafkreieuyhvxraongjp4rp4ttf4zdg7qi3vjsqdxxwve6pmih25a2xzxym",
+      "kind": "token-media",
+      "path": "artifacts/pins/016-collector-rotini-1.gif",
+      "retrievedSha256": "94c1eb7881cd325fc8bf939979919bf046ea994077bdaa4f3d883eba0d5f37c3",
+      "sha256": "94c1eb7881cd325fc8bf939979919bf046ea994077bdaa4f3d883eba0d5f37c3"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiceqjfformjqedxairo3zxeeuce7k6vgekjhoxn32anajncigokam",
+      "id": "pin-017-token-metadata",
+      "ipfsUri": "ipfs://bafkreiceqjfformjqedxairo3zxeeuce7k6vgekjhoxn32anajncigokam",
+      "kind": "token-metadata",
+      "path": "artifacts/pins/017-collector-rotini-1.json",
+      "retrievedSha256": "44824a574589810770222ede6e425044fabd5311493baedde80d025a2419ca03",
+      "sha256": "44824a574589810770222ede6e425044fabd5311493baedde80d025a2419ca03"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreieetsklmpta5cs5ippysgpz4a4y3a6dbpm7ebc6j6busrfqxa2n6q",
+      "id": "pin-018-token-media",
+      "ipfsUri": "ipfs://bafkreieetsklmpta5cs5ippysgpz4a4y3a6dbpm7ebc6j6busrfqxa2n6q",
+      "kind": "token-media",
+      "path": "artifacts/pins/018-collector-rotini-2.zip",
+      "retrievedSha256": "849c94b63e60e8a5d43df8919f9e0398d83c30bd9f2045e4f834944b0b834df4",
+      "sha256": "849c94b63e60e8a5d43df8919f9e0398d83c30bd9f2045e4f834944b0b834df4"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "id": "pin-019-token-display",
+      "ipfsUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "kind": "token-display",
+      "path": "artifacts/pins/019-collector-rotini-2-cover.png",
+      "retrievedSha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027",
+      "sha256": "ec707191c9c375bf470e375764b9e55a9490b8888d3d97985b6e21d0cb044027"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreigqjvwumciu7mbh5l7ixwvbfgsjf6snd2tzrahkuqhmjcetycil4y",
+      "id": "pin-020-token-metadata",
+      "ipfsUri": "ipfs://bafkreigqjvwumciu7mbh5l7ixwvbfgsjf6snd2tzrahkuqhmjcetycil4y",
+      "kind": "token-metadata",
+      "path": "artifacts/pins/020-collector-rotini-2.json",
+      "retrievedSha256": "d04d6d460914fb027eafe8bdaa129a492fa4d1ea79880eaa40ec48893c090be6",
+      "sha256": "d04d6d460914fb027eafe8bdaa129a492fa4d1ea79880eaa40ec48893c090be6"
+    },
+    {
+      "id": "screenshot-sidecar-001-configure-deterministic-generator-png-gif-and-zip-generator-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-configure-deterministic-generator-png-gif-and-zip-generator-configured.json",
+      "sha256": "294e44d22869ce5a5b7dfc38eebb681382949395bdaf16fc0d0c2a0d7999818a"
+    },
+    {
+      "id": "screenshot-sidecar-002-connect-creator-signer-creator-connected-to-shadownet",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-connect-creator-signer-creator-connected-to-shadownet.json",
+      "sha256": "858ad94cfdf307c0a1679f8a9f0b1abfaf5f10d2044026f267a94b51eb18108c"
+    },
+    {
+      "id": "screenshot-sidecar-003-publish-png-generator-png-project-pinned-and-published",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-publish-png-generator-png-project-pinned-and-published.json",
+      "sha256": "c0ec224db1f70e290781cbf56b6ca8ffbe2ee5146e03373c81b84cd38e1effa6"
+    },
+    {
+      "id": "screenshot-sidecar-004-publish-gif-generator-gif-project-pinned-and-published",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-publish-gif-generator-gif-project-pinned-and-published.json",
+      "sha256": "0f51323736d737850f13d2d538279b6c2a5def2d43d9e67c1e585bb15d2898f7"
+    },
+    {
+      "id": "screenshot-sidecar-005-publish-zip-generator-zip-project-pinned-and-published",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-005-publish-zip-generator-zip-project-pinned-and-published.json",
+      "sha256": "320f0ab4f3b33b5336f91d70f15a3e66061ecd8220c6bd4bbf0577eb7fd0aa06"
+    },
+    {
+      "id": "screenshot-sidecar-006-load-public-collector-mint-independent-collector-loaded-png-project",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-006-load-public-collector-mint-independent-collector-loaded-png-project.json",
+      "sha256": "cf0574cce5250cf461b8bebf8cd8cbbe3643a22c7f11a3e2d74a42f59b04c21d"
+    },
+    {
+      "id": "screenshot-sidecar-007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized.json",
+      "sha256": "6be019adc4e7f91a558ad390be68483902d77495b7b7b795046a3435de9d2af4"
+    },
+    {
+      "id": "screenshot-sidecar-008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized.json",
+      "sha256": "a7d8abb041d2e9aa67088d3999b5e9f54f7f62b246c1d22e4d40c5134eaf632b"
+    },
+    {
+      "id": "screenshot-sidecar-009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized.json",
+      "sha256": "1675bd4f2553bb6c00239b0e956e7f7db8aded389d1e1d88846d3601d5094e52"
+    },
+    {
+      "id": "rotini-ui-live-run",
+      "kind": "proof-receipt",
+      "path": "artifacts/rotini-ui-live-run.json",
+      "sha256": "470f5c8ee75946a1ab467bf8f83a033c4757dee3caa03b256c8026ebc0d0049e"
+    },
+    {
+      "id": "rotini-ui-live-tzkt-index",
+      "kind": "indexer-evidence",
+      "path": "artifacts/rotini-ui-live-tzkt-index.json",
+      "sha256": "50d1183b0f32209b333e48c6400263d1b3ecb5ab8fef8d22d3689b3efa458ad4"
+    },
+    {
+      "id": "rotini-portable-self-hosted-site",
+      "kind": "self-hosted-site-package",
+      "path": "artifacts/rotini-portable-self-hosted-site.zip",
+      "sha256": "4964a46aa5f69f99566a6e0bd976406d262184ba5017333eff379681ff922ebf"
+    },
+    {
+      "id": "rotini-portable-self-hosted-site-proof",
+      "kind": "self-hosted-site-proof",
+      "path": "artifacts/rotini-portable-self-hosted-site-proof.json",
+      "sha256": "0b708842183eb4aa5157267b02822b50a808bbbde1faed6b6d00cf84a3122aeb"
+    },
+    {
+      "id": "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-901-portable-self-hosted-site-actual-studio-export-complete.json",
+      "sha256": "083cc6dff96d79c9cd690b79967aad2401f686015412d8a22a6686635df54774"
+    },
+    {
+      "id": "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-902-portable-self-hosted-site-extracted-page-live-independently.json",
+      "sha256": "889697232b130c271530c1c8561482f429cacd46f9f15d693b32e2d3214b54f4"
+    }
+  ],
+  "capabilities": [
+    {
+      "description": "Use the actual Rotini studio to pin generator inputs, originate one fresh collection, and publish PNG, animated GIF, and offline interactive ZIP projects; PNG project 0 remains free with two unreserved iterations for Ravioli generated-at-open packs.",
+      "evidence": {
+        "artifacts": [
+          "pin-001-generator-preview",
+          "pin-002-generator-layer",
+          "pin-003-generator-layer",
+          "pin-004-generator-metadata",
+          "pin-005-collection-metadata",
+          "pin-006-generator-preview",
+          "pin-007-generator-layer",
+          "pin-008-generator-layer",
+          "pin-009-generator-metadata",
+          "pin-010-generator-preview",
+          "pin-011-generator-layer",
+          "pin-012-generator-layer",
+          "pin-013-generator-metadata"
+        ],
+        "contracts": [
+          "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T"
+        ],
+        "operations": [
+          "ooKJG9hGCG2hyVmANRqww5Jq3U4jE91xduirtwK61Biov5CQrWd",
+          "opXgzeFBf641tZ8VQBSzxk7dcxzBNuWGvB7qa4DZgt8keAr9Fob",
+          "onuYTtpYS2dqbcpxrYC6DJzP63vESthmU1guk58LGgho2aYY6YK",
+          "ooNyE1dL3a7K8PatxH7jx1qyJaCv8CJ3XNaBnrdHQCn825oUdkq"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "001-configure-deterministic-generator-png-gif-and-zip-generator-configured",
+          "002-connect-creator-signer-creator-connected-to-shadownet",
+          "003-publish-png-generator-png-project-pinned-and-published",
+          "004-publish-gif-generator-gif-project-pinned-and-published",
+          "005-publish-zip-generator-zip-project-pinned-and-published"
+        ],
+        "tokens": [],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+          "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+          "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+          "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+          "https://ipfs.io/ipfs/bafkreibr4cwbxuchsgfbdsoyviiyajfxbiawwgavrk3j3fzafr5och4vsm",
+          "https://ipfs.io/ipfs/bafkreick7x376fzsu5mdv43p6j2okmwhwet5xc2ef5vooh45zxaps3llq4",
+          "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+          "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+          "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+          "https://ipfs.io/ipfs/bafkreicalvruxvuojgwdpelc6ggapftl2jnopn3o6nt3i7jfojpfrp4o5y",
+          "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+          "https://ipfs.io/ipfs/bafkreidir5odi73qp3ek5plaazxuy44lu4dsegec26chv2r4owxfrz4ufi",
+          "https://ipfs.io/ipfs/bafkreiaxsnppqnxvkphdks5wgdsf5u44xymsexp43rn7u5wewbxpk24j3e",
+          "https://ipfs.io/ipfs/bafkreie33iypaydku775utnw32fssimcb3rjl53fsdkuezgdyouyvhvv2a"
+        ]
+      },
+      "id": "publish-png-gif-zip-generators"
+    },
+    {
+      "description": "Use an independent collector signer through the actual Rotini public mint UI to reserve immutable seeds, render and pin every supported output, and finalize three FA2 tokens.",
+      "evidence": {
+        "artifacts": [
+          "pin-014-token-media",
+          "pin-015-token-metadata",
+          "pin-016-token-media",
+          "pin-017-token-metadata",
+          "pin-018-token-media",
+          "pin-019-token-display",
+          "pin-020-token-metadata",
+          "screenshot-sidecar-001-configure-deterministic-generator-png-gif-and-zip-generator-configured",
+          "screenshot-sidecar-002-connect-creator-signer-creator-connected-to-shadownet",
+          "screenshot-sidecar-003-publish-png-generator-png-project-pinned-and-published",
+          "screenshot-sidecar-004-publish-gif-generator-gif-project-pinned-and-published",
+          "screenshot-sidecar-005-publish-zip-generator-zip-project-pinned-and-published",
+          "screenshot-sidecar-006-load-public-collector-mint-independent-collector-loaded-png-project",
+          "screenshot-sidecar-007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized",
+          "screenshot-sidecar-008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized",
+          "screenshot-sidecar-009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized",
+          "rotini-ui-live-run",
+          "rotini-ui-live-tzkt-index"
+        ],
+        "contracts": [
+          "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T"
+        ],
+        "operations": [
+          "opDRYFf84gFyeF3JxWaAfUwNxQn5HUavWvzVSWYv89d7Mmca5h2",
+          "ooUQFzucB41Z2K3NYnoPHs6bTkxPbgWRC2Fa1AWXdZz14CnPAfV",
+          "op1FUCLes1PxtAhG6D2c3ngJiK3YebqkBjHu52ixiNz13NdzdrD",
+          "opWszZnMWRhZsGP3Cc4N1z84XSDKJQQRa6mh8FEV3u994vY1tiN",
+          "opNv3bdZDeLStxVA7mKzSTAv6EpoTN6szXa7zXiuf2qScDFk6X6",
+          "oo1Sstm29VP3ud1GvFNXYocVd8jyQmae5t8tmBZNo795CaMqRP3"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "006-load-public-collector-mint-independent-collector-loaded-png-project",
+          "007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized",
+          "008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized",
+          "009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized"
+        ],
+        "tokens": [
+          "rotini-png-token-0",
+          "rotini-gif-token-1",
+          "rotini-zip-token-2"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/0",
+          "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/1",
+          "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/2",
+          "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+          "https://ipfs.io/ipfs/bafkreiaqkidblrui3v4scvaxa5qudsbbzvvknjwnqsukf6farnfkc3ii4i",
+          "https://ipfs.io/ipfs/bafkreieuyhvxraongjp4rp4ttf4zdg7qi3vjsqdxxwve6pmih25a2xzxym",
+          "https://ipfs.io/ipfs/bafkreiceqjfformjqedxairo3zxeeuce7k6vgekjhoxn32anajncigokam",
+          "https://ipfs.io/ipfs/bafkreieetsklmpta5cs5ippysgpz4a4y3a6dbpm7ebc6j6busrfqxa2n6q",
+          "https://ipfs.io/ipfs/bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+          "https://ipfs.io/ipfs/bafkreigqjvwumciu7mbh5l7ixwvbfgsjf6snd2tzrahkuqhmjcetycil4y"
+        ]
+      },
+      "id": "reserve-render-pin-finalize-tokens"
+    },
+    {
+      "description": "Use the actual Rotini Studio to export the same-run Shadownet contract/token as a dependency-complete ZIP, validate every packaged byte and config value, extract it, and load its on-chain state from an ordinary static loopback host with no Objkt, Teia, or wtfOS dependency.",
+      "evidence": {
+        "artifacts": [
+          "rotini-portable-self-hosted-site",
+          "rotini-portable-self-hosted-site-proof",
+          "screenshot-sidecar-901-portable-self-hosted-site-actual-studio-export-complete",
+          "screenshot-sidecar-902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "contracts": [
+          "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T"
+        ],
+        "operations": [],
+        "roleEvidence": [],
+        "screenshots": [
+          "901-portable-self-hosted-site-actual-studio-export-complete",
+          "902-portable-self-hosted-site-extracted-page-live-independently"
+        ],
+        "tokens": [
+          "rotini-png-token-0"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/0"
+        ]
+      },
+      "id": "portable-self-hosted-site"
+    }
+  ],
+  "capturedAt": "2026-07-19T04:18:46.189Z",
+  "contracts": [
+    {
+      "address": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "kind": "generative-collection"
+    }
+  ],
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet",
+    "rpcUrl": "https://tezos-shadownet.octez.io"
+  },
+  "operations": [
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/ooKJG9hGCG2hyVmANRqww5Jq3U4jE91xduirtwK61Biov5CQrWd",
+      "hash": "ooKJG9hGCG2hyVmANRqww5Jq3U4jE91xduirtwK61Biov5CQrWd",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "create_project",
+      "explorerUrl": "https://shadownet.tzkt.io/opXgzeFBf641tZ8VQBSzxk7dcxzBNuWGvB7qa4DZgt8keAr9Fob",
+      "hash": "opXgzeFBf641tZ8VQBSzxk7dcxzBNuWGvB7qa4DZgt8keAr9Fob",
+      "kind": "publish",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "create_project",
+      "explorerUrl": "https://shadownet.tzkt.io/onuYTtpYS2dqbcpxrYC6DJzP63vESthmU1guk58LGgho2aYY6YK",
+      "hash": "onuYTtpYS2dqbcpxrYC6DJzP63vESthmU1guk58LGgho2aYY6YK",
+      "kind": "publish",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "create_project",
+      "explorerUrl": "https://shadownet.tzkt.io/ooNyE1dL3a7K8PatxH7jx1qyJaCv8CJ3XNaBnrdHQCn825oUdkq",
+      "hash": "ooNyE1dL3a7K8PatxH7jx1qyJaCv8CJ3XNaBnrdHQCn825oUdkq",
+      "kind": "publish",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "reserve_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/opDRYFf84gFyeF3JxWaAfUwNxQn5HUavWvzVSWYv89d7Mmca5h2",
+      "hash": "opDRYFf84gFyeF3JxWaAfUwNxQn5HUavWvzVSWYv89d7Mmca5h2",
+      "kind": "reserve",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "finalize_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/ooUQFzucB41Z2K3NYnoPHs6bTkxPbgWRC2Fa1AWXdZz14CnPAfV",
+      "hash": "ooUQFzucB41Z2K3NYnoPHs6bTkxPbgWRC2Fa1AWXdZz14CnPAfV",
+      "kind": "finalize",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "reserve_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/op1FUCLes1PxtAhG6D2c3ngJiK3YebqkBjHu52ixiNz13NdzdrD",
+      "hash": "op1FUCLes1PxtAhG6D2c3ngJiK3YebqkBjHu52ixiNz13NdzdrD",
+      "kind": "reserve",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "finalize_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/opWszZnMWRhZsGP3Cc4N1z84XSDKJQQRa6mh8FEV3u994vY1tiN",
+      "hash": "opWszZnMWRhZsGP3Cc4N1z84XSDKJQQRa6mh8FEV3u994vY1tiN",
+      "kind": "finalize",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "reserve_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/opNv3bdZDeLStxVA7mKzSTAv6EpoTN6szXa7zXiuf2qScDFk6X6",
+      "hash": "opNv3bdZDeLStxVA7mKzSTAv6EpoTN6szXa7zXiuf2qScDFk6X6",
+      "kind": "reserve",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "entrypoint": "finalize_iteration",
+      "explorerUrl": "https://shadownet.tzkt.io/oo1Sstm29VP3ud1GvFNXYocVd8jyQmae5t8tmBZNo795CaMqRP3",
+      "hash": "oo1Sstm29VP3ud1GvFNXYocVd8jyQmae5t8tmBZNo795CaMqRP3",
+      "kind": "finalize",
+      "status": "applied"
+    }
+  ],
+  "role": "token-publisher",
+  "roleEvidence": [],
+  "runId": "pasta-alpha-proof-20260718a",
+  "schema": "pastaprotocol-app-proof@1",
+  "screenshots": [
+    {
+      "caption": "rotini: configure deterministic generator — PNG GIF and ZIP generator configured",
+      "path": "screenshots/001-configure-deterministic-generator-png-gif-and-zip-generator-configured.png",
+      "sha256": "05a312c5067146d2a534e1db21f57c350278e43b2740d45b63e24f71a844c592",
+      "stage": "001-configure-deterministic-generator-png-gif-and-zip-generator-configured"
+    },
+    {
+      "caption": "rotini: connect creator signer — Creator connected to Shadownet",
+      "path": "screenshots/002-connect-creator-signer-creator-connected-to-shadownet.png",
+      "sha256": "c042701717500cfa35a872404802bec2fbffd35aa6eb6d651068a2625e48b3dd",
+      "stage": "002-connect-creator-signer-creator-connected-to-shadownet"
+    },
+    {
+      "caption": "rotini: publish PNG generator — PNG project pinned and published",
+      "path": "screenshots/003-publish-png-generator-png-project-pinned-and-published.png",
+      "sha256": "a9eca90d3d4d2ecbcefbaef75fee25fb54ce96dea0827025ebb521b42eb0e9df",
+      "stage": "003-publish-png-generator-png-project-pinned-and-published"
+    },
+    {
+      "caption": "rotini: publish GIF generator — GIF project pinned and published",
+      "path": "screenshots/004-publish-gif-generator-gif-project-pinned-and-published.png",
+      "sha256": "d1bd375c347c470ff59461060ca74f4e320538981b51f0fa161f14a43d1c6cac",
+      "stage": "004-publish-gif-generator-gif-project-pinned-and-published"
+    },
+    {
+      "caption": "rotini: publish ZIP generator — ZIP project pinned and published",
+      "path": "screenshots/005-publish-zip-generator-zip-project-pinned-and-published.png",
+      "sha256": "9a8bdb66ede530df5493f62ff6172de783745337ed6fb6067278ac56fa61a8a0",
+      "stage": "005-publish-zip-generator-zip-project-pinned-and-published"
+    },
+    {
+      "caption": "rotini: load public collector mint — Independent collector loaded PNG project",
+      "path": "screenshots/006-load-public-collector-mint-independent-collector-loaded-png-project.png",
+      "sha256": "588bb2622544d7cfd64579caf1bc77db62ae056e30b0087f8459c05b9b32c275",
+      "stage": "006-load-public-collector-mint-independent-collector-loaded-png-project"
+    },
+    {
+      "caption": "rotini: collector finalize PNG token — PNG token reserved rendered pinned and finalized",
+      "path": "screenshots/007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized.png",
+      "sha256": "c0729ee3a6530badc3f4c2a4b7eaf4e349219f0b6110694c068a8552b90b975d",
+      "stage": "007-collector-finalize-png-token-png-token-reserved-rendered-pinned-and-finalized"
+    },
+    {
+      "caption": "rotini: collector finalize GIF token — GIF token reserved rendered pinned and finalized",
+      "path": "screenshots/008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized.png",
+      "sha256": "847e9bb9ecc32b22504a9bd0f6a7a4eb3bf76ad4942d03a9a385f8d34ad0dfbc",
+      "stage": "008-collector-finalize-gif-token-gif-token-reserved-rendered-pinned-and-finalized"
+    },
+    {
+      "caption": "rotini: collector finalize ZIP token — ZIP token reserved rendered pinned and finalized",
+      "path": "screenshots/009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized.png",
+      "sha256": "87095ab2ffcd1d1888545d82bd42cb9f48aa35e8623f56002dfb1a8a87bed683",
+      "stage": "009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized"
+    },
+    {
+      "caption": "rotini: portable self-hosted site — actual studio export complete",
+      "path": "screenshots/901-portable-self-hosted-site-actual-studio-export-complete.png",
+      "sha256": "53266c493bce9a96102db3f8fbf19d074061dd7f133c1b0a278ac959e61c872a",
+      "stage": "901-portable-self-hosted-site-actual-studio-export-complete"
+    },
+    {
+      "caption": "rotini: portable self-hosted site — extracted page live independently",
+      "path": "screenshots/902-portable-self-hosted-site-extracted-page-live-independently.png",
+      "sha256": "1e989e34a8885b4e8636bd4dbd3d25203b8ae24ad7c73df987e59a23fced2b40",
+      "stage": "902-portable-self-hosted-site-extracted-page-live-independently"
+    }
+  ],
+  "tokens": [
+    {
+      "artifactUri": "ipfs://bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/0",
+      "id": "rotini-png-token-0",
+      "mediaArtifactId": "pin-014-token-media",
+      "metadataArtifactId": "pin-015-token-metadata",
+      "metadataUri": "ipfs://bafkreiaqkidblrui3v4scvaxa5qudsbbzvvknjwnqsukf6farnfkc3ii4i",
+      "tokenId": "0"
+    },
+    {
+      "artifactUri": "ipfs://bafkreieuyhvxraongjp4rp4ttf4zdg7qi3vjsqdxxwve6pmih25a2xzxym",
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/1",
+      "id": "rotini-gif-token-1",
+      "mediaArtifactId": "pin-016-token-media",
+      "metadataArtifactId": "pin-017-token-metadata",
+      "metadataUri": "ipfs://bafkreiceqjfformjqedxairo3zxeeuce7k6vgekjhoxn32anajncigokam",
+      "tokenId": "1"
+    },
+    {
+      "artifactUri": "ipfs://bafkreieetsklmpta5cs5ippysgpz4a4y3a6dbpm7ebc6j6busrfqxa2n6q",
+      "contractAddress": "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T/tokens/2",
+      "id": "rotini-zip-token-2",
+      "mediaArtifactId": "pin-018-token-media",
+      "metadataArtifactId": "pin-020-token-metadata",
+      "metadataUri": "ipfs://bafkreigqjvwumciu7mbh5l7ixwvbfgsjf6snd2tzrahkuqhmjcetycil4y",
+      "tokenId": "2"
+    }
+  ]
+}

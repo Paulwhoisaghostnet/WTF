@@ -11,6 +11,8 @@
 #   - cumulative `total_minted` accounting keeps burns from reopening a declared edition cap or rewinding
 #     the bonding curve
 #   - creator reserves are declared and minted atomically when an edition is registered
+#   - delegated pack adapters can reserve capped issuance while a policy is open, then fulfill that
+#     exact capacity later; ordinary public/admin issuance cannot consume reserved pack inventory
 #   - public payable `open_mint` priced along a bonding curve that steps BETWEEN calls (flat unit price
 #     per call), matching shared/pasta-protocol/pricing.ts (`priceAtSupply` / `costForBatch`) exactly so
 #     the studio preview and on-chain charge agree.
@@ -25,14 +27,27 @@ import smartpy as sp
 
 
 @sp.module
-def main():
+def pasta_open_edition_main():
     LedgerKeyType: type = sp.record(owner=sp.address, token_id=sp.nat)
-    OperatorKeyType: type = sp.record(owner=sp.address, operator=sp.address, token_id=sp.nat)
-    BalanceOfRequestType: type = sp.record(owner=sp.address, token_id=sp.nat)
-    BalanceOfResponseType: type = sp.record(request=BalanceOfRequestType, balance=sp.nat)
+    OperatorKeyType: type = sp.record(
+        owner=sp.address, operator=sp.address, token_id=sp.nat
+    ).layout(("owner", ("operator", "token_id")))
+    BalanceOfRequestType: type = sp.record(owner=sp.address, token_id=sp.nat).layout(
+        ("owner", "token_id")
+    )
+    BalanceOfResponseType: type = sp.record(
+        request=BalanceOfRequestType, balance=sp.nat
+    ).layout(("request", "balance"))
+    BalanceOfParamType: type = sp.record(
+        requests=sp.list[BalanceOfRequestType], callback=sp.contract[sp.list[BalanceOfResponseType]]
+    ).layout(("requests", "callback"))
     OperatorParamType: type = sp.variant(add_operator=OperatorKeyType, remove_operator=OperatorKeyType)
-    TransferTxType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
-    TransferBatchItemType: type = sp.record(from_=sp.address, txs=sp.list[TransferTxType])
+    TransferTxType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat).layout(
+        ("to_", ("token_id", "amount"))
+    )
+    TransferBatchItemType: type = sp.record(
+        from_=sp.address, txs=sp.list[TransferTxType]
+    ).layout(("from_", "txs"))
     TokenMetadataType: type = sp.record(token_id=sp.nat, token_info=sp.map[sp.string, sp.bytes])
     MintParamType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
     SetTokenMetadataType: type = sp.record(token_id=sp.nat, token_info=sp.map[sp.string, sp.bytes])
@@ -60,6 +75,8 @@ def main():
     SetSaleType: type = sp.record(token_id=sp.nat, sale=SaleConfigType)
     SetSaleActiveType: type = sp.record(token_id=sp.nat, active=sp.bool)
     OpenMintType: type = sp.record(token_id=sp.nat, amount=sp.nat)
+    ReserveMintCapacityType: type = sp.record(token_id=sp.nat, amount=sp.nat)
+    MintReservedType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
 
     class PastaOpenEditionFA2(sp.Contract):
         def __init__(self, administrator, metadata):
@@ -71,6 +88,8 @@ def main():
             self.data.token_metadata = sp.cast(sp.big_map(), sp.big_map[sp.nat, TokenMetadataType])
             self.data.total_supply = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
             self.data.total_minted = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
+            self.data.total_reserved = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
+            self.data.reserved_mints = sp.cast(sp.big_map(), sp.big_map[LedgerKeyType, sp.nat])
             self.data.sales = sp.cast(sp.big_map(), sp.big_map[sp.nat, SaleConfigType])
             self.data.policy_locked = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.bool])
             self.data.minters = sp.cast(sp.big_map(), sp.big_map[sp.address, sp.unit])
@@ -121,13 +140,7 @@ def main():
         @sp.entrypoint
         def balance_of(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
-            sp.cast(
-                params,
-                sp.record(
-                    requests=sp.list[BalanceOfRequestType],
-                    callback=sp.contract[sp.list[BalanceOfResponseType]],
-                ),
-            )
+            sp.cast(params, BalanceOfParamType)
             responses = []
             for req in params.requests:
                 responses.push(
@@ -192,6 +205,7 @@ def main():
             self.data.token_metadata[token_id] = sp.record(token_id=token_id, token_info=params.token_info)
             self.data.total_supply[token_id] = params.creator_reserve
             self.data.total_minted[token_id] = params.creator_reserve
+            self.data.total_reserved[token_id] = 0
             self.data.sales[token_id] = params.sale
             self.data.policy_locked[token_id] = params.lock_policy
             if params.creator_reserve > 0:
@@ -207,8 +221,9 @@ def main():
             assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
             self._assert_sale_valid(params.sale)
             issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
             if params.sale.max_supply.is_some():
-                assert params.sale.max_supply.unwrap_some() >= issued, "CAP_BELOW_MINTED"
+                assert params.sale.max_supply.unwrap_some() >= issued + reserved, "CAP_BELOW_COMMITTED"
             if self.data.policy_locked.get(params.token_id, default=False):
                 current = self.data.sales[params.token_id]
                 assert params.sale.start == current.start, "POLICY_LOCKED"
@@ -252,8 +267,9 @@ def main():
             sale = self.data.sales[params.token_id]
             self._assert_issuance_open(sale)
             minted = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
             if sale.max_supply.is_some():
-                assert minted + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
+                assert minted + reserved + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
             unit = self._unit_price(sp.record(sale=sale, minted=minted))
             expected = sp.split_tokens(unit, params.amount, 1)
             assert sp.amount == expected, "BAD_PAYMENT"
@@ -275,16 +291,84 @@ def main():
             assert params.amount > 0, "BAD_AMOUNT"
             current_supply = self.data.total_supply.get(params.token_id, default=sp.nat(0))
             issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
             if params.token_id in self.data.sales:
                 sale = self.data.sales[params.token_id]
                 if self.data.policy_locked.get(params.token_id, default=False):
                     self._assert_issuance_open(sale)
                 if sale.max_supply.is_some():
-                    assert issued + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
+                    assert issued + reserved + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
             to_key = sp.record(owner=params.to_, token_id=params.token_id)
             self.data.ledger[to_key] = self.data.ledger.get(to_key, default=sp.nat(0)) + params.amount
             self.data.total_supply[params.token_id] = current_supply + params.amount
             self.data.total_minted[params.token_id] = issued + params.amount
+
+        @sp.entrypoint
+        def reserve_mint_capacity(self, params):
+            # Called by an authorized Ravioli allocation adapter before wrappers can mint or sell.
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(params, ReserveMintCapacityType)
+            assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
+            assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
+            assert params.amount > 0, "BAD_AMOUNT"
+            issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
+            reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
+            if params.token_id in self.data.sales:
+                sale = self.data.sales[params.token_id]
+                if self.data.policy_locked.get(params.token_id, default=False):
+                    self._assert_issuance_open(sale)
+                if sale.max_supply.is_some():
+                    assert issued + reserved + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
+            key = sp.record(owner=sp.sender, token_id=params.token_id)
+            self.data.reserved_mints[key] = self.data.reserved_mints.get(
+                key, default=sp.nat(0)
+            ) + params.amount
+            self.data.total_reserved[params.token_id] = reserved + params.amount
+
+        @sp.entrypoint
+        def mint_reserved(self, params):
+            # Reserved pack capacity remains fulfillable after the public window closes; reserving it
+            # was the policy-bound issuance decision, while this call delivers the already committed unit.
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(params, MintReservedType)
+            assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
+            assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
+            assert params.amount > 0, "BAD_AMOUNT"
+            reserve_key = sp.record(owner=sp.sender, token_id=params.token_id)
+            available = self.data.reserved_mints.get(reserve_key, default=sp.nat(0))
+            total_reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
+            assert available >= params.amount and total_reserved >= params.amount, "RESERVE_UNDERFUNDED"
+            next_available = sp.as_nat(available - params.amount)
+            if next_available == 0:
+                del self.data.reserved_mints[reserve_key]
+            else:
+                self.data.reserved_mints[reserve_key] = next_available
+            self.data.total_reserved[params.token_id] = sp.as_nat(total_reserved - params.amount)
+            to_key = sp.record(owner=params.to_, token_id=params.token_id)
+            self.data.ledger[to_key] = self.data.ledger.get(to_key, default=sp.nat(0)) + params.amount
+            self.data.total_supply[params.token_id] = self.data.total_supply.get(
+                params.token_id, default=sp.nat(0)
+            ) + params.amount
+            self.data.total_minted[params.token_id] = self.data.total_minted.get(
+                params.token_id, default=sp.nat(0)
+            ) + params.amount
+
+        @sp.entrypoint
+        def release_mint_capacity(self, params):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(params, ReserveMintCapacityType)
+            assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
+            assert params.amount > 0, "BAD_AMOUNT"
+            reserve_key = sp.record(owner=sp.sender, token_id=params.token_id)
+            available = self.data.reserved_mints.get(reserve_key, default=sp.nat(0))
+            total_reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
+            assert available >= params.amount and total_reserved >= params.amount, "RESERVE_UNDERFUNDED"
+            next_available = sp.as_nat(available - params.amount)
+            if next_available == 0:
+                del self.data.reserved_mints[reserve_key]
+            else:
+                self.data.reserved_mints[reserve_key] = next_available
+            self.data.total_reserved[params.token_id] = sp.as_nat(total_reserved - params.amount)
 
         @sp.entrypoint
         def burn(self, params):
@@ -366,6 +450,11 @@ def main():
             return self.data.total_minted.get(token_id, default=sp.nat(0))
 
         @sp.onchain_view
+        def get_total_reserved(self, token_id):
+            sp.cast(token_id, sp.nat)
+            return self.data.total_reserved.get(token_id, default=sp.nat(0))
+
+        @sp.onchain_view
         def current_price(self, token_id):
             # Unit price (mutez) at current supply for the next open_mint call.
             sp.cast(token_id, sp.nat)
@@ -373,6 +462,9 @@ def main():
             sale = self.data.sales[token_id]
             minted = self.data.total_minted.get(token_id, default=sp.nat(0))
             return self._unit_price(sp.record(sale=sale, minted=minted))
+
+
+main = pasta_open_edition_main
 
 
 def bytes_of_string(s):

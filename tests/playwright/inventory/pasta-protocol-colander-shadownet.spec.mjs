@@ -2,6 +2,22 @@ import { test, expect } from "@playwright/test";
 
 const PROVEN_CONTRACTS = [
   {
+    app: "Macaroni V1",
+    address: "KT1JB1BjgT9QaN56BgfvAbrcRTrp6TMU4oCq",
+    label: "Macaroni blind-mint collection",
+    group: "macaroni-v1-colander-proof",
+    facts: ["Token types", "1"],
+    actions: ["Transfer token", "Mint blind drop", "Reveal queued tokens", "Configure sale stages", "Manage allowlist", "Pause / resume V1 drop", "Transfer admin"],
+  },
+  {
+    app: "Macaroni V2",
+    address: "KT1L3KdukK858mAaaVTCai9ErUXNaFNgmh7d",
+    label: "Macaroni blind-mint collection",
+    group: "macaroni-v2-colander-proof",
+    facts: ["Token types", "2"],
+    actions: ["Transfer token", "Mint blind drop", "Reveal queued tokens", "Configure sale stages", "Manage allowlist", "Pause / resume V2 drop", "Transfer admin"],
+  },
+  {
     app: "Spaghetti",
     address: "KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc",
     label: "Standard collection",
@@ -19,11 +35,11 @@ const PROVEN_CONTRACTS = [
   },
   {
     app: "Ravioli",
-    address: "KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB",
-    label: "Bundle",
-    group: "ravioli-shadownet-e2e-mr1pdpt4",
-    facts: ["Token types", "1"],
-    actions: ["Transfer token", "Mint more", "Redeem bundle", "Reveal / update contents", "Transfer admin"],
+    address: "KT1BGhhFjsctuKtXToAZBbpNtgYjH7FTGqGS",
+    label: "Atomic pack router",
+    group: "ravioli-five-mode-shadownet-20260718",
+    facts: ["Token types", "5"],
+    actions: ["Transfer token", "Mint more", "Open pack", "Publish contents reveal", "Close pack", "Transfer admin"],
   },
   {
     app: "Rotini",
@@ -46,7 +62,7 @@ const PROVEN_CONTRACTS = [
     label: "Distribution",
     group: "penne-shadownet-e2e-mr1reng0",
     facts: ["Token types", "1"],
-    actions: ["Open / close claim", "Load recipients", "Airdrop"],
+    actions: ["Open / close claim", "Load recipients", "Claim allocation", "Airdrop"],
   },
   {
     app: "Lasagna",
@@ -79,13 +95,17 @@ async function installColanderReadFixture(page) {
     ({ contracts, admin }) => {
       const FA2_BASE = ["transfer", "update_operators", "balance_of", "mint", "burn"];
       const entrypointsByApp = {
+        "Macaroni V1": [...FA2_BASE, "reveal", "set_stages", "set_allowlist", "set_paused", "transfer_administration", "accept_administration"],
+        "Macaroni V2": [...FA2_BASE, "reveal", "set_stages", "set_allowlist", "set_pause", "replace_tokens_v2", "transfer_administration", "accept_administration"],
         Spaghetti: [...FA2_BASE, "create_token", "transfer_administration", "accept_administration"],
         Gnocchi: [...FA2_BASE, "create_open_edition", "lock_sale_policy", "set_sale", "set_sale_active", "open_mint"],
         Ravioli: [
           ...FA2_BASE,
-          "create_bundle",
-          "redeem",
-          "set_bundle_contents",
+          "create_pack",
+          "commit_recipe",
+          "open_pack",
+          "set_pack_contents",
+          "cancel_pack",
           "transfer_administration",
           "accept_administration",
         ],
@@ -257,6 +277,14 @@ test.describe("interaction inventory - Pasta Protocol Colander Shadownet discove
       for (const action of contract.actions) {
         await expect(surface).toContainText(action);
       }
+      if (contract.app.startsWith("Macaroni")) {
+        const rememberedRecord = surface
+          .getByTestId("colander-remembered-contracts")
+          .locator("span")
+          .filter({ hasText: contract.address });
+        await expect(rememberedRecord).toContainText("Resume in Macaroni");
+        await expect(rememberedRecord).not.toContainText("Resume in Spaghetti");
+      }
     }
 
     await expect
@@ -405,7 +433,7 @@ test.describe("interaction inventory - Pasta Protocol Colander Shadownet discove
           { kind: "confirmation", entrypoint: "set_current_revision" },
         ]),
       );
-    await expect(surface.locator('[data-colander-region="status"]')).not.toContainText("failed");
+    await expect(surface.locator('[data-colander-region="status"]')).toHaveText("Set current revision confirmed ✓");
     expect(fatalErrors(errors)).toEqual([]);
   });
 });

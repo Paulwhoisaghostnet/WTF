@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -9,7 +10,7 @@ import type { InMemorySigner } from "@taquito/signer";
 import { HttpBackend } from "@taquito/http-utils";
 import { RpcClient } from "@taquito/rpc";
 
-import keyringModule from "../../extensions/wtf-operator-signer/src/keyring";
+import * as keyringNamespace from "../../extensions/wtf-operator-signer/src/keyring";
 import type { SignerEnv } from "../../extensions/wtf-operator-signer/src/env";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -28,7 +29,17 @@ const DEFAULT_COLLECTOR_WALLET_ID = "arcade-treasury";
 const DEFAULT_COLLECTOR_TWO_WALLET_ID = "e2e-bert";
 const HTTP_TIMEOUT_MS = Math.max(1_000, Number(process.env.PASTA_SHADOWNET_HTTP_TIMEOUT_MS || "15000"));
 const TAQUITO_TIMEOUT_MS = Math.max(30_000, Number(process.env.PASTA_SHADOWNET_TAQUITO_TIMEOUT_MS || "120000"));
-const { PlatformWalletKeyring } = keyringModule as any;
+const DEFAULT_IPFS_PUBLIC_GATEWAY = "https://ipfs.io/ipfs";
+const DEFAULT_IPFS_REQUEST_TIMEOUT_MS = 60_000;
+const DEFAULT_IPFS_VERIFY_ATTEMPTS = 30;
+const DEFAULT_IPFS_VERIFY_DELAY_MS = 4_000;
+const IPFS_CID_PATTERN = /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{20,})$/;
+const keyringModule = (
+  "default" in keyringNamespace
+    ? (keyringNamespace as typeof keyringNamespace & { default: typeof keyringNamespace }).default
+    : keyringNamespace
+);
+const { PlatformWalletKeyring } = keyringModule;
 
 export type ProofStatus = "BLOCKED" | "FAILED" | "PASSED";
 
@@ -55,6 +66,50 @@ export type SignerSet = SignerPair & {
   collectorTwoSigner: InMemorySigner;
 };
 
+export type IpfsProofOptions = {
+  apiUrl?: string;
+  localGatewayUrl?: string;
+  publicGatewayUrl?: string;
+  requestTimeoutMs?: number;
+  verifyAttempts?: number;
+  verifyDelayMs?: number;
+};
+
+export type IpfsProofConfig = {
+  apiUrl: string;
+  localGatewayUrl: string;
+  publicGatewayUrl: string;
+  requestTimeoutMs: number;
+  verifyAttempts: number;
+  verifyDelayMs: number;
+};
+
+export type IpfsPinnedProof = {
+  cid: string;
+  uri: `ipfs://${string}`;
+  fileName: string;
+  mimeType: string;
+  byteLength: number;
+  sha256: string;
+  localGatewayUrl: string;
+  publicGatewayUrl: string;
+  publicGatewayVerified: true;
+  verificationAttempts: number;
+};
+
+export type PinIpfsProofBytesInput = {
+  bytes: Uint8Array;
+  fileName: string;
+  mimeType: string;
+  options?: IpfsProofOptions;
+};
+
+export type PinIpfsProofJsonInput = {
+  value: unknown;
+  fileName: string;
+  options?: IpfsProofOptions;
+};
+
 export class ProofBlocked extends Error {
   constructor(
     message: string,
@@ -63,6 +118,289 @@ export class ProofBlocked extends Error {
     super(message);
     this.name = "ProofBlocked";
   }
+}
+
+function positiveInteger(value: number | undefined, fallback: number, label: string): number {
+  const resolved = value ?? fallback;
+  if (!Number.isSafeInteger(resolved) || resolved < 1) {
+    throw new Error(`${label} must be a positive integer`);
+  }
+  return resolved;
+}
+
+function nonNegativeInteger(value: number | undefined, fallback: number, label: string): number {
+  const resolved = value ?? fallback;
+  if (!Number.isSafeInteger(resolved) || resolved < 0) {
+    throw new Error(`${label} must be a non-negative integer`);
+  }
+  return resolved;
+}
+
+function httpEndpoint(raw: string, label: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error(`${label} is required`);
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error(`${label} must be an absolute HTTP(S) URL`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`${label} must use HTTP or HTTPS`);
+  }
+  if (parsed.username || parsed.password || parsed.search) {
+    throw new Error(`${label} must not include credentials or query parameters`);
+  }
+  parsed.hash = "";
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+function deriveLocalGateway(apiUrl: string): string {
+  const parsed = new URL(apiUrl);
+  parsed.port = "8080";
+  parsed.pathname = "/ipfs";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+export function resolveIpfsProofConfig(options: IpfsProofOptions = {}): IpfsProofConfig {
+  const apiUrl = httpEndpoint(
+    options.apiUrl ?? process.env.PASTA_SHADOWNET_IPFS_API_URL ?? "",
+    "PASTA_SHADOWNET_IPFS_API_URL",
+  );
+  const localGatewayUrl = httpEndpoint(
+    options.localGatewayUrl ??
+      process.env.PASTA_SHADOWNET_IPFS_LOCAL_GATEWAY ??
+      deriveLocalGateway(apiUrl),
+    "PASTA_SHADOWNET_IPFS_LOCAL_GATEWAY",
+  );
+  const publicGatewayUrl = httpEndpoint(
+    options.publicGatewayUrl ??
+      process.env.PASTA_SHADOWNET_IPFS_GATEWAY ??
+      DEFAULT_IPFS_PUBLIC_GATEWAY,
+    "PASTA_SHADOWNET_IPFS_GATEWAY",
+  );
+  const publicOrigin = new URL(publicGatewayUrl).origin;
+  if (publicOrigin === new URL(apiUrl).origin || publicOrigin === new URL(localGatewayUrl).origin) {
+    throw new Error(
+      "PASTA_SHADOWNET_IPFS_GATEWAY must use an independent public gateway origin, not a local Kubo origin",
+    );
+  }
+  return {
+    apiUrl,
+    localGatewayUrl,
+    publicGatewayUrl,
+    requestTimeoutMs: positiveInteger(
+      options.requestTimeoutMs,
+      Number(process.env.PASTA_SHADOWNET_IPFS_REQUEST_TIMEOUT_MS || DEFAULT_IPFS_REQUEST_TIMEOUT_MS),
+      "IPFS request timeout",
+    ),
+    verifyAttempts: positiveInteger(
+      options.verifyAttempts,
+      Number(process.env.PASTA_SHADOWNET_IPFS_VERIFY_ATTEMPTS || DEFAULT_IPFS_VERIFY_ATTEMPTS),
+      "IPFS verification attempts",
+    ),
+    verifyDelayMs: nonNegativeInteger(
+      options.verifyDelayMs,
+      Number(process.env.PASTA_SHADOWNET_IPFS_VERIFY_DELAY_MS || DEFAULT_IPFS_VERIFY_DELAY_MS),
+      "IPFS verification delay",
+    ),
+  };
+}
+
+export function ipfsGatewayUrl(gatewayBaseUrl: string, cid: string): string {
+  if (!IPFS_CID_PATTERN.test(cid)) throw new Error(`invalid IPFS CID: ${cid}`);
+  return `${gatewayBaseUrl.replace(/\/+$/, "")}/${cid}`;
+}
+
+export function sha256Hex(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function deterministicJson(value: unknown, ancestors: Set<object>): string | undefined {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number") return Number.isFinite(value) ? JSON.stringify(value) : "null";
+  if (typeof value === "bigint") throw new TypeError("deterministic JSON does not support bigint values");
+  if (typeof value === "undefined" || typeof value === "function" || typeof value === "symbol") return undefined;
+  if (typeof value !== "object") return undefined;
+
+  const record = value as Record<string, unknown> & { toJSON?: () => unknown };
+  if (ancestors.has(record)) throw new TypeError("deterministic JSON does not support cyclic values");
+  if (typeof record.toJSON === "function") {
+    ancestors.add(record);
+    try {
+      return deterministicJson(record.toJSON(), ancestors);
+    } finally {
+      ancestors.delete(record);
+    }
+  }
+  ancestors.add(record);
+  try {
+    if (Array.isArray(record)) {
+      return `[${record.map((item) => deterministicJson(item, ancestors) ?? "null").join(",")}]`;
+    }
+    const properties: string[] = [];
+    for (const key of Object.keys(record).sort()) {
+      const serialized = deterministicJson(record[key], ancestors);
+      if (serialized !== undefined) properties.push(`${JSON.stringify(key)}:${serialized}`);
+    }
+    return `{${properties.join(",")}}`;
+  } finally {
+    ancestors.delete(record);
+  }
+}
+
+export function deterministicJsonBytes(value: unknown): Uint8Array {
+  const serialized = deterministicJson(value, new Set());
+  if (serialized === undefined) {
+    throw new TypeError("deterministic JSON root must be serializable");
+  }
+  return Buffer.from(serialized, "utf8");
+}
+
+function safeUploadName(fileName: string): string {
+  const trimmed = fileName.trim();
+  if (!trimmed || trimmed.length > 255 || /[\\/\0\r\n]/.test(trimmed)) {
+    throw new Error("IPFS proof file name must be a plain 1-255 character file name");
+  }
+  return trimmed;
+}
+
+function safeMimeType(mimeType: string): string {
+  const trimmed = mimeType.trim().toLowerCase();
+  if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(trimmed)) {
+    throw new Error(`invalid IPFS proof MIME type: ${mimeType}`);
+  }
+  return trimmed;
+}
+
+function kuboAddUrl(apiUrl: string): URL {
+  const url = new URL(apiUrl);
+  const basePath = url.pathname.replace(/\/+$/, "");
+  url.pathname = `${basePath.endsWith("/api/v0") ? basePath : `${basePath}/api/v0`}/add`.replace(/\/{2,}/g, "/");
+  url.searchParams.set("pin", "true");
+  url.searchParams.set("cid-version", "1");
+  url.searchParams.set("raw-leaves", "true");
+  return url;
+}
+
+function cidFromKuboResponse(text: string): string {
+  for (const line of text.trim().split(/\r?\n/).reverse()) {
+    if (!line.trim()) continue;
+    try {
+      const parsed = JSON.parse(line) as { Hash?: unknown };
+      const cid = String(parsed.Hash ?? "").trim();
+      if (IPFS_CID_PATTERN.test(cid)) return cid;
+    } catch {
+      // Kubo streams newline-delimited JSON; ignore non-JSON progress lines.
+    }
+  }
+  throw new Error(`Kubo returned no valid CID: ${text.slice(0, 300)}`);
+}
+
+async function responseDigest(response: Response): Promise<{ byteLength: number; sha256: string }> {
+  const hash = createHash("sha256");
+  let byteLength = 0;
+  if (!response.body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return { byteLength: bytes.byteLength, sha256: sha256Hex(bytes) };
+  }
+  const reader = response.body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    hash.update(value);
+  }
+  return { byteLength, sha256: hash.digest("hex") };
+}
+
+async function verifyPublicGateway(
+  url: string,
+  expectedBytes: Uint8Array,
+  config: IpfsProofConfig,
+): Promise<number> {
+  const expectedSha256 = sha256Hex(expectedBytes);
+  let lastFailure = "no response";
+  for (let attempt = 1; attempt <= config.verifyAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: { "user-agent": "wtfos-pasta-shadownet-ipfs-proof" },
+        signal: AbortSignal.timeout(config.requestTimeoutMs),
+      });
+      if (response.ok) {
+        const received = await responseDigest(response);
+        if (received.sha256 !== expectedSha256 || received.byteLength !== expectedBytes.byteLength) {
+          throw new Error(
+            `public IPFS gateway bytes differ from pinned bytes: expected SHA-256 ${expectedSha256} ` +
+              `(${expectedBytes.byteLength} bytes), received ${received.sha256} (${received.byteLength} bytes)`,
+          );
+        }
+        return attempt;
+      }
+      lastFailure = `HTTP ${response.status}`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.startsWith("public IPFS gateway bytes differ")) throw error;
+      lastFailure = message;
+    }
+    if (attempt < config.verifyAttempts && config.verifyDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, config.verifyDelayMs));
+    }
+  }
+  throw new Error(
+    `pinned bytes did not resolve from independent public IPFS gateway ${url} after ` +
+      `${config.verifyAttempts} attempts: ${lastFailure}`,
+  );
+}
+
+export async function pinIpfsProofBytes(input: PinIpfsProofBytesInput): Promise<IpfsPinnedProof> {
+  if (!(input.bytes instanceof Uint8Array) || input.bytes.byteLength < 1) {
+    throw new Error("IPFS proof bytes must be a non-empty Uint8Array");
+  }
+  const config = resolveIpfsProofConfig(input.options);
+  const fileName = safeUploadName(input.fileName);
+  const mimeType = safeMimeType(input.mimeType);
+  const bytes = Uint8Array.from(input.bytes);
+  const body = new FormData();
+  body.append("file", new Blob([bytes.buffer], { type: mimeType }), fileName);
+  const response = await fetch(kuboAddUrl(config.apiUrl), {
+    method: "POST",
+    body,
+    signal: AbortSignal.timeout(config.requestTimeoutMs),
+  });
+  const responseText = await response.text();
+  if (!response.ok) {
+    throw new Error(`Kubo IPFS pin failed with HTTP ${response.status}: ${responseText.slice(0, 300)}`);
+  }
+  const cid = cidFromKuboResponse(responseText);
+  const localGatewayUrl = ipfsGatewayUrl(config.localGatewayUrl, cid);
+  const publicGatewayUrl = ipfsGatewayUrl(config.publicGatewayUrl, cid);
+  const verificationAttempts = await verifyPublicGateway(publicGatewayUrl, bytes, config);
+  return {
+    cid,
+    uri: `ipfs://${cid}`,
+    fileName,
+    mimeType,
+    byteLength: bytes.byteLength,
+    sha256: sha256Hex(bytes),
+    localGatewayUrl,
+    publicGatewayUrl,
+    publicGatewayVerified: true,
+    verificationAttempts,
+  };
+}
+
+export function pinIpfsProofJson(input: PinIpfsProofJsonInput): Promise<IpfsPinnedProof> {
+  return pinIpfsProofBytes({
+    bytes: deterministicJsonBytes(input.value),
+    fileName: input.fileName,
+    mimeType: "application/json",
+    options: input.options,
+  });
 }
 
 export function nowIso(): string {

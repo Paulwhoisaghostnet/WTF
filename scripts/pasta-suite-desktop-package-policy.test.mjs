@@ -135,7 +135,7 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   assert.match(prepareSource, /connect-wallet/);
   assert.match(prepareSource, /function contractType/);
   assert.match(prepareSource, /Configure direct sale/);
-  assert.match(prepareSource, /Reveal bundle contents/);
+  assert.match(prepareSource, /Reveal pack contents/);
   assert.match(prepareSource, /MD\.assertOperationSafety/);
   assert.match(prepareSource, /project\.contracts = \[kt/);
   assert.match(prepareSource, /project\.contractRecords/);
@@ -143,6 +143,8 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   assert.match(prepareSource, /contract\/pasta-standard-collection\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-open-edition\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-bundle\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-gnocchi-pack-adapter\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-rotini-pack-adapter\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-generative-collection\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-distribution\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-exhibition\.contract\.json/);
@@ -160,6 +162,7 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
     "reserve_iteration",
     "finalize_iteration",
     "cancel_expired_reservation",
+    "mint_pack_iteration",
   ]);
 });
 

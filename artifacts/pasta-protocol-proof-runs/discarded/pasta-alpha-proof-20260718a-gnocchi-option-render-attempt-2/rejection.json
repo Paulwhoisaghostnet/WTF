@@ -1,0 +1,45 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "gnocchi",
+  "accepted": false,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "rejectedContract": {
+    "address": "KT1BCHPf9zWFnUFgPWm92s9QCJu3tfUHRjWj",
+    "originationHash": "onm8sG1uepeSmLmHVLAwsKHNEsoY57XeJYajC8FLEZVjTfKSMTR",
+    "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "kind": "asset",
+    "tzips": ["fa2"],
+    "explorerUrl": "https://shadownet.tzkt.io/KT1BCHPf9zWFnUFgPWm92s9QCJu3tfUHRjWj"
+  },
+  "failure": {
+    "stage": "limited-edition cap display before final rejection",
+    "reason": "The actual collector UI rendered Taquito option values as NaN and Invalid Date, so the visual proof was rejected even though all six public mints applied.",
+    "offendingSidecar": "artifacts/screenshot-018-independent-collector-mints-collector-two-minted-token-2.json",
+    "offendingText": "Limited Edition · unit price now: 0.000001 tez · 3 lifetime minted / NaN cap · starts Invalid Date · ends Invalid Date · POLICY LOCKED · ISSUANCE OPEN",
+    "processExitCode": 130,
+    "processTermination": "Known-bad visual proof polling was terminated after deterministic rejection; no accepted manifest or receipt was written."
+  },
+  "indexedTokenState": [
+    { "tokenId": 0, "totalSupply": 4, "holdersCount": 3 },
+    { "tokenId": 1, "totalSupply": 4, "holdersCount": 3 },
+    { "tokenId": 2, "totalSupply": 3, "holdersCount": 3 }
+  ],
+  "appliedCollectorOperations": [
+    "oowZHCYb5wnYpcsidNKYSxLfHmG8xpgUfyxc16SzrV8Fa45RapS",
+    "op4ZNvETfEhaau3A6YXYgVyGgbuvXWyYxiFytTvLV8Jc5oCn1Qc",
+    "ooVGmzb67D3cdgzavoamqH37RXrFAWPK13GS6T71ZrJqoBRZ91g",
+    "opYGR2DvegsjvELyQ13MGRxA3bqYqWNqHJ5W4wf3Y4TQ8njyBPF",
+    "ooDEfkB1fwMdzGRahSSSJf4VdpR1JHLaTDkixU5hHDHVs2zPHjg",
+    "ootqfgfp59umjsrhwNsQSu34PeBs5e53QbxKDBV2q7r4Jri2Ze7"
+  ],
+  "partialEvidence": {
+    "screenshotCount": 18,
+    "manifestProduced": false,
+    "receiptProduced": false,
+    "collectorOneBalances": { "token0": 1, "token1": 1, "token2": 1 },
+    "collectorTwoBalances": { "token0": 1, "token1": 1, "token2": 1 }
+  }
+}

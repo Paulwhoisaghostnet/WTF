@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "pin V1 media and metadata",
+  "stageOrdinal": 10,
+  "stageName": "Three exact V1 artifacts pinned through Studio",
+  "url": "http://127.0.0.1:57257/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:57:06.035Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "f47d608fb052bc77496cbc00dc454e4009fe044b1465df529ef9328e00418407",
+  "byteCount": 123594,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#pinStatus",
+      "name": "pin result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "all pinned ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "pin count",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [5:57:04 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [5:57:04 AM] token sheet loaded: 1 tokens [5:57:04 AM] 1 artwork file(s) added (1 total) [5:57:04 AM] stage 1: settings saved [5:57:05 AM] cover pinned: bafkreifaplcaz4jnodkvwzkut2gi6mjld5ofivbnbucfxjd6fivkdldisu [5:57:05 AM] pinning complete: 1 tokens"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "app": "rotini",
+  "status": "REJECTED",
+  "accepted": false,
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "contractAddress": "KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA",
+  "originationOperationHash": "onfLDggcS5yBP25RS2md7fK1MtnjvyHqjo8w8BVZnxQ1Hk5EBFH",
+  "reason": "The contract, all three projects, three collector reserve/finalize lifecycles, pinned artifacts, indexed FA2 tokens, and balances passed. Visual review rejected the lane because the public collector status rendered Taquito's option-nat wrapper as [object Object] instead of the numeric supply cap.",
+  "protocolError": null,
+  "evidence": {
+    "tzktContractUrl": "https://shadownet.tzkt.io/KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA",
+    "tokenUrls": [
+      "https://shadownet.tzkt.io/KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA/tokens/0",
+      "https://shadownet.tzkt.io/KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA/tokens/1",
+      "https://shadownet.tzkt.io/KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA/tokens/2"
+    ],
+    "contractKind": "asset",
+    "tzips": ["fa2"],
+    "indexedTokenCount": 3,
+    "screenshotWithDefect": "screenshots/009-collector-finalize-zip-token-zip-token-reserved-rendered-pinned-and-finalized.png"
+  }
+}

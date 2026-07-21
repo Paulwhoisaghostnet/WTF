@@ -217,12 +217,8 @@ const Row = styled.div`
 
 const Split = styled.div`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const Field = styled.div`
@@ -266,13 +262,36 @@ const CalendarWorkspace = styled.div`
   background: #fff;
 `;
 
+const CalendarToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
+const PeriodHeading = styled.h2`
+  margin: 0;
+  min-width: 190px;
+  font-size: 16px;
+  line-height: 1.25;
+  text-align: center;
+
+  @media (max-width: 560px) {
+    order: -1;
+    width: 100%;
+    text-align: left;
+  }
+`;
+
 const WeekHeader = styled.div<{ $columns: number }>`
   display: grid;
-  grid-template-columns: repeat(${(props) => props.$columns}, minmax(112px, 1fr));
+  grid-template-columns: repeat(${(props) => props.$columns}, minmax(96px, 1fr));
   position: sticky;
   top: 0;
   z-index: 2;
   background: #d9e8f8;
+  color: #111;
   border-bottom: 1px solid #808080;
 `;
 
@@ -295,6 +314,28 @@ const WeekBody = styled.div<{ $columns: number }>`
   grid-template-columns: repeat(${(props) => props.$columns}, minmax(112px, 1fr));
   min-height: 360px;
   overflow-x: auto;
+`;
+
+const MonthGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, minmax(96px, 1fr));
+  min-width: 672px;
+`;
+
+const MonthCell = styled.section<{ $today?: boolean; $outside?: boolean }>`
+  min-height: 118px;
+  padding: 6px;
+  border-right: 1px solid #d4d4d4;
+  border-bottom: 1px solid #d4d4d4;
+  background: ${(props) => props.$today ? "#fff9e8" : props.$outside ? "#f1f1f1" : "#fff"};
+  color: ${(props) => props.$outside ? "#666" : "#111"};
+`;
+
+const MonthDate = styled.div<{ $today?: boolean }>`
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${(props) => props.$today ? "#b11919" : "inherit"};
 `;
 
 const DayColumn = styled.section<{ $today?: boolean }>`
@@ -487,6 +528,8 @@ interface MyTicket {
   createdAt: string;
 }
 
+type CalendarView = "day" | "week" | "month" | "agenda";
+
 function toIsoLocal(d: Date): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return (
@@ -501,28 +544,38 @@ function localInputToIso(value: string, allDay = false): string {
   return new Date(year, month - 1, day, 0, 0, 0, 0).toISOString();
 }
 
-function rangeFor(view: "today" | "week" | "season"): {
+function startOfDay(value: Date): Date {
+  const day = new Date(value);
+  day.setHours(0, 0, 0, 0);
+  return day;
+}
+
+function rangeFor(view: CalendarView, anchorDate: Date): {
   from: Date;
   to: Date;
 } {
-  const now = new Date();
-  if (view === "today") {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
+  const anchor = startOfDay(anchorDate);
+  if (view === "day") {
+    const start = anchor;
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
     return { from: start, to: end };
   }
   if (view === "week") {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
+    const start = startOfCalendarWeek(anchor);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
     return { from: start, to: end };
   }
-  const start = new Date(now);
-  start.setDate(start.getDate() - 7);
-  const end = new Date(now);
+  if (view === "month") {
+    const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const start = startOfCalendarWeek(first);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 42);
+    return { from: start, to: end };
+  }
+  const start = anchor;
+  const end = new Date(anchor);
   end.setDate(end.getDate() + 180);
   return { from: start, to: end };
 }
@@ -594,17 +647,56 @@ function startOfCalendarWeek(value: Date): Date {
   return day;
 }
 
-function calendarDays(view: "today" | "week" | "season"): Date[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (view === "today") return [today];
-  if (view === "season") return [];
-  const start = startOfCalendarWeek(today);
-  return Array.from({ length: 7 }, (_, index) => {
+function calendarDays(view: CalendarView, anchorDate: Date): Date[] {
+  const anchor = startOfDay(anchorDate);
+  if (view === "day") return [anchor];
+  if (view === "agenda") return [];
+  const start = view === "month"
+    ? startOfCalendarWeek(new Date(anchor.getFullYear(), anchor.getMonth(), 1))
+    : startOfCalendarWeek(anchor);
+  return Array.from({ length: view === "month" ? 42 : 7 }, (_, index) => {
     const day = new Date(start);
     day.setDate(day.getDate() + index);
     return day;
   });
+}
+
+function sameCalendarDay(left: Date, right: Date): boolean {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+function calendarPeriodLabel(view: CalendarView, anchorDate: Date): string {
+  const anchor = startOfDay(anchorDate);
+  if (view === "day") {
+    return anchor.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+  if (view === "month") {
+    return anchor.toLocaleDateString([], { month: "long", year: "numeric" });
+  }
+  if (view === "agenda") {
+    return `Upcoming from ${anchor.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}`;
+  }
+  const start = startOfCalendarWeek(anchor);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const startLabel = start.toLocaleDateString([], { month: "short", day: "numeric" });
+  const endLabel = end.toLocaleDateString([], {
+    month: start.getMonth() === end.getMonth() ? undefined : "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `${startLabel} – ${endLabel}`;
+}
+
+function moveCalendarAnchor(view: CalendarView, anchorDate: Date, direction: -1 | 1): Date {
+  const next = startOfDay(anchorDate);
+  if (view === "day") next.setDate(next.getDate() + direction);
+  else if (view === "week") next.setDate(next.getDate() + (7 * direction));
+  else if (view === "month") next.setMonth(next.getMonth() + direction, 1);
+  else next.setDate(next.getDate() + (30 * direction));
+  return next;
 }
 
 function eventFallsOnDay(event: CalendarEvent, day: Date): boolean {
@@ -624,12 +716,13 @@ export function Calendar() {
   const { user } = useAuth();
   const presentation = usePresentationShell();
   const qc = useQueryClient();
-  const [view, setView] = useState<"today" | "week" | "season">("week");
+  const [view, setView] = useState<CalendarView>("week");
+  const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
   const [tab, setTab] = useState<"browse" | "personal" | "submit" | "mine">("browse");
   const [showTtcSubmit, setShowTtcSubmit] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  const range = useMemo(() => rangeFor(view), [view]);
+  const range = useMemo(() => rangeFor(view, anchorDate), [anchorDate, view]);
   const storageKey = personalStorageKey(user?.id);
   const [personalEvents, setPersonalEvents] = useState<PersonalEvent[]>([]);
   const [personalEventsReady, setPersonalEventsReady] = useState(false);
@@ -686,7 +779,8 @@ export function Calendar() {
     "public" | "contestants" | "hosts"
   >("public");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const days = useMemo(() => calendarDays(view), [view]);
+  const days = useMemo(() => calendarDays(view, anchorDate), [anchorDate, view]);
+  const periodLabel = useMemo(() => calendarPeriodLabel(view, anchorDate), [anchorDate, view]);
 
   useEffect(() => {
     const stored = takeCalendarHandoff();
@@ -813,43 +907,54 @@ export function Calendar() {
           {tab === "browse" ? (
             <Split data-calendar-region="browse-split">
               <Stack>
-                <Row data-calendar-region="browse-actions">
+                <CalendarToolbar data-calendar-region="browse-actions">
+                  <Row role="group" aria-label="Calendar view">
+                    {(["day", "week", "month", "agenda"] as CalendarView[]).map((calendarView) => (
+                      <Button
+                        key={calendarView}
+                        data-calendar-active={view === calendarView ? "true" : "false"}
+                        aria-pressed={view === calendarView}
+                        onClick={() => setView(calendarView)}
+                        primary={view === calendarView}
+                      >
+                        {calendarView[0].toUpperCase() + calendarView.slice(1)}
+                      </Button>
+                    ))}
+                  </Row>
+                  <Button onClick={() => setShowTtcSubmit(true)}>Submit to TTC</Button>
+                </CalendarToolbar>
+
+                <CalendarToolbar data-calendar-region="date-navigation">
                   <Button
-                    data-calendar-active={view === "today" ? "true" : "false"}
-                    onClick={() => setView("today")}
-                    primary={view === "today"}
+                    aria-label={`Previous ${view}`}
+                    onClick={() => setAnchorDate((current) => moveCalendarAnchor(view, current, -1))}
                   >
-                    Today
+                    Previous
                   </Button>
-                  <Button
-                    data-calendar-active={view === "week" ? "true" : "false"}
-                    onClick={() => setView("week")}
-                    primary={view === "week"}
-                  >
-                    This week
-                  </Button>
-                  <Button
-                    data-calendar-active={view === "season" ? "true" : "false"}
-                    onClick={() => setView("season")}
-                    primary={view === "season"}
-                  >
-                    This season
-                  </Button>
-                  <Button onClick={() => setShowTtcSubmit(true)}>
-                    Submit to TTC
-                  </Button>
-                </Row>
+                  <PeriodHeading aria-live="polite" data-calendar-region="period-label">
+                    {periodLabel}
+                  </PeriodHeading>
+                  <Row>
+                    <Button onClick={() => setAnchorDate(startOfDay(new Date()))}>Today</Button>
+                    <Button
+                      aria-label={`Next ${view}`}
+                      onClick={() => setAnchorDate((current) => moveCalendarAnchor(view, current, 1))}
+                    >
+                      Next
+                    </Button>
+                  </Row>
+                </CalendarToolbar>
 
                 {eventsQuery.isLoading ? (
                   <div data-calendar-region="loading">
                     <Hourglass size={24} />
                   </div>
-                ) : visibleEvents.length === 0 ? (
-                  <Muted data-calendar-region="empty">No events in this window.</Muted>
-                ) : view === "season" ? (
+                ) : view === "agenda" ? (
                   <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view="agenda">
                     <Agenda>
-                      {visibleEvents.map((event) => (
+                      {visibleEvents.length === 0 ? (
+                        <Muted data-calendar-region="empty">No upcoming events in this window.</Muted>
+                      ) : visibleEvents.map((event) => (
                         <AgendaEvent key={`${event.sourceProvider ?? "wtf"}:${event.id}`} data-calendar-region="event-card">
                           <div><strong>{new Date(event.startsAt).toLocaleDateString([], { month: "short", day: "numeric" })}</strong><br />{eventClockLabel(event)}</div>
                           <div>
@@ -863,55 +968,100 @@ export function Calendar() {
                       ))}
                     </Agenda>
                   </CalendarWorkspace>
+                ) : view === "month" ? (
+                  <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view="month">
+                    <WeekHeader $columns={7}>
+                      {days.slice(0, 7).map((day) => (
+                        <DayHeading key={day.toISOString()}>
+                          {day.toLocaleDateString([], { weekday: "short" })}
+                        </DayHeading>
+                      ))}
+                    </WeekHeader>
+                    <MonthGrid>
+                      {days.map((day) => {
+                        const dayEvents = visibleEvents.filter((event) => eventFallsOnDay(event, day));
+                        const isToday = sameCalendarDay(day, new Date());
+                        const outsideMonth = day.getMonth() !== anchorDate.getMonth();
+                        return (
+                          <MonthCell
+                            key={day.toISOString()}
+                            $today={isToday}
+                            $outside={outsideMonth}
+                            aria-label={day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                            data-calendar-region="month-day"
+                          >
+                            <MonthDate $today={isToday}>
+                              {day.getDate() === 1 ? day.toLocaleDateString([], { month: "short", day: "numeric" }) : day.getDate()}
+                            </MonthDate>
+                            {dayEvents.slice(0, 3).map((event) => (
+                              <GridEvent
+                                key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
+                                type="button"
+                                $source={event.sourceProvider ?? "wtf"}
+                                onClick={() => setSelectedEvent(event)}
+                                aria-label={`${event.title}, ${formatEventTime(event)}`}
+                                data-calendar-region="event-card"
+                              >
+                                <strong>{event.title}</strong>
+                                <span>{eventClockLabel(event)}</span>
+                              </GridEvent>
+                            ))}
+                            {dayEvents.length > 3 ? (
+                              <Muted data-calendar-region="meta">+{dayEvents.length - 3} more</Muted>
+                            ) : null}
+                          </MonthCell>
+                        );
+                      })}
+                    </MonthGrid>
+                  </CalendarWorkspace>
                 ) : (
-                  <>
-                    <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view={view}>
-                      <WeekHeader $columns={days.length}>
-                        {days.map((day) => (
-                          <DayHeading key={day.toISOString()} $today={day.toDateString() === new Date().toDateString()}>
-                            {day.toLocaleDateString([], { weekday: "short" })}
-                            <strong>{day.getDate()}</strong>
-                          </DayHeading>
-                        ))}
-                      </WeekHeader>
-                      <WeekBody $columns={days.length}>
-                        {days.map((day) => {
-                          const events = visibleEvents.filter((event) => eventFallsOnDay(event, day));
-                          return (
-                            <DayColumn key={day.toISOString()} $today={day.toDateString() === new Date().toDateString()} aria-label={day.toLocaleDateString()}>
-                              {events.length ? events.map((event) => (
-                                <GridEvent
-                                  key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
-                                  type="button"
-                                  $source={event.sourceProvider ?? "wtf"}
-                                  onClick={() => setSelectedEvent(event)}
-                                  aria-label={`${event.title}, ${formatEventTime(event)}`}
-                                  data-calendar-region="event-card"
-                                >
-                                  <strong>{event.title}</strong>
-                                  <span>{eventClockLabel(event)}</span>
-                                </GridEvent>
-                              )) : <Muted data-calendar-region="meta">No events</Muted>}
-                            </DayColumn>
-                          );
-                        })}
-                      </WeekBody>
-                    </CalendarWorkspace>
-                    {selectedEvent ? (
-                      <EventDetail data-calendar-region="event-detail">
-                        <Row>
-                          <SourceBadge $source={selectedEvent.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(selectedEvent.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>
-                          <KindBadge $kind={selectedEvent.kind} data-calendar-region="kind-badge">{selectedEvent.kind}</KindBadge>
-                          <Button size="sm" style={{ marginLeft: "auto" }} onClick={() => setSelectedEvent(null)}>Close details</Button>
-                        </Row>
-                        <h3>{selectedEvent.title}</h3>
-                        <Muted data-calendar-region="meta">{formatEventTime(selectedEvent)}{selectedEvent.location ? ` · ${selectedEvent.location}` : ""}</Muted>
-                        {selectedEvent.description ? <p data-calendar-region="event-description">{selectedEvent.description}</p> : null}
-                        {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
-                      </EventDetail>
-                    ) : null}
-                  </>
+                  <CalendarWorkspace data-calendar-region="calendar-grid" data-calendar-view={view}>
+                    <WeekHeader $columns={days.length}>
+                      {days.map((day) => (
+                        <DayHeading key={day.toISOString()} $today={sameCalendarDay(day, new Date())}>
+                          {day.toLocaleDateString([], { weekday: "short", month: view === "day" ? "short" : undefined })}
+                          <strong>{day.getDate()}</strong>
+                        </DayHeading>
+                      ))}
+                    </WeekHeader>
+                    <WeekBody $columns={days.length}>
+                      {days.map((day) => {
+                        const events = visibleEvents.filter((event) => eventFallsOnDay(event, day));
+                        return (
+                          <DayColumn key={day.toISOString()} $today={sameCalendarDay(day, new Date())} aria-label={day.toLocaleDateString()}>
+                            {events.length ? events.map((event) => (
+                              <GridEvent
+                                key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
+                                type="button"
+                                $source={event.sourceProvider ?? "wtf"}
+                                onClick={() => setSelectedEvent(event)}
+                                aria-label={`${event.title}, ${formatEventTime(event)}`}
+                                data-calendar-region="event-card"
+                              >
+                                <strong>{event.title}</strong>
+                                <span>{eventClockLabel(event)}</span>
+                              </GridEvent>
+                            )) : <Muted data-calendar-region="meta">No events</Muted>}
+                          </DayColumn>
+                        );
+                      })}
+                    </WeekBody>
+                  </CalendarWorkspace>
                 )}
+
+                {selectedEvent ? (
+                  <EventDetail data-calendar-region="event-detail">
+                    <Row>
+                      <SourceBadge $source={selectedEvent.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(selectedEvent.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>
+                      <KindBadge $kind={selectedEvent.kind} data-calendar-region="kind-badge">{selectedEvent.kind}</KindBadge>
+                      <Button size="sm" style={{ marginLeft: "auto" }} onClick={() => setSelectedEvent(null)}>Close details</Button>
+                    </Row>
+                    <h3>{selectedEvent.title}</h3>
+                    <Muted data-calendar-region="meta">{formatEventTime(selectedEvent)}{selectedEvent.location ? ` · ${selectedEvent.location}` : ""}</Muted>
+                    {selectedEvent.description ? <p data-calendar-region="event-description">{selectedEvent.description}</p> : null}
+                    {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
+                  </EventDetail>
+                ) : null}
               </Stack>
 
               <div data-calendar-region="source-panel">

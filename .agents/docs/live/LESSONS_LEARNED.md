@@ -1,3 +1,243 @@
+## 2026-07-18 - Browser fixtures should preserve production process boundaries
+
+**What happened**: Ravioli's real-page regression reused one Chromium process across six collector contexts even though the production proof runner launches a fresh browser for each collector page. One otherwise successful full-suite pass stalled for more than seventeen minutes and the final local `page.goto` hit its 30-second timeout; no application assertion or chain simulation had failed.
+
+**Why it mattered**: A test-only browser lifetime that is broader than production can introduce resource and connection failures that neither reproduce the shipped workflow nor provide useful evidence. In a signer-backed lane, mistaking that harness artifact for an application failure could also encourage an unsafe replay after irreversible operations.
+
+**Rule**: Match production browser-process boundaries in real-page fixtures, close each short-lived browser deterministically, and treat a navigation failure separately from transaction state. Never replay a live lane until durable receipts and chain state establish that no write occurred.
+
+---
+
+## 2026-07-18 - Proof reports must expose the validated evidence graph
+
+**What happened**: The Pasta assembler already rejected uncovered screenshots, artifacts, contracts, operations, tokens, and role evidence, but its Markdown reduced each capability to a prose description. It also linked pinned files without naming their CIDs or retrieval hashes and represented CH-EASE, Lasagna, and Colander only as zero counts, forcing a reviewer to infer whether evidence was absent or correctly out of role.
+
+**Why it mattered**: A strict internal validator does not make a handoff independently auditable when the human-facing package hides the references it validated. In particular, a zero-token registry and a missing token-publisher result can look identical unless the report states the app boundary explicitly.
+
+**Rule**: Generate aggregate and per-app proof reports from the same normalized validated object. For every capability, expose clickable screenshot, contract, token, operation, artifact, and role-evidence references; show CID, IPFS URI, public gateway, and retrieval SHA-256 for pins; state role-correct contract/token expectations; and cover every generated report with deterministic checksums.
+
+---
+
+## 2026-07-18 - Secret screening must distinguish credentials from code vocabulary
+
+**What happened**: The first assembler hardening applied a broad `secretKey = value` heuristic to every artifact byte stream. A valid portable-site ZIP then matched a minified public library fragment containing the identifier `secretKey`, even though the archive had already passed its extracted-file credential scan and contained no signing material.
+
+**Why it mattered**: Scanning too narrowly can leak credentials, while scanning source bundles and binary containers with natural-language assignment heuristics creates false blockers at final assembly. Both failures undermine trust in a non-secret evidence package.
+
+**Rule**: Apply high-confidence key, token, PEM, and signing-material signatures to all artifact bytes; apply assignment heuristics only to human-readable evidence formats; recursively reject prohibited keys in JSON; and keep archive-specific extracted-file checks at the producer boundary. Run the stricter assembler against accepted live evidence, not only synthetic fixtures.
+
+---
+
+## 2026-07-18 - DOM-visible evidence can still be outside the screenshot viewport
+
+**What happened**: Spaghetti's first extracted-page supplement passed its DOM evidence checks and produced a clean screenshot, but the large title and artwork pushed the on-chain contract, token, state, and loaded-status facts below the captured viewport. Playwright correctly considered those elements visible because they were rendered and not hidden; that did not mean the screenshot showed them.
+
+**Why it mattered**: A hash-bound sidecar can attest off-screen DOM text, but the requested visual proof still needs a reviewer to see the decisive state without trusting the sidecar alone. Tall media makes top-of-page screenshots especially weak for contract evidence.
+
+**Rule**: Before capturing a public-page proof, explicitly scroll the decisive facts/status region into the fixed viewport and visually inspect the resulting PNG. Element visibility assertions establish rendered state, not screenshot inclusion.
+
+---
+
+## 2026-07-18 - Export proof must boot the downloaded bytes
+
+**What happened**: The six shared Pasta publishers had browser coverage that clicked their export controls and recognized a ZIP signature, while several live runners loaded the canonical `site.html` and runtime files directly from the repository. Neither path proved that the exact downloaded archive contained every dependency, preserved the same-run contract/token config, or ran after extraction. The first supplement test also tried to force a hidden deployed-contract field; the Studio's normal state handlers cleared it until the real existing-contract control was selected.
+
+**Why it mattered**: A valid contract and a working source template can coexist with a broken portable product. Missing ZIP entries, stale config, unsafe paths, source-tree fallback, or a hidden-form state mismatch would only reach the user after they attempted to self-host—the independence boundary Pasta is supposed to guarantee.
+
+**Rule**: Portable-site evidence must use the actual Studio mode and export button, retain and hash the downloaded ZIP, require an exact safe dependency/config inventory, extract it, serve only those extracted bytes from a separate origin, load the same-run on-chain subject, reject Objkt/Teia/wtfOS requests, and bind both Studio and independent-runtime screenshots into the app manifest. A source template smoke or `PK` signature alone is not export proof.
+
+---
+
+## 2026-07-18 - Shared proof signers make live lanes sequential
+
+**What happened**: Gnocchi, Rotini, and Macaroni UI-LIVE lanes were started in parallel against the same creator and collector accounts. Rotini advanced those account counters while Gnocchi waited for a collector operation that never entered the mempool, and Macaroni stopped before origination. The same Gnocchi lifecycle crossed that boundary once it ran alone.
+
+**Why it mattered**: Parallel local tests are safe, but parallel live writers using one signer set can create ambiguous counter contention and waste pins, gas, contracts, and five-minute browser waits. A partially successful lane is not trustworthy aggregate evidence.
+
+**Rule**: Run all read-only/local gates in parallel, but serialize Shadownet proof lanes that share any signer. Quarantine every affected partial lane, verify the account is clear before retrying, and eventually enforce this with a cross-process signer lock rather than relying only on coordination.
+
+---
+
+## 2026-07-18 - Self-hosted pages must decode Michelson options too
+
+**What happened**: After the Studio option-wrapper defects were found, the shared standalone site runtime still treated `{ Some: value }` as a number or timestamp. A generated Gnocchi page could misclassify a timed capped edition, while a generated Rotini page could interpret a positive supply cap as zero and report a live project sold out.
+
+**Why it mattered**: Fixing the creator dashboard alone would leave the portable product—the page collectors actually self-host—incorrect. The same generated runtime is copied into six Pasta publishers, multiplying the defect across otherwise valid exports.
+
+**Rule**: The canonical site kit must unwrap Michelson options before all numeric, timestamp, cap, and policy checks; generated-site browser tests must use Taquito-shaped `Some` values; and the synced publisher copies must remain byte-identical.
+
+---
+
+## 2026-07-18 - A generic contract fallback must never erase suite ownership
+
+**What happened**: Macaroni V1 and V2 expose valid FA2 entrypoints, but Colander had no specific blind-mint adapter. The generic FA2 fallback therefore classified both contracts and the workspace's default mapping persisted them as Spaghetti, making the central dashboard reopen the wrong owner app.
+
+**Why it mattered**: Generic interoperability is useful only after every known suite product has had a chance to identify itself. Once the wrong owner id enters a portable project manifest, later recovery and self-hosted management silently diverge from the contract's real application.
+
+**Rule**: Register every known contract generation with a more specific signature than generic standards, map every detected kind to exactly one owner app, and browser-test the remembered owner route. A generic adapter is a final fallback, never an ownership decision for a known product.
+
+---
+
+## 2026-07-18 - Post-write refresh must preserve the terminal transaction result
+
+**What happened**: Colander correctly awaited confirmation, displayed a success message, and refreshed the contract, but the refresh's transient reading/opened messages immediately replaced the confirmation. Users and screenshot evidence could see fresh state or proof of success, but not both.
+
+**Why it mattered**: Refreshing chain state after a write is necessary, yet destroying the terminal result makes a completed transaction look ambiguous and prevents the UI from providing durable feedback at the moment users need it most.
+
+**Rule**: Pass the terminal success state through any mandatory post-write refresh and restore it after the new chain snapshot commits. Browser tests must assert the exact confirmation remains visible after refresh, not merely that no error appeared.
+
+---
+
+## 2026-07-18 - Live visual review must exercise decoded Michelson options
+
+**What happened**: Rotini's replacement contract completed the full three-token lifecycle and passed its chain/indexer gates, but the real collector screenshot displayed `/ [object Object]` for the supply cap. Taquito decodes `option nat` as `{ Some: BigNumber }`; the browser rendered that wrapper directly while the fake bridge had returned a plain number.
+
+**Why it mattered**: Contract correctness, token indexing, DOM presence, and a loose text assertion all passed while a central collector-facing value was visibly broken. The screenshot review caught a decoder-shape mismatch that the test double erased.
+
+**Rule**: Browser fixtures for Michelson `option` values must reproduce Taquito's `Some` wrapper, UI formatting must explicitly unwrap it, and screenshot assertions must reject object-string leakage before a visually defective live lane is accepted.
+
+---
+
+## 2026-07-18 - Free contract paths must omit zero-value internal transfers
+
+**What happened**: Rotini successfully originated an indexer-recognized FA2, published all three generator projects, and let the independent collector reserve, render, and pin the free PNG iteration. `finalize_iteration` then unconditionally called `sp.send(treasury, sp.mutez(0))`, which Shadownet rejected as `contract.empty_transaction`; the same latent defect existed in the expired-reservation refund path.
+
+**Why it mattered**: The complete UI, pinning, reservation, renderer, and metadata pipeline worked, but one unnecessary zero-value internal operation prevented the token from minting. Positive-price tests could not expose the free-path protocol rule.
+
+**Rule**: Every mutez transfer branch must explicitly omit the internal transaction when its amount is zero. Contract suites that advertise free operations must exercise their complete success and refund/cancel lifecycles at exactly zero mutez on the compiled contract before live execution.
+
+---
+
+## 2026-07-18 - Big-map fallback coercion must respect Michelson key types
+
+**What happened**: Rotini's live browser originated a valid FA2 contract, then its proof bridge refreshed the empty `latest_reservation` big map. The first address lookup correctly returned no value, but a generic fallback converted that address to `Number(address)`, producing `NaN`; Taquito rejected the invalid address key and the Studio never advanced to `create_project`.
+
+**Why it mattered**: The contract and origination were healthy, local fake-map tests passed because JavaScript object lookup tolerates `NaN`, and the failure appeared only after a real irreversible chain write. A permissive test double hid a Michelson encoder boundary violation.
+
+**Rule**: Preserve the declared Michelson key domain when retrying big-map lookups: only alternate number/string representations for integer keys and never coerce address or other typed strings. Test doubles must reject non-finite numeric keys so production encoder failures reproduce before live execution.
+
+---
+
+## 2026-07-18 - Semantic FA2 methods are not enough for strict indexer recognition
+
+**What happened**: Penne exposed `balance_of`, `transfer`, and `update_operators` and correctly wrote token metadata, supply, and balances, but left their SmartPy record layouts implicit. SmartPy's alphabetical comb order changed the Michelson parameter schemas, so TzKT classified the originated contract as a generic smart contract and indexed zero tokens despite successful claims and airdrops. The same audit found equivalent omissions in Ravioli's router and Macaroni V2.
+
+**Why it mattered**: A contract can behave like an FA2 to its own UI while remaining invisible to industry indexers and marketplaces. Storage-level success is insufficient for the suite's interoperability promise.
+
+**Rule**: Declare canonical TZIP-12 layouts explicitly for every standard FA2 parameter type, structurally compare every compiled token-producing artifact with a known recognized schema, and require a fresh live contract to report `kind=asset`, `tzips=[fa2]`, indexed tokens, balances, and operations before accepting proof.
+
+---
+
+## 2026-07-18 - Initialization is not interaction wiring
+
+**What happened**: The shared Rotini/Ravioli holder page called `updatePinProviderRows()` once during load but never subscribed that same function to the provider selector's `change` event. Selecting a creator-owned Kubo node therefore left its URL field hidden and made generated-at-open pinning impossible through the real UI.
+
+**Why it mattered**: A default-state screenshot and direct helper test can both pass while the user's first meaningful choice breaks the workflow. Ravioli's contract path was ready, but the self-hosted interface could not collect the configuration needed to use it.
+
+**Rule**: Every selector that changes required fields must have browser coverage for each option transition, computed visibility of its dependent rows, and the downstream action. Calling a renderer at startup never proves it is wired to later user input.
+
+---
+
+## 2026-07-18 - Author CSS can defeat the HTML hidden contract
+
+**What happened**: The shared Pasta collector page correctly marked Ravioli and Rotini-only panels with the `hidden` attribute, but a later `.storage { display: grid; }` author rule overrode the browser's user-agent `[hidden]` rule. Spaghetti's valid live sale therefore displayed an unrelated Ravioli opening form in its screenshot.
+
+**Why it mattered**: The chain operation and DOM state were both correct while the actual user-visible product was not. A suite-wide template can leak controls across app boundaries without any contract test failing, and screenshot evidence must reject that mismatch rather than certify it.
+
+**Rule**: Reusable standalone pages must define `[hidden] { display: none !important; }`, test both presence for the owning app and computed invisibility for non-owning apps, and visually review staged proof captures before accepting a live run.
+
+---
+
+## 2026-07-18 - Generated browser JavaScript needs a syntax gate after string interpolation
+
+**What happened**: The UI-LIVE bridge generated a browser proxy as JavaScript embedded inside a TypeScript string. TypeScript and the surrounding Node module compiled, but a backslash/regular-expression escape inside the generated source could still produce invalid JavaScript only after interpolation.
+
+**Why it mattered**: The proxy is the boundary between genuine app controls and the server-side proof signer. A syntax failure there appears only after the real browser loads and could strand a proof after pinning or a chain operation even though every normal TypeScript gate is green.
+
+**Rule**: Any JavaScript emitted from a TypeScript string template must have a focused regression that evaluates the final generated source with `new Function(source)` (or an equivalent parser) and exercises the actual browser install path. Compiling the generator is not proof that its generated program parses.
+
+---
+
+## 2026-07-18 - Future generative output needs an explicit commitment policy
+
+**What happened**: Ravioli committed an adapter address and resource id but silently dropped adapter payload bytes when reconstructing the recipe during `open_pack`. Requiring one exact payload hash for every action would close substitution for prebuilt artifacts, but it would also force Rotini artwork and metadata to exist before a genuinely generated-at-open pack could be issued.
+
+**Why it mattered**: A blind pack must not imply that exact contents were committed when only a generator slot was reserved. At the same time, generated-at-open art cannot honestly provide a hash of bytes that do not exist yet. Treating those two products as one commitment mode either permits undisclosed substitution or destroys the intended generative lifecycle.
+
+**Rule**: Make adapter payload policy part of the committed recipe. Require `Some(blake2b(payload))` for allocated and other exact-output actions, verify that hash before recipe comparison, and represent genuinely future generative output as an explicit `None` generated-at-open policy that still binds the typed adapter/project. Test exact-payload substitution, generated-at-open fulfillment, wrapper preservation, and reserved-capacity preservation independently.
+
+---
+
+## 2026-07-18 - Screenshot DOM evidence and visible form values are different channels
+
+**What happened**: The first CH-EASE UI-LIVE run required expected text on input selectors. The screenshot visibly contained the input values, but the evidence collector correctly read element text content, which is empty for form controls, and blocked capture twice before any bad sidecar was written.
+
+**Why it mattered**: A screenshot can display a value that a text-content assertion cannot attest. Reusing the wrong evidence channel causes false failures and can leave a multi-stage proof incomplete after real external work.
+
+**Rule**: Use text-content evidence selectors for labels, summaries, status regions, and notes. Validate input values separately through Playwright before capture, then include a nearby genuine text status in the sidecar. Never weaken the collector to conflate input properties with DOM text.
+
+---
+
+## 2026-07-18 - Browser-evaluated proof callbacks must remain self-contained after transpilation
+
+**What happened**: A screenshot validator passed a locally declared helper into `page.evaluate`. TSX/esbuild injected its `__name` helper during transpilation, but the browser context did not contain that Node-side symbol, so the validator failed only when exercised in a real page.
+
+**Why it mattered**: Visual evidence code can typecheck and still fail at the browser serialization boundary. If the failure occurs after a chain action, the run loses the stage screenshot even though the transaction succeeded.
+
+**Rule**: Keep `page.evaluate` callbacks self-contained and avoid assigned nested helpers that transpilers may decorate. Prove evidence utilities against a real Playwright page before attaching them to signer-backed operations.
+
+---
+
+## 2026-07-18 - Inline metadata proves chain plumbing, not durable publishing
+
+**What happened**: The signer-backed Spaghetti, Gnocchi, Penne, and Lasagna harnesses exercised real contracts but embedded `data:` metadata. That proved parameter encoding and on-chain state while providing no independently retrievable pinned artifacts for a release evidence package.
+
+**Why it mattered**: A self-hosting protocol must prove that artwork and metadata remain addressable outside the app and marketplace. A real KT1 pointing to inline test JSON cannot establish the Kubo/IPFS publishing path or public-gateway byte integrity.
+
+**Rule**: Fresh Pasta release proofs must pin every URI they store on-chain, verify exact bytes through an independent public gateway, assert the indexed URI equals the pinned `ipfs://` value, and report CID, gateway, and SHA-256. Keep non-FA2 apps role-correct while applying the same durability rule to their artifacts.
+
+---
+
+## 2026-07-18 - Origination estimates spend the account balance in simulation
+
+**What happened**: Macaroni attempted to obtain an origination burn/fee estimate before its funding gate. Because Octez simulates the operation against the creator's real balance, an underfunded account returned `tez.subtraction_underflow` instead of an estimate, and the harness mislabeled a known funding prerequisite as a generic failure.
+
+**Why it mattered**: A pre-write estimate is still balance-sensitive. Treating its underflow as an unknown contract error obscures the actual remedy and makes a safe, no-spend gate look broken.
+
+**Rule**: Catch Tezos balance-underflow errors around origination estimates and convert them into explicit funding blockers that state no pin or chain write occurred. Only treat other simulation failures as contract/harness defects.
+
+---
+
+## 2026-07-18 - Signer-module interop needs runtime and strict-type proof
+
+**What happened**: The shared Shadownet proof kit's nested keyring package is CommonJS. A synthetic default import worked under one tsx execution path but failed an isolated strict TypeScript check, while a plain named import satisfied the type checker but failed at runtime.
+
+**Why it mattered**: Every fresh proof depends on loading the creator and collector signers. A harness can look type-correct or pass one local invocation yet fail before the first guarded chain action when the runner resolves the module differently.
+
+**Rule**: For nested CommonJS signer modules, use an explicit namespace/default interop shim and prove both a runtime dynamic import and isolated strict TypeScript. Neither check alone establishes executable signer custody.
+
+---
+
+## 2026-07-18 - A callable contract branch is not a user capability until the adapter exposes it
+
+**What happened**: Colander's call builder already implemented Penne's public `claim(token_id)` entrypoint, but the distribution adapter omitted the action. Opening a valid Penne contract therefore showed claim administration and bulk airdrop controls while hiding the collector's actual allocation claim.
+
+**Why it mattered**: A central contract manager can contain correct low-level transaction code and still fail the user story if adapter discovery never renders a route to it. A proof package that only inspected the call builder would have overstated Colander's coverage.
+
+**Rule**: For every app contract capability, verify the whole Colander path as one unit: adapter signature, available action, input schema, call builder, browser rendering, network guard, send, confirmation, and refreshed state. Contract-call code without a visible adapter action does not count as supported.
+
+---
+
+## 2026-07-18 - Shadownet preflight action assertions must advance with shipped contract capabilities
+
+**What happened**: The shared Pasta Shadownet preflight reached the correct RPC and TzKT head, then rejected the current Spaghetti artifact because `availableActions` correctly exposed the newly shipped `set_sale` and `set_sale_active` management actions while the preflight still asserted the older exact action list.
+
+**Why it mattered**: The no-spend gate blocked every fresh proof run even though the artifact/adapter alignment was correct. Bypassing the gate would have hidden future contract drift, while weakening the assertion would have stopped it from proving Colander understands the deployed surface.
+
+**Rule**: When a compiled Pasta contract gains an entrypoint that is intentionally exposed through a shared adapter, update the preflight's required entrypoints and exact available-action expectation in the same pass. Re-run the no-spend preflight before any signer-backed Shadownet operation.
+
+---
+
 ## 2026-07-15 - Inventory UI proofs should not depend on live Shadownet RPC timing
 
 **What happened**: The full inventory rerun repeatedly failed Colander's proven-contract discovery test because both Shadownet RPC attempts timed out before the UI could render the first KT1 fact row.
@@ -8765,5 +9005,255 @@
 **Why it mattered**: A stale build can create an impossible-looking UI failure or, worse, a false pass when source assertions do not exercise the intended marker. The browser result is only meaningful when the served artifact is known to contain the current source change.
 
 **Rule**: After changing UI source, run the canonical application build immediately before any direct Playwright command whose web server serves `dist`, unless the invoked package script explicitly owns that build step. If a result contradicts the source, verify a unique new marker exists in the served bundle before debugging application behavior.
+
+---
+
+## 2026-07-18 - A calendar range filter is not a calendar view
+
+**What happened**: Calendar exposed Today, This week, and This season buttons, but every range was derived from the real current date. The season option rendered an agenda, and there was no selected date, month grid, or way to inspect an adjacent day, week, or month.
+
+**Why it mattered**: The surface could list upcoming events but could not support ordinary planning. Familiar labels hid the absence of the temporal navigation model users expect from a calendar.
+
+**Rule**: A baseline calendar needs an explicit anchor date, navigable Day, Week, and Month spatial views, a visible period label, and Previous/Today/Next controls that all drive the same query range. Agenda is a useful additional view, never a substitute for month navigation.
+
+---
+
+## 2026-07-18 - Ephemeral token ownership needs an indexer checkpoint before consumption
+
+**What happened**: Ravioli's first UI-LIVE verifier bound dependency files to an aggregate run and checked contract storage after every wrapper had been opened, but it did not cross-bind each dependency origination to TzKT or require TzKT to classify the contracts and token balances as FA2. Because a purchase was immediately followed by an atomic open and burn, final zero supply could not independently prove that the buyer ever held the wrapper.
+
+**Why it mattered**: A copied historical dependency package, an unindexed contract, or a storage-compatible non-FA2 could have been cited as same-run industry-standard proof. The strongest evidence for the buy existed only between two successful operations and disappeared from final state.
+
+**Rule**: Cross-bind dependency manifest, UI receipt, creator, KT1, origination hash, indexed operation, and run timestamp before a downstream write. Require TzKT `kind: asset`, `tzips: fa2`, exact token records, and exact balance records. When a workflow consumes or burns state immediately, pause after creation or purchase, wait for the indexer to show that transient state, and preserve the checkpoint in the proof artifact before continuing.
+
+---
+
+## 2026-07-18 - Decode Tezos options at the browser boundary before rendering policy values
+
+**What happened**: A fresh Gnocchi UI-LIVE run originated a valid three-policy FA2 and completed every collector mint, but the final Limited Edition status rendered `NaN cap` and `Invalid Date`. Taquito exposed optional sale fields as `{ Some: value }`; the browser bridge passed those objects to `Number()` and `Date` instead of normalizing them. The fake chain had returned raw primitives, so the focused browser proof had not reproduced the live decoder shape.
+
+**Why it mattered**: The contract and transactions were correct, yet the creator-facing evidence was false and unusable. Accepting the run would have shipped a management surface that could not accurately display its own immutable cap and window, while a test double concealed the production integration defect.
+
+**Rule**: Normalize both Taquito `{ Some: value }` and raw Micheline `Some` at the UI boundary before numeric or date conversion, validate finite numbers and valid timestamps, and treat undecoded option objects as proof failures. Browser doubles must project the same decoded shapes as the real client, and visual-chain proof must fail closed on `NaN`, `Invalid Date`, or `[object Object]` before an evidence package can be accepted.
+
+---
+
+## 2026-07-18 - A Tezos fee must cover the declared gas limit, not the expected gas use
+
+**What happened**: Macaroni's proof adapter submitted `add_tokens_v2` with a fixed 2,500-mutez fee while declaring a 200,000 gas limit. Shadownet permanently refused it at prefilter time as `fees_too_low`, so it never reached TzKT's indexed-operation history and Studio's success-only wait hung.
+
+**Why it mattered**: A transaction that would use modest gas can still be rejected before execution because the protocol fee floor is calculated from the forged limits and operation size. Waiting only for an applied operation or a success label hides prefilter failures.
+
+**Rule**: Prefer the toolkit estimator and derive any fallback fee from declared gas plus forged byte size with headroom. Live harnesses must also inspect signer-and-contract-scoped RPC mempool refusal buckets and fail immediately on terminal errors.
+
+---
+
+## 2026-07-18 - Tezos inclusion is not proof that an operation applied
+
+**What happened**: Macaroni's next `add_tokens_v2` operation paid a valid fee and reached a block, but its 320-byte fallback storage limit was below the 621 bytes consumed. TzKT marked the operation `backtracked`; a later `set_stages` call applied, and Studio displayed the drop as synchronized because wallet confirmation alone resolved.
+
+**Why it mattered**: A confirmed hash proves block inclusion, not successful state transition. Subsequent writes and screenshots can look healthy while the token inventory they depend on never existed.
+
+**Rule**: Size storage fallbacks conservatively per unit and clamp them to the protocol hard limit. After confirmation, require the exact hash, target, and entrypoint to be independently indexed with status `applied` before advancing UI state or accepting evidence.
+
+---
+
+## 2026-07-18 - Static policy assertions must track the invariant that the contract actually enforces
+
+**What happened**: Gnocchi evolved its cap update guard from `CAP_BELOW_MINTED` to `CAP_BELOW_COMMITTED` so reserved Ravioli capacity is protected, but the aggregate source policy still searched for the old error name.
+
+**Why it mattered**: The stronger contract and its live proof were correct, yet an obsolete literal check blocked unrelated Lasagna/Colander preflight and obscured the real invariant under test.
+
+**Rule**: When contract semantics strengthen, update policy tests in the same pass to assert the new invariant and its compiled artifact. Do not preserve stale error-string checks that describe a weaker state model.
+
+---
+
+## 2026-07-18 - A shared handoff reader is not proof that an app consumes the handoff
+
+**What happened**: Ravioli bundled the same `consumeCheaseHandoff` helper as the other Pasta publishers and supported manual CH-EASE JSON import, but its Studio never called the helper. Static asset parity made the integration appear present while the actual CH-EASE-to-Ravioli journey silently discarded the staged package.
+
+**Why it mattered**: The suite's preparation layer could open Ravioli successfully yet lose the creator's title, relationship metadata, and recipe references. Manual import coverage did not prove the advertised same-origin handoff path or its one-use deletion behavior.
+
+**Rule**: Every app-to-app handoff needs an owning browser test that stages the exact versioned payload, opens the real receiving page, verifies the destination fields, confirms the staged value is consumed exactly once, and proves no privileged action occurred during hydration. Shared helper presence and regex policy checks are supporting evidence, not journey proof.
+
+---
+
+## 2026-07-18 - Every zero-price Tezos sale must suppress its zero-tez payout operation
+
+**What happened**: Ravioli accepted a zero wrapper price and enforced exact zero payment, then unconditionally called `sp.send(treasury, sp.amount)`. The logical sale transfer was valid, but Tezos rejects the emitted zero-mutez internal transfer as an empty transaction.
+
+**Why it mattered**: A creator could fully configure and issue a free pack that collectors could never acquire. Paid proof cases remained green and would have hidden the broken free user story.
+
+**Rule**: For every contract entrypoint that accepts a valid zero price, guard treasury or royalty transfers with `amount > 0` while leaving state transitions intact. Pair the source guard with a zero-price contract scenario, a real-page browser transaction, and target-chain evidence that the applied operation amount is exactly zero; do not infer free-path correctness from paid-path coverage.
+
+---
+
+## 2026-07-18 - Storage projection is a serialization trust boundary
+
+**What happened**: Ravioli's UI-LIVE mirror copied a raw Taquito `BigMapAbstraction` into the browser storage response. The shared serializer did not recognize that abstraction as a map, so it recursively enumerated the object's provider, schema, and RPC context until V8 exhausted its roughly 4 GB heap after irreversible Shadownet writes.
+
+**Why it mattered**: A read-only UI refresh terminated the proof runner, stranded a partial two-contract run, and retained infrastructure state the browser never needed. Depth-only recursion limits did not bound breadth, strings, collection size, shared references, or the provider graph already retained during traversal.
+
+**Rule**: Treat every chain-to-browser storage projection as a strict serialization boundary. Project only UI-required primitives and fresh finite maps, reject unknown storage shapes and non-plain client abstractions before property access, and enforce cycle, depth, node, collection, and byte budgets. Live proof runners must record a heap ceiling at every material publish, purchase, and consumption checkpoint; raising the Node heap is never the correction for an unbounded projection.
+
+---
+
+## 2026-07-18 - Browser proof adapters must preserve estimation and block-fit fallbacks
+
+**What happened**: Macaroni's actual exported collector page ran through a guarded Node signer bridge, but the bridge replaced the public toolkit getter without replacing the production runtime's lexical toolkit. Its estimator therefore remained bound to a proxy with no estimate API and silently selected a 480,000-gas fallback for a mint that a current simulation sized at 6,909 gas and eventually consumed only 5,402. Under Shadownet rollup load, the valid operation remained in both RPC mempools beyond the proof runner's five-minute terminal window because it could not fit the gas left in saturated blocks.
+
+**Why it mattered**: The page appeared hung after a legitimate user action, consumed the collector's next counter until inclusion, and left an irreversible partial proof run. The operation eventually applied, but that late chain success could not reconstruct the missing wallet-limit, reveal, V1, screenshot, and receipt stages, so accepting the attempt would have confused a repaired counter with a complete product proof.
+
+**Rule**: A browser-to-signer proof adapter must preserve the real application's internal estimation path, not only its exported getter. Expose only bounded simulation for an already authorized contract call, return the minimum safe numeric estimate fields, and emit no write receipt. Every fallback must use observed or simulated consumption plus conservative headroom, prove it fits a saturated block, and monitor every mempool terminal bucket. If a run times out after injection, quarantine it, keep checking for late inclusion, and never authorize a same-counter replacement until both RPCs, the account counter, and the indexer are re-read immediately beforehand.
+
+---
+
+## 2026-07-18 - Unique stage labels do not make duplicate pixels independent evidence
+
+**What happened**: Spaghetti captured `sale opened` and `complete` 84 milliseconds apart. The second sidecar observed a newly available `#ppNotice`, but the notice remained outside the fixed screenshot viewport, so both stage files had the exact same SHA-256 despite different labels and DOM evidence.
+
+**Why it mattered**: The manifest and capability graph counted two screenshots while a reviewer could see only one visual state. Sidecar text can prove DOM state, but it cannot convert unchanged pixels into a separate screenshot checkpoint.
+
+**Rule**: Bring the decisive terminal element fully into the fixed viewport and focus it before capture, then require screenshot digests to be unique across distinct stages. A proof assembler must reject duplicate image bytes even when stage ids, timestamps, captions, and sidecars differ.
+
+---
+
+## 2026-07-18 - Mutable token state must be bound to the proof's terminal level
+
+**What happened**: Gnocchi proved three edition policies and finished with three positive holders per token, but its manifest recorded only token identities. A later quarantined Ravioli run transferred Gnocchi inventory into its router, changing token 1 to four current holders while leaving the accepted Gnocchi operations and screenshots immutable.
+
+**Why it mattered**: Querying current balances during a later audit rewrote the apparent result of an earlier proof. Without a level, exact request/response hashes, and a pinned balance snapshot, supply and holder claims could not be reproduced independently or separated from legitimate downstream use.
+
+**Rule**: Derive a mutable token proof's cutoff from the maximum level of its accepted operation set, fetch historical balances at that exact level with both contract and token-id filters, canonicalize positive balances, and pin the request/response hashes plus computed supply and holders. Record current state only as an explicit comparison; never substitute it for proof-time evidence.
+
+---
+
+## 2026-07-18 - One screenshot cannot prove mutually exclusive application tabs
+
+**What happened**: Macaroni attempt 7 completed the entire V2 lifecycle and synchronized a fresh V1 contract, then its stage-12 screenshot failed because the runner had switched to Page Designer but still required `#deployStatus` and `#log` from the hidden Drop tab alongside visible `#exportStatus`. The nodes existed in the DOM, but no user or screenshot could see all required evidence at once.
+
+**Why it mattered**: Treating hidden DOM as screenshot evidence would have made one image claim both an applied on-chain sync and a self-hosted export without visibly showing both. The guard correctly rejected the run after irreversible writes, leaving a real V1 contract but no collector token, terminal verifier, manifest, or receipt.
+
+**Rule**: A screenshot stage may require evidence only from the currently visible application state. When a workflow crosses mutually exclusive tabs, capture the first result before navigation, then navigate and capture a separate stage for the second result. Keep present-but-hidden selectors as hard failures, shift subsequent ordinals and capability mappings atomically, and quarantine the entire partial run rather than combining valid earlier screenshots with a failed terminal sequence.
+
+---
+
+## 2026-07-18 - Indexer tombstones are historical rows, not active big-map state
+
+**What happened**: Macaroni attempt 8 completed both fresh contract lifecycles and all 15 visible stages, but the terminal verifier waited for V1 pending token key 0 to disappear from TzKT entirely. TzKT retained the consumed key as a normal historical row with `active:false`, so a successful chain state could never satisfy the verifier's row-existence predicate.
+
+**Why it mattered**: The false negative happened only after irreversible originations and mints, wasting a complete run and suppressing its manifest and receipt. Simply accepting a matching row would have created the opposite error by allowing still-active inventory or ambiguous indexer data to pass as consumed.
+
+**Rule**: For TzKT big-map absence, prefer an `active=true` query and require the target key to be absent. When historical rows are intentionally fetched, accept only no matching key or a matching literal `active:false` tombstone; any matching active row, missing or wrongly typed activity marker, malformed row, or invalid key must fail closed. Preserve the exact tombstone response in quarantined evidence whenever this distinction invalidates a live proof attempt.
+
+---
+
+## 2026-07-18 - Excess object properties can silently erase intended browser choreography
+
+**What happened**: Macaroni's V1 browser test passed `focusSelector` into the screenshot helper even though the helper's typed input and runtime implementation did not support it. `tsx` executed the JavaScript and ignored the excess property, while a broad strict TypeScript gate correctly rejected the call; the test therefore appeared green without performing its intended scroll.
+
+**Why it mattered**: The regression was meant to prove that sync and export evidence occupy the captured viewport after the mutually exclusive-tab defect. A silently ignored choreography option weakened that proof even though the production runner independently scrolled its targets.
+
+**Rule**: Never rely on undeclared options to drive proof behavior. Perform required scroll/focus choreography explicitly, assert the target intersects the screenshot viewport, and include test helpers in the strict TypeScript gate so excess-property drift fails before a live run.
+
+---
+
+## 2026-07-18 - Captured evidence needs explicit capability ownership and subject-level links
+
+**What happened**: Ravioli captured its terminal blind-manifest reveal and independently verified every delivered Gnocchi and generated Rotini token, but the proof writer emitted only five pack-mode capabilities. The reveal screenshot and four reveal operations had no declared capability owner, while the generated report linked dependency contract roots instead of the exact child-token pages.
+
+**Why it mattered**: Evidence can exist on disk and still be absent from the review story. An auditor following the generated package could not trace the reveal claim or open a delivered token directly without reverse-engineering the TzKT snapshot.
+
+**Rule**: Every captured proof stage must be referenced by an explicit capability, and every token-level claim must expose an exact contract/token URL at that capability boundary. Treat contract-root links and unowned screenshots as incomplete evidence even when lower-level JSON contains the missing facts.
+
+---
+
+## 2026-07-18 - Downstream proof failures can consume upstream inventory without invalidating upstream history
+
+**What happened**: Ravioli's quarantined OOM attempt moved accepted Gnocchi tokens into a helper contract before the downstream proof failed. The accepted Gnocchi proof remained historically correct, but its creator no longer held the exact inventory required by Ravioli's fresh-only dependency gate.
+
+**Why it mattered**: Rewriting the accepted Gnocchi manifest would falsify proof-time history, while silently minting replacement inventory would hide a real supply change. The first recovery draft also used an asynchronous state predicate with a synchronous polling helper and indexed estimate validation by applied-operation count, which could accept a truthy Promise and reject the second pre-write estimate for the wrong reason.
+
+**Rule**: Treat accepted proof bytes as immutable and record any later inventory repair in a separate, explicitly authorized recovery artifact. Cross-bind exact before/after state, operation hashes, entrypoints, payloads, consecutive counters, and original evidence hashes, then require downstream proofs to validate and embed that artifact before any estimate, pin, directory creation, or write. Poll asynchronous state with an awaited loop, and validate estimate-plus-submit choreography against its full explicit sequence rather than a counter that advances only after injection.
+
+---
+
+## 2026-07-18 - Recovery material is a product output, not disposable runner state
+
+**What happened**: Ravioli's Studio downloaded an opening kit after every finalized pack, but the proof runner copied only the textarea value into process memory. If the process crashed after funding and issuing wrappers, the downloaded kit and its only opening nonces disappeared from the proof lane even though the on-chain product survived.
+
+**Why it mattered**: Blind wrapper tokens without their open kit can become permanently unusable. Pinning the kit early is not a safe durability shortcut because it publishes the nonces before holders open and collapses the blind reveal boundary.
+
+**Rule**: When a live workflow creates unique recovery or consumption material, await the real browser download, validate its exact bytes against the displayed value, and persist it locally immediately after the irreversible step. Update a partial progress ledger after every capture, keep pre-reveal secrets off public pinning, and require the final proof to hash, declare, and capability-own the retained output after its secrets are spent.
+
+---
+
+## 2026-07-19 - An explicit estimate does not bind a later Tezos send automatically
+
+**What happened**: Ravioli recovery completed both required simulations and wrote a correct pre-submission intent, then called Taquito `send()` without the returned fee, gas, or storage limits. Taquito started a second estimator internally and timed out during its account-reveal lookup before signing. The recovery also counted estimates in a `validateCall` plan even though the bridge invokes that callback only for actual calls.
+
+**Why it mattered**: The intended two-simulation boundary still permitted a third network-dependent simulation, while the callback-count mismatch could have raised an error only after both authorized writes applied. Either defect could strand another partial recovery lane despite correct preflight data.
+
+**Rule**: Bind every accepted Tezos estimate to the exact subsequent call by supplying all of `fee`, `gasLimit`, and `storageLimit` to `send()`, and recompute those options during receipt validation. When limits are unchanged, derive the fee from the larger estimated/minimal fee plus a documented fixed tip; if limits are padded, recompute the fee floor for the padded gas. Model bridge phases accurately in tests: parse and bind estimate requests separately, and count `validateCall` only for live submissions.
+
+---
+
+## 2026-07-19 - Confirmation polling failure is not permission to resubmit an operation
+
+**What happened**: A UI-LIVE Tezos operation applied and was independently indexed, but Taquito's `operation.confirmation(1)` raised `ConfirmationTimeoutError` before the bridge could call its exact-hash `assertOperationApplied` verifier. The bridge emitted no receipt even though the write had succeeded, creating a dangerous false-negative retry signal.
+
+**Why it mattered**: Repeating the signed action could duplicate a mint or advance the signer into another counter conflict. Broadly swallowing confirmation errors would be equally unsafe because failures, backtracks, unrelated exceptions, or an unbound origination could then be reported as success.
+
+**Rule**: Recover only Taquito's explicit confirmation-timeout case, never resend, and require a Node-owned verifier to accept the exact submitted hash plus its contract and entrypoint scope before recording success. Rethrow all other errors and all timeouts without an accepting verifier; origination recovery additionally requires Taquito's exact precomputed KT1 so it never repeats confirmation through `operation.contract()`.
+
+---
+
+## 2026-07-19 - Applied recovery operations need a signer-free finalization path
+
+**What happened**: The Ravioli dependency recovery wrote its immutable intent, applied both exact Gnocchi mints, and retained only the first operation in its progress file before the signer-backed process stopped without writing the terminal receipt. Chain state was correct, but rerunning the execution path would have required the obsolete pre-state and risked treating already-applied writes as retryable work.
+
+**Why it mattered**: A downstream proof must not proceed from an inferred repair, but acquiring admissible evidence must never require another simulation, signature, submission, or pin after the intended mutations already exist. Trusting only the partial progress file would also omit the second applied operation.
+
+**Rule**: Every multi-operation recovery must have a separate read-only reconciliation mode. Re-read the immutable intent and accepted evidence bytes, discover the exact post-intent applied operations from the indexer, require the partial progress file only as an optional exact prefix, bind consecutive counters to clear terminal counters on both configured RPCs, verify exact terminal state, and write the final local receipt only after every validation passes. Tests must make signer, session, estimator, sender, and pin access fatal and prove that any evidence drift suppresses receipt creation.
+
+---
+
+## 2026-07-19 - Do not collapse sale availability and product backing into one status branch
+
+**What happened**: Ravioli's public buyer page rendered `Primary sale open` whenever wrapper inventory remained and returned before showing that the finalized pack was also fully reserved. After the first wrapper from the two-edition blind funded pool opened successfully, one sale edition remained, so the refreshed page hid the reserve state and the live proof's universal `fully reserved` wait timed out after an applied operation.
+
+**Why it mattered**: Primary-sale availability and atomic recipe backing are independent buyer trust signals. Weakening the proof wait would have hidden the backing guarantee, while retaining the single-dimension UI created a false-negative proof failure after an irreversible chain action.
+
+**Rule**: When an on-chain product has independent commerce and backing dimensions, display both in every reachable combined state. Drive proof waits from exact state combinations, include a fixture where an opening leaves primary inventory available, separately cover the exhausted/no-sale state, and keep shared exported runtimes byte-identical so the tested UI is the shipped UI.
+
+---
+
+## 2026-07-19 - Recovery must neutralize public races before consuming reserved capacity
+
+**What happened**: The first native Ravioli recovery plan opened only three remaining wrappers and deactivated sales after opening. That would have left token 3 sellable and one Rotini reservation stranded, while an external buyer could race a sequential recovery before its sale closures completed.
+
+**Why it mattered**: A recovery can restore headline balances while still leaving a live acquisition race, an unusable wrapper, or committed dependency capacity behind. Creating fresh capacity on top of that state would make the next proof depend on an incomplete cleanup.
+
+**Rule**: Enumerate every residual transferable wrapper and adapter reservation before authorizing recovery. Close every public acquisition route first, re-read the exact sale-off and wrapper-owned state before the first consumption call, exhaust or explicitly quarantine every reservation, and create fresh dependency capacity only after the intended terminal state is fully specified. Bind that ordering and state to durable intent, progress, receipt, and signer-free reconciliation evidence.
+
+---
+
+## 2026-07-19 - Guarded call equality must ignore decoder-owned prototypes
+
+**What happened**: Ravioli's native recovery passed every evidence, IPFS, state, affordability, and estimate gate, then rejected its first authorized call before signing. The guarded bridge had decoded the exact payload into a null-prototype object, while the immutable call plan used an ordinary object; prototype-sensitive strict equality treated that implementation detail as a payload mismatch.
+
+**Why it mattered**: The failure consumed no counter and caused no chain write, but it stranded a complete preflight and public-pin attempt. A validator that confuses decoder representation with semantic data can create false negatives at the most sensitive boundary and tempt unsafe retries unless submission order is proven.
+
+**Rule**: At a serialization boundary, validate exact canonical data rather than JavaScript object identity or prototype. Rebuild both actual and expected values into fresh bounded plain structures, retain strict key/value/array comparison, regression-test null-prototype decoder output plus drift negatives, and prove whether validation runs before or after signing before deciding how to recover.
+
+---
+
+## 2026-07-20 - Release fixtures must consume canonical protocol constants and local evidence
+
+**What happened**: Ravioli's real-page fixture duplicated its Gnocchi allocation token id across dependency evidence, Studio form input, and explorer-link expectations. Production moved the allocation to token 1 while parts of the fixture stayed at token 0, so publishing failed behind a generic download timeout. Rotini's entrypoint policy similarly lagged its compiled artifact, Spaghetti's local browser proof failed when a public IPFS gateway returned 504, and a Calendar assertion assumed one card even though a late-night one-hour event correctly spanned two day cells.
+
+**Why it mattered**: Four release failures looked like independent product regressions even though they were stale expectations and an unnecessary network dependency. The generic download wait also hid the first actionable Studio error for thirty seconds.
+
+**Rule**: Import canonical protocol constants into every fixture layer instead of repeating literals, derive entrypoint expectations from intentional shipped capabilities, intercept local proof metadata at a deterministic local origin, let temporal assertions account for valid boundary-spanning renderings, and attach application logs plus browser events to asynchronous artifact waits so the first failing boundary remains visible.
 
 ---

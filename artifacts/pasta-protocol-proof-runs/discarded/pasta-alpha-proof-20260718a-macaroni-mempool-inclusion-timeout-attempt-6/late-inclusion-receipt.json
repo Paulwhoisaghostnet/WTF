@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "pasta-quarantined-late-inclusion-v1",
+  "network": "shadownet",
+  "chainId": "NetXnHfVqm9iesp",
+  "operation": {
+    "hash": "ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN",
+    "status": "applied",
+    "level": 4255182,
+    "timestamp": "2026-07-19T05:22:21Z",
+    "block": "BLeeZdT49YBv4EiUJHCCZbaT2R1KurUcuYALMkwnpedZWiE8iNe",
+    "source": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "counter": 23833802,
+    "destination": "KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH",
+    "entrypoint": "mint",
+    "value": "1",
+    "amountMutez": 1000,
+    "feeMutez": 60880,
+    "gasLimit": 480000,
+    "gasUsed": 5402,
+    "storageLimit": 1300,
+    "storageUsed": 359,
+    "storageFeeMutez": 89750,
+    "tokenTransfersCount": 1,
+    "eventsCount": 1,
+    "explorerUrl": "https://shadownet.tzkt.io/ong7E6PG1yhkdiUTVJWTKxgnMGDJnoCkEUjCzjWB2z17CUa8cZN"
+  },
+  "postApplicationState": {
+    "contract": "KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH",
+    "contractKind": "asset",
+    "standards": ["fa2"],
+    "minted": "1",
+    "revealed": "0",
+    "declaredSupply": "2",
+    "tokenCount": "1",
+    "tokenId": "0",
+    "tokenTotalSupply": "1",
+    "tokenHoldersCount": 1,
+    "collector": "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "collectorTokenBalance": "1",
+    "collectorCounter": 23833802,
+    "stageZeroMintedByCollector": "1",
+    "stageZeroMaxPerWallet": "1",
+    "tokenExplorerUrl": "https://shadownet.tzkt.io/KT1FoVw3vwNroF47pXJJMPxymQfPnbJoxYkH/tokens/0"
+  },
+  "terminalRpcSnapshot": {
+    "headLevel": 4255322,
+    "headHash": "BMPX9iUHeCweVNvwgXfWXcH6LKPYejJ4WgQu73rvJiKFK4k9yqP",
+    "headTimestamp": "2026-07-19T05:36:21Z",
+    "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY",
+    "primary": {
+      "rpc": "https://tezos-shadownet.octez.io/",
+      "collectorCounter": "23833802",
+      "operationAbsentFromAllMempoolBuckets": true
+    },
+    "fallback": {
+      "rpc": "https://tcinfra.net/rpc/tezos/shadownet",
+      "collectorCounter": "23833802",
+      "operationAbsentFromAllMempoolBuckets": true
+    }
+  },
+  "recovery": {
+    "replacementInjected": false,
+    "required": false,
+    "reason": "The original operation applied and consumed counter 23833802 before any replacement was authorized. A same-counter replacement would now be invalid and unsafe."
+  },
+  "acceptance": {
+    "acceptedAsCapabilityProof": false,
+    "reason": "Late application repairs chain state but cannot repair the failed and incomplete browser proof sequence. A fresh attempt must complete both Macaroni V2 and V1 lanes and generate its own terminal manifest and receipt."
+  }
+}

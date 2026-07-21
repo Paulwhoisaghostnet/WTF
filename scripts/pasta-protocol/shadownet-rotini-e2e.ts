@@ -268,6 +268,8 @@ function originationStorage(admin: string, collectionUri: string) {
     token_artifact: new MichelsonMap(),
     minted_by: new MichelsonMap(),
     reserved_by: new MichelsonMap(),
+    pack_minters: new MichelsonMap(),
+    pack_reserved: new MichelsonMap(),
     next_project_id: 0,
     next_reservation_id: 0,
     next_token_id: 0,

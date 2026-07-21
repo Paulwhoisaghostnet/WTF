@@ -1,0 +1,22 @@
+{
+  "templateName": "PastaRotiniPackAdapter",
+  "artifactSlug": "pasta-rotini-pack-adapter",
+  "source": "contracts/pasta-protocol/PastaRotiniPackAdapter.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/ravioli/contract/pasta-rotini-pack-adapter.contract.json",
+  "storage": {
+    "note": "Origination storage uses an administrator address, TZIP-16 metadata map, app-specific counters, and empty app-specific big_maps."
+  },
+  "entrypoints": [
+    "create_resource",
+    "set_resource_active",
+    "add_router",
+    "remove_router",
+    "reserve",
+    "fulfill",
+    "release",
+    "transfer_administration",
+    "accept_administration"
+  ]
+}

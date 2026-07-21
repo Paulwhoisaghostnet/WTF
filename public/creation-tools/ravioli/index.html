@@ -10,7 +10,7 @@
     <header class="pp-top">
       <div class="pp-brand">
         <h1>Ravioli</h1>
-        <span class="pp-tag">Pasta Protocol · Bundle Publisher (art packs · redeemable · mystery · wrapped sets)</span>
+        <span class="pp-tag">Pasta Protocol · atomic Tezos packs and wrapped-token products</span>
       </div>
       <div class="pp-wallet">
         <label>
@@ -28,134 +28,154 @@
     <main class="pp-grid">
       <section class="pp-card">
         <h2>1 · Storage / pinning</h2>
-        <p class="pp-note">
-          You provide pinning. wtfOS trusted creators may use the platform pinner when embedded in
-          wtfOS; downloaded builds must use Pinata or their own IPFS node.
-        </p>
-        <label>
-          Provider
+        <p class="pp-note">Wrapper metadata, pack manifests, and generated output are pinned by the creator or collector. Downloaded builds can use Pinata or a local Kubo node.</p>
+        <label>Provider
           <select id="pinProvider">
             <option value="pinata">Pinata (JWT)</option>
             <option value="node">IPFS node (Kubo HTTP API)</option>
-            <option value="wtfos">wtfOS platform pinner (trusted creators)</option>
+            <option value="wtfos">wtfOS platform pinner</option>
           </select>
         </label>
-        <label id="pinJwtRow">
-          Pinata JWT
-          <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" />
-        </label>
-        <label id="pinNodeRow" hidden>
-          Node URL
-          <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" />
-        </label>
+        <label id="pinJwtRow">Pinata JWT <input id="pinJwt" type="password" autocomplete="off" placeholder="eyJ…" /></label>
+        <label id="pinNodeRow" hidden>Node URL <input id="pinNode" type="url" placeholder="http://127.0.0.1:5001" /></label>
       </section>
 
       <section class="pp-card">
-        <h2>2 · Mint target</h2>
+        <h2>2 · Router target</h2>
         <div class="pp-radio">
-          <label><input type="radio" name="target" value="new_collection" checked /> Create a new bundle contract</label>
-          <label><input type="radio" name="target" value="existing_contract" /> Publish into a bundle contract I administer</label>
+          <label><input type="radio" name="target" value="new_collection" checked /> Create a new Ravioli router</label>
+          <label><input type="radio" name="target" value="existing_contract" /> Add a pack to a router I administer</label>
         </div>
         <div id="newCollectionFields">
-          <label>Collection name <input id="collName" type="text" placeholder="My Bundles" /></label>
-          <label>Symbol <input id="collSymbol" type="text" placeholder="WTF" /></label>
+          <label>Collection name <input id="collName" type="text" placeholder="My Atomic Packs" /></label>
+          <label>Symbol <input id="collSymbol" type="text" placeholder="RAV" /></label>
           <label>Cover image <input id="collCover" type="file" accept="image/*" /></label>
         </div>
         <div id="existingContractFields" hidden>
-          <label>Contract address <input id="existingKt" type="text" placeholder="KT1…" /></label>
-          <button id="btnLoadContract" type="button">Load next token id</button>
+          <label>Router address <input id="existingKt" type="text" placeholder="KT1…" /></label>
+          <button id="btnLoadContract" type="button">Verify router</button>
           <span id="existingInfo" class="pp-note"></span>
         </div>
         <details class="pp-rel">
           <summary>Ownership relationship (optional)</summary>
           <label>Parent contract <input id="relParent" type="text" placeholder="KT1…" /></label>
           <label>Franchise contract <input id="relFranchise" type="text" placeholder="KT1…" /></label>
-          <label>Collection group <input id="relGroup" type="text" placeholder="group id / slug" /></label>
+          <label>Collection group <input id="relGroup" type="text" /></label>
         </details>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>3 · Bundle wrapper</h2>
+        <h2>3 · Wrapped product</h2>
         <div class="pp-row">
-          <label class="pp-import">Name <input id="bnName" type="text" placeholder="Mystery Art Pack" /></label>
-          <label>Editions to mint <input id="bnEditions" type="number" min="1" value="1" /></label>
+          <label>Pack type
+            <select id="bnMode">
+              <option value="0">Deterministic vault — deliver known existing tokens</option>
+              <option value="1">Blind funded pool — allocate existing tokens</option>
+              <option value="2">Blind allocation — mint reserved unminted tokens</option>
+              <option value="3">Blind generative — create artwork and token at open</option>
+              <option value="4">Hybrid — escrow + allocation + generative</option>
+            </select>
+          </label>
+          <label>Editions / recipes <input id="bnEditions" type="number" min="1" max="64" value="1" /></label>
         </div>
         <div class="pp-row">
-          <label><input id="bnForSale" type="checkbox" checked /> List wrapper editions for direct sale</label>
-          <label>Price per edition (tez) <input id="bnPrice" type="number" min="0" step="0.000001" value="1" /></label>
-          <label>Quantity for sale <input id="bnSaleCount" type="number" min="1" value="1" /></label>
+          <label class="pp-import">Name <input id="bnName" type="text" placeholder="Hybrid Art Pack" /></label>
+          <label><input id="bnForSale" type="checkbox" checked /> Direct primary sale</label>
+          <label>Price (tez) <input id="bnPrice" type="number" min="0" step="0.000001" value="1" /></label>
+          <label>Sale quantity <input id="bnSaleCount" type="number" min="1" value="1" /></label>
         </div>
-        <label>Description <textarea id="bnDesc" rows="2" placeholder="Optional"></textarea></label>
-        <label>Tags (comma separated) <input id="bnTags" type="text" placeholder="bundle, pack" /></label>
+        <label>Description <textarea id="bnDesc" rows="2"></textarea></label>
+        <label>Tags <input id="bnTags" type="text" placeholder="pack, generative, hybrid" /></label>
         <label>Wrapper artwork <input id="bnArtifact" type="file" accept="image/*,video/*,audio/*" /></label>
         <span id="bnArtifactStatus" class="pp-note"></span>
-        <div class="pp-row">
-          <label><input type="checkbox" id="bnRedeemable" checked /> Redeemable (holders can burn to redeem)</label>
-          <label><input type="checkbox" id="bnMystery" /> Mystery (contents hidden until you reveal)</label>
-        </div>
-        <p id="bnMysteryNote" class="pp-note"></p>
+        <label><input type="checkbox" id="bnMystery" /> Hide the public contents URI until an admin reveal</label>
+        <input id="bnRedeemable" type="checkbox" checked hidden />
+        <p id="bnMysteryNote" class="pp-warn"></p>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>4 · Bundle contents</h2>
+        <h2>4 · Atomic recipe</h2>
+        <p class="pp-note">Every recipe is fully escrowed or capacity-reserved before wrappers can mint. If any child transfer or mint fails, Tezos reverts the entire opening and the wrapper remains owned.</p>
+        <p class="pp-warn">Blind means commit/reveal and normal UI concealment—not chain privacy. Funding and reservation operations remain visible on Tezos.</p>
         <div class="pp-row">
-          <label class="pp-import">
-            Import CH-EASE package
-            <input id="importPkg" type="file" accept="application/json,.json" />
-          </label>
-          <button id="btnAddMember" type="button">Add item</button>
-          <span class="pp-note">Each item is recorded in the pinned contents manifest referenced on-chain.</span>
+          <button id="btnAddMember" type="button">Add recipe item</button>
+          <label class="pp-import">Import CH-EASE package <input id="importPkg" type="file" accept="application/json,.json" /></label>
         </div>
         <div id="members" class="pp-tokens"></div>
+
+        <details id="adapterSetup">
+          <summary>Automatic allocation / generative adapter setup</summary>
+          <label><input id="autoAdapters" type="checkbox" checked /> Originate and configure typed helper adapters when their recipe type is used</label>
+          <div class="pp-row">
+            <label>Gnocchi contract <input id="gTargetKt" type="text" placeholder="KT1…" /></label>
+            <label>Gnocchi token id <input id="gTokenId" type="number" min="0" value="0" /></label>
+            <label>Existing allocation adapter (optional) <input id="gAdapterKt" type="text" placeholder="KT1…" /></label>
+          </div>
+          <div class="pp-row">
+            <label>Rotini contract <input id="rTargetKt" type="text" placeholder="KT1…" /></label>
+            <label>Rotini project id <input id="rProjectId" type="number" min="0" value="0" /></label>
+            <label>Existing generative adapter (optional) <input id="rAdapterKt" type="text" placeholder="KT1…" /></label>
+          </div>
+        </details>
+
+        <details>
+          <summary>Advanced per-edition recipe matrix</summary>
+          <p class="pp-note">Optional JSON array with exactly one action array per edition. Use this for a blind funded pool whose allocations differ. Empty uses the visible recipe for every edition.</p>
+          <textarea id="recipeJson" rows="8" spellcheck="false" placeholder='[[{"kind":"escrow","fa2":"KT1…","tokenId":0,"amount":1}]]'></textarea>
+        </details>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>5 · Publish</h2>
-        <button id="btnPublish" type="button" class="pp-primary">Deploy bundle to Tezos</button>
-        <p class="pp-warn">
-          Rehearse on Shadownet before mainnet. Origination, bundle registration, and mints are signed by
-          your connected wallet and are permanent. Redeeming burns the wrapper edition on-chain.
-        </p>
+        <h2>5 · Fund, lock, and issue</h2>
+        <button id="btnPublish" type="button" class="pp-primary">Deploy fully backed pack</button>
+        <p class="pp-warn">The wallet will sign origination/configuration, escrow or capacity reservations, finalization, wrapper minting, and optional sale operations. Rehearse on Shadownet first.</p>
         <pre id="log" class="pp-log" aria-live="polite"></pre>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>6 · Redeem &amp; reveal</h2>
+        <h2>6 · Open / reveal</h2>
         <div class="pp-row">
-          <label>Contract <input id="opKt" type="text" placeholder="KT1…" /></label>
-          <label>Token id <input id="opTokenId" type="number" min="0" value="0" /></label>
-          <button id="btnLoadBundle" type="button">Load bundle</button>
+          <label>Router <input id="opKt" type="text" placeholder="KT1…" /></label>
+          <label>Pack token id <input id="opTokenId" type="number" min="0" value="0" /></label>
+          <button id="btnLoadBundle" type="button">Load pack</button>
         </div>
         <p id="opInfo" class="pp-note" aria-live="polite"></p>
+        <label>Open kit file <input id="openKitFile" type="file" accept="application/json,.json" /></label>
+        <label>Open kit <textarea id="openKit" rows="9" spellcheck="false" placeholder="Paste the creator-issued ravioli-open-kit JSON"></textarea></label>
         <div class="pp-row">
-          <label>Redeem amount <input id="redeemAmount" type="number" min="1" value="1" /></label>
-          <button id="btnRedeem" type="button" class="pp-primary">Redeem (burn wrapper)</button>
+          <label>Generated artifact (PNG, GIF, or offline ZIP) <input id="openArtifact" type="file" accept="image/png,image/gif,application/zip,.zip" /></label>
+          <label>Display / thumbnail image for ZIP <input id="openPreview" type="file" accept="image/png,image/gif" /></label>
+          <button id="btnRedeem" type="button" class="pp-primary">Open one pack atomically</button>
         </div>
         <div class="pp-row">
-          <label>Reveal contents URI (admin) <input id="revealUri" type="text" placeholder="ipfs://… manifest CID" /></label>
-          <button id="btnReveal" type="button">Reveal mystery contents</button>
+          <label>Public contents manifest URI <input id="revealUri" type="text" placeholder="ipfs://…" /></label>
+          <button id="btnReveal" type="button">Publish one-time contents reveal</button>
         </div>
       </section>
 
       <section class="pp-card pp-card-wide">
-        <h2>7 · Self-hosted bundle page</h2>
-        <p class="pp-note">Download a buyer-and-holder page that supports direct primary purchase, reveal state, and wrapper redemption.</p>
-        <div class="pp-row"><button id="btnExportSite" type="button">Download bundle site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
+        <h2>7 · Self-hosted pack page</h2>
+        <p class="pp-note">Download a buyer-and-holder page for direct primary purchase and reveal-kit based atomic opening.</p>
+        <div class="pp-row"><button id="btnExportSite" type="button">Download pack site</button><span id="exportSiteStatus" class="pp-note" role="status" aria-live="polite"></span></div>
       </section>
     </main>
 
     <template id="memberRowTpl">
       <div class="pp-token">
-        <div class="pp-token-head">
-          <strong class="pp-token-title">Item</strong>
-          <button type="button" class="pp-member-del" title="Remove">✕</button>
-        </div>
-        <label>Name <input class="m-name" type="text" placeholder="Item name" /></label>
-        <label>Media URI <input class="m-uri" type="text" placeholder="ipfs://… or https://…" /></label>
-        <label>MIME type <input class="m-mime" type="text" placeholder="image/png" /></label>
-        <label>Token contract (optional) <input class="m-kt" type="text" placeholder="KT1…" /></label>
-        <label>Token id (optional) <input class="m-tid" type="number" min="0" /></label>
-        <label>Quantity <input class="m-qty" type="number" min="1" value="1" /></label>
+        <div class="pp-token-head"><strong class="pp-token-title">Recipe item</strong><button type="button" class="pp-member-del">✕</button></div>
+        <label>Label <input class="m-name" type="text" placeholder="Enclosed work" /></label>
+        <label>Delivery type
+          <select class="m-type">
+            <option value="escrow">Existing FA2 token from escrow</option>
+            <option value="allocated">Reserved Gnocchi allocation</option>
+            <option value="generative">Rotini token generated at open</option>
+          </select>
+        </label>
+        <label>FA2 or adapter contract <input class="m-kt" type="text" placeholder="KT1…" /></label>
+        <label>Token or resource id <input class="m-tid" type="number" min="0" value="0" /></label>
+        <label>Amount per opening <input class="m-qty" type="number" min="1" value="1" /></label>
+        <label>Media URI (manifest only) <input class="m-uri" type="text" placeholder="ipfs://…" /></label>
+        <label>MIME type (manifest only) <input class="m-mime" type="text" placeholder="image/png" /></label>
       </div>
     </template>
 

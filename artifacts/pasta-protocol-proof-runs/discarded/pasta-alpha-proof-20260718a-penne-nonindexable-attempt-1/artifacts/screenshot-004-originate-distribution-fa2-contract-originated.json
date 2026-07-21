@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "penne",
+  "capability": "originate distribution FA2",
+  "stageOrdinal": 4,
+  "stageName": "contract originated",
+  "url": "http://127.0.0.1:60440/creation-tools/penne/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Apenne-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:25:23.934Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "5ba739c23f921b49d435b17b01a3c48f13cc10729bca6b6163b32c651eaf0774",
+  "byteCount": 125075,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Penne"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:24:32 AM imported \"Penne UI-LIVE Distribution Token\" from CH-EASE handoff 12:24:33 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:24:34 AM pinning collection metadata… 12:25:07 AM pinning token metadata… 12:25:11 AM originating distribution contract (sign in wallet)… 12:25:23 AM contract deployed: KT1VUhxttor3nKxv2qZeT67sXQn8t81VHPYB 12:25:23 AM explorer: https://shadownet.tzkt.io/KT1VUhxttor3nKxv2qZeT67sXQn8t81VHPYB"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

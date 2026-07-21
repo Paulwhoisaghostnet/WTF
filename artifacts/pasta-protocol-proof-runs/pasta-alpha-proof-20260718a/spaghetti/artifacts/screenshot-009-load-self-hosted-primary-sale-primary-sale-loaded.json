@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "load self-hosted primary sale",
+  "stageOrdinal": 9,
+  "stageName": "primary sale loaded",
+  "url": "http://127.0.0.1:59480/creation-tools/spaghetti/site.html",
+  "timestampUtc": "2026-07-19T06:30:09.517Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "85f2981977f40fdb3ee1b0d0cff81427a26a74ef3e2d011f7b63c40620dd4bfd",
+  "byteCount": 262904,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti · Pasta Protocol"
+    },
+    {
+      "selector": "#status",
+      "name": "collector status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "On-chain state loaded."
+    },
+    {
+      "selector": "#chainState",
+      "name": "on-chain sale state",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Primary sale open"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

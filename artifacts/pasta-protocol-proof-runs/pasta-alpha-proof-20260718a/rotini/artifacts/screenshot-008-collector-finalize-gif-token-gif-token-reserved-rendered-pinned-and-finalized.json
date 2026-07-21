@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize GIF token",
+  "stageOrdinal": 8,
+  "stageName": "GIF token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:49251/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-19T04:18:00.592Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "847e9bb9ecc32b22504a9bd0f6a7a4eb3bf76ad4942d03a9a385f8d34ad0dfbc",
+  "byteCount": 178930,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "4:16:31 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 4:16:37 AM reserving immutable token id and seed (sign in wallet)… 4:16:53 AM reservation 0 confirmed; rendering token 0 from its on-chain seed 4:16:56 AM loading reserved layer Background / Marinara… 4:16:59 AM loading reserved layer Foreground / Pesto… 4:16:59 AM pinning finalized image/png artifact… 4:17:00 AM pinning TZIP-21 token metadata… 4:17:04 AM finalizing reservation 0 (sign in wallet)… 4:17:17 AM collector finalized PNG token 0 with ooUQFzucB41Z2K3NYnoPHs6bTkxPbgWRC2Fa1AWXdZz14CnPAfV 4:17:24 AM reserving immutable token id and seed (sign in wallet)… 4:17:42 AM reservation 1 confirmed; rendering token 1 from its on-chain seed 4:17:42 AM loading reserved layer Background / Marinara… 4:17:42 AM loading reserved layer Foreground / Pesto… 4:17:42 AM pinning finalized image/gif artifact… 4:17:42 AM pinning TZIP-21 token metadata… 4:17:44 AM finalizing reservation 1 (sign in wallet)… 4:17:58 AM collector finali"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "gif finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "GIF iteration 1 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "gif supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 3 · GIF · 0.000001 tez"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

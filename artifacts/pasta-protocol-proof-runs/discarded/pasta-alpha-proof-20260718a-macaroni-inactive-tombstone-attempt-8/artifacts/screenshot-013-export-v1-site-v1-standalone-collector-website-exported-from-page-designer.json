@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "export V1 site",
+  "stageOrdinal": 13,
+  "stageName": "V1 standalone collector website exported from Page Designer",
+  "url": "http://127.0.0.1:57257/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T05:57:49.949Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "6d3c78875c8b4eb295f1a3f502061b1e6ae39b87e66f4080b77d4b61d8eef0ab",
+  "byteCount": 185220,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#btnExport",
+      "name": "export action",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Export website"
+    },
+    {
+      "selector": "#exportStatus",
+      "name": "site package",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Downloaded macaroni-site.zip — unzip and upload; includes index.html, drop.config.js, and wallet stack."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

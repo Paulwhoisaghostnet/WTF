@@ -1,52 +1,61 @@
-# Subplan — Ravioli (bundle publisher) — DONE (static studio, Phase 2)
+# Subplan — Ravioli (wrapped-token publisher) — contract foundation complete
 
 Surface: static creation tool (`public/creation-tools/ravioli/`), forked from the Spaghetti kernel
 (itself the proven Macaroni kernel).
 
 ## Status
 
-DONE (Phase 2 static studio). Remaining: live Shadownet rehearsal of originate → create_bundle → mint →
-redeem → reveal before mainnet.
+The Ravioli router and typed helper adapters are implemented and locally proven with SmartPy and
+Michelson compilation. A fresh signer-backed Shadownet run remains a deployment gate; the guarded
+command refuses to spend test tez unless explicitly enabled and funded.
 
-Implemented:
+## Implemented
 
-- Shared bundle manifest builder `shared/pasta-protocol/bundle.ts` (`buildBundleManifest`,
-  `normalizeBundleMember`, `BUNDLE_MANIFEST_SCHEMA_VERSION` = `wtfos.pasta.bundle-manifest.v1`),
-  exported from the barrel, mirrored in the browser foundation port, and parity-tested + unit-tested.
-- Contract `contracts/pasta-protocol/PastaBundleFA2.py` (SmartPy 0.24.x `assert` syntax, FA2 core forked
-  from `PastaStandardCollectionFA2`) with a per-token `bundles` config (redeemable, mystery, item_count,
-  contents_uri) and an honest on-chain `redeem` that burns the wrapper edition(s) from the holder and
-  records the redemption durably (`redeemed` total + `redeemed_by` per holder). `set_bundle_contents`
-  reveals/updates the off-chain contents manifest URI (mystery reveal). SmartPy scenario covers mint,
-  redeem (balance/supply/counter mutation), over-redeem revert, non-redeemable revert, mystery reveal,
-  and admin handoff.
-- Compile via `node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaBundleFA2.py pasta-bundle ravioli`.
-- Static studio reusing the copied kernel (`ravioli.wallet.session.v1`) + vendored Taquito/octez:
-  composes members, builds + pins the contents manifest, deploys (or targets an administered contract),
-  registers the bundle wrapper + config, mints editions, and provides redeem + mystery-reveal panels.
-  Decision: **redeem mutates on-chain** (burn wrapper + record redemption); **contents delivery is
-  off-chain** via the pinned manifest URI, withheld on-chain for mystery packs until `set_bundle_contents`.
-- Registered assets in `tool-registry.ts` (verified by `npm run creation-tools:check`).
+- `PastaPackRouterFA2` is the production Ravioli wrapper: each wrapper edition has an ordered,
+  commitment-backed recipe and is burned only after every child delivery succeeds.
+- Three child primitives are typed on-chain: escrowed existing FA2 transfers, Gnocchi reserved
+  allocation mints, and Rotini generative mints. `PastaGnocchiPackAdapter` and
+  `PastaRotiniPackAdapter` isolate the helper entrypoint shapes and reserve capacity before wrapper
+  issuance.
+- Five product modes are supported: deterministic vaulted, blind funded-pool, blind allocated-mint,
+  blind generative-mint, and hybrid. Mode/type mismatches are rejected by the router, and failed child
+  operations roll back the wrapper, allowance, and adapter reserve state atomically.
+- Generative fulfillment accepts Rotini PNG, animated GIF, and dependency-free interactive ZIP output;
+  the Rotini contract stores MIME, artifact/display/thumbnail URIs, and a 32-byte artifact hash.
+- `shared/pasta-protocol/bundle.ts` builds the descriptive `wtfos.pasta.pack-manifest.v2` manifest. The
+  manifest is provenance/display metadata; custody and mint delivery are enforced by the router and
+  adapters, not by an off-chain URI.
+- The static studio uses the router artifact (`pasta-bundle.contract.json`) plus both typed adapter
+  artifacts and exports the self-hosted drop/open page.
+- The older `PastaBundleFA2.py` redeem/manifest contract is retained for compatibility but is not the
+  Ravioli production wrapper path; it does not custody or mint enclosed assets.
+- Registered assets in `tool-registry.ts` are verified by `npm run creation-tools:check`.
 
 ## Role
 
-Publish bundle Token Products: art packs, redeemable bundles, mystery packs, wrapped sets — a single
-token that represents/unlocks a set.
+Publish bundle Token Products: art packs, blind packs, generative packs, hybrid packs, and wrapped sets
+where opening a wrapper delivers or mints the enclosed child tokens.
 
 ## Modules vs Macaroni base
 
 Keep: M1 wallet, M2 pinning, M4 metadata, M5 media, M6 origination, M9 export.
-Add: M14 bundle composition (select member tokens/media into a bundle definition), optional redeemable
-flag, mystery (hidden contents until reveal/redeem).
-Remove: M7 blind-mint reveal scheduling (redeem flow differs).
+Add: M14 bundle composition, recipe commitment/reveal, escrow custody, typed allocation/generative
+adapters, hybrid fulfillment, and optional contents reveal metadata.
+Remove: M7 blind-mint reveal scheduling (Ravioli opening is a delivery flow).
 
 ## Contract
 
-`contracts/pasta-protocol/` SmartPy FA2 with bundle/redeem extension. Define what "redeem" mutates
-on-chain vs off-chain in Phase 2.
+`contracts/pasta-protocol/PastaPackRouterFA2.py` plus the Gnocchi/Rotini pack adapters. `open_pack`
+mutates on-chain balances, supply, serial counters, child custody/reserves, and generated token state;
+the pinned manifest remains descriptive metadata.
+
+## Proof command
+
+`npm run contract:test:pasta-ravioli` runs the five-mode SmartPy suite and compiles the router, adapters,
+Gnocchi, and Rotini. The suite covers atomic rollback, wrapper balance/supply conservation, mode guards,
+and PNG/GIF/ZIP generative fulfillment. `PASTA_SHADOWNET_E2E_EXECUTE=1 npm run pasta:shadownet:ravioli:e2e`
+is the guarded live rehearsal once Shadownet wallets and funding are available.
 
 ## Handles
 
 `ravioli.collection_deployed`, `ravioli.bundle_published`, `ravioli.redeemed`.
-
-## Phase 2.

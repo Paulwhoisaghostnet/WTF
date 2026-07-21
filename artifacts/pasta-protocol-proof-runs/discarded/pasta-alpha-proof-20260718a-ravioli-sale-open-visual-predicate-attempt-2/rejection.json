@@ -1,0 +1,81 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-AFTER-APPLIED-WRITES",
+  "app": "ravioli",
+  "attempt": 2,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "reason": "After the second funded-pool wrapper opened successfully, the real buyer page correctly returned to its still-active primary sale, while the proof runner incorrectly required the mutually exclusive fully-reserved-only terminal label and timed out before stage 16.",
+  "failure": {
+    "source": "scripts/pasta-protocol/shadownet-ravioli-ui-live.ts",
+    "function": "openWrapper",
+    "lineAtFailure": 1662,
+    "error": "page.waitForFunction: Timeout 30000ms exceeded",
+    "failedStage": "collector one opened blind_funded_pool"
+  },
+  "contracts": {
+    "router": {
+      "address": "KT1E1Emw46UTwRiVknHUreNvfcvAd7X8KZ2m",
+      "originationHash": "ooPrrrJNy3eAKdLeLC6QdMgbWkQEGM5e6enovW4LYPuiipF7997"
+    },
+    "gnocchiAdapter": {
+      "address": "KT1DY8Y9U6L5i2HC8WSYqyo6iT4VcNjMpNDT",
+      "originationHash": "ooRhrD8mRBqrBgD225RFLdnFhfm6XmbJHtJvwZpjiUs8i5VHW9E"
+    },
+    "rotiniAdapter": {
+      "address": "KT1BTBC7C3Gj6ZL7n6NYF29RXKR2TYQeptoQ",
+      "originationHash": "onnF1j5BzWvsxrrxz9QURjLAoVCzh8KbvBnqXsesLdbPMw64dSg"
+    }
+  },
+  "terminalAudit": {
+    "auditedAt": "2026-07-19T13:50:03Z",
+    "routerOperationCount": 30,
+    "routerOperationsByEntrypoint": {
+      "buy": 2,
+      "commit_recipe": 6,
+      "create_pack": 5,
+      "finalize_pack": 5,
+      "mint": 5,
+      "open_pack": 2,
+      "set_sale": 5
+    },
+    "appliedOpenThatPrecededTheTimeout": "onovEWh7cfKTj9iVvDSN4aRsoBtog7PVZrvheokeXdcuafbfidb",
+    "creatorCounter": 23831465,
+    "collectorOneCounter": 23833815,
+    "collectorTwoCounter": 25689626,
+    "activeSignerMempoolOperations": 0,
+    "gnocchiBalances": {
+      "creator": {
+        "0": 0,
+        "1": 0
+      },
+      "router": {
+        "0": 0,
+        "1": 2
+      },
+      "collectorOne": {
+        "0": 3,
+        "1": 1
+      }
+    },
+    "gnocchiTotalSupplies": {
+      "0": 6,
+      "1": 5
+    }
+  },
+  "evidence": {
+    "fileCountBeforeRejectionRecord": 36,
+    "screenshotCount": 15,
+    "openKitCount": 5,
+    "openKitCaptureStatus": "CAPTURED",
+    "relativeInventorySha256BeforeRejectionRecord": "bedb986a20c1aba8045043cc9d1a3759ae93171725762b6e3137ec48c58e7759"
+  },
+  "acceptance": {
+    "mayBeCombinedWithAcceptedProof": false,
+    "mayBeResumed": false,
+    "nativeAssetRecoveryRequired": true,
+    "freshAttemptRequired": true
+  }
+}

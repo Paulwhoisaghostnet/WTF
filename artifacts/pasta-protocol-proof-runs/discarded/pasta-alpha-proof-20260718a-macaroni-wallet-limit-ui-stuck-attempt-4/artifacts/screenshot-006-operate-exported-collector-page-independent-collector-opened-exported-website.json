@@ -1,0 +1,61 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "operate exported collector page",
+  "stageOrdinal": 6,
+  "stageName": "Independent collector opened exported website",
+  "url": "http://127.0.0.1:52259/index.html",
+  "timestampUtc": "2026-07-19T04:46:29.461Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "868276ab827825c70a7bfbbf2a2036d0ce2308e2d7783396ddfc297c4a167a72",
+  "byteCount": 97116,
+  "domEvidence": [
+    {
+      "selector": "#brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet"
+    },
+    {
+      "selector": "#title",
+      "name": "drop title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#supplyText",
+      "name": "unminted supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "0 / 2 minted · 2 remaining"
+    },
+    {
+      "selector": "#stageInfo",
+      "name": "live stage",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Mint is Live · max 1/wallet"
+    },
+    {
+      "selector": "#walletLimitStatus",
+      "name": "wallet allowance",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "This wallet minted 0/1 for this stage · 1 remaining."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

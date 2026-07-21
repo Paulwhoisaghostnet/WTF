@@ -29,14 +29,30 @@ import smartpy as sp
 
 
 @sp.module
-def main():
+def pasta_standard_collection_main():
     LedgerKeyType: type = sp.record(owner=sp.address, token_id=sp.nat)
-    OperatorKeyType: type = sp.record(owner=sp.address, operator=sp.address, token_id=sp.nat)
-    BalanceOfRequestType: type = sp.record(owner=sp.address, token_id=sp.nat)
-    BalanceOfResponseType: type = sp.record(request=BalanceOfRequestType, balance=sp.nat)
-    OperatorParamType: type = sp.variant(add_operator=OperatorKeyType, remove_operator=OperatorKeyType)
-    TransferTxType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
-    TransferBatchItemType: type = sp.record(from_=sp.address, txs=sp.list[TransferTxType])
+    OperatorKeyType: type = sp.record(
+        owner=sp.address, operator=sp.address, token_id=sp.nat
+    ).layout(("owner", ("operator", "token_id")))
+    BalanceOfRequestType: type = sp.record(owner=sp.address, token_id=sp.nat).layout(
+        ("owner", "token_id")
+    )
+    BalanceOfResponseType: type = sp.record(
+        request=BalanceOfRequestType, balance=sp.nat
+    ).layout(("request", "balance"))
+    BalanceOfParamType: type = sp.record(
+        requests=sp.list[BalanceOfRequestType],
+        callback=sp.contract[sp.list[BalanceOfResponseType]],
+    ).layout(("requests", "callback"))
+    OperatorParamType: type = sp.variant(
+        add_operator=OperatorKeyType, remove_operator=OperatorKeyType
+    )
+    TransferTxType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat).layout(
+        ("to_", ("token_id", "amount"))
+    )
+    TransferBatchItemType: type = sp.record(
+        from_=sp.address, txs=sp.list[TransferTxType]
+    ).layout(("from_", "txs"))
     TokenMetadataType: type = sp.record(token_id=sp.nat, token_info=sp.map[sp.string, sp.bytes])
     MintParamType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
     SetTokenMetadataType: type = sp.record(token_id=sp.nat, token_info=sp.map[sp.string, sp.bytes])
@@ -76,13 +92,7 @@ def main():
         @sp.entrypoint
         def balance_of(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
-            sp.cast(
-                params,
-                sp.record(
-                    requests=sp.list[BalanceOfRequestType],
-                    callback=sp.contract[sp.list[BalanceOfResponseType]],
-                ),
-            )
+            sp.cast(params, BalanceOfParamType)
             responses = []
             for req in params.requests:
                 responses.push(
@@ -298,6 +308,9 @@ def main():
         def get_total_supply(self, token_id):
             sp.cast(token_id, sp.nat)
             return self.data.total_supply.get(token_id, default=sp.nat(0))
+
+
+main = pasta_standard_collection_main
 
 
 def bytes_of_string(s):

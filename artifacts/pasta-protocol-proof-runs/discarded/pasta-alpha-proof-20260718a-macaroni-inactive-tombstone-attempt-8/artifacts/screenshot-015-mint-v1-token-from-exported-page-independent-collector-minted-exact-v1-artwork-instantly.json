@@ -1,0 +1,68 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "mint V1 token from exported page",
+  "stageOrdinal": 15,
+  "stageName": "Independent collector minted exact V1 artwork instantly",
+  "url": "http://127.0.0.1:57358/index.html",
+  "timestampUtc": "2026-07-19T05:58:38.212Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "5196de78bdab4369261853fa9554c58953c2bf9d3afb3e1f0d734b7da016d5dd",
+  "byteCount": 102190,
+  "domEvidence": [
+    {
+      "selector": "#brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni V1 UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet"
+    },
+    {
+      "selector": "#title",
+      "name": "drop title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni V1 UI-LIVE pasta-alpha-proof-20260718a"
+    },
+    {
+      "selector": "#supplyText",
+      "name": "sold out supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 / 1 minted · 0 remaining"
+    },
+    {
+      "selector": "#mintStatus",
+      "name": "mint result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minted ✓ (check your wallet)"
+    },
+    {
+      "selector": "#stageInfo",
+      "name": "supply boundary",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Sold out — thank you!"
+    },
+    {
+      "selector": "#revealGrid [data-token-id=\"0\"]",
+      "name": "final metadata",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Macaroni V1 Proof minted by you X Bluesky"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

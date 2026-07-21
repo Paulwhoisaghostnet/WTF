@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "originate fresh contract",
+  "stageOrdinal": 3,
+  "stageName": "Fresh Macaroni V2 contract originated",
+  "url": "http://127.0.0.1:52175/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-19T04:45:55.246Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "c1bb24549f98c13b736caf6b8d64a6a12f5290a9599223d7b22c2b3d757ca668",
+  "byteCount": 152171,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#deployStatus",
+      "name": "deployment",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "deployed ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "fresh contract",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [4:45:35 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [4:45:36 AM] token sheet loaded: 1 tokens [4:45:36 AM] 1 artwork file(s) added (1 total) [4:45:36 AM] stage 1: settings saved [4:45:37 AM] cover pinned: bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm [4:45:37 AM] placeholder pinned: bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy [4:45:38 AM] pinning complete: 1 tokens [4:45:39 AM] contract metadata pinned: bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma [4:45:39 AM] originating contract… [4:45:55 AM] contract deployed at KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT [4:45:55 AM] explorer: https://shadownet.tzkt.io/KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT"
+    },
+    {
+      "selector": "#log",
+      "name": "origination log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [4:45:35 AM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [4:45:36 AM] token sheet loaded: 1 tokens [4:45:36 AM] 1 artwork file(s) added (1 total) [4:45:36 AM] stage 1: settings saved [4:45:37 AM] cover pinned: bafkreickfb7g3mt4uihmte3k5cc7us6yseia3lsvjv7qhc3it5ko4curdm [4:45:37 AM] placeholder pinned: bafkreievor35sshvcpqi3hcprcmo6rd3qzhd65gp2nexigo7pzvccvhmwy [4:45:38 AM] pinning complete: 1 tokens [4:45:39 AM] contract metadata pinned: bafkreibzufyraec2u5lcpkkcotgetgnr54flmjkn5iibbssaohlktt5tma [4:45:39 AM] originating contract… [4:45:55 AM] contract deployed at KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT [4:45:55 AM] explorer: https://shadownet.tzkt.io/KT1GcUCUkhZBMqtb7HqwEfyENFSDzEdsSNpT"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

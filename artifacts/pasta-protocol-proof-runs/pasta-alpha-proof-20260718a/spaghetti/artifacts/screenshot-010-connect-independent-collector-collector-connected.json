@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "connect independent collector",
+  "stageOrdinal": 10,
+  "stageName": "collector connected",
+  "url": "http://127.0.0.1:59480/creation-tools/spaghetti/site.html",
+  "timestampUtc": "2026-07-19T06:30:09.931Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "563ba0b76cf2527e3be6d1e826f0a89788ccdad557e848a6609714ff6d59d9e5",
+  "byteCount": 265750,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti · Pasta Protocol"
+    },
+    {
+      "selector": "#status",
+      "name": "collector status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Wallet connected. Review the action before signing."
+    },
+    {
+      "selector": "#chainState",
+      "name": "on-chain sale state",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Primary sale open"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

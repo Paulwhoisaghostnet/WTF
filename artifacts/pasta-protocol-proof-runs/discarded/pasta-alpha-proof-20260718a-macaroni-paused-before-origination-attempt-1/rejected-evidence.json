@@ -1,0 +1,39 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "app": "macaroni",
+  "attempt": "20260719T0354Z-paused-before-origination",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "status": "REJECTED_NO_WRITE",
+  "observedAt": "2026-07-19T03:55:31Z",
+  "reason": "The shared creator signer was still being used by the Gnocchi writer after the Rotini lane. The Macaroni process was stopped before a fresh Macaroni origination could be confirmed.",
+  "macaroniEvidence": {
+    "contractAddresses": [],
+    "operationHashes": [],
+    "completedStages": [
+      "V2 Studio configuration",
+      "V2 Studio exact media and metadata pinning"
+    ],
+    "acceptedForFinalPackage": false
+  },
+  "creatorChainAudit": {
+    "creatorAddress": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "checkedThrough": "2026-07-19T03:54:17Z",
+    "latestNonMacaroniOriginations": [
+      {
+        "app": "rotini",
+        "timestamp": "2026-07-19T03:47:45Z",
+        "operationHash": "onfLDggcS5yBP25RS2md7fK1MtnjvyHqjo8w8BVZnxQ1Hk5EBFH",
+        "contractAddress": "KT1KJxCLuwtEBKK7AwbGcTqiZabXdZJGLWsA"
+      },
+      {
+        "app": "gnocchi",
+        "timestamp": "2026-07-19T03:46:21Z",
+        "operationHash": "onrqhUMx1VHZUHtTNDsksmeRrDowAZhxqLoofTwf1W7bT87GSBW",
+        "contractAddress": "KT1TS1mGPQcYa2x3jWmYRAeqKBjzw69BGJyG"
+      }
+    ]
+  }
+}

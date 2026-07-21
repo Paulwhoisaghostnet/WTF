@@ -7165,6 +7165,29 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(calendarSurface.locator('[data-calendar-region="source-panel"]')).toContainText("Personal entries stay");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
+    const periodLabel = calendarSurface.locator('[data-calendar-region="period-label"]');
+    await expect(calendarSurface.getByRole("button", { name: "Week", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await calendarSurface.getByRole("button", { name: "Day", exact: true }).click();
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "day");
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"] section')).toHaveCount(1);
+    const todayLabel = await periodLabel.textContent();
+    await calendarSurface.getByRole("button", { name: "Previous day" }).click();
+    await expect(periodLabel).not.toHaveText(todayLabel || "");
+    await calendarSurface.getByRole("button", { name: "Today", exact: true }).click();
+    await expect(periodLabel).toHaveText(todayLabel || "");
+
+    await calendarSurface.getByRole("button", { name: "Month", exact: true }).click();
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "month");
+    await expect(calendarSurface.locator('[data-calendar-region="month-day"]')).toHaveCount(42);
+    await expect(calendarSurface.locator('[data-calendar-region="event-card"]').filter({ hasText: "Gamma calendar signal" })).toBeVisible();
+    const currentMonthLabel = await periodLabel.textContent();
+    await calendarSurface.getByRole("button", { name: "Next month" }).click();
+    await expect(periodLabel).not.toHaveText(currentMonthLabel || "");
+    await calendarSurface.getByRole("button", { name: "Today", exact: true }).click();
+    await expect(periodLabel).toHaveText(currentMonthLabel || "");
+    await calendarSurface.getByRole("button", { name: "Week", exact: true }).click();
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "week");
+
     const calendarMetrics = await calendarSurface.evaluate((surface) => {
       const readNode = (node) => {
         const style = window.getComputedStyle(node);
@@ -7216,11 +7239,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await personalForm.getByRole("button", { name: "Add to my view" }).click();
     await expect(calendarSurface).toHaveAttribute("data-calendar-active-tab", "browse");
     await expect(
-      calendarSurface.locator('[data-calendar-region="event-card"]').filter({ hasText: "Gamma personal return" })
+      calendarSurface.locator('[data-calendar-region="event-card"]').filter({ hasText: "Gamma personal return" }).first()
     ).toBeVisible();
 
     await page.setViewportSize({ width: 640, height: 760 });
+    await calendarSurface.getByRole("button", { name: "Month", exact: true }).click();
     await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toBeVisible();
+    await expect(calendarSurface.locator('[data-calendar-region="month-day"]')).toHaveCount(42);
     expect(
       await calendarSurface.evaluate((surface) => surface.scrollWidth <= surface.clientWidth + 2)
     ).toBe(true);

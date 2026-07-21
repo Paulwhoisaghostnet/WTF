@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "configure collection and token",
+  "stageOrdinal": 1,
+  "stageName": "configured",
+  "url": "http://127.0.0.1:59770/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti-ui-live-proof",
+  "timestampUtc": "2026-07-19T00:11:35.868Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "151bb29efb3c66e5f01123880cbc0674addd0e9ee49e4460b4fd8a068f0e23e7",
+  "byteCount": 88879,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:11:35 AM imported 1 token(s) from CH-EASE handoff"
+    },
+    {
+      "selector": "#network",
+      "name": "network selector",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": ".t-status",
+      "name": "pre-pinned artifact",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "artifact: ipfs://bafkreicsy6zbbggwjkxnf2oyg3gfpkswtursnutcvqwavxxnv4tcksfguq"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

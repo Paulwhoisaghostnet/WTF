@@ -1,0 +1,23 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "app": "rotini",
+  "status": "REJECTED",
+  "accepted": false,
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "contractAddress": "KT1BxNDMnzjdnNdButVigwgVLzSGe6oW66L5",
+  "originationOperationHash": "onhcepmPo2fzmDKvXLiZv9fCnLqEUDLx88qdWrcznisXDwQhawE",
+  "reserveOperationHash": "ooihSDPz5Xnx6kpgHkAttcFUogm4obdMEV8YnCNzzQBSKfN32kF",
+  "reason": "The actual Rotini Studio published PNG, GIF, and self-contained interactive ZIP projects. The independent collector reserved project 0, rendered it, pinned the artifact and token metadata, then finalize_iteration failed because the free project path attempted a zero-mutez internal transaction.",
+  "protocolError": "proto.025-PsUshuai.contract.empty_transaction",
+  "evidence": {
+    "artifactCid": "bafkreihmobyzdsodow7uodrxk5sltzk2ssilrcenhwlzqw3oehimwbcae4",
+    "metadataCid": "bafkreicdbk4bc7z7ya75jdc7p3s3jrapoq3ndhyh4xke7fub4jbznz3yte",
+    "tzktContractUrl": "https://shadownet.tzkt.io/KT1BxNDMnzjdnNdButVigwgVLzSGe6oW66L5",
+    "tzktOriginationUrl": "https://shadownet.tzkt.io/onhcepmPo2fzmDKvXLiZv9fCnLqEUDLx88qdWrcznisXDwQhawE",
+    "tzktReserveUrl": "https://shadownet.tzkt.io/ooihSDPz5Xnx6kpgHkAttcFUogm4obdMEV8YnCNzzQBSKfN32kF",
+    "contractKind": "asset",
+    "tzips": ["fa2"],
+    "indexedTokenCount": 0
+  }
+}

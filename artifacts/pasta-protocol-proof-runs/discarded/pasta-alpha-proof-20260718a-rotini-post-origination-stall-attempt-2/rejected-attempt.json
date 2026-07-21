@@ -1,0 +1,20 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "app": "rotini",
+  "classification": "REJECTED",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "contractAddress": "KT1L3KdukK858mAaaVTCai9ErUXNaFNgmh7d",
+  "originationOperationHash": "op78v678942YnzAYRjHP1sXDrxUdnSavU145KeGZ45q9V9U4JGM",
+  "reason": "The actual Studio originated a valid FA2 asset but did not submit create_project. The first address-key coercion fix passed a direct live storage projection, so a separate post-origination failure remained to diagnose.",
+  "acceptedAsProof": false,
+  "chainEvidence": {
+    "contract": "https://shadownet.tzkt.io/KT1L3KdukK858mAaaVTCai9ErUXNaFNgmh7d",
+    "operation": "https://shadownet.tzkt.io/op78v678942YnzAYRjHP1sXDrxUdnSavU145KeGZ45q9V9U4JGM",
+    "tzktKind": "asset",
+    "tzips": ["fa2"],
+    "tokensCount": 0
+  }
+}

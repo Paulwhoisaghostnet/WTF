@@ -376,7 +376,7 @@ export function ColanderApp() {
     }
   }
 
-  async function openContract(contractOverride?: string) {
+  async function openContract(contractOverride?: string, successStatus?: string) {
     const kt = (contractOverride ?? addressInput).trim();
     if (contractOverride) setAddressInput(kt);
     if (!isKt(kt)) {
@@ -407,7 +407,7 @@ export function ColanderApp() {
             st.pending_administrator && typeof st.pending_administrator === "string"
               ? st.pending_administrator
               : undefined;
-          tokenCount = bigToNum(st.next_token_id);
+          tokenCount = bigToNum(st.next_token_id ?? st.token_count);
           revisionCount = bigToNum(st.revision_count);
           if (st.metadata && typeof st.metadata.get === "function") {
             const raw = await st.metadata.get("");
@@ -457,7 +457,7 @@ export function ColanderApp() {
         setActiveProjectId(recovered.id);
         return [recovered, ...current];
       });
-      setStatus(next.adapter ? `Opened ${next.adapter.label}` : "Opened (unrecognized contract)");
+      setStatus(successStatus ?? (next.adapter ? `Opened ${next.adapter.label}` : "Opened (unrecognized contract)"));
       logClientSystemEvent({
         eventType: "colander.contract_opened",
         message: `Colander opened ${kt}`,
@@ -540,6 +540,10 @@ export function ColanderApp() {
         return c.methodsObject.set_sale_active({ token_id: num("token_id"), active: bool("active") });
       case "set_project_active":
         return c.methodsObject.set_project_active({ project_id: num("project_id"), active: bool("active") });
+      case "set_pause":
+        return c.methodsObject.set_pause(bool("paused"));
+      case "set_paused":
+        return c.methodsObject.set_paused(bool("paused"));
       case "cancel_expired_reservation":
         return c.methodsObject.cancel_expired_reservation(num("reservation_id"));
       case "set_sale":
@@ -562,6 +566,13 @@ export function ColanderApp() {
           token_id: num("token_id"),
           contents_uri: utf8ToHex(v.contents_uri?.trim() || ""),
         });
+      case "set_pack_contents":
+        return c.methodsObject.set_pack_contents({
+          token_id: num("token_id"),
+          contents_uri: utf8ToHex(v.contents_uri?.trim() || ""),
+        });
+      case "cancel_pack":
+        return c.methodsObject.cancel_pack(num("token_id"));
       case "open_claim":
         return c.methodsObject.open_claim({ active: bool("active"), start: iso("start"), end: iso("end") });
       case "claim":
@@ -596,7 +607,8 @@ export function ColanderApp() {
       const c = await tezos.wallet.at(opened.address);
       const op = await buildCall(c, action, me).send();
       await op.confirmation();
-      setStatus(`${action.label} confirmed ✓`);
+      const confirmedStatus = `${action.label} confirmed ✓`;
+      setStatus(confirmedStatus);
 
       if (action.id === "transfer") {
         logClientSystemEvent({
@@ -624,7 +636,7 @@ export function ColanderApp() {
       });
       setActiveAction(null);
       setFormValues({});
-      await openContract();
+      await openContract(undefined, confirmedStatus);
     } catch (e) {
       setError(e instanceof Error ? e.message : `${action.label} failed`);
       setStatus(`${action.label} failed`);
@@ -968,9 +980,9 @@ export function ColanderApp() {
           <EmptyState>
             <ActionName>Open a contract to manage it</ActionName>
             <Muted>
-              Paste any KT1 address. Colander detects whether it is a Spaghetti/Rotini collection, Gnocchi
-              open edition, Ravioli bundle, Penne distribution, Lasagna exhibition, or a generic FA2, and
-              shows the workflows it supports.
+              Paste any KT1 address. Colander detects Macaroni blind mints, Spaghetti standard collections,
+              Gnocchi editions, Ravioli atomic packs, Rotini generative collections, Penne distributions,
+              Lasagna exhibitions, and generic FA2 contracts, then shows only the workflows each supports.
             </Muted>
           </EmptyState>
         )}
