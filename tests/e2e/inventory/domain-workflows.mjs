@@ -849,6 +849,8 @@ export const DOMAIN_WORKFLOWS = [
       "club_dues.contract.customized",
       "club_dues.contract.compiled",
       "club_dues.contract.deployed",
+      "club_dues.admin.proposed",
+      "club_dues.admin.accepted",
       "club_dues.payment.intent_created",
       "club_dues.payment.verified",
       "club_dues.member.renew_existing",

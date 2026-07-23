@@ -82,6 +82,8 @@ def wtf_club_dues_main():
             grace_period_seconds,
         ):
             self.data.admin = admin
+            self.data.pending_admin = sp.cast(None, sp.option[sp.address])
+            self.data.version = "wtf-club-dues-v2"
             self.data.treasury = treasury
             self.data.club_name = club_name
             self.data.membership_symbol = membership_symbol
@@ -163,9 +165,27 @@ def wtf_club_dues_main():
             assert False, "SOULBOUND"
 
         @sp.entrypoint
+        def propose_admin(self, new_admin):
+            sp.cast(new_admin, sp.address)
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert new_admin != self.data.admin, "SAME_ADMIN"
+            self.data.pending_admin = sp.Some(new_admin)
+
+        @sp.entrypoint
+        def accept_admin(self):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            assert self.data.pending_admin.is_some(), "NO_PENDING_ADMIN"
+            new_admin = self.data.pending_admin.unwrap_some()
+            assert sp.sender == new_admin, "NOT_PENDING_ADMIN"
+            self.data.admin = new_admin
+            self.data.pending_admin = None
+
+        @sp.entrypoint
         def register_member(self, member):
             sp.cast(member, sp.address)
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             assert 0 in self.data.tiers, "NO_TIER"
             key = (member, sp.nat(0))
             assert not key in self.data.members, "ALREADY_REGISTERED"
@@ -533,6 +553,7 @@ def wtf_club_dues_main():
         def mark_arrears(self, member):
             sp.cast(member, sp.address)
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             key = (member, sp.nat(0))
             assert key in self.data.members, "NO_MEMBER"
             current = self.data.members[key]
@@ -552,6 +573,7 @@ def wtf_club_dues_main():
         def mark_tier_arrears(self, params):
             sp.cast(params, sp.record(member=sp.address, tier_id=sp.nat))
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             key = (params.member, params.tier_id)
             assert key in self.data.members, "NO_MEMBER"
             current = self.data.members[key]
@@ -571,6 +593,7 @@ def wtf_club_dues_main():
         def clear_arrears(self, member):
             sp.cast(member, sp.address)
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             key = (member, sp.nat(0))
             if key in self.data.naughty_list:
                 del self.data.naughty_list[key]
@@ -580,6 +603,7 @@ def wtf_club_dues_main():
         def clear_tier_arrears(self, params):
             sp.cast(params, sp.record(member=sp.address, tier_id=sp.nat))
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             key = (params.member, params.tier_id)
             if key in self.data.naughty_list:
                 del self.data.naughty_list[key]
@@ -600,6 +624,7 @@ def wtf_club_dues_main():
                 ),
             )
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             assert params.period_seconds > 0, "BAD_PERIOD"
             assert params.utility_units_per_period > 0, "ZERO_UTILITY"
             self.data.tiers[params.tier_id] = sp.record(
@@ -634,6 +659,7 @@ def wtf_club_dues_main():
                 ),
             )
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             edition_count = sp.nat(0)
             if params.drop_id in self.data.drops:
                 edition_count = self.data.drops[params.drop_id].edition_count
@@ -662,6 +688,7 @@ def wtf_club_dues_main():
         def set_preserve_fee(self, preserve_fee):
             sp.cast(preserve_fee, sp.mutez)
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             self.data.preserve_fee = preserve_fee
             sp.emit(sp.record(preserve_fee=preserve_fee), tag="dues_preserve_fee_updated")
 
@@ -679,6 +706,7 @@ def wtf_club_dues_main():
                 ),
             )
             assert sp.sender == self.data.admin, "ADMIN_ONLY"
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
             assert params.month_seconds >= 3_600, "BAD_MONTH_SECONDS"
             assert params.utility_units_per_month > 0, "ZERO_UTILITY"
             self.data.treasury = params.treasury

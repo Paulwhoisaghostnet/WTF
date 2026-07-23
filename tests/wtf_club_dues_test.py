@@ -271,3 +271,54 @@ def test_admin_arrears_and_terms_controls():
     scenario.verify(dues.data.members[bob_tier0].paid_through == sp.timestamp(3_625))
     scenario.verify(dues.data.members[bob_tier0].utility_units == 11)
     scenario.verify(~dues.data.naughty_list.contains(bob_tier0))
+
+
+@sp.add_test()
+def test_two_step_admin_rotation_and_zero_tez_admin_calls():
+    scenario = sp.test_scenario("club_dues_admin_rotation", [main])
+    accounts, dues = new_fixture()
+    scenario += dues
+
+    scenario.verify(dues.data.version == "wtf-club-dues-v2")
+    scenario.verify(dues.data.pending_admin.is_none())
+
+    dues.propose_admin(
+        accounts.bob.address,
+        _sender=accounts.alice,
+        _valid=False,
+        _exception="ADMIN_ONLY",
+    )
+    dues.propose_admin(
+        accounts.bob.address,
+        _sender=accounts.admin,
+        _amount=sp.mutez(1),
+        _valid=False,
+        _exception="NO_TEZ",
+    )
+    dues.propose_admin(accounts.bob.address, _sender=accounts.admin)
+    scenario.verify(dues.data.pending_admin.unwrap_some() == accounts.bob.address)
+
+    dues.accept_admin(
+        _sender=accounts.alice,
+        _valid=False,
+        _exception="NOT_PENDING_ADMIN",
+    )
+    dues.accept_admin(_sender=accounts.bob)
+    scenario.verify(dues.data.admin == accounts.bob.address)
+    scenario.verify(dues.data.pending_admin.is_none())
+
+    dues.set_preserve_fee(
+        sp.mutez(2_000_000),
+        _sender=accounts.admin,
+        _valid=False,
+        _exception="ADMIN_ONLY",
+    )
+    dues.set_preserve_fee(
+        sp.mutez(2_000_000),
+        _sender=accounts.bob,
+        _amount=sp.mutez(1),
+        _valid=False,
+        _exception="NO_TEZ",
+    )
+    dues.set_preserve_fee(sp.mutez(2_000_000), _sender=accounts.bob)
+    scenario.verify(dues.data.preserve_fee == sp.mutez(2_000_000))

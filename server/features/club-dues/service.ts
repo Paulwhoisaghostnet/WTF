@@ -34,7 +34,7 @@ import { defaultKilnApiUrl, kilnFetch, kilnTimeoutMs } from "../../lib/kiln-clie
 
 const execFileAsync = promisify(execFile);
 
-export const CLUB_DUES_TEMPLATE_VERSION = "wtf-club-dues-v1";
+export const CLUB_DUES_TEMPLATE_VERSION = "wtf-club-dues-v2";
 export const CLUB_DUES_MANAGER_WALLET_ID = "club-dues-manager";
 export const CLUB_DUES_INTENT_TTL_MS = 30 * 60_000;
 export const CLUB_DUES_DEFAULT_PRESERVE_FEE_MUTEZ = 1_000_000;

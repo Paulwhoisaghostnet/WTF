@@ -900,9 +900,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"club dues\"",
     userVisibleAssertion:
-      "A member can see Club Dues state, compile a dues template, and prepare dues payment only with a wallet linked to the current account.",
+      "A member can see Club Dues state, compile a V2 dues template, and prepare dues payment only with a wallet linked to the current account; staff authority transfer is explicitly proposed and accepted by the destination wallet.",
     durableSideEffectAssertion:
-      "The live harness verifies public contract visibility, user membership state, admin summaries, arrears dry-sweep behavior, SmartPy/Kiln template compilation, unlinked-wallet rejection, and linked-wallet payment intent creation against the live Club Dues contract.",
+      "The live harness verifies public contract visibility, user membership state, admin summaries, arrears dry-sweep behavior, SmartPy/Kiln template compilation, unlinked-wallet rejection, and linked-wallet payment intent creation against the live Club Dues contract. V2 stores a pending admin until that exact address accepts, clears it after acceptance, and rejects attached tez on privileged calls.",
   },
   {
     id: "studio.creator-runway-persistence",

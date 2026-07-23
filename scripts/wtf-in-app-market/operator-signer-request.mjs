@@ -9,6 +9,15 @@ const auth = process.env.WTF_OPERATOR_SIGNER_AUTH_TOKEN?.trim();
 const socketPath =
   process.env.WTF_OPERATOR_SIGNER_SOCKET?.trim() ||
   "/run/wtf/operator-signer.sock";
+const callMutezRaw =
+  process.env.WTF_OPERATOR_SIGNER_CALL_MUTEZ?.trim() || "0";
+if (!/^\d+$/.test(callMutezRaw)) {
+  throw new Error("WTF_OPERATOR_SIGNER_CALL_MUTEZ must be a non-negative integer");
+}
+const callMutez = Number(callMutezRaw);
+if (!Number.isSafeInteger(callMutez)) {
+  throw new Error("WTF_OPERATOR_SIGNER_CALL_MUTEZ exceeds the safe integer range");
+}
 
 if (!["originate_contract", "custom"].includes(intent)) {
   throw new Error("Supported intents: originate_contract, custom");
@@ -40,7 +49,7 @@ const payload =
         contract: firstPathOrContract,
         entrypoint: secondPathOrEntrypoint,
         args: JSON.parse(readFileSync(argsPath, "utf8")),
-        mutez: 0,
+        mutez: callMutez,
       };
 
 const envelope = {

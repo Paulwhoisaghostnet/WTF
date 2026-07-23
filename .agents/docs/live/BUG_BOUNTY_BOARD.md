@@ -9657,3 +9657,68 @@ Copy this when adding a new issue:
 - Likely correction direction:
 - Verification idea:
 ```
+
+### WTF-BB-511 - Numeric TzKT transaction ids were queried as operation hashes
+
+- Category: Rewards / in-app market reconciliation
+- Status: Verified
+- Owner/Session: Codex wtfOS contract release
+- Score: C_3 + F_3 + S_3 + P_3 = 12
+- Evidence:
+  - `in-app-market-sync` called `/operations/transactions/{numeric-id}`, an endpoint whose path parameter is an operation hash, and production readiness reported the resulting upstream failure.
+  - The verifier now uses the transaction collection endpoint with the exact `id` filter; the policy regression passes and transaction id `2786408161869824` resolves to the applied bounded market purchase.
+- Why it matters:
+  - A healthy on-chain purchase could leave the scheduler degraded and delay durable inventory reconciliation.
+- Likely correction direction:
+  - Completed: preserve the distinction between TzKT operation hashes and numeric entity ids.
+- Verification idea:
+  - Completed with focused policy/unit tests, the exact live TzKT row, and post-deploy readiness verification.
+
+### WTF-BB-512 - Casino browser encoded a scalar entrypoint as a record
+
+- Category: Casino / wallet integration
+- Status: Verified
+- Owner/Session: Codex wtfOS contract release
+- Score: C_2 + F_3 + S_2 + P_2 = 9
+- Evidence:
+  - SmartPy compiled the single-field `purchase_membership` parameter to a Michelson string, while the browser called `methodsObject` with `{membership_ref}`.
+  - The browser now calls the compiled scalar method; both Shadownet and mainnet exact-fee purchases applied and forwarded exactly 1 XTZ.
+- Why it matters:
+  - Membership intent creation could succeed while every user wallet submission failed before broadcast.
+- Likely correction direction:
+  - Completed: bind the UI encoder to the compiled parameter schema and retain a source-level policy regression.
+- Verification idea:
+  - Completed with local policy tests plus Shadownet and mainnet transaction/event inspection.
+
+### WTF-BB-513 - Club Dues V1 had immutable legacy authority and payable admin traps
+
+- Category: Club Dues / contract authority
+- Status: Verified
+- Owner/Session: Codex wtfOS contract release
+- Score: C_4 + F_4 + S_4 + P_4 = 16
+- Evidence:
+  - Legacy `KT1B24vzsRccFBT8zeH9H24wgiVxxcLtw8DH` had no admin rotation path and privileged entrypoints could accept tez.
+  - Its member, receipt, and ledger big maps were empty, permitting a state-safe replacement.
+  - V2 `KT1H4rtqtsbbJGCE6o1hTTQ3S3Mq2riLHvmG` adds two-step authority transfer and `NO_TEZ` guards; Shadownet and mainnet authority/payment workflows passed, and production now points to V2 under contract-admin control.
+- Why it matters:
+  - The former operator key was a permanent control dependency, while accidentally attached tez could become trapped.
+- Likely correction direction:
+  - Completed: replace the empty legacy instance, preserve economic storage, and restrict production signer calls to the V2 address.
+- Verification idea:
+  - Completed with SmartPy tests, canonical compiled/live identity, both-network role choreography, exact treasury transfers, production DB/config migration, and signer allowlist inspection.
+
+### WTF-BB-514 - Production contained a fake live Club Dues puppet row
+
+- Category: E2E isolation / production data
+- Status: Verified
+- Owner/Session: Codex wtfOS contract release
+- Score: C_3 + F_3 + S_2 + P_2 = 10
+- Evidence:
+  - Production `club_dues_contracts` contained `live-puppet-dues` with non-chain placeholder `KT1LivePuppetDues111111111111111` and status `live`.
+  - A pre-change CSV backup was written to `/var/backups/wtf/club-dues-contracts-before-v2-20260723T2033Z.csv`; the fixture row was changed to `archived`.
+- Why it matters:
+  - Public listings and chain verification iterated a fake contract as though it were deployed on mainnet.
+- Likely correction direction:
+  - Completed for current production; keep actor-backed fixtures confined to isolated E2E databases.
+- Verification idea:
+  - Confirm the public Club Dues API exposes only real live rows and add a production-data check that rejects placeholder KT1 values.

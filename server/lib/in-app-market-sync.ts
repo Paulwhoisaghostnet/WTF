@@ -289,9 +289,14 @@ async function fetchTransactionById(
   transactionId: number
 ): Promise<TzktTransactionOp | null> {
   try {
-    const row = await tzkt.getJson<TzktTransactionOp>(
-      `/operations/transactions/${transactionId}`
+    const rows = await tzkt.getJson<TzktTransactionOp[]>(
+      "/operations/transactions",
+      {
+        id: transactionId,
+        limit: 1,
+      }
     );
+    const row = Array.isArray(rows) ? rows[0] : null;
     return row && typeof row === "object" ? row : null;
   } catch (err) {
     if (err instanceof UpstreamError && err.status === 404) return null;

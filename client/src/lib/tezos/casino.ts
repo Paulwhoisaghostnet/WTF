@@ -36,8 +36,8 @@ export async function purchaseCasinoMembership(params: {
       await assertNetworkReadyForSend(params.walletAddress);
       const tezos = await getTezos();
       const contract = await tezos.wallet.at(contractAddress);
-      const op = await contract.methodsObject
-        .purchase_membership({ membership_ref: membershipRef })
+      const op = await contract.methods
+        .purchase_membership(membershipRef)
         .send({ amount: feeMutez, mutez: true });
       await op.confirmation(1);
       return op.opHash;
