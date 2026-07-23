@@ -146,6 +146,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   agent: "wtfOs",
   applications: "arcadeConsoleGameStudio",
   mail: "identityAndSocial",
+  "objkt-operator": "operations",
 };
 
 export function getDesktopAppDocRegistry(appKey: DesktopAppKey): WtfDomainDocRegistry {
