@@ -485,6 +485,7 @@ export const DESKTOP_APPS = [
   "agent",
   "applications",
   "mail",
+  "objkt-operator",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
@@ -518,6 +519,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   agent: "Agent",
   applications: "Applications",
   mail: "Inbox",
+  "objkt-operator": "Objkt Operator",
 };
 
 export const EXPERIMENTAL_DESKTOP_APPS = [

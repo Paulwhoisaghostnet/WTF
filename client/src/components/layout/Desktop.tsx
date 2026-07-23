@@ -585,6 +585,7 @@ export function Desktop({
     agent: sourceApps.agent,
     applications: sourceApps.applications,
     mail: sourceApps.mail,
+    "objkt-operator": sourceApps["objkt-operator"],
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
@@ -619,6 +620,7 @@ export function Desktop({
       apps["map-lab"],
       apps.agent,
       apps.applications,
+      apps["objkt-operator"],
       apps.studio,
       apps.tv,
       apps.wim,

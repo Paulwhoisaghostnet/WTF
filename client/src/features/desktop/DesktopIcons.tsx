@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useLayoutEffect, useRef } from "react";
 import { styled } from "styled-components";
+import { Gem } from "lucide-react";
 import {
   DESKTOP_APPS,
   EXPERIMENTAL_DESKTOP_APPS,
@@ -28,6 +29,7 @@ function markExperimentalIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
 
 function filterDefaultDesktopIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
   return defs.filter((def) => {
+    if (def.key === "objkt-operator") return true;
     const appKey = desktopAppKeyForIconKey(def.key);
     return !appKey || isDefaultDesktopAppKey(appKey);
   });
@@ -118,6 +120,18 @@ const ConsoleDeskIcon = styled.div`
     border: 1px solid #101010;
     border-bottom: none;
   }
+`;
+
+const ObjktOperatorDeskIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #16120b;
+  background: linear-gradient(180deg, #f7e9a8 0%, #d4a64e 52%, #9e6a24 100%);
+  color: #21170b;
+  margin-bottom: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), 2px 2px 0 rgba(22, 18, 11, 0.24);
 `;
 
 const MissionControlDeskIcon = styled(ConsoleDeskIcon)`
@@ -731,10 +745,10 @@ export function buildDesktopIconDefs(
     {
       key: "objkt-operator",
       label: "Objkt Operator",
-      icon: <ConsoleDeskIcon>OBJ</ConsoleDeskIcon>,
+      icon: <ObjktOperatorDeskIcon aria-label="Objkt Operator"><Gem size={19} strokeWidth={2.5} /></ObjktOperatorDeskIcon>,
       defaultX: 332,
       defaultY: 540,
-      enabled: canOpenApps && Boolean(options.objktOperatorAvailable),
+      enabled: canOpenApps && (apps["objkt-operator"] || canOpenDisabledApps) && Boolean(options.objktOperatorAvailable),
       openPath: "/objkt-operator",
     },
     {

@@ -980,6 +980,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   agent: "/agent",
   applications: "/applications",
   mail: "/mail",
+  "objkt-operator": "/objkt-operator",
 };
 
 function entry(
@@ -1031,6 +1032,7 @@ const manualApps: BetaAppCatalogEntry[] = [
 
 const experimentalSet = new Set<DesktopAppKey>(EXPERIMENTAL_DESKTOP_APPS);
 function tierFor(appKey: DesktopAppKey): BetaTier {
+  if (appKey === "objkt-operator") return 5;
   if (experimentalSet.has(appKey)) return 4;
   if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations", "agent"].includes(appKey)) return 2;
   if (["map-lab", "casino", "ch-ease"].includes(appKey)) return 4;
@@ -1045,6 +1047,7 @@ function stageFor(appKey: DesktopAppKey): BetaStage {
   return "operate";
 }
 function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
+  if (appKey === "objkt-operator") return ["collector", "curator", "builder"];
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
   if (["hoard", "gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
   if (["w", "wim", "tv", "skywire", "wtf-live", "mail"].includes(appKey)) return ["community-member", "creator", "collector"];
@@ -1055,7 +1058,12 @@ const desktopApps = DESKTOP_APPS.map((appKey) => {
   const route = desktopRoutes[appKey];
   const tier = tierFor(appKey);
   const stage = stageFor(appKey);
-  const item = entry(appKey, DESKTOP_APP_LABELS[appKey], route, route === "/arcade" || route === "/dues" || route === "/gallery" || route === "/skywire" ? "public" : "session", tier, stage, personasFor(appKey), `${DESKTOP_APP_LABELS[appKey]} is the canonical WTFOS ${BETA_STAGE_LABELS[stage].toLowerCase()} surface for its domain.`, ["/mission-control", "/notifications", "/profile", route]);
+  const access = appKey === "objkt-operator"
+    ? "admin"
+    : route === "/arcade" || route === "/dues" || route === "/gallery" || route === "/skywire"
+      ? "public"
+      : "session";
+  const item = entry(appKey, DESKTOP_APP_LABELS[appKey], route, access, tier, stage, personasFor(appKey), `${DESKTOP_APP_LABELS[appKey]} is the canonical WTFOS ${BETA_STAGE_LABELS[stage].toLowerCase()} surface for its domain.`, ["/mission-control", "/notifications", "/profile", route]);
   item.appKey = appKey;
   return item;
 });

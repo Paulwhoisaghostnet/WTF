@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DESKTOP_ICON_LAYOUT_KEYS } from "@shared/desktop";
 import { DESKTOP_APPS, EXPERIMENTAL_DESKTOP_APPS } from "@shared/types";
-import { isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
+import { isAppStoreAppKey, isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
 import {
   buildDesktopIconDefs,
   type DesktopAppAvailability,
@@ -39,7 +39,7 @@ test("native desktop icon defs only promote core default apps", () => {
     assert.ok(keys.includes(iconKey), `${iconKey} should remain a default desktop app`);
   }
   for (const appKey of DESKTOP_APPS) {
-    if (isDefaultDesktopAppKey(appKey)) continue;
+    if (isDefaultDesktopAppKey(appKey) || !isAppStoreAppKey(appKey)) continue;
     assert.equal(
       keys.includes(iconKeyForAppKey(appKey)),
       false,

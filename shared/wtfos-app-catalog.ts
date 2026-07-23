@@ -422,6 +422,20 @@ const APP_ENTRIES = [
     monogram: "PST",
     accent: "#f97316",
   },
+  {
+    key: "objkt-operator",
+    route: "/objkt-operator",
+    summary: "Private Objkt acquisition workspace for approved creator reviews, score breakdowns, and resale-aware purchase queues.",
+    placement: "stuffs-menu",
+    necessity: "role-gated",
+    necessityRank: 5,
+    priceWtfUnits: "0",
+    priceExp: 0,
+    monogram: "OBJ",
+    accent: "#b8862f",
+    requiredRoles: ["admin"],
+    prerequisite: "Requires the admin role and the configured Objkt Operator owner allowlist.",
+  },
 ] as const satisfies readonly Omit<WtfOsAppCatalogEntry, "label">[];
 
 export const WTFOS_APP_CATALOG = Object.freeze(

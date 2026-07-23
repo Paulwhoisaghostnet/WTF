@@ -27,7 +27,7 @@ test("wtfOS app catalog ranks every desktop app exactly once", () => {
   }
 });
 
-test("only core apps are default desktop apps; the rest are represented in the app store", () => {
+test("core apps and private role-gated apps keep their intended wtfOS placement", () => {
   const defaultDesktopKeys = DESKTOP_APPS.filter(isDefaultDesktopAppKey);
   assert.deepEqual(defaultDesktopKeys, [
     "wtfiam",
@@ -43,6 +43,9 @@ test("only core apps are default desktop apps; the rest are represented in the a
     if (defaultDesktopKeys.includes(key)) {
       assert.equal(entry.placement, "default-desktop", `${key} should stay core`);
       assert.equal(entry.priceWtfUnits, "0", `${key} should not need purchase`);
+    } else if (entry.placement === "stuffs-menu") {
+      assert.equal(entry.requiredRoles?.includes("admin"), true, `${key} needs an admin gate`);
+      assert.equal(entry.priceWtfUnits, "0", `${key} should not be purchasable`);
     } else {
       assert.equal(isAppStoreAppKey(key), true, `${key} should live in WTFIAM Apps`);
       assert.ok(BigInt(entry.priceWtfUnits) > 0n, `${key} needs a WTF unlock price`);

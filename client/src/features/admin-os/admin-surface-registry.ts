@@ -1586,6 +1586,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
   {
     id: "objkt-operator",
     label: "Objkt Operator",
+    desktopAppKey: "objkt-operator",
     domain: "Admin",
     subdomain: "Private art acquisition operator",
     kind: "admin-tool",

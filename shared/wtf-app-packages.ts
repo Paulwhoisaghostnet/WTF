@@ -62,6 +62,7 @@ const domainGuides = {
   commerceAndWallets: { label: "Commerce And Wallets", guide: "docs/domains/commerce-and-wallets.md" },
   mediaTvStudio: { label: "Media, TV, And Studio", guide: "docs/domains/media-tv-studio.md" },
   tezosPlatform: { label: "Tezos Platform", guide: "docs/domains/tezos-platform.md" },
+  operations: { label: "Operations", guide: "docs/domains/operations.md" },
   pastaProtocol: { label: "Pasta Protocol", guide: "docs/domains/pasta-protocol.md" },
 } as const;
 
@@ -95,6 +96,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   agent: domainGuides.wtfOs,
   applications: domainGuides.arcadeConsoleGameStudio,
   mail: domainGuides.identityAndSocial,
+  "objkt-operator": domainGuides.operations,
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -147,6 +149,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
   applications: ["Hetzner remote application host", "Steam Linux runtime", "WebRTC browser media transport"],
   mail: ["Resend inbound email"],
+  "objkt-operator": ["Objkt API", "Kukai", "Tezos mainnet RPC"],
 };
 
 const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -209,6 +212,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
     "transient WebRTC stream lifecycle",
   ],
   mail: ["mailboxes", "mail_messages", "comms_items"],
+  "objkt-operator": ["objkt_operator_states", "desktop_app_settings"],
 };
 
 function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {
