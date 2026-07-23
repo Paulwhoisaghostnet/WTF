@@ -66,6 +66,11 @@ function isGammaHost(): boolean {
   return window.location.hostname === "gamma.wtfos.app";
 }
 
+function isObjktOperatorHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "operator.wtfos.app";
+}
+
 function isGammaShellLocation(location: string): boolean {
   if (isGammaHost()) return true;
   if (isBetaHost()) return false;
@@ -472,6 +477,12 @@ function AppContent() {
       location === "/"
     ) {
       setLocation("/dues", { replace: true });
+    }
+  }, [location, setLocation]);
+
+  useEffect(() => {
+    if (isObjktOperatorHost() && location === "/") {
+      setLocation("/objkt-operator", { replace: true });
     }
   }, [location, setLocation]);
 

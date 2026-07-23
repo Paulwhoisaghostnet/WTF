@@ -24,6 +24,7 @@ describe("CORS origin resolution", () => {
     });
 
     assert.equal(origins.has("https://wtfos.app"), true);
+    assert.equal(origins.has("https://operator.wtfos.app"), true);
     assert.equal(origins.has("https://skywire.wtfos.app"), true);
     assert.equal(origins.has("https://gamma.wtfos.app"), true);
     assert.equal(origins.has("https://beta.wtfos.app"), true);

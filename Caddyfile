@@ -137,7 +137,13 @@ upload.wtfos.app, upload.5-78-202-50.sslip.io {
 	}
 }
 
-wtfos.app, skywire.wtfos.app, gamma.wtfos.app, beta.wtfos.app, dues.wtfgameshow.app {
+wtfos.app, operator.wtfos.app, skywire.wtfos.app, gamma.wtfos.app, beta.wtfos.app, dues.wtfgameshow.app {
+	@operator_root {
+		host operator.wtfos.app
+		path /
+	}
+	redir @operator_root /objkt-operator permanent
+
 	encode gzip zstd
 
 	reverse_proxy app:3000 {

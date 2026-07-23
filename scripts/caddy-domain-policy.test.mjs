@@ -11,8 +11,14 @@ assert.match(
 
 assert.match(
   caddyfile,
-  /wtfos\.app,\s*skywire\.wtfos\.app,\s*gamma\.wtfos\.app,\s*beta\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/,
-  "Caddyfile must serve the canonical wtfos.app host plus Skywire and beta product subdomains without the legacy wtfgameshow platform aliases",
+  /wtfos\.app,\s*operator\.wtfos\.app,\s*skywire\.wtfos\.app,\s*gamma\.wtfos\.app,\s*beta\.wtfos\.app,\s*dues\.wtfgameshow\.app\s*\{/,
+  "Caddyfile must serve the canonical wtfos.app host plus the private operator and product subdomains without the legacy wtfgameshow platform aliases",
+);
+
+assert.match(
+  caddyfile,
+  /@operator_root\s*\{\s*host operator\.wtfos\.app\s*path \/\s*\}\s*redir @operator_root \/objkt-operator permanent/s,
+  "operator.wtfos.app must open the persistent Objkt Operator route at its root",
 );
 
 assert.match(
