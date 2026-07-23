@@ -9,7 +9,7 @@ import {
   isObjktOperatorOwner,
   objktOperatorOwnerUsernames,
 } from "./owner";
-import { normalizeObjktOperatorSettings } from "../../routes/objkt-operator";
+import { mergeDiscoveredCreators, normalizeObjktOperatorSettings } from "../../routes/objkt-operator";
 
 test("Objkt Operator owner policy requires both configured username and admin role", () => {
   const env = { OBJKT_OPERATOR_OWNER_USERNAMES: "wtf-admin, private-curator" } as NodeJS.ProcessEnv;
@@ -39,6 +39,26 @@ test("Objkt Operator settings normalize into bounded persisted controls", () => 
   assert.equal(settings.minResaleConfidence, 44);
   assert.equal(settings.minRecentSales180d, 2);
   assert.equal(settings.requireSaleReference, false);
+});
+
+test("creator discovery pins approvals while filling the remaining review slots", () => {
+  const existing = [
+    { address: `tz1${"2".repeat(33)}`, reviewStatus: "approved" },
+    { address: `tz1${"3".repeat(33)}`, reviewStatus: "pending" },
+  ] as any;
+  const discovered = [
+    { address: `tz1${"4".repeat(33)}`, reviewStatus: "pending" },
+    { address: `tz1${"5".repeat(33)}`, reviewStatus: "pending" },
+  ] as any;
+
+  const next = mergeDiscoveredCreators(existing, discovered);
+
+  assert.deepEqual(next.slice(0, 3).map((creator) => [creator.address, creator.reviewStatus]), [
+    [`tz1${"2".repeat(33)}`, "approved"],
+    [`tz1${"4".repeat(33)}`, "pending"],
+    [`tz1${"5".repeat(33)}`, "pending"],
+  ]);
+  assert.equal(next.some((creator) => creator.address === `tz1${"3".repeat(33)}`), true);
 });
 
 test("creator score breakdown exposes all weighted factors and totals 100 percent", () => {

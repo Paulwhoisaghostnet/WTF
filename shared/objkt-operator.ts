@@ -16,6 +16,25 @@ export interface ObjktCreatorScoreBreakdown {
   floorFit: ObjktCreatorScorePart;
 }
 
+export interface ObjktCreatorPortfolioItem {
+  id: string;
+  contract: string;
+  tokenId: string;
+  name: string;
+  displayUri?: string | null;
+  thumbnailUri?: string | null;
+  mime?: string | null;
+  supply?: number | null;
+  mintedAt?: string | null;
+  lowestAskXtz?: number | null;
+  medianSaleXtz?: number | null;
+  averageSaleXtz?: number | null;
+  recentSales30d: number;
+  recentSales180d: number;
+  uniqueRecentBuyers: number;
+  objktUrl: string;
+}
+
 export interface ObjktOperatorCreator {
   address: string;
   alias?: string | null;

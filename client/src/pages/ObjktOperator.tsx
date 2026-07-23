@@ -4,6 +4,7 @@ import styled from "styled-components";
 import {
   Check,
   ExternalLink,
+  Image as ImageIcon,
   RefreshCw,
   Save,
   Search,
@@ -18,6 +19,7 @@ import { useWallet } from "../lib/wallet-context";
 import {
   evaluateObjktCandidatePolicy,
   type ObjktCreatorReviewStatus,
+  type ObjktCreatorPortfolioItem,
   type ObjktOperatorSettings,
   type ObjktOperatorState,
   type ObjktQueueItem,
@@ -142,6 +144,25 @@ const IdentityText = styled.div`
   span { color: var(--wtf-app-muted-text, #444); font-size: 12px; }
 `;
 
+const CreatorNameButton = styled.button`
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  color: var(--wtf-app-link, #000080);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover, &:focus-visible { color: #a12622; }
+`;
+
 const Score = styled.strong<{ $score: number }>`
   color: ${(props) => props.$score >= 70 ? "#176b38" : props.$score >= 50 ? "#8a4b00" : "#a12622"};
   font-size: 18px;
@@ -195,6 +216,92 @@ const BreakdownCell = styled.div`
 
   strong { font-size: 14px; }
   span { color: var(--wtf-app-muted-text, #444); white-space: nowrap; }
+`;
+
+const PortfolioReviewPanel = styled.section`
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 2px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface, #f4f4f4);
+`;
+
+const PortfolioReviewHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+`;
+
+const PortfolioReviewTitle = styled.div`
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+
+  h3 { margin: 0; font-size: 16px; }
+  span { color: var(--wtf-app-muted-text, #444); font-size: 12px; }
+`;
+
+const PortfolioEyebrow = styled.span`
+  color: var(--wtf-app-link, #000080) !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+`;
+
+const PortfolioSummary = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--wtf-app-muted-text, #444);
+  font-size: 12px;
+`;
+
+const PortfolioGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 8px;
+
+  @media (max-width: 900px) { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  @media (max-width: 620px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+`;
+
+const PortfolioCard = styled.article`
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #fff);
+`;
+
+const PortfolioImage = styled.img`
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
+  background: #111;
+`;
+
+const PortfolioImagePlaceholder = styled.div`
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-bottom: 1px solid var(--wtf-app-border, #808080);
+  color: var(--wtf-app-muted-text, #444);
+  background: #dedede;
+`;
+
+const PortfolioCardBody = styled.div`
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px;
+
+  strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  span { color: var(--wtf-app-muted-text, #444); font-size: 11px; line-height: 1.35; }
 `;
 
 const CandidateList = styled.div`
@@ -315,6 +422,12 @@ function formatXtz(value: number | null | undefined) {
   return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "Date unknown";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Date unknown" : date.toLocaleDateString();
+}
+
 function stateResponse(result: { state: ObjktOperatorState }) {
   return result.state;
 }
@@ -326,6 +439,9 @@ export function ObjktOperator() {
   const [busy, setBusy] = useState<string | null>("load");
   const [notice, setNotice] = useState<{ tone: "info" | "success" | "danger"; text: string } | null>(null);
   const [operationHashes, setOperationHashes] = useState<Record<string, string>>({});
+  const [portfolioAddress, setPortfolioAddress] = useState<string | null>(null);
+  const [portfolio, setPortfolio] = useState<{ creator: ObjktOperatorState["creators"][number]; works: ObjktCreatorPortfolioItem[]; generatedAt: string } | null>(null);
+  const [portfolioBusy, setPortfolioBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -351,6 +467,11 @@ export function ObjktOperator() {
   const pendingCreators = useMemo(
     () => state?.creators.filter((creator) => creator.reviewStatus === "pending") || [],
     [state?.creators],
+  );
+  const discoverySlots = Math.max(0, 25 - approvedCreators.length);
+  const selectedCreator = useMemo(
+    () => state?.creators.find((creator) => creator.address === portfolioAddress) || portfolio?.creator || null,
+    [portfolio?.creator, portfolioAddress, state?.creators],
   );
   const queuedSpend = useMemo(
     () => (state?.queue || [])
@@ -381,6 +502,30 @@ export function ObjktOperator() {
       () => api.patch(`/api/objkt-operator/creators/${encodeURIComponent(address)}`, { reviewStatus }),
       `Creator ${reviewStatus}.`,
     );
+  }
+
+  async function openPortfolio(creator: ObjktOperatorState["creators"][number]) {
+    setPortfolioAddress(creator.address);
+    setPortfolio(null);
+    setPortfolioBusy(true);
+    setNotice(null);
+    try {
+      const result = await api.get<{
+        creator: ObjktOperatorState["creators"][number];
+        works: ObjktCreatorPortfolioItem[];
+        generatedAt: string;
+      }>(`/api/objkt-operator/creators/${encodeURIComponent(creator.address)}/portfolio`);
+      setPortfolio(result);
+    } catch (error) {
+      setNotice({ tone: "danger", text: error instanceof Error ? error.message : "Creator portfolio unavailable" });
+    } finally {
+      setPortfolioBusy(false);
+    }
+  }
+
+  function closePortfolio() {
+    setPortfolioAddress(null);
+    setPortfolio(null);
   }
 
   async function updateQueue(item: ObjktQueueItem, status: ObjktQueueStatus, operationHash?: string) {
@@ -532,11 +677,80 @@ export function ObjktOperator() {
             <UiButton
               uiVariant="primary"
               onClick={() => runAction("discover", () => api.post("/api/objkt-operator/discover"), "Creator review list refreshed.")}
-              disabled={Boolean(busy)}
-            >{busy === "discover" ? <Hourglass size={15} /> : <Search size={15} />} Discover 25</UiButton>
+              disabled={Boolean(busy) || discoverySlots === 0}
+              title={discoverySlots === 0 ? "All review slots are approved" : "Replace unreviewed slots with new creators"}
+            >{busy === "discover" ? <Hourglass size={15} /> : <Search size={15} />} Discover {discoverySlots || "new"}</UiButton>
           )}
           compact
         >
+          <Toolbar>
+            <span>{approvedCreators.length} approved and pinned</span>
+            <span>{pendingCreators.length} awaiting portfolio review</span>
+            {discoverySlots === 0 ? <span>Review set full</span> : null}
+          </Toolbar>
+          {portfolioAddress ? (
+            <PortfolioReviewPanel data-testid="objkt-creator-portfolio-review">
+              <PortfolioReviewHeader>
+                <PortfolioReviewTitle>
+                  <PortfolioEyebrow>Recent portfolio review</PortfolioEyebrow>
+                  <h3>{selectedCreator?.alias || shortAddress(portfolioAddress)}</h3>
+                  <span>{portfolioAddress}</span>
+                </PortfolioReviewTitle>
+                <ReviewActions>
+                  {selectedCreator ? (
+                    <>
+                      <UiButton
+                        compact
+                        uiVariant={selectedCreator.reviewStatus === "approved" ? "primary" : "default"}
+                        onClick={() => reviewCreator(selectedCreator.address, "approved")}
+                        disabled={Boolean(busy)}
+                        title="Approve creator"
+                      ><Check size={14} /> Approve</UiButton>
+                      <UiButton
+                        compact
+                        uiVariant={selectedCreator.reviewStatus === "rejected" ? "danger" : "default"}
+                        onClick={() => reviewCreator(selectedCreator.address, "rejected")}
+                        disabled={Boolean(busy)}
+                        title="Reject creator"
+                      ><X size={14} /> Reject</UiButton>
+                    </>
+                  ) : null}
+                  <UiButton compact onClick={closePortfolio} title="Close portfolio review"><X size={14} /></UiButton>
+                </ReviewActions>
+              </PortfolioReviewHeader>
+              {portfolioBusy ? (
+                <Empty><Hourglass size={22} /> Loading recent work...</Empty>
+              ) : portfolio ? (
+                <>
+                  <PortfolioSummary>
+                    <span>Score {portfolio.creator.score}/100</span>
+                    <span>{portfolio.works.length} recent works</span>
+                    <span>{portfolio.works.reduce((sum, work) => sum + work.recentSales180d, 0)} sales in 180d</span>
+                    <span>Verified: {portfolio.creator.verified ? "yes" : "no"}</span>
+                  </PortfolioSummary>
+                  {portfolio.works.length ? (
+                    <PortfolioGrid>
+                      {portfolio.works.map((work) => {
+                        const image = mediaUrl(work.thumbnailUri || work.displayUri);
+                        return (
+                          <PortfolioCard key={work.id} data-testid="objkt-portfolio-work">
+                            {image ? <PortfolioImage src={image} alt={work.name} /> : <PortfolioImagePlaceholder><ImageIcon size={24} /></PortfolioImagePlaceholder>}
+                            <PortfolioCardBody>
+                              <strong title={work.name}>{work.name}</strong>
+                              <span>Minted {formatDate(work.mintedAt)}</span>
+                              <span>{work.recentSales180d} sales / {work.uniqueRecentBuyers} recent buyers</span>
+                              <span>{work.lowestAskXtz ? `${formatXtz(work.lowestAskXtz)} XTZ ask` : "No active ask"}</span>
+                              <UiButton compact onClick={() => window.open(work.objktUrl, "objkt-portfolio-work")} title="Open work on Objkt"><ExternalLink size={14} /> View work</UiButton>
+                            </PortfolioCardBody>
+                          </PortfolioCard>
+                        );
+                      })}
+                    </PortfolioGrid>
+                  ) : <Empty>No recent works returned by Objkt.</Empty>}
+                </>
+              ) : null}
+            </PortfolioReviewPanel>
+          ) : null}
           {state.creators.length ? (
             <CreatorList data-testid="objkt-creator-list">
               {state.creators.map((creator) => (
@@ -544,7 +758,11 @@ export function ObjktOperator() {
                   <CreatorIdentity>
                     {mediaUrl(creator.logo) ? <Avatar src={mediaUrl(creator.logo)} alt="" /> : <Avatar as="div" />}
                     <IdentityText>
-                      <strong>{creator.alias || shortAddress(creator.address)}</strong>
+                      <CreatorNameButton
+                        type="button"
+                        onClick={() => openPortfolio(creator)}
+                        title="Review recent portfolio"
+                      >{creator.alias || shortAddress(creator.address)}</CreatorNameButton>
                       <span title={creator.address}>{creator.address}</span>
                     </IdentityText>
                   </CreatorIdentity>

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   ObjktCreatorScoreBreakdown,
+  ObjktCreatorPortfolioItem,
   ObjktMarketCandidate,
   ObjktOperatorCreator,
   ObjktOperatorScan,
@@ -57,6 +58,32 @@ const AFFORDABLE_INVENTORY_QUERY = `
         price_xtz
         amount_left
         currency { symbol decimals type }
+      }
+    }
+  }
+`;
+
+const CREATOR_PORTFOLIO_QUERY = `
+  query CreatorPortfolio($creator: String!, $limit: Int!) {
+    token(
+      where: {creators: {creator_address: {_eq: $creator}}}
+      order_by: {timestamp: desc}
+      limit: $limit
+    ) {
+      token_id
+      fa_contract
+      name
+      display_uri
+      thumbnail_uri
+      mime
+      supply
+      timestamp
+      lowest_ask
+      average
+      listing_sales(order_by: {timestamp: desc}, limit: 12) {
+        price_xtz
+        timestamp
+        buyer_address
       }
     }
   }
@@ -227,9 +254,11 @@ export async function discoverObjktCreators(
   limit = 25,
   maxItemPriceXtz = 5,
   fetchImpl: FetchLike = fetch,
+  excludedAddresses: readonly string[] = [],
 ): Promise<ObjktOperatorCreator[]> {
   const boundedLimit = Math.max(1, Math.min(Math.round(limit), 25));
   const maxPrice = Math.max(0.1, Math.min(Number(maxItemPriceXtz) || 5, 100));
+  const excluded = new Set(excludedAddresses.filter(isObjktTezosAddress));
   const since = new Date(Date.now() - 45 * 86_400_000).toISOString();
   const data = await objktGraphql<{ listing_sale: any[] }>(
     DISCOVER_CREATORS_QUERY,
@@ -250,7 +279,7 @@ export async function discoverObjktCreators(
   for (const sale of data.listing_sale || []) {
     for (const creator of sale.token?.creators || []) {
       const address = String(creator.creator_address || "");
-      if (!isObjktTezosAddress(address)) continue;
+      if (!isObjktTezosAddress(address) || excluded.has(address)) continue;
       const current = activity.get(address) || {
         address,
         alias: creator.holder?.alias || null,
@@ -342,6 +371,54 @@ export async function discoverObjktCreators(
       b.affordableListingCount - a.affordableListingCount,
     )
     .slice(0, boundedLimit);
+}
+
+function portfolioSales(row: any) {
+  const sales = Array.isArray(row?.listing_sales) ? row.listing_sales : [];
+  const now = Date.now();
+  const recentSales30 = sales.filter((sale: any) => now - new Date(sale.timestamp).getTime() <= 30 * 86_400_000);
+  const recentSales180 = sales.filter((sale: any) => now - new Date(sale.timestamp).getTime() <= 180 * 86_400_000);
+  return {
+    recentSales30d: recentSales30.length,
+    recentSales180d: recentSales180.length,
+    uniqueRecentBuyers: new Set(recentSales180.map((sale: any) => sale.buyer_address).filter(Boolean)).size,
+    medianSaleXtz: median(sales.map((sale: any) => mutezToXtz(sale.price_xtz)).filter((price: number) => price > 0)),
+  };
+}
+
+export async function fetchObjktCreatorPortfolio(
+  creatorAddress: string,
+  limit = 12,
+  fetchImpl: FetchLike = fetch,
+): Promise<ObjktCreatorPortfolioItem[]> {
+  if (!isObjktTezosAddress(creatorAddress)) throw new Error("Invalid creator address");
+  const data = await objktGraphql<{ token: any[] }>(
+    CREATOR_PORTFOLIO_QUERY,
+    { creator: creatorAddress, limit: Math.max(1, Math.min(Math.round(limit), 24)) },
+    "Load creator portfolio",
+    fetchImpl,
+  );
+  return (data.token || []).map((row: any) => {
+    const sales = portfolioSales(row);
+    return {
+      id: `${row.fa_contract}:${row.token_id}`,
+      contract: String(row.fa_contract || ""),
+      tokenId: String(row.token_id ?? ""),
+      name: row.name || "Untitled",
+      displayUri: row.display_uri || null,
+      thumbnailUri: row.thumbnail_uri || null,
+      mime: row.mime || null,
+      supply: row.supply ? Number(row.supply) : null,
+      mintedAt: row.timestamp || null,
+      lowestAskXtz: row.lowest_ask ? mutezToXtz(row.lowest_ask) : null,
+      medianSaleXtz: sales.medianSaleXtz,
+      averageSaleXtz: row.average ? mutezToXtz(row.average) : null,
+      recentSales30d: sales.recentSales30d,
+      recentSales180d: sales.recentSales180d,
+      uniqueRecentBuyers: sales.uniqueRecentBuyers,
+      objktUrl: `https://objkt.com/asset/${row.fa_contract}/${row.token_id}`,
+    };
+  });
 }
 
 function listingPurchaseIntent(row: any, listing: any): ObjktPurchaseIntent | null {

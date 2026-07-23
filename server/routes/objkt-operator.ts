@@ -13,6 +13,7 @@ import {
 } from "../features/objkt-operator/owner";
 import {
   discoverObjktCreators,
+  fetchObjktCreatorPortfolio,
   isObjktTezosAddress,
   scanObjktCreators,
 } from "../features/objkt-operator/market";
@@ -71,12 +72,24 @@ export function normalizeObjktOperatorSettings(
   };
 }
 
-function mergeDiscoveredCreators(existing: Awaited<ReturnType<typeof loadObjktOperatorState>>["creators"], discovered: Awaited<ReturnType<typeof discoverObjktCreators>>) {
+const CREATOR_REVIEW_LIMIT = 25;
+
+export function mergeDiscoveredCreators(
+  existing: Awaited<ReturnType<typeof loadObjktOperatorState>>["creators"],
+  discovered: Awaited<ReturnType<typeof discoverObjktCreators>>,
+) {
   const reviews = new Map(existing.map((creator) => [creator.address, creator.reviewStatus]));
-  return discovered.map((creator) => ({
+  const approved = existing.filter((creator) => creator.reviewStatus === "approved");
+  const discoveredCreators = discovered
+    .filter((creator) => !approved.some((approvedCreator) => approvedCreator.address === creator.address))
+    .map((creator) => ({
     ...creator,
     reviewStatus: reviews.get(creator.address) || "pending",
-  }));
+    }));
+  const pending = existing.filter((creator) => creator.reviewStatus === "pending");
+  return [...approved, ...discoveredCreators, ...pending]
+    .filter((creator, index, all) => all.findIndex((candidate) => candidate.address === creator.address) === index)
+    .slice(0, Math.max(CREATOR_REVIEW_LIMIT, approved.length));
 }
 
 function normalizeSessionPatch(
@@ -172,9 +185,18 @@ router.post("/api/objkt-operator/discover", async (req, res) => {
   try {
     const userId = routeUserId(req);
     const state = await loadObjktOperatorState(userId);
-    const discovered = await discoverObjktCreators(25, state.settings.maxItemPriceXtz);
+    const approvedCount = state.creators.filter((creator) => creator.reviewStatus === "approved").length;
+    const discoveryLimit = Math.max(0, CREATOR_REVIEW_LIMIT - approvedCount);
+    const discovered = discoveryLimit > 0
+      ? await discoverObjktCreators(
+        discoveryLimit,
+        state.settings.maxItemPriceXtz,
+        fetch,
+        state.creators.map((creator) => creator.address),
+      )
+      : [];
     const creators = mergeDiscoveredCreators(state.creators, discovered);
-    const event = operatorEvent("scan", `Discovered ${creators.length} creators for owner review.`);
+    const event = operatorEvent("scan", `Kept ${approvedCount} approved creators and added ${discovered.length} new creators for owner review.`);
     res.json({
       state: await patchObjktOperatorState(userId, {
         creators,
@@ -185,6 +207,22 @@ router.post("/api/objkt-operator/discover", async (req, res) => {
   } catch (error) {
     console.error("[objkt-operator] creator discovery failed:", error);
     res.status(502).json({ error: error instanceof Error ? error.message : "Objkt creator discovery failed" });
+  }
+});
+
+router.get("/api/objkt-operator/creators/:address/portfolio", async (req, res) => {
+  try {
+    const userId = routeUserId(req);
+    const address = String(req.params.address || "").trim();
+    if (!isObjktTezosAddress(address)) return res.status(400).json({ error: "Invalid creator address" });
+    const state = await loadObjktOperatorState(userId);
+    const creator = state.creators.find((candidate) => candidate.address === address);
+    if (!creator) return res.status(404).json({ error: "Creator is not in the review set" });
+    const works = await fetchObjktCreatorPortfolio(address, 12);
+    res.json({ creator, works, generatedAt: new Date().toISOString() });
+  } catch (error) {
+    console.error("[objkt-operator] creator portfolio failed:", error);
+    res.status(502).json({ error: error instanceof Error ? error.message : "Creator portfolio unavailable" });
   }
 });
 
