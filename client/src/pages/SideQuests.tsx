@@ -17,6 +17,11 @@ import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
+import { useWallet } from "../lib/wallet-context";
+import {
+  claimRewardRedemption,
+  type RewardRedemptionClaim,
+} from "../lib/tezos/reward-redemption";
 
 type DailySideQuest = {
   id: number;
@@ -70,6 +75,18 @@ type SideQuestCompletion = {
   approved: boolean | null;
   completedAt?: string | null;
   xpAwarded?: number | null;
+};
+
+type RewardCashout = {
+  id: number;
+  status: string;
+  amountWtf: string;
+  metadata?: {
+    redemption?: RewardRedemptionClaim & {
+      createOpHash?: string | null;
+      claimOpHash?: string | null;
+    };
+  };
 };
 
 const gammaProgressionScope = `[data-progression-presentation-host="gamma"]`;
@@ -452,6 +469,7 @@ function completionLabel(count: number | undefined, noun = "claimed") {
 
 export function SideQuests() {
   const { user, canParticipate } = useAuth();
+  const wallet = useWallet();
   const presentation = usePresentationShell();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
@@ -544,8 +562,52 @@ export function SideQuests() {
     },
   });
 
+  const finishRewardClaim = async (
+    requestId: number,
+    redemption: RewardRedemptionClaim & { claimOpHash?: string | null }
+  ) => {
+    const claimOpHash =
+      redemption.claimOpHash ||
+      (await claimRewardRedemption(wallet.address || "", redemption));
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const result = await api.post<{
+        status: "paid" | "confirming";
+        opHash: string;
+      }>(`/api/rewards/cashouts/${requestId}/confirm`, { opHash: claimOpHash });
+      if (result.status === "paid") return result;
+      await new Promise((resolve) => window.setTimeout(resolve, 2_000));
+    }
+    throw new Error(
+      "The claim is on-chain and still being indexed. Use Finalize Claim in a moment."
+    );
+  };
+
   const cashoutMutation = useMutation({
-    mutationFn: () => api.post("/api/rewards/cashout", {}),
+    mutationFn: async () => {
+      const result = await api.post<{
+        status: string;
+        requestId: number;
+        redemption?: RewardRedemptionClaim;
+      }>("/api/rewards/cashout", {});
+      if (result.status === "claimable" && result.redemption && wallet.address) {
+        return finishRewardClaim(result.requestId, result.redemption);
+      }
+      return result;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards-account"] });
+      qc.invalidateQueries({ queryKey: ["wtfiam"] });
+    },
+  });
+
+  const finalizeCashoutMutation = useMutation({
+    mutationFn: ({
+      requestId,
+      redemption,
+    }: {
+      requestId: number;
+      redemption: RewardRedemptionClaim & { claimOpHash?: string | null };
+    }) => finishRewardClaim(requestId, redemption),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rewards-account"] });
       qc.invalidateQueries({ queryKey: ["wtfiam"] });
@@ -567,6 +629,9 @@ export function SideQuests() {
   const cashoutMinimumWtf = rewardAccount?.cashout?.minimumWtf ?? 20;
   const canCashOutRewardWtf =
     availableRewardWtf >= cashoutMinimumWtf && Boolean(rewardAccount?.primaryWallet);
+  const claimableCashouts = ((rewardAccount?.cashouts ?? []) as RewardCashout[]).filter(
+    (cashout) => cashout.status === "claimable" && cashout.metadata?.redemption
+  );
   const navigateInPresentation = (route: string) => {
     setLocation(presentationRouteHref(route, presentation.host));
   };
@@ -636,13 +701,46 @@ export function SideQuests() {
               </Button>
               <span>Minimum cashout: {cashoutMinimumWtf} WTF. XP stays in app.</span>
               <span>Primary wallet: {shortWallet(rewardAccount?.primaryWallet?.walletAddress)}</span>
+              {claimableCashouts.map((cashout) => {
+                const redemption = cashout.metadata!.redemption!;
+                const walletMatches = wallet.address === redemption.claimant;
+                return (
+                  <div key={cashout.id}>
+                    <Button
+                      size="sm"
+                      disabled={finalizeCashoutMutation.isPending || !walletMatches}
+                      onClick={() =>
+                        finalizeCashoutMutation.mutate({
+                          requestId: cashout.id,
+                          redemption,
+                        })
+                      }
+                    >
+                      {redemption.claimOpHash ? "Finalize Claim" : `Claim ${cashout.amountWtf} WTF`}
+                    </Button>
+                    {!walletMatches && (
+                      <span>
+                        {" "}Connect cashout wallet {shortWallet(redemption.claimant)} to claim.
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
               {cashoutMutation.isError && (
                 <span style={{ color: "#8a1a1a" }}>
                   {(cashoutMutation.error as any)?.message || "Cashout failed"}
                 </span>
               )}
+              {finalizeCashoutMutation.isError && (
+                <span style={{ color: "#8a1a1a" }}>
+                  {(finalizeCashoutMutation.error as any)?.message ||
+                    "Reward claim failed"}
+                </span>
+              )}
               {cashoutMutation.isSuccess && (
-                <span style={{ color: "#1f6b25" }}>Cashout request recorded.</span>
+                <span style={{ color: "#1f6b25" }}>
+                  Cashout recorded. Complete the wallet claim if prompted.
+                </span>
               )}
             </AccountActions>
           </AccountPanel>

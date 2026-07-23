@@ -41,7 +41,12 @@ test("Progression screens keep side quest, challenge, reward, and account behavi
   assert.match(sideQuestsSource, /api\.get<any>\("\/api\/rewards\/account"\)/);
   assert.match(sideQuestsSource, /api\.post\(`\/api\/challenge-automation\/daily-loops\/\$\{id\}\/claim`, \{\}\)/);
   assert.match(sideQuestsSource, /api\.post\(`\/api\/side-quests\/\$\{id\}\/complete`, data\)/);
-  assert.match(sideQuestsSource, /api\.post\("\/api\/rewards\/cashout", \{\}\)/);
+  assert.match(sideQuestsSource, /"\/api\/rewards\/cashout", \{\}/);
+  assert.match(sideQuestsSource, /claimRewardRedemption/);
+  assert.match(
+    sideQuestsSource,
+    /`\/api\/rewards\/cashouts\/\$\{requestId\}\/confirm`/
+  );
   assert.match(challengesSource, /api\.get<ChallengeRow\[\]>\("\/api\/challenges"\)/);
   assert.match(challengesSource, /api\.get<any>\(`\/api\/challenges\/\$\{expandedId\}`\)/);
   assert.match(challengesSource, /api\.post\(`\/api\/challenges\/\$\{id\}\/submit`, data\)/);

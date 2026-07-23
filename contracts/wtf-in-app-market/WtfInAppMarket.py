@@ -237,9 +237,11 @@ def wtf_in_app_market_main():
             )
 
     class WtfInAppRedemptionEscrow(sp.Contract):
-        def __init__(self, admin, wtf_token_address, wtf_token_id, metadata):
+        def __init__(self, admin, issuer, wtf_token_address, wtf_token_id, metadata):
             self.data.admin = admin
             self.data.pending_admin = sp.cast(None, sp.option[sp.address])
+            self.data.issuer = issuer
+            self.data.pending_issuer = sp.cast(None, sp.option[sp.address])
             self.data.paused = False
             self.data.wtf_token_address = wtf_token_address
             self.data.wtf_token_id = wtf_token_id
@@ -250,7 +252,7 @@ def wtf_in_app_market_main():
                 sp.big_map[sp.nat, RedemptionType],
             )
             self.data.metadata = metadata
-            self.data.version = "wtf-in-app-redemption-escrow-v1"
+            self.data.version = "wtf-in-app-redemption-escrow-v2"
 
         @sp.entrypoint
         def default(self):
@@ -283,7 +285,7 @@ def wtf_in_app_market_main():
             sp.cast(params, FundEscrowInputType)
             assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
             assert not self.data.paused, "PAUSED"
-            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert sp.sender == self.data.issuer, "NOT_ISSUER"
             assert params.amount_wtf_units > sp.nat(0), "ZERO_AMOUNT"
             assert (
                 params.expected_wtf_token_address == self.data.wtf_token_address
@@ -312,7 +314,7 @@ def wtf_in_app_market_main():
             sp.cast(params, CreateRedemptionInputType)
             assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
             assert not self.data.paused, "PAUSED"
-            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert sp.sender == self.data.issuer, "NOT_ISSUER"
             assert params.amount_wtf_units > sp.nat(0), "ZERO_AMOUNT"
             assert sp.len(params.item_ref) > 0, "EMPTY_ITEM_REF"
             assert sp.len(params.item_ref) <= 128, "ITEM_REF_TOO_LONG"
@@ -400,7 +402,9 @@ def wtf_in_app_market_main():
         def cancel_redemption(self, redemption_id):
             sp.cast(redemption_id, sp.nat)
             assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
-            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert (
+                (sp.sender == self.data.issuer) or (sp.sender == self.data.admin)
+            ), "NOT_ISSUER_OR_ADMIN"
             assert redemption_id in self.data.redemptions, "NO_REDEMPTION"
 
             redemption = self.data.redemptions[redemption_id]
@@ -506,6 +510,43 @@ def wtf_in_app_market_main():
                 tag="admin_proposal_cancelled",
             )
 
+        @sp.entrypoint
+        def propose_issuer(self, new_issuer):
+            sp.cast(new_issuer, sp.address)
+            assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
+            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            assert new_issuer != self.data.issuer, "ISSUER_UNCHANGED"
+            self.data.pending_issuer = sp.Some(new_issuer)
+            sp.emit(
+                sp.record(current_issuer=self.data.issuer, pending_issuer=new_issuer),
+                tag="issuer_proposed",
+            )
+
+        @sp.entrypoint
+        def accept_issuer(self):
+            assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
+            pending = self.data.pending_issuer.unwrap_some(error="NO_PENDING_ISSUER")
+            assert sp.sender == pending, "NOT_PENDING_ISSUER"
+            old_issuer = self.data.issuer
+            self.data.issuer = pending
+            self.data.pending_issuer = sp.cast(None, sp.option[sp.address])
+            sp.emit(
+                sp.record(old_issuer=old_issuer, new_issuer=pending),
+                tag="issuer_accepted",
+            )
+
+        @sp.entrypoint
+        def cancel_pending_issuer(self):
+            assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
+            assert sp.sender == self.data.admin, "NOT_ADMIN"
+            pending = self.data.pending_issuer
+            assert pending.is_some(), "NO_PENDING_ISSUER"
+            self.data.pending_issuer = sp.cast(None, sp.option[sp.address])
+            sp.emit(
+                sp.record(admin=sp.sender, cancelled_pending_issuer=pending.unwrap_some()),
+                tag="issuer_proposal_cancelled",
+            )
+
         @sp.onchain_view()
         def get_redemption(self, redemption_id):
             sp.cast(redemption_id, sp.nat)
@@ -520,6 +561,7 @@ def wtf_in_app_market_main():
                 unreserved_wtf=self._unreserved_wtf(),
                 paused=self.data.paused,
                 admin=self.data.admin,
+                issuer=self.data.issuer,
                 wtf_token_address=self.data.wtf_token_address,
                 wtf_token_id=self.data.wtf_token_id,
                 version=self.data.version,
@@ -592,6 +634,12 @@ def deploy_wtf_in_app_redemption_escrow_template():
             "tz1burnburnburnburnburnburnburjAYjjX",
         )
     )
+    issuer = sp.address(
+        os.environ.get(
+            "WTF_IN_APP_REDEMPTION_ISSUER",
+            "tz1burnburnburnburnburnburnburjAYjjX",
+        )
+    )
     wtf_token_address = sp.address(
         os.environ.get(
             "WTF_IN_APP_MARKET_TOKEN_ADDRESS",
@@ -601,6 +649,7 @@ def deploy_wtf_in_app_redemption_escrow_template():
     wtf_token_id = int(os.environ.get("WTF_IN_APP_MARKET_TOKEN_ID", "0"))
     escrow = main.WtfInAppRedemptionEscrow(
         admin=admin,
+        issuer=issuer,
         wtf_token_address=wtf_token_address,
         wtf_token_id=wtf_token_id,
         metadata=sp.big_map({"": sp.bytes("0x")}),

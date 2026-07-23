@@ -18,7 +18,7 @@ mkdir -p /opt/wtf-operator-signer /run/wtf /var/log/wtf /var/lib/wtf /etc/wtf/se
 chown -R wtf-signer:wtf /opt/wtf-operator-signer
 chown wtf-signer:wtf /run/wtf /var/log/wtf /var/lib/wtf
 chown root:wtf /etc/wtf/secrets
-chmod 755 /run/wtf
+chmod 770 /run/wtf
 chmod 770 /var/log/wtf
 chmod 700 /var/lib/wtf
 chmod 750 /etc/wtf/secrets

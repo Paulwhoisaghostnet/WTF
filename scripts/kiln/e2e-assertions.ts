@@ -34,6 +34,8 @@ export type InAppRedemptionAssertionParams = {
   redemptionAddress: string;
   walletAAddress: string;
   walletBAddress: string;
+  expectedAdminAddress?: string;
+  expectedIssuerAddress?: string;
   fundedAmountWtfUnits: string;
   claimedAmountWtfUnits: string;
   expectedBuyerWtfUnits?: string;
@@ -204,6 +206,33 @@ export function buildInAppRedemptionAssertions(
     BigInt(params.fundedAmountWtfUnits) - BigInt(params.claimedAmountWtfUnits)
   ).toString();
   return [
+    {
+      id: "redemption_escrow_version_storage",
+      kind: "storage",
+      contractId: "redemption_escrow",
+      afterStep: params.finalStepLabel,
+      description: "Redemption escrow storage reports the role-separated V2 contract.",
+      path: "version",
+      expected: "wtf-in-app-redemption-escrow-v2",
+    },
+    {
+      id: "redemption_escrow_admin_storage",
+      kind: "storage",
+      contractId: "redemption_escrow",
+      afterStep: params.finalStepLabel,
+      description: "Redemption escrow storage keeps the cold administration wallet.",
+      path: "admin",
+      expected: params.expectedAdminAddress ?? params.walletAAddress,
+    },
+    {
+      id: "redemption_escrow_issuer_storage",
+      kind: "storage",
+      contractId: "redemption_escrow",
+      afterStep: params.finalStepLabel,
+      description: "Redemption escrow storage keeps the operational reward issuer wallet.",
+      path: "issuer",
+      expected: params.expectedIssuerAddress ?? params.walletBAddress,
+    },
     {
       id: "redemption_escrow_token_address_storage",
       kind: "storage",

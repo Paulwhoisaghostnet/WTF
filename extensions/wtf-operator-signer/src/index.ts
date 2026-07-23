@@ -292,7 +292,7 @@ async function main(): Promise<void> {
   });
 
   server.listen(env.WTF_OPERATOR_SIGNER_SOCKET, () => {
-    chmod(env.WTF_OPERATOR_SIGNER_SOCKET, 0o666).catch((err) => {
+    chmod(env.WTF_OPERATOR_SIGNER_SOCKET, 0o660).catch((err) => {
       logger.error({ err }, "failed to chmod signer socket");
       process.exit(1);
     });

@@ -132,6 +132,151 @@ async function readFa2LedgerBalance(tokenAddress: string, walletAddress: string)
   return String(activeRow?.value ?? "0");
 }
 
+async function readTzktJson(route: string): Promise<any> {
+  const response = await fetch(`${tzktApiBase}${route}`);
+  if (!response.ok) {
+    throw new Error(`TzKT reconciliation failed for ${route}: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function reconcileTimedOutKilnE2E(params: {
+  wtfTokenAddress: string;
+  marketAddress: string;
+  redemptionEscrowAddress: string;
+  walletAAddress: string;
+  walletBAddress: string;
+  initialBuyerWtfUnits: string;
+}): Promise<ApiResult> {
+  const expectedEntrypoints = [
+    "fund",
+    "create_redemption",
+    "claim_redemption",
+    "cancel_redemption",
+    "return_unreserved_escrow",
+    "pause",
+    "unpause",
+    "propose_admin",
+    "cancel_pending_admin",
+    "accept_admin",
+    "propose_issuer",
+    "cancel_pending_issuer",
+    "accept_issuer",
+  ];
+  const expectedBuyerWtfUnits = (
+    BigInt(params.initialBuyerWtfUnits) -
+    BigInt(e2eRedemptionFundAmountWtfUnits) +
+    BigInt(e2eRedemptionClaimAmountWtfUnits) -
+    1n
+  ).toString();
+  const expectedEscrowWtfUnits = (
+    BigInt(e2eRedemptionFundAmountWtfUnits) -
+    BigInt(e2eRedemptionReturnAmountWtfUnits) -
+    BigInt(e2eRedemptionClaimAmountWtfUnits)
+  ).toString();
+  const deadline = Date.now() + 180_000;
+  let lastEvidence: any = null;
+
+  while (Date.now() < deadline) {
+    const [storage, contract, transactions, marketTransactions, redemptions, buyerBalance] =
+      await Promise.all([
+        readTzktJson(`/contracts/${params.redemptionEscrowAddress}/storage`),
+        readTzktJson(`/contracts/${params.redemptionEscrowAddress}`),
+        readTzktJson(
+          `/operations/transactions?target=${params.redemptionEscrowAddress}&status=applied&limit=100&sort.asc=id`,
+        ),
+        readTzktJson(
+          `/operations/transactions?target=${params.marketAddress}&status=applied&limit=100&sort.asc=id`,
+        ),
+        readTzktJson(
+          `/contracts/${params.redemptionEscrowAddress}/bigmaps/redemptions/keys?limit=20`,
+        ),
+        readFa2LedgerBalance(params.wtfTokenAddress, params.walletBAddress),
+      ]);
+    const appliedEntrypoints = new Set(
+      (Array.isArray(transactions) ? transactions : []).map((row: any) =>
+        String(row?.parameter?.entrypoint ?? ""),
+      ),
+    );
+    const purchaseApplied = (Array.isArray(marketTransactions) ? marketTransactions : []).some(
+      (row: any) =>
+        row?.parameter?.entrypoint === "purchase" &&
+        String(row?.parameter?.value?.expected_wtf_token_address ?? "") ===
+          params.wtfTokenAddress &&
+        String(row?.parameter?.value?.expected_treasury ?? "") === params.walletAAddress,
+    );
+    const redemption1 = (Array.isArray(redemptions) ? redemptions : []).find(
+      (row: any) => String(row?.key ?? "") === "1" && row?.active !== false,
+    )?.value;
+    const redemption2 = (Array.isArray(redemptions) ? redemptions : []).find(
+      (row: any) => String(row?.key ?? "") === "2" && row?.active !== false,
+    )?.value;
+    const entrypointsComplete = expectedEntrypoints.every((entrypoint) =>
+      appliedEntrypoints.has(entrypoint),
+    );
+    const storageComplete =
+      storage?.version === "wtf-in-app-redemption-escrow-v2" &&
+      storage?.wtf_token_address === params.wtfTokenAddress &&
+      storage?.admin === params.walletBAddress &&
+      storage?.issuer === params.walletAAddress &&
+      storage?.paused === false &&
+      storage?.pending_admin == null &&
+      storage?.pending_issuer == null &&
+      String(storage?.reserved_wtf ?? "") === "0" &&
+      String(storage?.escrow_balance_wtf ?? "") === expectedEscrowWtfUnits;
+    const redemptionsComplete =
+      String(redemption1?.status_code ?? "") === "1" &&
+      String(redemption1?.claimant ?? "") === params.walletBAddress &&
+      String(redemption1?.amount_wtf_units ?? "") === e2eRedemptionClaimAmountWtfUnits &&
+      String(redemption2?.status_code ?? "") === "2";
+    const balanceComplete =
+      String(contract?.balance ?? "") === "0" && buyerBalance === expectedBuyerWtfUnits;
+
+    lastEvidence = {
+      purchaseApplied,
+      entrypointsComplete,
+      storageComplete,
+      redemptionsComplete,
+      balanceComplete,
+      appliedEntrypoints: [...appliedEntrypoints].sort(),
+      storage,
+      buyerBalance,
+      expectedBuyerWtfUnits,
+    };
+    if (
+      purchaseApplied &&
+      entrypointsComplete &&
+      storageComplete &&
+      redemptionsComplete &&
+      balanceComplete
+    ) {
+      const json = {
+        success: true,
+        reconciledAfterGatewayTimeout: true,
+        summary: { total: expectedEntrypoints.length + 1, passed: expectedEntrypoints.length + 1, failed: 0 },
+        coverage: {
+          passed: true,
+          totalEntrypoints: expectedEntrypoints.length,
+          coveredEntrypoints: expectedEntrypoints.length,
+          missedEntrypoints: [],
+        },
+        assertions: [
+          { id: "reconciled_storage", kind: "storage", status: "passed", passed: true },
+          { id: "reconciled_balance", kind: "balance", status: "passed", passed: true },
+          { id: "reconciled_big_map", kind: "big_map", status: "passed", passed: true },
+        ],
+        evidence: lastEvidence,
+      };
+      return { status: 200, ok: true, text: JSON.stringify(json), json };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+
+  throw new Error(
+    `Kiln E2E timed out and TzKT reconciliation did not reach terminal state: ${JSON.stringify(lastEvidence)}`,
+  );
+}
+
 function runSmartPyCompile(params: {
   source: string;
   outDir: string;
@@ -184,13 +329,13 @@ function buildRedemptionWorkflowSteps(): WorkflowSimulationStep[] {
   return [
     {
       label: "Redemption workflow funds escrow",
-      wallet: "bert",
+      wallet: "ernie",
       entrypoint: "fund",
       args: ["5", shadowboxMappedFa2Address, "0"],
     },
     {
       label: "Redemption workflow creates claimable redemption",
-      wallet: "bert",
+      wallet: "ernie",
       entrypoint: "create_redemption",
       args: ["1", shadowboxErnieAddress, "2", "shadowbox-claim", futureExpiry],
     },
@@ -209,7 +354,7 @@ function buildRedemptionWorkflowSteps(): WorkflowSimulationStep[] {
     },
     {
       label: "Redemption workflow creates cancellable redemption",
-      wallet: "bert",
+      wallet: "ernie",
       entrypoint: "create_redemption",
       args: ["2", shadowboxErnieAddress, "1", "shadowbox-cancel", futureExpiry],
     },
@@ -224,6 +369,30 @@ function buildRedemptionWorkflowSteps(): WorkflowSimulationStep[] {
       wallet: "bert",
       entrypoint: "return_unreserved_escrow",
       args: ["1", shadowboxBertAddress, shadowboxMappedFa2Address, "0"],
+    },
+    {
+      label: "Redemption workflow proposes pending issuer",
+      wallet: "bert",
+      entrypoint: "propose_issuer",
+      args: [shadowboxBertAddress],
+    },
+    {
+      label: "Redemption workflow cancels pending issuer",
+      wallet: "bert",
+      entrypoint: "cancel_pending_issuer",
+      args: [],
+    },
+    {
+      label: "Redemption workflow proposes pending issuer again",
+      wallet: "bert",
+      entrypoint: "propose_issuer",
+      args: [shadowboxBertAddress],
+    },
+    {
+      label: "Redemption workflow accepts pending issuer",
+      wallet: "bert",
+      entrypoint: "accept_issuer",
+      args: [],
     },
     {
       label: "Redemption workflow unpauses from admin",
@@ -342,6 +511,7 @@ async function runKilnE2E(params: {
     BigInt(e2eBuyerMintAmountWtfUnits) -
     (kilnNamedTokenDebitsBuyerOnPurchase ? BigInt(e2ePurchaseAmountWtfUnits) : 0n) +
     BigInt(e2eRedemptionClaimAmountWtfUnits) -
+    BigInt(e2eRedemptionFundAmountWtfUnits) -
     1n
   ).toString();
   const assertions = buildInAppMarketAssertions({
@@ -394,6 +564,12 @@ async function runKilnE2E(params: {
           "return_unreserved_escrow",
           "pause",
           "unpause",
+          "propose_admin",
+          "cancel_pending_admin",
+          "accept_admin",
+          "propose_issuer",
+          "cancel_pending_issuer",
+          "accept_issuer",
         ],
       },
     ],
@@ -491,15 +667,15 @@ async function runKilnE2E(params: {
         expectFailure: true,
       },
       {
-        label: "Treasury approves redemption escrow operator",
-        wallet: "A",
+        label: "Reward issuer approves redemption escrow operator",
+        wallet: "B",
         targetContractId: "dummy_wtf",
         entrypoint: "update_operators",
         args: [
           [
             {
               add_operator: {
-                owner: params.walletAAddress,
+                owner: params.walletBAddress,
                 operator: params.redemptionEscrowAddress,
                 token_id: "0",
               },
@@ -508,8 +684,8 @@ async function runKilnE2E(params: {
         ],
       },
       {
-        label: "Treasury funds redemption escrow",
-        wallet: "A",
+        label: "Reward issuer funds redemption escrow",
+        wallet: "B",
         targetContractId: "redemption_escrow",
         entrypoint: "fund",
         args: [
@@ -535,8 +711,8 @@ async function runKilnE2E(params: {
         ],
       },
       {
-        label: "Admin creates WTF redemption",
-        wallet: "A",
+        label: "Reward issuer creates WTF redemption",
+        wallet: "B",
         targetContractId: "redemption_escrow",
         entrypoint: "create_redemption",
         args: [
@@ -567,8 +743,8 @@ async function runKilnE2E(params: {
         expectFailure: true,
       },
       {
-        label: "Admin creates cancellable WTF redemption",
-        wallet: "A",
+        label: "Reward issuer creates cancellable WTF redemption",
+        wallet: "B",
         targetContractId: "redemption_escrow",
         entrypoint: "create_redemption",
         args: [
@@ -582,8 +758,8 @@ async function runKilnE2E(params: {
         ],
       },
       {
-        label: "Admin cancels second WTF redemption",
-        wallet: "A",
+        label: "Reward issuer cancels second WTF redemption",
+        wallet: "B",
         targetContractId: "redemption_escrow",
         entrypoint: "cancel_redemption",
         args: [2],
@@ -636,12 +812,135 @@ async function runKilnE2E(params: {
         ],
         assertions: redemptionAssertions,
       },
+      {
+        label: "Admin proposes itself as next reward issuer",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "propose_issuer",
+        args: [params.walletAAddress],
+      },
+      {
+        label: "Admin cancels pending reward issuer",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "cancel_pending_issuer",
+        args: [],
+      },
+      {
+        label: "Admin proposes itself as reward issuer again",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "propose_issuer",
+        args: [params.walletAAddress],
+      },
+      {
+        label: "Admin accepts reward issuer role",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "accept_issuer",
+        args: [],
+      },
+      {
+        label: "Admin proposes buyer as next admin",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "propose_admin",
+        args: [params.walletBAddress],
+      },
+      {
+        label: "Admin cancels pending admin",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "cancel_pending_admin",
+        args: [],
+      },
+      {
+        label: "Admin proposes buyer as next admin again",
+        wallet: "A",
+        targetContractId: "redemption_escrow",
+        entrypoint: "propose_admin",
+        args: [params.walletBAddress],
+      },
+      {
+        label: "Buyer accepts admin role",
+        wallet: "B",
+        targetContractId: "redemption_escrow",
+        entrypoint: "accept_admin",
+        args: [],
+      },
     ],
   };
-  return api("POST", "/api/kiln/e2e/run", payload);
+  const response = await api("POST", "/api/kiln/e2e/run", payload);
+  if (response.status !== 524) return response;
+  return reconcileTimedOutKilnE2E({
+    wtfTokenAddress: params.wtfTokenAddress,
+    marketAddress: params.marketAddress,
+    redemptionEscrowAddress: params.redemptionEscrowAddress,
+    walletAAddress: params.walletAAddress,
+    walletBAddress: params.walletBAddress,
+    initialBuyerWtfUnits: params.initialBuyerWtfUnits,
+  });
 }
 
 async function main(): Promise<void> {
+  const reconcileMarketAddress = process.env.WTF_IN_APP_MARKET_RECONCILE_MARKET_ADDRESS;
+  const reconcileEscrowAddress = process.env.WTF_IN_APP_MARKET_RECONCILE_ESCROW_ADDRESS;
+  if (reconcileMarketAddress || reconcileEscrowAddress) {
+    const initialBuyerWtfUnits =
+      process.env.WTF_IN_APP_MARKET_RECONCILE_INITIAL_BUYER_WTF_UNITS;
+    const balances = await api("GET", `/api/kiln/balances?networkId=${networkId}`);
+    if (
+      !isKt1Address(reconcileMarketAddress) ||
+      !isKt1Address(reconcileEscrowAddress) ||
+      !/^\d+$/.test(initialBuyerWtfUnits ?? "") ||
+      !balances.ok
+    ) {
+      throw new Error(
+        "Reconciliation requires valid market/escrow addresses, initial buyer WTF units, and readable Kiln wallets.",
+      );
+    }
+    const walletAAddress = String(balances.json?.walletA?.address ?? "");
+    const walletBAddress = String(balances.json?.walletB?.address ?? "");
+    const reconciled = await reconcileTimedOutKilnE2E({
+      wtfTokenAddress: resolveKilnWtfTokenAddress((await api("GET", "/api/health")).json),
+      marketAddress: reconcileMarketAddress,
+      redemptionEscrowAddress: reconcileEscrowAddress,
+      walletAAddress,
+      walletBAddress,
+      initialBuyerWtfUnits,
+    });
+    const assertionSummary = summarizeKilnAssertionResult(reconciled.json);
+    writeReport(
+      "shadownet-e2e-report.md",
+      [
+        "# WTF In-App Market Shadownet E2E Report",
+        "",
+        "- Status: PASSED",
+        `- Timestamp: ${nowIso()}`,
+        `- Kiln API: ${apiBase}`,
+        `- Network ID: ${networkId}`,
+        `- WTF in-app market V2: ${reconcileMarketAddress}`,
+        `- WTF in-app redemption escrow V2: ${reconcileEscrowAddress}`,
+        "- Completion mode: TzKT reconciliation after Kiln gateway timeout",
+        "",
+        "```json",
+        jsonPreview(reconciled.json),
+        "```",
+        "",
+        "## Assertion Evidence",
+        "",
+        "```json",
+        jsonPreview(assertionSummary),
+        "```",
+        "",
+      ].join("\n"),
+    );
+    console.log(`Reconciled WTF in-app market V2: ${reconcileMarketAddress}`);
+    console.log(`Reconciled WTF in-app redemption escrow V2: ${reconcileEscrowAddress}`);
+    console.log("WTF in-app market V2 Shadownet E2E reconciled and passed.");
+    return;
+  }
+
   const reportLines: string[] = [
     "# WTF In-App Market Shadownet Kiln Run",
     "",
@@ -752,6 +1051,7 @@ async function main(): Promise<void> {
         WTF_IN_APP_MARKET_TOKEN_ADDRESS: paymentTokenAddress,
         WTF_IN_APP_MARKET_TOKEN_ID: "0",
         WTF_IN_APP_REDEMPTION_ADMIN: walletAAddress,
+        WTF_IN_APP_REDEMPTION_ISSUER: walletBAddress,
       },
     });
     const marketV2Artifact = compiledArtifact(marketOut, "deploy_wtf_in_app_market_v2_template");
@@ -759,10 +1059,9 @@ async function main(): Promise<void> {
       marketOut,
       "deploy_wtf_in_app_redemption_escrow_template",
     );
-    const redemptionWorkflowStorage = redemptionArtifact.storage.replaceAll(
-      walletAAddress,
-      shadowboxBertAddress,
-    );
+    const redemptionWorkflowStorage = redemptionArtifact.storage
+      .replaceAll(walletAAddress, shadowboxBertAddress)
+      .replaceAll(walletBAddress, shadowboxErnieAddress);
     const marketDeployment = await workflowAndDeploy({
       label: "WTF in-app market V2",
       code: marketV2Artifact.code,

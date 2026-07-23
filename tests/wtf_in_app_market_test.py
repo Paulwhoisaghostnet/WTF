@@ -52,6 +52,7 @@ def add_market_operator(token, owner, market_address):
 
 def new_fixture():
     admin = sp.test_account("Admin")
+    issuer = sp.test_account("RewardIssuer")
     buyer = sp.test_account("Buyer")
     buyer2 = sp.test_account("SecondBuyer")
     treasury = sp.test_account("GameshowTreasury")
@@ -69,6 +70,7 @@ def new_fixture():
     )
     accounts = SimpleNamespace(
         admin=admin,
+        issuer=issuer,
         buyer=buyer,
         buyer2=buyer2,
         treasury=treasury,
@@ -350,6 +352,7 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
     accounts, token, _market = new_fixture()
     escrow = market_main.WtfInAppRedemptionEscrow(
         admin=accounts.admin.address,
+        issuer=accounts.issuer.address,
         wtf_token_address=token.address,
         wtf_token_id=0,
         metadata=sp.big_map({"": sp.bytes("0x")}),
@@ -358,10 +361,10 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
     scenario += escrow
 
     token.mint(
-        [sp.record(to_=accounts.admin.address, amount=20_000_000_000)],
+        [sp.record(to_=accounts.issuer.address, amount=20_000_000_000)],
         _sender=accounts.admin,
     )
-    add_market_operator(token, accounts.admin, escrow.address)
+    add_market_operator(token, accounts.issuer, escrow.address)
 
     escrow.default(
         _sender=accounts.buyer,
@@ -373,18 +376,18 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
         fund_params(token),
         _sender=accounts.buyer,
         _valid=False,
-        _exception="NOT_ADMIN",
+        _exception="NOT_ISSUER",
     )
     escrow.fund(
         fund_params(token),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _amount=sp.mutez(1),
         _valid=False,
         _exception="NO_XTZ_IN",
     )
     escrow.fund(
         fund_params(token, amount=0),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _valid=False,
         _exception="ZERO_AMOUNT",
     )
@@ -394,41 +397,51 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
             expected_wtf_token_address=escrow.address,
             expected_wtf_token_id=0,
         ),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _valid=False,
         _exception="TOKEN_ADDRESS_MISMATCH",
     )
 
-    escrow.fund(fund_params(token), _sender=accounts.admin)
-    scenario.verify(ledger_balance(token, accounts.admin.address) == 10_000_000_000)
+    escrow.fund(fund_params(token), _sender=accounts.issuer)
+    scenario.verify(ledger_balance(token, accounts.issuer.address) == 10_000_000_000)
     scenario.verify(ledger_balance(token, escrow.address) == 10_000_000_000)
     scenario.verify(escrow.data.escrow_balance_wtf == 10_000_000_000)
     scenario.verify(escrow.data.reserved_wtf == 0)
+    scenario.verify(escrow.data.admin == accounts.admin.address)
+    scenario.verify(escrow.data.issuer == accounts.issuer.address)
+    scenario.verify(escrow.data.version == "wtf-in-app-redemption-escrow-v2")
 
     escrow.create_redemption(
-        create_redemption_params(accounts.buyer, amount=0),
+        create_redemption_params(accounts.buyer),
         _sender=accounts.admin,
+        _now=sp.timestamp(10),
+        _valid=False,
+        _exception="NOT_ISSUER",
+    )
+    escrow.create_redemption(
+        create_redemption_params(accounts.buyer, amount=0),
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
         _valid=False,
         _exception="ZERO_AMOUNT",
     )
     escrow.create_redemption(
         create_redemption_params(accounts.buyer, item_ref=""),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
         _valid=False,
         _exception="EMPTY_ITEM_REF",
     )
     escrow.create_redemption(
         create_redemption_params(accounts.buyer, expires_at=sp.timestamp(9)),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
         _valid=False,
         _exception="EXPIRED_REDEMPTION",
     )
     escrow.create_redemption(
         create_redemption_params(accounts.buyer, amount=11_000_000_000),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
         _valid=False,
         _exception="INSUFFICIENT_ESCROW",
@@ -436,13 +449,13 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
 
     escrow.create_redemption(
         create_redemption_params(accounts.buyer),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
     )
     scenario.verify(escrow.data.reserved_wtf == 2_000_000_000)
     escrow.create_redemption(
         create_redemption_params(accounts.buyer, redemption_id=1),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(10),
         _valid=False,
         _exception="REDEMPTION_EXISTS",
@@ -504,7 +517,7 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
 
     escrow.create_redemption(
         create_redemption_params(accounts.buyer2, redemption_id=2, amount=3_000_000_000),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(30),
     )
     scenario.verify(escrow.data.reserved_wtf == 3_000_000_000)
@@ -519,7 +532,7 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
         _valid=False,
         _exception="INSUFFICIENT_UNRESERVED_ESCROW",
     )
-    escrow.cancel_redemption(2, _sender=accounts.admin)
+    escrow.cancel_redemption(2, _sender=accounts.issuer)
     scenario.verify(escrow.data.redemptions[2].status_code == 2)
     scenario.verify(escrow.data.reserved_wtf == 0)
     escrow.return_unreserved_escrow(
@@ -531,7 +544,8 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
         ),
         _sender=accounts.admin,
     )
-    scenario.verify(ledger_balance(token, accounts.admin.address) == 15_000_000_000)
+    scenario.verify(ledger_balance(token, accounts.admin.address) == 5_000_000_000)
+    scenario.verify(ledger_balance(token, accounts.issuer.address) == 10_000_000_000)
     scenario.verify(ledger_balance(token, escrow.address) == 3_000_000_000)
     scenario.verify(escrow.data.escrow_balance_wtf == 3_000_000_000)
 
@@ -539,7 +553,7 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
     scenario.verify(escrow.data.paused)
     escrow.create_redemption(
         create_redemption_params(accounts.buyer, redemption_id=3, amount=1_000_000_000),
-        _sender=accounts.admin,
+        _sender=accounts.issuer,
         _now=sp.timestamp(40),
         _valid=False,
         _exception="PAUSED",
@@ -548,3 +562,17 @@ def test_redemption_escrow_funds_claims_and_guards_reserved_wtf():
     escrow.propose_admin(accounts.buyer.address, _sender=accounts.admin)
     escrow.accept_admin(_sender=accounts.buyer)
     scenario.verify(escrow.data.admin == accounts.buyer.address)
+    escrow.propose_issuer(accounts.buyer2.address, _sender=accounts.buyer)
+    escrow.accept_issuer(_sender=accounts.buyer2)
+    scenario.verify(escrow.data.issuer == accounts.buyer2.address)
+    escrow.return_unreserved_escrow(
+        sp.record(
+            amount_wtf_units=1,
+            destination=accounts.issuer.address,
+            expected_wtf_token_address=token.address,
+            expected_wtf_token_id=0,
+        ),
+        _sender=accounts.buyer2,
+        _valid=False,
+        _exception="NOT_ADMIN",
+    )

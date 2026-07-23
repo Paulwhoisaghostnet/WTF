@@ -12,6 +12,9 @@ WorkingDirectory=/opt/wtf-operator-signer
 ExecStart=/usr/bin/node /opt/wtf-operator-signer/dist/index.cjs
 Restart=on-failure
 RestartSec=5s
+RuntimeDirectory=wtf
+RuntimeDirectoryMode=0770
+RuntimeDirectoryPreserve=restart
 
 # Hardening. The signer only needs the RPC endpoint, its socket dir,
 # and the audit log path.

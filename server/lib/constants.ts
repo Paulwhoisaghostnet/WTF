@@ -18,6 +18,10 @@ const wtfToken = getServerWtfToken();
 export const WTF_FA2_CONTRACT: string = wtfToken.contract;
 export const WTF_FA2_TOKEN_ID: string = String(wtfToken.tokenId);
 
+/** Reward cashouts are issued as user-claimed redemptions from this escrow. */
+export const WTF_REWARD_ESCROW_CONTRACT: string | null =
+  (process.env.WTF_REWARD_ESCROW_CONTRACT ?? "").trim() || null;
+
 /**
  * The gameshow operator wallet, set via env var. Undefined on dev
  * boxes where we haven't wired the signer yet — callers must

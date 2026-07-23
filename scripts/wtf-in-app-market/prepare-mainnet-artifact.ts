@@ -22,6 +22,12 @@ const mainnetWtfAddress =
 const mainnetWtfTokenId = process.env.WTF_MAINNET_TOKEN_ID ?? "0";
 const mainnetTreasury =
   process.env.MAINNET_TREASURY_ADDRESS ?? "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
+const mainnetAdmin = (process.env.MAINNET_ADMIN_ADDRESS ?? "").trim();
+const mainnetIssuer = (
+  process.env.WTF_REWARD_ISSUER_ADDRESS ??
+  process.env.WTF_OPERATOR_WALLET_ADDRESS ??
+  ""
+).trim();
 
 function blocker(message: string): never {
   console.error(`BLOCKED: ${message}`);
@@ -56,6 +62,17 @@ const e2eReport = readFileSync(e2eReportPath, "utf8");
 if (!e2eReport.includes("- Status: PASSED")) {
   blocker("Shadownet E2E report is not PASSED. Mainnet artifact generation is intentionally gated.");
 }
+if (!/^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(mainnetAdmin)) {
+  blocker("MAINNET_ADMIN_ADDRESS must name the cold mainnet contract-admin wallet.");
+}
+if (!/^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(mainnetIssuer)) {
+  blocker(
+    "WTF_REWARD_ISSUER_ADDRESS (or WTF_OPERATOR_WALLET_ADDRESS) must name the mainnet reward-disburser wallet.",
+  );
+}
+if (mainnetAdmin === mainnetIssuer) {
+  blocker("Mainnet reward issuer and contract admin must be different wallets.");
+}
 
 rmSync(buildDir, { recursive: true, force: true });
 mkdirSync(buildDir, { recursive: true });
@@ -74,6 +91,8 @@ execFileSync(
       WTF_IN_APP_MARKET_TREASURY: mainnetTreasury,
       WTF_IN_APP_MARKET_TOKEN_ADDRESS: mainnetWtfAddress,
       WTF_IN_APP_MARKET_TOKEN_ID: mainnetWtfTokenId,
+      WTF_IN_APP_REDEMPTION_ADMIN: mainnetAdmin,
+      WTF_IN_APP_REDEMPTION_ISSUER: mainnetIssuer,
     },
     stdio: "inherit",
   },
@@ -81,11 +100,17 @@ execFileSync(
 
 compactMichelsonOutputs(buildDir);
 
-const scenarioDir = path.join(buildDir, "deploy_wtf_in_app_market_template");
+const marketScenarioDir = path.join(buildDir, "deploy_wtf_in_app_market_v2_template");
+const redemptionScenarioDir = path.join(
+  buildDir,
+  "deploy_wtf_in_app_redemption_escrow_template",
+);
 const manifest = {
   generatedAt: new Date().toISOString(),
   network: "tezos-mainnet",
   treasury: mainnetTreasury,
+  admin: mainnetAdmin,
+  issuer: mainnetIssuer,
   wtfTokenAddress: mainnetWtfAddress,
   wtfTokenId: Number(mainnetWtfTokenId),
   initialListings: [
@@ -93,10 +118,44 @@ const manifest = {
     { listingId: 1, sku: "pet-medicine", priceWtfUnits: "2500000000" },
     { listingId: 2, sku: "shoebox", priceWtfUnits: "5000000000" },
   ],
-  contractMichelson: path.relative(root, path.join(scenarioDir, "step_001_cont_0_contract.tz")),
-  initialStorageMichelson: path.relative(root, path.join(scenarioDir, "step_001_cont_0_storage.tz")),
-  contractJson: path.relative(root, path.join(scenarioDir, "step_001_cont_0_contract.json")),
-  initialStorageJson: path.relative(root, path.join(scenarioDir, "step_001_cont_0_storage.json")),
+  contracts: {
+    inAppMarketV2: {
+      contractMichelson: path.relative(
+        root,
+        path.join(marketScenarioDir, "step_001_cont_0_contract.tz"),
+      ),
+      initialStorageMichelson: path.relative(
+        root,
+        path.join(marketScenarioDir, "step_001_cont_0_storage.tz"),
+      ),
+      contractJson: path.relative(
+        root,
+        path.join(marketScenarioDir, "step_001_cont_0_contract.json"),
+      ),
+      initialStorageJson: path.relative(
+        root,
+        path.join(marketScenarioDir, "step_001_cont_0_storage.json"),
+      ),
+    },
+    rewardRedemptionEscrowV2: {
+      contractMichelson: path.relative(
+        root,
+        path.join(redemptionScenarioDir, "step_001_cont_0_contract.tz"),
+      ),
+      initialStorageMichelson: path.relative(
+        root,
+        path.join(redemptionScenarioDir, "step_001_cont_0_storage.tz"),
+      ),
+      contractJson: path.relative(
+        root,
+        path.join(redemptionScenarioDir, "step_001_cont_0_contract.json"),
+      ),
+      initialStorageJson: path.relative(
+        root,
+        path.join(redemptionScenarioDir, "step_001_cont_0_storage.json"),
+      ),
+    },
+  },
   note: "Do not originate to mainnet until explicitly instructed by the project owner.",
 };
 
