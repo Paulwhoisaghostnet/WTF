@@ -9296,3 +9296,13 @@
 **Rule**: Unlock local Web Audio from the room join gesture, play presence cues only for subsequent peer join/leave deltas, keep them outside the shared WebRTC audio graph, and provide a persistent local mute control. Browser coverage must distinguish the join and leave tone plans and verify the preference state.
 
 ---
+
+## 2026-07-24 - Production contract cutovers must update both durable env copies
+
+**What happened**: Marketplace V2 was originated and `/etc/wtf/wtf.env` was updated, but the normal Hetzner deployment path reads `/opt/platform/repos/wtf-app/.env`, which is a separate regular file rather than a symlink. Updating only the service-oriented env copy would have allowed the next image build to bake the legacy V1 browser address back into wtfOS.
+
+**Why it mattered**: Tezos contract configuration is split between server runtime variables and Vite build arguments. A correct live contract can still be invisible—or later reverted—when only one configuration owner is changed, especially because the browser contract address is compiled into the production bundle.
+
+**Rule**: Before a production contract cutover, resolve the exact env file used by the normal deploy checkout and compare it with any `/etc/wtf` service env. Back up and update both when they are distinct, preserve the retired address under an explicit legacy variable, then rebuild through the normal deployment path and verify the public API plus browser bundle report the new KT1.
+
+---
