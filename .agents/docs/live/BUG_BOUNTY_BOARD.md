@@ -9107,8 +9107,8 @@ Priority labels:
 ### WTF-BB-414 - WTF Calendar lacks Teia's on-chain event and authoritative MEC ingestion path
 
 - Category: Calendar / TTC interoperability and durable community ownership
-- Status: Open
-- Owner/Session: -
+- Status: Fixed
+- Owner/Session: Codex TTC calendar source parity pass
 - Score: C3 + F3 + S2 + P1(3) = 11
 - Evidence:
   - WTF currently reads TTC through the public WordPress iCal feed in `server/lib/ttc-calendar.ts`, caches for ten minutes, expands a limited RRULE subset, and merges it with server-owned `gameshow_events` rows.
@@ -9121,6 +9121,14 @@ Priority labels:
   - Separately evaluate whether WTF should federate Teia's contract as another read-only source or adopt its own contract/IPFS proposal path. Do not replace WTF's role-based review queue until moderation, edit, hide, recovery, and migration semantics are proven.
 - Verification idea:
   - Fixture recurring, all-day, multi-location, image, and timezone events against both TTC feeds; require identical occurrence dates, graceful fallback when MEC fails, source-aware de-duplication, bounded IPFS fetches, and an ICS round-trip test before enabling the new adapter.
+- Resolution:
+  - Kept TTC's public iCal feed as the recurrence transport, reconstructed earlier occurrences from MEC's rolling next-occurrence anchor, and bounded backward expansion by the event's creation floor.
+  - Added server-side validation and creator enrichment through TTC's public WordPress event API, including canonical stale/deleted-record filtering after successful metadata reads, graceful iCal-only fallback when metadata is unavailable, numeric and slug permalink support, and email-shaped creator-name redaction.
+  - Added event creator/source fields for WTF and TTC records and made Day, Week, Month, and Agenda event cards open a detail panel with creator attribution and the original TTC listing.
+  - Teia contract/IPFS federation remains an optional separate product direction; it is not required for TTC source parity and was not introduced into WTF's role-based review queue.
+- Verification:
+  - Live TTC parity on 2026-07-23 restored the missing July 20-23 recurring occurrences, retained the sourceable July 24 Baking Sheet listing with creator `FirstRain`, and removed the iCal-only `Game of the MONTH at $HITcoin Community` row whose TTC permalink returned 404 and which was absent from TTC's rendered calendar.
+  - `npx tsx --test server/lib/ttc-calendar.test.ts`, `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused Calendar Chromium coverage, and `npm run test:e2e:inventory` passed.
 
 ### WTF-BB-415 - Studio is isolated from the current wtfOS creator lifecycle
 

@@ -7146,6 +7146,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
             categories: ["Tezos", "WTFOS"],
             imageUrl: "/__test/media/harness-alpha-token.png",
             externalId: "gamma-calendar-signal",
+            sourceUrl: "https://thetezos.com/events/gamma-calendar-signal/",
+            creatorName: "Gamma TTC Creator",
+            creatorUrl: "https://thetezos.com/author/gamma-creator/",
           },
         ]),
       });
@@ -7162,6 +7165,11 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await calendarSurface.getByRole("button", { name: /Gamma calendar signal/ }).click();
     await expect(calendarSurface.locator('[data-calendar-region="source-badge"]')).toContainText("TTC");
     await expect(calendarSurface.locator('[data-calendar-region="kind-badge"]')).toContainText("x_space");
+    await expect(calendarSurface.locator('[data-calendar-region="event-creator"]')).toContainText("Gamma TTC Creator");
+    await expect(calendarSurface.locator('[data-calendar-region="event-source-link"] a')).toHaveAttribute(
+      "href",
+      "https://thetezos.com/events/gamma-calendar-signal/"
+    );
     await expect(calendarSurface.locator('[data-calendar-region="source-panel"]')).toContainText("Personal entries stay");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
@@ -7187,6 +7195,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(periodLabel).toHaveText(currentMonthLabel || "");
     await calendarSurface.getByRole("button", { name: "Week", exact: true }).click();
     await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "week");
+    await calendarSurface.getByRole("button", { name: "Agenda", exact: true }).click();
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "agenda");
+    await expect(calendarSurface.getByRole("button", { name: /Gamma calendar signal/ })).toBeVisible();
 
     const calendarMetrics = await calendarSurface.evaluate((surface) => {
       const readNode = (node) => {

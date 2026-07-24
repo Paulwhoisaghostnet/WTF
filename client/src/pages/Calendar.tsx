@@ -371,12 +371,23 @@ const Agenda = styled.div`
   padding: 10px;
 `;
 
-const AgendaEvent = styled.div`
+const AgendaEvent = styled.button`
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 10px;
+  width: 100%;
   padding: 8px 0;
   border-bottom: 1px solid #d0d0d0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible { outline: 2px solid #000080; outline-offset: 1px; }
 
   @media (max-width: 560px) { grid-template-columns: 1fr; }
 `;
@@ -499,6 +510,9 @@ interface CalendarEvent {
   categories?: string[];
   imageUrl?: string | null;
   externalId?: string;
+  sourceUrl?: string | null;
+  creatorName?: string | null;
+  creatorUrl?: string | null;
 }
 
 interface PersonalEvent {
@@ -637,6 +651,9 @@ function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
     categories: ["Personal"],
     imageUrl: null,
     externalId: event.id,
+    sourceUrl: null,
+    creatorName: "You",
+    creatorUrl: null,
   };
 }
 
@@ -955,7 +972,13 @@ export function Calendar() {
                       {visibleEvents.length === 0 ? (
                         <Muted data-calendar-region="empty">No upcoming events in this window.</Muted>
                       ) : visibleEvents.map((event) => (
-                        <AgendaEvent key={`${event.sourceProvider ?? "wtf"}:${event.id}`} data-calendar-region="event-card">
+                        <AgendaEvent
+                          key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
+                          type="button"
+                          data-calendar-region="event-card"
+                          onClick={() => setSelectedEvent(event)}
+                          aria-label={`${event.title}, ${formatEventTime(event)}`}
+                        >
                           <div><strong>{new Date(event.startsAt).toLocaleDateString([], { month: "short", day: "numeric" })}</strong><br />{eventClockLabel(event)}</div>
                           <div>
                             <Row>
@@ -1058,7 +1081,28 @@ export function Calendar() {
                     </Row>
                     <h3>{selectedEvent.title}</h3>
                     <Muted data-calendar-region="meta">{formatEventTime(selectedEvent)}{selectedEvent.location ? ` · ${selectedEvent.location}` : ""}</Muted>
+                    <p data-calendar-region="event-creator">
+                      Created by{" "}
+                      {selectedEvent.creatorUrl ? (
+                        <a
+                          href={selectedEvent.creatorUrl}
+                          target={selectedEvent.creatorUrl.startsWith("http") ? "_blank" : undefined}
+                          rel={selectedEvent.creatorUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+                        >
+                          {selectedEvent.creatorName || "TTC contributor"}
+                        </a>
+                      ) : (
+                        selectedEvent.creatorName || (selectedEvent.sourceProvider === "ttc" ? "TTC contributor" : "WTF staff")
+                      )}
+                    </p>
                     {selectedEvent.description ? <p data-calendar-region="event-description">{selectedEvent.description}</p> : null}
+                    {selectedEvent.sourceUrl ? (
+                      <p data-calendar-region="event-source-link">
+                        <a href={selectedEvent.sourceUrl} target="_blank" rel="noopener noreferrer">
+                          View original event on TTC
+                        </a>
+                      </p>
+                    ) : null}
                     {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
                   </EventDetail>
                 ) : null}
@@ -1067,7 +1111,7 @@ export function Calendar() {
               <div data-calendar-region="source-panel">
                 <SourcePanel label="Sources">
                   <Stack>
-                    <Muted data-calendar-region="source-copy">TTC events are pulled from TheTezosCommunity iCal feed and ranked above WTF entries when duplicates share the same title and start time.</Muted>
+                    <Muted data-calendar-region="source-copy">TTC events are pulled from TheTezosCommunity iCal feed, checked against TTC's public event records, and ranked above WTF entries when duplicates share the same title and start time.</Muted>
                     <Muted data-calendar-region="source-copy">WTF entries come from approved WTF calendar tickets and staff-created events.</Muted>
                     <Muted data-calendar-region="source-copy">Personal entries stay in this browser profile only.</Muted>
                     <Separator />

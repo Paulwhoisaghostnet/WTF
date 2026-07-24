@@ -1,3 +1,13 @@
+## 2026-07-23 - Rolling calendar exports need occurrence reconstruction and source validation
+
+**What happened**: The TTC aggregate iCal feed advanced each recurring event's `DTSTART` to its next occurrence, while WTF Calendar only expanded recurrence forward. That made the current week's earlier TTC occurrences disappear. The same feed retained at least one deleted event whose TTC permalink returned 404 and which was absent from TTC's rendered calendar.
+
+**Why it mattered**: Treating an aggregate iCal response as a complete occurrence ledger produced both false negatives and false positives: real TTC events vanished from the app, while stale feed rows looked like valid listings without a sourceable TTC record.
+
+**Rule**: For rolling third-party recurrence feeds, reconstruct bounded earlier occurrences from the published anchor and creation floor, then validate source records against the provider's public canonical metadata when available. Preserve feed-only fallback on metadata outages, filter canonical 404/deleted records only after a successful metadata response, expose the original source link and public creator attribution, and redact email-shaped display names before returning them to clients.
+
+---
+
 ## 2026-07-18 - Browser fixtures should preserve production process boundaries
 
 **What happened**: Ravioli's real-page regression reused one Chromium process across six collector contexts even though the production proof runner launches a fresh browser for each collector page. One otherwise successful full-suite pass stalled for more than seventeen minutes and the final local `page.goto` hit its 30-second timeout; no application assertion or chain simulation had failed.

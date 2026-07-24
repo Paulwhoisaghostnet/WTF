@@ -276,6 +276,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused model proves day, six-hour, one-hour, start-time, and all-day login thresholds; viewed threshold ids persist per user in localStorage so subsequent thresholds remain eligible; cross-app handoffs use one narrow session record or explicit URL fields, and personal events persist in the existing per-user Calendar store.",
   },
   {
+    id: "calendar.ttc-source-parity-and-event-details",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["calendar"],
+    ownerSpec:
+      "server/lib/ttc-calendar.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/ttc-calendar.test.ts && npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"hosts Calendar events\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Calendar restores TTC occurrences earlier than the public iCal feed's rolling next-occurrence anchor, and every Day, Week, Month, or Agenda event card opens details that identify who created it and link directly to the original TTC listing when applicable.",
+    durableSideEffectAssertion:
+      "The focused adapter tests prove backward recurrence restoration, TTC WordPress creator enrichment, email-shaped creator-name redaction, and canonical source URLs; browser coverage proves TTC creator and source provenance are visible from an activated event without changing calendar state.",
+  },
+  {
     id: "gamma.auth-return-continuity",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],

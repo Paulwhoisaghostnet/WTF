@@ -268,7 +268,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "attendance.claimed",
       "app.interaction.tracked",
     ],
-    behaviorAssertionIds: ["calendar.tray-reminders-cross-app-handoffs"],
+    behaviorAssertionIds: [
+      "calendar.tray-reminders-cross-app-handoffs",
+      "calendar.ttc-source-parity-and-event-details",
+    ],
   },
   {
     id: "recapture",
