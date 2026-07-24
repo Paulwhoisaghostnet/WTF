@@ -357,6 +357,23 @@ type LiveRoomReaction = {
   createdAt: number;
 };
 
+type PresenceSoundKind = "join" | "leave" | "goodbye";
+
+const WTF_LIVE_PRESENCE_SOUNDS_STORAGE_KEY = "wtf-live:presence-sounds";
+const WTF_LIVE_PRESENCE_SOUND_FREQUENCIES: Record<PresenceSoundKind, readonly number[]> = {
+  join: [523.25, 659.25],
+  leave: [392, 261.63],
+  goodbye: [329.63, 246.94, 196],
+};
+
+function readPresenceSoundsEnabled(): boolean {
+  try {
+    return localStorage.getItem(WTF_LIVE_PRESENCE_SOUNDS_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
 type WtfLiveSocketEvent = {
   type?: string;
   peerId?: string;
@@ -1136,6 +1153,10 @@ const RoomActionGrid = styled(GuestGrid)`
       min-height: 44px !important;
     }
   }
+`;
+
+const PresenceSoundButton = styled(Button)`
+  grid-column: 1 / -1;
 `;
 
 const MediaButtonGrid = styled(GuestGrid)`
@@ -3324,6 +3345,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const [socketReady, setSocketReady] = useState(false);
   const [peerId, setPeerId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [presenceSoundsEnabled, setPresenceSoundsEnabled] = useState(readPresenceSoundsEnabled);
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [micDiagnostic, setMicDiagnostic] = useState<MicDiagnosticState>(INITIAL_MIC_DIAGNOSTIC);
   const [micDiagnosticExpanded, setMicDiagnosticExpanded] = useState(false);
@@ -3414,6 +3436,8 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
   const soundboardDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const soundboardSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const soundboardCooldownRef = useRef<Map<string, number>>(new Map());
+  const presenceSoundsEnabledRef = useRef(presenceSoundsEnabled);
+  const presenceAudioContextRef = useRef<AudioContext | null>(null);
   const lastMediaStateRef = useRef<LiveMediaState>(emptyLiveMediaState());
   const localStreamsRef = useRef({
     micStream: null as MediaStream | null,
@@ -4217,6 +4241,11 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	      audio.src = "";
 	    });
 	    soundboardAudioRef.current = [];
+	    const presenceAudioContext = presenceAudioContextRef.current;
+	    presenceAudioContextRef.current = null;
+	    if (presenceAudioContext && presenceAudioContext.state !== "closed") {
+	      void presenceAudioContext.close().catch(() => undefined);
+	    }
 	    stopStream(localStreamsRef.current.micStream);
 	    stopStream(localStreamsRef.current.cameraStream);
 	    stopStream(localStreamsRef.current.screenStream);
@@ -4229,6 +4258,89 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(JSON.stringify(payload));
     return true;
+  }
+
+  function ensurePresenceAudioContext() {
+    const current = presenceAudioContextRef.current;
+    if (current && current.state !== "closed") return current;
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    const audioContext = new AudioContextCtor();
+    presenceAudioContextRef.current = audioContext;
+    return audioContext;
+  }
+
+  function unlockPresenceAudio() {
+    if (!presenceSoundsEnabledRef.current) return;
+    const audioContext = ensurePresenceAudioContext();
+    if (audioContext?.state === "suspended") {
+      void audioContext.resume().catch(() => undefined);
+    }
+  }
+
+  async function playPresenceNotification(kind: PresenceSoundKind) {
+    if (!presenceSoundsEnabledRef.current) return;
+    const audioContext = ensurePresenceAudioContext();
+    if (!audioContext) return;
+    if (audioContext.state === "suspended") {
+      try {
+        await audioContext.resume();
+      } catch {
+        return;
+      }
+    }
+    if (audioContext.state !== "running") return;
+
+    const baseTime = audioContext.currentTime + 0.01;
+    WTF_LIVE_PRESENCE_SOUND_FREQUENCIES[kind].forEach((frequency, index) => {
+      const startsAt = baseTime + index * 0.09;
+      const endsAt = startsAt + 0.17;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startsAt);
+      gain.gain.setValueAtTime(0.0001, startsAt);
+      gain.gain.exponentialRampToValueAtTime(0.055, startsAt + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.addEventListener(
+        "ended",
+        () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        },
+        { once: true },
+      );
+      oscillator.start(startsAt);
+      oscillator.stop(endsAt);
+    });
+  }
+
+  function playGoodbyeNotification() {
+    if (!presenceSoundsEnabledRef.current) return;
+    if ("speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined") {
+      const goodbye = new SpeechSynthesisUtterance("Goodbye");
+      goodbye.volume = 0.7;
+      goodbye.rate = 0.92;
+      goodbye.pitch = 0.9;
+      window.speechSynthesis.speak(goodbye);
+    }
+    void playPresenceNotification("goodbye");
+  }
+
+  function togglePresenceSounds() {
+    const nextEnabled = !presenceSoundsEnabledRef.current;
+    presenceSoundsEnabledRef.current = nextEnabled;
+    setPresenceSoundsEnabled(nextEnabled);
+    try {
+      localStorage.setItem(WTF_LIVE_PRESENCE_SOUNDS_STORAGE_KEY, String(nextEnabled));
+    } catch {
+      // Preference persistence is best-effort only.
+    }
+    if (nextEnabled) unlockPresenceAudio();
   }
 
   function resetRoomSession(nextStatus: string) {
@@ -4555,6 +4667,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     }
 
     if (event.type === "wtf_live_peer_joined" && event.peer?.peerId) {
+      void playPresenceNotification("join");
       ensurePeerConnection(event.peer.peerId);
       upsertRemotePeer({
         peerId: event.peer.peerId,
@@ -4569,6 +4682,7 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     }
 
     if (event.type === "wtf_live_peer_left" && event.peerId) {
+      void playPresenceNotification("leave");
       removeRemotePeer(event.peerId);
       return;
     }
@@ -4656,9 +4770,11 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
     };
     socket.onclose = () => {
       if (socketRef.current !== socket) return;
+      socketRef.current = null;
+      playGoodbyeNotification();
       setSocketReady(false);
       setJoined(false);
-      setStatus("Room connection closed.");
+      setStatus("Room connection closed unexpectedly.");
     };
   }
 
@@ -4838,16 +4954,19 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
       localStorage.setItem("wtf-live:guest-name", name);
       setGuestName(name);
     }
+    unlockPresenceAudio();
     setJoined(true);
     setStatus(`Connecting as ${name}...`);
     connectRoomSocket(name);
   }
 
   function leaveRoom() {
+    playGoodbyeNotification();
     resetRoomSession("Left room.");
   }
 
   function closeRoomWindow() {
+    if (joined || socketRef.current) playGoodbyeNotification();
     resetRoomSession("Closing room window...");
     window.close();
     window.setTimeout(() => {
@@ -6656,6 +6775,18 @@ export function WtfLivePublicRoom({ roomId }: { roomId: string }) {
 	            <Button aria-label="Close Room Tab" onClick={closeRoomWindow}>
 	              <ButtonLabel><X size={16} aria-hidden /> Close</ButtonLabel>
 	            </Button>
+	            <PresenceSoundButton
+	              aria-label={presenceSoundsEnabled ? "Mute presence sounds" : "Enable presence sounds"}
+	              aria-pressed={presenceSoundsEnabled}
+	              title="Play a chime when someone enters or leaves"
+	              onClick={togglePresenceSounds}
+	              data-wtf-live-presence-sounds={presenceSoundsEnabled ? "on" : "off"}
+	            >
+	              <ButtonLabel>
+	                {presenceSoundsEnabled ? <Volume2 size={16} aria-hidden /> : <VolumeX size={16} aria-hidden />}
+	                Presence sounds {presenceSoundsEnabled ? "on" : "off"}
+	              </ButtonLabel>
+	            </PresenceSoundButton>
 	          </RoomActionGrid>
 	          <StatusLine aria-live="polite">{status}</StatusLine>
 	        </SettingsGroup>

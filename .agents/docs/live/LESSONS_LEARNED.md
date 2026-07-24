@@ -9277,3 +9277,22 @@
 **Rule**: Import canonical protocol constants into every fixture layer instead of repeating literals, derive entrypoint expectations from intentional shipped capabilities, intercept local proof metadata at a deterministic local origin, let temporal assertions account for valid boundary-spanning renderings, and attach application logs plus browser events to asynchronous artifact waits so the first failing boundary remains visible.
 
 ---
+## 2026-07-24 - Self-disconnect alerts must cover the socket, not only the Leave button
+
+**What happened**: WTF LIVE gained peer join/leave sounds, but the local participant still received no audible warning when their own room socket ended. An explicit Leave button alone could not cover kicks, transient network loss, or server-side disconnects.
+
+**Why it mattered**: A participant can appear present while their realtime connection has already ended. Without a local cue, hosts and guests may continue speaking or presenting to a room they are no longer in.
+
+**Rule**: Route intentional exits and the active socket's unexpected close event through one local goodbye alert, clear the closed socket reference, and pair the audible cue with explicit unexpected-disconnect status. Browser coverage must force-close the socket as well as click Leave.
+
+---
+
+## 2026-07-24 - Presence sounds belong to live deltas, not room snapshots
+
+**What happened**: WTF LIVE exposed exact peer-joined and peer-left WebSocket events but had no audible feedback for those room transitions. The initial room snapshot also contains peers, so treating every discovered peer alike would replay a burst of false join sounds when the current user connects.
+
+**Why it mattered**: Notification audio is useful only when it communicates a new event. Snapshot noise, self-join tones, or audio that ignores browser autoplay and mute preferences would make busy rooms less usable.
+
+**Rule**: Unlock local Web Audio from the room join gesture, play presence cues only for subsequent peer join/leave deltas, keep them outside the shared WebRTC audio graph, and provide a persistent local mute control. Browser coverage must distinguish the join and leave tone plans and verify the preference state.
+
+---

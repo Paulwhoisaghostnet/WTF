@@ -272,6 +272,8 @@ export const DOMAIN_WORKFLOWS = [
       "wtf_live.stage_room.share_blocked",
       "wtf_live.lobby_presence_viewed",
       "wtf_live.public_room.joined",
+      "wtf_live.public_room.presence_sounds_toggled",
+      "wtf_live.public_room.disconnect_alerted",
       "wtf_live.public_room.media_toggled",
       "wtf_live.public_room.mic_test_completed",
       "wtf_live.public_room.active_video_selected",

@@ -1323,10 +1323,36 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
         alice.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" }),
         bob.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" }),
       ]);
-      await alice.getByPlaceholder("Display name").fill("Alice");
-      await bob.getByPlaceholder("Display name").fill("Bob");
+	      await alice.getByPlaceholder("Display name").fill("Alice");
+	      await bob.getByPlaceholder("Display name").fill("Bob");
 	      await alice.getByRole("button", { name: "Join Room" }).click();
+	      await alice.evaluate(() => {
+	        window.__wtfLivePresenceToneFrequencies = [];
+	        const originalSetValueAtTime = AudioParam.prototype.setValueAtTime;
+	        AudioParam.prototype.setValueAtTime = function instrumentPresenceTone(value, startTime) {
+	          window.__wtfLivePresenceToneFrequencies.push(value);
+	          return originalSetValueAtTime.call(this, value, startTime);
+	        };
+	      });
 	      await bob.getByRole("button", { name: "Join Room" }).click();
+	      await expect
+	        .poll(() =>
+	          alice.evaluate(() =>
+	            window.__wtfLivePresenceToneFrequencies.filter(
+	              (frequency) => Math.abs(frequency - 523.25) < 0.1 || Math.abs(frequency - 659.25) < 0.1,
+	            ).length,
+	          ),
+	        )
+	        .toBe(2);
+	      const presenceSoundToggle = alice.locator("[data-wtf-live-presence-sounds]");
+	      await expect(presenceSoundToggle).toHaveAttribute("data-wtf-live-presence-sounds", "on");
+	      await presenceSoundToggle.click();
+	      await expect(presenceSoundToggle).toHaveAttribute("data-wtf-live-presence-sounds", "off");
+	      await expect
+	        .poll(() => alice.evaluate(() => localStorage.getItem("wtf-live:presence-sounds")))
+	        .toBe("false");
+	      await presenceSoundToggle.click();
+	      await expect(presenceSoundToggle).toHaveAttribute("data-wtf-live-presence-sounds", "on");
 	      await alice.locator("[data-wtf-live-attendance-toggle]").click();
 	      await bob.locator("[data-wtf-live-attendance-toggle]").click();
 
@@ -1537,6 +1563,16 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
 	      await expect(bob.locator("[data-wtf-live-lightbox]")).toBeVisible();
 	      await bob.locator("[data-wtf-live-popout-close]").first().click();
 	      await expect(bob.locator("[data-wtf-live-lightbox]")).toHaveCount(0);
+	      await bob.locator("[data-wtf-live-leave-room]").click();
+	      await expect
+	        .poll(() =>
+	          alice.evaluate(() =>
+	            window.__wtfLivePresenceToneFrequencies.filter(
+	              (frequency) => Math.abs(frequency - 392) < 0.1 || Math.abs(frequency - 261.63) < 0.1,
+	            ).length,
+	          ),
+	        )
+	        .toBe(2);
       expect(fatalErrors(errors)).toEqual([]);
     } finally {
       await aliceContext.close();
@@ -1551,6 +1587,26 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await setAnonymous(request);
     const errors = [];
     capturePageErrors(page, errors, "public-room-exit");
+    await page.addInitScript(() => {
+      window.__wtfLiveGoodbyes = [];
+      window.__wtfLiveGoodbyeToneFrequencies = [];
+      window.__wtfLiveSockets = [];
+      const NativeWebSocket = window.WebSocket;
+      window.WebSocket = class TrackingWebSocket extends NativeWebSocket {
+        constructor(...args) {
+          super(...args);
+          window.__wtfLiveSockets.push(this);
+        }
+      };
+      window.speechSynthesis.speak = (utterance) => {
+        window.__wtfLiveGoodbyes.push(utterance.text);
+      };
+      const originalSetValueAtTime = AudioParam.prototype.setValueAtTime;
+      AudioParam.prototype.setValueAtTime = function instrumentGoodbyeTone(value, startTime) {
+        window.__wtfLiveGoodbyeToneFrequencies.push(value);
+        return originalSetValueAtTime.call(this, value, startTime);
+      };
+    });
 
     await page.goto("/live/r/wtf-live", { waitUntil: "domcontentloaded" });
     await page.evaluate(() => {
@@ -1573,6 +1629,31 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await expect(page.getByRole("button", { name: "Join Room" })).toBeEnabled();
     await expect(page.locator("[data-wtf-live-chat-text]")).toBeDisabled();
     await expect(page.getByText("Left room.")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__wtfLiveGoodbyes)).toEqual(["Goodbye"]);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__wtfLiveGoodbyeToneFrequencies.filter((frequency) =>
+            [329.63, 246.94, 196].some((target) => Math.abs(frequency - target) < 0.1),
+          ).length,
+        ),
+      )
+      .toBe(3);
+
+    await page.getByRole("button", { name: "Join Room" }).click();
+    await expect(page.locator("[data-wtf-live-chat-text]")).toBeEnabled({ timeout: 10_000 });
+    await page.evaluate(() => window.__wtfLiveSockets.at(-1)?.close());
+    await expect(page.getByText("Room connection closed unexpectedly.")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__wtfLiveGoodbyes)).toEqual(["Goodbye", "Goodbye"]);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__wtfLiveGoodbyeToneFrequencies.filter((frequency) =>
+            [329.63, 246.94, 196].some((target) => Math.abs(frequency - target) < 0.1),
+          ).length,
+        ),
+      )
+      .toBe(6);
 
     await page.getByRole("button", { name: "Close Window" }).click();
     await expect
