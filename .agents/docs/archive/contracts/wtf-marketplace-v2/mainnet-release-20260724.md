@@ -36,3 +36,15 @@ Marketplace V1 was not paused, replaced, upgraded, or mutated. It still holds
 `110,000,000` WTF base units (`1.1 WTF`) for the existing offer. The user
 explicitly authorized abandoning that offer for now and retaining V1 for later
 human recovery through BCD or another chain interface.
+
+## Production verification
+
+- Main commit: `e066bd69`
+- Hetzner deploy run: `30127125718` (`success`)
+- Public readiness: `https://wtfos.app/api/health/ready` returned `ready`,
+  `nodeEnv=production`, and commit `e066bd69`
+- Public marketplace API returned V2 as active, V1 as legacy, version `v2`,
+  the correct admin, `paused=false`, and zero fresh listings, offers, or auctions
+- Production browser assets contain the V2 address
+- The separate Quality Gates failure was the existing dependency audit finding,
+  not a contract, SmartPy, type, build, inventory, or deployment failure
