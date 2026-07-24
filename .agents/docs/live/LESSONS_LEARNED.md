@@ -10669,3 +10669,14 @@
 **Why it mattered**: Package acceptance is a positional mirror of the canonical registry so routes, provenance, rollback data, and admin observability cannot silently drift into independently maintained catalogues.
 
 **Rule**: When adding or reordering a creation tool, place its package-acceptance record at the same index as the canonical tool registry and run `node --import tsx --test shared/wtf-app-packages.test.ts` plus the aggregate unit suite before promotion.
+---
+
+## 2026-07-24 - Assert the rendered receipt, not an optional notice heading
+
+**What happened**: Payroll's first browser test waited for the success notice title after a mocked transfer. The transfer completed and the operation receipt link rendered correctly, but the shared notice component did not render that title as visible text, so the test reported a false failure.
+
+**Why it mattered**: For a value-transfer workflow, the durable user-facing proof is the operation hash and explorer handoff. Tying coverage to optional presentation copy obscured the actual state and made a successful transfer look broken.
+
+**Rule**: Transaction E2E tests must assert the exact operation hash/receipt affordance and submitted transfer payload. Treat notice headings as secondary copy unless their visibility is itself part of the interaction contract.
+
+---

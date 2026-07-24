@@ -981,6 +981,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   mail: "/mail",
   "admin-inbox": "/admin-inbox",
   "objkt-operator": "/objkt-operator",
+  payroll: "/payroll",
 };
 
 function entry(
@@ -1033,7 +1034,7 @@ const manualApps: BetaAppCatalogEntry[] = [
 
 const experimentalSet = new Set<DesktopAppKey>(EXPERIMENTAL_DESKTOP_APPS);
 function tierFor(appKey: DesktopAppKey): BetaTier {
-  if (appKey === "objkt-operator") return 5;
+  if (appKey === "objkt-operator" || appKey === "payroll") return 5;
   if (experimentalSet.has(appKey)) return 4;
   if (["wtfiam", "tv", "console", "game-studio", "pasta-protocol", "tz2at", "crp-nominations", "agent"].includes(appKey)) return 2;
   if (["map-lab", "casino", "ch-ease"].includes(appKey)) return 4;
@@ -1048,6 +1049,7 @@ function stageFor(appKey: DesktopAppKey): BetaStage {
   return "operate";
 }
 function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
+  if (appKey === "payroll") return ["builder"];
   if (appKey === "objkt-operator") return ["collector", "curator", "builder"];
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
   if (["gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
@@ -1059,7 +1061,7 @@ const desktopApps = DESKTOP_APPS.map((appKey) => {
   const route = desktopRoutes[appKey];
   const tier = tierFor(appKey);
   const stage = stageFor(appKey);
-  const access = appKey === "objkt-operator"
+  const access = appKey === "objkt-operator" || appKey === "payroll"
     ? "admin"
     : route === "/arcade" || route === "/dues" || route === "/gallery" || route === "/skywire"
       ? "public"

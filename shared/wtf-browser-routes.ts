@@ -107,6 +107,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/mint-portal", auth: true, title: "Mint Portal" },
   { pattern: "/contract-factory", auth: true, roles: ["admin"], title: "Contract Factory" },
   { pattern: "/operator-wallet", auth: true, roles: ["admin"], title: "Operator Wallet" },
+  { pattern: "/payroll", auth: true, roles: ["admin"], title: "Payroll" },
   { pattern: "/objkt-operator", auth: true, roles: ["admin"], title: "Objkt Operator" },
   { pattern: "/control-board", auth: true, roles: ["admin"], title: "Control Board" },
   { pattern: "/skywire", auth: false, title: "Skywire" },

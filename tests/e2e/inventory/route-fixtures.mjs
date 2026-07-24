@@ -113,6 +113,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/mint-portal", path: "/mint-portal", title: "Mint Portal", domain: "gameshow", subdomain: "Mint portal", auth: true },
   { pattern: "/contract-factory", path: "/contract-factory", title: "Contract Factory", domain: "admin", subdomain: "Contract factory", auth: true, adminOnly: true },
   { pattern: "/operator-wallet", path: "/operator-wallet", title: "Operator Wallet", domain: "admin", subdomain: "Operator wallet", auth: true, adminOnly: true },
+  { pattern: "/payroll", path: "/payroll", title: "Payroll", domain: "admin", subdomain: "Isolated treasury funding wallet", auth: true, adminOnly: true },
   { pattern: "/objkt-operator", path: "/objkt-operator", title: "Objkt Operator", domain: "admin", subdomain: "Private Objkt acquisition operator", auth: true, adminOnly: true },
   { pattern: "/dev/ux-lab", path: "/dev/ux-lab", title: "UX Lab", domain: "admin", subdomain: "UX Lab", auth: true, adminOnly: true },
 ];

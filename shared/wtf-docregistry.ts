@@ -147,6 +147,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   mail: "identityAndSocial",
   "admin-inbox": "identityAndSocial",
   "objkt-operator": "operations",
+  payroll: "operations",
 };
 
 export function getDesktopAppDocRegistry(appKey: DesktopAppKey): WtfDomainDocRegistry {

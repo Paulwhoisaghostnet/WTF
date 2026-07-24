@@ -97,6 +97,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   mail: domainGuides.identityAndSocial,
   "admin-inbox": domainGuides.identityAndSocial,
   "objkt-operator": domainGuides.operations,
+  payroll: domainGuides.operations,
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -150,6 +151,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   mail: ["Resend inbound email"],
   "admin-inbox": ["Private media storage for screenshot evidence"],
   "objkt-operator": ["Objkt API", "Kukai", "Tezos mainnet RPC"],
+  payroll: ["Octez Connect", "Tezos mainnet RPC", "TzKT", "WTF FA2"],
 };
 
 const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
@@ -213,6 +215,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   mail: ["mailboxes", "mail_messages", "comms_items"],
   "admin-inbox": ["admin_inbox_messages", "admin_inbox_replies", "user_media_library", "comms_items", "user_notifications"],
   "objkt-operator": ["objkt_operator_states", "desktop_app_settings"],
+  payroll: ["Payroll-scoped public wallet session metadata", "Tezos mainnet operation hashes"],
 };
 
 function desktopPackage(appKey: DesktopAppKey): WtfAppPackageAcceptance {

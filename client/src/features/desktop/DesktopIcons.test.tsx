@@ -118,3 +118,19 @@ test("desktop icon click policy opens once across single, double, drag, and cont
     "a secondary-button gesture must not open"
   );
 });
+
+test("Payroll desktop icon is strict-admin gated", () => {
+  const hidden = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    payrollAvailable: false,
+  });
+  assert.equal(hidden.find((icon) => icon.key === "payroll")?.enabled, false);
+
+  const visible = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    payrollAvailable: true,
+  });
+  const payroll = visible.find((icon) => icon.key === "payroll");
+  assert.equal(payroll?.openPath, "/payroll");
+  assert.equal(payroll?.enabled, true);
+});
