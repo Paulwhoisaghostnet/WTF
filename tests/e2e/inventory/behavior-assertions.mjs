@@ -657,11 +657,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/lib/tezos/marketplace.ts, client/src/features/marketplace/OfferAcceptanceDialog.tsx, server/routes/marketplace.ts, tests/playwright/live/marketplace-shadownet.spec.mjs",
     verificationCommand:
-      "npm run check && npm run test:e2e:inventory:coverage && npm run contract:e2e:marketplace-v2:shadownet:existing && npm run test:e2e:marketplace:shadownet",
+      "node --test scripts/marketplace-v2/funding-policy.test.mjs scripts/marketplace-v2/mainnet-release-policy.test.mjs && npm run check && npm run test:e2e:inventory:coverage && npm run contract:e2e:marketplace-v2:shadownet:existing && npm run test:e2e:marketplace:shadownet",
     userVisibleAssertion:
-      "Accepting a marketplace or trade-board offer shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and contract version before wallet signing.",
+      "All new mainnet marketplace activity uses Marketplace V2 KT1C8jTazt2QyFLPKf27xRGssv99AtzagWHb, while accepting a marketplace or trade-board offer shows quantity, unit WTF, total WTF, token contract/id, owner, offerer, and contract version before wallet signing; legacy V1 stays available only as recovery context.",
     durableSideEffectAssertion:
-      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price, the in-app market V2 checkout signs only after receiving expected WTF token, treasury, amount, purchase reference, and cart hash, and the local Shadownet runner binds the marketplace, WTF FA2, and in-app market contracts as one explicit test bundle.",
+      "The wallet helper re-reads canonical /api/marketplace/onchain before signing, blocks legacy accepts unless tokenAmount is exactly 1, sends V2 accepts with offer_id plus expected token, owner, quantity, and unit price, and production keeps the old V1 address only in LEGACY_MARKETPLACE_CONTRACT_ADDRESS. The mainnet V2 release compiles the exact Shadownet-proven code, enforces signed-operation size headroom, originates from wtf-os-root, assigns contract-admin authority, and proves pause/unpause before cutover. The in-app market V2 checkout signs only after receiving expected WTF token, treasury, amount, purchase reference, and cart hash, and the local Shadownet runner binds the marketplace, WTF FA2, and in-app market contracts as one explicit test bundle.",
   },
   {
     id: "casino.access-game-apis",
