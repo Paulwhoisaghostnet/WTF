@@ -70,6 +70,7 @@ test("TTC calendar feed restores earlier occurrences from a rolling next-occurre
       "2026-07-24T00:00:00.000Z",
     ]
   );
+  assert.ok(events.every((event) => event.allDay));
 });
 
 test("TTC event metadata identifies the public TTC creator without exposing an email address", async () => {

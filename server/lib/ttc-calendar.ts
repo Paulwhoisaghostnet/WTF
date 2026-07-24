@@ -144,6 +144,15 @@ function parseIcs(text: string): ParsedIcsEvent[] {
         const startsAt = parseIcsDate(values.get("DTSTART") ?? "");
         if (startsAt) {
           const endsAt = parseIcsDate(values.get("DTEND") ?? "");
+          const startsAtRaw = values.get("DTSTART") ?? "";
+          const endsAtRaw = values.get("DTEND") ?? "";
+          const midnightUtcSpan = Boolean(
+            endsAt &&
+            /^\d{8}T000000Z$/.test(startsAtRaw) &&
+            /^\d{8}T000000Z$/.test(endsAtRaw) &&
+            endsAt.getTime() > startsAt.getTime() &&
+            (endsAt.getTime() - startsAt.getTime()) % (24 * 60 * 60 * 1000) === 0
+          );
           const title = unescapeIcs(values.get("SUMMARY") ?? "TTC event");
           const uid = unescapeIcs(values.get("UID") ?? `${title}:${startsAt.toISOString()}`);
           const url = values.get("URL") ? unescapeIcs(values.get("URL") ?? "") : null;
@@ -166,7 +175,7 @@ function parseIcs(text: string): ParsedIcsEvent[] {
               : null,
             startsAt,
             endsAt,
-            allDay: /^\d{8}$/.test(values.get("DTSTART") ?? ""),
+            allDay: /^\d{8}$/.test(startsAtRaw) || midnightUtcSpan,
             rrule: parseRrule(values.get("RRULE") ?? null),
             recurrenceFloor: parseIcsDate(values.get("CREATED") ?? ""),
             creatorName: null,

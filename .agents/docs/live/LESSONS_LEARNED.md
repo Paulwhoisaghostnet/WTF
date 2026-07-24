@@ -1,3 +1,13 @@
+## 2026-07-23 - All-day feed semantics must survive timezone presentation
+
+**What happened**: TTC displayed The Baking Sheet as an all-day event but MEC exported it as a midnight-to-midnight UTC interval rather than an iCal `VALUE=DATE`. The server classified it as timed, and Pacific-time rendering spread the same occurrence across Thursday evening and Friday.
+
+**Why it mattered**: Correct occurrence ingestion can still produce a visibly duplicated, wrong-day calendar when a provider encodes date-only intent as UTC instants and the client applies local-time overlap rules.
+
+**Rule**: Treat exact positive whole-day midnight-UTC MEC spans as all-day records, preserve their UTC calendar date during day membership and labels, and visually smoke a representative all-day event in production after deploy. Recurrence parity tests must assert both occurrence timestamps and all-day semantics.
+
+---
+
 ## 2026-07-23 - Rolling calendar exports need occurrence reconstruction and source validation
 
 **What happened**: The TTC aggregate iCal feed advanced each recurring event's `DTSTART` to its next occurrence, while WTF Calendar only expanded recurrence forward. That made the current week's earlier TTC occurrences disappear. The same feed retained at least one deleted event whose TTC permalink returned 404 and which was absent from TTC's rendered calendar.

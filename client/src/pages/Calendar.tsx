@@ -626,9 +626,25 @@ function formatEventTime(event: CalendarEvent): string {
   const start = new Date(event.startsAt);
   const end = event.endsAt ? new Date(event.endsAt) : null;
   if (event.allDay) {
+    if (event.sourceProvider === "ttc") {
+      const dateOptions = { timeZone: "UTC" } as const;
+      const startLabel = start.toLocaleDateString([], dateOptions);
+      if (!end) return startLabel;
+      const inclusiveEnd = new Date(end.getTime() - 1);
+      const endLabel = inclusiveEnd.toLocaleDateString([], dateOptions);
+      return endLabel === startLabel ? startLabel : `${startLabel} - ${endLabel}`;
+    }
     return end ? `${start.toLocaleDateString()} - ${end.toLocaleDateString()}` : start.toLocaleDateString();
   }
   return `${start.toLocaleString()}${end ? ` -> ${end.toLocaleString()}` : ""}`;
+}
+
+function eventDateLabel(event: CalendarEvent): string {
+  return new Date(event.startsAt).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    ...(event.allDay && event.sourceProvider === "ttc" ? { timeZone: "UTC" } : {}),
+  });
 }
 
 function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
@@ -717,6 +733,14 @@ function moveCalendarAnchor(view: CalendarView, anchorDate: Date, direction: -1 
 }
 
 function eventFallsOnDay(event: CalendarEvent, day: Date): boolean {
+  if (event.allDay && event.sourceProvider === "ttc") {
+    const utcDay = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()));
+    const nextUtcDay = new Date(utcDay);
+    nextUtcDay.setUTCDate(nextUtcDay.getUTCDate() + 1);
+    const start = new Date(event.startsAt);
+    const end = eventEnd(event);
+    return start < nextUtcDay && end > utcDay;
+  }
   const next = new Date(day);
   next.setDate(next.getDate() + 1);
   const start = new Date(event.startsAt);
@@ -979,7 +1003,7 @@ export function Calendar() {
                           onClick={() => setSelectedEvent(event)}
                           aria-label={`${event.title}, ${formatEventTime(event)}`}
                         >
-                          <div><strong>{new Date(event.startsAt).toLocaleDateString([], { month: "short", day: "numeric" })}</strong><br />{eventClockLabel(event)}</div>
+                          <div><strong>{eventDateLabel(event)}</strong><br />{eventClockLabel(event)}</div>
                           <div>
                             <Row>
                               <SourceBadge $source={event.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(event.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>

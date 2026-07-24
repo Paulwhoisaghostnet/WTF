@@ -9123,6 +9123,7 @@ Priority labels:
   - Fixture recurring, all-day, multi-location, image, and timezone events against both TTC feeds; require identical occurrence dates, graceful fallback when MEC fails, source-aware de-duplication, bounded IPFS fetches, and an ICS round-trip test before enabling the new adapter.
 - Resolution:
   - Kept TTC's public iCal feed as the recurrence transport, reconstructed earlier occurrences from MEC's rolling next-occurrence anchor, and bounded backward expansion by the event's creation floor.
+  - Normalized MEC's midnight-to-midnight UTC whole-day spans as all-day events and preserved their UTC calendar date during local day membership and labels.
   - Added server-side validation and creator enrichment through TTC's public WordPress event API, including canonical stale/deleted-record filtering after successful metadata reads, graceful iCal-only fallback when metadata is unavailable, numeric and slug permalink support, and email-shaped creator-name redaction.
   - Added event creator/source fields for WTF and TTC records and made Day, Week, Month, and Agenda event cards open a detail panel with creator attribution and the original TTC listing.
   - Teia contract/IPFS federation remains an optional separate product direction; it is not required for TTC source parity and was not introduced into WTF's role-based review queue.
