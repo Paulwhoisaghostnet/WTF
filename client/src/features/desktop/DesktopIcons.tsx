@@ -29,7 +29,7 @@ function markExperimentalIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
 
 function filterDefaultDesktopIconDefs(defs: DesktopIconDef[]): DesktopIconDef[] {
   return defs.filter((def) => {
-    if (def.key === "objkt-operator") return true;
+    if (def.key === "objkt-operator" || def.key === "payroll") return true;
     const appKey = desktopAppKeyForIconKey(def.key);
     return !appKey || isDefaultDesktopAppKey(appKey);
   });
@@ -711,6 +711,7 @@ export function buildDesktopIconDefs(
     appAccessBlocked?: boolean;
     appGateBypass?: boolean;
     objktOperatorAvailable?: boolean;
+    payrollAvailable?: boolean;
   } = {}
 ): DesktopIconDef[] {
   const canOpenApps = !options.appAccessBlocked;
@@ -750,6 +751,15 @@ export function buildDesktopIconDefs(
       defaultY: 540,
       enabled: canOpenApps && (apps["objkt-operator"] || canOpenDisabledApps) && Boolean(options.objktOperatorAvailable),
       openPath: "/objkt-operator",
+    },
+    {
+      key: "payroll",
+      label: "Payroll",
+      icon: "💸",
+      defaultX: 412,
+      defaultY: 540,
+      enabled: canOpenApps && (apps.payroll || canOpenDisabledApps) && Boolean(options.payrollAvailable),
+      openPath: "/payroll",
     },
     {
       key: "wtfiam",

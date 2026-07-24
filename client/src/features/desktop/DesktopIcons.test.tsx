@@ -84,3 +84,19 @@ test("private Objkt Operator desktop icon is owner-gated", () => {
   assert.equal(operator?.openPath, "/objkt-operator");
   assert.equal(operator?.enabled, true);
 });
+
+test("Payroll desktop icon is strict-admin gated", () => {
+  const hidden = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    payrollAvailable: false,
+  });
+  assert.equal(hidden.find((icon) => icon.key === "payroll")?.enabled, false);
+
+  const visible = buildDesktopIconDefs(ENABLED_APPS, {
+    appGateBypass: true,
+    payrollAvailable: true,
+  });
+  const payroll = visible.find((icon) => icon.key === "payroll");
+  assert.equal(payroll?.openPath, "/payroll");
+  assert.equal(payroll?.enabled, true);
+});

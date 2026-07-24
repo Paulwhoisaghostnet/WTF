@@ -1031,7 +1031,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "admin os control loop",
     domain: "Administration, Governance, and Operations",
-    routes: ["/admin", "/control-board", "/operator-wallet", "/objkt-operator", "/contract-factory", "/desktop-settings"],
+    routes: ["/admin", "/control-board", "/operator-wallet", "/payroll", "/objkt-operator", "/contract-factory", "/desktop-settings"],
     eventHandles: [
       "admin.dashboard.viewed",
       "admin.overview.viewed",
@@ -1054,6 +1054,9 @@ export const DOMAIN_WORKFLOWS = [
       "desktop.app.disabled_by_admin",
       "wtfiam.admin.price_rebalanced",
       "operator.disbursement.previewed",
+      "payroll.wallet_connected",
+      "payroll.transfer_reviewed",
+      "payroll.transfer_confirmed",
       "objkt_operator.creator_reviewed",
       "objkt_operator.market_scanned",
       "objkt_operator.candidate_queued",

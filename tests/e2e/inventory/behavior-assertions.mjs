@@ -1300,6 +1300,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The same workflow probes the registered music, Mastodon, Porcupin, Discovery, social-automation, and factory API contracts against the real server/database status boundary.",
   },
   {
+    id: "payroll.isolated-wallet-and-value-transfer",
+    domain: "Commerce, Wallets, and Private Operations",
+    ownerSurfaceIds: ["payroll"],
+    ownerSpec: "tests/playwright/inventory/payroll.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/payroll/payroll-wallet.test.ts && npx playwright test tests/playwright/inventory/payroll.spec.mjs",
+    userVisibleAssertion:
+      "A strict admin can explicitly connect a funding wallet that is isolated from the wtfOS profile wallet, inspect its mainnet XTZ and WTF balances, and review the exact source, recipient, asset, amount, network, and token contract before signing.",
+    durableSideEffectAssertion:
+      "Payroll rechecks the active signer and Tezos mainnet chain before sending, waits for one on-chain confirmation, exposes the operation hash, and leaves the existing profile wallet session unchanged.",
+  },
+  {
     id: "objkt-operator.owner-persistence-and-score-review",
     domain: "Commerce, Wallets, and Private Operations",
     ownerSurfaceIds: ["objkt-operator"],

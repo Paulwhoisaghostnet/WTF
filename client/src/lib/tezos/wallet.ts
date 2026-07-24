@@ -382,7 +382,7 @@ async function preflightOctezExtensionHandshake(
   return false;
 }
 
-class OctezConnectTaquitoWalletProvider {
+export class OctezConnectTaquitoWalletProvider {
   constructor(private readonly client: any) {}
 
   private async getRequiredAccount() {

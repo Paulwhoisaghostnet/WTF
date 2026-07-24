@@ -436,6 +436,20 @@ const APP_ENTRIES = [
     requiredRoles: ["admin"],
     prerequisite: "Requires the admin role and the configured Objkt Operator owner allowlist.",
   },
+  {
+    key: "payroll",
+    route: "/payroll",
+    summary: "Strict-admin funding wallet for reviewed WTF and XTZ transfers to wtfOS wallets and contracts.",
+    placement: "stuffs-menu",
+    necessity: "role-gated",
+    necessityRank: 5,
+    priceWtfUnits: "0",
+    priceExp: 0,
+    monogram: "PAY",
+    accent: "#0b6b45",
+    requiredRoles: ["admin"],
+    prerequisite: "Requires the admin role and an explicit, Payroll-scoped Tezos mainnet wallet connection.",
+  },
 ] as const satisfies readonly Omit<WtfOsAppCatalogEntry, "label">[];
 
 export const WTFOS_APP_CATALOG = Object.freeze(

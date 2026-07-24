@@ -66,6 +66,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   applications: true,
   mail: true,
   "objkt-operator": true,
+  payroll: true,
 };
 
 export function getDesktopAppDocumentation(appKey: DesktopAppKey): WtfDocLinkSet {

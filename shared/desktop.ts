@@ -600,6 +600,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "ipfs-pinning",
   "my-gallery",
   "objkt-operator",
+  "payroll",
 ] as const;
 
 export type DesktopIconKey = (typeof DESKTOP_ICON_LAYOUT_KEYS)[number];

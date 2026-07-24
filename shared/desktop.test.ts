@@ -247,6 +247,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "ipfs-pinning",
     "my-gallery",
     "objkt-operator",
+    "payroll",
   ]);
 
   const layout = normalizeIconLayout(

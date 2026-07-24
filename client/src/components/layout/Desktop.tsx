@@ -555,6 +555,10 @@ export function Desktop({
     const roles = normalizeUserRoles(user?.roles ?? user?.role ?? null);
     return roles.includes("admin") || roles.includes("trusted_creator");
   }, [user?.role, user?.roles]);
+  const payrollAvailable = useMemo(
+    () => normalizeUserRoles(user?.roles ?? user?.role ?? null).includes("admin"),
+    [user?.role, user?.roles],
+  );
   const apps = {
     wtfiam: sourceApps.wtfiam,
     hoard: sourceApps.hoard,
@@ -586,6 +590,7 @@ export function Desktop({
     applications: sourceApps.applications,
     mail: sourceApps.mail,
     "objkt-operator": sourceApps["objkt-operator"],
+    payroll: sourceApps.payroll,
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
@@ -593,11 +598,13 @@ export function Desktop({
       appAccessBlocked,
       appGateBypass,
       objktOperatorAvailable: objktOperatorAccessQuery.data?.allowed === true,
+      payrollAvailable,
     }),
     [
       appAccessBlocked,
       appGateBypass,
       objktOperatorAccessQuery.data?.allowed,
+      payrollAvailable,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],
@@ -621,6 +628,7 @@ export function Desktop({
       apps.agent,
       apps.applications,
       apps["objkt-operator"],
+      apps.payroll,
       apps.studio,
       apps.tv,
       apps.wim,
