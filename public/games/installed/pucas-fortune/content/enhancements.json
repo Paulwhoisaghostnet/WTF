@@ -1,0 +1,207 @@
+{
+  "version": "1.1.0",
+  "enhancements": [
+    {
+      "id": "bonus",
+      "name": "Bonus Card",
+      "description": "+30 Coins when scored",
+      "flavor": "A card that gives a little something extra.",
+      "icon": "💰",
+      "effect": { "type": "add-coins", "amount": 30 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "mult",
+      "name": "Mult Card",
+      "description": "+4 Mult when scored",
+      "flavor": "Doubles down on the multiplier.",
+      "icon": "✖️",
+      "effect": { "type": "add-mult", "amount": 4 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "wild",
+      "name": "Wild Card",
+      "description": "Counts as any suit",
+      "flavor": "The trickster of the deck — it fits anywhere.",
+      "icon": "🃏",
+      "effect": { "type": "wild-suit" },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "glass",
+      "name": "Glass Card",
+      "description": "×2 Mult when scored. 1 in 4 chance to shatter after scoring.",
+      "flavor": "Beautiful and fragile — worth the risk.",
+      "icon": "💎",
+      "effect": { "type": "multiply-mult", "factor": 2, "destroyChance": 0.25 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "steel",
+      "name": "Steel Card",
+      "description": "×1.5 Mult while held in hand",
+      "flavor": "Its worth grows simply by being held.",
+      "icon": "⚔️",
+      "effect": { "type": "held-multiply-mult", "factor": 1.5 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "stone",
+      "name": "Stone Card",
+      "description": "+50 Coins when scored. No rank or suit.",
+      "flavor": "Ancient and featureless — pure coin.",
+      "icon": "🪨",
+      "effect": { "type": "add-coins", "amount": 50 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "gold",
+      "name": "Gold Card",
+      "description": "Earn $3 when held in hand at end of round",
+      "flavor": "The gold card pays you just for keeping it close.",
+      "icon": "🏅",
+      "effect": { "type": "held-grant-money", "amount": 3 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "lucky",
+      "name": "Lucky Card",
+      "description": "1 in 5 chance of +20 Mult. 1 in 15 chance of +$20.",
+      "flavor": "Fortune favours the bold — or perhaps just the foolish.",
+      "icon": "🍀",
+      "effect": { "type": "chance-mult", "multChance": 0.2, "mult": 20, "moneyChance": 0.0667, "money": 20 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "foil",
+      "name": "Foil Card",
+      "description": "+50 Coins when scored",
+      "flavor": "Gleaming foil pressed into the card's surface — every coin brighter.",
+      "icon": "✨",
+      "effect": { "type": "add-coins", "amount": 50 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "holo",
+      "name": "Holo Card",
+      "description": "+10 Mult when scored",
+      "flavor": "The shifting hologram catches the eye and multiplies the power.",
+      "icon": "🌈",
+      "effect": { "type": "add-mult", "amount": 10 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "ancient",
+      "name": "Ancient Card",
+      "description": "Retriggered by the suit of the last played book",
+      "flavor": "This card remembers every hand that came before it.",
+      "icon": "📿",
+      "effect": { "type": "retrigger-by-suit" },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "runic",
+      "name": "Runic Card",
+      "description": "+15 Coins when scored. 1 in 4 chance for +2 Mult.",
+      "flavor": "Scratched with druidic marks — old power bleeds through.",
+      "icon": "ᚱ",
+      "effect": { "type": "add-coins", "amount": 15, "chanceAddMult": 0.25, "chanceMult": 2 },
+      "tags": ["enhancement"],
+      "unlocked": true
+    },
+    {
+      "id": "elemental_fire",
+      "name": "Fire Card",
+      "description": "×1.5 Mult when scored",
+      "flavor": "The fire element consumes doubt and multiplies conviction.",
+      "icon": "🔥",
+      "effect": { "type": "multiply-mult", "factor": 1.5 },
+      "tags": ["enhancement", "elemental"],
+      "unlocked": true
+    },
+    {
+      "id": "elemental_water",
+      "name": "Water Card",
+      "description": "+20 Coins when scored. If 2+ others of the same suit were played, earn $1.",
+      "flavor": "Water flows where it will — and carries coins with it.",
+      "icon": "💧",
+      "effect": { "type": "add-coins", "amount": 20, "suitBonus": true },
+      "tags": ["enhancement", "elemental"],
+      "unlocked": true
+    },
+    {
+      "id": "elemental_earth",
+      "name": "Earth Card",
+      "description": "+25 Coins when scored",
+      "flavor": "Rooted deep — the earth gives without asking.",
+      "icon": "🌿",
+      "effect": { "type": "add-coins", "amount": 25 },
+      "tags": ["enhancement", "elemental"],
+      "unlocked": true
+    },
+    {
+      "id": "bone",
+      "name": "Bone Card",
+      "description": "This card's rank coin value is doubled",
+      "flavor": "Stripped to the bone — what remains is pure and twice as weighty.",
+      "icon": "🦴",
+      "effect": { "type": "double-rank-coins" },
+      "tags": ["enhancement"],
+      "unlocked": true
+    }
+  ],
+  "seals": [
+    {
+      "id": "gold",
+      "name": "Gold Seal",
+      "description": "Earn $3 when this card is played",
+      "flavor": "A golden impression — every play pays out.",
+      "icon": "🟡",
+      "effect": { "type": "grant-money", "amount": 3 },
+      "tags": ["seal"],
+      "unlocked": true
+    },
+    {
+      "id": "red",
+      "name": "Red Seal",
+      "description": "Retrigger this card once",
+      "flavor": "Red wax seals a secret — play it twice to reveal both.",
+      "icon": "🔴",
+      "effect": { "type": "retrigger" },
+      "tags": ["seal"],
+      "unlocked": true
+    },
+    {
+      "id": "blue",
+      "name": "Blue Seal",
+      "description": "+3 Mult when held in hand",
+      "flavor": "Calm as deep water — its power held close.",
+      "icon": "🔵",
+      "effect": { "type": "held-add-mult", "amount": 3 },
+      "tags": ["seal"],
+      "unlocked": true
+    },
+    {
+      "id": "purple",
+      "name": "Purple Seal",
+      "description": "Creates a Totem card when discarded",
+      "flavor": "Cast it away — and something sacred rises in its place.",
+      "icon": "🟣",
+      "effect": { "type": "on-discard-create-totem" },
+      "tags": ["seal"],
+      "unlocked": true
+    }
+  ]
+}

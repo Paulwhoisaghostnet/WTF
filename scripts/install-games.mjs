@@ -791,8 +791,8 @@ async function main() {
     }
   }
 
-  // Preserve the existing extracted demo cartridges (pixel-runner, space-blocks)
-  // so they keep working even if the user never drops their zips into /games/.
+  // Preserve static cartridges that live outside games-sources so a manifest
+  // regeneration never makes an existing title disappear from Arcade/Console.
   registerLegacyCartridges(manifest, overrides);
   registerCuratedStaticCartridges(manifest, overrides);
 
@@ -858,6 +858,38 @@ function registerLegacyCartridges(manifest, overrides) {
         "Classic falling block puzzle. Clear lines, level up, chase high scores.",
       dir: "space-blocks",
     },
+    {
+      slug: "inverse-snake",
+      title: "Inverse Snake",
+      description: "A backwards snack chase where the apple hunts the snake.",
+      dir: "wtf/inverse-snake",
+      category: "arcade",
+      source: "wtf-console-stock",
+    },
+    {
+      slug: "backwards-pong",
+      title: "Backwards Pong",
+      description: "A flipped paddle duel where dodging the ball is half the joke.",
+      dir: "wtf/backwards-pong",
+      category: "arcade",
+      source: "wtf-console-stock",
+    },
+    {
+      slug: "mindwalk",
+      title: "MindWalk",
+      description: "AI-guided word-cloud exploration — follow concept trails powered by your own BYOK AI key. Created by skllzrmy.",
+      dir: "mindwalk",
+      category: "puzzle",
+      creditsPerPlay: 1,
+      source: "skullzarmy/mindwalk",
+      provenance: {
+        source: "wtf-creator",
+        creatorName: "skllzrmy",
+        tezosIdentity: "skllzrmy",
+        xHandle: "skllzrmy",
+        attributionRequired: true,
+      },
+    },
   ];
   for (const cart of legacy) {
     if (manifest.some((m) => m.slug === cart.slug)) continue;
@@ -872,8 +904,10 @@ function registerLegacyCartridges(manifest, overrides) {
       artifactUri: `/games/${cart.dir}/index.html`,
       thumbnailUri: override.thumbnailUri || null,
       kind: "html5",
-      source: `(extracted) ${cart.dir}/`,
-      ...(override.provenance ? { provenance: override.provenance } : {}),
+      source: override.source || cart.source || `(extracted) ${cart.dir}/`,
+      ...(cart.category ? { category: cart.category } : {}),
+      ...(cart.creditsPerPlay ? { creditsPerPlay: cart.creditsPerPlay } : {}),
+      ...((override.provenance || cart.provenance) ? { provenance: override.provenance || cart.provenance } : {}),
     });
   }
 }

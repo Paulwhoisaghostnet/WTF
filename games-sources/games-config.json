@@ -23,5 +23,11 @@
     "slug": "adrift",
     "title": "Adrift",
     "description": "An immersive art experience of a survivor stranded on a raft in an endless ocean."
+  },
+  "pucas-fortune.zip": {
+    "slug": "pucas-fortune",
+    "title": "Púca’s Fortune",
+    "description": "A Celtic-folklore roguelike card game with Poker, Rummy, and Cribbage runs, branching encounters, and build-defining Púcas.",
+    "thumbnailUri": "/games/installed/pucas-fortune/thumbnail.png"
   }
 }

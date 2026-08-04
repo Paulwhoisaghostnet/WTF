@@ -9735,3 +9735,19 @@ Copy this when adding a new issue:
   - Completed for current production; keep actor-backed fixtures confined to isolated E2E databases.
 - Verification idea:
   - Confirm the public Club Dues API exposes only real live rows and add a production-data check that rejects placeholder KT1 values.
+
+### WTF-BB-515 - Cartridge manifest regeneration dropped static Arcade games
+
+- Category: Arcade / cartridge packaging
+- Status: Verified
+- Owner/Session: Codex Púca’s Fortune integration
+- Score: C_2 + F_3 + S_2 + P_2 = 9
+- Evidence:
+  - Running `node scripts/install-games.mjs` for the new Púca’s Fortune package removed Inverse Snake, Backwards Pong, and MindWalk from `public/games/installed/manifest.json` because the generator preserved only Pixel Runner and Space Blocks.
+  - `registerLegacyCartridges` now owns all five static cartridges, including category, source, credit, and provenance metadata.
+- Why it matters:
+  - Adding or rebuilding one game could silently remove unrelated playable titles from the public Arcade catalog.
+- Likely correction direction:
+  - Completed: make every non-package static cartridge an explicit generator input and lock the manifest set with a package policy regression.
+- Verification idea:
+  - Completed by rerunning the installer and asserting all legacy slugs plus Púca’s Fortune remain in the generated manifest.

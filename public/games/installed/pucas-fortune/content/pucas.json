@@ -1,0 +1,719 @@
+{
+  "$schema": "./schemas/puca.schema.json",
+  "version": "1.0.0",
+  "pucas": [
+    {
+      "id": "puca_base",
+      "name": "Púca",
+      "description": "+4 Mult",
+      "flavor": "The foundation of every great build.",
+      "rarity": "common",
+      "cost": 2,
+      "icon": "🃏",
+      "unlocked": true,
+      "tags": ["mult"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": 4 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_greedy",
+      "name": "Greedy Púca",
+      "description": "Played Coin cards give +3 Mult each",
+      "flavor": "Always wants more.",
+      "rarity": "common",
+      "cost": 5,
+      "icon": "COIN",
+      "unlocked": true,
+      "tags": ["mult", "suit"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "played:suit:coin", "value": 3 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_lusty",
+      "name": "Lusty Púca",
+      "description": "Played Blood cards give +3 Mult each",
+      "flavor": "Follows the pulse.",
+      "rarity": "common",
+      "cost": 5,
+      "icon": "BLOOD",
+      "unlocked": true,
+      "tags": ["mult", "suit"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "played:suit:blood", "value": 3 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_wrathful",
+      "name": "Wrathful Púca",
+      "description": "Played Spear cards give +3 Mult each",
+      "flavor": "Darkness within.",
+      "rarity": "common",
+      "cost": 5,
+      "icon": "SPEAR",
+      "unlocked": true,
+      "tags": ["mult", "suit"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "played:suit:spear", "value": 3 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_gluttonous",
+      "name": "Gluttonous Púca",
+      "description": "Played Clover cards give +3 Mult each",
+      "flavor": "Never satisfied.",
+      "rarity": "common",
+      "cost": 5,
+      "icon": "CLOVER",
+      "unlocked": true,
+      "tags": ["mult", "suit"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "played:suit:clover", "value": 3 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_jolly",
+      "name": "Jolly Púca",
+      "description": "+8 Mult if played hand contains a Pair",
+      "flavor": "Simple pleasures.",
+      "rarity": "common",
+      "cost": 3,
+      "icon": "😄",
+      "unlocked": true,
+      "tags": ["mult", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Pair", "Two Pair", "Full House", "Four of a Kind", "Five of a Kind", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-mult", "amount": 8 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_zany",
+      "name": "Zany Púca",
+      "description": "+12 Mult if played hand contains Three of a Kind",
+      "flavor": "Three's company.",
+      "rarity": "common",
+      "cost": 4,
+      "icon": "🤪",
+      "unlocked": true,
+      "tags": ["mult", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Three of a Kind", "Full House", "Five of a Kind", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-mult", "amount": 12 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_mad",
+      "name": "Mad Púca",
+      "description": "+10 Mult if played hand contains Two Pair",
+      "flavor": "Twice as mad.",
+      "rarity": "common",
+      "cost": 4,
+      "icon": "😤",
+      "unlocked": true,
+      "tags": ["mult", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Two Pair", "Full House", "Flush House"] },
+          "actions": [{ "type": "add-mult", "amount": 10 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_crazy",
+      "name": "Crazy Púca",
+      "description": "+12 Mult if played hand contains a Straight",
+      "flavor": "Always in sequence.",
+      "rarity": "common",
+      "cost": 4,
+      "icon": "😜",
+      "unlocked": true,
+      "tags": ["mult", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Straight", "Straight Flush", "Royal Flush"] },
+          "actions": [{ "type": "add-mult", "amount": 12 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_droll",
+      "name": "Droll Púca",
+      "description": "+10 Mult if played hand contains a Flush",
+      "flavor": "All of one mind.",
+      "rarity": "common",
+      "cost": 4,
+      "icon": "😑",
+      "unlocked": true,
+      "tags": ["mult", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Flush", "Straight Flush", "Royal Flush", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-mult", "amount": 10 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_sly",
+      "name": "Sly Púca",
+      "description": "+50 Coins if played hand contains a Pair",
+      "flavor": "Worth its weight.",
+      "rarity": "uncommon",
+      "cost": 3,
+      "icon": "🦊",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Pair", "Two Pair", "Full House", "Four of a Kind", "Five of a Kind", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-chips", "amount": 50 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_wily",
+      "name": "Wily Púca",
+      "description": "+100 Coins if played hand contains Three of a Kind",
+      "flavor": "Cunning runs deep.",
+      "rarity": "uncommon",
+      "cost": 4,
+      "icon": "🐺",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Three of a Kind", "Full House", "Five of a Kind", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-chips", "amount": 100 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_clever",
+      "name": "Clever Púca",
+      "description": "+80 Coins if played hand contains Two Pair",
+      "flavor": "Double the cunning.",
+      "rarity": "uncommon",
+      "cost": 4,
+      "icon": "🦉",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Two Pair", "Full House", "Flush House"] },
+          "actions": [{ "type": "add-chips", "amount": 80 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_devious",
+      "name": "Devious Púca",
+      "description": "+100 Coins if played hand contains a Straight",
+      "flavor": "The long con.",
+      "rarity": "uncommon",
+      "cost": 4,
+      "icon": "🐍",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Straight", "Straight Flush", "Royal Flush"] },
+          "actions": [{ "type": "add-chips", "amount": 100 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_crafty",
+      "name": "Crafty Púca",
+      "description": "+80 Coins if played hand contains a Flush",
+      "flavor": "Perfectly matched.",
+      "rarity": "uncommon",
+      "cost": 4,
+      "icon": "🦝",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "hand-type"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "handName": ["Flush", "Straight Flush", "Royal Flush", "Flush House", "Flush Five"] },
+          "actions": [{ "type": "add-chips", "amount": 80 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_half",
+      "name": "Half Púca",
+      "description": "+20 Mult if played hand has 3 or fewer cards",
+      "flavor": "Less is more.",
+      "rarity": "rare",
+      "cost": 5,
+      "icon": "🌗",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "played:count": { "op": "lte", "value": 3 } },
+          "actions": [{ "type": "add-mult", "amount": 20 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_stencil",
+      "name": "Púca Stencil",
+      "description": "×1 Mult per empty Púca slot (stacks with copies)",
+      "flavor": "The void speaks.",
+      "rarity": "rare",
+      "cost": 8,
+      "icon": "🖼️",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult", "slots"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "multiply-mult", "amount": { "per": "empty:puca-slots", "value": 1 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_four_fingers",
+      "name": "Four Fingers",
+      "description": "All Flushes and Straights can be made with 4 cards",
+      "flavor": "Who needs five?",
+      "rarity": "rare",
+      "cost": 7,
+      "icon": "🤘",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["permanent", "hand-shape"],
+      "abilities": [
+        {
+          "trigger": "permanent",
+          "actions": [{ "type": "apply-status", "status": "four-fingers" }]
+        }
+      ]
+    },
+    {
+      "id": "puca_mime",
+      "name": "Mime",
+      "description": "Retrigger all card abilities for cards held in hand",
+      "flavor": "Silent but effective.",
+      "rarity": "rare",
+      "cost": 5,
+      "icon": "🎭",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["retrigger"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "retrigger", "target": "held" }]
+        }
+      ]
+    },
+    {
+      "id": "puca_banner",
+      "name": "Banner",
+      "description": "+30 Coins per remaining Discard",
+      "flavor": "The more you hold back, the more you gain.",
+      "rarity": "uncommon",
+      "cost": 5,
+      "icon": "🏳️",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-chips", "amount": { "per": "remaining:discards", "value": 30 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_mystic_summit",
+      "name": "Mystic Summit",
+      "description": "+15 Mult when 0 Discards remaining",
+      "flavor": "The apex of restraint.",
+      "rarity": "uncommon",
+      "cost": 5,
+      "icon": "🗻",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "remaining:discards": { "op": "eq", "value": 0 } },
+          "actions": [{ "type": "add-mult", "amount": 15 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_ring_master",
+      "name": "Ring Master",
+      "description": "Scored face cards give +15 Coins each",
+      "flavor": "Under the big top.",
+      "rarity": "uncommon",
+      "cost": 5,
+      "icon": "🎩",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["chips", "rank"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-chips", "amount": { "per": "played:rank:face", "value": 15 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_fibonacci",
+      "name": "Fibonacci",
+      "description": "Each played 2, 3, 5, 8, or Ace gives +8 Mult",
+      "flavor": "Nature's secret formula.",
+      "rarity": "uncommon",
+      "cost": 8,
+      "icon": "🌀",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["build:fifteen", "build:kin", "mult", "rank"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:fibonacci", "value": 8 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_steel",
+      "name": "Steel Púca",
+      "description": "+0.2 Mult for each Steel Card in your full deck",
+      "flavor": "Tempered by hardship.",
+      "rarity": "uncommon",
+      "cost": 7,
+      "icon": "⚙️",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult", "deck"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [{ "type": "add-mult", "amount": { "per": "deck:enhanced:steel", "value": 0.2 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_blackboard",
+      "name": "Blackboard",
+      "description": "×3 Mult if all held cards are Night suits",
+      "flavor": "Chalk and darkness.",
+      "rarity": "rare",
+      "cost": 6,
+      "icon": "🖊️",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult", "suit"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "condition": { "held:all:suit": ["spear", "clover", "bone", "crow"] },
+          "actions": [{ "type": "multiply-mult", "amount": 3 }]
+        }
+      ]
+    },
+    {
+      "id": "puca_vampire",
+      "name": "Vampire",
+      "description": "Gains ×0.1 Mult per scored card Enhancement (max ×5)",
+      "flavor": "Feeds on the power of others.",
+      "rarity": "rare",
+      "cost": 7,
+      "icon": "🧛",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["mult", "leveling"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [
+            { "type": "increment-counter", "key": "stacks", "by": { "per": "played:enhanced:any", "value": 1 }, "maximum": 50 },
+            { "type": "multiply-mult", "amount": { "counter": "stacks", "valuePer": 0.1, "minimum": 1, "maximum": 5 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "puca_cloud_9",
+      "name": "Cloud 9",
+      "description": "Earn $1 for each 9 in your full deck at end of round",
+      "flavor": "On top of the world.",
+      "rarity": "rare",
+      "cost": 7,
+      "icon": "☁️",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["money", "deck"],
+      "abilities": [
+        {
+          "trigger": "every-round",
+          "actions": [{ "type": "generate-money", "amount": { "per": "deck:rank:9", "value": 1 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_triboulet",
+      "name": "Triboulet",
+      "description": "Scored Kings and Queens each give ×2 Mult",
+      "flavor": "The court jester holds all power.",
+      "rarity": "legendary",
+      "cost": 20,
+      "icon": "🎪",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "tags": ["mult", "rank", "legendary"],
+      "abilities": [
+        {
+          "trigger": "on-score",
+          "actions": [
+            {
+              "type": "multiply-mult",
+              "amount": 2,
+              "filter": { "rank": ["K", "Q"], "played": true },
+              "chained": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "puca_yorick",
+      "name": "Yorick",
+      "description": "Gains ×1 Mult every 23 Discards",
+      "flavor": "Alas, poor Yorick.",
+      "rarity": "legendary",
+      "cost": 20,
+      "icon": "💀",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 7 },
+      "tags": ["mult", "leveling", "legendary"],
+      "abilities": [
+        {
+          "trigger": "on-discard",
+          "actions": [{ "type": "increment-counter", "key": "discards" }]
+        },
+        {
+          "trigger": "on-discard-threshold",
+          "threshold": 23,
+          "counterKey": "discards",
+          "actions": [
+            { "type": "increment-counter", "key": "stacks" },
+            { "type": "reset-counter", "key": "discards" }
+          ]
+        },
+        {
+          "trigger": "on-score",
+          "condition": { "counter": { "key": "stacks", "op": "gte", "value": 1 } },
+          "actions": [{ "type": "multiply-mult", "amount": { "counter": "stacks", "valuePer": 1, "minimum": 1 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_canio",
+      "name": "Caino",
+      "description": "Gains ×1 Mult when a face card is destroyed",
+      "flavor": "Loss fuels the fire.",
+      "rarity": "legendary",
+      "cost": 20,
+      "icon": "👑",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 8 },
+      "tags": ["mult", "leveling", "legendary", "destruction"],
+      "abilities": [
+        {
+          "trigger": "on-card-destroyed",
+          "condition": { "destroyed:rank": ["J", "Q", "K"] },
+          "actions": [{ "type": "increment-counter", "key": "stacks" }]
+        },
+        {
+          "trigger": "on-score",
+          "condition": { "counter": { "key": "stacks", "op": "gte", "value": 1 } },
+          "actions": [{ "type": "multiply-mult", "amount": { "counter": "stacks", "valuePer": 1, "minimum": 1 } }]
+        }
+      ]
+    },
+    {
+      "id": "puca_bog_lantern", "name": "Bog Lantern", "description": "+18 Coins when exactly 3 cards are played", "flavor": "It marks the safe stones, most nights.", "rarity": "common", "cost": 4, "icon": "BL", "unlocked": true, "tags": ["chips", "count"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "eq", "value": 3 } }, "actions": [{ "type": "add-chips", "amount": 18 }] }]
+    },
+    {
+      "id": "puca_hawthorn_guest", "name": "Hawthorn Guest", "description": "+5 Mult per Ace played", "flavor": "Never thank it twice.", "rarity": "common", "cost": 4, "icon": "HG", "unlocked": true, "tags": ["build:fifteen", "build:road", "mult", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:A", "value": 5 } }] }]
+    },
+    {
+      "id": "puca_selkie_debt", "name": "Selkie's Debt", "description": "+4 Mult per card held in hand", "flavor": "Every promise returns with the tide.", "rarity": "common", "cost": 5, "icon": "SD", "unlocked": true, "tags": ["build:weave", "build:crib", "mult", "held"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "held:count", "value": 4 } }] }]
+    },
+    {
+      "id": "puca_rowan_knave", "name": "Rowan Knave", "description": "+7 Mult per Jack played", "flavor": "A red branch tucked beneath a crooked cap.", "rarity": "common", "cost": 4, "icon": "RK", "unlocked": true, "tags": ["build:turn", "build:kin", "mult", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:J", "value": 7 } }] }]
+    },
+    {
+      "id": "puca_moon_hare", "name": "Moon Hare", "description": "+24 Coins when one card is played", "flavor": "It crosses the moon in a single bound.", "rarity": "common", "cost": 4, "icon": "MH", "unlocked": true, "tags": ["chips", "count"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "eq", "value": 1 } }, "actions": [{ "type": "add-chips", "amount": 24 }] }]
+    },
+    {
+      "id": "puca_coin_crow", "name": "Coin Crow", "description": "+2 Coins per played card", "flavor": "Bright things are never truly lost.", "rarity": "common", "cost": 3, "icon": "CC", "unlocked": true, "tags": ["chips", "count"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-chips", "amount": { "per": "played:count", "value": 2 } }] }]
+    },
+    {
+      "id": "puca_mossback", "name": "Mossback", "description": "+12 Mult with 3 or more discards remaining", "flavor": "Slow roots conceal a quick mind.", "rarity": "common", "cost": 4, "icon": "MB", "unlocked": true, "tags": ["mult", "discard"],
+      "abilities": [{ "trigger": "on-score", "condition": { "remaining:discards": { "op": "gte", "value": 3 } }, "actions": [{ "type": "add-mult", "amount": 12 }] }]
+    },
+    {
+      "id": "puca_candle_thief", "name": "Candle Thief", "description": "+22 Mult on the final book", "flavor": "The last flame belongs to it.", "rarity": "uncommon", "cost": 6, "icon": "CT", "unlocked": false, "tags": ["mult", "books"],
+      "abilities": [{ "trigger": "on-score", "condition": { "remaining:hands": { "op": "lte", "value": 1 } }, "actions": [{ "type": "add-mult", "amount": 22 }] }]
+    },
+    {
+      "id": "puca_oath_hound", "name": "Oath Hound", "description": "+9 Mult per King played", "flavor": "It remembers the oldest crown.", "rarity": "uncommon", "cost": 6, "icon": "OH", "unlocked": false, "tags": ["mult", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:K", "value": 9 } }] }]
+    },
+    {
+      "id": "puca_white_hart", "name": "White Hart", "description": "×1.6 Mult when exactly 5 cards are played", "flavor": "A glimpse is worth a lifetime's chase.", "rarity": "uncommon", "cost": 7, "icon": "WH", "unlocked": false, "tags": ["xmult", "count"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "eq", "value": 5 } }, "actions": [{ "type": "multiply-mult", "amount": 1.6 }] }]
+    },
+    {
+      "id": "puca_peat_piper", "name": "Peat Piper", "description": "+6 Mult per Clover held in hand", "flavor": "The low tune wakes buried roots.", "rarity": "uncommon", "cost": 6, "icon": "PP", "unlocked": false, "tags": ["mult", "held", "suit"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "held:suit:clover", "value": 6 } }] }]
+    },
+    {
+      "id": "puca_wren_king", "name": "Wren King", "description": "+10 Mult per Queen played", "flavor": "Smallest in the hedge, highest at court.", "rarity": "uncommon", "cost": 6, "icon": "WK", "unlocked": false, "tags": ["mult", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:Q", "value": 10 } }] }]
+    },
+    {
+      "id": "puca_hazel_witch", "name": "Hazel Witch", "description": "+11 Mult per Fibonacci rank played", "flavor": "She counts spirals in every shell.", "rarity": "uncommon", "cost": 7, "icon": "HW", "unlocked": false, "tags": ["build:fifteen", "build:road", "mult", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "played:rank:fibonacci", "value": 11 } }] }]
+    },
+    {
+      "id": "puca_dusk_mare", "name": "Dusk Mare", "description": "×2 Mult when all held cards are Night suits", "flavor": "Night gathers beneath its hooves.", "rarity": "uncommon", "cost": 7, "icon": "DM", "unlocked": false, "tags": ["xmult", "held", "suit"],
+      "abilities": [{ "trigger": "on-score", "condition": { "held:all:suit": ["spear", "clover", "bone", "crow"] }, "actions": [{ "type": "multiply-mult", "amount": 2 }] }]
+    },
+    {
+      "id": "puca_well_keeper", "name": "Well Keeper", "description": "+2 Coins per remaining Book", "flavor": "A deep purse answers a deep well.", "rarity": "uncommon", "cost": 6, "icon": "WK", "unlocked": false, "tags": ["chips", "books"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-chips", "amount": { "per": "remaining:hands", "value": 2 } }] }]
+    },
+    {
+      "id": "puca_redcap_gambler", "name": "Redcap Gambler", "description": "1 in 3 chance for ×3 Mult", "flavor": "It always knows which cup hides the thorn.", "rarity": "rare", "cost": 8, "icon": "RG", "unlocked": false, "tags": ["xmult", "chance"],
+      "abilities": [{ "trigger": "on-score", "condition": { "chance": 0.333 }, "actions": [{ "type": "multiply-mult", "amount": 3 }] }]
+    },
+    {
+      "id": "puca_green_man", "name": "The Green Man", "description": "+7 Mult per empty Púca slot", "flavor": "An empty place is room to grow.", "rarity": "rare", "cost": 8, "icon": "GM", "unlocked": false, "tags": ["mult", "slots"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "empty:puca-slots", "value": 7 } }] }]
+    },
+    {
+      "id": "puca_banshee_echo", "name": "Banshee's Echo", "description": "×2.2 Mult with no discards remaining", "flavor": "The second cry is always yours.", "rarity": "rare", "cost": 9, "icon": "BE", "unlocked": false, "tags": ["build:weave", "build:peg", "xmult", "discard"],
+      "abilities": [{ "trigger": "on-score", "condition": { "remaining:discards": { "op": "eq", "value": 0 } }, "actions": [{ "type": "multiply-mult", "amount": 2.2 }] }]
+    },
+    {
+      "id": "puca_barrow_cat", "name": "Barrow Cat", "description": "+4 Coins per 9 in the full deck", "flavor": "Nine lives sleep beneath the mound.", "rarity": "rare", "cost": 8, "icon": "BC", "unlocked": false, "tags": ["chips", "deck", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-chips", "amount": { "per": "deck:rank:9", "value": 4 } }] }]
+    },
+    {
+      "id": "puca_silver_salmon", "name": "Silver Salmon", "description": "+15 Mult for every Ace in the full deck", "flavor": "Wisdom swims against the current.", "rarity": "rare", "cost": 9, "icon": "SS", "unlocked": false, "tags": ["build:fifteen", "build:road", "mult", "deck", "rank"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "add-mult", "amount": { "per": "deck:rank:A", "value": 15 } }] }]
+    },
+    {
+      "id": "puca_cailleach", "name": "The Cailleach", "description": "×2.5 Mult when 2 or fewer cards are played", "flavor": "Winter asks very little and takes everything.", "rarity": "legendary", "cost": 18, "icon": "CA", "unlocked": false, "tags": ["xmult", "count", "legendary"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "lte", "value": 2 } }, "actions": [{ "type": "multiply-mult", "amount": 2.5 }] }]
+    },
+    {
+      "id": "puca_balor_eye", "name": "Balor's Eye", "description": "×1.4 Mult for each face card played", "flavor": "The lid lifts and kings become ash.", "rarity": "legendary", "cost": 20, "icon": "BE", "unlocked": false, "tags": ["xmult", "rank", "legendary"],
+      "abilities": [{ "trigger": "on-score", "actions": [{ "type": "multiply-mult", "amount": 1.4, "filter": { "rank": ["J", "Q", "K"], "played": true }, "chained": true }] }]
+    },
+    {
+      "id": "puca_dagda_harp", "name": "Dagda's Harp", "description": "+40 Mult when a Straight Flush is played", "flavor": "Its four songs order the seasons.", "rarity": "legendary", "cost": 20, "icon": "DH", "unlocked": false, "tags": ["mult", "hand-type", "legendary"],
+      "abilities": [{ "trigger": "on-score", "condition": { "handName": ["Straight Flush", "Royal Flush"] }, "actions": [{ "type": "add-mult", "amount": 40 }] }]
+    },
+    {
+      "id": "puca_knot_keeper", "name": "Knot Keeper", "description": "[Kin] +2 Mult when a Set scores", "rarity": "common", "cost": 4, "icon": "KK", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:kin", "set", "mult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "handName": "Set" }, "actions": [{ "type": "add-mult", "amount": 2 }] }]
+    },
+    {
+      "id": "puca_briar_runner", "name": "Briar Runner", "description": "[Road] +4 Mult when a Run or Pure Run scores", "rarity": "common", "cost": 4, "icon": "BR", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:road", "run", "mult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "handName": ["Run", "Pure Run"] }, "actions": [{ "type": "add-mult", "amount": 4 }] }]
+    },
+    {
+      "id": "puca_clan_crow", "name": "Clan Crow", "description": "[Kin] Sets gain +5 Coins per card", "rarity": "uncommon", "cost": 6, "icon": "CC", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:kin", "build:weave", "set", "coins"],
+      "abilities": [{ "trigger": "on-score", "condition": { "handName": "Set" }, "actions": [{ "type": "add-chips", "amount": { "per": "played:count", "value": 5 } }] }]
+    },
+    {
+      "id": "puca_path_fox", "name": "Path Fox", "description": "[Road] Runs gain +10 Coins per card", "rarity": "uncommon", "cost": 6, "icon": "PF", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:road", "build:weave", "run", "coins"],
+      "abilities": [{ "trigger": "on-score", "condition": { "handName": ["Run", "Pure Run"] }, "actions": [{ "type": "add-chips", "amount": { "per": "played:count", "value": 10 } }] }]
+    },
+    {
+      "id": "puca_long_weaver", "name": "Long Weaver", "description": "[Weave] +3 Mult per card in melds of 5 or more", "rarity": "rare", "cost": 8, "icon": "LW", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:weave", "build:kin", "build:road", "long-meld", "mult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "gte", "value": 5 } }, "actions": [{ "type": "add-mult", "amount": { "per": "played:count", "value": 3 } }] }]
+    },
+    {
+      "id": "puca_grand_weave", "name": "Grand Weave", "description": "[Weave] ×2 Mult for a 5-card or longer meld", "rarity": "legendary", "cost": 18, "icon": "GW", "unlocked": true, "modes": ["rummy"], "tags": ["mode:rummy", "build:weave", "build:kin", "build:road", "long-meld", "xmult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "played:count": { "op": "gte", "value": 5 } }, "actions": [{ "type": "multiply-mult", "amount": 2 }] }]
+    },
+    {
+      "id": "puca_fifteen_fiddler", "name": "Fifteen Fiddler", "description": "[Fifteen] +0.6 Mult for each Fifteen in the scored hand", "rarity": "common", "cost": 4, "icon": "FF", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:fifteen", "build:turn", "fifteens", "mult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "fifteens", "op": "gte", "value": 1 } }, "actions": [{ "type": "add-mult", "amount": { "per": "cribbage:fifteens", "value": 0.6 } }] }]
+    },
+    {
+      "id": "puca_peg_hare", "name": "Peg Hare", "description": "[Peg] +5 Coins for every pegging point earned", "rarity": "common", "cost": 4, "icon": "PH", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:peg", "pegging", "coins"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "pegging", "op": "gte", "value": 1 } }, "actions": [{ "type": "add-chips", "amount": { "per": "cribbage:pegging", "value": 5 } }] }]
+    },
+    {
+      "id": "puca_knob_goblin", "name": "Knob Goblin", "description": "[Turn] ×2 Mult when this Book scores Knobs", "rarity": "uncommon", "cost": 7, "icon": "KG", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:turn", "build:crib", "knobs", "xmult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "knobs", "op": "gte", "value": 1 } }, "actions": [{ "type": "multiply-mult", "amount": 2 }] }]
+    },
+    {
+      "id": "puca_heel_hound", "name": "Heel Hound", "description": "[Turn] +6 Mult when the Turn card scores Heels", "rarity": "uncommon", "cost": 7, "icon": "HH", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:turn", "heels", "mult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "heels", "op": "gte", "value": 2 } }, "actions": [{ "type": "add-mult", "amount": 6 }] }]
+    },
+    {
+      "id": "puca_crib_mother", "name": "Crib Mother", "description": "[Crib] ×2 Mult on Double Books 3 and 6", "rarity": "rare", "cost": 9, "icon": "CM", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:crib", "build:fifteen", "double-book", "xmult"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "double-book", "op": "eq", "value": 1 } }, "actions": [{ "type": "multiply-mult", "amount": 2 }] }]
+    },
+    {
+      "id": "puca_thirty_one_bell", "name": "Thirty-One Bell", "description": "[Peg] +75 Coins each time your pegging card makes 31", "rarity": "rare", "cost": 9, "icon": "31", "unlocked": true, "modes": ["cribbage"], "tags": ["mode:cribbage", "build:peg", "build:turn", "thirty-one", "coins"],
+      "abilities": [{ "trigger": "on-score", "condition": { "cribbage:metric": { "metric": "thirty-one", "op": "gte", "value": 1 } }, "actions": [{ "type": "add-chips", "amount": { "per": "cribbage:thirty-one", "value": 75 } }] }]
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+{
+  "$schema": "./schemas/boss.schema.json",
+  "version": "1.0.0",
+  "bosses": [
+    {
+      "id": "the_hook",
+      "name": "The Hook",
+      "description": "Discards 2 randomly selected cards after each hand played",
+      "flavor": "What you lose, it keeps.",
+      "icon": "🪝",
+      "difficulty": 1,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["discard"],
+      "effects": [
+        { "type": "discard-after-play", "count": 2, "selection": "random" }
+      ]
+    },
+    {
+      "id": "the_ox",
+      "name": "The Ox",
+      "description": "Playing the most played hand this run sets money to $0",
+      "flavor": "Stubbornness is its own punishment.",
+      "icon": "🐂",
+      "difficulty": 1,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["money"],
+      "effects": [
+        { "type": "punish-most-played-hand", "punishment": "zero-money" }
+      ]
+    },
+    {
+      "id": "the_house",
+      "name": "The House",
+      "description": "First hand is drawn face down",
+      "flavor": "You can't see what's coming.",
+      "icon": "🏠",
+      "difficulty": 1,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["face-down"],
+      "effects": [
+        { "type": "face-down-first-hand" }
+      ]
+    },
+    {
+      "id": "the_wall",
+      "name": "The Wall",
+      "description": "Extra large encounter — 4× coin target",
+      "flavor": "An insurmountable obstacle.",
+      "icon": "🧱",
+      "difficulty": 2,
+      "chipMultiplier": 4,
+      "unlocked": true,
+      "tags": ["target"],
+      "effects": []
+    },
+    {
+      "id": "the_wheel",
+      "name": "The Wheel",
+      "description": "1 in 7 cards are drawn face down",
+      "flavor": "Uncertainty spins eternal.",
+      "icon": "🎡",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["face-down"],
+      "effects": [
+        { "type": "face-down-random", "probability": 0.143 }
+      ]
+    },
+    {
+      "id": "the_arm",
+      "name": "The Arm",
+      "description": "Decrease level of played poker hand by 1",
+      "flavor": "Your strength works against you.",
+      "icon": "💪",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["debuff", "hand-level"],
+      "effects": [
+        { "type": "reduce-hand-level-after-play", "amount": 1 }
+      ]
+    },
+    {
+      "id": "the_club",
+      "name": "The Clover",
+      "description": "All Clover cards are debuffed",
+      "flavor": "One suit falls out of favour.",
+      "icon": "☘",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["debuff", "suit"],
+      "effects": [
+        { "type": "debuff-suit", "suit": "clover" }
+      ]
+    },
+    {
+      "id": "the_goad",
+      "name": "The Goad",
+      "description": "All Spear cards are debuffed",
+      "flavor": "Prodded into weakness.",
+      "icon": "⟑",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["debuff", "suit"],
+      "effects": [
+        { "type": "debuff-suit", "suit": "spear" }
+      ]
+    },
+    {
+      "id": "the_window",
+      "name": "The Window",
+      "description": "All Coin cards are debuffed",
+      "flavor": "See-through strength.",
+      "icon": "🪟",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["debuff", "suit"],
+      "effects": [
+        { "type": "debuff-suit", "suit": "coin" }
+      ]
+    },
+    {
+      "id": "the_serpent",
+      "name": "The Serpent",
+      "description": "All Blood cards are debuffed",
+      "flavor": "Poison in the blood.",
+      "icon": "🐍",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["debuff", "suit"],
+      "effects": [
+        { "type": "debuff-suit", "suit": "blood" }
+      ]
+    },
+    {
+      "id": "the_fish",
+      "name": "The Fish",
+      "description": "Cards are drawn from the deck after each hand played",
+      "flavor": "The deck never settles.",
+      "icon": "🐟",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["draw"],
+      "effects": [
+        { "type": "redraw-after-play" }
+      ]
+    },
+    {
+      "id": "the_psychic",
+      "name": "The Psychic",
+      "description": "Must play exactly 5 cards",
+      "flavor": "The universe demands completion.",
+      "icon": "🔮",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["constraint"],
+      "effects": [
+        { "type": "require-exact-cards", "count": 5 }
+      ]
+    },
+    {
+      "id": "the_water",
+      "name": "The Water",
+      "description": "Start with 0 Discards",
+      "flavor": "No second chances.",
+      "icon": "💧",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": true,
+      "tags": ["constraint", "discard"],
+      "effects": [
+        { "type": "set-discards", "value": 0 }
+      ]
+    },
+    {
+      "id": "the_manacle",
+      "name": "The Manacle",
+      "description": "−1 Hand Size",
+      "flavor": "Constrained from the start.",
+      "icon": "⛓️",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 3 },
+      "tags": ["constraint"],
+      "effects": [
+        { "type": "modify-hand-size", "delta": -1 }
+      ]
+    },
+    {
+      "id": "the_eye",
+      "name": "The Eye",
+      "description": "No repeat hand types this round",
+      "flavor": "It never forgets.",
+      "icon": "👁️",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 5 },
+      "tags": ["constraint"],
+      "effects": [
+        { "type": "no-repeat-hands" }
+      ]
+    },
+    {
+      "id": "the_mouth",
+      "name": "The Mouth",
+      "description": "Play only 1 hand type this round",
+      "flavor": "Speak only one language.",
+      "icon": "👄",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 5 },
+      "tags": ["constraint"],
+      "effects": [
+        { "type": "lock-first-hand-type" }
+      ]
+    },
+    {
+      "id": "the_plant",
+      "name": "The Plant",
+      "description": "All face cards are debuffed",
+      "flavor": "Royalty reduced to roots.",
+      "icon": "🌱",
+      "difficulty": 2,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["debuff"],
+      "effects": [
+        { "type": "debuff-rank", "ranks": ["J", "Q", "K"] }
+      ]
+    },
+    {
+      "id": "the_needle",
+      "name": "The Needle",
+      "description": "Play only 1 hand this round",
+      "flavor": "One shot. Make it count.",
+      "icon": "🪡",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "tags": ["constraint"],
+      "effects": [
+        { "type": "set-hands", "value": 1 }
+      ]
+    },
+    {
+      "id": "the_flint",
+      "name": "The Flint",
+      "description": "Base Coins and Mult are halved",
+      "flavor": "Even the foundation cracks.",
+      "icon": "🪨",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "tags": ["debuff", "base"],
+      "effects": [
+        { "type": "halve-base-values" }
+      ]
+    },
+    {
+      "id": "the_mark",
+      "name": "The Mark",
+      "description": "All face cards are drawn face down",
+      "flavor": "The royals hide their faces.",
+      "icon": "🎭",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 7 },
+      "tags": ["face-down"],
+      "effects": [
+        { "type": "face-down-rank", "ranks": ["J", "Q", "K"] }
+      ]
+    },
+    {
+      "id": "the_pillar",
+      "name": "The Pillar",
+      "description": "Cards played previously this stage are debuffed",
+      "flavor": "What's been played cannot help again.",
+      "icon": "🏛️",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 7 },
+      "tags": ["debuff"],
+      "effects": [
+        { "type": "debuff-played-cards" }
+      ]
+    },
+    {
+      "id": "verdant_leaf",
+      "name": "Verdant Leaf",
+      "description": "All cards are debuffed until 1 Púca is sold",
+      "flavor": "Balance must be restored.",
+      "icon": "🍃",
+      "difficulty": 3,
+      "chipMultiplier": 2,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 8 },
+      "tags": ["debuff", "joker"],
+      "effects": [
+        { "type": "debuff-all-until", "condition": "joker-sold" }
+      ]
+    }
+  ]
+}

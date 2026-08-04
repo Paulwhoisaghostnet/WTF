@@ -934,7 +934,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "arcade console score and report loop",
     domain: "WTF Arcade, WTF Console, and Game Studio SDK",
-    routes: ["/arcade", "/console", "/game-studio", "/admin"],
+    routes: ["/arcade", "/games/installed/pucas-fortune/index.html", "/console", "/game-studio", "/admin"],
     eventHandles: [
       "arcade.catalog.viewed",
       "arcade.play_status.viewed",

@@ -1,0 +1,292 @@
+{
+  "$schema": "./schemas/spectral.schema.json",
+  "version": "1.0.0",
+  "spectrals": [
+    {
+      "id": "familiar",
+      "name": "Familiar",
+      "description": "Destroy 1 selected card, add 3 random Enhanced face cards to your deck",
+      "flavor": "Sacrifice the weak, gain the strong.",
+      "icon": "🐱",
+      "cost": 4,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["destroy", "create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "destroy-cards", "target": "selected", "maxTargets": 1 },
+            { "type": "generate-cards", "target": "deck", "count": 3, "filter": { "rank": ["J", "Q", "K"] }, "randomEnhancement": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grim",
+      "name": "Grim",
+      "description": "Destroy 1 selected card, add 2 random Enhanced Aces to your deck",
+      "flavor": "An ace in the grave.",
+      "icon": "💀",
+      "cost": 4,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["destroy", "create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "destroy-cards", "target": "selected", "maxTargets": 1 },
+            { "type": "generate-cards", "target": "deck", "count": 2, "filter": { "rank": "A" }, "randomEnhancement": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "incantation",
+      "name": "Incantation",
+      "description": "Destroy 1 selected card, add 4 random Enhanced number cards to your deck",
+      "flavor": "Common cards, uncommon power.",
+      "icon": "🔮",
+      "cost": 4,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["destroy", "create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "destroy-cards", "target": "selected", "maxTargets": 1 },
+            { "type": "generate-cards", "target": "deck", "count": 4, "filter": { "rank": ["2","3","4","5","6","7","8","9","10"] }, "randomEnhancement": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "talisman",
+      "name": "Talisman",
+      "description": "Add a Gold Seal to 1 selected card",
+      "flavor": "Mark it for prosperity.",
+      "icon": "🏅",
+      "cost": 4,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["seal"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "seal", "sealId": "gold" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aura",
+      "name": "Aura",
+      "description": "Add Foil, Holographic, or Polychrome edition to 1 selected card",
+      "flavor": "A halo of potential.",
+      "icon": "✨",
+      "cost": 4,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["edition"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "random-edition", "editionPool": ["foil", "holographic", "polychrome"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wraith",
+      "name": "Wraith",
+      "description": "Creates a random Rare Púca — sets money to $0",
+      "flavor": "The price of great power.",
+      "icon": "👻",
+      "cost": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 3 },
+      "tags": ["joker", "money"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "spawn-random", "objectType": "joker", "rarity": "rare" },
+            { "type": "apply-status", "status": "set-money", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sigil",
+      "name": "Sigil",
+      "description": "Converts all cards in hand to a single random suit",
+      "flavor": "One symbol to rule them all.",
+      "icon": "🔯",
+      "cost": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 3 },
+      "tags": ["suit"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "hand", "property": "suit", "value": "random" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ouija",
+      "name": "Ouija",
+      "description": "Converts all cards in hand to a single random rank — −1 Hand Size",
+      "flavor": "Speak and be heard.",
+      "icon": "🪄",
+      "cost": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["rank"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "hand", "property": "rank", "value": "random" },
+            { "type": "apply-status", "status": "modify-hand-size", "value": -1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ectoplasm",
+      "name": "Ectoplasm",
+      "description": "Add Negative edition to 1 random Púca — −1 Hand Size",
+      "flavor": "The negative space empowers.",
+      "icon": "🌀",
+      "cost": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["edition", "joker"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-random-joker", "modification": "set-edition", "editionId": "negative" },
+            { "type": "apply-status", "status": "modify-hand-size", "value": -1 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "immolate",
+      "name": "Immolate",
+      "description": "Destroys 5 random cards in hand — gain $20",
+      "flavor": "To ash, and then to gold.",
+      "icon": "🔥",
+      "cost": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 5 },
+      "tags": ["destroy", "money"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "destroy-cards", "target": "hand", "count": 5, "selection": "random" },
+            { "type": "generate-money", "amount": 20 }
+          ]
+        }
+      ]
+    }
+  ],
+  "vouchers": [
+    {
+      "id": "overstock",
+      "name": "Overstock",
+      "description": "+1 card available for sale in the Shop",
+      "flavor": "Always more to choose from.",
+      "icon": "📦",
+      "cost": 10,
+      "unlocked": true,
+      "tags": ["shop"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "modify-shop", "property": "main-slots", "delta": 1 }] }
+      ]
+    },
+    {
+      "id": "clearance",
+      "name": "Clearance Sale",
+      "description": "All cards in Shop are 25% cheaper",
+      "flavor": "Everything must go.",
+      "icon": "🏷️",
+      "cost": 10,
+      "unlocked": true,
+      "tags": ["shop", "money"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "modify-shop", "property": "price-multiplier", "value": 0.75 }] }
+      ]
+    },
+    {
+      "id": "hone",
+      "name": "Hone",
+      "description": "Foil, Holographic, and Polychrome cards appear 2× as frequently",
+      "flavor": "Sharpen your luck.",
+      "icon": "💎",
+      "cost": 10,
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["edition"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "modify-rates", "property": "edition-frequency", "multiplier": 2 }] }
+      ]
+    },
+    {
+      "id": "reroll_glut",
+      "name": "Reroll Glut",
+      "description": "Rerolling the Shop costs $2 less (minimum $0)",
+      "flavor": "Practice makes cheaper.",
+      "icon": "🔄",
+      "cost": 10,
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["shop", "reroll"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "modify-shop", "property": "reroll-cost-delta", "delta": -2 }] }
+      ]
+    },
+    {
+      "id": "crystal_ball",
+      "name": "Crystal Ball",
+      "description": "+1 Consumable slot",
+      "flavor": "See more of your fate.",
+      "icon": "🔮",
+      "cost": 10,
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["consumable"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "add-consumable-slot", "amount": 1 }] }
+      ]
+    },
+    {
+      "id": "telescope",
+      "name": "Telescope",
+      "description": "Rune cards in the Shop upgrade your most played book",
+      "flavor": "Aligned with your destiny.",
+      "icon": "🔭",
+      "cost": 10,
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["planet"],
+      "abilities": [
+        { "trigger": "permanent", "actions": [{ "type": "modify-shop", "property": "planet-target", "value": "most-played" }] }
+      ]
+    }
+  ]
+}

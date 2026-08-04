@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-07T19:34:29.961Z",
+  "generatedAt": "2026-08-04T02:46:34.643Z",
   "cartridges": [
     {
       "id": "local:adrift",
@@ -10,6 +10,17 @@
       "thumbnailUri": null,
       "kind": "vite-project",
       "source": "adrift.zip"
+    },
+    {
+      "id": "local:backwards-pong",
+      "slug": "backwards-pong",
+      "title": "Backwards Pong",
+      "description": "A flipped paddle duel where dodging the ball is half the joke.",
+      "artifactUri": "/games/wtf/backwards-pong/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "source": "wtf-console-stock",
+      "category": "arcade"
     },
     {
       "id": "local:commander-keen-1",
@@ -52,28 +63,6 @@
       "source": "keen4.zip"
     },
     {
-      "id": "local:inverse-snake",
-      "slug": "inverse-snake",
-      "title": "Inverse Snake",
-      "description": "A backwards snack chase where the apple hunts the snake.",
-      "artifactUri": "/games/wtf/inverse-snake/index.html",
-      "thumbnailUri": null,
-      "kind": "html5",
-      "category": "arcade",
-      "source": "wtf-console-stock"
-    },
-    {
-      "id": "local:backwards-pong",
-      "slug": "backwards-pong",
-      "title": "Backwards Pong",
-      "description": "A flipped paddle duel where dodging the ball is half the joke.",
-      "artifactUri": "/games/wtf/backwards-pong/index.html",
-      "thumbnailUri": null,
-      "kind": "html5",
-      "category": "arcade",
-      "source": "wtf-console-stock"
-    },
-    {
       "id": "local:dragon-cyberpunk-fable",
       "slug": "dragon-cyberpunk-fable",
       "title": "Dragon: A Cyberpunk Fable",
@@ -111,6 +100,36 @@
       "leaderboardEnabled": false
     },
     {
+      "id": "local:inverse-snake",
+      "slug": "inverse-snake",
+      "title": "Inverse Snake",
+      "description": "A backwards snack chase where the apple hunts the snake.",
+      "artifactUri": "/games/wtf/inverse-snake/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "source": "wtf-console-stock",
+      "category": "arcade"
+    },
+    {
+      "id": "local:mindwalk",
+      "slug": "mindwalk",
+      "title": "MindWalk",
+      "description": "AI-guided word-cloud exploration — follow concept trails powered by your own BYOK AI key. Created by skllzrmy.",
+      "artifactUri": "/games/mindwalk/index.html",
+      "thumbnailUri": null,
+      "kind": "html5",
+      "source": "skullzarmy/mindwalk",
+      "category": "puzzle",
+      "creditsPerPlay": 1,
+      "provenance": {
+        "source": "wtf-creator",
+        "creatorName": "skllzrmy",
+        "tezosIdentity": "skllzrmy",
+        "xHandle": "skllzrmy",
+        "attributionRequired": true
+      }
+    },
+    {
       "id": "local:pixel-runner",
       "slug": "pixel-runner",
       "title": "Pixel Runner",
@@ -121,6 +140,16 @@
       "source": "(extracted) pixel-runner/"
     },
     {
+      "id": "local:pucas-fortune",
+      "slug": "pucas-fortune",
+      "title": "Púca’s Fortune",
+      "description": "A Celtic-folklore roguelike card game with Poker, Rummy, and Cribbage runs, branching encounters, and build-defining Púcas.",
+      "artifactUri": "/games/installed/pucas-fortune/index.html",
+      "thumbnailUri": "/games/installed/pucas-fortune/thumbnail.png",
+      "kind": "html5",
+      "source": "pucas-fortune.zip"
+    },
+    {
       "id": "local:space-blocks",
       "slug": "space-blocks",
       "title": "Space Blocks",
@@ -129,25 +158,6 @@
       "thumbnailUri": null,
       "kind": "html5",
       "source": "(extracted) space-blocks/"
-    },
-    {
-      "id": "local:mindwalk",
-      "slug": "mindwalk",
-      "title": "MindWalk",
-      "description": "AI-guided word-cloud exploration — follow concept trails powered by your own BYOK AI key. Created by skllzrmy.",
-      "artifactUri": "/games/mindwalk/index.html",
-      "thumbnailUri": null,
-      "kind": "html5",
-      "category": "puzzle",
-      "creditsPerPlay": 1,
-      "source": "skullzarmy/mindwalk",
-      "provenance": {
-        "source": "wtf-creator",
-        "creatorName": "skllzrmy",
-        "tezosIdentity": "skllzrmy",
-        "xHandle": "skllzrmy",
-        "attributionRequired": true
-      }
     },
     {
       "id": "local:tezos-pole-game",

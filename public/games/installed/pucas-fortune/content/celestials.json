@@ -1,0 +1,237 @@
+{
+  "$schema": "./schemas/celestial.schema.json",
+  "version": "1.0.0",
+  "celestials": [
+    {
+      "id": "mercury",
+      "name": "Mercury",
+      "description": "Upgrades level of High Card (+10 Chips, +1 Mult)",
+      "flavor": "Swift messenger of fortune.",
+      "icon": "☿",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "High Card",
+      "chipsPerLevel": 10,
+      "multPerLevel": 1,
+      "tags": ["planet", "high-card"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "High Card" }]
+        }
+      ]
+    },
+    {
+      "id": "venus",
+      "name": "Venus",
+      "description": "Upgrades level of Pair (+15 Chips, +1 Mult)",
+      "flavor": "Beauty finds its pair.",
+      "icon": "♀",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Pair",
+      "chipsPerLevel": 15,
+      "multPerLevel": 1,
+      "tags": ["planet", "pair"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Pair" }]
+        }
+      ]
+    },
+    {
+      "id": "earth",
+      "name": "Earth",
+      "description": "Upgrades level of Two Pair (+20 Chips, +1 Mult)",
+      "flavor": "Down to earth, doubly so.",
+      "icon": "🌍",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Two Pair",
+      "chipsPerLevel": 20,
+      "multPerLevel": 1,
+      "tags": ["planet", "two-pair"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Two Pair" }]
+        }
+      ]
+    },
+    {
+      "id": "mars",
+      "name": "Mars",
+      "description": "Upgrades level of Three of a Kind (+20 Chips, +2 Mult)",
+      "flavor": "War demands three.",
+      "icon": "♂",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Three of a Kind",
+      "chipsPerLevel": 20,
+      "multPerLevel": 2,
+      "tags": ["planet", "three-of-a-kind"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Three of a Kind" }]
+        }
+      ]
+    },
+    {
+      "id": "jupiter",
+      "name": "Jupiter",
+      "description": "Upgrades level of Full House (+25 Chips, +2 Mult)",
+      "flavor": "King of planets, king of houses.",
+      "icon": "♃",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Full House",
+      "chipsPerLevel": 25,
+      "multPerLevel": 2,
+      "tags": ["planet", "full-house"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Full House" }]
+        }
+      ]
+    },
+    {
+      "id": "saturn",
+      "name": "Saturn",
+      "description": "Upgrades level of Straight (+30 Chips, +3 Mult)",
+      "flavor": "Ringed in sequence.",
+      "icon": "♄",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Straight",
+      "chipsPerLevel": 30,
+      "multPerLevel": 3,
+      "tags": ["planet", "straight"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Straight" }]
+        }
+      ]
+    },
+    {
+      "id": "uranus",
+      "name": "Uranus",
+      "description": "Upgrades level of Flush (+15 Chips, +2 Mult)",
+      "flavor": "Tilted toward greatness.",
+      "icon": "⛢",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Flush",
+      "chipsPerLevel": 15,
+      "multPerLevel": 2,
+      "tags": ["planet", "flush"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Flush" }]
+        }
+      ]
+    },
+    {
+      "id": "neptune",
+      "name": "Neptune",
+      "description": "Upgrades level of Straight Flush (+40 Chips, +4 Mult)",
+      "flavor": "Depth and order, combined.",
+      "icon": "♆",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Straight Flush",
+      "chipsPerLevel": 40,
+      "multPerLevel": 4,
+      "tags": ["planet", "straight-flush"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Straight Flush" }]
+        }
+      ]
+    },
+    {
+      "id": "pluto",
+      "name": "Pluto",
+      "description": "Upgrades level of Four of a Kind (+30 Chips, +3 Mult)",
+      "flavor": "Demoted, never forgotten.",
+      "icon": "⯓",
+      "cost": 3,
+      "unlocked": true,
+      "handName": "Four of a Kind",
+      "chipsPerLevel": 30,
+      "multPerLevel": 3,
+      "tags": ["planet", "four-of-a-kind"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Four of a Kind" }]
+        }
+      ]
+    },
+    {
+      "id": "planet_x",
+      "name": "Planet X",
+      "description": "Upgrades level of Five of a Kind (+35 Chips, +3 Mult)",
+      "flavor": "The one they never found.",
+      "icon": "🪐",
+      "cost": 3,
+      "unlocked": false,
+      "unlockCondition": { "type": "play-hand", "value": "Five of a Kind" },
+      "handName": "Five of a Kind",
+      "chipsPerLevel": 35,
+      "multPerLevel": 3,
+      "tags": ["planet", "five-of-a-kind"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Five of a Kind" }]
+        }
+      ]
+    },
+    {
+      "id": "ceres",
+      "name": "Ceres",
+      "description": "Upgrades level of Flush House (+40 Chips, +4 Mult)",
+      "flavor": "Harvest of the skies.",
+      "icon": "⚳",
+      "cost": 3,
+      "unlocked": false,
+      "unlockCondition": { "type": "play-hand", "value": "Flush House" },
+      "handName": "Flush House",
+      "chipsPerLevel": 40,
+      "multPerLevel": 4,
+      "tags": ["planet", "flush-house"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Flush House" }]
+        }
+      ]
+    },
+    {
+      "id": "eris",
+      "name": "Eris",
+      "description": "Upgrades level of Flush Five (+50 Chips, +3 Mult)",
+      "flavor": "Discord at its finest.",
+      "icon": "⚸",
+      "cost": 3,
+      "unlocked": false,
+      "unlockCondition": { "type": "play-hand", "value": "Flush Five" },
+      "handName": "Flush Five",
+      "chipsPerLevel": 50,
+      "multPerLevel": 3,
+      "tags": ["planet", "flush-five"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "apply-status", "status": "level-up-hand", "handName": "Flush Five" }]
+        }
+      ]
+    }
+  ]
+}

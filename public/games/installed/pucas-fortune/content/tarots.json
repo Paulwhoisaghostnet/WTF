@@ -1,0 +1,439 @@
+{
+  "$schema": "./schemas/tarot.schema.json",
+  "version": "1.0.0",
+  "tarots": [
+    {
+      "id": "the_fool",
+      "name": "The Fool",
+      "description": "Creates a copy of the last Tarot or Planet card used",
+      "flavor": "Infinite repetition, infinite possibility.",
+      "icon": "🃏",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [{ "type": "create-last-consumable" }]
+        }
+      ]
+    },
+    {
+      "id": "the_magician",
+      "name": "The Magician",
+      "description": "Enhances up to 2 selected cards to Lucky Cards",
+      "flavor": "Everything you touch turns fortunate.",
+      "icon": "🔮",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 2, "modification": "enhance", "enhancementId": "lucky" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_high_priestess",
+      "name": "The High Priestess",
+      "description": "Creates up to 2 random Planet cards",
+      "flavor": "The cosmos answers your call.",
+      "icon": "🌙",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "spawn-random", "objectType": "celestial", "count": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_empress",
+      "name": "The Empress",
+      "description": "Enhances up to 2 selected cards to Mult Cards",
+      "flavor": "Multiply your power.",
+      "icon": "👑",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 2, "modification": "enhance", "enhancementId": "mult" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_emperor",
+      "name": "The Emperor",
+      "description": "Creates up to 2 random Tarot cards",
+      "flavor": "The arcana multiply at your command.",
+      "icon": "⚜️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["create"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "spawn-random", "objectType": "tarot", "count": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_hierophant",
+      "name": "The Hierophant",
+      "description": "Enhances up to 2 selected cards to Bonus Cards",
+      "flavor": "A blessing upon your hand.",
+      "icon": "✝️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 2, "modification": "enhance", "enhancementId": "bonus" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_lovers",
+      "name": "The Lovers",
+      "description": "Enhances 1 selected card to a Wild Card",
+      "flavor": "United under any banner.",
+      "icon": "💕",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "enhance", "enhancementId": "wild" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_chariot",
+      "name": "The Chariot",
+      "description": "Enhances 1 selected card to a Steel Card",
+      "flavor": "Forged in fire, unyielding.",
+      "icon": "⚔️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "enhance", "enhancementId": "steel" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "justice",
+      "name": "Justice",
+      "description": "Enhances 1 selected card to a Glass Card",
+      "flavor": "Beautiful and fragile.",
+      "icon": "⚖️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "enhance", "enhancementId": "glass" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_hermit",
+      "name": "The Hermit",
+      "description": "Doubles your current money (max +$20)",
+      "flavor": "Solitude has its rewards.",
+      "icon": "🕯️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["money"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "generate-money", "amount": { "per": "current:gold", "value": 1, "max": 20 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_wheel_of_fortune",
+      "name": "The Wheel of Fortune",
+      "description": "1 in 4 chance to add Foil, Holographic, or Polychrome to a random Joker",
+      "flavor": "Fate's wheel turns for all.",
+      "icon": "🎡",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["edition", "random"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "condition": { "chance": 0.25 },
+          "actions": [
+            { "type": "modify-random-joker", "modification": "random-edition" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strength",
+      "name": "Strength",
+      "description": "Increases rank of up to 2 selected cards by 1",
+      "flavor": "What doesn't kill you makes you stronger.",
+      "icon": "💪",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "tags": ["rank"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "apply-status", "status": "strengthen-rank", "target": "selected", "maxTargets": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_hanged_man",
+      "name": "The Hanged Man",
+      "description": "Destroys up to 2 selected cards",
+      "flavor": "Sometimes loss is strength.",
+      "icon": "⛓️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "tags": ["destroy"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "destroy-cards", "target": "selected", "maxTargets": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "death",
+      "name": "Death",
+      "description": "Select 2 cards — the left converts into the right",
+      "flavor": "Transformation is not the end.",
+      "icon": "💀",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 2,
+      "exactTargets": 2,
+      "tags": ["transform"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "clone-card", "source": "selected:1", "target": "selected:0" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "temperance",
+      "name": "Temperance",
+      "description": "Gain total sell value of all current Jokers (max $50)",
+      "flavor": "Balance is its own reward.",
+      "icon": "🌊",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["money"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "generate-money", "amount": { "per": "joker:sell-value:all", "value": 1, "max": 50 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_devil",
+      "name": "The Devil",
+      "description": "Enhances 1 selected card to a Gold Card",
+      "flavor": "Deals in gold.",
+      "icon": "😈",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "enhance", "enhancementId": "gold" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_tower",
+      "name": "The Tower",
+      "description": "Enhances 1 selected card to a Stone Card",
+      "flavor": "Immovable, immutable.",
+      "icon": "🏰",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 1,
+      "tags": ["enhance"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "modify-cards", "target": "selected", "maxTargets": 1, "modification": "enhance", "enhancementId": "stone" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_star",
+      "name": "The Star",
+      "description": "Converts up to 3 selected cards to Coin",
+      "flavor": "All that glitters.",
+      "icon": "⭐",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 3,
+      "tags": ["suit"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "selected", "maxTargets": 3, "property": "suit", "value": "coin" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_moon",
+      "name": "The Moon",
+      "description": "Converts up to 3 selected cards to Clover",
+      "flavor": "Pulled by unseen forces.",
+      "icon": "🌙",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 3,
+      "tags": ["suit"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "selected", "maxTargets": 3, "property": "suit", "value": "clover" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_sun",
+      "name": "The Sun",
+      "description": "Converts up to 3 selected cards to Blood",
+      "flavor": "Warmth for all.",
+      "icon": "☀️",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 3,
+      "tags": ["suit"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "selected", "maxTargets": 3, "property": "suit", "value": "blood" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "judgement",
+      "name": "Judgement",
+      "description": "Creates a random Joker card",
+      "flavor": "The final verdict is fortune.",
+      "icon": "🔔",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": false,
+      "tags": ["create", "joker"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "spawn-random", "objectType": "joker" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the_world",
+      "name": "The World",
+      "description": "Converts up to 3 selected cards to Spear",
+      "flavor": "The whole world, in your hand.",
+      "icon": "🌍",
+      "cost": 3,
+      "unlocked": true,
+      "requiresSelection": true,
+      "maxTargets": 3,
+      "tags": ["suit"],
+      "abilities": [
+        {
+          "trigger": "on-use",
+          "actions": [
+            { "type": "transform-cards", "target": "selected", "maxTargets": 3, "property": "suit", "value": "spear" }
+          ]
+        }
+      ]
+    }
+  ]
+}

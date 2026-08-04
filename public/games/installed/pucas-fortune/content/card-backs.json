@@ -1,0 +1,70 @@
+{
+  "$schema": "./schemas/card-back.schema.json",
+  "version": "1.0.0",
+  "cardBacks": [
+    {
+      "id": "classic",
+      "name": "Classic",
+      "description": "The original card back.",
+      "flavor": "Timeless.",
+      "icon": "🎴",
+      "unlocked": true,
+      "cssClass": "card-back-classic",
+      "primaryColor": "#1a6b3a",
+      "accentColor": "#f0c040",
+      "pattern": "diamond-grid"
+    },
+    {
+      "id": "arcana",
+      "name": "Arcana",
+      "description": "Mystical runes adorn this deck.",
+      "flavor": "Ancient symbols of power.",
+      "icon": "🔮",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "cssClass": "card-back-arcana",
+      "primaryColor": "#2d1b69",
+      "accentColor": "#a78bfa",
+      "pattern": "runes"
+    },
+    {
+      "id": "golden",
+      "name": "Golden",
+      "description": "Gilded with pure gold leaf.",
+      "flavor": "Opulence in every hand.",
+      "icon": "✨",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "cssClass": "card-back-golden",
+      "primaryColor": "#92400e",
+      "accentColor": "#fbbf24",
+      "pattern": "ornate"
+    },
+    {
+      "id": "void",
+      "name": "Void",
+      "description": "Darkness from which all cards emerge.",
+      "flavor": "Emptiness has its own beauty.",
+      "icon": "⬛",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 8 },
+      "cssClass": "card-back-void",
+      "primaryColor": "#0a0a0a",
+      "accentColor": "#6366f1",
+      "pattern": "stars"
+    },
+    {
+      "id": "verdant",
+      "name": "Verdant",
+      "description": "Alive with growth.",
+      "flavor": "Nature shuffles too.",
+      "icon": "🍃",
+      "unlocked": false,
+      "unlockCondition": { "type": "collect-joker", "value": "joker_blackboard" },
+      "cssClass": "card-back-verdant",
+      "primaryColor": "#14532d",
+      "accentColor": "#86efac",
+      "pattern": "leaves"
+    }
+  ]
+}

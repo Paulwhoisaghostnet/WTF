@@ -1,0 +1,167 @@
+{
+  "$schema": "./schemas/deck.schema.json",
+  "version": "1.0.0",
+  "decks": [
+    {
+      "id": "red_deck",
+      "name": "Red Deck",
+      "description": "+1 Discard every round",
+      "flavor": "More chances to find the right card.",
+      "icon": "🔴",
+      "unlocked": true,
+      "tags": ["discard"],
+      "bonuses": {
+        "additionalDiscards": 1
+      }
+    },
+    {
+      "id": "blue_deck",
+      "name": "Blue Deck",
+      "description": "+1 Hand every round",
+      "flavor": "Another chance to play.",
+      "icon": "🔵",
+      "unlocked": true,
+      "tags": ["hands"],
+      "bonuses": {
+        "additionalHands": 1
+      }
+    },
+    {
+      "id": "yellow_deck",
+      "name": "Yellow Deck",
+      "description": "Start each round with +$10",
+      "flavor": "Money opens doors.",
+      "icon": "🟡",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["money"],
+      "bonuses": {
+        "startingGold": 10
+      }
+    },
+    {
+      "id": "green_deck",
+      "name": "Green Deck",
+      "description": "No interest — earn $1 for each book won, $2 for each encounter defeated",
+      "flavor": "Winning is the only income.",
+      "icon": "🟢",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["money", "special"],
+      "bonuses": {
+        "noInterest": true,
+        "goldPerHandWon": 1,
+        "goldPerBlindDefeated": 2
+      }
+    },
+    {
+      "id": "black_deck",
+      "name": "Black Deck",
+      "description": "+1 Púca slot",
+      "flavor": "Room for one more.",
+      "icon": "⚫",
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["jokers"],
+      "bonuses": {
+        "additionalJokerSlots": 1
+      }
+    },
+    {
+      "id": "magic_deck",
+      "name": "Magic Deck",
+      "description": "Start with Crystal Ball Voucher and 2 Púcas",
+      "flavor": "Already prepared.",
+      "icon": "🔮",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["voucher", "jokers"],
+      "bonuses": {
+        "startingVouchers": ["crystal_ball"],
+        "additionalConsumableSlots": 1
+      }
+    },
+    {
+      "id": "nebula_deck",
+      "name": "Nebula Deck",
+      "description": "−1 Consumable slot, Shop has +1 Rune card",
+      "flavor": "The cosmos, concentrated.",
+      "icon": "🌌",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 5 },
+      "tags": ["planet", "consumable"],
+      "bonuses": {
+        "additionalConsumableSlots": -1,
+        "extraShopPlanets": 1
+      }
+    },
+    {
+      "id": "ghost_deck",
+      "name": "Ghost Deck",
+      "description": "Spectral cards appear in the Shop. Start with Hex Spectral",
+      "flavor": "Haunted by possibility.",
+      "icon": "👻",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "tags": ["spectral"],
+      "bonuses": {
+        "spectralInShop": true
+      }
+    },
+    {
+      "id": "abandoned_deck",
+      "name": "Abandoned Deck",
+      "description": "Start with no face cards in your deck",
+      "flavor": "Royalty renounced.",
+      "icon": "🏚️",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 3 },
+      "tags": ["deck-shape"],
+      "bonuses": {},
+      "deckModifications": [
+        { "type": "remove-rank", "ranks": ["J", "Q", "K"] }
+      ]
+    },
+    {
+      "id": "checkered_deck",
+      "name": "Checkered Deck",
+      "description": "Start with 26 ♠ and 26 ♥ (no ♦ or ♣)",
+      "flavor": "Two suits, infinite depth.",
+      "icon": "♟️",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 4 },
+      "tags": ["deck-shape", "suit"],
+      "bonuses": {},
+      "deckModifications": [
+        { "type": "replace-suits", "replacements": { "coin": "spear", "clover": "blood" } }
+      ]
+    },
+    {
+      "id": "zodiac_deck",
+      "name": "Zodiac Deck",
+      "description": "Start with Totem Merchant, Rune Merchant, and Overstock Vouchers",
+      "flavor": "Written in the stars.",
+      "icon": "⭐",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 5 },
+      "tags": ["voucher"],
+      "bonuses": {
+        "startingVouchers": ["overstock", "planet_merchant"]
+      }
+    },
+    {
+      "id": "painted_deck",
+      "name": "Painted Deck",
+      "description": "+2 Hand Size, −1 Púca slot",
+      "flavor": "More cards, fewer tricks.",
+      "icon": "🎨",
+      "unlocked": false,
+      "unlockCondition": { "type": "reach-ante", "value": 6 },
+      "tags": ["hand-size"],
+      "bonuses": {
+        "additionalHandSize": 2,
+        "additionalJokerSlots": -1
+      }
+    }
+  ]
+}

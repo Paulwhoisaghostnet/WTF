@@ -1,0 +1,77 @@
+{
+  "$schema": "./schemas/game-mode.schema.json",
+  "version": "1.0.0",
+  "gameModes": [
+    {
+      "id": "poker",
+      "name": "Poker",
+      "description": "Score classic poker books to overcome each encounter. Play 1–5 cards at a time.",
+      "flavor": "The original card game of skill and chance.",
+      "icon": "♠",
+      "handSize": 8,
+      "handsPerRound": 4,
+      "discardsPerRound": 3,
+      "minPlayCards": 1,
+      "maxPlayCards": 5,
+      "unlocked": true,
+      "tags": ["classic"],
+      "hands": [
+        { "name": "High Card",      "baseChips": 5,   "baseMult": 1,  "planet": "mercury",  "chipsPerLevel": 10, "multPerLevel": 1 },
+        { "name": "Pair",           "baseChips": 10,  "baseMult": 2,  "planet": "venus",    "chipsPerLevel": 15, "multPerLevel": 1 },
+        { "name": "Two Pair",       "baseChips": 20,  "baseMult": 2,  "planet": "earth",    "chipsPerLevel": 20, "multPerLevel": 1 },
+        { "name": "Three of a Kind","baseChips": 30,  "baseMult": 3,  "planet": "mars",     "chipsPerLevel": 20, "multPerLevel": 2 },
+        { "name": "Straight",       "baseChips": 30,  "baseMult": 4,  "planet": "saturn",   "chipsPerLevel": 30, "multPerLevel": 3 },
+        { "name": "Flush",          "baseChips": 35,  "baseMult": 4,  "planet": "uranus",   "chipsPerLevel": 15, "multPerLevel": 2 },
+        { "name": "Full House",     "baseChips": 40,  "baseMult": 4,  "planet": "jupiter",  "chipsPerLevel": 25, "multPerLevel": 2 },
+        { "name": "Four of a Kind", "baseChips": 60,  "baseMult": 7,  "planet": "pluto",    "chipsPerLevel": 30, "multPerLevel": 3 },
+        { "name": "Straight Flush", "baseChips": 100, "baseMult": 8,  "planet": "neptune",  "chipsPerLevel": 40, "multPerLevel": 4 },
+        { "name": "Royal Flush",    "baseChips": 100, "baseMult": 8,  "planet": "neptune",  "chipsPerLevel": 40, "multPerLevel": 4 },
+        { "name": "Five of a Kind", "baseChips": 120, "baseMult": 12, "planet": "planet_x", "chipsPerLevel": 35, "multPerLevel": 3 },
+        { "name": "Flush House",    "baseChips": 140, "baseMult": 14, "planet": "ceres",    "chipsPerLevel": 40, "multPerLevel": 4 },
+        { "name": "Flush Five",     "baseChips": 160, "baseMult": 16, "planet": "eris",     "chipsPerLevel": 50, "multPerLevel": 3 }
+      ]
+    },
+    {
+      "id": "rummy",
+      "name": "Rummy",
+      "description": "Play sets (same rank) or runs (consecutive, same suit) of 3+ cards.",
+      "flavor": "Groups and sequences define your strength.",
+      "icon": "♥",
+      "handSize": 10,
+      "handsPerRound": 5,
+      "discardsPerRound": 4,
+      "minPlayCards": 3,
+      "maxPlayCards": 13,
+      "unlocked": true,
+      "tags": ["strategy"],
+      "hands": [
+        { "name": "Deadwood",  "baseChips": 5,  "baseMult": 1, "chipsPerLevel": 5,  "multPerLevel": 0 },
+        { "name": "Set",       "baseChips": 36, "baseMult": 2, "chipsPerLevel": 12, "multPerLevel": 0.75 },
+        { "name": "Run",       "baseChips": 36, "baseMult": 3, "chipsPerLevel": 10, "multPerLevel": 1.5 },
+        { "name": "Pure Run",  "baseChips": 43, "baseMult": 4, "chipsPerLevel": 10, "multPerLevel": 1.5 }
+      ]
+    },
+    {
+      "id": "cribbage",
+      "name": "Cribbage",
+      "description": "Score fifteens (2 pts each), pairs, and runs.",
+      "flavor": "Every combination of cards that sums to 15 earns 2 points.",
+      "icon": "♣",
+      "handSize": 6,
+      "handsPerRound": 6,
+      "discardsPerRound": 2,
+      "minPlayCards": 4,
+      "maxPlayCards": 4,
+      "unlocked": false,
+      "unlockCondition": { "type": "win-run" },
+      "tags": ["strategy", "math"],
+      "hands": [
+        { "name": "Zero",      "baseChips": 5,  "baseMult": 1, "chipsPerLevel": 2,  "multPerLevel": 0.1 },
+        { "name": "Pair",      "baseChips": 13, "baseMult": 1, "chipsPerLevel": 7,  "multPerLevel": 0.35 },
+        { "name": "Fifteen",   "baseChips": 13, "baseMult": 1, "chipsPerLevel": 8,  "multPerLevel": 0.4 },
+        { "name": "Run",       "baseChips": 17, "baseMult": 1, "chipsPerLevel": 9,  "multPerLevel": 0.5 },
+        { "name": "Flush",     "baseChips": 21, "baseMult": 1, "chipsPerLevel": 15, "multPerLevel": 0.75 }
+      ]
+    }
+  ]
+}

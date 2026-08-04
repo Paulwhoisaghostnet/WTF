@@ -9306,3 +9306,13 @@
 **Rule**: Before a production contract cutover, resolve the exact env file used by the normal deploy checkout and compare it with any `/etc/wtf` service env. Back up and update both when they are distinct, preserve the retired address under an explicit legacy variable, then rebuild through the normal deployment path and verify the public API plus browser bundle report the new KT1.
 
 ---
+
+## 2026-08-03 - Cartridge generators must own every manifest-only static game
+
+**What happened**: Installing the Púca’s Fortune HTML5 package regenerated the Arcade manifest from source ZIPs plus only two hard-coded legacy games. Inverse Snake, Backwards Pong, and MindWalk existed in the checked-in manifest but were not inputs to the generator, so they disappeared from the catalog during an otherwise valid package install.
+
+**Why it mattered**: A generated manifest is authoritative in production. Hand-maintained entries that are not represented in the generator turn any unrelated game installation into a destructive catalog change.
+
+**Rule**: Treat every static cartridge outside `games-sources` as an explicit generator input with its category, source, credits, and provenance. After adding a game package, regenerate the manifest and compare the complete slug set—not only the new entry—before build or deployment.
+
+---
