@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Penne icon</title>
+  <desc id="desc">two diagonal pasta tubes mark in the Sugo Pasta Protocol palette.</desc>
+  <rect width="64" height="64" rx="16" fill="#32142d"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#70405f" stroke-width="1.5"/>
+  <g>
+        <g fill="#ffcf59" stroke="#fff0d2" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 47 29 20l11 5-12 27Z"/>
+          <path d="M31 43l9-24 10 4-10 25Z"/>
+        </g>
+        <ellipse cx="31.5" cy="22.5" rx="3.5" ry="2.2" transform="rotate(25 31.5 22.5)" fill="#32142d" stroke="#fff0d2" stroke-width="1.7"/>
+        <ellipse cx="45" cy="21" rx="3.2" ry="2" transform="rotate(25 45 21)" fill="#32142d" stroke="#fff0d2" stroke-width="1.7"/></g>
+</svg>

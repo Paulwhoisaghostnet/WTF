@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Gnocchi icon</title>
+  <desc id="desc">three rounded dumplings mark in the Sugo Pasta Protocol palette.</desc>
+  <rect width="64" height="64" rx="16" fill="#32142d"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#70405f" stroke-width="1.5"/>
+  <g>
+        <g fill="#fff0d2" stroke="#b6d56b" stroke-width="2.2">
+          <path d="M15 32c0-6 5-10 11-10s10 4 10 10-4 10-10 10-11-4-11-10Z"/>
+          <path d="M31 22c0-6 5-10 11-10s8 4 8 9-3 9-9 9-10-3-10-8Z"/>
+          <path d="M30 45c0-5 4-8 9-8s9 3 9 8-4 8-9 8-9-3-9-8Z"/>
+        </g>
+        <path d="M21 27l5 3M37 18l5 3M36 42l5 3" stroke="#4a1e3a" stroke-width="2.3" stroke-linecap="round"/></g>
+</svg>

@@ -71,6 +71,8 @@
     "import-game-studio:open-assets": "node scripts/import-game-studio-open-assets.mjs",
     "casino:raceway:assets": "tsx scripts/generate-guinea-pig-raceway-assets.ts",
     "creation-tools:check": "tsx scripts/check-creation-tool-assets.ts",
+    "pasta:icons:check": "node --test scripts/pasta-icons/icon-policy.test.mjs",
+    "pasta:icons:generate": "node scripts/pasta-icons/generate.mjs --native",
     "creation-tools:build-tezos-vendors": "node scripts/build-tezos-browser-vendors.mjs",
     "macaroni:desktop:prepare": "npm run prepare --prefix apps/macaroni-desktop",
     "macaroni:desktop:check": "node --test scripts/macaroni-desktop-package-policy.test.mjs",

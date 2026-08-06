@@ -30,12 +30,14 @@
       "pasta/**/*"
     ],
     "directories": {
+      "buildResources": "build",
       "output": "release"
     },
     "artifactName": "CH-EASE-Studio-${version}-${os}-${arch}.${ext}",
     "executableName": "ch-ease-studio",
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "target": [
@@ -47,6 +49,7 @@
       "sign": false
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -61,10 +64,14 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "linux": {
       "category": "Development",
+      "icon": "build/icon.png",
       "maintainer": "wtfOS <support@wtfos.app>",
       "syncDesktopName": true,
       "target": [

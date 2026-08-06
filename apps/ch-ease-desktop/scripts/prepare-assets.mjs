@@ -8,6 +8,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceRoot = path.join(repoRoot, "public/creation-tools");
+const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
 const outDir = path.join(appDir, "pasta");
 const outTools = path.join(outDir, "creation-tools");
 
@@ -29,12 +30,14 @@ for (const tool of tools) {
     if (!existsSync(file) || statSync(file).size === 0) throw new Error(`Missing ${tool.id} desktop asset: ${rel}`);
   }
 }
+if (!existsSync(iconSourceRoot)) throw new Error(`Pasta icon assets not found: ${iconSourceRoot}`);
 
 const cheaseSource = await import("node:fs/promises").then(({ readFile }) => readFile(path.join(sourceRoot, "ch-ease/js/studio.js"), "utf8"));
 if (!cheaseSource.includes("wtfos.pasta.chease-package.v1")) throw new Error("Portable CH-EASE package schema marker is missing");
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outTools, { recursive: true });
+cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 for (const tool of tools) {
   const source = path.join(sourceRoot, tool.id);
   const target = path.join(outTools, tool.id);

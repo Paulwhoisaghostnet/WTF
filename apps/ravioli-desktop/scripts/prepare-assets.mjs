@@ -8,6 +8,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceDir = path.join(repoRoot, "public/creation-tools/ravioli");
+const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
 const outDir = path.join(appDir, "ravioli");
 
 const required = [
@@ -34,6 +35,7 @@ if (!existsSync(sourceDir)) {
   console.error(`Ravioli source assets not found: ${sourceDir}`);
   process.exit(1);
 }
+if (!existsSync(iconSourceRoot)) throw new Error(`Pasta icon assets not found: ${iconSourceRoot}`);
 
 for (const rel of required) {
   const target = path.join(sourceDir, rel);
@@ -45,6 +47,7 @@ for (const rel of required) {
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
+cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 
 for (const entry of readdirSync(sourceDir)) {
   const from = path.join(sourceDir, entry);

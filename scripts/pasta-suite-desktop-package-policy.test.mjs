@@ -46,7 +46,7 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
   assert.equal(desktopPackage.build.artifactName, "Pasta-Suite-${version}-${os}-${arch}.${ext}");
   assert.equal(desktopPackage.build.executableName, undefined);
   assert.equal(desktopPackage.build.directories.buildResources, "build");
-  assert.equal(desktopPackage.build.mac.icon, "build/icon.icns");
+  assert.equal(desktopPackage.build.mac.icon, "build/icon.png");
   assert.equal(desktopPackage.build.mac.entitlements, "build/entitlements.mac.plist");
   assert.equal(desktopPackage.build.mac.entitlementsInherit, "build/entitlements.mac.plist");
   assert.equal(desktopPackage.build.win.icon, "build/icon.ico");
@@ -62,7 +62,6 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
   for (const asset of [
     "apps/pasta-suite-desktop/build/icon.svg",
     "apps/pasta-suite-desktop/build/icon.png",
-    "apps/pasta-suite-desktop/build/icon.icns",
     "apps/pasta-suite-desktop/build/icon.ico",
     "apps/pasta-suite-desktop/build/entitlements.mac.plist",
     "apps/pasta-suite-desktop/build/license_en.rtf",

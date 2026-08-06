@@ -24,6 +24,7 @@ import { MOBILE } from "../global-styles";
 import { api, fetchWithCsrf } from "../lib/api";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
+import { usePastaFavicon } from "../features/pasta-protocol/pasta-favicon";
 import type { PastaAppId } from "@shared/pasta-protocol";
 import {
   collectionPackageFromSource,
@@ -1222,6 +1223,7 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export function MacaroniPackager() {
+  usePastaFavicon("ch-ease");
   const presentation = usePresentationShell();
   const colanderContext = useMemo(() => {
     if (typeof window === "undefined") return "";

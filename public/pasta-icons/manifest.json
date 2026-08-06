@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "activePalette": "sugo",
+  "palettes": {
+    "sugo": {
+      "label": "Sugo",
+      "description": "Warm, playful, food-forward, and closest to the existing Pasta personality.",
+      "path": "/pasta-icons/sugo",
+      "colors": {
+        "background": "#32142d",
+        "panel": "#4a1e3a",
+        "border": "#70405f",
+        "ink": "#fff0d2",
+        "secondary": "#f5b63b",
+        "accents": {
+          "pasta-suite": "#f5b63b",
+          "ch-ease": "#f6e7c8",
+          "macaroni": "#f08c46",
+          "spaghetti": "#e5483e",
+          "gnocchi": "#b6d56b",
+          "ravioli": "#d98cb3",
+          "rotini": "#80a93d",
+          "penne": "#ffcf59",
+          "lasagna": "#e5683a"
+        }
+      }
+    },
+    "night-market": {
+      "label": "Night Market",
+      "description": "Digital, energetic, and unmistakably wtfOS in a dark shell.",
+      "path": "/pasta-icons/night-market",
+      "colors": {
+        "background": "#071d38",
+        "panel": "#0d3152",
+        "border": "#2d6687",
+        "ink": "#fff9ee",
+        "secondary": "#14c7c7",
+        "accents": {
+          "pasta-suite": "#14c7c7",
+          "ch-ease": "#fff9ee",
+          "macaroni": "#ff8a7a",
+          "spaghetti": "#13d8d0",
+          "gnocchi": "#c5ff21",
+          "ravioli": "#ff6d6d",
+          "rotini": "#c5ff21",
+          "penne": "#ff8a7a",
+          "lasagna": "#9de5df"
+        }
+      }
+    },
+    "paper-archive": {
+      "label": "Paper Archive",
+      "description": "Editorial, collectible, and print-inspired for light surfaces.",
+      "path": "/pasta-icons/paper-archive",
+      "colors": {
+        "background": "#f6e7cc",
+        "panel": "#ead7b7",
+        "border": "#cbb28a",
+        "ink": "#09223c",
+        "secondary": "#e8af22",
+        "accents": {
+          "pasta-suite": "#09223c",
+          "ch-ease": "#b4342b",
+          "macaroni": "#d9991d",
+          "spaghetti": "#09223c",
+          "gnocchi": "#2056c4",
+          "ravioli": "#b4342b",
+          "rotini": "#2056c4",
+          "penne": "#09223c",
+          "lasagna": "#b4342b"
+        }
+      }
+    }
+  },
+  "apps": {
+    "pasta-suite": {
+      "label": "Pasta Suite",
+      "concept": "a perforated colander bowl",
+      "favicon": "/pasta-icons/sugo/pasta-suite.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/pasta-suite.svg",
+        "night-market": "/pasta-icons/night-market/pasta-suite.svg",
+        "paper-archive": "/pasta-icons/paper-archive/pasta-suite.svg"
+      }
+    },
+    "ch-ease": {
+      "label": "CH-EASE",
+      "concept": "a compact package folder",
+      "favicon": "/pasta-icons/sugo/ch-ease.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/ch-ease.svg",
+        "night-market": "/pasta-icons/night-market/ch-ease.svg",
+        "paper-archive": "/pasta-icons/paper-archive/ch-ease.svg"
+      }
+    },
+    "macaroni": {
+      "label": "Macaroni",
+      "concept": "a curved macaroni loop",
+      "favicon": "/pasta-icons/sugo/macaroni.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/macaroni.svg",
+        "night-market": "/pasta-icons/night-market/macaroni.svg",
+        "paper-archive": "/pasta-icons/paper-archive/macaroni.svg"
+      }
+    },
+    "spaghetti": {
+      "label": "Spaghetti",
+      "concept": "three spaghetti strands",
+      "favicon": "/pasta-icons/sugo/spaghetti.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/spaghetti.svg",
+        "night-market": "/pasta-icons/night-market/spaghetti.svg",
+        "paper-archive": "/pasta-icons/paper-archive/spaghetti.svg"
+      }
+    },
+    "gnocchi": {
+      "label": "Gnocchi",
+      "concept": "three rounded dumplings",
+      "favicon": "/pasta-icons/sugo/gnocchi.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/gnocchi.svg",
+        "night-market": "/pasta-icons/night-market/gnocchi.svg",
+        "paper-archive": "/pasta-icons/paper-archive/gnocchi.svg"
+      }
+    },
+    "ravioli": {
+      "label": "Ravioli",
+      "concept": "a square ravioli parcel",
+      "favicon": "/pasta-icons/sugo/ravioli.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/ravioli.svg",
+        "night-market": "/pasta-icons/night-market/ravioli.svg",
+        "paper-archive": "/pasta-icons/paper-archive/ravioli.svg"
+      }
+    },
+    "rotini": {
+      "label": "Rotini",
+      "concept": "a corkscrew spiral",
+      "favicon": "/pasta-icons/sugo/rotini.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/rotini.svg",
+        "night-market": "/pasta-icons/night-market/rotini.svg",
+        "paper-archive": "/pasta-icons/paper-archive/rotini.svg"
+      }
+    },
+    "penne": {
+      "label": "Penne",
+      "concept": "two diagonal pasta tubes",
+      "favicon": "/pasta-icons/sugo/penne.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/penne.svg",
+        "night-market": "/pasta-icons/night-market/penne.svg",
+        "paper-archive": "/pasta-icons/paper-archive/penne.svg"
+      }
+    },
+    "lasagna": {
+      "label": "Lasagna",
+      "concept": "stacked wavy layers",
+      "favicon": "/pasta-icons/sugo/lasagna.svg",
+      "options": {
+        "sugo": "/pasta-icons/sugo/lasagna.svg",
+        "night-market": "/pasta-icons/night-market/lasagna.svg",
+        "paper-archive": "/pasta-icons/paper-archive/lasagna.svg"
+      }
+    }
+  }
+}
