@@ -207,7 +207,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "social post to reward automation loop",
     domain: "Community, Social, Messaging, and Discord",
-    routes: ["/messageboard", "/w", "/skywire", "/live", "/tz2at", "/crp-nominate", "/messages", "/mail", "/digest", "/wim", "/browser", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
+    routes: ["/messageboard", "/w", "/skywire", "/live", "/tz2at", "/crp-nominate", "/messages", "/mail", "/admin-inbox", "/digest", "/wim", "/browser", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
     eventHandles: [
       "board.message.created",
       "messageboard.post.created",
@@ -345,6 +345,9 @@ export const DOMAIN_WORKFLOWS = [
       "comms.route.opened",
       "mail.message.received",
       "mail.message.sent",
+      "admin_inbox.message.created",
+      "admin_inbox.message.read",
+      "admin_inbox.reply.created",
       "mail.delivery.failed",
       "digest.viewed",
       "digest.source_filtered",
@@ -668,6 +671,12 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/comms/route-target?url=https%3A%2F%2Fobjkt.com" },
       { method: "GET", path: "/api/mail/status", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/mail/messages", expectedStatuses: [200, 401, 403] },
+      { method: "GET", path: "/api/admin-inbox/threads", expectedStatuses: [200, 401, 500] },
+      { method: "GET", path: "/api/admin-inbox/messages", expectedStatuses: [200, 401, 403, 500] },
+      { method: "POST", path: "/api/admin-inbox/messages", body: {}, expectedStatuses: [400, 401, 403] },
+      { method: "POST", path: "/api/admin-inbox/messages/101/replies", body: { body: "Inventory admin contact reply probe" }, expectedStatuses: [201, 400, 401, 403, 404, 500] },
+      { method: "PATCH", path: "/api/admin-inbox/messages/101/read", body: {}, expectedStatuses: [200, 400, 401, 403, 404, 500] },
+      { method: "PATCH", path: "/api/admin-inbox/messages/101/user-read", body: {}, expectedStatuses: [200, 400, 401, 403, 404, 500] },
       {
         method: "POST",
         path: "/api/mail/send",

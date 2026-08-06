@@ -253,7 +253,7 @@ test("Start Menu first-class app rail only contains ranked default desktop apps"
   assert(appsGroup && appsGroup.kind === "group");
   const appPaths = appsGroup.group.items.map((item) => item.path);
 
-  for (const corePath of ["/wtfiam", "/wim", "/w", "/mail", "/my-gallery"]) {
+  for (const corePath of ["/wtfiam", "/wim", "/w", "/mail", "/admin-inbox", "/my-gallery"]) {
     assert(appPaths.includes(corePath), `${corePath} should stay in the first app rail`);
   }
   for (const optionalPath of [

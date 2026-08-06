@@ -145,6 +145,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   agent: "wtfOs",
   applications: "arcadeConsoleGameStudio",
   mail: "identityAndSocial",
+  "admin-inbox": "identityAndSocial",
   "objkt-operator": "operations",
 };
 

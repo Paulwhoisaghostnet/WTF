@@ -115,6 +115,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/crp-nominate", auth: true, title: "CRP Nominations" },
   { pattern: "/wim", auth: true, title: "WIM" },
   { pattern: "/mail", auth: true, title: "Inbox" },
+  { pattern: "/admin-inbox", auth: true, title: "Contact Admin" },
   { pattern: "/digest", auth: true, title: "Digest" },
   { pattern: "/browser", auth: true, title: "Browser" },
   { pattern: "/music", auth: true, title: "TezosBeats" },

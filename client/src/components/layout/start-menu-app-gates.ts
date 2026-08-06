@@ -51,6 +51,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/applications": "applications",
   "/objkt-operator": "objkt-operator",
   "/mail": "mail",
+  "/admin-inbox": "admin-inbox",
 };
 
 export function isStartMenuItemEnabled(

@@ -79,6 +79,7 @@ const ICONS: Record<string, string> = {
   "/messages": "MSG",
   "/wim": "WIM",
   "/mail": "IN",
+  "/admin-inbox": "ADM",
   "/digest": "📰",
   "/skywire": "🦋",
   "/live": "📡",
@@ -155,7 +156,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   apps: [],
   gameshow: ["/dedrooms", "/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
   create: ["/studio", "/game-studio", "/mint-portal", "/tools/ch-ease", "/tools/macaroni"],
-  social: ["/mail", "/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/digest", "/wtf-subdomains"],
+  social: ["/admin-inbox", "/mail", "/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/digest", "/wtf-subdomains"],
   "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/console", "/game-studio", "/dedrooms"],
   "my-media": [

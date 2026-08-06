@@ -95,6 +95,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   agent: domainGuides.wtfOs,
   applications: domainGuides.arcadeConsoleGameStudio,
   mail: domainGuides.identityAndSocial,
+  "admin-inbox": domainGuides.identityAndSocial,
   "objkt-operator": domainGuides.operations,
 };
 
@@ -147,6 +148,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
   applications: ["Hetzner remote application host", "Steam Linux runtime", "WebRTC browser media transport"],
   mail: ["Resend inbound email"],
+  "admin-inbox": ["Private media storage for screenshot evidence"],
   "objkt-operator": ["Objkt API", "Kukai", "Tezos mainnet RPC"],
 };
 
@@ -209,6 +211,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
     "transient WebRTC stream lifecycle",
   ],
   mail: ["mailboxes", "mail_messages", "comms_items"],
+  "admin-inbox": ["admin_inbox_messages", "admin_inbox_replies", "user_media_library", "comms_items", "user_notifications"],
   "objkt-operator": ["objkt_operator_states", "desktop_app_settings"],
 };
 

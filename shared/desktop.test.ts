@@ -232,6 +232,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "agent",
     "applications",
     "mail",
+    "admin-inbox",
     "tv",
     "dicksword",
     "i-hate-telegram",

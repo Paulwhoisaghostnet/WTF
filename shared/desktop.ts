@@ -585,6 +585,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "agent",
   "applications",
   "mail",
+  "admin-inbox",
   "tv",
   "dicksword",
   "i-hate-telegram",

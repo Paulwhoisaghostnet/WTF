@@ -9326,3 +9326,13 @@
 **Rule**: Before deleting a first-class app, inventory every canonical key, route, launcher, catalog, admin surface, shared behavior owner, API/MCP gate, asset tree, test fixture, documentation row, and persisted registration. Re-home shared capabilities, delete only app-owned data, preserve user/audit domain data, and verify the production bundle and live APIs contain no retired app identity.
 
 ---
+
+## 2026-08-05 - Hook dependencies must not reference later derived bindings
+
+**What happened**: The Inbox admin-contact integration placed a read-marking effect before the `selectedAdminContact` binding used by the effect and its dependency array. Type checking and the production build passed, but opening `/mail` crashed during render with a temporal-dead-zone error.
+
+**Why it mattered**: Static verification did not exercise JavaScript's runtime initialization order, so a secondary integration path could have made the existing Inbox unusable even though its types were sound.
+
+**Rule**: Declare derived render values and helper bindings before every hook that evaluates them, including dependency arrays. After inserting cross-app state into an existing screen, run a real route-level browser smoke test in addition to type checking and builds.
+
+---

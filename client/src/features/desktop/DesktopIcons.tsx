@@ -860,6 +860,15 @@ export function buildDesktopIconDefs(
       openPath: "/mail",
     },
     {
+      key: "admin-inbox",
+      label: "Contact Admin",
+      icon: <ConsoleDeskIcon>ADM</ConsoleDeskIcon>,
+      defaultX: 332,
+      defaultY: 100,
+      enabled: canOpenApps && (apps["admin-inbox"] || canOpenDisabledApps),
+      openPath: "/admin-inbox",
+    },
+    {
       key: "tv",
       label: "WTF TV",
       icon: <TVDeskIcon>TV</TVDeskIcon>,

@@ -263,6 +263,9 @@ const WimPage = lazy(() =>
 const MailPage = lazy(() =>
   import("../pages/Mail").then((m) => ({ default: m.Mail }))
 );
+const AdminInboxPage = lazy(() =>
+  import("../pages/AdminInbox").then((m) => ({ default: m.AdminInbox }))
+);
 const DigestPage = lazy(() =>
   import("../pages/Digest").then((m) => ({ default: m.Digest }))
 );
@@ -662,6 +665,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: WimPage, auth: true, title: "WIM", group: "social", startMenu: true },
   { pattern: "/mail", component: MailPage, auth: true, title: "Inbox", group: "social", startMenu: true },
+  { pattern: "/admin-inbox", component: AdminInboxPage, auth: true, title: "Contact Admin", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true },
   { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "desktop-os", startMenu: true },
   { pattern: "/music", component: MusicPage, auth: true, title: "TezosBeats", group: "media", startMenu: true },

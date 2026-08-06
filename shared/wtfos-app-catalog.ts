@@ -112,6 +112,18 @@ const APP_ENTRIES = [
     accent: "#0f766e",
   },
   {
+    key: "admin-inbox",
+    route: "/admin-inbox",
+    summary: "A private, direct line between every user and the wtfOS administrators.",
+    placement: "default-desktop",
+    necessity: "core",
+    necessityRank: 1,
+    priceWtfUnits: "0",
+    priceExp: 0,
+    monogram: "ADM",
+    accent: "#166534",
+  },
+  {
     key: "gallery",
     route: "/my-gallery",
     summary: "Personal media and owned artwork gallery.",

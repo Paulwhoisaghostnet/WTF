@@ -97,6 +97,7 @@ type InboxUnreadCountResponse = {
   notifications: number;
   dms: number;
   mail: number;
+  adminInbox: number;
 };
 
 type DesktopClientEventPayload = {

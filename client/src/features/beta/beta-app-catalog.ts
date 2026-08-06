@@ -979,6 +979,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   agent: "/agent",
   applications: "/applications",
   mail: "/mail",
+  "admin-inbox": "/admin-inbox",
   "objkt-operator": "/objkt-operator",
 };
 

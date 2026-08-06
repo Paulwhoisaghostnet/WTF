@@ -65,6 +65,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   agent: true,
   applications: true,
   mail: true,
+  "admin-inbox": true,
   "objkt-operator": true,
 };
 

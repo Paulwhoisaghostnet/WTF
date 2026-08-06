@@ -24,6 +24,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/messages", path: "/messages", title: "Messages", domain: "social", subdomain: "Direct messages", auth: true },
   { pattern: "/messages/dms/:id", path: "/messages/dms/1", title: "Messages", domain: "social", subdomain: "Direct messages", auth: true },
   { pattern: "/mail", path: "/mail", title: "Inbox", domain: "social", subdomain: "Central messaging hub", auth: true },
+  { pattern: "/admin-inbox", path: "/admin-inbox", title: "Contact Admin", domain: "social", subdomain: "Direct user-to-admin feedback", auth: true },
   { pattern: "/digest", path: "/digest", title: "Digest", domain: "social", subdomain: "Unified timeline", auth: true },
   { pattern: "/wim", path: "/wim", title: "WIM", domain: "social", subdomain: "Instant messenger", auth: true },
   { pattern: "/browser", path: "/browser", title: "Browser", domain: "desktop-os", subdomain: "Controlled link chamber", auth: true },

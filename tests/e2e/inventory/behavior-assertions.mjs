@@ -1255,6 +1255,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
   },
   {
+    id: "admin-inbox.role-aware-feedback",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["admin-inbox", "mail"],
+    ownerSpec:
+      "client/src/pages/admin-inbox-presentation-policy.test.ts; server/routes/admin-inbox-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "Contact Admin is a separate core desktop app on every default desktop: non-admin users receive an evidence-oriented compose form with screenshot prompts, while admin-role users receive the inbox, raw field table, email rendering, agent-ready Markdown, screenshot viewer, and reply composer. Inbox also exposes the same conversations under an Admin contact tab.",
+    durableSideEffectAssertion:
+      "Server-authenticated APIs persist admin_inbox_messages and admin_inbox_replies, validate screenshot media ownership and image readiness, restrict global list/read access to admin roles, restrict user thread access to the reporting account, and contribute role-correct unread counts to GET /api/comms/unread-count.",
+  },
+  {
     id: "desktop-reggie.summon-wim-messages",
     domain: "Desktop OS",
     ownerSurfaceIds: ["desktop-reggie", "wim", "messages", "mail"],
