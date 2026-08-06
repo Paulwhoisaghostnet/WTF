@@ -8,6 +8,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceRoot = path.join(repoRoot, "public/creation-tools");
+const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
 const outDir = path.join(appDir, "pasta");
 const outToolsDir = path.join(outDir, "creation-tools");
 
@@ -167,6 +168,10 @@ if (!existsSync(sourceRoot)) {
   console.error(`Pasta source assets not found: ${sourceRoot}`);
   process.exit(1);
 }
+if (!existsSync(iconSourceRoot)) {
+  console.error(`Pasta icon assets not found: ${iconSourceRoot}`);
+  process.exit(1);
+}
 
 for (const tool of tools) {
   const sourceDir = path.join(sourceRoot, tool.id);
@@ -185,6 +190,7 @@ for (const tool of tools) {
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outToolsDir, { recursive: true });
+cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 
 for (const tool of tools) {
   const sourceDir = path.join(sourceRoot, tool.id);
