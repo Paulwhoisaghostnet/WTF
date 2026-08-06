@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">CH-EASE icon</title>
+  <desc id="desc">a compact package folder mark in the Night Market Pasta Protocol palette.</desc>
+  <rect width="64" height="64" rx="16" fill="#071d38"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#2d6687" stroke-width="1.5"/>
+  <g>
+        <path d="M14 21h15l4 5h17v22H14Z" fill="#fff9ee" stroke="#fff9ee" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 22h15l4 5h17" fill="none" stroke="#fff9ee" stroke-width="4" stroke-linejoin="round"/>
+        <rect x="25" y="35" width="14" height="4" rx="2" fill="#0d3152"/>
+        <path d="M42 21v-4H23v4" fill="none" stroke="#fff9ee" stroke-width="3" stroke-linejoin="round"/></g>
+</svg>

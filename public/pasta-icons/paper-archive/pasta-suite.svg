@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Pasta Suite icon</title>
+  <desc id="desc">a perforated colander bowl mark in the Paper Archive Pasta Protocol palette.</desc>
+  <rect width="64" height="64" rx="16" fill="#f6e7cc"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#cbb28a" stroke-width="1.5"/>
+  <g>
+        <path d="M15 28h34c0 13-7 22-17 22S15 41 15 28Z" fill="#09223c"/>
+        <path d="M12 27h40" stroke="#09223c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 50l-3 5M42 50l3 5" stroke="#09223c" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="#ead7b7"><circle cx="23" cy="34" r="2.1"/><circle cx="31" cy="34" r="2.1"/><circle cx="39" cy="34" r="2.1"/><circle cx="27" cy="41" r="2.1"/><circle cx="35" cy="41" r="2.1"/></g>
+        <path d="M19 17c5 2 7 5 8 10M28 15c5 3 6 7 5 12M38 17c3 3 3 6 2 10" fill="none" stroke="#09223c" stroke-width="3" stroke-linecap="round"/></g>
+</svg>

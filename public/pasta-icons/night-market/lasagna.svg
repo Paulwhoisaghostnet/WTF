@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Lasagna icon</title>
+  <desc id="desc">stacked wavy layers mark in the Night Market Pasta Protocol palette.</desc>
+  <rect width="64" height="64" rx="16" fill="#071d38"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#2d6687" stroke-width="1.5"/>
+  <g>
+        <path d="M14 23c4-3 8 3 12 0s8 3 12 0 8 3 12 0v7c-4 3-8-3-12 0s-8-3-12 0-8-3-12 0Z" fill="#9de5df" stroke="#fff9ee" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 33c4-3 8 3 12 0s8 3 12 0 8 3 12 0v7c-4 3-8-3-12 0s-8-3-12 0-8-3-12 0Z" fill="#fff9ee" stroke="#fff9ee" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 43c4-3 8 3 12 0s8 3 12 0 8 3 12 0v7c-4 3-8-3-12 0s-8-3-12 0-8-3-12 0Z" fill="#9de5df" stroke="#fff9ee" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/> </g>
+</svg>

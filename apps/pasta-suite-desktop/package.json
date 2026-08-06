@@ -36,7 +36,7 @@
     "artifactName": "Pasta-Suite-${version}-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.icns",
+      "icon": "build/icon.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -51,7 +51,7 @@
       "sign": false,
       "license": "build/license_mac.txt",
       "title": "Pasta Suite ${version}",
-      "icon": "build/icon.icns",
+      "icon": "build/icon.png",
       "iconSize": 128,
       "contents": [
         {
@@ -96,6 +96,7 @@
     },
     "linux": {
       "category": "Development",
+      "icon": "build/icon.png",
       "maintainer": "wtfOS <support@wtfos.app>",
       "syncDesktopName": true,
       "target": [
