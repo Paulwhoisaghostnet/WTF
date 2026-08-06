@@ -1087,7 +1087,7 @@ export function Dashboard() {
           <TabPanel>
             <DashboardGroupBox label="Indexed holdings">
               <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 8 }}>
-                Same data as Profile / Hoard — sourced from `wallet_holdings` + shared
+                Same data as Profile — sourced from `wallet_holdings` + shared
                 metadata cache.
               </p>
               <OwnedTokensGallery

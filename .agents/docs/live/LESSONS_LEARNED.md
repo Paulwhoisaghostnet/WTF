@@ -9316,3 +9316,13 @@
 **Rule**: Treat every static cartridge outside `games-sources` as an explicit generator input with its category, source, credits, and provenance. After adding a game package, regenerate the manifest and compare the complete slug set—not only the new entry—before build or deployment.
 
 ---
+
+## 2026-08-05 - Retiring an app requires ownership transfer and durable cleanup
+
+**What happened**: Hoard was not just a routed page. It owned desktop/start-menu/catalog/admin metadata, shared wallet and trade-board behavior assertions, MCP gates, static visual assets, and durable app-registration rows. Removing only its React page would have left dead launch surfaces and would have orphaned unrelated wallet/login coverage.
+
+**Why it mattered**: A first-class OS app identity crosses presentation, authorization, documentation, tests, and persistence. Shared capabilities can survive an app retirement only when their ownership is explicitly transferred to a remaining surface.
+
+**Rule**: Before deleting a first-class app, inventory every canonical key, route, launcher, catalog, admin surface, shared behavior owner, API/MCP gate, asset tree, test fixture, documentation row, and persisted registration. Re-home shared capabilities, delete only app-owned data, preserve user/audit domain data, and verify the production bundle and live APIs contain no retired app identity.
+
+---

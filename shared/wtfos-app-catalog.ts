@@ -76,18 +76,6 @@ const APP_ENTRIES = [
     accent: "#18a8a2",
   },
   {
-    key: "hoard",
-    route: "/hoard",
-    summary: "Account inventory, rewards, owned items, and unlock history.",
-    placement: "default-desktop",
-    necessity: "core",
-    necessityRank: 1,
-    priceWtfUnits: "0",
-    priceExp: 0,
-    monogram: "HRD",
-    accent: "#6d8f2f",
-  },
-  {
     key: "wim",
     route: "/wim",
     summary: "Direct messaging and buddy-list communication.",

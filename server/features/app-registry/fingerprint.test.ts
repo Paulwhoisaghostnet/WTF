@@ -64,7 +64,7 @@ test("integrity fingerprint combines all three legs", () => {
 
 test("computeFingerprint is fully deterministic for the same inputs", () => {
   const input = {
-    manifest: { id: "desktop:hoard", label: "Hoard!" },
+    manifest: { id: "desktop:arcade", label: "WTF Arcade" },
     bundleFiles: [{ path: "index.js", sha256: "deadbeef" }],
     buildHash: "pkg:1.0.0",
   };

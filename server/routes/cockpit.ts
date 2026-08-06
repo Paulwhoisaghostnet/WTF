@@ -2,7 +2,7 @@
  * /api/cockpit/* — back-end surface for the user dashboard ("cockpit").
  *
  * These endpoints back the existing `Dashboard.tsx`, `Profile.tsx`,
- * and `Hoard.tsx` pages with richer, sort-correct data sourced from
+ * and portfolio surfaces with richer, sort-correct data sourced from
  * `wallet_events` and `wallet_holdings` (see phases 2+).  The legacy
  * `/api/profile/tokens` endpoint remains live until the UI fully
  * migrates.

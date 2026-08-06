@@ -112,6 +112,14 @@ export function useAdminMutations({
     },
   });
 
+  const refreshAllDesktopAppsMutation = useMutation({
+    mutationFn: () => api.post<{ refreshed: number }>("/api/admin/apps/desktop/refresh-all", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
+      qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
+    },
+  });
+
   const updateInAppMarketItemMutation = useMutation({
     mutationFn: ({ id, ...data }: UpdateInAppMarketItemPayload) =>
       api.patch(`/api/admin/in-app-market/items/${id}`, data),
@@ -596,6 +604,7 @@ export function useAdminMutations({
     markPaidMutation,
     batchPayMutation,
     updateDesktopAppMutation,
+    refreshAllDesktopAppsMutation,
     updateInAppMarketItemMutation,
     createInAppMarketItemMutation,
     repriceInAppMarketMutation,

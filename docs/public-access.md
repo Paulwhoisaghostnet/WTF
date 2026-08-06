@@ -134,7 +134,7 @@ Signed-in user routes include `/mission-control`, `/command-palette`, `/recovery
 `/file-manager`, `/settings`, `/browser`, `/browser-boundaries`, `/terminal`, `/theme-builder`,
 `/dashboard`, `/rounds`, `/challenges`, `/side-quests`, `/messages`, `/mail`, `/digest`, `/wim`, `/aim`,
 `/notification-center`, `/notifications`, `/marketplace`, `/trade-boards`, `/w`, `/tv`, `/dicksword`,
-`/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`, `/hoard`,
+`/i-hate-telegram`, `/console`, `/swap`, `/profile`, `/desktop-settings`,
 `/my-videos`, `/my-photos`, `/studio`, `/game-studio`, `/my-gallery`, and
 creation tools.
 
@@ -440,9 +440,9 @@ Current tools:
 | `wtf_get_desktop_pet` | Read paired user | User token | Reads the paired user's pet state and care status. |
 | `wtf_keep_desktop_pet_alive` | Mutate paired user | User token | Applies safe pet care actions for the paired user's pet. |
 | `wtf_search_public_tokens` | Public data read | `gallery` | Searches public token metadata and market summaries derived from Objkt, TzKT, IPFS, and chain data. |
-| `wtf_list_unlisted_trade_board_tokens` | Public data read | `hoard` | Finds public trade-board tokens without active WTF listing rows. |
-| `wtf_set_trade_board_tokens` | Mutate paired user | `hoard` | Adds/removes tokens from the paired user's trade-board collection after ownership checks. |
-| `wtf_prepare_single_edition_listing_workflow` | Read/planning | `hoard` | Prepares wallet-signature steps for a one-edition listing. Does not list on-chain by itself. |
+| `wtf_list_unlisted_trade_board_tokens` | Public data read | `wtfiam` | Finds public trade-board tokens without active WTF listing rows. |
+| `wtf_set_trade_board_tokens` | Mutate paired user | `wtfiam` | Adds/removes tokens from the paired user's trade-board collection after ownership checks. |
+| `wtf_prepare_single_edition_listing_workflow` | Read/planning | `wtfiam` | Prepares wallet-signature steps for a one-edition listing. Does not list on-chain by itself. |
 | `wtf_list_public_tv_channels` | Public data read | `tv` | Lists active public TV channels. |
 | `wtf_list_arcade_games` | Public data read | `arcade` | Lists active WTF Arcade games, including compatible-source and creator-submitted titles. |
 | `wtf_get_arcade_stats` | Public data read | `arcade` | Reads public Arcade counts, play totals, compatible-source freshness, and play-fee config. |
@@ -482,7 +482,7 @@ Admins manage desktop sub-app availability through:
 
 The public gate snapshot is available at `GET /api/apps/desktop`. MCP
 capabilities include the same gate map. Gate-aware MCP tools fail closed when
-their owning sub-app is disabled, so disabling `gallery`, `hoard`, `tv`,
+their owning sub-app is disabled, so disabling `gallery`, `tv`,
 `console`, or `game-studio` also disables the matching agent workflows.
 
 The admin update route can also refresh docs timestamps, issue a short-lived

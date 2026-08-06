@@ -11,7 +11,6 @@ test("isMcpFeatureEnabled mirrors admin desktop app gates", async () => {
   const apps = {
     ...DEFAULT_DESKTOP_APP_CONFIG,
     wtfiam: true,
-    hoard: true,
     wim: true,
     w: true,
     tv: false,
@@ -110,7 +109,6 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
     apps: {
       ...DEFAULT_DESKTOP_APP_CONFIG,
       wtfiam: true,
-      hoard: true,
       wim: true,
       w: true,
       tv: true,

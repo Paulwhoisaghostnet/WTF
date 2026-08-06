@@ -121,7 +121,6 @@ export const WTF_DOMAIN_DOC_REGISTRY = {
 
 const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DOMAIN_DOC_REGISTRY>> = {
   wtfiam: "commerceAndWallets",
-  hoard: "tezosPlatform",
   wim: "identityAndSocial",
   w: "identityAndSocial",
   tv: "mediaTvStudio",

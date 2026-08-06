@@ -330,7 +330,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
     userVisibleAssertion: "Each puppet wallet can complete the wallet-login challenge flow.",
@@ -340,7 +340,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "auth.wallet-provider-login-lifecycle",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec:
       "client/src/lib/tezos/wallet-connect-policy.test.ts, client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts",
     verificationCommand:
@@ -353,7 +353,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "wallet.checkout-intent-bound-to-signed-session",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard", "wtfiam"],
+    ownerSurfaceIds: ["wtfiam"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"wallet-login checkout intent\"",
@@ -365,7 +365,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "wallet.passive-refresh-no-signature",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec: "client/src/lib/wallet-context-policy.test.ts, client/src/pages/profile-wallet-link-policy.test.ts",
     verificationCommand:
       "npx tsx --test client/src/lib/wallet-context-policy.test.ts client/src/pages/profile-wallet-link-policy.test.ts",
@@ -653,7 +653,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "collekt.duplicate-art-scan-and-offer",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard", "marketplace"],
+    ownerSurfaceIds: ["marketplace"],
     ownerSpec:
       "server/features/collekt/duplicates.test.ts, tests/playwright/inventory/collekt-duplicates.spec.mjs, client/src/lib/tezos/marketplace.ts",
     verificationCommand:
@@ -746,6 +746,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
       "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
+    id: "admin.desktop-app-registration-resilience",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel"],
+    ownerSpec:
+      "server/lib/desktop-app-registration-policy.test.ts; server/routes/desktop-apps-resilience-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"app registrations permanent\"",
+    userVisibleAssertion:
+      "An admin can mark each app license, docs, and install key as non-expiring and can refresh every app registration from one clearly labeled action without changing launcher visibility.",
+    durableSideEffectAssertion:
+      "The permanent policy is stored per desktop app, timed expiry is ignored only for permanent registrations, manual stale/revoked/disabled states remain authoritative, and bulk refresh rotates all install keys in one database transaction while preserving enabled flags.",
   },
   {
     id: "admin.broad-acute-control-suite",

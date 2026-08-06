@@ -47,7 +47,7 @@ The Section Compass changes only beta-local hash and scroll state. It does not o
 | Chain | Existing sequence | Relationship purpose |
 | --- | --- | --- |
 | First safe win | `/leaderboard` -> `/side-quests` -> `/profile` -> `/challenges` -> `/notifications` | Public proof becomes one safe signed-in win, identity context, a starter challenge, and a return prompt. |
-| Collector context | `/gallery` -> `/hoard` -> `/rat-race` -> `/marketplace` -> `/trade-boards` -> `/wtfiam` | Art discovery becomes collection context, market heat, listing depth, trade intent, and reward/inventory visibility. |
+| Collector context | `/gallery` -> `/dashboard` -> `/rat-race` -> `/marketplace` -> `/trade-boards` -> `/wtfiam` | Art discovery becomes collection context, market heat, listing depth, trade intent, and reward/inventory visibility. |
 | Creator publish | `/studio` -> `/tools/broot` -> `/tools/macaroni` -> `/ipfs-pinning` -> `/wtf-subdomains` -> `/skywire` | Creator work moves from draft to asset prep, packaging, durability, domain identity, and promotion. |
 | Builder output | `/game-studio` -> `/map-lab` -> `/console` -> `/arcade` -> `/w` | Builder intent becomes mapped structure, inspectable output, playable proof, and community feedback. |
 | Curator signal | `/gallery` -> `/side-quests` -> `/crp-nominate` -> `/skywire` -> `/w` | Taste becomes proof, nomination, public signal, and discussion without rewarding spam. |
@@ -62,7 +62,7 @@ Every navigator card names what comes before, what the chain consumes, what it f
 | Group | Existing route cluster | Relationship purpose |
 | --- | --- | --- |
 | First Win | `/leaderboard`, `/side-quests`, `/profile`, `/challenges`, `/notifications` | Separate public proof, first signed-in action, identity, next challenge, and return prompt before wallet-heavy routes. |
-| Collector Economy | `/gallery`, `/hoard`, `/marketplace`, `/rat-race`, `/trade-boards`, `/wtfiam` | Distinguish inspection, owned context, market depth, urgency, trade intent, and inventory/reward destinations. |
+| Collector Economy | `/gallery`, `/dashboard`, `/marketplace`, `/rat-race`, `/trade-boards`, `/wtfiam` | Distinguish inspection, owned context, market depth, urgency, trade intent, and inventory/reward destinations. |
 | Creator Pipeline | `/studio`, `/tools/broot`, `/tools/macaroni`, `/ipfs-pinning`, `/wtf-subdomains`, `/skywire`, `/tv` | Explain workspace, asset prep, packaging, durability, identity, promotion, and creator/media proof as one route group. |
 | Builder Output | `/game-studio`, `/map-lab`, `/console`, `/arcade`, `/w` | Show how projects become mapped, inspectable, playable, and discussable without implying admin access. |
 | Curator Signal | `/gallery`, `/side-quests`, `/crp-nominate`, `/skywire`, `/w`, `/tv`, `/leaderboard` | Turn taste into proof, nomination, broadcast, discussion, media context, and public progress without rewarding spam. |
@@ -130,7 +130,7 @@ The memory ledger relates each persistent puppet back to the next beta decision.
 | Builders | `/console` | Make shipped or playable output inspectable before builder paths move into Game Studio, Map Lab, Arcade, or W. |
 | Curators | `/gallery` | Turn discovery into curation, nomination, Skywire, and discussion paths without rewarding spam. |
 | Collaborators | `/live` | Route room presence, events, and social feed context toward time-bound collaboration and follow-up. |
-| Interesting wallets | `/leaderboard` | Make wallet context approachable through public leaderboards before Hoard, tz2at, or profile routes. |
+| Interesting wallets | `/leaderboard` | Make wallet context approachable through public leaderboards before portfolio, tz2at, or profile routes. |
 
 ## Attention Triage Board
 
@@ -151,7 +151,7 @@ The memory ledger relates each persistent puppet back to the next beta decision.
 | Check what changed | `/notifications` | Route replies, rewards, rooms, publish states, and system work into Notifications, Digest, Mission Control, and Settings. |
 | Complete one quest | `/side-quests` | Use Side Quests, Challenges, Leaderboards, and WTFIAM as the daily EXP/reward/role-readiness loop. |
 | See people moving | `/w` | Connect W Feed, WTF LIVE, WIM, and Skywire so social proof becomes a next action. |
-| Find one object | `/gallery` | Route public object proof into Gallery, Rat Race, Hoard, and Marketplace without forcing wallet-heavy action first. |
+| Find one object | `/gallery` | Route public object proof into Gallery, Rat Race, portfolio, and Marketplace without forcing wallet-heavy action first. |
 | Move one project forward | `/studio` | Connect Studio, Broot, IPFS Pinning, WTF Domains, and creator/builder proof into one recovery loop. |
 | Review one liveops queue | `/admin` | Keep Count/admin review explicit for users, quests, challenges, roles, rewards, market state, and farmable-loop audits. |
 
@@ -160,7 +160,7 @@ The memory ledger relates each persistent puppet back to the next beta decision.
 | Passport | Primary route | Proof route | Next route | Relationship purpose |
 | --- | --- | --- | --- | --- |
 | New Tezos User | `/side-quests` | `/profile` | `/challenges` | Turn visible public proof into one safe signed-in win before wallet-heavy or role-heavy paths. |
-| Collector | `/gallery` | `/hoard` | `/rat-race` | Connect object discovery to holdings context and market motion without forcing contract action first. |
+| Collector | `/gallery` | `/dashboard` | `/rat-race` | Connect object discovery to holdings context and market motion without forcing contract action first. |
 | Creator | `/studio` | `/tools/broot` | `/ipfs-pinning` | Make project recovery, asset prep, and durable publishing feel like one runway. |
 | Builder | `/game-studio` | `/map-lab` | `/console` | Tie experiments to route maps and testable output before any builder access expands. |
 | Curator | `/gallery` | `/crp-nominate` | `/skywire` | Turn discovery taste into nomination and public signal with proof requirements visible. |
@@ -172,7 +172,7 @@ The memory ledger relates each persistent puppet back to the next beta decision.
 | Questline | Existing sequence | Relationship purpose |
 | --- | --- | --- |
 | First safe win | `/leaderboard` -> `/side-quests` -> `/profile` -> `/challenges` -> `/notifications` | Turn a new user into a witness through public proof, one side quest, profile proof, a starter challenge, and return-loop feedback. |
-| Collector path | `/gallery` -> `/side-quests` -> `/hoard` -> `/rat-race` -> `/wtfiam` | Connect object discovery to collection context, market motion, inventory, and reward spending. |
+| Collector path | `/gallery` -> `/side-quests` -> `/dashboard` -> `/rat-race` -> `/wtfiam` | Connect object discovery to collection context, market motion, inventory, and reward spending. |
 | Creator runway | `/studio` -> `/tools/broot` -> `/tools/macaroni` -> `/ipfs-pinning` -> `/skywire` | Show how creator work moves from workspace to prep, packaging, durability, and promotion. |
 | Builder proving ground | `/game-studio` -> `/map-lab` -> `/console` -> `/arcade` -> `/w` | Turn experiments into mapped, testable, playable, and discussable output. |
 | Curator signal chain | `/gallery` -> `/side-quests` -> `/crp-nominate` -> `/skywire` -> `/w` | Turn discovery into nomination, broadcast, and community context. |
@@ -210,7 +210,7 @@ The memory ledger relates each persistent puppet back to the next beta decision.
 | --- | --- | --- |
 | Starter witness | `/leaderboard` -> `/side-quests` -> `/profile` -> `/wtfiam` -> `/mission-control` -> `/notifications` | Turn a first public proof scan into a capped starter quest, visible EXP/reward destination, and return cue without role pressure. |
 | Creator publish | `/studio` -> `/tools/broot` -> `/tools/macaroni` -> `/wtfiam` -> `/ipfs-pinning` -> `/skywire` | Stage creator work through draft, asset, role-gated package, reward, durability, and promotion review. |
-| Collector market | `/gallery` -> `/side-quests` -> `/hoard` -> `/wtfiam` -> `/marketplace` -> `/rat-race` | Separate object understanding, reward/inventory context, market sinks, and urgency before wallet-heavy action. |
+| Collector market | `/gallery` -> `/side-quests` -> `/dashboard` -> `/wtfiam` -> `/marketplace` -> `/rat-race` | Separate object understanding, reward/inventory context, market sinks, and urgency before wallet-heavy action. |
 | Builder surface | `/game-studio` -> `/map-lab` -> `/console` -> `/challenges` -> `/admin` -> `/w` | Prove project output before The Count changes app gates, then route feedback back to the community. |
 | Curator signal | `/gallery` -> `/side-quests` -> `/crp-nominate` -> `/wtfiam` -> `/admin` -> `/w` | Turn taste into nomination proof, capped reward review, visibility decision, and public discussion. |
 | Community return | `/w` -> `/side-quests` -> `/live` -> `/challenges` -> `/settings` -> `/digest` | Convert people-now proof into healthy participation, bounded rewards, preference control, and catch-up. |

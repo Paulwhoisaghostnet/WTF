@@ -9,7 +9,7 @@ Users return when WTFOS can answer: what changed, who moved, what can I finish, 
 | Check what changed | Notifications, Mission Control, Digest | Explains replies, rewards, rooms, publish states, and system work. |
 | Complete one quest | Side Quests, Challenges, Leaderboards | Converts discovery into EXP, rewards, and visible progress. |
 | See people moving | W Feed, Skywire, WTF LIVE, Leaderboards | Makes other people active and visible. |
-| Find one object | Gallery, Rat Race, Hoard | Gives collectors and curators a changing reason to browse. |
+| Find one object | Gallery, Rat Race, portfolio | Gives collectors and curators a changing reason to browse. |
 | Move one project forward | Studio, Broot, Macaroni, IPFS Pinning, WTF Domains | Gives creators an incremental publishing path. |
 
 The beta discovery trails now make those loops explicit on `/beta`: public now signals lead into role-specific next steps, protected routes explain which signed-in surface owns the action instead of bypassing auth, every non-public trail step names what the gate protects, and per-trail live snippets show the proof in the path where it matters. WTF LIVE room presence, upcoming calendar events, WTF TV channel listings, public trade-board objects, and public XP activity now give the daily loop more social/time/media/collector proof before sign-in.

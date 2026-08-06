@@ -9751,3 +9751,20 @@ Copy this when adding a new issue:
   - Completed: make every non-package static cartridge an explicit generator input and lock the manifest set with a package policy regression.
 - Verification idea:
   - Completed by rerunning the installer and asserting all legacy slugs plus Púca’s Fortune remain in the generated manifest.
+
+### WTF-BB-516 - Desktop app registration expiry and retired Hoard ghosts
+
+- Category: Desktop OS / app registry resilience
+- Status: Verified
+- Owner/Session: Codex full-send app resilience and Hoard retirement
+- Score: C3 + F4 + S1 + P1 = 9
+- Evidence:
+  - Desktop docs and install keys expired after 24 hours, while the admin could refresh only one app at a time.
+  - Hoard still owned a route, launcher/catalog/admin records, MCP gates, E2E fixtures, dedicated assets, and durable database rows.
+- Why it matters:
+  - Fixed expiry caused recurring admin toil and previously contributed to app brownout conditions; deleting only Hoard's page would leave dead launchers and database ghosts.
+- Correction:
+  - Added a transaction-backed refresh-all action and per-app non-expiring registration policy that still honors manual stale/revoked/disabled controls.
+  - Retired Hoard from source, routes, launchers, catalogs, admin ownership, tests, docs, static assets, and production registration/settings/unlock rows while preserving wallet, token, trade-board, and audit data.
+- Verification:
+  - Focused policy tests, TypeScript, production build, inventory coverage, full inventory browser E2E, production deploy, and live route/API checks.

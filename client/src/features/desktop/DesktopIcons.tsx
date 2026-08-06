@@ -761,15 +761,6 @@ export function buildDesktopIconDefs(
       openPath: "/wtfiam",
     },
     {
-      key: "hoard",
-      label: "HOARD!",
-      icon: "🐉",
-      defaultX: 12,
-      defaultY: 100,
-      enabled: canOpenApps && (apps.hoard || canOpenDisabledApps),
-      openPath: "/hoard",
-    },
-    {
       key: "w",
       label: "W",
       icon: <WDeskIcon>W</WDeskIcon>,

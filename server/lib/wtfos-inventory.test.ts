@@ -8,7 +8,6 @@ import { WTF_APP_PACKAGE_ACCEPTANCE } from "../../shared/wtf-app-packages";
 const apps = {
   ...DEFAULT_DESKTOP_APP_CONFIG,
   wtfiam: true,
-  hoard: true,
   wim: true,
   w: true,
   tv: false,

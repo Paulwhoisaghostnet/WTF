@@ -10,14 +10,14 @@ import {
 } from "./key-policy";
 
 test("appIdToKeySlug normalizes namespaced ids", () => {
-  assert.equal(appIdToKeySlug("desktop:hoard"), "desktop-hoard");
+  assert.equal(appIdToKeySlug("desktop:arcade"), "desktop-arcade");
   assert.equal(appIdToKeySlug("creation-tool:particle-painter"), "creation-tool-particle-painter");
   assert.equal(appIdToKeySlug("installed:My App!!"), "installed-my-app");
 });
 
 test("createAppKeyMaterial mints wtfapp_<slug>_<rand> with hash + prefix", () => {
-  const material = createAppKeyMaterial("desktop:hoard", () => "abc123");
-  assert.equal(material.key, `${APP_KEY_PREFIX}_desktop-hoard_abc123`);
+  const material = createAppKeyMaterial("desktop:arcade", () => "abc123");
+  assert.equal(material.key, `${APP_KEY_PREFIX}_desktop-arcade_abc123`);
   assert.equal(material.prefix, material.key.slice(0, 24));
   assert.equal(material.hash, hashAppKey(material.key));
   assert.match(material.hash, /^[0-9a-f]{64}$/);

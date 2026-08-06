@@ -13,7 +13,7 @@ Use `beta.wtfos.app` as a guided community hub over the existing WTFOS route map
 | Puppet | First tool | Next tool | Confusion | Failure | Hesitation | Abandonment | Delight |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | New Tezos User | Side Quests | Gallery | WTFOS sounds powerful, but the first safe action is not obvious. | Clicks wallet-heavy or market routes before understanding identity. | Pauses when sign-in, wallet, EXP, and role words appear before a small win. | Leaves if the first screen feels like a pile of app names. | A first quest with EXP and no wallet pressure. |
-| Collector | Gallery | Rat Race | Collection, portfolio, gallery, and market signals are split. | Finds an object but misses Hoard, Rat Race, or creator context. | Pauses between Gallery, Hoard, and WTFIAM. | Leaves after passive browsing if no related action appears. | Gallery to Hoard to Rat Race feels intentional. |
+| Collector | Gallery | Rat Race | Collection, portfolio, gallery, and market signals are split. | Finds an object but misses portfolio, Rat Race, or creator context. | Pauses between Gallery, portfolio, and WTFIAM. | Leaves after passive browsing if no related action appears. | Gallery to portfolio to Rat Race feels intentional. |
 | Creator | Studio | Broot | Studio, Broot, Macaroni, pinning, domains, and Skywire do not reveal order. | Starts in a tool without knowing the publish or promotion route. | Pauses before wallet, IPFS, or domain steps because readiness is unclear. | Leaves if a draft or publish job has no recovery prompt. | Studio to Broot to Pinning to Domains becomes a pipeline. |
 | Builder | Game Studio | Map Lab | Builder tools span game, map, console, and admin-adjacent metaphors. | Finds a prototype surface but misses map, test, or route context. | Pauses when a route looks experimental and the output is not stated. | Leaves if builder tools feel disconnected from users and rewards. | Prototype to map to console is visible. |
 | Curator | Gallery | CRP Nominations | Discovery, nomination, broadcast, and social proof are separated. | Discovers good work but does not know how to nominate or share. | Pauses when curation looks like browsing instead of contribution. | Leaves if there is no visible public impact. | A route from discovery to nomination. |
@@ -24,7 +24,7 @@ Use `beta.wtfos.app` as a guided community hub over the existing WTFOS route map
 
 Tier 1 Core Daily Use: Side Quests, Challenges, Mission Control, Notifications, Leaderboards, Gallery, W Feed, Profile.
 
-Tier 2 Regular Use: Studio, Broot, Skywire, WTF LIVE, Hoard, Rat Race, WTFIAM, WTF Domains, IPFS Pinning, creation tools.
+Tier 2 Regular Use: Studio, Broot, Skywire, WTF LIVE, portfolio, Rat Race, WTFIAM, WTF Domains, IPFS Pinning, creation tools.
 
 Tier 3 Occasional Use: desktop utilities, settings, command palette, media libraries, controlled browser, task manager.
 

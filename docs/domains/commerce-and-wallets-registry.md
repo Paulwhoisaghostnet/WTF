@@ -7,7 +7,7 @@ This registry is the operational companion to [commerce-and-wallets.md](./commer
 Launchable commerce surfaces include:
 
 - WTF IAM
-- Hoard
+- portfolio
 - Rat Race
 - Trade Boards
 - Casino

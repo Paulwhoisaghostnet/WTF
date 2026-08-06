@@ -1,4 +1,5 @@
 import {
+  Checkbox,
   Hourglass,
   Table,
   TableBody,
@@ -20,6 +21,13 @@ type AdminMutation<TPayload> = {
 type DesktopAppsAdminTabProps = {
   desktopApps: DesktopAppsResponse | undefined;
   updateDesktopAppMutation: AdminMutation<DesktopAppUpdatePayload>;
+  refreshAllDesktopAppsMutation: {
+    mutate: () => void;
+    isPending: boolean;
+    isSuccess: boolean;
+    isError: boolean;
+    data?: { refreshed: number };
+  };
 };
 
 function getDesktopAppLabel(row: DesktopAppsResponse["list"][number]) {
@@ -55,9 +63,23 @@ const ActionRow = styled.div`
   flex-wrap: wrap;
 `;
 
+const BulkToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: var(--wtf-space-2, 8px);
+  flex-wrap: wrap;
+  margin-bottom: var(--wtf-space-3, 12px);
+`;
+
+const StatusMessage = styled.span`
+  color: var(--wtf-app-muted-text, #384352);
+  font-size: var(--wtf-type-caption, 13px);
+`;
+
 export function DesktopAppsAdminTab({
   desktopApps,
   updateDesktopAppMutation,
+  refreshAllDesktopAppsMutation,
 }: DesktopAppsAdminTabProps) {
   return (
     <>
@@ -65,6 +87,21 @@ export function DesktopAppsAdminTab({
       <Intro>
         Toggle launchable apps, refresh doc registries, and issue install keys. Disabled apps stay hidden from normal users; doc freshness and install keys are registration health signals.
       </Intro>
+      <BulkToolbar aria-label="Desktop app registration actions">
+        <UiButton
+          disabled={!desktopApps || updateDesktopAppMutation.isPending || refreshAllDesktopAppsMutation.isPending}
+          onClick={() => refreshAllDesktopAppsMutation.mutate()}
+        >
+          {refreshAllDesktopAppsMutation.isPending ? "Refreshing all app registrations…" : "Refresh all app registrations"}
+        </UiButton>
+        <StatusMessage role="status" aria-live="polite">
+          {refreshAllDesktopAppsMutation.isSuccess
+            ? `${refreshAllDesktopAppsMutation.data?.refreshed ?? desktopApps?.list.length ?? 0} app registrations refreshed.`
+            : refreshAllDesktopAppsMutation.isError
+              ? "Could not refresh all app registrations. Try again."
+              : "Refreshes docs and issues a new install key for every app without changing launcher visibility."}
+        </StatusMessage>
+      </BulkToolbar>
       {!desktopApps ? (
         <Hourglass size={32} />
       ) : (
@@ -94,7 +131,7 @@ export function DesktopAppsAdminTab({
                   <TableDataCell>
                     <div>{row.installKeyPrefix ?? "No key"}</div>
                     <MetaLine>
-                      Expires {formatStamp(row.installKeyExpiresAt)}
+                      {row.registrationNeverExpires ? "Does not expire" : `Expires ${formatStamp(row.installKeyExpiresAt)}`}
                     </MetaLine>
                   </TableDataCell>
                   <TableDataCell style={{ color: row.enabled ? "#0a6f0a" : "#8a1f1f" }}>
@@ -105,6 +142,19 @@ export function DesktopAppsAdminTab({
                   </TableDataCell>
                   <TableDataCell>
                     <ActionRow>
+                      <Checkbox
+                        checked={row.registrationNeverExpires}
+                        disabled={updateDesktopAppMutation.isPending || refreshAllDesktopAppsMutation.isPending}
+                        label="License, docs, and install key do not expire"
+                        aria-label={`${getDesktopAppLabel(row)} license, docs, and install key do not expire`}
+                        onChange={() => updateDesktopAppMutation.mutate({
+                          appKey: row.key,
+                          enabled: row.enabled,
+                          docStatus: "registered",
+                          docsUpdatedAt: new Date().toISOString(),
+                          registrationNeverExpires: !row.registrationNeverExpires,
+                        })}
+                      />
                       <UiButton
                         compact
                         disabled={updateDesktopAppMutation.isPending}
@@ -127,6 +177,7 @@ export function DesktopAppsAdminTab({
                             enabled: row.enabled,
                             docStatus: "registered",
                             docsUpdatedAt: new Date().toISOString(),
+                            registrationNeverExpires: row.registrationNeverExpires,
                             issueInstallKey: true,
                           })
                         }

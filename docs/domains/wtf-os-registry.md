@@ -133,7 +133,7 @@ behaviour is unchanged.
 
 Generic tables (`shared/schema-app-registry.ts`):
 
-- `app_registrations` — one row per universal `app_id` (e.g. `desktop:hoard`,
+- `app_registrations` — one row per universal `app_id` (e.g. `desktop:arcade`,
   `creation-tool:particle-painter`, `installed:<slug>`): kind, label, doctrine
   domain, `lifecycleState`, `enabled`, integrity fingerprint legs
   (`manifestHash`/`bundleHash`/`buildHash` → `integrityFingerprint`), source

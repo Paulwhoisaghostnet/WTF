@@ -183,9 +183,6 @@ const AdminPage = lazy(() =>
 const ControlBoardPage = lazy(() =>
   import("../pages/ControlBoard").then((m) => ({ default: m.ControlBoard }))
 );
-const HoardPage = lazy(() =>
-  import("../pages/Hoard").then((m) => ({ default: m.Hoard }))
-);
 const MyVideosPage = lazy(() =>
   import("../pages/MyVideos").then((m) => ({ default: m.MyVideos }))
 );
@@ -558,7 +555,6 @@ export const PAGE_DEFS: PageDef[] = [
     group: "admin",
     startMenu: true,
   },
-  { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
   { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },

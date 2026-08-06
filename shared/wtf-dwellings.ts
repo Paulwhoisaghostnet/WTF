@@ -79,7 +79,7 @@ export const WTF_DWELLINGS: readonly WtfDwelling[] = [
     key: "vault",
     label: "Vault",
     path: "WTF/Vault",
-    route: "/hoard",
+    route: "/profile",
     owner: "Wallet",
     doctrineRole: "Wallet-backed inventory, owned tokens, rewards, and user-value assets.",
     bundleDomains: ["wallet", "tokens", "rewards", "inventory"],

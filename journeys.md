@@ -110,7 +110,7 @@ The beta page now surfaces six daily loops before the deeper trails:
 - Check what changed: Notifications, Digest, Mission Control, and Settings.
 - Complete one quest: Side Quests, Challenges, Leaderboards, and WTFIAM.
 - See people moving: W Feed, WTF LIVE, WIM, and Skywire.
-- Find one object: Gallery, Rat Race, Hoard, and Marketplace.
+- Find one object: Gallery, Rat Race, portfolio, and Marketplace.
 - Move one project forward: Studio, Broot, IPFS Pinning, and WTF Domains.
 - Review one liveops queue: Admin, Challenges, Side Quests, and WTFIAM for The Count only.
 
@@ -135,7 +135,7 @@ This is the user-facing companion to the governance matrix and Count Admin Workb
 The beta page now makes the unlock game explicit with seven questlines:
 
 - First safe win: new users move from public proof to one setup side quest, profile proof, a starter challenge, and notifications.
-- Collector path: Gallery proof leads to object-discovery side quests, Hoard, Rat Race, and WTFIAM.
+- Collector path: Gallery proof leads to object-discovery side quests, portfolio, Rat Race, and WTFIAM.
 - Creator runway: Studio, Broot, Macaroni, IPFS Pinning, and Skywire become one creator challenge arc.
 - Builder proving ground: Game Studio, Map Lab, Console, Arcade, and W connect experiments to feedback.
 - Curator signal chain: Gallery, curation side quests, CRP nomination, Skywire, and W turn taste into public proof.
@@ -155,7 +155,7 @@ This surface is navigational and explanatory only. It does not create quests, gr
 The beta page now adds eight relationship chains between governance and discovery trails:
 
 - First safe win: Leaderboard -> Side Quests -> Profile -> Challenges -> Notifications.
-- Collector context: Gallery -> Hoard -> Rat Race -> Marketplace -> Trade Boards -> WTFIAM.
+- Collector context: Gallery -> portfolio -> Rat Race -> Marketplace -> Trade Boards -> WTFIAM.
 - Creator publish: Studio -> Broot -> Macaroni -> IPFS Pinning -> WTF Domains -> Skywire.
 - Builder output: Game Studio -> Map Lab -> Console -> Arcade -> W.
 - Curator signal: Gallery -> Side Quests -> CRP Nominate -> Skywire -> W.
@@ -170,7 +170,7 @@ Each chain states what comes before, what the sequence consumes, what it feeds i
 The beta page now adds seven route-group cards after the relationship navigator:
 
 - First Win Group: Leaderboards, Side Quests, Profile, Challenges, and Notifications explain the low-risk first route.
-- Collector Economy Group: Gallery, Hoard, Marketplace, Rat Race, Trade Boards, and WTFIAM separate inspection, ownership, heat, trade intent, and inventory.
+- Collector Economy Group: Gallery, portfolio, Marketplace, Rat Race, Trade Boards, and WTFIAM separate inspection, ownership, heat, trade intent, and inventory.
 - Creator Pipeline Group: Studio, Broot, Macaroni, IPFS Pinning, WTF Domains, Skywire, and TV explain the publish runway.
 - Builder Output Group: Game Studio, Map Lab, Console, Arcade, and W explain how projects become inspectable, playable, and discussable.
 - Curator Signal Group: Gallery, Side Quests, CRP nomination, Skywire, W, TV, and Leaderboards explain how taste becomes public contribution.
@@ -209,7 +209,7 @@ The Count now also has a Liveops Recipe Board after the workbench. It maps six r
 
 - Starter witness: a new user moves from public proof to a capped first quest, visible EXP, Mission Control, and Notifications.
 - Creator publish: Studio, Broot, role-gated Macaroni, IPFS Pinning, WTFIAM, and Skywire become one reviewed publish path.
-- Collector market: Gallery, Side Quests, Hoard, WTFIAM, Marketplace, and Rat Race separate object proof from market pressure.
+- Collector market: Gallery, Side Quests, portfolio, WTFIAM, Marketplace, and Rat Race separate object proof from market pressure.
 - Builder surface: Game Studio, Map Lab, Console, Challenges, Admin, and W prove output before any app gate changes.
 - Curator signal: Gallery, Side Quests, CRP nomination, WTFIAM, Admin, and W turn taste into reviewable public signal.
 - Community return: W, Side Quests, WTF LIVE, Challenges, Settings, and Digest create a healthy return loop without notification spam.

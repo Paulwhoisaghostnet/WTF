@@ -452,6 +452,7 @@ export type DesktopAppUpdatePayload = {
   enabled: boolean;
   docStatus?: DesktopAppDocStatus;
   docsUpdatedAt?: string | null;
+  registrationNeverExpires?: boolean;
   issueInstallKey?: boolean;
   revokeInstallKey?: boolean;
 };

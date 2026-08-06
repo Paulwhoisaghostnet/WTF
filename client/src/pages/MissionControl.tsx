@@ -514,9 +514,6 @@ export function MissionControl() {
           <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/profile", "profile")}>
             Open profile
           </ActionButton>
-          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/hoard", "hoard")}>
-            Open Hoard
-          </ActionButton>
         </Actions>
 
         <PanelGrid data-mission-control-region="panel-grid">

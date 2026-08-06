@@ -76,7 +76,6 @@ export const ROUTE_FIXTURES = [
   { pattern: "/admin", path: "/admin", title: "Admin Panel", domain: "admin", subdomain: "Admin overview", auth: true, adminOnly: true },
   { pattern: "/control-board", path: "/control-board", title: "Control Board", domain: "admin", subdomain: "Gameshow admin", auth: true, adminOnly: true },
   { pattern: "/backup-manager", path: "/backup-manager", title: "Backup Manager", domain: "admin", subdomain: "Backup Manager", auth: true, adminOnly: true },
-  { pattern: "/hoard", path: "/hoard", title: "Hoard", domain: "wallet", subdomain: "Hoard", auth: true },
   { pattern: "/my-videos", path: "/my-videos", title: "My Videos", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },
   { pattern: "/my-photos", path: "/my-photos", title: "My Photos", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },
   { pattern: "/my-music", path: "/my-music", title: "My Music", domain: "media", subdomain: "My Videos/Photos/Music", auth: true },

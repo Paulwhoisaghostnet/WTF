@@ -196,6 +196,6 @@ test("admin registry maps every surface to a doctrine domain guide", () => {
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("w")!).label, "Identity And Social");
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("tv")!).label, "Media, TV, And Studio");
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("operator-tools")!).label, "Operations");
-  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("hoard")!).label, "Tezos Platform");
+  assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("profile")!).label, "Identity And Social");
   assert.equal(getAdminSurfaceDoctrineDomain(surfaceById("pasta-protocol")!).label, "Pasta Protocol");
 });

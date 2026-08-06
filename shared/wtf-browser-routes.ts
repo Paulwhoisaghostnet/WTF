@@ -76,7 +76,6 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/theme-builder", auth: true, title: "Theme Builder" },
   { pattern: "/desktop-settings", auth: true, title: "System Appearance" },
   { pattern: "/admin", auth: true, roles: ["admin"], title: "Admin Panel" },
-  { pattern: "/hoard", auth: true, title: "Hoard" },
   { pattern: "/my-videos", auth: true, title: "My Videos" },
   { pattern: "/my-photos", auth: true, title: "My Photos" },
   { pattern: "/my-music", auth: true, title: "My Music" },

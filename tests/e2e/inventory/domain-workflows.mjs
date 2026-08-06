@@ -698,7 +698,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "wallet portfolio to commerce loop",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    routes: ["/dashboard", "/hoard", "/my-gallery", "/collekt", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
+    routes: ["/dashboard", "/profile", "/my-gallery", "/collekt", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
     eventHandles: [
       "wallet.linked",
       "wallet.primary_set",
@@ -715,7 +715,6 @@ export const DOMAIN_WORKFLOWS = [
       "macaroni.drop_wallet.preflight_failed",
       "macaroni.drop_shared",
       "macaroni.drop_calendar_added",
-      "hoard.viewed",
       "collekt.duplicates.scanned",
       "collekt.offer.terms_previewed",
       "collekt.offer.placed",
@@ -780,7 +779,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "market commerce exchange loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/hoard", "/swap", "/wtf-recapture"],
+    routes: ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dashboard", "/swap", "/wtf-recapture"],
     eventHandles: [
       "wtfiam.app_unlock.viewed",
       "wtfiam.app_unlock.blocked",

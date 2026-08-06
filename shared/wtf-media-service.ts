@@ -180,7 +180,7 @@ export const WTF_MEDIA_SERVICE_CAPABILITIES: readonly WtfMediaServiceCapability[
     key: "ownership",
     label: "Ownership",
     dwelling: "vault",
-    route: "/hoard",
+    route: "/profile",
     owner: "Wallet",
     accessPolicy: "owner",
     purpose: "Gate private media, user-value media writes, W attachments, token imports, and gallery edits by owner/staff policy.",

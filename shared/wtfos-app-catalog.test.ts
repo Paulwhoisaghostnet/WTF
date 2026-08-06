@@ -31,7 +31,6 @@ test("core apps and private role-gated apps keep their intended wtfOS placement"
   const defaultDesktopKeys = DESKTOP_APPS.filter(isDefaultDesktopAppKey);
   assert.deepEqual(defaultDesktopKeys, [
     "wtfiam",
-    "hoard",
     "wim",
     "w",
     "gallery",

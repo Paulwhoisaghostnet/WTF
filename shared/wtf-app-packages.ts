@@ -68,7 +68,6 @@ const domainGuides = {
 
 const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof typeof domainGuides]>> = {
   wtfiam: domainGuides.commerceAndWallets,
-  hoard: domainGuides.tezosPlatform,
   wim: domainGuides.identityAndSocial,
   w: domainGuides.identityAndSocial,
   tv: domainGuides.mediaTvStudio,
@@ -100,7 +99,6 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
-  hoard: ["Tezos wallets", "TzKT", "Objkt", "Tezos Domains"],
   wim: [],
   w: ["X API"],
   tv: ["Media storage", "token media sources"],
@@ -154,7 +152,6 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
 
 const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   wtfiam: ["in_app_market_*", "inventory_items", "xp_events"],
-  hoard: ["wallets", "token ownership caches", "profile inventory views"],
   wim: ["dm_conversations", "dm_messages", "system_events"],
   w: ["w_posts", "w_stream_rules", "x_dm_events"],
   tv: ["media_items", "tv_playlist", "system_events"],

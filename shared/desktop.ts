@@ -574,7 +574,6 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "mission-control",
   "command-palette",
   "wtfiam",
-  "hoard",
   "wim",
   "w",
   "skywire",
