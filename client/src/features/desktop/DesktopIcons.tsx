@@ -538,6 +538,20 @@ export function clampIconPosition(
   };
 }
 
+export function shouldOpenDesktopIconFromClick(input: {
+  button: number;
+  clickCount: number;
+  moved: boolean;
+  shiftKey: boolean;
+}): boolean {
+  return (
+    input.button === 0 &&
+    input.clickCount < 2 &&
+    !input.moved &&
+    !input.shiftKey
+  );
+}
+
 export function DraggableIcon({
   def,
   position,
@@ -649,17 +663,35 @@ export function DraggableIcon({
         onRelease(def.key, { x: dr.currentX, y: dr.currentY }, { x: dr.vx, y: dr.vy });
       } else {
         clearDragTransform();
-        onOpen?.();
       }
       onDragEnd(def.key);
     },
-    [clearDragTransform, def.key, onDragEnd, onOpen, onRelease]
+    [clearDragTransform, def.key, onDragEnd, onRelease]
   );
 
-  const handleDblClick = useCallback(
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      dragRef.current.dragging = false;
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+      clearDragTransform();
+      onDragEnd(def.key);
+    },
+    [clearDragTransform, def.key, onDragEnd]
+  );
+
+  const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!dragRef.current.moved) onOpen?.();
+      if (
+        shouldOpenDesktopIconFromClick({
+          button: e.button,
+          clickCount: e.detail,
+          moved: dragRef.current.moved,
+          shiftKey: e.shiftKey,
+        })
+      ) {
+        onOpen?.();
+      }
     },
     [onOpen]
   );
@@ -681,8 +713,8 @@ export function DraggableIcon({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onDoubleClick={handleDblClick}
+      onPointerCancel={handlePointerCancel}
+      onClick={handleClick}
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -759,15 +791,6 @@ export function buildDesktopIconDefs(
       defaultY: 100,
       enabled: canOpenApps && (apps.wtfiam || canOpenDisabledApps),
       openPath: "/wtfiam",
-    },
-    {
-      key: "hoard",
-      label: "HOARD!",
-      icon: "🐉",
-      defaultX: 12,
-      defaultY: 100,
-      enabled: canOpenApps && (apps.hoard || canOpenDisabledApps),
-      openPath: "/hoard",
     },
     {
       key: "w",
@@ -867,6 +890,15 @@ export function buildDesktopIconDefs(
       defaultY: 100,
       enabled: canOpenApps && (apps.mail || canOpenDisabledApps),
       openPath: "/mail",
+    },
+    {
+      key: "admin-inbox",
+      label: "Contact Admin",
+      icon: <ConsoleDeskIcon>ADM</ConsoleDeskIcon>,
+      defaultX: 332,
+      defaultY: 100,
+      enabled: canOpenApps && (apps["admin-inbox"] || canOpenDisabledApps),
+      openPath: "/admin-inbox",
     },
     {
       key: "tv",

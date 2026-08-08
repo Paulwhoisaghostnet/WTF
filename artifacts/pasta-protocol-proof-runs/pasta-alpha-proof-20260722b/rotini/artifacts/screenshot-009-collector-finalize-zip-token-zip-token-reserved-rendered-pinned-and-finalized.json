@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize ZIP token",
+  "stageOrdinal": 9,
+  "stageName": "ZIP token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:50044/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-23T03:05:39.943Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "8aa2c7f318f9e97aa745673cf7eb0defa2f148a64af2ba6aeecf1d5fda1050b5",
+  "byteCount": 158705,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "zip finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ZIP iteration 2 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "zip supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · ZIP · 0.000001 tez"
+    },
+    {
+      "selector": "#log",
+      "name": "zip operation",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "3:05:04 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 3:05:07 AM resuming unfinalized reservation 2 3:05:07 AM loading reserved layer Background / Marinara… 3:05:07 AM loading reserved layer Foreground / Pesto… 3:05:07 AM interactive ZIP validated offline (2,855 source bytes) 3:05:07 AM pinning finalized application/zip artifact… 3:05:11 AM pinning interactive token cover… 3:05:11 AM pinning TZIP-21 token metadata… 3:05:25 AM finalizing reservation 2 (sign in wallet)… 3:05:37 AM collector finalized ZIP token 2 with opLiccP5pmi5EnQjNZxYoLwSAWvpr66VNPtfx9Dk7nXP25G1jBy"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

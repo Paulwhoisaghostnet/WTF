@@ -1,0 +1,57 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-PRE-SUBMISSION",
+  "app": "ravioli",
+  "attempt": 3,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "failure": {
+    "stage": "required outliving limited-edition Studio rejection",
+    "reason": "The proof predicate counted a read-only chain safety receipt as a chain action even though the Studio rejected before every durable pin and write.",
+    "processExitCode": 1
+  },
+  "submissionAudit": {
+    "pinsCommitted": 0,
+    "writeIntentProduced": false,
+    "originationsSubmitted": 0,
+    "callsSubmitted": 0,
+    "batchesSubmitted": 0,
+    "creatorCounter": 23831476,
+    "primaryActiveMempoolOperations": 0,
+    "fallbackActiveMempoolOperations": 0,
+    "routerAddress": "",
+    "gnocchiAdapterAddress": "",
+    "rotiniAdapterAddress": "",
+    "manifestProduced": false,
+    "receiptProduced": false
+  },
+  "partialEvidence": [
+    {
+      "path": "screenshots/001-compose-five-atomic-pack-modes-same-run-dependencies-entered.png",
+      "sha256": "9474d580fa265332b8c6e30c12cc52d79c4a94f1946b377bc5c1c64d56918b0c",
+      "byteCount": 97030
+    },
+    {
+      "path": "artifacts/screenshot-001-compose-five-atomic-pack-modes-same-run-dependencies-entered.json",
+      "sha256": "2703a76444bc115cbed644be8f1a87b737b8db3365fb2df4d3236985afd2465a",
+      "byteCount": 1044
+    },
+    {
+      "path": "screenshots/002-compose-five-atomic-pack-modes-creator-connected-on-shadownet.png",
+      "sha256": "759d6d1657266e85cc2372b1eb4037bf7937ece2e1686e3c37e0c47bb0111f2e",
+      "byteCount": 102730
+    },
+    {
+      "path": "artifacts/screenshot-002-compose-five-atomic-pack-modes-creator-connected-on-shadownet.json",
+      "sha256": "6fc865ea385acffcba8990d21e25446945f5ea740580a9e3dc92c48b84995c4d",
+      "byteCount": 850
+    }
+  ],
+  "acceptance": {
+    "mayBeCombinedWithAcceptedProof": false,
+    "mayBeResumed": false,
+    "freshAttemptRequired": true
+  }
+}

@@ -30,6 +30,12 @@ test("interactive ZIP contains a top-level runtime and no external dependencies"
     width: 512,
     height: 512,
     traits: [{ layer: "Background", value: "Red" }],
+    provenance: {
+      schema: "pasta-ravioli-rotini-render@1",
+      packContract: "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy",
+      openSerial: 2,
+      actionIndex: 1,
+    },
     layers: [
       { name: "Background", mimeType: "image/png", data: Uint8Array.of(137, 80, 78, 71) },
       { name: "Foreground", mimeType: "image/gif", data: ascii(new TextEncoder().encode("GIF89a")) },
@@ -46,6 +52,15 @@ test("interactive ZIP contains a top-level runtime and no external dependencies"
   assert.match(html, /<canvas id="art"/);
   assert.doesNotMatch(html, /https?:\/\//);
   assert.doesNotMatch(html, /\bfetch\s*\(/);
+  assert.deepEqual(
+    JSON.parse(ascii(built.validation.files.at(-1).data)).provenance,
+    {
+      schema: "pasta-ravioli-rotini-render@1",
+      packContract: "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy",
+      openSerial: 2,
+      actionIndex: 1,
+    },
+  );
   const bytes = new Uint8Array(await built.blob.arrayBuffer());
   assert.deepEqual([...bytes.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04]);
 });

@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ch-ease",
+  "capability": "Export portable package",
+  "stageOrdinal": 3,
+  "stageName": "JSON and media archive exported",
+  "url": "http://127.0.0.1:64403/creation-tools/ch-ease/index.html?network=shadownet",
+  "timestampUtc": "2026-07-24T20:13:55.803Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "e9a0ccf0612d7a2355c2a9260c5e5ad96d428b81579e7764a6b498db4c866a9c",
+  "byteCount": 93780,
+  "domEvidence": [
+    {
+      "selector": "#status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Media archive ZIP downloaded."
+    },
+    {
+      "selector": "#summary",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 item · 1 file loaded · 1 durable · spaghetti collection"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

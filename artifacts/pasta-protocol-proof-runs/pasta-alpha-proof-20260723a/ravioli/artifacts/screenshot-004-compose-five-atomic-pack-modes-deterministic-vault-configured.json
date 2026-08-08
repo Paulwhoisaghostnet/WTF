@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 4,
+  "stageName": "deterministic_vault configured",
+  "url": "http://127.0.0.1:56323/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-23T21:23:04.018Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "1e2f7c8677a0586e31166c8cf3678c0a798d8891e92410b6a6714fa6b45172ec",
+  "byteCount": 124463,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli"
+    },
+    {
+      "selector": "#adapterSetup",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Automatic allocation / generative adapter setup Originate and configure typed helper adapters when their recipe type is used Gnocchi contract Gnocchi token id Existing allocation adapter (optional) Rotini contract Rotini project id Existing generative adapter (optional)"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

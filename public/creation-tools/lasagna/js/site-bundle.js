@@ -23,7 +23,7 @@ const PastaSiteKit = (() => {
   async function asset(path) { const response = await fetch(path, { cache: "no-store" }); if (!response.ok) throw new Error(`Could not load ${path} (${response.status}).`); return new Uint8Array(await response.arrayBuffer()); }
   async function build(config) {
     const files = [{ path: "pasta.config.js", data: `window.PASTA_SITE_CONFIG = ${JSON.stringify(config, null, 2)};\n` }];
-    const selected = config.app === "rotini" ? [...FILES, ...ROTINI_FILES] : FILES;
+    const selected = config.app === "rotini" || config.app === "ravioli" ? [...FILES, ...ROTINI_FILES] : FILES;
     for (const path of selected) files.push({ path: path === "site.html" ? "index.html" : path, data: await asset(path) });
     return zip(files);
   }

@@ -56,7 +56,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/wim", title: "WIM", access: "browser-session", purpose: "WTF Instant Messenger view over the canonical DM system." },
   { path: "/dear-diary", title: "Dear Diary", access: "browser-session", purpose: "Private diary, note, search, tag, and cross-reference workspace.", appGate: "dear-diary" },
   { path: "/marketplace", title: "On Chain Market", access: "browser-session", purpose: "Marketplace browsing and listing workflows." },
-  { path: "/trade-boards", title: "Trade Boards", access: "browser-session", purpose: "Trade-board management.", appGate: "hoard" },
+  { path: "/trade-boards", title: "Trade Boards", access: "browser-session", purpose: "Trade-board management.", appGate: "wtfiam" },
   { path: "/w", title: "W Feed", access: "browser-session", purpose: "Social feed and posting.", appGate: "w" },
   { path: "/crp-nominate", title: "CRP Nominations", access: "browser-session", purpose: "Tezos Commons Recognition Program nomination AppView.", appGate: "crp-nominations" },
   { path: "/skywire", title: "Skywire", access: "public", purpose: "Standalone AT Protocol login surface plus session-bound Bluesky-compatible Skywire social cockpit.", appGate: "skywire" },

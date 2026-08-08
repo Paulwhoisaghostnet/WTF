@@ -28,14 +28,14 @@ import { users } from "./schema-core";
  * sha256 hash + short prefix are persisted, never the secret itself.
  */
 
-/** Universal app id, e.g. "desktop:hoard" / "creation-tool:particle-painter" / "installed:<slug>". */
+/** Universal app id, e.g. "desktop:arcade" / "creation-tool:particle-painter" / "installed:<slug>". */
 export const appRegistrations = pgTable(
   "app_registrations",
   {
     id: serial("id").primaryKey(),
     appId: varchar("app_id", { length: 160 }).unique().notNull(),
     kind: varchar("kind", { length: 40 }).notNull(),
-    /** Stable launcher/slug key (e.g. "hoard", "particle-painter"). */
+    /** Stable launcher/slug key (e.g. "arcade", "particle-painter"). */
     appKey: varchar("app_key", { length: 80 }),
     label: varchar("label", { length: 200 }).notNull(),
     domainLabel: varchar("domain_label", { length: 120 }),

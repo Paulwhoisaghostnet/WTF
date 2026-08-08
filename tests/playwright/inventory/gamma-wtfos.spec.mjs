@@ -5398,96 +5398,6 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
   });
 
-  test("hosts Hoard wallet collection chrome in the Gamma presentation style", async ({ page, request }) => {
-    await setHarnessState(request, { userRole: "user", username: "gamma-hoarder", displayName: "Gamma Hoarder" });
-    await page.route("**/api/profile/tokens**", async (route) => {
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({
-          items: [
-            {
-              id: 1,
-              name: "Gamma Coin Stack",
-              balance: "6",
-              thumbnail: "/__test/media/harness-alpha-token.png",
-              contract: "KT1GammaHoard",
-              tokenId: "1",
-            },
-            {
-              id: 2,
-              name: "Cyan Relic",
-              balance: "3",
-              thumbnail: "/__test/media/harness-alpha-token.png",
-              contract: "KT1GammaHoard",
-              tokenId: "2",
-            },
-          ],
-          pagination: { total: 2 },
-          total: 2,
-        }),
-      });
-    });
-
-    await page.goto("/gamma/hoard", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/hoard");
-    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
-
-    const hoardSurface = page.locator('[data-gamma-application-content] [data-hoard-surface="treasure-chamber"]');
-    await expect(hoardSurface).toHaveAttribute("data-hoard-presentation-host", "gamma");
-    await expect(hoardSurface.locator('[data-hoard-region="meta-bar"]')).toContainText("9 editions");
-    await expect(hoardSurface.locator('[data-hoard-region="meta-bar"]')).toContainText("2 token types");
-    await expect(hoardSurface.locator('[data-hoard-region="stage"]')).toBeVisible();
-    await expect(hoardSurface.locator('[data-hoard-region="canvas"]')).toHaveAttribute(
-      "aria-label",
-      "Animated Hoard chamber showing 9 editions across 2 token types"
-    );
-
-    await page.waitForFunction(() => {
-      const canvas = document.querySelector('[data-hoard-region="canvas"]');
-      if (!(canvas instanceof HTMLCanvasElement)) return false;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return false;
-      const pixel = ctx.getImageData(12, 12, 1, 1).data;
-      return pixel[0] + pixel[1] + pixel[2] > 0;
-    });
-
-    const hoardMetrics = await hoardSurface.evaluate((surface) => {
-      const read = (selector) => {
-        const node = surface.matches(selector) ? surface : surface.querySelector(selector);
-        if (!node) return null;
-        const style = window.getComputedStyle(node);
-        return {
-          backgroundImage: style.backgroundImage,
-          borderColor: style.borderTopColor,
-          borderWidth: Number.parseFloat(style.borderTopWidth || "0"),
-          boxShadow: style.boxShadow,
-          color: style.color,
-          fontFamily: style.fontFamily,
-          radius: Number.parseFloat(style.borderTopLeftRadius || "0"),
-          textShadow: style.textShadow,
-        };
-      };
-      return {
-        surface: read('[data-hoard-region="surface"]'),
-        metaBar: read('[data-hoard-region="meta-bar"]'),
-        liveMeta: read('[data-hoard-meta-tone="live"]'),
-        stage: read('[data-hoard-region="stage"]'),
-        canvas: read('[data-hoard-region="canvas"]'),
-      };
-    });
-    expect(hoardMetrics.surface?.fontFamily).toMatch(/Inter|sans-serif/i);
-    for (const metrics of Object.values(hoardMetrics)) {
-      expect(metrics?.backgroundImage).toBe("none");
-      expect(metrics?.boxShadow).toBe("none");
-      expect(metrics?.textShadow).toBe("none");
-      expect(metrics?.borderWidth).toBeLessThanOrEqual(1);
-      expect(metrics?.radius).toBeLessThanOrEqual(6);
-    }
-    expect(hoardMetrics.stage?.borderColor).toMatch(/0,\s*210,\s*255/);
-    expect(hoardMetrics.liveMeta?.color).toMatch(/214,\s*255,\s*63/);
-  });
-
   test("hosts Rat Race urgency cards in the Gamma presentation style", async ({ page, request }) => {
     await setHarnessState(request, { userRole: "user", username: "gamma-collector", displayName: "Gamma Collector" });
 
@@ -7146,6 +7056,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
             categories: ["Tezos", "WTFOS"],
             imageUrl: "/__test/media/harness-alpha-token.png",
             externalId: "gamma-calendar-signal",
+            sourceUrl: "https://thetezos.com/events/gamma-calendar-signal/",
+            creatorName: "Gamma TTC Creator",
+            creatorUrl: "https://thetezos.com/author/gamma-creator/",
           },
         ]),
       });
@@ -7162,6 +7075,11 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await calendarSurface.getByRole("button", { name: /Gamma calendar signal/ }).click();
     await expect(calendarSurface.locator('[data-calendar-region="source-badge"]')).toContainText("TTC");
     await expect(calendarSurface.locator('[data-calendar-region="kind-badge"]')).toContainText("x_space");
+    await expect(calendarSurface.locator('[data-calendar-region="event-creator"]')).toContainText("Gamma TTC Creator");
+    await expect(calendarSurface.locator('[data-calendar-region="event-source-link"] a')).toHaveAttribute(
+      "href",
+      "https://thetezos.com/events/gamma-calendar-signal/"
+    );
     await expect(calendarSurface.locator('[data-calendar-region="source-panel"]')).toContainText("Personal entries stay");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
@@ -7187,6 +7105,9 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(periodLabel).toHaveText(currentMonthLabel || "");
     await calendarSurface.getByRole("button", { name: "Week", exact: true }).click();
     await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "week");
+    await calendarSurface.getByRole("button", { name: "Agenda", exact: true }).click();
+    await expect(calendarSurface.locator('[data-calendar-region="calendar-grid"]')).toHaveAttribute("data-calendar-view", "agenda");
+    await expect(calendarSurface.getByRole("button", { name: /Gamma calendar signal/ })).toBeVisible();
 
     const calendarMetrics = await calendarSurface.evaluate((surface) => {
       const readNode = (node) => {

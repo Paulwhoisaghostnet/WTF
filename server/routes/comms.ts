@@ -4,7 +4,10 @@ import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { db } from "../db";
 import type { CommunicationItemKind } from "@shared/comms";
+import { isAdmin } from "@shared/types";
 import {
+  adminInboxMessages,
+  adminInboxReplies,
   communicationItems,
   communicationReadStates,
   communicationSources,
@@ -67,7 +70,8 @@ router.get("/api/comms/unread-count", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const userId = Number(user.id);
 
-    const [[notificationUnread], [dmUnread], [mailUnread]] = await Promise.all([
+    const adminAccount = isAdmin(user.roles ?? user.role);
+    const [[notificationUnread], [dmUnread], [mailUnread], [adminInboxUnread]] = await Promise.all([
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(userNotifications)
@@ -118,16 +122,37 @@ router.get("/api/comms/unread-count", isAuthenticated, async (req, res) => {
             sql`coalesce(${communicationItems.metadata}->>'direction', 'inbound') = 'inbound'`
           )
         ),
+      adminAccount
+        ? db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(adminInboxMessages)
+            .where(eq(adminInboxMessages.status, "unread"))
+        : db
+            .select({ count: sql<number>`count(distinct ${adminInboxMessages.id})::int` })
+            .from(adminInboxMessages)
+            .innerJoin(adminInboxReplies, eq(adminInboxReplies.messageId, adminInboxMessages.id))
+            .where(
+              and(
+                eq(adminInboxMessages.senderUserId, userId),
+                eq(adminInboxReplies.senderKind, "admin"),
+                or(
+                  isNull(adminInboxMessages.senderReadAt),
+                  gt(adminInboxReplies.createdAt, adminInboxMessages.senderReadAt)
+                )
+              )
+            ),
     ]);
 
     const notifications = Number(notificationUnread?.count || 0);
     const dms = Number(dmUnread?.count || 0);
     const mail = Number(mailUnread?.count || 0);
+    const adminInbox = Number(adminInboxUnread?.count || 0);
     res.json({
-      total: notifications + dms + mail,
+      total: notifications + dms + mail + adminInbox,
       notifications,
       dms,
       mail,
+      adminInbox,
     });
   } catch (err) {
     console.error("[comms] unread count failed:", err);

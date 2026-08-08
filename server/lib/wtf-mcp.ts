@@ -1193,7 +1193,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ mine_only, single_editions_only, q, limit, offset, response_format }) => {
-      const gate = await requireMcpFeature("hoard", "wtf_list_unlisted_trade_board_tokens", response_format);
+      const gate = await requireMcpFeature("wtfiam", "wtf_list_unlisted_trade_board_tokens", response_format);
       if (!gate.ok) return gate.error!;
 
       const whereParts = [
@@ -1338,7 +1338,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ action, tokens, response_format }) => {
-      const gate = await requireMcpFeature("hoard", "wtf_set_trade_board_tokens", response_format);
+      const gate = await requireMcpFeature("wtfiam", "wtf_set_trade_board_tokens", response_format);
       if (!gate.ok) return gate.error!;
 
       const ownedRows = await db
@@ -1434,7 +1434,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ token_contract, token_id, price_wtf, amount, response_format }) => {
-      const gate = await requireMcpFeature("hoard", "wtf_prepare_single_edition_listing_workflow", response_format);
+      const gate = await requireMcpFeature("wtfiam", "wtf_prepare_single_edition_listing_workflow", response_format);
       if (!gate.ok) return gate.error!;
 
       const [holding] = await db

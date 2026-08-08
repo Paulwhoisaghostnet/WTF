@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "load editions and stage",
+  "stageOrdinal": 4,
+  "stageName": "Two editions and one-per-wallet stage synced",
+  "url": "http://127.0.0.1:64500/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-24T20:15:10.759Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "990eec6484d80e6f60746365007dafc64eea8f465946296fd21d762a51b5c1b3",
+  "byteCount": 169432,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#deployStatus",
+      "name": "sync",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "in sync ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "inventory",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [8:14:11 PM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [8:14:11 PM] token sheet loaded: 1 tokens [8:14:11 PM] 1 artwork file(s) added (1 total) [8:14:11 PM] stage 1: settings saved [8:14:12 PM] cover pinned: bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu [8:14:16 PM] placeholder pinned: bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae [8:14:20 PM] pinning complete: 1 tokens [8:14:21 PM] contract metadata pinned: bafkreiazuy3mrgzlzkfccphw6k7ktc44ze4viwg2gpvxkxm4vduilcteg4 [8:14:21 PM] originating contract… [8:14:39 PM] contract deployed at KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP [8:14:39 PM] explorer: https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP [8:14:45 PM] sync: contract has 0/1 token row(s) loaded (2 edition(s) in draft) [8:14:45 PM] add_tokens_v2 0…0 (1) — approve in wallet [8:14:57 PM] set_stages (1) [8:15:10 PM] sync complete — your drop is live on-chain. [8:15:10 PM] objkt collection (mainnet only): https://objkt.com/coll"
+    },
+    {
+      "selector": "#log",
+      "name": "live drop",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [8:14:11 PM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [8:14:11 PM] token sheet loaded: 1 tokens [8:14:11 PM] 1 artwork file(s) added (1 total) [8:14:11 PM] stage 1: settings saved [8:14:12 PM] cover pinned: bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu [8:14:16 PM] placeholder pinned: bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae [8:14:20 PM] pinning complete: 1 tokens [8:14:21 PM] contract metadata pinned: bafkreiazuy3mrgzlzkfccphw6k7ktc44ze4viwg2gpvxkxm4vduilcteg4 [8:14:21 PM] originating contract… [8:14:39 PM] contract deployed at KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP [8:14:39 PM] explorer: https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP [8:14:45 PM] sync: contract has 0/1 token row(s) loaded (2 edition(s) in draft) [8:14:45 PM] add_tokens_v2 0…0 (1) — approve in wallet [8:14:57 PM] set_stages (1) [8:15:10 PM] sync complete — your drop is live on-chain. [8:15:10 PM] objkt collection (mainnet only): https://objkt.com/coll"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

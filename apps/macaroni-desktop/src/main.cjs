@@ -5,6 +5,9 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
+const { listenOnStableOrigin } = require("./loopback-origin.cjs");
+
+const PRODUCT_NAME = "Macaroni Studio";
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -164,19 +167,13 @@ async function handleRequest(req, res) {
   }
 }
 
-function startLocalServer() {
-  return new Promise((resolve, reject) => {
-    const nextServer = http.createServer((req, res) => {
-      handleRequest(req, res).catch((err) => sendJson(res, 500, { error: err.message || "Server error" }));
-    });
-    nextServer.once("error", reject);
-    nextServer.listen(0, "127.0.0.1", () => {
-      server = nextServer;
-      const address = nextServer.address();
-      baseUrl = `http://127.0.0.1:${address.port}`;
-      resolve(baseUrl);
-    });
+async function startLocalServer() {
+  const nextServer = http.createServer((req, res) => {
+    handleRequest(req, res).catch((err) => sendJson(res, 500, { error: err.message || "Server error" }));
   });
+  baseUrl = await listenOnStableOrigin(nextServer, PRODUCT_NAME);
+  server = nextServer;
+  return baseUrl;
 }
 
 function isSafeExternalUrl(value) {
@@ -252,15 +249,28 @@ function createWindow() {
   mainWindow.loadURL(`${baseUrl}/studio.html`);
 }
 
-app.whenReady().then(async () => {
-  try {
-    await startLocalServer();
-    createWindow();
-  } catch (err) {
-    dialog.showErrorBox("Macaroni Studio failed to start", err.message || String(err));
-    app.quit();
-  }
-});
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", focusMainWindow);
+  app.whenReady().then(async () => {
+    try {
+      await startLocalServer();
+      createWindow();
+    } catch (err) {
+      dialog.showErrorBox("Macaroni Studio failed to start", err.message || String(err));
+      app.quit();
+    }
+  });
+}
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0 && baseUrl) createWindow();

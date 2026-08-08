@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 3,
+  "stageName": "Media and metadata pinned",
+  "url": "http://127.0.0.1:57334/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-24T19:40:46.517Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2f66667d15252c65f4bcd14eb8340dac3d9501aa3ce6b26c0b3d9cad741d5a85",
+  "byteCount": 123566,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "7:40:44 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 7:40:45 PM pinning artifact… 7:40:45 PM pinning collection metadata… 7:40:46 PM pinning token metadata… 7:40:46 PM originating multi-edition Gnocchi collection (sign in wallet)…"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

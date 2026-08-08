@@ -73,7 +73,7 @@ export const BETA_NOW_SIGNAL_SOURCES: BetaNowSignalSource[] = [
     endpoint: "/api/marketplace?limit=4",
     access: "public",
     userQuestion: "Is there collector motion?",
-    betaUse: "Lets collectors see live commerce before choosing Hoard, Rat Race, or WTFIAM.",
+    betaUse: "Lets collectors see live commerce before choosing Dashboard, Rat Race, or WTFIAM.",
   },
   {
     key: "market-trade-board",

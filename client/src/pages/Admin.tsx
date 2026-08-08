@@ -739,6 +739,7 @@ export function Admin() {
     markPaidMutation,
     batchPayMutation,
     updateDesktopAppMutation,
+    refreshAllDesktopAppsMutation,
     updateInAppMarketItemMutation,
     createInAppMarketItemMutation,
     repriceInAppMarketMutation,
@@ -1115,6 +1116,7 @@ export function Admin() {
           <DesktopAppsAdminTab
             desktopApps={desktopApps}
             updateDesktopAppMutation={updateDesktopAppMutation}
+            refreshAllDesktopAppsMutation={refreshAllDesktopAppsMutation}
           />
         )}
         {activeTab === 10 && (

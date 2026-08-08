@@ -1,0 +1,41 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-PRE-SUBMISSION",
+  "app": "ravioli-gnocchi-le-dependency",
+  "attempt": 3,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "failure": {
+    "stage": "real Gnocchi Studio contract interface lookup",
+    "reason": "The bridge applied its depth-16 storage limit to the legitimate depth-27 Taquito entrypoint map before reading the sanitized storage projection.",
+    "visibleStudioNotice": "Collection verification failed: storage projection is not bounded: projection exceeds depth 16; projectStorage must return only bounded primitives, plain objects, arrays, BigNumber values, or MichelsonMap values",
+    "processExitCode": 1
+  },
+  "submissionAudit": {
+    "pinsCommitted": 0,
+    "writeIntentProduced": false,
+    "operationSubmitted": false,
+    "chainWritePossibleAtFailureStage": false,
+    "manifestProduced": false,
+    "receiptProduced": false
+  },
+  "partialEvidence": [
+    {
+      "path": "screenshots/001-publish-ravioli-limited-edition-dependency-future-limited-edition-configured.png",
+      "sha256": "e510fbf446d507fe00e923f97cf2703deeda904a383a139bc5f8122f19843dbc",
+      "byteCount": 125968
+    },
+    {
+      "path": "artifacts/screenshot-001-publish-ravioli-limited-edition-dependency-future-limited-edition-configured.json",
+      "sha256": "f8819f757e6e7b724ed022e51a400061f820fc1067dd77655c467d7d31574f76",
+      "byteCount": 927
+    }
+  ],
+  "acceptance": {
+    "mayBeCombinedWithAcceptedProof": false,
+    "mayBeResumed": false,
+    "freshAttemptRequired": true
+  }
+}

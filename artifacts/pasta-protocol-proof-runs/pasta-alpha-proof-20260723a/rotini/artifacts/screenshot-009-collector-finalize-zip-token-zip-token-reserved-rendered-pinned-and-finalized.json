@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize ZIP token",
+  "stageOrdinal": 9,
+  "stageName": "ZIP token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:53686/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-23T21:06:11.221Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "1c7c7f1b3db81053810dc14cff96afb57e123282afa602b4d742c31d69fabe46",
+  "byteCount": 178196,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "9:03:55 PM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 9:04:01 PM reserving immutable token id and seed (sign in wallet)… 9:04:15 PM reservation 0 confirmed; rendering token 0 from its on-chain seed 9:04:18 PM loading reserved layer Background / Marinara… 9:04:20 PM loading reserved layer Foreground / Pesto… 9:04:22 PM pinning finalized image/png artifact… 9:04:23 PM pinning TZIP-21 token metadata… 9:04:25 PM finalizing reservation 0 (sign in wallet)… 9:04:42 PM collector finalized PNG token 0 with op3qoTUHNXarhVVT5auxo4qbYJpbvca64tF4kqAMMBsv7MFFWEW 9:04:50 PM reserving immutable token id and seed (sign in wallet)… 9:05:07 PM reservation 1 confirmed; rendering token 1 from its on-chain seed 9:05:09 PM loading reserved layer Background / Marinara… 9:05:09 PM loading reserved layer Foreground / Pesto… 9:05:09 PM pinning finalized image/gif artifact… 9:05:10 PM pinning TZIP-21 token metadata… 9:05:11 PM finalizing reservation 1 (sign in wallet)… 9:05:24 PM collector finali"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "zip finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ZIP iteration 2 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "zip supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · ZIP · 0.000001 tez"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

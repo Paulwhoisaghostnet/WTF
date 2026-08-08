@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 4,
+  "stageName": "Collection originated",
+  "url": "http://127.0.0.1:62208/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-23T00:57:00.842Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "0ec30fd8c1fe08b70f1edd72f1bf4ed820ea47fed4d58f1b5a326f1cabbba580",
+  "byteCount": 143903,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:56:30 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:56:30 AM pinning artifact… 12:56:34 AM pinning collection metadata… 12:56:39 AM pinning token metadata… 12:56:44 AM originating multi-edition Gnocchi collection (sign in wallet)… 12:57:00 AM collection deployed: KT1DKd6CdJfRpitbGiLAa5BRfZprReLe32rm 12:57:00 AM explorer: https://shadownet.tzkt.io/KT1DKd6CdJfRpitbGiLAa5BRfZprReLe32rm 12:57:00 AM publishing timed edition #0 (sign in wallet)…"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

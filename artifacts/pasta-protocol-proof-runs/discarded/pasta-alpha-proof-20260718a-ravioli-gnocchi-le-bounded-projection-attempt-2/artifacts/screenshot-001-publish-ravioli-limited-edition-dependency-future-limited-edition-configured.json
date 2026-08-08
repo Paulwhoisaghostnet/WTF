@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli-le-dependency",
+  "capability": "publish Ravioli limited-edition dependency",
+  "stageOrdinal": 1,
+  "stageName": "Future limited edition configured",
+  "url": "http://127.0.0.1:60135/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-22T21:04:54.857Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "67490506e77b255901a12df3e514813a961fb2e807aa76d1e2392ab0b1de9048",
+  "byteCount": 126389,
+  "domEvidence": [
+    {
+      "selector": "#curvePreview",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "First mint: 0.000001 tez · after 1 sold: 0.000001 tez · final (#3): 0.000001 tez · preset: Limited Edition"
+    },
+    {
+      "selector": "#account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1QBFT…S3cM"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

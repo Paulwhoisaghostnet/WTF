@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli-le-dependency",
+  "capability": "publish Ravioli limited-edition dependency",
+  "stageOrdinal": 2,
+  "stageName": "Accepted collection verified at token three",
+  "url": "http://127.0.0.1:60718/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-22T21:11:33.309Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "643aa007c5e61cac257dbc4a16655c08d99c3c860c93bf9ef702be7432d522c8",
+  "byteCount": 132794,
+  "domEvidence": [
+    {
+      "selector": "#publishTargetStatus",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Verified administrator · next edition will be token #3"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

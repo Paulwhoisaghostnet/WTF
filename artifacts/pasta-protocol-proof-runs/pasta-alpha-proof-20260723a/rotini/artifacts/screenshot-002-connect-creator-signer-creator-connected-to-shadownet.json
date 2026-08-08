@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "connect creator signer",
+  "stageOrdinal": 2,
+  "stageName": "Creator connected to Shadownet",
+  "url": "http://127.0.0.1:53569/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-23T21:02:41.671Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "81e1961fd983c1b5c383d0da8a0c7f5e9de93060741fca09aa492637060d69e6",
+  "byteCount": 82997,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "9:02:40 PM generated 4 edition(s) from seed \"rotini-ui-live-proof\" 9:02:41 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet"
+    },
+    {
+      "selector": "#account",
+      "name": "creator account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1QBFT…S3cM"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

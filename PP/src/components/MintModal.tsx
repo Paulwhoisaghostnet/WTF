@@ -16,6 +16,7 @@ export function MintModal({ onClose }: MintModalProps) {
   const [editions, setEditions] = useState(1);
   const [description, setDescription] = useState("");
   const [fileType, setFileType] = useState<"gif" | "webm">("gif");
+  const [pinataJWT, setPinataJWT] = useState("");
   const [isMinting, setIsMinting] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export function MintModal({ onClose }: MintModalProps) {
           fileName,
           mimeType,
           royalties: 100, // Default to 10%
+          pinataJWT,
         },
         walletAddress,
         (msg) => setProgress(msg)
@@ -201,6 +203,42 @@ export function MintModal({ onClose }: MintModalProps) {
                 />
               </div>
 
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  htmlFor="particle-painter-pinata-jwt"
+                  style={{ display: "block", marginBottom: 8, fontSize: 14 }}
+                >
+                  Your Pinata JWT
+                </label>
+                <input
+                  id="particle-painter-pinata-jwt"
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={pinataJWT}
+                  onChange={(event) => setPinataJWT(event.target.value)}
+                  disabled={isMinting}
+                  placeholder="Paste a JWT with pinFileToIPFS permission"
+                  aria-describedby="particle-painter-pinata-jwt-help"
+                  style={{
+                    width: "100%",
+                    padding: 8,
+                    fontSize: 14,
+                    borderRadius: 4,
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    background: "rgba(0,0,0,0.3)",
+                    color: "#fff",
+                  }}
+                />
+                <div
+                  id="particle-painter-pinata-jwt-help"
+                  style={{ marginTop: 6, fontSize: 11, opacity: 0.8, lineHeight: 1.4 }}
+                >
+                  Session only. Sent directly from this browser to Pinata for
+                  this mint; Particle Painter never saves it.
+                </div>
+              </div>
+
               {progress && (
                 <div
                   style={{
@@ -234,7 +272,7 @@ export function MintModal({ onClose }: MintModalProps) {
                 <button
                   className="btn btnPrimary"
                   onClick={handleMint}
-                  disabled={isMinting}
+                  disabled={isMinting || !pinataJWT.trim()}
                   style={{ flex: 1 }}
                 >
                   {isMinting ? "Minting..." : "Mint NFT"}

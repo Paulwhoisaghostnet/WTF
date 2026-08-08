@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 8,
+  "stageName": "All three policies live in one collection",
+  "url": "http://127.0.0.1:55656/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-24T02:28:18.650Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "f2d08aabe872d54da30b122a0343b6faa966b9cbdb4374781632af2a352d6e7b",
+  "byteCount": 160980,
+  "domEvidence": [
+    {
+      "selector": "#editionList .pp-token strong",
+      "matchCount": 3,
+      "selectedIndex": 0,
+      "text": "Token #0 · Timed OE"
+    },
+    {
+      "selector": "#editionList .pp-token strong",
+      "matchCount": 3,
+      "selectedIndex": 1,
+      "text": "Token #1 · Forever OE"
+    },
+    {
+      "selector": "#editionList .pp-token strong",
+      "matchCount": 3,
+      "selectedIndex": 2,
+      "text": "Token #2 · Limited Edition"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

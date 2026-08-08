@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "blind claim preserving wrapper transfer",
+  "stageOrdinal": 10,
+  "stageName": "collector one transferred an unopened blind claim",
+  "url": "http://127.0.0.1:62578/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-24T20:06:02.712Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "6435526b6de3a4dcd7c976ea28d9ccc75e9ed7e527fad881da087d583af50be1",
+  "byteCount": 143606,
+  "domEvidence": [
+    {
+      "selector": "#transferInfo",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "One wrapper and blind claim 0 moved together to tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ."
+    },
+    {
+      "selector": "#ppNotice",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli wrapper transfer confirmed with its exact claim state."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -207,7 +207,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "social post to reward automation loop",
     domain: "Community, Social, Messaging, and Discord",
-    routes: ["/messageboard", "/w", "/skywire", "/live", "/tz2at", "/crp-nominate", "/messages", "/mail", "/digest", "/wim", "/browser", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
+    routes: ["/messageboard", "/w", "/skywire", "/live", "/tz2at", "/crp-nominate", "/messages", "/mail", "/admin-inbox", "/digest", "/wim", "/browser", "/dear-diary", "/dicksword", "/i-hate-telegram", "/admin"],
     eventHandles: [
       "board.message.created",
       "messageboard.post.created",
@@ -272,6 +272,8 @@ export const DOMAIN_WORKFLOWS = [
       "wtf_live.stage_room.share_blocked",
       "wtf_live.lobby_presence_viewed",
       "wtf_live.public_room.joined",
+      "wtf_live.public_room.presence_sounds_toggled",
+      "wtf_live.public_room.disconnect_alerted",
       "wtf_live.public_room.media_toggled",
       "wtf_live.public_room.mic_test_completed",
       "wtf_live.public_room.active_video_selected",
@@ -343,6 +345,9 @@ export const DOMAIN_WORKFLOWS = [
       "comms.route.opened",
       "mail.message.received",
       "mail.message.sent",
+      "admin_inbox.message.created",
+      "admin_inbox.message.read",
+      "admin_inbox.reply.created",
       "mail.delivery.failed",
       "digest.viewed",
       "digest.source_filtered",
@@ -666,6 +671,12 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/comms/route-target?url=https%3A%2F%2Fobjkt.com" },
       { method: "GET", path: "/api/mail/status", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/mail/messages", expectedStatuses: [200, 401, 403] },
+      { method: "GET", path: "/api/admin-inbox/threads", expectedStatuses: [200, 401, 500] },
+      { method: "GET", path: "/api/admin-inbox/messages", expectedStatuses: [200, 401, 403, 500] },
+      { method: "POST", path: "/api/admin-inbox/messages", body: {}, expectedStatuses: [400, 401, 403] },
+      { method: "POST", path: "/api/admin-inbox/messages/101/replies", body: { body: "Inventory admin contact reply probe" }, expectedStatuses: [201, 400, 401, 403, 404, 500] },
+      { method: "PATCH", path: "/api/admin-inbox/messages/101/read", body: {}, expectedStatuses: [200, 400, 401, 403, 404, 500] },
+      { method: "PATCH", path: "/api/admin-inbox/messages/101/user-read", body: {}, expectedStatuses: [200, 400, 401, 403, 404, 500] },
       {
         method: "POST",
         path: "/api/mail/send",
@@ -696,7 +707,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "wallet portfolio to commerce loop",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    routes: ["/dashboard", "/hoard", "/my-gallery", "/collekt", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
+    routes: ["/dashboard", "/profile", "/my-gallery", "/collekt", "/marketplace", "/rat-race", "/trade-boards", "/swap", "/wtf-subdomains", "/wtf-subdomains/setup", "/settings"],
     eventHandles: [
       "wallet.linked",
       "wallet.primary_set",
@@ -713,7 +724,6 @@ export const DOMAIN_WORKFLOWS = [
       "macaroni.drop_wallet.preflight_failed",
       "macaroni.drop_shared",
       "macaroni.drop_calendar_added",
-      "hoard.viewed",
       "collekt.duplicates.scanned",
       "collekt.offer.terms_previewed",
       "collekt.offer.placed",
@@ -778,7 +788,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "market commerce exchange loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/hoard", "/swap", "/wtf-recapture"],
+    routes: ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dashboard", "/swap", "/wtf-recapture"],
     eventHandles: [
       "wtfiam.app_unlock.viewed",
       "wtfiam.app_unlock.blocked",
@@ -1062,6 +1072,7 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/admin/stats" },
       { method: "GET", path: "/api/admin/apps/desktop" },
+      { method: "POST", path: "/api/admin/apps/desktop/refresh-all", body: {}, expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/admin/users" },
       { method: "GET", path: "/api/admin/users/1/passport", expectedStatuses: [200, 401, 403, 404] },
       { method: "GET", path: "/api/admin/help-index?q=temporary%20login" },
@@ -1211,6 +1222,8 @@ export const DOMAIN_WORKFLOWS = [
       "ravioli.wrapper_transferred",
       "ravioli.refund_credited",
       "ravioli.refund_withdrawn",
+      "ravioli.unrevealed_pack_cancelled",
+      "ravioli.adapter_capacity_recovered",
       "ravioli.site_exported",
       "rotini.collection_deployed",
       "rotini.generated",

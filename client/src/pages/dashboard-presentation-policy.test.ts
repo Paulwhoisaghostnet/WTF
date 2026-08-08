@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const dashboardSource = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8");
+const cockpitQueriesSource = readFileSync(
+  new URL("../features/cockpit/cockpit-queries.ts", import.meta.url),
+  "utf8"
+);
 
 test("Dashboard route exposes a presentation-host boundary for Gamma", () => {
   assert.match(dashboardSource, /usePresentationShell/);
@@ -43,7 +47,11 @@ test("Dashboard keeps shared cockpit, wallet, reward, and portfolio behavior", (
   assert.match(dashboardSource, /api\.get<any\[]>\("\/api\/wallets"\)/);
   assert.match(dashboardSource, /api\.get<\{ balance: string \}>\(`\/api\/wallets\/\$\{balanceAddr\}\/balance`\)/);
   assert.match(dashboardSource, /api\.get<any>\("\/api\/cockpit\/overview"\)/);
-  assert.match(dashboardSource, /api\.get<any>\("\/api\/cockpit\/sync\/status"\)/);
+  assert.match(dashboardSource, /useCockpitSyncStatusQuery\(\)/);
+  assert.match(
+    cockpitQueriesSource,
+    /api\.get<CockpitSyncStatusResponse>\(\s*"\/api\/cockpit\/sync\/status"\s*\)/
+  );
   assert.match(dashboardSource, /api\.get<any>\("\/api\/cockpit\/activity\?limit=100"\)/);
   assert.match(dashboardSource, /api\.get<any>\("\/api\/portfolio\/summary"\)/);
   assert.match(dashboardSource, /api\.post\(`\/api\/cockpit\/sync\/\$\{encodeURIComponent\(wallet\)\}`/);

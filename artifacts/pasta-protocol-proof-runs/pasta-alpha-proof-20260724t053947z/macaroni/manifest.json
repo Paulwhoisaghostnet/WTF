@@ -1,0 +1,892 @@
+{
+  "app": "macaroni",
+  "artifacts": [
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibyzk7eatu3mb62fmm4we6armeasfcc3gpijkn45jfqzh32g6ffke",
+      "id": "macaroni-v1-pin-001-collection-cover",
+      "ipfsUri": "ipfs://bafkreibyzk7eatu3mb62fmm4we6armeasfcc3gpijkn45jfqzh32g6ffke",
+      "kind": "collection-cover",
+      "path": "artifacts/pins/v1/001-macaroni-v1-cover.png",
+      "retrievedSha256": "38cabe404e9b607da2b19cb13c08b08091442d99e84a9bcea4b0c9f7a378a551",
+      "sha256": "38cabe404e9b607da2b19cb13c08b08091442d99e84a9bcea4b0c9f7a378a551"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibt3tuzs76d4xevy6qvfxhntszp6q7x3gg3a4bwyyrzjur5dvsfyi",
+      "id": "macaroni-v1-pin-002-token-media",
+      "ipfsUri": "ipfs://bafkreibt3tuzs76d4xevy6qvfxhntszp6q7x3gg3a4bwyyrzjur5dvsfyi",
+      "kind": "token-media",
+      "path": "artifacts/pins/v1/002-1.png",
+      "retrievedSha256": "33dce9997fc3e5c95c7a152dced9cb2ff43f7d98db07036c62394d23d1d645c2",
+      "sha256": "33dce9997fc3e5c95c7a152dced9cb2ff43f7d98db07036c62394d23d1d645c2"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreigfclj66mcrs3t7izejzptjzfgr4fead4nsxwpscvkj2ccvvaojlm",
+      "id": "macaroni-v1-pin-003-token-metadata",
+      "ipfsUri": "ipfs://bafkreigfclj66mcrs3t7izejzptjzfgr4fead4nsxwpscvkj2ccvvaojlm",
+      "kind": "token-metadata",
+      "path": "artifacts/pins/v1/003-1.json",
+      "retrievedSha256": "c512d3ef305196e7f46489cbe69c94d1e14801f1b2bd9f215549d0855a81c95b",
+      "sha256": "c512d3ef305196e7f46489cbe69c94d1e14801f1b2bd9f215549d0855a81c95b"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicgdxxiswq6wv6vbtax3swrjt7xurskqgh6vuhmbjodk3m77ikjdq",
+      "id": "macaroni-v1-pin-004-collection-metadata",
+      "ipfsUri": "ipfs://bafkreicgdxxiswq6wv6vbtax3swrjt7xurskqgh6vuhmbjodk3m77ikjdq",
+      "kind": "collection-metadata",
+      "path": "artifacts/pins/v1/004-contract_metadata.json",
+      "retrievedSha256": "461dee895a1eb57d50cc17dcad14cff7a464a818fead0ec0a5c356d9ffa1491c",
+      "sha256": "461dee895a1eb57d50cc17dcad14cff7a464a818fead0ec0a5c356d9ffa1491c"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu",
+      "id": "macaroni-v2-pin-001-collection-cover",
+      "ipfsUri": "ipfs://bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu",
+      "kind": "collection-cover",
+      "path": "artifacts/pins/v2/001-macaroni-cover.png",
+      "retrievedSha256": "fb8160c2dea465738cedc5e3f91317c56a6104d9af9a0ccf387a98404428763d",
+      "sha256": "fb8160c2dea465738cedc5e3f91317c56a6104d9af9a0ccf387a98404428763d"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreigyh6k3avdozhcpoouxg7mux4yzy4au2dcig2o6soxekl4e3bzmcq",
+      "id": "macaroni-v2-pin-002-placeholder-media",
+      "ipfsUri": "ipfs://bafkreigyh6k3avdozhcpoouxg7mux4yzy4au2dcig2o6soxekl4e3bzmcq",
+      "kind": "placeholder-media",
+      "path": "artifacts/pins/v2/002-macaroni-placeholder.png",
+      "retrievedSha256": "d83f95b0546ec9c4f73a9737d94bf319c7014d0c48369de93ae452f84d872c14",
+      "sha256": "d83f95b0546ec9c4f73a9737d94bf319c7014d0c48369de93ae452f84d872c14"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae",
+      "id": "macaroni-v2-pin-003-placeholder-metadata",
+      "ipfsUri": "ipfs://bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae",
+      "kind": "placeholder-metadata",
+      "path": "artifacts/pins/v2/003-placeholder-1.json",
+      "retrievedSha256": "397edee5aa0701d48ae7e479469366d0effe1d0986625575723fc1db9b3aeb01",
+      "sha256": "397edee5aa0701d48ae7e479469366d0effe1d0986625575723fc1db9b3aeb01"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicadbqmw6jtdc5wiwi2lu5ucnmw5zzjki6thspa6mlkfscsx2vmbe",
+      "id": "macaroni-v2-pin-004-token-media",
+      "ipfsUri": "ipfs://bafkreicadbqmw6jtdc5wiwi2lu5ucnmw5zzjki6thspa6mlkfscsx2vmbe",
+      "kind": "token-media",
+      "path": "artifacts/pins/v2/004-1.png",
+      "retrievedSha256": "401860cb793318bb64591a5d3b413596ee729523d33c9e0f316a2c852beaac09",
+      "sha256": "401860cb793318bb64591a5d3b413596ee729523d33c9e0f316a2c852beaac09"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreie24ie765ditt34hymqx2fvdwi4ynsqvxz7qam357htvow3hbdesu",
+      "id": "macaroni-v2-pin-005-token-metadata",
+      "ipfsUri": "ipfs://bafkreie24ie765ditt34hymqx2fvdwi4ynsqvxz7qam357htvow3hbdesu",
+      "kind": "token-metadata",
+      "path": "artifacts/pins/v2/005-1.json",
+      "retrievedSha256": "9ae209ff74689cf7c3e190be8b51d91cc3650adf3f8019befcf3abadb3846495",
+      "sha256": "9ae209ff74689cf7c3e190be8b51d91cc3650adf3f8019befcf3abadb3846495"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiazuy3mrgzlzkfccphw6k7ktc44ze4viwg2gpvxkxm4vduilcteg4",
+      "id": "macaroni-v2-pin-006-collection-metadata",
+      "ipfsUri": "ipfs://bafkreiazuy3mrgzlzkfccphw6k7ktc44ze4viwg2gpvxkxm4vduilcteg4",
+      "kind": "collection-metadata",
+      "path": "artifacts/pins/v2/006-contract_metadata.json",
+      "retrievedSha256": "19a636c89b2bca8a213cf6f2bea98b9cc9395458da33eb755d9ca8e8858a6437",
+      "sha256": "19a636c89b2bca8a213cf6f2bea98b9cc9395458da33eb755d9ca8e8858a6437"
+    },
+    {
+      "id": "macaroni-v1-ui-live-tzkt-index",
+      "kind": "indexer-evidence",
+      "path": "artifacts/macaroni-v1-ui-live-tzkt-index.json",
+      "sha256": "dc85c485efb56f5c8c40f2d1b3a05c6fe6a3c9c290dbec6c24df29a251f0ddab"
+    },
+    {
+      "id": "macaroni-v1-self-hosted-site",
+      "kind": "self-hosted-site",
+      "path": "artifacts/macaroni-v1-site.zip",
+      "sha256": "f40df089f33bb0e0890cb6b1a148772c250393a6de519240e863b3487fdacbc0"
+    },
+    {
+      "id": "macaroni-v1-drop-config",
+      "kind": "drop-config",
+      "path": "artifacts/self-hosted-v1-site/drop.config.js",
+      "sha256": "d931e1202f6f384f49160a1d24efcc9353f94d1ad28b5e93434565fee1041898"
+    },
+    {
+      "id": "screenshot-sidecar-001-configure-blind-drop-v2-delayed-reveal-drop-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-configure-blind-drop-v2-delayed-reveal-drop-configured.json",
+      "sha256": "f0a4e71f054cf3b6d631ca4d7392f8e666bb993028be414d2020e5c15338dd7b"
+    },
+    {
+      "id": "screenshot-sidecar-002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio.json",
+      "sha256": "5c531696579b8ff4977af2a206f1be48557972557b799d9e2764cb567525378b"
+    },
+    {
+      "id": "screenshot-sidecar-003-originate-fresh-contract-fresh-macaroni-v2-contract-originated",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-originate-fresh-contract-fresh-macaroni-v2-contract-originated.json",
+      "sha256": "313645ef6b29d6f343f2ae07b7953a121b9694757e0e40152e951457a8b8f32e"
+    },
+    {
+      "id": "screenshot-sidecar-004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced.json",
+      "sha256": "c0332df530e4c353e268b17dbaa51bc4eff0774eb55fc3fe94841cc095d27fd6"
+    },
+    {
+      "id": "screenshot-sidecar-005-export-self-hosted-mint-site-standalone-collector-website-exported",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-005-export-self-hosted-mint-site-standalone-collector-website-exported.json",
+      "sha256": "9d7cb2dad8b4e256b74d48d7c63e184a72872065f0939d86960cc4bfabb4f68e"
+    },
+    {
+      "id": "screenshot-sidecar-006-operate-exported-collector-page-independent-collector-opened-exported-website",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-006-operate-exported-collector-page-independent-collector-opened-exported-website.json",
+      "sha256": "3f4c74282938c852f2aa0057ecae21bd238ed18744fd742ef91fa0030d6153c1"
+    },
+    {
+      "id": "screenshot-sidecar-007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced.json",
+      "sha256": "f4b15412209703484f5cbd45771021f7dca3af64be2b00ed61d1b0293cfd4625"
+    },
+    {
+      "id": "screenshot-sidecar-008-permissionless-reveal-collector-revealed-exact-final-artwork",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-008-permissionless-reveal-collector-revealed-exact-final-artwork.json",
+      "sha256": "946b27c76151e8d02f2a71bdd7799acfc200d33f69fdd51720efe760995d4ea3"
+    },
+    {
+      "id": "screenshot-sidecar-009-configure-classic-blind-drop-v1-instant-reveal-drop-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-009-configure-classic-blind-drop-v1-instant-reveal-drop-configured.json",
+      "sha256": "bff66ee8127f8743f13ec31c4ebb8cd8b8995ebc3927e7a9ad1b537c87def81b"
+    },
+    {
+      "id": "screenshot-sidecar-010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio.json",
+      "sha256": "dd59a9fec3045a763675231a09b4f8e97512471b405df505c9746d7113acaf1e"
+    },
+    {
+      "id": "screenshot-sidecar-011-originate-v1-contract-fresh-macaroni-v1-contract-originated",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-011-originate-v1-contract-fresh-macaroni-v1-contract-originated.json",
+      "sha256": "c07ea029534de3abe640eee28e83ee75f9317c57eac217d9f50c815ea3f9dbcd"
+    },
+    {
+      "id": "screenshot-sidecar-012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain.json",
+      "sha256": "a3899245cec1a168a6e3ec82f0c441d84916ab639ca95f71d8f45c54ad1b54fc"
+    },
+    {
+      "id": "screenshot-sidecar-013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer.json",
+      "sha256": "512639f0472b499bb97de8abfa9385e2cc1997e80ca5d1740d8a408574c08ad5"
+    },
+    {
+      "id": "screenshot-sidecar-014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website.json",
+      "sha256": "bcc05953b4ddb7d2f8dda2b4fa7004c87bd61ff40b118f98c6a6590e1959b1f3"
+    },
+    {
+      "id": "screenshot-sidecar-015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly.json",
+      "sha256": "6bfa6b88682a810d9e3c136a9fd2bfd74bd6a4f2d5cceb9ac5b215817879b0eb"
+    },
+    {
+      "id": "macaroni-ui-live-run",
+      "kind": "proof-receipt",
+      "path": "artifacts/macaroni-ui-live-run.json",
+      "sha256": "114452e19defb57f711b92c8d1451a6b7e5422761a797bef9acdb75345b388e3"
+    },
+    {
+      "id": "macaroni-ui-live-tzkt-index",
+      "kind": "indexer-evidence",
+      "path": "artifacts/macaroni-ui-live-tzkt-index.json",
+      "sha256": "5dfbac93251e28209fbc90a02a3fbe63a808722a355b018ae279bec4593ccd4c"
+    },
+    {
+      "id": "macaroni-self-hosted-site",
+      "kind": "self-hosted-site",
+      "path": "artifacts/macaroni-site.zip",
+      "sha256": "ada620547c96dcaa01fc4f60fbe1f0c0050d008315f352a2a969b5f5f3a3e253"
+    },
+    {
+      "id": "macaroni-drop-config",
+      "kind": "drop-config",
+      "path": "artifacts/self-hosted-site/drop.config.js",
+      "sha256": "ad303dd6b83f41e0b63bbe79f98785596942882688024f07de7141c6fd02c04a"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-css-theme-css-d9ebef8e00c7",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/css/theme.css",
+      "sha256": "d9ebef8e00c7893b6e486c2677cb5beff6594eb6cf9eb1bf114888ee7017f757"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-index-html-e5ccac30d930",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/index.html",
+      "sha256": "e5ccac30d930b4acbf4e918f9e622832026a48daa12bbc957b450a8c59dae7cb"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-js-common-js-b63b5787e1d3",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/js/common.js",
+      "sha256": "b63b5787e1d39498222bc1a54cb5fd487bb898f8c2d771c61f338e6adffad50d"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-js-drop-js-b939c70ce89b",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/js/drop.js",
+      "sha256": "b939c70ce89b19a03fe2680c6eedddd2d11b8b27c752126fa4224ce762702c41"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-js-octez-wallet-js-c102985d275b",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/js/octez-wallet.js",
+      "sha256": "c102985d275b5673fc65a51cd88cfa2a527a94a3924b1b1ca20244d4b0a89a11"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-vendor-octez-connect-js-4347c7420e8f",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/vendor/octez-connect.js",
+      "sha256": "4347c7420e8f4b9e5ee110ce604bf834ef5b3a02ef5c34a7db764557717f594f"
+    },
+    {
+      "id": "macaroni-v2-site-file-artifacts-self-hosted-site-vendor-tezos-js-529c8312b327",
+      "kind": "self-hosted-site-file",
+      "path": "artifacts/self-hosted-site/vendor/tezos.js",
+      "sha256": "529c8312b3275d1cd372c457ba8457cdbd199f50a28313c977bdf0bdf1bcad97"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-001-recovered-prefix-accepted-json-b147810b005b",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/001-recovered-prefix-accepted.json",
+      "sha256": "b147810b005bac9624b0231a53d0a5953abd52f83a883a5fe724e8c59cf060bd"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-002-signers-authenticated-json-93f22ef85b5f",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/002-signers-authenticated.json",
+      "sha256": "93f22ef85b5f17590e1237c0b8b9a8a7ebdc27c1d472f988d9bf0d9c2e3e5371"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-003-screenshot-accepted-json-d1b998c6098f",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/003-screenshot-accepted.json",
+      "sha256": "d1b998c6098f355e7c67dc894df291a45283d931bc9e34853ba7e9ba1fd7fbb5"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-004-expected-rejection-json-f82245f86a1a",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/004-expected-rejection.json",
+      "sha256": "f82245f86a1a4673be2eaa4c6efc073a31791f8900cd4917bd7741458f7edab9"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-005-pre-signer-boundary-accepted-json-daea7f12c1f0",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/005-pre-signer-boundary-accepted.json",
+      "sha256": "daea7f12c1f09513a31ccfeac0b7f01813dfc11841f01e9a43fd29c48d1ec675"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-006-prepared-json-f70150b548b8",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/006-prepared.json",
+      "sha256": "f70150b548b827dc65b4056473cf17b99d3fda7460a831d6f18f0a8fec7e838f"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-007-submitted-json-6fcc25d1f5c2",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/007-submitted.json",
+      "sha256": "6fcc25d1f5c2cf3934f150c4b0f018bdbedaf274ec71b4007f5bff9a78cf6e3e"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-008-applied-json-089a8b14f506",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/008-applied.json",
+      "sha256": "089a8b14f506fef82c3dbc656206cdb4d35d33c8ab4f21c7f8069734cb7baba5"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-009-screenshot-accepted-json-ace5ed34e799",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/009-screenshot-accepted.json",
+      "sha256": "ace5ed34e7995ac490654da27b77ead1bbc96c1b9cf5d007c81c171003fbb30a"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-010-post-reveal-boundary-accepted-jso-b05c9c567edb",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/010-post-reveal-boundary-accepted.json",
+      "sha256": "b05c9c567edbca46d8faea3bd7badbe1dd14b6d032398a057b58dfe0cc3f493b"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-011-v1-lane-started-json-ac8605443742",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/011-v1-lane-started.json",
+      "sha256": "ac8605443742d1ff24aecf1f5eea08a8df59d5142183f5deae4f0ebbf9a868b9"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-012-v1-pin-prepared-json-5123746e6b04",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/012-v1-pin-prepared.json",
+      "sha256": "5123746e6b04d531b6607ffbae7a2d324284d2703ee8e38211617c3d65f588c6"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-013-v1-pin-confirmed-json-0f68a43c140d",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/013-v1-pin-confirmed.json",
+      "sha256": "0f68a43c140d3f6f0398f621d3bba8309e0fc71233f2d8782c717d8f19a130d4"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-014-v1-pin-prepared-json-61bf59a7f8cc",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/014-v1-pin-prepared.json",
+      "sha256": "61bf59a7f8cc5ecfd7f85729ebeab56b014f2af48e50010abfe2ff566c012ec2"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-015-v1-pin-confirmed-json-2d7d0dffe2e2",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/015-v1-pin-confirmed.json",
+      "sha256": "2d7d0dffe2e2f1a930f12da07f0da68a909bc9be146ef3a2870c9cc6d951a850"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-016-v1-pin-prepared-json-af83bf1eb3c8",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/016-v1-pin-prepared.json",
+      "sha256": "af83bf1eb3c8926dc4c08662823a06894c64ee975d3c1bb662c7f04a8004e265"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-017-v1-pin-confirmed-json-d71b5ccbb8c6",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/017-v1-pin-confirmed.json",
+      "sha256": "d71b5ccbb8c65d32b6d93b5667b53ef9acbc5277564b6ef99825dce2f923e1a7"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-018-v1-pin-prepared-json-26b8c8eec5b8",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/018-v1-pin-prepared.json",
+      "sha256": "26b8c8eec5b8c965ee55cff29ddfff36e2fc197b685f05d9ba92f9291376c802"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-019-v1-pin-confirmed-json-8ba6b3d2b8f8",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/019-v1-pin-confirmed.json",
+      "sha256": "8ba6b3d2b8f8fe227c264a09dfab50c0aff5a66ec59bf9ee21fbeba4bf3afb36"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-020-v1-prepared-json-6d27d606d0bc",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/020-v1-prepared.json",
+      "sha256": "6d27d606d0bccfc4a43b4281863c3c420432aee7f7a8d71006d92fabd66e639e"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-021-v1-submitted-json-56f4a1dcf2ce",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/021-v1-submitted.json",
+      "sha256": "56f4a1dcf2ce456d20dd7131ad431d279cc083f9bedf9198156d3e68b9ec503e"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-022-v1-applied-json-a14a44a59e84",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/022-v1-applied.json",
+      "sha256": "a14a44a59e8458147596c40ed4b03e787ba77e942f3c55d78d98d589adff66df"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-023-v1-prepared-json-c60400a4c7c9",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/023-v1-prepared.json",
+      "sha256": "c60400a4c7c9dc70fcf4b320effa7ea64663de17ff4caf70e381ebed7e67d1c3"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-024-v1-submitted-json-465aa057a285",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/024-v1-submitted.json",
+      "sha256": "465aa057a28580f4e604159645ce10dedc6a7e3a9af02a448fced59a8ea5cbbd"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-025-v1-applied-json-0f48a9b42f17",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/025-v1-applied.json",
+      "sha256": "0f48a9b42f177bce583c657a3341df6116c621087c1bfb2a3447b9925414bbad"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-026-v1-prepared-json-ddde2e677689",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/026-v1-prepared.json",
+      "sha256": "ddde2e677689958d01999227b25fcaf19f03b2056f95c2d65cb39fbc1104a279"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-027-v1-submitted-json-f0ef04bd2096",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/027-v1-submitted.json",
+      "sha256": "f0ef04bd2096fc65c75344d56e5d26a08897a4c7e59672b0272e98d7bc80574f"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-028-v1-applied-json-6270c217956c",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/028-v1-applied.json",
+      "sha256": "6270c217956ced175c13f80db87f71d6c8183b6ab7444694ca25f7ec6c7dbe59"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-029-v1-prepared-json-3a430f28cb63",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/029-v1-prepared.json",
+      "sha256": "3a430f28cb63dd494b2c6be1598d0bcbf123a2e5bf33350b01a52f0fbc67369e"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-030-v1-submitted-json-8fd497cd4a65",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/030-v1-submitted.json",
+      "sha256": "8fd497cd4a65629c07b4087f603510145abb28884acea6aa41540b994bf8beda"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-031-v1-applied-json-50dd03887431",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/031-v1-applied.json",
+      "sha256": "50dd03887431a56ea9455e5906db653a97cd3c390dfe2ac7fc538322e2c3f0a9"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-032-v1-lane-applied-json-fe171df6fffe",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/032-v1-lane-applied.json",
+      "sha256": "fe171df6fffed2e29fb8c13eaf31b1f56894e40208aef52a3255b61f53e6c0de"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-033-recovered-pins-materialized-json-0ab57bd68699",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/033-recovered-pins-materialized.json",
+      "sha256": "0ab57bd68699f7e5e770557067c2bd27caf88d811463f49f13ae788086ae4df5"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-034-continuation-applied-awaiting-pac-a21015d16ad6",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/events/034-continuation-applied-awaiting-package.json",
+      "sha256": "a21015d16ad63ef8a6094827c09e3567c5c038c5f9dc9a2db05fc53a22febff2"
+    },
+    {
+      "id": "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-intent-json-f510e6934cb9",
+      "kind": "recovery-checkpoint",
+      "path": "artifacts/macaroni-current-recovery/intent.json",
+      "sha256": "f510e6934cb9d198747f6c9a1150e70b4829487a5359c11e9c8865561c52f8e7"
+    }
+  ],
+  "capabilities": [
+    {
+      "description": "Authenticate the actual Macaroni Studio V2 configuration, exact pins, deployment, inventory/stage sync, and complete exported self-hosted collector website from the immutable pre-interruption evidence prefix.",
+      "evidence": {
+        "artifacts": [
+          "macaroni-v2-pin-001-collection-cover",
+          "macaroni-v2-pin-002-placeholder-media",
+          "macaroni-v2-pin-003-placeholder-metadata",
+          "macaroni-v2-pin-004-token-media",
+          "macaroni-v2-pin-005-token-metadata",
+          "macaroni-v2-pin-006-collection-metadata",
+          "screenshot-sidecar-001-configure-blind-drop-v2-delayed-reveal-drop-configured",
+          "screenshot-sidecar-002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio",
+          "screenshot-sidecar-003-originate-fresh-contract-fresh-macaroni-v2-contract-originated",
+          "screenshot-sidecar-004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced",
+          "screenshot-sidecar-005-export-self-hosted-mint-site-standalone-collector-website-exported",
+          "macaroni-self-hosted-site",
+          "macaroni-drop-config",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-css-theme-css-d9ebef8e00c7",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-index-html-e5ccac30d930",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-js-common-js-b63b5787e1d3",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-js-drop-js-b939c70ce89b",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-js-octez-wallet-js-c102985d275b",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-vendor-octez-connect-js-4347c7420e8f",
+          "macaroni-v2-site-file-artifacts-self-hosted-site-vendor-tezos-js-529c8312b327"
+        ],
+        "contracts": ["KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP"],
+        "operations": [
+          "ooEt4xX1dDLdnwKfUEr8eVN34vgXzzAwtRBQ23scdBVx23iP5fC",
+          "opBtLfhynMdLnFNd3HBEmASnBqxfUoHK6dXhbmqp1cyTQaMhu3J",
+          "oojGxauezeco6LiTaT3rJaS33RJHR3mhzsa2vdsqL3Lq7PaLtmp"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "001-configure-blind-drop-v2-delayed-reveal-drop-configured",
+          "002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio",
+          "003-originate-fresh-contract-fresh-macaroni-v2-contract-originated",
+          "004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced",
+          "005-export-self-hosted-mint-site-standalone-collector-website-exported"
+        ],
+        "tokens": [],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+          "https://ipfs.io/ipfs/bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu",
+          "https://ipfs.io/ipfs/bafkreigyh6k3avdozhcpoouxg7mux4yzy4au2dcig2o6soxekl4e3bzmcq",
+          "https://ipfs.io/ipfs/bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae",
+          "https://ipfs.io/ipfs/bafkreicadbqmw6jtdc5wiwi2lu5ucnmw5zzjki6thspa6mlkfscsx2vmbe",
+          "https://ipfs.io/ipfs/bafkreie24ie765ditt34hymqx2fvdwi4ynsqvxz7qam357htvow3hbdesu",
+          "https://ipfs.io/ipfs/bafkreiazuy3mrgzlzkfccphw6k7ktc44ze4viwg2gpvxkxm4vduilcteg4"
+        ]
+      },
+      "id": "studio-create-pin-deploy-sync-export"
+    },
+    {
+      "description": "Authenticate the applied collector mint, reconstruct its sealed post-mint page from exact chain/IPFS state, prove the one-per-wallet boundary without injection, and submit only the missing permissionless reveal.",
+      "evidence": {
+        "artifacts": [
+          "screenshot-sidecar-006-operate-exported-collector-page-independent-collector-opened-exported-website",
+          "screenshot-sidecar-007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced",
+          "screenshot-sidecar-008-permissionless-reveal-collector-revealed-exact-final-artwork",
+          "macaroni-ui-live-run",
+          "macaroni-ui-live-tzkt-index",
+          "macaroni-v2-pin-005-token-metadata",
+          "macaroni-v2-pin-004-token-media"
+        ],
+        "contracts": ["KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP"],
+        "operations": [
+          "opNNNSiJDzu2zvcWAUXYhuXWFB1RBXA2GncKrt2AHiAWvxuxHsB",
+          "opL6Z2vJV1sFqozrZnhziL8T9uh6PfZjmiHNNpVe5eum7Kg2L2V"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "006-operate-exported-collector-page-independent-collector-opened-exported-website",
+          "007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced",
+          "008-permissionless-reveal-collector-revealed-exact-final-artwork"
+        ],
+        "tokens": ["macaroni-v2-blind-edition-0"],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP/tokens/0",
+          "https://ipfs.io/ipfs/bafkreie24ie765ditt34hymqx2fvdwi4ynsqvxz7qam357htvow3hbdesu",
+          "https://ipfs.io/ipfs/bafkreicadbqmw6jtdc5wiwi2lu5ucnmw5zzjki6thspa6mlkfscsx2vmbe"
+        ]
+      },
+      "id": "exported-page-mint-policy-reveal"
+    },
+    {
+      "description": "Use the actual Macaroni Studio V1 mode to pin exact media and metadata, originate a fresh canonical V1 FA2 contract, load its 1/1 inventory and sale stage, and export the complete self-hostable collector website.",
+      "evidence": {
+        "artifacts": [
+          "macaroni-v1-pin-001-collection-cover",
+          "macaroni-v1-pin-002-token-media",
+          "macaroni-v1-pin-003-token-metadata",
+          "macaroni-v1-pin-004-collection-metadata",
+          "screenshot-sidecar-009-configure-classic-blind-drop-v1-instant-reveal-drop-configured",
+          "screenshot-sidecar-010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio",
+          "screenshot-sidecar-011-originate-v1-contract-fresh-macaroni-v1-contract-originated",
+          "screenshot-sidecar-012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain",
+          "screenshot-sidecar-013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer",
+          "macaroni-v1-self-hosted-site",
+          "macaroni-v1-drop-config"
+        ],
+        "contracts": ["KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx"],
+        "operations": [
+          "ons68f9ucj5uFfZKdmLdgA93c2RRmsyBkLLwGFBXppahbqyGQoV",
+          "op2hN7P71FrJCC2gNWh9kwUVSNytMgvPAHvM3qsH9JfaKXGK2hG",
+          "ooydDE6eNFSajGSjxD9ZQzfogXtFRsaNTBikRTN8t2Tx2Duquna"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "009-configure-classic-blind-drop-v1-instant-reveal-drop-configured",
+          "010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio",
+          "011-originate-v1-contract-fresh-macaroni-v1-contract-originated",
+          "012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain",
+          "013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer"
+        ],
+        "tokens": [],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+          "https://ipfs.io/ipfs/bafkreibyzk7eatu3mb62fmm4we6armeasfcc3gpijkn45jfqzh32g6ffke",
+          "https://ipfs.io/ipfs/bafkreibt3tuzs76d4xevy6qvfxhntszp6q7x3gg3a4bwyyrzjur5dvsfyi",
+          "https://ipfs.io/ipfs/bafkreigfclj66mcrs3t7izejzptjzfgr4fead4nsxwpscvkj2ccvvaojlm",
+          "https://ipfs.io/ipfs/bafkreicgdxxiswq6wv6vbtax3swrjt7xurskqgh6vuhmbjodk3m77ikjdq"
+        ]
+      },
+      "id": "v1-studio-create-pin-deploy-sync-export"
+    },
+    {
+      "description": "Use an independent collector through the actual exported V1 website to mint the 1/1 with final metadata immediately and prove sold-out enforcement in the UI and a signer-free chain simulation.",
+      "evidence": {
+        "artifacts": [
+          "screenshot-sidecar-014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website",
+          "screenshot-sidecar-015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly",
+          "macaroni-v1-ui-live-tzkt-index",
+          "macaroni-v1-pin-003-token-metadata",
+          "macaroni-v1-pin-002-token-media"
+        ],
+        "contracts": ["KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx"],
+        "operations": ["ooC3ADrHy7VmNytaqaCF6RH2AiQRvMq8aksTu8SJuDz279s51Tf"],
+        "roleEvidence": [],
+        "screenshots": [
+          "014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website",
+          "015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly"
+        ],
+        "tokens": ["macaroni-v1-token-0"],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx/tokens/0",
+          "https://ipfs.io/ipfs/bafkreigfclj66mcrs3t7izejzptjzfgr4fead4nsxwpscvkj2ccvvaojlm",
+          "https://ipfs.io/ipfs/bafkreibt3tuzs76d4xevy6qvfxhntszp6q7x3gg3a4bwyyrzjur5dvsfyi"
+        ]
+      },
+      "id": "v1-exported-page-instant-mint-policy"
+    },
+    {
+      "description": "Bind the continuation to the exact 21-file prefix, six public raw-SHA256 CIDs, dual-RPC code/storage state, actor counter floors, and exact target history before allowing one reveal.",
+      "evidence": {
+        "artifacts": [
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-001-recovered-prefix-accepted-json-b147810b005b",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-002-signers-authenticated-json-93f22ef85b5f",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-003-screenshot-accepted-json-d1b998c6098f",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-004-expected-rejection-json-f82245f86a1a",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-005-pre-signer-boundary-accepted-json-daea7f12c1f0",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-006-prepared-json-f70150b548b8",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-007-submitted-json-6fcc25d1f5c2",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-008-applied-json-089a8b14f506",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-009-screenshot-accepted-json-ace5ed34e799",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-010-post-reveal-boundary-accepted-jso-b05c9c567edb",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-011-v1-lane-started-json-ac8605443742",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-012-v1-pin-prepared-json-5123746e6b04",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-013-v1-pin-confirmed-json-0f68a43c140d",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-014-v1-pin-prepared-json-61bf59a7f8cc",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-015-v1-pin-confirmed-json-2d7d0dffe2e2",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-016-v1-pin-prepared-json-af83bf1eb3c8",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-017-v1-pin-confirmed-json-d71b5ccbb8c6",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-018-v1-pin-prepared-json-26b8c8eec5b8",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-019-v1-pin-confirmed-json-8ba6b3d2b8f8",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-020-v1-prepared-json-6d27d606d0bc",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-021-v1-submitted-json-56f4a1dcf2ce",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-022-v1-applied-json-a14a44a59e84",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-023-v1-prepared-json-c60400a4c7c9",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-024-v1-submitted-json-465aa057a285",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-025-v1-applied-json-0f48a9b42f17",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-026-v1-prepared-json-ddde2e677689",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-027-v1-submitted-json-f0ef04bd2096",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-028-v1-applied-json-6270c217956c",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-029-v1-prepared-json-3a430f28cb63",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-030-v1-submitted-json-8fd497cd4a65",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-031-v1-applied-json-50dd03887431",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-032-v1-lane-applied-json-fe171df6fffe",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-033-recovered-pins-materialized-json-0ab57bd68699",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-events-034-continuation-applied-awaiting-pac-a21015d16ad6",
+          "macaroni-recovery-checkpoint-artifacts-macaroni-current-recovery-intent-json-f510e6934cb9"
+        ],
+        "contracts": ["KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP"],
+        "operations": [],
+        "roleEvidence": [],
+        "screenshots": [
+          "007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced",
+          "008-permissionless-reveal-collector-revealed-exact-final-artwork"
+        ],
+        "tokens": [],
+        "urls": []
+      },
+      "id": "authenticated-zero-replay-recovery"
+    }
+  ],
+  "capturedAt": "2026-08-08T14:48:34.493Z",
+  "contracts": [
+    {
+      "address": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "kind": "classic-blind-drop-v1"
+    },
+    {
+      "address": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "kind": "blind-drop-v2"
+    }
+  ],
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet",
+    "rpcUrl": "https://tezos-shadownet.octez.io/"
+  },
+  "operations": [
+    {
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "explorerUrl": "https://shadownet.tzkt.io/ooEt4xX1dDLdnwKfUEr8eVN34vgXzzAwtRBQ23scdBVx23iP5fC",
+      "hash": "ooEt4xX1dDLdnwKfUEr8eVN34vgXzzAwtRBQ23scdBVx23iP5fC",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "entrypoint": "add_tokens_v2",
+      "explorerUrl": "https://shadownet.tzkt.io/opBtLfhynMdLnFNd3HBEmASnBqxfUoHK6dXhbmqp1cyTQaMhu3J",
+      "hash": "opBtLfhynMdLnFNd3HBEmASnBqxfUoHK6dXhbmqp1cyTQaMhu3J",
+      "kind": "publish",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "entrypoint": "set_stages",
+      "explorerUrl": "https://shadownet.tzkt.io/oojGxauezeco6LiTaT3rJaS33RJHR3mhzsa2vdsqL3Lq7PaLtmp",
+      "hash": "oojGxauezeco6LiTaT3rJaS33RJHR3mhzsa2vdsqL3Lq7PaLtmp",
+      "kind": "configure",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "entrypoint": "mint",
+      "explorerUrl": "https://shadownet.tzkt.io/opNNNSiJDzu2zvcWAUXYhuXWFB1RBXA2GncKrt2AHiAWvxuxHsB",
+      "hash": "opNNNSiJDzu2zvcWAUXYhuXWFB1RBXA2GncKrt2AHiAWvxuxHsB",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "entrypoint": "reveal",
+      "explorerUrl": "https://shadownet.tzkt.io/opL6Z2vJV1sFqozrZnhziL8T9uh6PfZjmiHNNpVe5eum7Kg2L2V",
+      "hash": "opL6Z2vJV1sFqozrZnhziL8T9uh6PfZjmiHNNpVe5eum7Kg2L2V",
+      "kind": "reveal",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "explorerUrl": "https://shadownet.tzkt.io/ons68f9ucj5uFfZKdmLdgA93c2RRmsyBkLLwGFBXppahbqyGQoV",
+      "hash": "ons68f9ucj5uFfZKdmLdgA93c2RRmsyBkLLwGFBXppahbqyGQoV",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "entrypoint": "add_tokens",
+      "explorerUrl": "https://shadownet.tzkt.io/op2hN7P71FrJCC2gNWh9kwUVSNytMgvPAHvM3qsH9JfaKXGK2hG",
+      "hash": "op2hN7P71FrJCC2gNWh9kwUVSNytMgvPAHvM3qsH9JfaKXGK2hG",
+      "kind": "publish",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "entrypoint": "set_stages",
+      "explorerUrl": "https://shadownet.tzkt.io/ooydDE6eNFSajGSjxD9ZQzfogXtFRsaNTBikRTN8t2Tx2Duquna",
+      "hash": "ooydDE6eNFSajGSjxD9ZQzfogXtFRsaNTBikRTN8t2Tx2Duquna",
+      "kind": "configure",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "entrypoint": "mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooC3ADrHy7VmNytaqaCF6RH2AiQRvMq8aksTu8SJuDz279s51Tf",
+      "hash": "ooC3ADrHy7VmNytaqaCF6RH2AiQRvMq8aksTu8SJuDz279s51Tf",
+      "kind": "mint",
+      "status": "applied"
+    }
+  ],
+  "role": "token-publisher",
+  "roleEvidence": [],
+  "runId": "pasta-alpha-proof-20260724t053947z",
+  "schema": "pastaprotocol-app-proof@1",
+  "screenshots": [
+    {
+      "caption": "macaroni: configure blind drop — V2 delayed reveal drop configured",
+      "path": "screenshots/001-configure-blind-drop-v2-delayed-reveal-drop-configured.png",
+      "sha256": "518a2649151b9adc80a7129aa8c9c4973b15210e45218dbe296a152b0c59342a",
+      "stage": "001-configure-blind-drop-v2-delayed-reveal-drop-configured"
+    },
+    {
+      "caption": "macaroni: pin exact media and metadata — Five media and metadata artifacts pinned through Studio",
+      "path": "screenshots/002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio.png",
+      "sha256": "c42eb6d71fea334dd3ebed232b0cdbbca3915ef8c63e3cd8598468029b2be502",
+      "stage": "002-pin-exact-media-and-metadata-five-media-and-metadata-artifacts-pinned-through-studio"
+    },
+    {
+      "caption": "macaroni: originate fresh contract — Fresh Macaroni V2 contract originated",
+      "path": "screenshots/003-originate-fresh-contract-fresh-macaroni-v2-contract-originated.png",
+      "sha256": "812cdb49dd6b1598e6b333d637261ffed17eb6d3ff39630f043a80d4e5ec97fd",
+      "stage": "003-originate-fresh-contract-fresh-macaroni-v2-contract-originated"
+    },
+    {
+      "caption": "macaroni: load editions and stage — Two editions and one-per-wallet stage synced",
+      "path": "screenshots/004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced.png",
+      "sha256": "990eec6484d80e6f60746365007dafc64eea8f465946296fd21d762a51b5c1b3",
+      "stage": "004-load-editions-and-stage-two-editions-and-one-per-wallet-stage-synced"
+    },
+    {
+      "caption": "macaroni: export self-hosted mint site — Standalone collector website exported",
+      "path": "screenshots/005-export-self-hosted-mint-site-standalone-collector-website-exported.png",
+      "sha256": "eac16e99805f17ea13f5ff9ba4b76970048e7327276b58428b941b2423386844",
+      "stage": "005-export-self-hosted-mint-site-standalone-collector-website-exported"
+    },
+    {
+      "caption": "macaroni: operate exported collector page — Independent collector opened exported website",
+      "path": "screenshots/006-operate-exported-collector-page-independent-collector-opened-exported-website.png",
+      "sha256": "a5879695c170e6f70b7e8123d4587b2dc602fdba4fef823b85f79d2965a843c5",
+      "stage": "006-operate-exported-collector-page-independent-collector-opened-exported-website"
+    },
+    {
+      "caption": "macaroni: mint blind edition and enforce policy — Blind token minted and wallet limit enforced",
+      "path": "screenshots/007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced.png",
+      "sha256": "7f6f0cd11496f8ce8d4f1dd5ba8d4d26c35cc21b17f1b8cb9bc8f4fb1ccabb61",
+      "stage": "007-mint-blind-edition-and-enforce-policy-blind-token-minted-and-wallet-limit-enforced"
+    },
+    {
+      "caption": "macaroni: permissionless reveal — Collector revealed exact final artwork",
+      "path": "screenshots/008-permissionless-reveal-collector-revealed-exact-final-artwork.png",
+      "sha256": "55329cb71bb0061294d764ae02472e2394e5bb460c63c468e15238bc308f3b69",
+      "stage": "008-permissionless-reveal-collector-revealed-exact-final-artwork"
+    },
+    {
+      "caption": "macaroni: configure classic blind drop — V1 instant reveal drop configured",
+      "path": "screenshots/009-configure-classic-blind-drop-v1-instant-reveal-drop-configured.png",
+      "sha256": "c2563f71209e987648edb1c83852bb7e70f1f5ae19def6ef3a0e3f8a6d5ffb82",
+      "stage": "009-configure-classic-blind-drop-v1-instant-reveal-drop-configured"
+    },
+    {
+      "caption": "macaroni: pin V1 media and metadata — Three exact V1 artifacts pinned through Studio",
+      "path": "screenshots/010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio.png",
+      "sha256": "46c50d1d383348410e7d74be2936d2c5becdf797940ca8c70da54b9751cd7447",
+      "stage": "010-pin-v1-media-and-metadata-three-exact-v1-artifacts-pinned-through-studio"
+    },
+    {
+      "caption": "macaroni: originate V1 contract — Fresh Macaroni V1 contract originated",
+      "path": "screenshots/011-originate-v1-contract-fresh-macaroni-v1-contract-originated.png",
+      "sha256": "2f0132788506698a1c2005e693ab9241b1108110b43104e61ea92c11a37f070f",
+      "stage": "011-originate-v1-contract-fresh-macaroni-v1-contract-originated"
+    },
+    {
+      "caption": "macaroni: sync V1 contract — V1 token inventory and sale stage synchronized on-chain",
+      "path": "screenshots/012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain.png",
+      "sha256": "853bbdc6baccef8c63fba9ffa88bc7eeb00e12da6b92169eb5a47ec8f427b1c0",
+      "stage": "012-sync-v1-contract-v1-token-inventory-and-sale-stage-synchronized-on-chain"
+    },
+    {
+      "caption": "macaroni: export V1 site — V1 standalone collector website exported from Page Designer",
+      "path": "screenshots/013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer.png",
+      "sha256": "063d985aae2833a4f3b20c7a88e4b00291d555e9967c44306fe51b6c189e3f94",
+      "stage": "013-export-v1-site-v1-standalone-collector-website-exported-from-page-designer"
+    },
+    {
+      "caption": "macaroni: operate exported V1 collector page — Independent collector opened exported V1 website",
+      "path": "screenshots/014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website.png",
+      "sha256": "cca4d0d99821d90f65cf632162dd2fb494713b48ac9448c9076bfd60168c8317",
+      "stage": "014-operate-exported-v1-collector-page-independent-collector-opened-exported-v1-website"
+    },
+    {
+      "caption": "macaroni: mint V1 token from exported page — Independent collector minted exact V1 artwork instantly",
+      "path": "screenshots/015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly.png",
+      "sha256": "799156a5442ec56dde82f42f74474a5b770b0bdb6ede6f362797e3db19d3e63f",
+      "stage": "015-mint-v1-token-from-exported-page-independent-collector-minted-exact-v1-artwork-instantly"
+    }
+  ],
+  "tokens": [
+    {
+      "artifactUri": "ipfs://bafkreibt3tuzs76d4xevy6qvfxhntszp6q7x3gg3a4bwyyrzjur5dvsfyi",
+      "contractAddress": "KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx/tokens/0",
+      "id": "macaroni-v1-token-0",
+      "mediaArtifactId": "macaroni-v1-pin-002-token-media",
+      "metadataArtifactId": "macaroni-v1-pin-003-token-metadata",
+      "metadataUri": "ipfs://bafkreigfclj66mcrs3t7izejzptjzfgr4fead4nsxwpscvkj2ccvvaojlm",
+      "tokenId": "0"
+    },
+    {
+      "artifactUri": "ipfs://bafkreicadbqmw6jtdc5wiwi2lu5ucnmw5zzjki6thspa6mlkfscsx2vmbe",
+      "contractAddress": "KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1WVXyTLXniTtPaH7AfRsbGVKoG6YLXrBxP/tokens/0",
+      "id": "macaroni-v2-blind-edition-0",
+      "mediaArtifactId": "macaroni-v2-pin-004-token-media",
+      "metadataArtifactId": "macaroni-v2-pin-005-token-metadata",
+      "metadataUri": "ipfs://bafkreie24ie765ditt34hymqx2fvdwi4ynsqvxz7qam357htvow3hbdesu",
+      "tokenId": "0"
+    }
+  ]
+}

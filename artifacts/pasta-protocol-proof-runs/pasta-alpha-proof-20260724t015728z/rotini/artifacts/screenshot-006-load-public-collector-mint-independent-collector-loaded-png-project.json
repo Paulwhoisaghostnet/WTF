@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "load public collector mint",
+  "stageOrdinal": 6,
+  "stageName": "Independent collector loaded PNG project",
+  "url": "http://127.0.0.1:53068/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-24T01:59:29.026Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "c69dc3f77f0ab5b521f6067e4262253c0f2d6caf35c72f642830a27e37960d68",
+  "byteCount": 116916,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:59:26 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet"
+    },
+    {
+      "selector": "#account",
+      "name": "collector account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1MgZr…Bjej"
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "loaded project",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 0 finalized + 0 rendering / 4 · PNG · 0.000000 tez"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

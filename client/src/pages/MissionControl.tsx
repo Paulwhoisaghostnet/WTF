@@ -6,6 +6,12 @@ import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton } from "../components/wtfos-ui";
 import { WalletButton } from "../components/WalletButton";
+import {
+  type CockpitChallenge,
+  type CockpitSyncStatusResponse,
+  useCockpitChallengesQuery,
+  useCockpitSyncStatusQuery,
+} from "../features/cockpit/cockpit-queries";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -26,13 +32,6 @@ type WalletRow = {
   tezDomain?: string | null;
   isPrimary?: boolean;
   lastSyncedAt?: string | null;
-};
-
-type ChallengeRow = {
-  id: number;
-  title: string;
-  status?: string | null;
-  rewardType?: string | null;
 };
 
 type RewardFlagRow = {
@@ -86,18 +85,6 @@ type HealthResponse = {
     running?: number | null;
     recentErrors?: number | null;
   };
-};
-
-type SyncStatusResponse = {
-  jobs: Array<{
-    name: string;
-    latest?: {
-      status?: string | null;
-      startedAt?: string | null;
-      finishedAt?: string | null;
-      error?: string | null;
-    } | null;
-  }>;
 };
 
 const Shell = styled.div`
@@ -375,10 +362,7 @@ export function MissionControl() {
     queryKey: ["wallets"],
     queryFn: () => api.get<WalletRow[]>("/api/wallets"),
   });
-  const challengesQuery = useQuery({
-    queryKey: ["mission-control", "challenges"],
-    queryFn: () => api.get<ChallengeRow[]>("/api/challenges"),
-  });
+  const challengesQuery = useCockpitChallengesQuery();
   const rewardsQuery = useQuery({
     queryKey: ["mission-control", "reward-flags"],
     queryFn: () => api.get<RewardFlagRow[]>("/api/reward-flags/challenges"),
@@ -397,23 +381,19 @@ export function MissionControl() {
     queryFn: () => api.get<HealthResponse>("/api/health/diagnostics"),
     refetchInterval: 60_000,
   });
-  const syncQuery = useQuery({
-    queryKey: ["mission-control", "sync-status"],
-    queryFn: () => api.get<SyncStatusResponse>("/api/cockpit/sync/status"),
-    refetchInterval: 60_000,
-  });
+  const syncQuery = useCockpitSyncStatusQuery();
 
   const wallets = asMissionArray<WalletRow>(walletsQuery.data);
   const primaryWallet = wallets.find((wallet) => wallet.isPrimary) ?? wallets[0];
   const activeWallet = address || primaryWallet?.walletAddress || null;
-  const challenges = asMissionArray<ChallengeRow>(challengesQuery.data);
+  const challenges = asMissionArray<CockpitChallenge>(challengesQuery.data);
   const rewards = asMissionArray<RewardFlagRow>(rewardsQuery.data);
   const dailyLoops = asMissionArray<DailyLoopRow>(dailyLoopsQuery.data?.loops);
   const incompleteDailyLoops = dailyLoops.filter((loop) => !loop.completedToday);
   const previewDailyLoops = selectMissionControlDailyLoopRows<DailyLoopRow>(dailyLoops);
   const completedDailyLoops = dailyLoops.length - incompleteDailyLoops.length;
   const dailyLoopPct = dailyLoops.length > 0 ? (completedDailyLoops / dailyLoops.length) * 100 : 0;
-  const syncJobs = asMissionArray<SyncStatusResponse["jobs"][number]>(
+  const syncJobs = asMissionArray<CockpitSyncStatusResponse["jobs"][number]>(
     syncQuery.data?.jobs
   );
   const activeChallenges = challenges.filter(
@@ -513,9 +493,6 @@ export function MissionControl() {
           </ActionButton>
           <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/profile", "profile")}>
             Open profile
-          </ActionButton>
-          <ActionButton data-mission-control-region="button" onClick={() => openMissionRoute("/hoard", "hoard")}>
-            Open Hoard
           </ActionButton>
         </Actions>
 

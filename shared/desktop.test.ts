@@ -201,16 +201,16 @@ test("normalizes desktop chat typography defaults inside composer windows", () =
 test("normalizes icon layout and discards malformed coordinates", () => {
   const layout = normalizeIconLayout(
     {
-      hoard: { x: 100.5, y: 82 },
+      wtfiam: { x: 100.5, y: 82 },
       w: { x: -20, y: Infinity },
       tv: { x: 99999, y: 120 },
       mystery: { x: 10, y: 10 },
     },
-    ["hoard", "w", "tv"]
+    ["wtfiam", "w", "tv"]
   );
 
   assert.deepEqual(layout, {
-    hoard: { x: 101, y: 82 },
+    wtfiam: { x: 101, y: 82 },
     tv: { x: 99999, y: 120 },
   });
 });
@@ -221,7 +221,6 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "mission-control",
     "command-palette",
     "wtfiam",
-    "hoard",
     "wim",
     "w",
     "skywire",
@@ -233,6 +232,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "agent",
     "applications",
     "mail",
+    "admin-inbox",
     "tv",
     "dicksword",
     "i-hate-telegram",

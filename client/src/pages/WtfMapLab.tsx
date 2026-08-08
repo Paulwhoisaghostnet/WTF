@@ -707,7 +707,7 @@ const LEGACY_WTFOS_DEMO_DOC: MapDoc = {
       x: 1624,
       y: 652,
       system: "Chain ops",
-      description: "Wallet preflight, network guards, marketplace contracts, domains, swaps, and Hoard ownership.",
+      description: "Wallet preflight, network guards, marketplace contracts, domains, swaps, and portfolio ownership.",
       notes: "Contract address, payload version, RPC, and chain id must rotate together.",
     }),
     staticNode({
@@ -882,7 +882,7 @@ const WTFOS_DEMO_DOMAINS: WtfosDemoDomain[] = [
     id: "wallet-tezos",
     label: "Wallet + Tezos",
     concern: "Wallets, Tokens, Portfolio, and On-Chain State",
-    description: "Linked wallets, signer preflight, Hoard, Tezos Intel, WTF Domains, user sites, and chain activity.",
+    description: "Linked wallets, signer preflight, portfolio, Tezos Intel, WTF Domains, user sites, and chain activity.",
     notes: "Wallet-bound writes must bind active account, chain id, RPC, contract version, and linked user.",
   },
   {

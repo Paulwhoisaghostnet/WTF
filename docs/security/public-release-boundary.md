@@ -4,6 +4,11 @@ The Git repository is a public source and design artifact, not an operations evi
 
 Public material belongs under `docs/`, including architecture decisions, protocols, product design, public runbooks that contain no live topology or credentials, and the generated environment-variable inventory. Three `.agents` files remain public because they are executable engineering governance inputs: the bug-bounty board, append-only lessons, and interaction inventory.
 
+Reviewed chain transparency evidence is published through the machine-readable
+`publicReleaseEvidence` list. The current release set includes the
+[wtfOS contract registry](../reference/wtfos-contract-registry.md) and the
+[Marketplace V2 mainnet receipt](../reference/wtf-marketplace-v2-mainnet-release-20260724.md).
+
 Everything else under `.agents/docs` is host-local evidence. Archived contract runs, deployment transcripts, security audit working papers, spreadsheets, inspection exports, production triage, and operator runbooks are ignored and removed from the current Git index. A document must be reviewed and copied into `docs/` before it can cross back into the public boundary.
 
 ## Secret-history scan

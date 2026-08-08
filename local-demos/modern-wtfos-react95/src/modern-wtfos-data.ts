@@ -184,7 +184,7 @@ export const featureCatalog: WtfFeature[] = [
   {
     id: "market",
     label: "Market Desk",
-    plain: "Marketplace, swaps, trade boards, dues, hoard",
+    plain: "Marketplace, swaps, trade boards, dues, portfolio",
     status: "ready",
     metric: "38 listings",
     icon: BarChart3,

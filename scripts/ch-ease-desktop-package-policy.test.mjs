@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import test from "node:test";
 
 const pkg = JSON.parse(readFileSync("apps/ch-ease-desktop/package.json", "utf8"));
@@ -14,10 +14,18 @@ const gitignore = readFileSync(".gitignore", "utf8");
 const live = readFileSync("scripts/check-ch-ease-installers-live.mjs", "utf8");
 const env = readFileSync(".env.example", "utf8");
 const inventory = readFileSync("tests/e2e/inventory/domain-workflows.mjs", "utf8");
+const ravioliPrepare = readFileSync("apps/ravioli-desktop/scripts/prepare-assets.mjs", "utf8");
 const targets = ["spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
+
+function extractStringArray(source, pattern, label) {
+  const match = source.match(pattern);
+  assert.ok(match, `${label} required asset array should be present`);
+  return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
+}
 
 test("CH-EASE desktop is an individual no-prerequisite installer", () => {
   assert.equal(pkg.name, "@wtf/ch-ease-desktop");
+  assert.equal(pkg.version, "1.0.1-alpha.1");
   assert.equal(pkg.main, "src/main.cjs");
   assert.equal(pkg.devDependencies.electron, "42.4.0");
   assert.equal(pkg.devDependencies["electron-builder"], "26.15.3");
@@ -26,7 +34,12 @@ test("CH-EASE desktop is an individual no-prerequisite installer", () => {
   assert.match(pkg.scripts["dist:mac"], /--mac dmg zip --universal/);
   assert.match(pkg.scripts["dist:windows"], /--win nsis --x64/);
   assert.match(pkg.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
-  assert.deepEqual(pkg.build.files, ["package.json", "src/**/*", "pasta/**/*"]);
+  assert.deepEqual(pkg.build.files, [
+    "package.json",
+    "src/**/*",
+    "pasta/**/*",
+    "provenance/**/*",
+  ]);
   assert.equal(pkg.build.artifactName, "CH-EASE-Studio-${version}-${os}-${arch}.${ext}");
   assert.equal(pkg.build.executableName, "ch-ease-studio");
   assert.equal(pkg.build.deb.packageName, "ch-ease-studio");
@@ -43,6 +56,33 @@ test("CH-EASE desktop bundles preparation plus every same-origin publisher targe
   }
   assert.match(prepare, /vendor\/jszip\.min\.js/);
   assert.match(prepare, /wtfos\.pasta\.chease-package\.v1/);
+});
+
+test("CH-EASE desktop requires the exact standalone Ravioli asset set", () => {
+  const standaloneAssets = extractStringArray(
+    ravioliPrepare,
+    /const required = \[([\s\S]*?)\n\];/,
+    "Standalone Ravioli",
+  );
+  const chEaseAssets = extractStringArray(
+    prepare,
+    /\{\s*id:\s*"ravioli",\s*required:\s*\[([\s\S]*?)\]\s*,?\s*\}/,
+    "CH-EASE Ravioli",
+  );
+
+  assert.deepEqual(chEaseAssets, standaloneAssets);
+  for (const relativePath of chEaseAssets) {
+    const sourcePath = `public/creation-tools/ravioli/${relativePath}`;
+    assert.ok(existsSync(sourcePath), `Ravioli asset should exist: ${relativePath}`);
+    assert.ok(statSync(sourcePath).size > 0, `Ravioli asset should not be empty: ${relativePath}`);
+  }
+});
+
+test("CH-EASE desktop carries the current Rotini renderer runtimes", () => {
+  assert.match(
+    prepare,
+    /\{\s*id:\s*"rotini",\s*required:\s*\[[^\]]*"js\/rotini-artifact\.js"[^\]]*"js\/rotini-mint\.js"/s,
+  );
 });
 
 test("CH-EASE desktop serves only loopback assets and blocks hosted APIs", () => {

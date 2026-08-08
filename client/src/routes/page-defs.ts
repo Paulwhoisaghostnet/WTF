@@ -183,9 +183,6 @@ const AdminPage = lazy(() =>
 const ControlBoardPage = lazy(() =>
   import("../pages/ControlBoard").then((m) => ({ default: m.ControlBoard }))
 );
-const HoardPage = lazy(() =>
-  import("../pages/Hoard").then((m) => ({ default: m.Hoard }))
-);
 const MyVideosPage = lazy(() =>
   import("../pages/MyVideos").then((m) => ({ default: m.MyVideos }))
 );
@@ -265,6 +262,9 @@ const WimPage = lazy(() =>
 );
 const MailPage = lazy(() =>
   import("../pages/Mail").then((m) => ({ default: m.Mail }))
+);
+const AdminInboxPage = lazy(() =>
+  import("../pages/AdminInbox").then((m) => ({ default: m.AdminInbox }))
 );
 const DigestPage = lazy(() =>
   import("../pages/Digest").then((m) => ({ default: m.Digest }))
@@ -558,7 +558,6 @@ export const PAGE_DEFS: PageDef[] = [
     group: "admin",
     startMenu: true,
   },
-  { pattern: "/hoard", component: HoardPage, auth: true, title: "Hoard", group: "market", startMenu: true },
   { pattern: "/my-videos", component: MyVideosPage, auth: true, title: "My Videos", group: "media", startMenu: true },
   { pattern: "/my-photos", component: MyPhotosPage, auth: true, title: "My Photos", group: "media", startMenu: true },
   { pattern: "/my-music", component: MyMusicPage, auth: true, title: "My Music", group: "media", startMenu: true },
@@ -666,6 +665,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/crp-nominate", component: CrpNominatePage, auth: true, title: "CRP Nominations", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/wim", component: WimPage, auth: true, title: "WIM", group: "social", startMenu: true },
   { pattern: "/mail", component: MailPage, auth: true, title: "Inbox", group: "social", startMenu: true },
+  { pattern: "/admin-inbox", component: AdminInboxPage, auth: true, title: "Contact Admin", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/digest", component: DigestPage, auth: true, title: "Digest", group: "social", startMenu: true },
   { pattern: "/browser", component: BrowserPage, auth: true, title: "Browser", group: "desktop-os", startMenu: true },
   { pattern: "/music", component: MusicPage, auth: true, title: "TezosBeats", group: "media", startMenu: true },

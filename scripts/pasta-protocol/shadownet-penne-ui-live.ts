@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -22,6 +22,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
   type PastaUiLivePublicReceipt,
 } from "./pasta-ui-live-bridge-kit";
@@ -32,6 +33,22 @@ import {
   type CapturePastaProofStageResult,
   type RequiredDomEvidence,
 } from "./pasta-proof-screenshot-kit";
+import {
+  PastaProofRestartJournal,
+  type PastaProofRestartActor,
+  type PastaProofRestartStep,
+} from "./pasta-proof-restart-journal";
+import {
+  assertPastaProofRestartCounterBoundary,
+  assertPastaProofRestartOrigination,
+  assertPastaProofRestartTransaction,
+  authenticatePastaProofRestartInitialCounters,
+  capturePastaProofRestartInitialCounters,
+  readPastaProofRestartActorState,
+  reconcilePastaProofRestartOperation,
+  reconcilePastaProofRestartPin,
+  type PastaProofRestartPendingOperation,
+} from "./pasta-proof-restart-chain";
 import {
   assertShadownet,
   block,
@@ -61,6 +78,7 @@ const COLLECTOR_OPERATION_RESERVE_MUTEZ = 500_000;
 const COLLECTOR_ALLOCATION = 1;
 const CREATOR_ALLOCATION = 2;
 const HANDOFF_KEY = "wtfos.pasta.handoff.v1:penne-ui-live-proof";
+const RESTART_CHECKPOINT_PATH = "artifacts/penne-restart-checkpoint.json";
 const CONTRACT_ARTIFACT_PATH = path.join(
   root,
   "public",
@@ -70,6 +88,19 @@ const CONTRACT_ARTIFACT_PATH = path.join(
   "pasta-distribution.contract.json",
 );
 const STATIC_ROOT = path.join(root, "public");
+
+export const PENNE_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.freeze([
+  { id: "media", actor: "creator", kind: "pin", fileName: "penne-ui-live-proof.png", transport: "direct" },
+  { id: "collection-metadata", actor: "creator", kind: "pin", fileName: "collection.json", transport: "bridge" },
+  { id: "token-metadata", actor: "creator", kind: "pin", fileName: "token.json", transport: "bridge" },
+  { id: "originate", actor: "creator", kind: "operation", action: "originate", transport: "bridge" },
+  { id: "create-token", actor: "creator", kind: "operation", action: "call", entrypoint: "create_token", transport: "bridge" },
+  { id: "set-allocations", actor: "creator", kind: "operation", action: "call", entrypoint: "set_allocations", transport: "bridge" },
+  { id: "open-claim", actor: "creator", kind: "operation", action: "call", entrypoint: "open_claim", transport: "bridge" },
+  { id: "collector-claim", actor: "collector", kind: "operation", action: "call", entrypoint: "claim", transport: "bridge" },
+  { id: "creator-airdrop", actor: "creator", kind: "operation", action: "call", entrypoint: "airdrop", transport: "bridge" },
+  { id: "close-claim", actor: "creator", kind: "operation", action: "call", entrypoint: "open_claim", transport: "bridge" },
+]);
 
 function crc32(bytes: Uint8Array): number {
   let value = 0xffffffff;
@@ -137,7 +168,21 @@ type WrittenPinnedArtifact = {
   retrievedSha256: string;
 };
 
-type OperationReceipt = PastaUiLivePublicReceipt & { operationHash: string };
+type OperationReceipt = PastaUiLivePublicReceipt & {
+  action: "originate" | "call";
+  signerAddress: string;
+  contractAddress: string;
+  operationHash: string;
+};
+
+function isOperationReceipt(receipt: PastaUiLivePublicReceipt): receipt is OperationReceipt {
+  return (
+    (receipt.action === "originate" || receipt.action === "call") &&
+    typeof receipt.signerAddress === "string" &&
+    typeof receipt.contractAddress === "string" &&
+    typeof receipt.operationHash === "string"
+  );
+}
 
 type DistributionFinalState = {
   tokenId: 0;
@@ -186,7 +231,8 @@ export function assertPenneUiLiveExecutionAllowed(
   ]) {
     if (environment[key]?.trim()) {
       block("Penne UI-live proof is fresh-origination only", [
-        `Unset \`${key}\`; proof runs may not resume or attach to an existing contract.`,
+        `Unset \`${key}\`; manual contract attachment and manual resume modes are prohibited.`,
+        `A process restart is selected automatically only when \`${OUTPUT_ENV}\` contains the authenticated Penne restart checkpoint.`,
       ]);
     }
   }
@@ -208,23 +254,57 @@ function errorText(error: unknown): string {
   }
 }
 
-async function requireFreshAppOutputDirectory(runRoot: string): Promise<{ appRoot: string; runId: string }> {
-  const runId = path.basename(path.resolve(runRoot));
+async function requireFreshAppOutputDirectory(
+  runRoot: string,
+): Promise<{ appRoot: string; runId: string; existing: boolean }> {
+  const absoluteRunRoot = path.resolve(runRoot);
+  let runRootInfo;
+  try {
+    runRootInfo = await lstat(absoluteRunRoot);
+  } catch (error) {
+    block("Pasta proof run directory does not exist", [
+      `Create the aggregate proof-run root \`${absoluteRunRoot}\` before executing Penne.`,
+      `Reason: ${error instanceof Error ? error.message : String(error)}`,
+    ]);
+  }
+  if (!runRootInfo.isDirectory() || runRootInfo.isSymbolicLink()) {
+    block("Penne proof run path is not a regular directory", [`Refusing \`${absoluteRunRoot}\`.`]);
+  }
+  const runId = path.basename(absoluteRunRoot);
   if (!SAFE_RUN_ID.test(runId)) {
     block("Penne proof run directory must end in a safe run id", [
       "Use a final directory name containing only lowercase letters, digits, dots, underscores, and hyphens.",
     ]);
   }
-  const appRoot = path.join(path.resolve(runRoot), "penne");
+  const appRoot = path.join(absoluteRunRoot, "penne");
   try {
-    await stat(appRoot);
-    block("Penne proof output directory already exists", [
-      `Refusing to overwrite \`${appRoot}\`; use a fresh proof-run directory.`,
-    ]);
+    const info = await lstat(appRoot);
+    if (!info.isDirectory() || info.isSymbolicLink()) {
+      block("Penne proof output path is not a regular directory", [`Refusing \`${appRoot}\`.`]);
+    }
+    try {
+      await lstat(path.join(appRoot, "manifest.json"));
+      block("Penne proof is already complete", [
+        `A final manifest already exists at \`${path.join(appRoot, "manifest.json")}\`.`,
+      ]);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    try {
+      await lstat(path.join(appRoot, RESTART_CHECKPOINT_PATH));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        block("Penne output exists without a restart checkpoint", [
+          `Refusing unauthenticated partial output at \`${appRoot}\`.`,
+        ]);
+      }
+      throw error;
+    }
+    return { appRoot, runId, existing: true };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { appRoot, runId };
+  return { appRoot, runId, existing: false };
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
@@ -288,12 +368,16 @@ function validateBrowserOrigination(
   }
 }
 
-function createCreatorCallValidator(creatorAddress: string, collectorAddress: string): {
+function createCreatorCallValidator(creatorAddress: string, collectorAddress: string, initialPhase = 0): {
   validate(input: { contractAddress: string; entrypoint: string; payload: unknown }): void;
   assertComplete(): void;
 } {
   const expectedEntrypoints = ["create_token", "set_allocations", "open_claim", "airdrop", "open_claim"];
-  let phase = 0;
+  assert.ok(
+    Number.isSafeInteger(initialPhase) && initialPhase >= 0 && initialPhase <= expectedEntrypoints.length,
+    "Penne recovered creator call phase is invalid",
+  );
+  let phase = initialPhase;
   return {
     validate(input) {
       assert.equal(input.entrypoint, expectedEntrypoints[phase], `unexpected Penne creator call at phase ${phase + 1}`);
@@ -340,7 +424,7 @@ function validateCollectorClaim(
   assert.equal(Number(input.payload), 0, "collector must claim token id 0");
 }
 
-function buildCheasePackage(artifactUri: string) {
+function buildCheasePackage(artifactUri: string, runId: string) {
   return {
     schemaVersion: "wtfos.pasta.chease-package.v1",
     kind: "single_token",
@@ -353,18 +437,35 @@ function buildCheasePackage(artifactUri: string) {
       tags: ["penne", "distribution", "ui-live", "shadownet"],
     },
     relationship: {
-      collection_group: `penne-ui-live-${Date.now().toString(36)}`,
+      collection_group: `penne-ui-live-${runId}`,
     },
   };
 }
 
+const PENNE_UI_FAILURE_PREFIXES = [
+  "connect failed:",
+  "deploy failed:",
+  "claim config failed:",
+  "claim failed:",
+  "airdrop failed",
+] as const;
+
 async function waitForLog(page: Page, expected: string, timeout = 300_000): Promise<void> {
   await page.locator("#log").waitFor({ state: "visible", timeout });
   await page.waitForFunction(
-    (text) => document.getElementById("log")?.textContent?.includes(text),
-    expected,
+    ({ text, failurePrefixes }) => {
+      const log = document.getElementById("log")?.textContent || "";
+      return log.includes(text) || failurePrefixes.some((prefix) => log.includes(prefix));
+    },
+    { text: expected, failurePrefixes: PENNE_UI_FAILURE_PREFIXES },
     { timeout },
   );
+  const log = await page.locator("#log").innerText();
+  if (!log.includes(expected)) {
+    throw new Error(
+      `Penne Studio failed while waiting for ${JSON.stringify(expected)}; log=${log.slice(-1_500)}`,
+    );
+  }
 }
 
 async function configureCreatorStudio(
@@ -507,12 +608,8 @@ function validateReceiptIdentifiers(
   const origination = creatorReceipts.find((receipt) => receipt.action === "originate");
   assert.ok(origination?.contractAddress, "Penne origination receipt is missing its KT1");
   assert.equal(validateContractAddress(origination.contractAddress), ValidationResult.VALID);
-  const creatorOperations = creatorReceipts.filter(
-    (receipt): receipt is OperationReceipt => typeof receipt.operationHash === "string",
-  );
-  const collectorOperations = collectorReceipts.filter(
-    (receipt): receipt is OperationReceipt => typeof receipt.operationHash === "string",
-  );
+  const creatorOperations = creatorReceipts.filter(isOperationReceipt);
+  const collectorOperations = collectorReceipts.filter(isOperationReceipt);
   assert.deepEqual(
     creatorOperations.map((receipt) => receipt.entrypoints?.[0] || receipt.action),
     ["originate", "create_token", "set_allocations", "open_claim", "airdrop", "open_claim"],
@@ -575,6 +672,294 @@ async function writePinnedMetadataArtifacts(
   }
   assert.equal(identities.size, 0, "Penne metadata pin set is incomplete");
   return output;
+}
+
+type PenneTzktOperationRow = {
+  type?: unknown;
+  status?: unknown;
+  hash?: unknown;
+  sender?: { address?: unknown };
+  target?: { address?: unknown };
+  originatedContract?: { address?: unknown };
+  parameter?: { entrypoint?: unknown; value?: unknown };
+  counter?: unknown;
+  amount?: unknown;
+  storage?: unknown;
+  level?: unknown;
+  timestamp?: unknown;
+};
+
+function projectedRecord(value: unknown, label: string): Record<string, any> {
+  assert.ok(value && typeof value === "object" && !Array.isArray(value), `${label} must be an object`);
+  return value as Record<string, any>;
+}
+
+function projectedMapEntries(value: unknown, label: string): unknown[][] {
+  const record = projectedRecord(value, label);
+  assert.ok(Array.isArray(record.__map), `${label} must be a projected Michelson map`);
+  return record.__map;
+}
+
+async function assertPenneRestartApplied(input: {
+  row: unknown;
+  pending: PastaProofRestartPendingOperation;
+  signerAddress: string;
+  tezos: TezosToolkit;
+  expectedCodeHash: string;
+}): Promise<{ contractAddress: string; entrypoints: string[] }> {
+  if (input.pending.step.action !== "originate") {
+    return assertPastaProofRestartTransaction(input);
+  }
+  const resolved = assertPastaProofRestartOrigination(input);
+  const descriptor = projectedRecord(input.pending.descriptor, "Penne restart origination descriptor");
+  assert.equal(hashJsonForBridge(descriptor.code), input.expectedCodeHash, "Penne restart artifact identity differs");
+  const requestedStorage = projectedRecord(descriptor.storage, "Penne restart origination storage");
+  assert.equal(requestedStorage.administrator, input.signerAddress);
+  assert.equal(requestedStorage.pending_administrator, null);
+  assert.equal(Number(requestedStorage.next_token_id), 0);
+  assert.equal(requestedStorage.claim_active, false);
+  assert.equal(requestedStorage.claim_start, null);
+  assert.equal(requestedStorage.claim_end, null);
+  const metadataEntries = projectedMapEntries(requestedStorage.metadata, "Penne restart metadata");
+  assert.equal(metadataEntries.length, 1);
+  assert.equal(metadataEntries[0][0], "");
+  const expectedMetadataHex = String(metadataEntries[0][1]);
+  for (const key of ["ledger", "operators", "token_metadata", "total_supply", "allocations", "claimed", "minters"]) {
+    assert.deepEqual(projectedMapEntries(requestedStorage[key], `Penne restart ${key}`), []);
+  }
+  const rowStorage = projectedRecord((input.row as PenneTzktOperationRow).storage, "Penne indexed origination storage");
+  assert.equal(rowStorage.administrator, input.signerAddress);
+  assert.equal(rowStorage.pending_administrator, null);
+  assert.equal(Number(rowStorage.next_token_id), 0);
+  assert.equal(rowStorage.claim_active, false);
+  assert.equal(rowStorage.claim_start, null);
+  assert.equal(rowStorage.claim_end, null);
+  const script = await input.tezos.rpc.getScript(resolved.contractAddress);
+  assert.equal(hashJsonForBridge(script.code), input.expectedCodeHash, "Penne recovered on-chain code differs");
+  const contract = await input.tezos.contract.at(resolved.contractAddress);
+  const storage = await contract.storage() as { metadata: { get(key: string): Promise<unknown> } };
+  assert.equal(await storage.metadata.get(""), expectedMetadataHex, "Penne recovered collection metadata URI differs");
+  return resolved;
+}
+
+function penneTzktOperationRows(value: unknown): PenneTzktOperationRow[] {
+  const rows = Array.isArray(value) ? value : [value];
+  assert.ok(
+    rows.length > 0 && rows.every((row) => row && typeof row === "object" && !Array.isArray(row)),
+    "TzKT operation response must contain operation objects",
+  );
+  return rows as PenneTzktOperationRow[];
+}
+
+export function assertPenneTzktOperationApplied(input: {
+  rows: unknown;
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): PenneTzktOperationRow {
+  assert.equal(
+    validateOperation(input.assertion.operationHash),
+    ValidationResult.VALID,
+    "Penne operation hash is invalid",
+  );
+  assert.equal(
+    validateAddress(input.signerAddress),
+    ValidationResult.VALID,
+    "Penne operation signer is invalid",
+  );
+  assert.notEqual(
+    input.assertion.action,
+    "batch",
+    "Penne UI-live does not permit batch finality assertions",
+  );
+  assert.equal(
+    validateContractAddress(input.assertion.contractAddress || ""),
+    ValidationResult.VALID,
+    "Penne operation contract address is invalid",
+  );
+
+  const signerRows = penneTzktOperationRows(input.rows).filter((row) =>
+    row.hash === input.assertion.operationHash &&
+    row.sender?.address === input.signerAddress
+  );
+  assert.equal(
+    signerRows.length,
+    1,
+    "TzKT must expose exactly one Penne operation for the exact hash and signer",
+  );
+  const operation = signerRows[0];
+  assert.equal(operation.status, "applied", "Penne operation is not applied");
+  assert.ok(
+    Number.isSafeInteger(Number(operation.level)) && Number(operation.level) > 0,
+    "Penne operation level is invalid",
+  );
+  assert.ok(
+    typeof operation.timestamp === "string" &&
+      Number.isFinite(Date.parse(operation.timestamp)),
+    "Penne operation timestamp is invalid",
+  );
+
+  if (input.assertion.action === "originate") {
+    assert.equal(operation.type, "origination", "Penne origination action differs from TzKT");
+    assert.deepEqual(input.assertion.entrypoints, [], "Penne origination cannot claim entrypoints");
+    assert.equal(
+      operation.originatedContract?.address,
+      input.assertion.contractAddress,
+      "Penne originated address differs from TzKT",
+    );
+  } else {
+    assert.equal(operation.type, "transaction", "Penne call action differs from TzKT");
+    assert.equal(input.assertion.entrypoints.length, 1, "Penne call must claim exactly one entrypoint");
+    assert.equal(
+      operation.target?.address,
+      input.assertion.contractAddress,
+      "Penne call target differs from TzKT",
+    );
+    assert.equal(
+      operation.parameter?.entrypoint,
+      input.assertion.entrypoints[0],
+      "Penne call entrypoint differs from TzKT",
+    );
+  }
+  return operation;
+}
+
+async function verifyPenneTzktOperationApplied(input: {
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): Promise<void> {
+  const endpoint = input.assertion.action === "originate" ? "originations" : "transactions";
+  const url = `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${endpoint}/${encodeURIComponent(input.assertion.operationHash)}`;
+  const rows = await pollJson(
+    `Penne exact-hash ${input.assertion.action} finality`,
+    url,
+    (value) => {
+      try {
+        assertPenneTzktOperationApplied({ rows: value, ...input });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  assertPenneTzktOperationApplied({ rows, ...input });
+}
+
+async function preparePenneRestartJournal(input: {
+  appRoot: string;
+  runId: string;
+  existing: boolean;
+  creatorAddress: string;
+  collectorAddress: string;
+  creatorTezos: TezosToolkit;
+  collectorTezos: TezosToolkit;
+  code: unknown[];
+  ipfs: IpfsProofConfig;
+}): Promise<PastaProofRestartJournal> {
+  const actors = { creator: input.creatorAddress, collector: input.collectorAddress } as const;
+  const expectedCodeHash = hashJsonForBridge(input.code);
+  const intent = {
+    contractArtifactPath: path.relative(root, CONTRACT_ARTIFACT_PATH),
+    contractArtifactSha256: expectedCodeHash,
+    mediaSha256: sha256(PROOF_ARTIFACT_BYTES),
+    mediaByteLength: PROOF_ARTIFACT_BYTES.byteLength,
+    relationshipGroup: `penne-ui-live-${input.runId}`,
+    allocations: {
+      creator: CREATOR_ALLOCATION,
+      collector: COLLECTOR_ALLOCATION,
+    },
+  };
+  const checkpointPath = path.join(input.appRoot, RESTART_CHECKPOINT_PATH);
+  const journal = input.existing
+    ? await PastaProofRestartJournal.open(checkpointPath, {
+        app: "penne",
+        runId: input.runId,
+        actors,
+        plan: PENNE_RESTART_PLAN,
+        intent,
+        authenticateInitialCounters: (counters) => authenticatePastaProofRestartInitialCounters({
+          counters,
+          actors,
+          plan: PENNE_RESTART_PLAN,
+        }),
+      })
+    : await PastaProofRestartJournal.create({
+        filePath: checkpointPath,
+        app: "penne",
+        runId: input.runId,
+        actors,
+        initialCounters: await capturePastaProofRestartInitialCounters({ actors }),
+        plan: PENNE_RESTART_PLAN,
+        intent,
+      });
+
+  await journal.reconcilePin((pending) => reconcilePastaProofRestartPin({ ...pending, ipfs: input.ipfs }));
+  const actorToolkit = (actor: PastaProofRestartActor): TezosToolkit => {
+    if (actor === "creator") return input.creatorTezos;
+    if (actor === "collector") return input.collectorTezos;
+    throw new Error(`Penne restart plan contains unsupported actor ${actor}`);
+  };
+  const actorAddress = (actor: PastaProofRestartActor) => {
+    if (actor === "creator") return input.creatorAddress;
+    if (actor === "collector") return input.collectorAddress;
+    throw new Error(`Penne restart plan contains unsupported actor ${actor}`);
+  };
+  const reconcile = (pending: PastaProofRestartPendingOperation) => reconcilePastaProofRestartOperation({
+    label: `Penne restart ${pending.step.id}`,
+    pending,
+    signerAddress: actorAddress(pending.step.actor),
+    validateApplied: (row) => assertPenneRestartApplied({
+      row,
+      pending,
+      signerAddress: actorAddress(pending.step.actor),
+      tezos: actorToolkit(pending.step.actor),
+      expectedCodeHash,
+    }),
+  });
+  await journal.reconcile(reconcile);
+
+  const actorStates = new Map<PastaProofRestartActor, Awaited<ReturnType<typeof readPastaProofRestartActorState>>>();
+  for (const actor of ["creator", "collector"] as const) {
+    actorStates.set(actor, await readPastaProofRestartActorState({ signerAddress: actorAddress(actor) }));
+  }
+  for (const applied of journal.appliedOperations()) {
+    const operationHash = applied.receipt.operationHash;
+    assert.equal(typeof operationHash, "string", `Penne restart ${applied.step.id} receipt lacks an operation hash`);
+    const pending: PastaProofRestartPendingOperation = {
+      step: applied.step,
+      phase: "SUBMITTED",
+      operationSequence: applied.operationSequence,
+      expectedCounter: applied.expectedCounter,
+      descriptor: applied.descriptor,
+      descriptorSha256: applied.descriptorSha256,
+      operationHash,
+      ...(applied.receipt.contractAddress ? { contractAddress: applied.receipt.contractAddress } : {}),
+    };
+    const resolution = await reconcilePastaProofRestartOperation({
+      label: `Penne applied-prefix ${applied.step.id}`,
+      pending,
+      signerAddress: actorAddress(applied.step.actor),
+      actorState: actorStates.get(applied.step.actor),
+      validateApplied: (row) => assertPenneRestartApplied({
+        row,
+        pending,
+        signerAddress: actorAddress(applied.step.actor),
+        tezos: actorToolkit(applied.step.actor),
+        expectedCodeHash,
+      }),
+    });
+    assert.equal(resolution.status, "applied", `Penne applied-prefix ${applied.step.id} is no longer applied`);
+    if (resolution.status === "applied") {
+      assert.equal(resolution.operationHash, operationHash, `Penne applied-prefix ${applied.step.id} hash differs`);
+    }
+  }
+  for (const actor of ["creator", "collector"] as const) {
+    await assertPastaProofRestartCounterBoundary({
+      signerAddress: actorAddress(actor),
+      expectedCounter: journal.expectedCurrentCounter(actor),
+      label: `Penne authenticated ${actor} prefix`,
+    });
+  }
+  return journal;
 }
 
 export async function verifyPenneTzktEvidence(input: {
@@ -694,26 +1079,34 @@ export async function verifyPenneTzktEvidence(input: {
   const operations = [];
   for (const receipt of input.operationReceipts) {
     const family = receipt.action === "originate" ? "originations" : "transactions";
+    const assertion: PastaUiLiveAppliedOperationAssertion = {
+      action: receipt.action,
+      operationHash: receipt.operationHash,
+      contractAddress: receipt.contractAddress,
+      entrypoints: receipt.entrypoints || [],
+    };
     const indexed = await poll(
       `Penne UI-live ${family} ${receipt.operationHash}`,
       `${base}/operations/${family}/${encodeURIComponent(receipt.operationHash)}`,
-      (json) =>
-        json?.status === "applied" ||
-        (Array.isArray(json) && json.some((entry) => entry?.status === "applied")),
+      (json) => {
+        try {
+          assertPenneTzktOperationApplied({
+            rows: json,
+            assertion,
+            signerAddress: receipt.signerAddress,
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
     );
-    const record = Array.isArray(indexed)
-      ? indexed.find((entry) => entry?.status === "applied")
-      : indexed;
+    const record = assertPenneTzktOperationApplied({
+      rows: indexed,
+      assertion,
+      signerAddress: receipt.signerAddress,
+    });
     const targetAddress = record?.target?.address || record?.originatedContract?.address;
-    assert.equal(targetAddress, input.contractAddress, `TzKT target differs for ${receipt.operationHash}`);
-    assert.equal(record?.sender?.address, receipt.signerAddress, `TzKT sender differs for ${receipt.operationHash}`);
-    if (receipt.action !== "originate") {
-      assert.equal(
-        record?.parameter?.entrypoint,
-        receipt.entrypoints?.[0],
-        `TzKT entrypoint differs for ${receipt.operationHash}`,
-      );
-    }
     operations.push({
       hash: receipt.operationHash,
       status: record?.status,
@@ -765,7 +1158,7 @@ export async function verifyPenneTzktEvidence(input: {
 export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
   assertPenneUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV] || "");
-  const { appRoot, runId } = await requireFreshAppOutputDirectory(runRoot);
+  const { appRoot, runId, existing } = await requireFreshAppOutputDirectory(runRoot);
   const ipfs: IpfsProofConfig = resolveIpfsProofConfig();
   const rpc = await probeRpcChainId();
   assert.equal(rpc.chainId, SHADOWNET_CHAIN_ID);
@@ -821,32 +1214,87 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
   }
 
   await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
-  const artifactPin = await pinIpfsProofBytes({
-    bytes: PROOF_ARTIFACT_BYTES,
-    fileName: "penne-ui-live-proof.png",
-    mimeType: "image/png",
-    options: ipfs,
+  const expectedCodeHash = hashJsonForBridge(code);
+  const restartJournal = await preparePenneRestartJournal({
+    appRoot,
+    runId,
+    existing,
+    creatorAddress: creator.address,
+    collectorAddress: collector.address,
+    creatorTezos,
+    collectorTezos,
+    code,
+    ipfs,
   });
+  let artifactPin = restartJournal.appliedPin("media")?.proof;
+  if (artifactPin) {
+    assert.deepEqual(
+      restartJournal.appliedPin("media")?.bytes,
+      Uint8Array.from(PROOF_ARTIFACT_BYTES),
+      "Penne recovered media bytes differ",
+    );
+  } else {
+    await restartJournal.beforePin("creator", {
+      bytes: PROOF_ARTIFACT_BYTES,
+      fileName: "penne-ui-live-proof.png",
+      mimeType: "image/png",
+    });
+    artifactPin = await pinIpfsProofBytes({
+      bytes: PROOF_ARTIFACT_BYTES,
+      fileName: "penne-ui-live-proof.png",
+      mimeType: "image/png",
+      options: ipfs,
+    });
+    await restartJournal.onPin("creator", { proof: artifactPin });
+  }
   const artifactRelativePath = "artifacts/penne-ui-live-proof.png";
   await writeFile(path.join(appRoot, artifactRelativePath), PROOF_ARTIFACT_BYTES);
   assert.equal(sha256(PROOF_ARTIFACT_BYTES), artifactPin.sha256);
 
-  const pinnedMetadata: PinnedMetadataRecord[] = [];
-  const expectedCodeHash = hashJsonForBridge(code);
-  const creatorCallValidator = createCreatorCallValidator(creator.address, collector.address);
+  const pinnedMetadata: PinnedMetadataRecord[] = restartJournal.pinRecords().flatMap((record) =>
+    record.value === undefined || record.proof.mimeType !== "application/json"
+      ? []
+      : [{ value: record.value, proof: record.proof }]);
+  const completedCreatorCalls = restartJournal.appliedOperations().filter((operation) =>
+    operation.step.actor === "creator" && operation.step.action === "call").length;
+  const creatorCallValidator = createCreatorCallValidator(
+    creator.address,
+    collector.address,
+    completedCreatorCalls,
+  );
   const creatorSession = new TaquitoPastaUiLiveSession({
     tezos: creatorTezos,
     signerAddress: creator.address,
     expectedChainId: SHADOWNET_CHAIN_ID,
+    ...(restartJournal.contractAddress()
+      ? { allowedContractAddresses: new Set([restartJournal.contractAddress()!]) }
+      : {}),
     allowedEntrypoints: new Set(["create_token", "set_allocations", "open_claim", "airdrop"]),
+    initialOperationSequence: restartJournal.completedOperationCount("creator"),
     assertExpectedChain: async (stage) => {
       await assertShadownet(creatorTezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => verifyPenneTzktOperationApplied({
+      assertion,
+      signerAddress: creator.address,
+    }),
+    beforeOperationSubmit: async (operation) => {
+      await restartJournal.beforeOperationSubmit("creator", operation);
+      await assertPastaProofRestartCounterBoundary({
+        signerAddress: creator.address,
+        expectedCounter: restartJournal.expectedCurrentCounter("creator"),
+        label: `Penne pre-submit creator operation ${operation.operationSequence}`,
+      });
+    },
+    onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("creator", operation),
+    onReceipt: (receipt) => restartJournal.onReceipt("creator", receipt),
+    beforePin: (pin) => restartJournal.beforePin("creator", pin),
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     validateOrigination: (input) => validateBrowserOrigination(input, expectedCodeHash, creator.address),
     validateCall: creatorCallValidator.validate,
-    onPin: ({ value, proof }) => {
+    onPin: async ({ value, proof }) => {
+      await restartJournal.onPin("creator", { proof });
       if (value !== undefined) pinnedMetadata.push({ value, proof });
     },
   });
@@ -859,7 +1307,7 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
 
   const creatorBridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: (request) => creatorSession.handle(request),
+    handleAction: (request) => restartJournal.replayOrHandle("creator", request, () => creatorSession.handle(request)),
   });
   let collectorBridge: Awaited<ReturnType<typeof startPastaUiLiveLoopbackServer>> | null = null;
   let collectorSession: TaquitoPastaUiLiveSession | null = null;
@@ -872,7 +1320,7 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
   try {
     browser = await chromium.launch({ headless: process.env.PASTA_UI_LIVE_HEADFUL !== "1" });
     const creatorContext = await createProofContext(browser);
-    const packageValue = buildCheasePackage(artifactPin.uri);
+    const packageValue = buildCheasePackage(artifactPin.uri, runId);
     await creatorContext.addInitScript({
       content: `sessionStorage.setItem(${JSON.stringify(HANDOFF_KEY)}, ${JSON.stringify(JSON.stringify(packageValue)).replace(/</g, "\\u003c")});`,
     });
@@ -961,7 +1409,7 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
       [{ selector: "#sumTotal", name: "total allocated editions", expectedText: "3" }],
     ));
 
-    const origination = creatorSession.getReceipts().find((receipt) => receipt.action === "originate");
+    const origination = restartJournal.operationReceipts().find((receipt) => receipt.action === "originate");
     assert.ok(origination?.contractAddress && origination.operationHash);
     const contractAddress = origination.contractAddress;
     assert.equal(await creatorPage.locator("#contractKt").inputValue(), contractAddress);
@@ -985,10 +1433,25 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
       expectedChainId: SHADOWNET_CHAIN_ID,
       allowedContractAddresses: new Set([contractAddress]),
       allowedEntrypoints: new Set(["claim"]),
+      initialOperationSequence: restartJournal.completedOperationCount("collector"),
       assertExpectedChain: async (stage) => {
         await assertShadownet(collectorTezos, stage);
         return SHADOWNET_CHAIN_ID;
       },
+      assertOperationApplied: (assertion) => verifyPenneTzktOperationApplied({
+        assertion,
+        signerAddress: collector.address,
+      }),
+      beforeOperationSubmit: async (operation) => {
+        await restartJournal.beforeOperationSubmit("collector", operation);
+        await assertPastaProofRestartCounterBoundary({
+          signerAddress: collector.address,
+          expectedCounter: restartJournal.expectedCurrentCounter("collector"),
+          label: `Penne pre-submit collector operation ${operation.operationSequence}`,
+        });
+      },
+      onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("collector", operation),
+      onReceipt: (receipt) => restartJournal.onReceipt("collector", receipt),
       pinJson: async () => {
         throw new Error("collector claim session cannot pin metadata");
       },
@@ -1005,7 +1468,11 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
     });
     collectorBridge = await startPastaUiLiveLoopbackServer({
       staticRoot: STATIC_ROOT,
-      handleAction: (request) => collectorSession!.handle(request),
+      handleAction: (request) => restartJournal.replayOrHandle(
+        "collector",
+        request,
+        () => collectorSession!.handle(request),
+      ),
     });
     const collectorContext = await createProofContext(browser);
     const collectorPage = await collectorContext.newPage();
@@ -1083,12 +1550,13 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
         pinCount: bridgeState?.pins?.length || 0,
       };
     });
-    assert.deepEqual(creatorPublicState, {
-      classification: "UI-LIVE",
-      account: creator.address,
-      receiptCount: creatorSession.getReceipts().length,
-      pinCount: 2,
-    });
+    assert.equal(creatorPublicState.classification, "UI-LIVE");
+    assert.equal(creatorPublicState.account, creator.address);
+    assert.equal(creatorPublicState.pinCount, 2);
+    assert.ok(
+      creatorPublicState.receiptCount >= restartJournal.completedOperationCount("creator") + 2,
+      "Penne browser omitted replayed creator receipts",
+    );
     const collectorPublicState = await collectorPage.evaluate(() => {
       const bridgeState = (window as any).__pastaUiLiveBridge;
       return {
@@ -1098,12 +1566,13 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
         pinCount: bridgeState?.pins?.length || 0,
       };
     });
-    assert.deepEqual(collectorPublicState, {
-      classification: "UI-LIVE",
-      account: collector.address,
-      receiptCount: collectorSession.getReceipts().length,
-      pinCount: 0,
-    });
+    assert.equal(collectorPublicState.classification, "UI-LIVE");
+    assert.equal(collectorPublicState.account, collector.address);
+    assert.equal(collectorPublicState.pinCount, 0);
+    assert.ok(
+      collectorPublicState.receiptCount >= restartJournal.completedOperationCount("collector"),
+      "Penne browser omitted replayed collector receipts",
+    );
     creatorCallValidator.assertComplete();
     finalState = await readAndAssertFinalState(
       creatorTezos,
@@ -1121,8 +1590,24 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
 
   assert.ok(collectorSession, "collector claim session was not created");
   assert.ok(finalState, "final Penne distribution state was not verified");
-  const creatorReceipts = creatorSession.getReceipts();
-  const collectorReceipts = collectorSession.getReceipts();
+  const creatorReceipts = restartJournal.operationReceipts().filter(
+    (receipt) => receipt.signerAddress === creator.address,
+  );
+  const collectorReceipts = restartJournal.operationReceipts().filter(
+    (receipt) => receipt.signerAddress === collector.address,
+  );
+  await Promise.all([
+    assertPastaProofRestartCounterBoundary({
+      signerAddress: creator.address,
+      expectedCounter: restartJournal.expectedCurrentCounter("creator"),
+      label: "Penne terminal creator boundary",
+    }),
+    assertPastaProofRestartCounterBoundary({
+      signerAddress: collector.address,
+      expectedCounter: restartJournal.expectedCurrentCounter("collector"),
+      label: "Penne terminal collector boundary",
+    }),
+  ]);
   const identifiers = validateReceiptIdentifiers(
     creatorReceipts,
     collectorReceipts,
@@ -1194,6 +1679,13 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
     metadataUri: tokenMetadataArtifact.ipfsUri,
     artifactUri: mediaArtifact.ipfsUri,
   };
+  const restartCheckpointBytes = await readFile(path.join(appRoot, RESTART_CHECKPOINT_PATH));
+  const restartCheckpointArtifact = {
+    id: "penne-restart-checkpoint",
+    kind: "restart-checkpoint",
+    path: RESTART_CHECKPOINT_PATH,
+    sha256: sha256(restartCheckpointBytes),
+  };
   const completedAt = new Date().toISOString();
   const receipt = {
     schema: "pastaprotocol-penne-ui-live-run@1",
@@ -1226,6 +1718,11 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
     screenshotSidecars: screenshots.map((capture) => capture.manifestSidecarArtifact),
     tzktEvidence: { path: tzktRelativePath, sha256: sha256(tzktBytes) },
+    restartSafety: {
+      checkpoint: restartCheckpointArtifact,
+      exactSemanticReplay: true,
+      terminalCountersAuthenticated: true,
+    },
   };
   const receiptBytes = deterministicJsonBytes(receipt);
   const receiptRelativePath = "artifacts/penne-ui-live-run.json";
@@ -1235,6 +1732,7 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
   const pinnedArtifacts = [mediaArtifact, ...metadataArtifacts];
   const localArtifacts = [
     ...screenshots.map((capture) => capture.manifestSidecarArtifact),
+    restartCheckpointArtifact,
     {
       id: "penne-ui-live-tzkt-index",
       kind: "indexer-evidence",
@@ -1261,7 +1759,11 @@ export async function runPenneUiLive(): Promise<PenneUiLiveResult> {
       description: "Use the actual Penne studio to import pinned media, originate a fresh distribution FA2, register token 0, load exact creator and collector allocations, and open its public claim window.",
       evidence: {
         screenshots: creatorScreenshotStages,
-        artifacts: [...pinnedArtifacts.map((artifact) => artifact.id), ...creatorSidecars],
+        artifacts: [
+          ...pinnedArtifacts.map((artifact) => artifact.id),
+          ...creatorSidecars,
+          restartCheckpointArtifact.id,
+        ],
         contracts: [identifiers.contractAddress],
         operations: creatorOperationHashes,
         tokens: [token.id],

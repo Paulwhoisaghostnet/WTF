@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "app": "penne",
+  "executablePath": "/private/tmp/pasta-alpha-installer-smoke-20260808/pasta-penne-artifact-smoke/zip/penne-studio.app/Contents/MacOS/penne-studio",
+  "origin": "http://127.0.0.1:30776",
+  "title": "Penne — Pasta Protocol",
+  "assetsVerified": 4,
+  "stableOriginRelaunch": true,
+  "bundledToolsOpened": 0,
+  "provenance": {
+    "schema": "wtfos.pasta.desktop-build-provenance.v1",
+    "app": "@wtf/penne-desktop",
+    "version": "1.0.1-alpha.1",
+    "gitSha": "81dd26f2a050a412b60a2e0236b33e6ba341f81b",
+    "dirty": true,
+    "sourceRevision": "81dd26f2a050a412b60a2e0236b33e6ba341f81b-dirty",
+    "target": {
+      "platform": "darwin",
+      "arch": "universal",
+      "format": "dmg+zip"
+    }
+  },
+  "screenshotPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF/artifacts/pasta-alpha-installers-20260808/penne-zip-first-run.png"
+}

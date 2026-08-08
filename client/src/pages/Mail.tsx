@@ -132,7 +132,7 @@ type NotificationListResponse = {
   unreadCount: number;
 };
 
-type InboxView = "inbox" | "sorted" | "conversations" | "drafts";
+type InboxView = "inbox" | "sorted" | "conversations" | "admin_contact" | "drafts";
 type SortMode = "newest" | "oldest" | "unread" | "urgency";
 type UrgencyTier = "routine" | "attention" | "urgent" | "critical";
 type InboxCategory =
@@ -184,6 +184,40 @@ type SavedDraft = {
   body: string;
   updatedAt: string;
 };
+
+type AdminContactThread = {
+  id: number;
+  subject: string;
+  message: string;
+  kind: string;
+  status: "unread" | "read";
+  senderReadAt: string | null;
+  createdAt: string;
+  sender: { id: number; username: string; displayName: string | null };
+  attachments: Array<{ mediaId: number; name: string; url: string }>;
+  replies: Array<{
+    id: number;
+    senderUserId: number;
+    senderKind: "admin" | "user";
+    senderUsername: string;
+    senderDisplayName: string | null;
+    body: string;
+    createdAt: string;
+  }>;
+};
+
+type AdminContactResponse = {
+  messages: AdminContactThread[];
+  unreadCount: number;
+};
+
+function adminContactThreadHasUnread(thread: AdminContactThread, adminAccount: boolean): boolean {
+  if (adminAccount) return thread.status === "unread";
+  const lastRead = new Date(thread.senderReadAt || 0).getTime();
+  return thread.replies.some(
+    (reply) => reply.senderKind === "admin" && new Date(reply.createdAt).getTime() > lastRead
+  );
+}
 
 type DraftMode = "dm" | "mail" | "admin";
 
@@ -683,13 +717,18 @@ function usePersistentInboxState(userId: number | null | undefined) {
 
 export function Mail() {
   const presentation = usePresentationShell();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const wm = useWindowManager();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const { marks, setMarks, savedDrafts, setSavedDrafts } = usePersistentInboxState(user?.id);
 
-  const [view, setView] = useState<InboxView>("inbox");
+  const [view, setView] = useState<InboxView>(() => {
+    if (typeof window === "undefined") return "inbox";
+    return new URLSearchParams(window.location.search).get("view") === "admin-contact"
+      ? "admin_contact"
+      : "inbox";
+  });
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<InboxCategory | "all">("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
@@ -703,6 +742,12 @@ export function Mail() {
   const [draftBody, setDraftBody] = useState("");
   const [conversationDrafts, setConversationDrafts] = useState<Record<number, string>>({});
   const [notice, setNotice] = useState("");
+  const [selectedAdminContactId, setSelectedAdminContactId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const id = Number(new URLSearchParams(window.location.search).get("message"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
+  const [adminContactReply, setAdminContactReply] = useState("");
 
   useEffect(() => {
     logClientSystemEvent({
@@ -731,6 +776,14 @@ export function Mail() {
   const notificationsQuery = useQuery({
     queryKey: ["notifications", "inbox"],
     queryFn: () => api.get<NotificationListResponse>("/api/notifications?limit=200"),
+    refetchInterval: 20_000,
+  });
+  const adminContactQuery = useQuery({
+    queryKey: ["admin-inbox", isAdmin ? "messages" : "threads"],
+    queryFn: () =>
+      api.get<AdminContactResponse>(
+        isAdmin ? "/api/admin-inbox/messages" : "/api/admin-inbox/threads"
+      ),
     refetchInterval: 20_000,
   });
   const usersQuery = useQuery({
@@ -808,12 +861,48 @@ export function Mail() {
       setNotice("Mail sent.");
     },
   });
+  const markAdminContactReadMutation = useMutation({
+    mutationFn: (id: number) =>
+      api.patch(
+        isAdmin
+          ? `/api/admin-inbox/messages/${id}/read`
+          : `/api/admin-inbox/messages/${id}/user-read`,
+        {}
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-inbox"] });
+      qc.invalidateQueries({ queryKey: ["inbox", "unread-count"] });
+    },
+  });
+  const sendAdminContactReplyMutation = useMutation({
+    mutationFn: (input: { id: number; body: string }) =>
+      api.post(`/api/admin-inbox/messages/${input.id}/replies`, { body: input.body }),
+    onSuccess: () => {
+      setAdminContactReply("");
+      qc.invalidateQueries({ queryKey: ["admin-inbox"] });
+      qc.invalidateQueries({ queryKey: ["comms"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["inbox", "unread-count"] });
+    },
+  });
 
   const status = statusQuery.data;
   const messages = messagesQuery.data?.messages ?? [];
   const commsItems = commsQuery.data?.items ?? [];
   const conversations = conversationsQuery.data ?? [];
   const notifications = notificationsQuery.data?.items ?? [];
+  const adminContactThreads = adminContactQuery.data?.messages ?? [];
+  const selectedAdminContact =
+    adminContactThreads.find((thread) => thread.id === selectedAdminContactId) ??
+    adminContactThreads[0] ??
+    null;
+
+  useEffect(() => {
+    if (!selectedAdminContact || !adminContactThreadHasUnread(selectedAdminContact, isAdmin)) return;
+    if (!markAdminContactReadMutation.isPending) {
+      markAdminContactReadMutation.mutate(selectedAdminContact.id);
+    }
+  }, [selectedAdminContact?.id, selectedAdminContact?.status, selectedAdminContact?.senderReadAt, isAdmin]);
   const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
   const userOptions = users.filter((candidate) => candidate.id !== user?.id);
   const adminOptions = userOptions.filter((candidate) =>
@@ -972,7 +1061,8 @@ export function Mail() {
   const selectedMailCard = selectedMail
     ? cards.find((card) => card.mailMessageId === selectedMail.id) ?? null
     : null;
-  const unreadCount = cards.filter((card) => !card.read).length;
+  const unreadCount =
+    cards.filter((card) => !card.read).length + (adminContactQuery.data?.unreadCount ?? 0);
   const countsByCategory = useMemo(() => {
     const counts = new Map<InboxCategory, number>();
     for (const category of CATEGORY_ORDER) counts.set(category, 0);
@@ -1471,6 +1561,117 @@ export function Mail() {
     );
   };
 
+  const renderAdminContactView = () => (
+    <Split data-mail-region="admin-contact-view">
+      <UiPanel title={`Admin contact · ${adminContactQuery.data?.unreadCount ?? 0} unread`}>
+        <UiToolbar>
+          <UiButton uiVariant="primary" onClick={() => openRoute("/admin-inbox")}>
+            <PenLine size={14} aria-hidden /> Open Contact Admin app
+          </UiButton>
+        </UiToolbar>
+        {adminContactQuery.isLoading ? <Hourglass size={24} /> : null}
+        {adminContactQuery.isError ? (
+          <UiNotice tone="danger">{(adminContactQuery.error as Error).message}</UiNotice>
+        ) : null}
+        <Feed>
+          {adminContactThreads.map((thread) => {
+            const unread = adminContactThreadHasUnread(thread, isAdmin);
+            return (
+              <ConversationRow
+                key={thread.id}
+                type="button"
+                $active={selectedAdminContact?.id === thread.id}
+                $trim={unread ? CATEGORY_META.admin.color : CATEGORY_META.other.color}
+                aria-label={`${unread ? "Unread" : "Read"} admin conversation: ${thread.subject}`}
+                onClick={() => {
+                  setSelectedAdminContactId(thread.id);
+                  if (unread && !markAdminContactReadMutation.isPending) {
+                    markAdminContactReadMutation.mutate(thread.id);
+                  }
+                }}
+              >
+                <strong>{thread.subject}</strong>
+                <Meta>
+                  {thread.kind} · {thread.replies.length} repl{thread.replies.length === 1 ? "y" : "ies"} · {new Date(thread.createdAt).toLocaleString()}
+                </Meta>
+              </ConversationRow>
+            );
+          })}
+        </Feed>
+        {!adminContactQuery.isLoading && adminContactThreads.length === 0 ? (
+          <UiEmptyState title="No admin conversations yet">
+            Use the Contact Admin desktop app to start a private conversation with wtfOS administrators.
+          </UiEmptyState>
+        ) : null}
+      </UiPanel>
+      <UiPanel title={selectedAdminContact?.subject || "Admin conversation"}>
+        {selectedAdminContact ? (
+          <>
+            <MessagePanel>
+              <ConversationBubble $mine={!isAdmin} $trim={CATEGORY_META.admin.color}>
+                <Meta>
+                  <strong>{selectedAdminContact.sender.displayName || selectedAdminContact.sender.username}</strong> · original {selectedAdminContact.kind}
+                </Meta>
+                <Body>{selectedAdminContact.message}</Body>
+              </ConversationBubble>
+              {selectedAdminContact.attachments.map((attachment) => (
+                <UiButton
+                  key={attachment.mediaId}
+                  onClick={() => window.open(attachment.url, "_blank", "noopener,noreferrer")}
+                >
+                  Open screenshot · {attachment.name}
+                </UiButton>
+              ))}
+              {selectedAdminContact.replies.map((reply) => {
+                const mine = isAdmin
+                  ? reply.senderKind === "admin"
+                  : reply.senderUserId === user?.id;
+                return (
+                  <ConversationBubble key={reply.id} $mine={mine} $trim={reply.senderKind === "admin" ? CATEGORY_META.admin.color : CATEGORY_META.user_mail.color}>
+                    <Meta>
+                      <strong>{reply.senderKind === "admin" ? "Admin" : reply.senderDisplayName || reply.senderUsername}</strong> · {new Date(reply.createdAt).toLocaleString()}
+                    </Meta>
+                    <Body>{reply.body}</Body>
+                  </ConversationBubble>
+                );
+              })}
+            </MessagePanel>
+            <ConversationComposer
+              onSubmit={(event) => {
+                event.preventDefault();
+                const body = adminContactReply.trim();
+                if (body) sendAdminContactReplyMutation.mutate({ id: selectedAdminContact.id, body });
+              }}
+            >
+              <ComposeBody
+                aria-label="Reply in admin conversation"
+                value={adminContactReply}
+                rows={3}
+                maxLength={10000}
+                placeholder={isAdmin ? "Reply as an administrator" : "Reply to the administrators"}
+                onChange={(event: any) => setAdminContactReply(event.target.value)}
+              />
+              {sendAdminContactReplyMutation.isError ? (
+                <UiNotice tone="danger">{(sendAdminContactReplyMutation.error as Error).message}</UiNotice>
+              ) : null}
+              <UiButton
+                type="submit"
+                uiVariant="primary"
+                disabled={!adminContactReply.trim() || sendAdminContactReplyMutation.isPending}
+              >
+                <Send size={14} aria-hidden /> {sendAdminContactReplyMutation.isPending ? "Sending…" : "Send reply"}
+              </UiButton>
+            </ConversationComposer>
+          </>
+        ) : (
+          <UiEmptyState title="Select a conversation">
+            Messages and replies exchanged through Contact Admin appear here.
+          </UiEmptyState>
+        )}
+      </UiPanel>
+    </Split>
+  );
+
   const renderDraftsView = () => {
     const targetOptions = draftMode === "admin" ? adminOptions : userOptions;
     const canSend =
@@ -1617,6 +1818,7 @@ export function Mail() {
             ["inbox", "All messages", unreadCount],
             ["sorted", "Sorted", visibleCards.length],
             ["conversations", "Conversations", conversations.length],
+            ["admin_contact", "Admin contact", adminContactQuery.data?.unreadCount ?? 0],
             ["drafts", "Drafts", savedDrafts.length],
           ] as Array<[InboxView, string, number]>).map(([key, label, count]) => (
             <NavButton
@@ -1688,6 +1890,8 @@ export function Mail() {
             renderSortedView()
           ) : view === "conversations" ? (
             renderConversationsView()
+          ) : view === "admin_contact" ? (
+            renderAdminContactView()
           ) : view === "drafts" ? (
             renderDraftsView()
           ) : (

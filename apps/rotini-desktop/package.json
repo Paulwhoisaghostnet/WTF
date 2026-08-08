@@ -1,6 +1,6 @@
 {
   "name": "@wtf/rotini-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1-alpha.1",
   "private": true,
   "homepage": "https://wtfos.app/creation-tools/rotini/index.html",
   "desktopName": "rotini-studio",
@@ -12,13 +12,15 @@
   "main": "src/main.cjs",
   "scripts": {
     "prepare": "node scripts/prepare-assets.mjs",
-    "start": "npm run prepare && electron .",
-    "pack": "npm run prepare && electron-builder --dir --publish never",
-    "dist": "npm run prepare && electron-builder --publish never",
-    "dist:mac": "npm run prepare && electron-builder --mac dmg zip --universal --publish never",
-    "dist:mac:dir": "npm run prepare && electron-builder --mac dir --universal --publish never",
-    "dist:windows": "npm run prepare && electron-builder --win nsis --x64 --publish never",
-    "dist:raspberry-pi": "npm run prepare && electron-builder --linux deb --arm64 --publish never"
+    "provenance:preflight": "node ../../scripts/pasta-desktop-build-provenance.mjs --mode=preflight --format=source --output=provenance/build-provenance.json",
+    "start": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=preflight --format=runtime --output=provenance/build-provenance.json && electron .",
+    "pack": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=preflight --format=directory --output=provenance/build-provenance.json && electron-builder --dir --publish never",
+    "dist": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=release --format=platform-default --output=provenance/build-provenance.json && electron-builder --publish never",
+    "dist:mac": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=release --platform=darwin --arch=universal --format=dmg+zip --output=provenance/build-provenance.json && electron-builder --mac dmg zip --universal --publish never",
+    "dist:alpha:mac": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=preflight --platform=darwin --arch=universal --format=dmg+zip --output=provenance/build-provenance.json && electron-builder --mac dmg zip --universal --publish never",
+    "dist:mac:dir": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=preflight --platform=darwin --arch=universal --format=directory --output=provenance/build-provenance.json && electron-builder --mac dir --universal --publish never",
+    "dist:windows": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=release --platform=win32 --arch=x64 --format=nsis --output=provenance/build-provenance.json && electron-builder --win nsis --x64 --publish never",
+    "dist:raspberry-pi": "npm run prepare && node ../../scripts/pasta-desktop-build-provenance.mjs --mode=release --platform=linux --arch=arm64 --format=deb --output=provenance/build-provenance.json && electron-builder --linux deb --arm64 --publish never"
   },
   "build": {
     "appId": "app.wtfos.rotini",
@@ -27,7 +29,8 @@
     "files": [
       "package.json",
       "src/**/*",
-      "rotini/**/*"
+      "rotini/**/*",
+      "provenance/**/*"
     ],
     "directories": {
       "buildResources": "build",

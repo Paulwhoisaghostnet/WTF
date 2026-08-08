@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 7,
+  "stageName": "Forever OE token one recovered from verified chain state",
+  "url": "http://127.0.0.1:55656/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-24T02:27:49.595Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "b6c0a95d1de918b7d17a48ecfd6b5248d173a8a3b2082dece0bc25a110c50e93",
+  "byteCount": 125262,
+  "domEvidence": [
+    {
+      "selector": "#publishTargetStatus",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Verified administrator · next edition will be token #2"
+    },
+    {
+      "selector": "#editionList .pp-token strong",
+      "matchCount": 2,
+      "selectedIndex": 1,
+      "text": "Token #1 · Forever OE"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

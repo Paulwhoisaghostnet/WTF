@@ -6,75 +6,77 @@ import process from "node:process";
 
 const DEFAULT_BASE_URL = "https://wtfos.app";
 const DEFAULT_REPOSITORY = "Paulwhoisaghostnet/WTF";
+const ALPHA_VERSION = "1.0.1-alpha.1";
 
 const APPS = [
   {
     key: "ch-ease",
     label: "CH-EASE",
     envPrefix: "CH_EASE_INSTALLER",
-    releaseTag: "ch-ease-desktop-v1.0.0",
-    assets: [
-      "CH-EASE-Studio-1.0.0-mac-universal.dmg",
-      "CH-EASE-Studio-1.0.0-win-x64.exe",
-      "CH-EASE-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "chEaseInstallerRoutes",
+    artifactPrefix: "CH-EASE-Studio",
+  },
+  {
+    key: "macaroni",
+    label: "Macaroni",
+    envPrefix: "MACARONI_INSTALLER",
+    routeFile: "macaroni",
+    routeIdentifier: "macaroniRoutes",
+    artifactPrefix: "Macaroni-Studio",
+  },
+  {
+    key: "spaghetti",
+    label: "Spaghetti",
+    envPrefix: "SPAGHETTI_INSTALLER",
+    routeIdentifier: "spaghettiInstallerRoutes",
+    artifactPrefix: "Spaghetti-Studio",
   },
   {
     key: "gnocchi",
     label: "Gnocchi",
     envPrefix: "GNOCCHI_INSTALLER",
-    releaseTag: "gnocchi-desktop-v1.0.0",
-    assets: [
-      "Gnocchi-Studio-1.0.0-mac-universal.dmg",
-      "Gnocchi-Studio-1.0.0-win-x64.exe",
-      "Gnocchi-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "gnocchiInstallerRoutes",
+    artifactPrefix: "Gnocchi-Studio",
   },
   {
     key: "ravioli",
     label: "Ravioli",
     envPrefix: "RAVIOLI_INSTALLER",
-    releaseTag: "ravioli-desktop-v1.0.0",
-    assets: [
-      "Ravioli-Studio-1.0.0-mac-universal.dmg",
-      "Ravioli-Studio-1.0.0-win-x64.exe",
-      "Ravioli-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "ravioliInstallerRoutes",
+    artifactPrefix: "Ravioli-Studio",
   },
   {
     key: "rotini",
     label: "Rotini",
     envPrefix: "ROTINI_INSTALLER",
-    releaseTag: "rotini-desktop-v1.0.0",
-    assets: [
-      "Rotini-Studio-1.0.0-mac-universal.dmg",
-      "Rotini-Studio-1.0.0-win-x64.exe",
-      "Rotini-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "rotiniInstallerRoutes",
+    artifactPrefix: "Rotini-Studio",
   },
   {
     key: "penne",
     label: "Penne",
     envPrefix: "PENNE_INSTALLER",
-    releaseTag: "penne-desktop-v1.0.0",
-    assets: [
-      "Penne-Studio-1.0.0-mac-universal.dmg",
-      "Penne-Studio-1.0.0-win-x64.exe",
-      "Penne-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "penneInstallerRoutes",
+    artifactPrefix: "Penne-Studio",
   },
   {
     key: "lasagna",
     label: "Lasagna",
     envPrefix: "LASAGNA_INSTALLER",
-    releaseTag: "lasagna-desktop-v1.0.0",
-    assets: [
-      "Lasagna-Studio-1.0.0-mac-universal.dmg",
-      "Lasagna-Studio-1.0.0-win-x64.exe",
-      "Lasagna-Studio-1.0.0-linux-arm64.deb",
-    ],
+    routeIdentifier: "lasagnaInstallerRoutes",
+    artifactPrefix: "Lasagna-Studio",
   },
-];
+].map((app) => ({
+  ...app,
+  routeFile: app.routeFile || `${app.key}-installers`,
+  version: ALPHA_VERSION,
+  releaseTag: `${app.key}-desktop-v${ALPHA_VERSION}`,
+  assets: [
+    `${app.artifactPrefix}-${ALPHA_VERSION}-mac-universal.dmg`,
+    `${app.artifactPrefix}-${ALPHA_VERSION}-win-x64.exe`,
+    `${app.artifactPrefix}-${ALPHA_VERSION}-linux-arm64.deb`,
+  ],
+}));
 
 const checks = [];
 const blockers = [];
@@ -183,7 +185,7 @@ function sha256FromDigest(value) {
 function checkLocalSource(app) {
   const packagePath = `apps/${app.key}-desktop/package.json`;
   const workflowPath = `.github/workflows/${app.key}-desktop-installers.yml`;
-  const routePath = `server/routes/${app.key}-installers.ts`;
+  const routePath = `server/routes/${app.routeFile}.ts`;
   const liveCheckPath = `scripts/check-${app.key}-installers-live.mjs`;
   const policyPath = `scripts/${app.key}-desktop-package-policy.test.mjs`;
 
@@ -202,10 +204,10 @@ function checkLocalSource(app) {
   if (!hasAllFiles) return;
 
   const desktopPackage = readJson(packagePath);
-  if (desktopPackage.version !== "1.0.0") {
-    record(app, "desktop package version", "blocked", `expected 1.0.0, got ${desktopPackage.version || "missing"}`);
+  if (desktopPackage.version !== app.version) {
+    record(app, "desktop package version", "blocked", `expected ${app.version}, got ${desktopPackage.version || "missing"}`);
   } else {
-    record(app, "desktop package version", "pass", "1.0.0");
+    record(app, "desktop package version", "pass", app.version);
   }
 
   const rootPackage = readJson("package.json");
@@ -235,8 +237,8 @@ function checkLocalSource(app) {
   }
 
   const routesSource = readFileSync("server/routes.ts", "utf8");
-  if (!routesSource.includes(`./routes/${app.key}-installers`) || !routesSource.includes(`${app.key}InstallerRoutes`)) {
-    record(app, "route registration", "blocked", `server/routes.ts does not register ${app.key}InstallerRoutes`);
+  if (!routesSource.includes(`./routes/${app.routeFile}`) || !routesSource.includes(app.routeIdentifier)) {
+    record(app, "route registration", "blocked", `server/routes.ts does not register ${app.routeIdentifier}`);
   } else {
     record(app, "route registration", "pass", `/api/${app.key}/installers`);
   }
@@ -279,8 +281,18 @@ function checkRelease(app) {
     return;
   }
   const release = result.value;
-  if (release.isDraft || release.isPrerelease) {
-    record(app, "GitHub release", "blocked", `${app.releaseTag} is draft/prerelease`);
+  if (release.isDraft) {
+    record(app, "GitHub release", "blocked", `${app.releaseTag} is still a draft`);
+    return;
+  }
+  const expectsPrerelease = app.version.includes("-");
+  if (Boolean(release.isPrerelease) !== expectsPrerelease) {
+    record(
+      app,
+      "GitHub release channel",
+      "blocked",
+      `${app.releaseTag} expected prerelease=${expectsPrerelease}, got ${Boolean(release.isPrerelease)}`,
+    );
     return;
   }
   const byName = new Map((release.assets || []).map((asset) => [asset.name, asset]));

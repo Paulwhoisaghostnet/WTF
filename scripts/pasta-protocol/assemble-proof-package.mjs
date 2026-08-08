@@ -37,6 +37,81 @@ export const APP_PROOF_SCHEMA = "pastaprotocol-app-proof@1";
 export const PACKAGE_SCHEMA = "pastaprotocol-proof-package@1";
 export const GNOCCHI_HISTORICAL_INDEXER_SCHEMA =
   "pastaprotocol-gnocchi-historical-indexer-proof@1";
+const RAVIOLI_REQUIRED_CAPABILITY_IDS = Object.freeze([
+  "deterministic_vault-ui-live-proof",
+  "blind_funded_pool-ui-live-proof",
+  "blind_allocated_mint-ui-live-proof",
+  "blind_generative_mint-ui-live-proof",
+  "hybrid_atomic_pack-ui-live-proof",
+  "blind-sealed-reveal-ui-live-proof",
+  "limited-edition-expiry-deconfliction-ui-live-proof",
+  "withheld-reveal-refund-closure-ui-live-proof",
+  "durable-signer-journal-ui-live-proof",
+]);
+const RAVIOLI_MODE_NAMES = Object.freeze([
+  "deterministic_vault",
+  "blind_funded_pool",
+  "blind_allocated_mint",
+  "blind_generative_mint",
+  "hybrid_atomic_pack",
+]);
+export const RAVIOLI_MODE_MAX_SUPPLIES = Object.freeze([1, 2, 1, 1, 1]);
+export const RAVIOLI_MODE_OPEN_COUNTS = Object.freeze([1, 2, 1, 1, 1]);
+export const RAVIOLI_V3_JOURNAL_ENTRYPOINT_COUNTS = Object.freeze({
+  add_minter: 3,
+  add_pack_minter: 2,
+  add_router: 5,
+  buy: 7,
+  cancel_unrevealed_pack: 1,
+  commit_recipe: 8,
+  create_allocation: 3,
+  create_pack: 6,
+  create_resource: 2,
+  finalize_blind_pack: 5,
+  finalize_pack: 1,
+  mint: 1,
+  open_pack: 6,
+  recover_adapter: 1,
+  refund_blind_claims: 1,
+  set_pack_contents: 4,
+  set_sale: 1,
+  transfer: 2,
+  update_operators: 3,
+  withdraw_refund: 1,
+});
+export const RAVIOLI_V3_JOURNAL_ORIGINATION_COUNT = 4;
+export const RAVIOLI_V3_DEPENDENCY_ORIGINATION_COUNT = 2;
+export const RAVIOLI_V3_JOURNAL_ACTOR_COUNTS = Object.freeze({
+  creator: 49,
+  collector1: 11,
+  collector2: 7,
+});
+export const RAVIOLI_V3_JOURNAL_PIN_COUNT = 34;
+export const RAVIOLI_V3_JOURNAL_WRITE_COUNT =
+  RAVIOLI_V3_JOURNAL_ORIGINATION_COUNT +
+  Object.values(RAVIOLI_V3_JOURNAL_ENTRYPOINT_COUNTS).reduce(
+    (total, count) => total + count,
+    0,
+  );
+const RAVIOLI_JOURNAL_INTENT_SCHEMA =
+  "pastaprotocol-ravioli-ui-live-journal-intent@2";
+const RAVIOLI_JOURNAL_EFFECTIVE_INTENT_SCHEMA =
+  "pastaprotocol-ravioli-ui-live-journal-intent@3";
+const RAVIOLI_JOURNAL_EVENT_SCHEMA =
+  "pastaprotocol-ravioli-ui-live-journal-event@2";
+const RAVIOLI_JOURNAL_FINAL_SCHEMA =
+  "pastaprotocol-ravioli-ui-live-journal-final@2";
+const RAVIOLI_PLAN_EXTENSION_SCHEMA =
+  "pastaprotocol-ravioli-ui-live-plan-extension@1";
+const RAVIOLI_BASE_OPERATION_COUNT = 66;
+const RAVIOLI_PLAN_EXTENSION_EVENT_INDEX = 87;
+const RAVIOLI_MODE_OPEN_SHAPES = Object.freeze([
+  Object.freeze({ actions: 1, escrow: 1, gnocchiFulfill: 0, gnocchiMint: 0, rotiniFulfill: 0, rotiniMint: 0, deltaKinds: Object.freeze(["escrow"]) }),
+  Object.freeze({ actions: 1, escrow: 1, gnocchiFulfill: 0, gnocchiMint: 0, rotiniFulfill: 0, rotiniMint: 0, deltaKinds: Object.freeze(["escrow"]) }),
+  Object.freeze({ actions: 1, escrow: 0, gnocchiFulfill: 1, gnocchiMint: 1, rotiniFulfill: 0, rotiniMint: 0, deltaKinds: Object.freeze(["allocated"]) }),
+  Object.freeze({ actions: 2, escrow: 0, gnocchiFulfill: 0, gnocchiMint: 0, rotiniFulfill: 2, rotiniMint: 2, deltaKinds: Object.freeze(["generative", "generative"]) }),
+  Object.freeze({ actions: 3, escrow: 1, gnocchiFulfill: 1, gnocchiMint: 1, rotiniFulfill: 1, rotiniMint: 1, deltaKinds: Object.freeze(["escrow-plus-allocated", "generative"]) }),
+]);
 
 const APP_RULES = Object.freeze({
   "ch-ease": {
@@ -197,6 +272,12 @@ function digestBytes(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function deterministicJson(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((entry) => deterministicJson(entry)).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${deterministicJson(value[key])}`).join(",")}}`;
+}
+
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -320,6 +401,28 @@ function validateTzktUrl(value, identifier, label) {
     fail(`${label} does not contain its evidence identifier ${identifier}`);
   }
   return parsed.href;
+}
+
+function parseExactShadownetTokenUrl(value) {
+  const parsed = new URL(value);
+  if (parsed.hostname !== "shadownet.tzkt.io" || parsed.search) return null;
+  let pathSegments;
+  try {
+    pathSegments = decodeURIComponent(parsed.pathname).split("/").filter(Boolean);
+  } catch {
+    return null;
+  }
+  if (pathSegments.length !== 3 || pathSegments[1] !== "tokens" || !TOKEN_ID.test(pathSegments[2])) {
+    return null;
+  }
+  try {
+    return {
+      contractAddress: validateContractAddress(pathSegments[0], "Ravioli capability token URL contract"),
+      tokenId: pathSegments[2],
+    };
+  } catch {
+    return null;
+  }
 }
 
 function validatePublicGatewayUrl(value, cid, label) {
@@ -711,6 +814,459 @@ function validateGnocchiHistoricalIndexerArtifact(bytes, label, app) {
   };
 }
 
+function validateRavioliLimitedEditionPolicyArtifact(bytes, label) {
+  let value;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail(`${label} must contain valid JSON`);
+  }
+  const source = expectObject(value, `${label}.policy`);
+  if (source.schema !== "pastaprotocol-ravioli-limited-edition-policy-evidence@1") {
+    fail(`${label}.policy.schema is unsupported`);
+  }
+  if (source.capabilityId !== "limited-edition-expiry-deconfliction-ui-live-proof") {
+    fail(`${label}.policy.capabilityId drifted`);
+  }
+  if (source.status !== "PASSED") fail(`${label}.policy.status must be PASSED`);
+  const network = expectObject(source.network, `${label}.policy.network`);
+  if (network.name !== "shadownet" || network.chainId !== SHADOWNET_CHAIN_ID) {
+    fail(`${label}.policy.network must be Tezos Shadownet`);
+  }
+  const wrapper = expectObject(source.wrapper, `${label}.policy.wrapper`);
+  const child = expectObject(source.child, `${label}.policy.child`);
+  const invariant = expectObject(source.invariant, `${label}.policy.invariant`);
+  const wrapperContract = validateContractAddress(wrapper.contract, `${label}.policy.wrapper.contract`);
+  const wrapperTokenId = expectSafeInteger(wrapper.tokenId, `${label}.policy.wrapper.tokenId`);
+  const wrapperMaxSupply = expectSafeInteger(wrapper.maxSupply, `${label}.policy.wrapper.maxSupply`, 1);
+  const wrapperSaleEnd = expectString(wrapper.saleEnd, `${label}.policy.wrapper.saleEnd`);
+  const childExpiryCommittedOnChain = expectString(wrapper.childExpiryCommittedOnChain, `${label}.policy.wrapper.childExpiryCommittedOnChain`);
+  const childContract = validateContractAddress(child.contract, `${label}.policy.child.contract`);
+  const childTokenId = expectSafeInteger(child.tokenId, `${label}.policy.child.tokenId`);
+  const childMaxSupply = expectSafeInteger(child.maxSupply, `${label}.policy.child.maxSupply`, 1);
+  const childExpiry = expectString(child.expiry, `${label}.policy.child.expiry`);
+  for (const [name, timestamp] of [["wrapper.saleEnd", wrapperSaleEnd], ["wrapper.childExpiryCommittedOnChain", childExpiryCommittedOnChain], ["child.expiry", childExpiry]]) {
+    if (!Number.isFinite(Date.parse(timestamp))) fail(`${label}.policy.${name} must be an ISO timestamp`);
+  }
+  if (childExpiryCommittedOnChain !== childExpiry) fail(`${label}.policy committed child expiry differs from the child`);
+  if (Date.parse(wrapperSaleEnd) >= Date.parse(childExpiry)) {
+    fail(`${label}.policy wrapper must end strictly before its child`);
+  }
+  if (child.active !== true || child.policyLocked !== true) fail(`${label}.policy child must be active and policy-locked`);
+  for (const key of [
+    "wrapperIsFiniteSupply",
+    "wrapperIsFiniteTime",
+    "wrapperEndsBeforeChild",
+    "childPolicyStoredInPack",
+    "wrapperDeadlineStoredInPack",
+    "wrapperIssuedAtomicallyWithSale",
+  ]) {
+    if (expectBoolean(invariant[key], `${label}.policy.invariant.${key}`) !== true) {
+      fail(`${label}.policy.invariant.${key} must be true`);
+    }
+  }
+  const rejected = expectArray(source.rejectedInvalidPolicies, `${label}.policy.rejectedInvalidPolicies`);
+  if (rejected.length < 3 || rejected.some((entry, index) => !expectString(entry, `${label}.policy.rejectedInvalidPolicies[${index}]`))) {
+    fail(`${label}.policy must retain at least three invalid-policy rejections`);
+  }
+  return {
+    wrapperContract,
+    wrapperTokenId: String(wrapperTokenId),
+    wrapperMaxSupply,
+    wrapperSaleEnd,
+    childContract,
+    childTokenId: String(childTokenId),
+    childMaxSupply,
+    childExpiry,
+  };
+}
+
+function validateRavioliModeOutcomeArtifact(bytes, label) {
+  let value;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail(`${label} must contain valid JSON`);
+  }
+  const source = expectObject(value, `${label}.outcome`);
+  if (source.schema !== "pastaprotocol-ravioli-mode-outcome@1") fail(`${label}.outcome.schema is unsupported`);
+  const network = expectObject(source.network, `${label}.outcome.network`);
+  if (network.name !== "shadownet" || network.chainId !== SHADOWNET_CHAIN_ID) fail(`${label}.outcome.network must be Shadownet`);
+  const tokenId = expectSafeInteger(source.tokenId, `${label}.outcome.tokenId`);
+  if (tokenId >= RAVIOLI_MODE_NAMES.length || source.mode !== RAVIOLI_MODE_NAMES[tokenId]) fail(`${label}.outcome mode/token mismatch`);
+  const expectedEditionCount = expectSafeInteger(source.expectedEditionCount, `${label}.outcome.expectedEditionCount`, 1);
+  if (expectedEditionCount !== RAVIOLI_MODE_OPEN_COUNTS[tokenId]) fail(`${label}.outcome sold/open count drift`);
+  const maxSupply = expectSafeInteger(source.maxSupply, `${label}.outcome.maxSupply`, 1);
+  if (maxSupply !== RAVIOLI_MODE_MAX_SUPPLIES[tokenId]) fail(`${label}.outcome wrapper max-supply drift`);
+  if (expectedEditionCount > maxSupply) fail(`${label}.outcome sold/open count exceeds wrapper supply`);
+  const operationHashes = expectArray(source.operationHashes, `${label}.outcome.operationHashes`).map(
+    (hash, index) => validateOperationHash(hash, `${label}.outcome.operationHashes[${index}]`),
+  );
+  if (operationHashes.length === 0 || new Set(operationHashes).size !== operationHashes.length) fail(`${label}.outcome operation partition is empty or duplicated`);
+  const purchases = expectArray(source.purchaseCheckpoints, `${label}.outcome.purchaseCheckpoints`);
+  const opens = expectArray(source.openOutcomes, `${label}.outcome.openOutcomes`);
+  if (purchases.length !== expectedEditionCount || opens.length !== expectedEditionCount) fail(`${label}.outcome purchase/open count drift`);
+  const serials = [];
+  for (const [index, entry] of purchases.entries()) {
+    const purchase = expectObject(entry, `${label}.outcome.purchaseCheckpoints[${index}]`);
+    if (expectSafeInteger(purchase.tokenId, `${label}.outcome.purchaseCheckpoints[${index}].tokenId`) !== tokenId) fail(`${label}.outcome purchase token drift`);
+    const hash = validateOperationHash(purchase.operationHash, `${label}.outcome.purchaseCheckpoints[${index}].operationHash`);
+    if (!operationHashes.includes(hash)) fail(`${label}.outcome purchase hash escapes the mode partition`);
+    if (expectSafeInteger(purchase.balance, `${label}.outcome.purchaseCheckpoints[${index}].balance`, 1) < 1) fail(`${label}.outcome purchase lacks a live wrapper balance`);
+  }
+  for (const [index, entry] of opens.entries()) {
+    const open = expectObject(entry, `${label}.outcome.openOutcomes[${index}]`);
+    if (expectSafeInteger(open.tokenId, `${label}.outcome.openOutcomes[${index}].tokenId`) !== tokenId) fail(`${label}.outcome open token drift`);
+    serials.push(expectSafeInteger(open.serial, `${label}.outcome.openOutcomes[${index}].serial`));
+    const collector = expectString(open.collector, `${label}.outcome.openOutcomes[${index}].collector`);
+    if (validateAddress(collector) !== ValidationResult.VALID || !collector.startsWith("tz")) fail(`${label}.outcome collector is not a valid implicit Tezos address`);
+    const hash = validateOperationHash(open.operationHash, `${label}.outcome.openOutcomes[${index}].operationHash`);
+    if (!operationHashes.includes(hash)) fail(`${label}.outcome open hash escapes the mode partition`);
+    const operationTreeSha256 = expectSha256(open.operationTreeSha256, `${label}.outcome.openOutcomes[${index}].operationTreeSha256`);
+    const operationTree = expectArray(open.operationTree, `${label}.outcome.openOutcomes[${index}].operationTree`);
+    if (operationTree.length === 0) fail(`${label}.outcome open tree is empty`);
+    if (digestBytes(Buffer.from(deterministicJson(operationTree), "utf8")) !== operationTreeSha256) {
+      fail(`${label}.outcome open tree does not match its SHA-256 commitment`);
+    }
+    const openShape = RAVIOLI_MODE_OPEN_SHAPES[tokenId];
+    const exactCallCounts = expectObject(open.exactCallCounts, `${label}.outcome.openOutcomes[${index}].exactCallCounts`);
+    for (const key of ["actions", "escrow", "gnocchiFulfill", "gnocchiMint", "rotiniFulfill", "rotiniMint"]) {
+      if (expectSafeInteger(exactCallCounts[key], `${label}.outcome.openOutcomes[${index}].exactCallCounts.${key}`) !== openShape[key]) {
+        fail(`${label}.outcome exact ${key} call count drift`);
+      }
+    }
+    const operationRows = operationTree.map((value, rowIndex) => {
+      const row = expectObject(value, `${label}.outcome.openOutcomes[${index}].operationTree[${rowIndex}]`);
+      if (row.status !== "applied") fail(`${label}.outcome open tree contains a non-applied operation`);
+      return row;
+    });
+    const entrypointCount = (entrypoint) => operationRows.filter((row) => row.entrypoint === entrypoint).length;
+    if (entrypointCount("open_pack") !== 1) fail(`${label}.outcome open tree must contain one open_pack root`);
+    if (entrypointCount("transfer") !== openShape.escrow) fail(`${label}.outcome open tree escrow call count drift`);
+    if (entrypointCount("fulfill") !== openShape.gnocchiFulfill + openShape.rotiniFulfill) fail(`${label}.outcome open tree adapter call count drift`);
+    if (entrypointCount("mint_reserved") !== openShape.gnocchiMint) fail(`${label}.outcome open tree allocated-mint call count drift`);
+    if (entrypointCount("mint_pack_iteration") !== openShape.rotiniMint) fail(`${label}.outcome open tree generative-mint call count drift`);
+    const rootRow = operationRows.find((row) => row.entrypoint === "open_pack");
+    const rootValue = expectObject(rootRow.value, `${label}.outcome open_pack value`);
+    if (expectSafeInteger(rootValue.token_id, `${label}.outcome open_pack token_id`) !== tokenId) fail(`${label}.outcome open_pack token drift`);
+    if (expectArray(rootValue.actions, `${label}.outcome open_pack actions`).length !== openShape.actions) fail(`${label}.outcome open_pack action count drift`);
+    const deltas = expectArray(open.balanceDeltas, `${label}.outcome.openOutcomes[${index}].balanceDeltas`);
+    if (deltas.length !== openShape.deltaKinds.length) fail(`${label}.outcome child balance-delta count drift`);
+    const deltaKinds = [];
+    for (const [deltaIndex, deltaValue] of deltas.entries()) {
+      const delta = expectObject(deltaValue, `${label}.outcome.openOutcomes[${index}].balanceDeltas[${deltaIndex}]`);
+      deltaKinds.push(expectString(delta.kind, `${label}.outcome delta kind`));
+      const amount = expectSafeInteger(delta.amount, `${label}.outcome delta amount`, 1);
+      if (expectSafeInteger(delta.delta, `${label}.outcome delta`, 1) !== amount) fail(`${label}.outcome child balance delta differs from its promised amount`);
+      const before = expectSafeInteger(delta.before, `${label}.outcome balance before`);
+      if (expectSafeInteger(delta.after, `${label}.outcome balance after`) !== before + amount) fail(`${label}.outcome child balance arithmetic drift`);
+      validateContractAddress(delta.contract, `${label}.outcome child contract`);
+      expectSafeInteger(delta.tokenId, `${label}.outcome child tokenId`);
+    }
+    if (JSON.stringify(deltaKinds.sort()) !== JSON.stringify([...openShape.deltaKinds].sort())) {
+      fail(`${label}.outcome child delivery kinds drift`);
+    }
+  }
+  if (new Set(serials).size !== expectedEditionCount || Math.min(...serials) !== 0 || Math.max(...serials) !== expectedEditionCount - 1) {
+    fail(`${label}.outcome open serials are incomplete`);
+  }
+  return { tokenId, mode: RAVIOLI_MODE_NAMES[tokenId], operationHashes };
+}
+
+function parseRavioliJournalJson(bytes, label) {
+  let value;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail(`${label} must contain valid JSON`);
+  }
+  return expectObject(value, label);
+}
+
+function validateRavioliRecoverAdapterOperation(value, label) {
+  const source = expectObject(value, label);
+  if (
+    source.id !== "withheld-reveal-refund:creator-recover-adapter" ||
+    source.proofPartition !== "withheld-reveal-refund" ||
+    expectSafeInteger(source.globalOrdinal, `${label}.globalOrdinal`, 1) !== 67 ||
+    source.actor !== "creator" ||
+    expectSafeInteger(source.operationSequence, `${label}.operationSequence`, 1) !== 49 ||
+    source.action !== "call" ||
+    source.targetRole !== "router" ||
+    source.entrypoint !== "recover_adapter" ||
+    expectSafeInteger(source.tokenId, `${label}.tokenId`) !== 5 ||
+    source.adapterRole !== "gnocchiAdapter" ||
+    expectSafeInteger(source.adapterKind, `${label}.adapterKind`) !== 1 ||
+    expectSafeInteger(source.resourceId, `${label}.resourceId`) !== 2 ||
+    expectSafeInteger(source.capacity, `${label}.capacity`, 1) !== 2
+  ) {
+    fail(`${label} differs from the authenticated token-5 Gnocchi capacity recovery`);
+  }
+  return source;
+}
+
+function validateRavioliJournalIntentArtifact(bytes, label) {
+  const source = parseRavioliJournalJson(bytes, `${label}.intent`);
+  if (
+    source.schema !== RAVIOLI_JOURNAL_INTENT_SCHEMA &&
+    source.schema !== RAVIOLI_JOURNAL_EFFECTIVE_INTENT_SCHEMA
+  ) {
+    fail(`${label}.intent.schema is unsupported`);
+  }
+  if (source.status !== "IMMUTABLE") fail(`${label}.intent.status must be IMMUTABLE`);
+  const journalId = expectSha256(source.journalId, `${label}.intent.journalId`);
+  const matrix = expectArray(source.matrix, `${label}.intent.matrix`);
+  const expectedOperationCount =
+    source.schema === RAVIOLI_JOURNAL_INTENT_SCHEMA
+      ? RAVIOLI_BASE_OPERATION_COUNT
+      : RAVIOLI_V3_JOURNAL_WRITE_COUNT;
+  if (matrix.length !== expectedOperationCount) {
+    fail(`${label}.intent matrix must contain ${expectedOperationCount} operations`);
+  }
+  const matrixSha256 = expectSha256(
+    source.matrixSha256,
+    `${label}.intent.matrixSha256`,
+  );
+  if (
+    digestBytes(Buffer.from(deterministicJson(matrix), "utf8")) !==
+    matrixSha256
+  ) {
+    fail(`${label}.intent matrix does not match its SHA-256 commitment`);
+  }
+  const recoveryOperations = matrix.filter(
+    (operation) => operation?.entrypoint === "recover_adapter",
+  );
+  if (source.schema === RAVIOLI_JOURNAL_INTENT_SCHEMA) {
+    if (recoveryOperations.length !== 0) {
+      fail(`${label}.legacy intent must preserve the immutable base-66 plan`);
+    }
+  } else {
+    if (recoveryOperations.length !== 1) {
+      fail(`${label}.effective intent must contain exactly one recover_adapter operation`);
+    }
+    validateRavioliRecoverAdapterOperation(
+      recoveryOperations[0],
+      `${label}.intent recover_adapter`,
+    );
+  }
+  return {
+    schema: source.schema,
+    journalId,
+    matrixSha256,
+    operationCount: matrix.length,
+  };
+}
+
+function validateRavioliJournalEventArtifact(bytes, label) {
+  const source = parseRavioliJournalJson(bytes, `${label}.event`);
+  if (source.schema !== RAVIOLI_JOURNAL_EVENT_SCHEMA) {
+    fail(`${label}.event.schema is unsupported`);
+  }
+  const eventIndex = expectSafeInteger(source.eventIndex, `${label}.event.eventIndex`, 1);
+  const phase = expectString(source.phase, `${label}.event.phase`);
+  const journalId = expectSha256(source.journalId, `${label}.event.journalId`);
+  const actor = expectString(source.actor, `${label}.event.actor`);
+  if (!["creator", "collector1", "collector2"].includes(actor)) {
+    fail(`${label}.event.actor is unsupported`);
+  }
+  if (phase === "PIN") {
+    const pinSequence = expectSafeInteger(
+      source.pinSequence,
+      `${label}.event.pinSequence`,
+      1,
+    );
+    const artifact = expectObject(source.artifact, `${label}.event.artifact`);
+    const fileName = expectString(artifact.fileName, `${label}.event.artifact.fileName`);
+    const pinPath = normalizeRelativePath(
+      artifact.path,
+      `${label}.event.artifact.path`,
+      "pins",
+    );
+    const sha256 = expectSha256(
+      artifact.sha256,
+      `${label}.event.artifact.sha256`,
+    );
+    const byteLength = expectSafeInteger(
+      artifact.byteLength,
+      `${label}.event.artifact.byteLength`,
+      1,
+    );
+    return {
+      phase,
+      eventIndex,
+      journalId,
+      actor,
+      pin: { pinSequence, fileName, path: pinPath, sha256, byteLength },
+    };
+  }
+  if (phase === "PLAN_EXTENSION") {
+    if (
+      eventIndex !== RAVIOLI_PLAN_EXTENSION_EVENT_INDEX ||
+      actor !== "creator"
+    ) {
+      fail(`${label}.event plan extension is outside authenticated event 87`);
+    }
+    const extension = expectObject(
+      source.extension,
+      `${label}.event.extension`,
+    );
+    if (
+      extension.schema !== RAVIOLI_PLAN_EXTENSION_SCHEMA ||
+      extension.extensionId !==
+        "ravioli-event86-withheld-gnocchi-capacity-recovery-v1" ||
+      expectSafeInteger(
+        extension.baseOperationCount,
+        `${label}.event.extension.baseOperationCount`,
+      ) !== RAVIOLI_BASE_OPERATION_COUNT ||
+      expectSafeInteger(
+        extension.semanticBoundary,
+        `${label}.event.extension.semanticBoundary`,
+      ) !== 23
+    ) {
+      fail(`${label}.event plan-extension boundary drifted`);
+    }
+    const extensionOperations = expectArray(
+      extension.operations,
+      `${label}.event.extension.operations`,
+    );
+    if (extensionOperations.length !== 1) {
+      fail(`${label}.event plan extension must append exactly one operation`);
+    }
+    validateRavioliRecoverAdapterOperation(
+      extensionOperations[0],
+      `${label}.event.extension.operations[0]`,
+    );
+    const extensionSha256 = expectSha256(
+      source.extensionSha256,
+      `${label}.event.extensionSha256`,
+    );
+    if (
+      digestBytes(Buffer.from(deterministicJson(extension), "utf8")) !==
+      extensionSha256
+    ) {
+      fail(`${label}.event plan extension does not match its SHA-256 commitment`);
+    }
+    if (
+      expectSafeInteger(
+        source.effectiveOperationCount,
+        `${label}.event.effectiveOperationCount`,
+      ) !== RAVIOLI_V3_JOURNAL_WRITE_COUNT
+    ) {
+      fail(`${label}.event effective operation count drifted`);
+    }
+    return {
+      phase,
+      eventIndex,
+      journalId,
+      actor,
+      extension: {
+        baseIntentSha256: expectSha256(
+          extension.baseIntentSha256,
+          `${label}.event.extension.baseIntentSha256`,
+        ),
+        baseMatrixSha256: expectSha256(
+          extension.baseMatrixSha256,
+          `${label}.event.extension.baseMatrixSha256`,
+        ),
+        effectiveMatrixSha256: expectSha256(
+          source.effectiveMatrixSha256,
+          `${label}.event.effectiveMatrixSha256`,
+        ),
+      },
+    };
+  }
+  return { phase, eventIndex, journalId, actor };
+}
+
+function validateRavioliJournalFinalArtifact(bytes, label) {
+  const source = parseRavioliJournalJson(bytes, `${label}.final`);
+  if (
+    source.schema !== RAVIOLI_JOURNAL_FINAL_SCHEMA ||
+    source.status !== "FINALIZED"
+  ) {
+    fail(`${label}.final must be a finalized Ravioli journal`);
+  }
+  const journalId = expectSha256(source.journalId, `${label}.final.journalId`);
+  const intentSha256 = expectSha256(
+    source.intentSha256,
+    `${label}.final.intentSha256`,
+  );
+  const counts = expectObject(source.counts, `${label}.final.counts`);
+  const actors = expectObject(counts.actors, `${label}.final.counts.actors`);
+  for (const [actor, expected] of Object.entries(
+    RAVIOLI_V3_JOURNAL_ACTOR_COUNTS,
+  )) {
+    if (
+      expectSafeInteger(
+        actors[actor],
+        `${label}.final.counts.actors.${actor}`,
+      ) !== expected
+    ) {
+      fail(`${label}.final actor counts must be creator/collector1/collector2 = 49/11/7`);
+    }
+  }
+  const expectedCounts = {
+    originations: RAVIOLI_V3_JOURNAL_ORIGINATION_COUNT,
+    calls: RAVIOLI_V3_JOURNAL_WRITE_COUNT - RAVIOLI_V3_JOURNAL_ORIGINATION_COUNT,
+    buys: 7,
+    opens: 6,
+    transfers: 2,
+    refunds: 1,
+    pins: RAVIOLI_V3_JOURNAL_PIN_COUNT,
+  };
+  for (const [name, expected] of Object.entries(expectedCounts)) {
+    if (
+      expectSafeInteger(counts[name], `${label}.final.counts.${name}`) !==
+      expected
+    ) {
+      fail(`${label}.final ${name} count must be ${expected}`);
+    }
+  }
+  const plan = expectObject(source.plan, `${label}.final.plan`);
+  if (
+    plan.mode !== "native-effective-intent" &&
+    plan.mode !== "authenticated-post-event86-extension"
+  ) {
+    fail(`${label}.final plan mode is unsupported`);
+  }
+  return {
+    journalId,
+    intentSha256,
+    counts: {
+      actors: Object.fromEntries(
+        Object.keys(RAVIOLI_V3_JOURNAL_ACTOR_COUNTS).map((actor) => [
+          actor,
+          actors[actor],
+        ]),
+      ),
+      ...expectedCounts,
+      events: expectSafeInteger(counts.events, `${label}.final.counts.events`, 1),
+    },
+    plan: {
+      mode: plan.mode,
+      baseIntentSha256: expectSha256(
+        plan.baseIntentSha256,
+        `${label}.final.plan.baseIntentSha256`,
+      ),
+      baseMatrixSha256: expectSha256(
+        plan.baseMatrixSha256,
+        `${label}.final.plan.baseMatrixSha256`,
+      ),
+      planExtensionRecordSha256:
+        plan.planExtensionRecordSha256 === null
+          ? null
+          : expectSha256(
+              plan.planExtensionRecordSha256,
+              `${label}.final.plan.planExtensionRecordSha256`,
+            ),
+      effectiveMatrixSha256: expectSha256(
+        plan.effectiveMatrixSha256,
+        `${label}.final.plan.effectiveMatrixSha256`,
+      ),
+    },
+  };
+}
+
 async function validateArtifact(appRoot, artifact, index, app) {
   const label = `${app}.artifacts[${index}]`;
   const source = expectObject(artifact, label);
@@ -734,6 +1290,24 @@ async function validateArtifact(appRoot, artifact, index, app) {
   const historicalIndexerSnapshot = kind === "historical-indexer-snapshot"
     ? validateGnocchiHistoricalIndexerArtifact(bytes, label, app)
     : null;
+  const ravioliLimitedEditionPolicy = kind === "limited-edition-policy-evidence"
+    ? validateRavioliLimitedEditionPolicyArtifact(bytes, label)
+    : null;
+  const ravioliModeOutcome = kind === "mode-outcome-evidence"
+    ? validateRavioliModeOutcomeArtifact(bytes, label)
+    : null;
+  const ravioliJournalIntent =
+    app === "ravioli" && kind === "durable-journal-intent"
+      ? validateRavioliJournalIntentArtifact(bytes, label)
+      : null;
+  const ravioliJournalEvent =
+    app === "ravioli" && kind === "durable-journal-event"
+      ? validateRavioliJournalEventArtifact(bytes, label)
+      : null;
+  const ravioliJournalFinal =
+    app === "ravioli" && kind === "durable-journal-finalization"
+      ? validateRavioliJournalFinalArtifact(bytes, label)
+      : null;
 
   const hasAnyPinField = [source.ipfsUri, source.gatewayUrl, source.retrievedSha256].some(
     (value) => value !== undefined,
@@ -757,7 +1331,7 @@ async function validateArtifact(appRoot, artifact, index, app) {
       retrievedSha256,
     };
   }
-  return {
+  const normalized = {
     id,
     kind,
     path: relativePath,
@@ -765,7 +1339,19 @@ async function validateArtifact(appRoot, artifact, index, app) {
     bytes: bytes.length,
     ...(pin || {}),
     ...(historicalIndexerSnapshot ? { historicalIndexerSnapshot } : {}),
+    ...(ravioliLimitedEditionPolicy ? { ravioliLimitedEditionPolicy } : {}),
+    ...(ravioliModeOutcome ? { ravioliModeOutcome } : {}),
+    ...(ravioliJournalIntent ? { ravioliJournalIntent } : {}),
+    ...(ravioliJournalEvent ? { ravioliJournalEvent } : {}),
+    ...(ravioliJournalFinal ? { ravioliJournalFinal } : {}),
   };
+  if (app === "ravioli" && kind === "durable-journal-pin-bytes") {
+    Object.defineProperty(normalized, "_ravioliJournalPinBytes", {
+      value: bytes,
+      enumerable: false,
+    });
+  }
+  return normalized;
 }
 
 function requirePinnedArtifact(artifact, label) {
@@ -962,6 +1548,217 @@ function validateCapability(capability, index, app, evidence) {
     fail(`${label} must reference artifacts, contracts, operations, tokens, role evidence, or URLs`);
   }
   return { id, description, evidence: normalizedEvidence };
+}
+
+function classifyRavioliJournalPin(fileName) {
+  if (/^ravioli-wrapper-[0-5]\.(?:png|gif|zip)$/.test(fileName)) {
+    return "wrapperMedia";
+  }
+  if (fileName === "token.json") return "tokenMetadata";
+  if (fileName === "ravioli-pack-manifest.json") return "packManifest";
+  if (fileName === "ravioli-public-reveal-0.json") return "publicReveal";
+  if (/^ravioli-sealed-reveal-[1-5]\.json$/.test(fileName)) {
+    return "sealedReveal";
+  }
+  if (/^ravioli-generated-token-.+\.json$/.test(fileName)) {
+    return "generatedMetadata";
+  }
+  if (/^ravioli-generated-(?!token-).+\.(?:png|gif|zip)$/.test(fileName)) {
+    return "generatedMedia";
+  }
+  if (
+    fileName === "collection.json" ||
+    /^pasta-.+-contract\.json$/.test(fileName)
+  ) {
+    return "contractMetadata";
+  }
+  return null;
+}
+
+function validateRavioliRevealPin(bytes, category, fileName, label) {
+  const source = parseRavioliJournalJson(bytes, `${label}.pin`);
+  if (category === "publicReveal") {
+    if (
+      source.schema !== "pasta-ravioli-public-reveal@1" ||
+      expectSafeInteger(source.tokenId, `${label}.pin.tokenId`) !== 0
+    ) {
+      fail(`${label} must be the exact token-0 public reveal`);
+    }
+    return;
+  }
+  const tokenMatch = fileName.match(/^ravioli-sealed-reveal-([1-5])\.json$/);
+  const tokenId = Number(tokenMatch?.[1]);
+  const aad = expectObject(source.aad, `${label}.pin.aad`);
+  if (
+    source.schema !== "pasta-ravioli-sealed-reveal@1" ||
+    source.cipher !== "AES-256-GCM" ||
+    source.keyDerivation !==
+      "SHA-256(pasta-ravioli-sealed-reveal@1 || 0x00 || reveal-salt)" ||
+    aad.schema !== "pasta-ravioli-sealed-reveal@1" ||
+    expectSafeInteger(aad.tokenId, `${label}.pin.aad.tokenId`) !== tokenId
+  ) {
+    fail(`${label} must be the exact token-${tokenId} sealed reveal envelope`);
+  }
+  expectString(source.iv, `${label}.pin.iv`);
+  expectString(source.ciphertext, `${label}.pin.ciphertext`);
+}
+
+function validateRavioliJournalEvidence(artifacts) {
+  const intents = artifacts.filter((artifact) => artifact.ravioliJournalIntent);
+  const finals = artifacts.filter((artifact) => artifact.ravioliJournalFinal);
+  if (intents.length !== 1 || finals.length !== 1) {
+    fail("ravioli must package exactly one durable journal intent and finalization");
+  }
+  const intentArtifact = intents[0];
+  const finalArtifact = finals[0];
+  const intent = intentArtifact.ravioliJournalIntent;
+  const final = finalArtifact.ravioliJournalFinal;
+  if (
+    final.journalId !== intent.journalId ||
+    final.intentSha256 !== intentArtifact.sha256 ||
+    final.plan.baseIntentSha256 !== intentArtifact.sha256 ||
+    final.plan.baseMatrixSha256 !== intent.matrixSha256
+  ) {
+    fail("ravioli durable journal finalization does not bind its immutable intent");
+  }
+
+  const journalEvents = artifacts
+    .filter((artifact) => artifact.ravioliJournalEvent)
+    .map((artifact) => ({
+      artifact,
+      event: artifact.ravioliJournalEvent,
+    }));
+  if (journalEvents.some(({ event }) => event.journalId !== intent.journalId)) {
+    fail("ravioli durable journal contains an event from another journal");
+  }
+  const planExtensions = journalEvents.filter(
+    ({ event }) => event.phase === "PLAN_EXTENSION",
+  );
+  if (intent.schema === RAVIOLI_JOURNAL_INTENT_SCHEMA) {
+    if (
+      intent.operationCount !== RAVIOLI_BASE_OPERATION_COUNT ||
+      planExtensions.length !== 1 ||
+      final.plan.mode !== "authenticated-post-event86-extension"
+    ) {
+      fail("ravioli legacy intent requires immutable base66 plus authenticated event87");
+    }
+    const extensionArtifact = planExtensions[0].artifact;
+    const extension = planExtensions[0].event.extension;
+    if (
+      extension.baseIntentSha256 !== intentArtifact.sha256 ||
+      extension.baseMatrixSha256 !== intent.matrixSha256 ||
+      extension.effectiveMatrixSha256 !== final.plan.effectiveMatrixSha256 ||
+      final.plan.planExtensionRecordSha256 !== extensionArtifact.sha256
+    ) {
+      fail("ravioli event87 extension provenance does not bind base66 to the effective plan");
+    }
+  } else if (
+    intent.operationCount !== RAVIOLI_V3_JOURNAL_WRITE_COUNT ||
+    planExtensions.length !== 0 ||
+    final.plan.mode !== "native-effective-intent" ||
+    final.plan.planExtensionRecordSha256 !== null ||
+    final.plan.effectiveMatrixSha256 !== intent.matrixSha256
+  ) {
+    fail("ravioli native effective intent provenance drifted");
+  }
+
+  const pinEvents = journalEvents
+    .filter(({ event }) => event.phase === "PIN")
+    .sort((left, right) => left.event.pin.pinSequence - right.event.pin.pinSequence);
+  if (pinEvents.length !== RAVIOLI_V3_JOURNAL_PIN_COUNT) {
+    fail(`ravioli durable journal must contain exactly ${RAVIOLI_V3_JOURNAL_PIN_COUNT} PIN events`);
+  }
+  const pinArtifacts = artifacts.filter(
+    (artifact) => artifact.kind === "durable-journal-pin-bytes",
+  );
+  if (pinArtifacts.length !== RAVIOLI_V3_JOURNAL_PIN_COUNT) {
+    fail(`ravioli durable journal must package exactly ${RAVIOLI_V3_JOURNAL_PIN_COUNT} pin-byte artifacts`);
+  }
+  const pinArtifactsByPath = new Map(
+    pinArtifacts.map((artifact) => [
+      artifact.path.replace(/^artifacts\/journal\//, ""),
+      artifact,
+    ]),
+  );
+  const categories = {
+    wrapperMedia: [],
+    tokenMetadata: [],
+    packManifest: [],
+    publicReveal: [],
+    sealedReveal: [],
+    generatedMedia: [],
+    generatedMetadata: [],
+    contractMetadata: [],
+  };
+  for (const [index, { event }] of pinEvents.entries()) {
+    const expectedSequence = index + 1;
+    if (event.pin.pinSequence !== expectedSequence) {
+      fail("ravioli durable journal PIN sequence is not contiguous from 1 through 34");
+    }
+    const pinArtifact = pinArtifactsByPath.get(event.pin.path);
+    if (
+      !pinArtifact ||
+      pinArtifact.sha256 !== event.pin.sha256 ||
+      pinArtifact.bytes !== event.pin.byteLength
+    ) {
+      fail(`ravioli PIN ${expectedSequence} does not bind its packaged exact bytes`);
+    }
+    const category = classifyRavioliJournalPin(event.pin.fileName);
+    if (!category) {
+      fail(`ravioli PIN ${expectedSequence} has an unsupported proof filename: ${event.pin.fileName}`);
+    }
+    categories[category].push(event.pin.fileName);
+    if (category === "publicReveal" || category === "sealedReveal") {
+      validateRavioliRevealPin(
+        pinArtifact._ravioliJournalPinBytes,
+        category,
+        event.pin.fileName,
+        `ravioli PIN ${expectedSequence}`,
+      );
+    }
+  }
+  const expectedCategoryCounts = {
+    wrapperMedia: 6,
+    tokenMetadata: 6,
+    packManifest: 6,
+    publicReveal: 1,
+    sealedReveal: 5,
+    generatedMedia: 3,
+    generatedMetadata: 3,
+    contractMetadata: 4,
+  };
+  for (const [category, expected] of Object.entries(expectedCategoryCounts)) {
+    if (categories[category].length !== expected) {
+      fail(`ravioli ${category} PIN-call count must be ${expected}`);
+    }
+  }
+  if (
+    JSON.stringify(
+      categories.wrapperMedia
+        .map((fileName) => Number(fileName.match(/^ravioli-wrapper-([0-5])\./)?.[1]))
+        .sort((left, right) => left - right),
+    ) !== JSON.stringify([0, 1, 2, 3, 4, 5]) ||
+    JSON.stringify([...new Set(categories.sealedReveal)].sort()) !==
+      JSON.stringify(
+        Array.from(
+          { length: 5 },
+          (_, index) => `ravioli-sealed-reveal-${index + 1}.json`,
+        ),
+      )
+  ) {
+    fail("ravioli reveal/media PIN inventory does not cover wrapper 0-5 and sealed tokens 1-5");
+  }
+  return {
+    planMode: final.plan.mode,
+    actors: final.counts.actors,
+    pinCount: pinEvents.length,
+    pinBreakdown: Object.fromEntries(
+      Object.entries(categories).map(([category, names]) => [
+        category,
+        names.length,
+      ]),
+    ),
+  };
 }
 
 async function walkRegularFiles(root) {
@@ -1234,6 +2031,294 @@ export async function validateAppManifest(runRoot, app) {
     fail(`${app}.capabilities ids must be unique`);
   }
 
+  if (app === "ravioli") {
+    if (
+      operations.length !==
+        RAVIOLI_V3_JOURNAL_WRITE_COUNT +
+          RAVIOLI_V3_DEPENDENCY_ORIGINATION_COUNT
+    ) {
+      fail(
+        "ravioli operation graph differs from its semantic v3 journal plan plus exact dependency originations",
+      );
+    }
+    const journalEvidence = validateRavioliJournalEvidence(artifacts);
+    if (
+      JSON.stringify(journalEvidence.actors) !==
+      JSON.stringify(RAVIOLI_V3_JOURNAL_ACTOR_COUNTS)
+    ) {
+      fail("ravioli durable journal actor partition drifted");
+    }
+    for (const requiredId of RAVIOLI_REQUIRED_CAPABILITY_IDS) {
+      if (!capabilities.some((entry) => entry.id === requiredId)) {
+        fail(`ravioli requires capability ${requiredId}`);
+      }
+    }
+    const router = contracts.find(
+      (contract) => contract.kind === "atomic-pack-router",
+    );
+    if (!router) {
+      fail("ravioli must identify its atomic-pack router");
+    }
+    const modeOutcomeOperationSets = [];
+    for (const [tokenId, modeId] of RAVIOLI_REQUIRED_CAPABILITY_IDS.slice(0, 5).entries()) {
+      const modeCapability = capabilities.find((entry) => entry.id === modeId);
+      const wrapperToken = tokens.find(
+        (token) =>
+          token.contractAddress === router.address &&
+          token.tokenId === String(tokenId),
+      );
+      if (!wrapperToken || !modeCapability.evidence.tokens.includes(wrapperToken.id)) {
+        fail(`${modeId} must reference Ravioli wrapper token ${tokenId}`);
+      }
+      if (modeCapability.evidence.operations.length === 0) {
+        fail(`${modeId} must reference its exact operation partition`);
+      }
+      const outcomeArtifacts = modeCapability.evidence.artifacts
+        .map((artifactId) => artifactsById.get(artifactId))
+        .filter((artifact) => artifact?.kind === "mode-outcome-evidence");
+      if (outcomeArtifacts.length !== 1) {
+        fail(`${modeId} must reference exactly one mode-outcome-evidence artifact`);
+      }
+      const outcome = outcomeArtifacts[0].ravioliModeOutcome;
+      if (!outcome || outcome.tokenId !== tokenId) fail(`${modeId} mode-outcome evidence token drift`);
+      if (JSON.stringify([...outcome.operationHashes].sort()) !== JSON.stringify([...modeCapability.evidence.operations].sort())) {
+        fail(`${modeId} operation references differ from its exact mode-outcome partition`);
+      }
+      modeOutcomeOperationSets.push(outcome.operationHashes);
+      if (tokenId >= 3) {
+        const generatedKinds = new Set(modeCapability.evidence.artifacts.map((artifactId) => artifactsById.get(artifactId)?.kind));
+        if (!generatedKinds.has("generated-token-media") || !generatedKinds.has("generated-token-metadata")) {
+          fail(`${modeId} must reference its generated media and metadata pins`);
+        }
+      }
+    }
+    const productOperationHashes = modeOutcomeOperationSets.flat();
+    const productOperationSet = new Set(productOperationHashes);
+    if (productOperationHashes.length !== productOperationSet.size) {
+      fail("ravioli mode-outcome operation partitions must be non-overlapping");
+    }
+    const journalCapability = capabilities.find((entry) => entry.id === "durable-signer-journal-ui-live-proof");
+    if (!journalCapability) {
+      fail("ravioli durable signer journal capability is missing");
+    }
+    const journalOperationHashes = journalCapability.evidence.operations;
+    const journalOperationSet = new Set(journalOperationHashes);
+    if (
+      journalOperationHashes.length !== RAVIOLI_V3_JOURNAL_WRITE_COUNT ||
+      journalOperationSet.size !== RAVIOLI_V3_JOURNAL_WRITE_COUNT
+    ) {
+      fail("ravioli durable journal capability must cover the exact semantic v3 write plan");
+    }
+    if (productOperationHashes.some((hash) => !journalOperationSet.has(hash))) {
+      fail("ravioli mode-outcome operation partition escapes the durable journal");
+    }
+    const withheldCapability = capabilities.find(
+      (entry) =>
+        entry.id === "withheld-reveal-refund-closure-ui-live-proof",
+    );
+    const withheldWrapper = tokens.find(
+      (token) =>
+        token.contractAddress === router.address && token.tokenId === "5",
+    );
+    if (
+      !withheldWrapper ||
+      !withheldCapability.evidence.tokens.includes(withheldWrapper.id)
+    ) {
+      fail("withheld-reveal-refund-closure-ui-live-proof must reference Ravioli wrapper token 5");
+    }
+    const withheldOperationHashes = withheldCapability.evidence.operations;
+    const withheldOperationSet = new Set(withheldOperationHashes);
+    if (
+      withheldOperationHashes.length !== 12 ||
+      withheldOperationSet.size !== 12 ||
+      withheldOperationHashes.some((hash) => !journalOperationSet.has(hash))
+    ) {
+      fail("ravioli withheld-reveal-refund closure must cover its exact 12-write partition");
+    }
+    if (
+      [...withheldOperationSet].some((hash) => productOperationSet.has(hash))
+    ) {
+      fail("ravioli withheld-reveal-refund partition overlaps a green product");
+    }
+    const withheldRecoveryOperations = operations.filter(
+      (operation) =>
+        withheldOperationSet.has(operation.hash) &&
+        operation.entrypoint === "recover_adapter",
+    );
+    if (withheldRecoveryOperations.length !== 1) {
+      fail("ravioli withheld-reveal-refund closure must include exactly one recover_adapter write");
+    }
+    const withheldArtifacts = withheldCapability.evidence.artifacts
+      .map((artifactId) => artifactsById.get(artifactId))
+      .filter(
+        (artifact) => artifact?.kind === "withheld-reveal-refund-evidence",
+      );
+    if (withheldArtifacts.length !== 1) {
+      fail("ravioli withheld-reveal-refund closure must reference its red-path evidence");
+    }
+    if (
+      new Set([...productOperationHashes, ...withheldOperationHashes]).size !==
+      65
+    ) {
+      fail("ravioli green and red product partitions must cover all 65 non-infrastructure writes");
+    }
+    const dependencyOperations = operations.filter((entry) => !journalOperationSet.has(entry.hash));
+    if (
+      dependencyOperations.length !== RAVIOLI_V3_DEPENDENCY_ORIGINATION_COUNT ||
+      dependencyOperations.some((entry) => entry.kind !== "origination")
+    ) {
+      fail("ravioli manifest must add the exact dependency originations outside its semantic journal");
+    }
+    const journalOperations = operations.filter((entry) => journalOperationSet.has(entry.hash));
+    const journalOriginations = journalOperations.filter(
+      (entry) => entry.kind === "origination",
+    );
+    if (journalOriginations.length !== RAVIOLI_V3_JOURNAL_ORIGINATION_COUNT) {
+      fail("ravioli journal origination count differs from the semantic v3 plan");
+    }
+    const actualEntrypointCounts = Object.fromEntries(
+      Object.keys(RAVIOLI_V3_JOURNAL_ENTRYPOINT_COUNTS).map((entrypoint) => [
+        entrypoint,
+        journalOperations.filter((entry) => entry.entrypoint === entrypoint)
+          .length,
+      ]),
+    );
+    if (
+      JSON.stringify(actualEntrypointCounts) !==
+      JSON.stringify(RAVIOLI_V3_JOURNAL_ENTRYPOINT_COUNTS)
+    ) {
+      fail("ravioli journal entrypoint counts differ from the semantic v3 plan");
+    }
+    const recognizedJournalCalls = Object.values(actualEntrypointCounts).reduce(
+      (total, count) => total + count,
+      0,
+    );
+    if (
+      recognizedJournalCalls + journalOriginations.length !==
+      journalOperations.length
+    ) {
+      fail("ravioli journal contains an operation outside the semantic v3 plan");
+    }
+    const requiredContractKinds = new Set([
+      "gnocchi-dependency",
+      "rotini-dependency",
+      "blind-pack-controller",
+      "atomic-pack-router",
+      "allocation-helper",
+      "generative-helper",
+    ]);
+    if (
+      contracts.length !== requiredContractKinds.size ||
+      contracts.some((entry) => !requiredContractKinds.has(entry.kind))
+    ) {
+      fail("ravioli must bind exactly its two dependencies, controller, router, and two helpers");
+    }
+    const generatedTokens = tokens
+      .filter(
+        (token) =>
+          token.contractAddress !== router.address &&
+          ["3", "4", "5"].includes(token.tokenId),
+      )
+      .sort((left, right) => Number(left.tokenId) - Number(right.tokenId));
+    const generatedContractAddresses = new Set(
+      generatedTokens.map((token) => token.contractAddress),
+    );
+    const generatedRotiniContract =
+      generatedContractAddresses.size === 1
+        ? contracts.find(
+            (contract) =>
+              contract.address === [...generatedContractAddresses][0],
+          )
+        : null;
+    if (
+      generatedTokens.length !== 3 ||
+      generatedRotiniContract?.kind !== "rotini-dependency" ||
+      JSON.stringify(generatedTokens.map((token) => token.tokenId)) !==
+        JSON.stringify(["3", "4", "5"])
+    ) {
+      fail("ravioli must record generated Rotini product tokens 3, 4, and 5");
+    }
+    for (const token of generatedTokens) {
+      const metadata = artifactsById.get(token.metadataArtifactId);
+      const media = artifactsById.get(token.mediaArtifactId);
+      if (
+        metadata?.kind !== "generated-token-metadata" ||
+        media?.kind !== "generated-token-media"
+      ) {
+        fail(`ravioli generated Rotini token ${token.tokenId} must bind its generated metadata and media`);
+      }
+    }
+    const generativeCapability = capabilities.find(
+      (entry) => entry.id === "blind_generative_mint-ui-live-proof",
+    );
+    const hybridCapability = capabilities.find(
+      (entry) => entry.id === "hybrid_atomic_pack-ui-live-proof",
+    );
+    if (
+      !generatedTokens
+        .slice(0, 2)
+        .every((token) => generativeCapability.evidence.tokens.includes(token.id)) ||
+      !hybridCapability.evidence.tokens.includes(generatedTokens[2].id)
+    ) {
+      fail("ravioli generated Rotini token records must be owned by their generating capabilities");
+    }
+    const capabilityId = "limited-edition-expiry-deconfliction-ui-live-proof";
+    const capability = capabilities.find((entry) => entry.id === capabilityId);
+    if (!capability) fail(`ravioli requires capability ${capabilityId}`);
+    if (capability.evidence.screenshots.length === 0) {
+      fail(`${capabilityId} must reference at least one screenshot`);
+    }
+
+    const routers = contracts.filter((entry) => entry.kind === "atomic-pack-router");
+    if (routers.length !== 1) {
+      fail(`${capabilityId} requires exactly one atomic-pack-router contract`);
+    }
+    const limitedEditionRouter = routers[0];
+    if (!capability.evidence.contracts.includes(limitedEditionRouter.address)) {
+      fail(`${capabilityId} must reference the Ravioli atomic-pack-router contract`);
+    }
+
+    const wrapperTokens = tokens.filter(
+      (token) =>
+        token.contractAddress === limitedEditionRouter.address && capability.evidence.tokens.includes(token.id),
+    );
+    if (wrapperTokens.length === 0) {
+      fail(`${capabilityId} must reference a Ravioli wrapper token`);
+    }
+
+    const policyArtifacts = capability.evidence.artifacts
+      .map((artifactId) => artifactsById.get(artifactId))
+      .filter((artifact) => artifact?.kind === "limited-edition-policy-evidence");
+    if (policyArtifacts.length !== 1) {
+      fail(`${capabilityId} must reference a limited-edition-policy-evidence artifact`);
+    }
+    const policy = policyArtifacts[0].ravioliLimitedEditionPolicy;
+    if (!policy) fail(`${capabilityId} policy artifact did not pass semantic validation`);
+    if (policy.wrapperContract !== limitedEditionRouter.address) fail(`${capabilityId} policy wrapper contract differs from the router`);
+    if (!wrapperTokens.some((token) => token.tokenId === policy.wrapperTokenId)) {
+      fail(`${capabilityId} policy wrapper token is not referenced by the capability`);
+    }
+    if (policy.childContract === limitedEditionRouter.address) fail(`${capabilityId} policy child must be an external finite token`);
+
+    const exactTokenUrls = capability.evidence.urls
+      .map((url) => parseExactShadownetTokenUrl(url))
+      .filter(Boolean);
+    const hasWrapperUrl = wrapperTokens.some((token) =>
+      exactTokenUrls.some(
+        (url) => url.contractAddress === token.contractAddress && url.tokenId === token.tokenId,
+      ),
+    );
+    if (!hasWrapperUrl) {
+      fail(`${capabilityId} must link its referenced Ravioli wrapper token exactly`);
+    }
+    const hasChildUrl = exactTokenUrls.some(
+      (url) => url.contractAddress !== limitedEditionRouter.address,
+    );
+    if (!hasChildUrl) {
+      fail(`${capabilityId} must link an exact child token on Shadownet TzKT`);
+    }
+  }
+
   const referenced = {
     artifacts: new Set(),
     contracts: new Set(),
@@ -1328,19 +2413,66 @@ export async function validateProofRun(runDirectory) {
   const runIds = new Set(apps.map((entry) => entry.runId));
   if (runIds.size !== 1) fail(`all app manifests must use one runId; found ${[...runIds].join(", ")}`);
 
-  const contractOwners = new Map();
-  const operationOwners = new Map();
+  const contractClaims = new Map();
+  const operationClaims = new Map();
   for (const app of apps) {
     for (const contract of app.contracts) {
-      const existing = contractOwners.get(contract.address);
-      if (existing) fail(`contract ${contract.address} is claimed by both ${existing} and ${app.app}`);
-      contractOwners.set(contract.address, app.app);
+      const claims = contractClaims.get(contract.address) || [];
+      claims.push({ app: app.app, contract });
+      contractClaims.set(contract.address, claims);
     }
     for (const operation of app.operations) {
-      const existing = operationOwners.get(operation.hash);
-      if (existing) fail(`operation ${operation.hash} is claimed by both ${existing} and ${app.app}`);
-      operationOwners.set(operation.hash, app.app);
+      const claims = operationClaims.get(operation.hash) || [];
+      claims.push({ app: app.app, operation });
+      operationClaims.set(operation.hash, claims);
     }
+  }
+  const dependencyKinds = new Map([
+    ["gnocchi", "gnocchi-dependency"],
+    ["rotini", "rotini-dependency"],
+  ]);
+  const contractOwners = new Map();
+  for (const [address, claims] of contractClaims) {
+    if (claims.length === 1) {
+      contractOwners.set(address, claims[0].app);
+      continue;
+    }
+    const ravioliClaim = claims.find((claim) => claim.app === "ravioli");
+    const dependencyClaim = claims.find((claim) => dependencyKinds.has(claim.app));
+    if (
+      claims.length !== 2 ||
+      !ravioliClaim ||
+      !dependencyClaim ||
+      ravioliClaim.contract.kind !== dependencyKinds.get(dependencyClaim.app)
+    ) {
+      fail(`contract ${address} has unsupported cross-app claims: ${claims.map((claim) => claim.app).join(", ")}`);
+    }
+    contractOwners.set(address, dependencyClaim.app);
+  }
+  const operationOwners = new Map();
+  for (const [hash, claims] of operationClaims) {
+    if (claims.length === 1) {
+      operationOwners.set(hash, claims[0].app);
+      continue;
+    }
+    const ravioliClaim = claims.find((claim) => claim.app === "ravioli");
+    const dependencyClaim = claims.find((claim) => dependencyKinds.has(claim.app));
+    const dependencyKind = dependencyClaim ? dependencyKinds.get(dependencyClaim.app) : null;
+    const ravioliContractClaim = ravioliClaim
+      ? contractClaims.get(ravioliClaim.operation.contractAddress)?.find((claim) => claim.app === "ravioli")
+      : null;
+    if (
+      claims.length !== 2 ||
+      !ravioliClaim ||
+      !dependencyClaim ||
+      ravioliClaim.operation.kind !== "origination" ||
+      dependencyClaim.operation.kind !== "origination" ||
+      ravioliClaim.operation.contractAddress !== dependencyClaim.operation.contractAddress ||
+      ravioliContractClaim?.contract.kind !== dependencyKind
+    ) {
+      fail(`operation ${hash} has unsupported cross-app claims: ${claims.map((claim) => claim.app).join(", ")}`);
+    }
+    operationOwners.set(hash, dependencyClaim.app);
   }
 
   const colander = apps.find((entry) => entry.app === "colander");
@@ -1418,6 +2550,11 @@ function buildAggregate(validation) {
         localEvidenceDigestsVerified: true,
         pinnedArtifactRetrievalDigestsRecorded: true,
         gnocchiProofTimeSupplyAndHoldersBound: true,
+        ravioliModeOutcomesSemanticallyValidated: true,
+        ravioliEffective67WritePlanValidated: true,
+        ravioliJournalPinCallBreakdownValidated: true,
+        ravioliGeneratedRotiniTokensValidated: true,
+        ravioliDependencyReuseConstrained: true,
         tezosIdentifiersChecksumValidated: true,
         shadownetExplorerUrlsValidated: true,
         nonSecretManifestFilenamesAndEvidenceBytesValidated: true,

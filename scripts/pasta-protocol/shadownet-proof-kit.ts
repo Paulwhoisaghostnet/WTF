@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { TezosToolkit } from "@taquito/taquito";
+import { MichelCodecPacker, TezosToolkit } from "@taquito/taquito";
 import type { InMemorySigner } from "@taquito/signer";
 import { HttpBackend } from "@taquito/http-utils";
 import { RpcClient } from "@taquito/rpc";
@@ -593,6 +593,7 @@ export async function signerEnv(
 
 export function buildToolkit(signer: InMemorySigner, rpcUrl: string): TezosToolkit {
   const tezos = new TezosToolkit(new RpcClient(rpcUrl, "main", new HttpBackend(TAQUITO_TIMEOUT_MS)));
+  tezos.setPackerProvider(new MichelCodecPacker());
   tezos.setProvider({ signer });
   return tezos;
 }

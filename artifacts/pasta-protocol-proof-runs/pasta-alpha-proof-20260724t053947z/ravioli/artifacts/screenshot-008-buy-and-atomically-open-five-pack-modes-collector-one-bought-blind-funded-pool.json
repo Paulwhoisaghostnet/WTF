@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "buy and atomically open five pack modes",
+  "stageOrdinal": 8,
+  "stageName": "collector one bought blind_funded_pool",
+  "url": "http://127.0.0.1:62578/creation-tools/ravioli/site.html",
+  "timestampUtc": "2026-07-24T20:04:48.810Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "a3ab7ccac2d508b34207e2506333468235b234fc960c20ca5dec3a46790592d5",
+  "byteCount": 152296,
+  "domEvidence": [
+    {
+      "selector": "#title",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli UI-LIVE blind_funded_pool"
+    },
+    {
+      "selector": "#status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Confirmed on Tezos. On-chain state refreshed."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

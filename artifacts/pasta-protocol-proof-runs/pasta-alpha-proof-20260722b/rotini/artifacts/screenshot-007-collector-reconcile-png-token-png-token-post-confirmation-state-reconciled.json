@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector reconcile PNG token",
+  "stageOrdinal": 7,
+  "stageName": "PNG token post-confirmation state reconciled",
+  "url": "http://127.0.0.1:64949/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-23T02:53:44.408Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "17d9270b41e76ca7a310df7a5b7162c2e3e3352901c91777151217ee5af7a796",
+  "byteCount": 116920,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "reconciled PNG output",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · PNG · 0.000000 tez"
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "reconciled finalized supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · PNG · 0.000000 tez"
+    },
+    {
+      "selector": "#log",
+      "name": "connected read-only collector session",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "2:53:42 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

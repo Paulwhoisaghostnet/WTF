@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "sync V1 contract",
+  "stageOrdinal": 12,
+  "stageName": "V1 token inventory and sale stage synchronized on-chain",
+  "url": "http://127.0.0.1:60705/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-08-08T14:48:06.431Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "853bbdc6baccef8c63fba9ffa88bc7eeb00e12da6b92169eb5a47ec8f427b1c0",
+  "byteCount": 162885,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#deployStatus",
+      "name": "sync",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "in sync ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "live drop",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [2:47:39 PM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [2:47:39 PM] token sheet loaded: 1 tokens [2:47:39 PM] 1 artwork file(s) added (1 total) [2:47:39 PM] stage 1: settings saved [2:47:40 PM] cover pinned: bafkreibyzk7eatu3mb62fmm4we6armeasfcc3gpijkn45jfqzh32g6ffke [2:47:40 PM] pinning complete: 1 tokens [2:47:41 PM] contract metadata pinned: bafkreicgdxxiswq6wv6vbtax3swrjt7xurskqgh6vuhmbjodk3m77ikjdq [2:47:41 PM] originating contract… [2:47:42 PM] contract deployed at KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx [2:47:42 PM] explorer: https://shadownet.tzkt.io/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx [2:47:45 PM] sync: contract has 0/1 token row(s) loaded (1 edition(s) in draft) [2:47:45 PM] add_tokens 0…0 (1) — approve in wallet [2:47:54 PM] set_stages (1) [2:48:06 PM] sync complete — your drop is live on-chain. [2:48:06 PM] objkt collection (mainnet only): https://objkt.com/collections/KT1NveyjizYzF4eCfHMEMphHyhk2WGXSFjPx [2:48:06 PM] tip: Save studio backup (Resume panel)"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,14 +1,17 @@
 # Pasta Suite Developer Review
 
-## Review artifacts
+## Current controlled-alpha artifacts
 
-- macOS 11+ universal installer: `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-mac-universal.dmg`
-- Windows 10/11 x64 wizard: `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-win-x64.exe`
-- checksums: `apps/pasta-suite-desktop/release/SHA256SUMS.txt`
-- machine-readable contents: `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.0-review-manifest.json`
-- end-user instructions: `apps/pasta-suite-desktop/release/Pasta-Suite-README.txt`
+- macOS 11+ universal installer: `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.1-alpha.1-mac-universal.dmg`
+- macOS 11+ universal archive: `apps/pasta-suite-desktop/release/Pasta-Suite-1.0.1-alpha.1-mac-universal.zip`
+- all nine app installers, checksums, smoke receipts, screenshots, and exact inventory: `artifacts/pasta-alpha-installers-20260808/`
+- developer handoff: `artifacts/pasta-alpha-installers-20260808/PASTA-ALPHA-INSTALLER-HANDOFF.md`
 
-These are unsigned developer-review artifacts. They require no Node.js, npm, Homebrew, terminal, or separately started web server.
+The current macOS artifacts are intentionally dirty-preflight builds for controlled human alpha. Their embedded `provenance/build-provenance.json` identifies base Git SHA `81dd26f2a050a412b60a2e0236b33e6ba341f81b`, `dirty: true`, and target `darwin/universal/dmg+zip`; the handoff binds each file to a SHA-256 plus its installed-runtime receipt. They are reviewable but not publishable. A clean tagged rebuild remains mandatory before public distribution.
+
+The alpha artifacts are unsigned developer-review builds. They require no Node.js, npm, Homebrew, terminal, or separately started web server.
+
+Windows 10/11 x64 NSIS and 64-bit ARM Debian/Raspberry Pi packages remain separate native-platform alpha gates. Their expected `1.0.1-alpha.1` workflows are configured, but they are not part of this macOS handoff.
 
 ## Install experience
 
@@ -21,10 +24,16 @@ These are unsigned developer-review artifacts. They require no Node.js, npm, Hom
 
 ### Windows
 
-1. Open the `Pasta-Suite-1.0.0-win-x64.exe` installer.
+1. Open the `Pasta-Suite-1.0.1-alpha.1-win-x64.exe` installer.
 2. Follow the per-user installation wizard and choose an install location if desired.
 3. Leave **Run Pasta Suite** selected or open it from the desktop/Start menu shortcut.
 4. If SmartScreen appears, choose **More info**, verify the file name, and choose **Run anyway**.
+
+### 64-bit ARM Linux / Raspberry Pi
+
+1. Open `Pasta-Suite-1.0.1-alpha.1-linux-arm64.deb` with the system software installer, or install it with the normal Debian package manager.
+2. Open **Pasta Suite** from the desktop application menu.
+3. After review, remove **Pasta Suite** with the same software installer or package manager.
 
 ## Required review stories
 
@@ -51,11 +60,16 @@ These are unsigned developer-review artifacts. They require no Node.js, npm, Hom
 
 ## Storage and network boundary
 
-Pasta Suite starts a private random-port server bound only to `127.0.0.1`. It stores installed public pages under the user's `Documents/Pasta Suite/sites` directory. Projects and recovery references use the app's local browser storage. Wallets retain signing authority; Pasta Suite does not persist seed phrases or private keys.
+Pasta Suite starts a private server at the stable origin `http://127.0.0.1:30770`. The stable origin keeps projects and recovery references in the same local browser-storage namespace after the app quits and relaunches. A second launch focuses the existing process; if another program occupies port 30770, Pasta Suite stops with a data-preserving error instead of falling back to a new origin. It stores installed public pages under the user's `Documents/Pasta Suite/sites` directory. Wallets retain signing authority; Pasta Suite does not persist seed phrases or private keys.
 
 Hosted wtfOS pinning and package-record APIs are deliberately unavailable in the desktop build. Creators use their own Pinata account or Kubo node for durable media, and exported page ZIPs remain portable to any static host.
 
 ## Current verification boundary
 
-- The mounted macOS DMG has been checksum-verified, inspected as an `arm64 + x86_64` bundle, and launched through the artifact smoke test. That smoke created a Colander project and opened packaged CH-EASE without runtime errors.
-- The Windows output is a valid NSIS GUI installer containing an x64 Electron application and the complete suite ASAR. The GitHub installer workflow now launches the packaged Windows executable and runs the same Colander/CH-EASE artifact smoke on `windows-latest`; that runner must pass before beta distribution is called cross-platform verified.
+- Source and policy verification cover all nine package definitions, the shared packaged-runtime smoke contract, current Ravioli/Rotini assets, stable-origin relaunch persistence, clean source provenance, and tag/version parity.
+- All nine fresh macOS universal ZIPs were extracted, integrity-tested, launched, quit, and relaunched; all nine DMGs were verified, accepted/mounted, copied as installed apps, launched, quit, and relaunched. Every executable contains `arm64` and `x86_64` slices.
+- The 18 runtime smokes reported zero failures, verified every required packaged asset, matched embedded dirty-preflight provenance to the base SHA, recovered browser state at every fixed origin, and captured a first-run screenshot. Pasta Suite additionally created persistent Shadownet-default Colander state and opened all eight child tools.
+- The exact artifact hashes and per-format receipts live in `artifacts/pasta-alpha-installers-20260808/`. This clears the controlled macOS human-alpha gate without weakening the clean provenance requirement for publication.
+- A Windows alpha artifact becomes reviewable only after the workflow installs the exact NSIS output, verifies that its desktop and Start menu shortcuts target the installed executable, launches and relaunches that executable through the same smoke, and successfully uninstalls it.
+- The Debian artifact becomes reviewable only after a native 64-bit ARM Ubuntu runner verifies its architecture and package identity, installs it, verifies its desktop application entry, launches and relaunches it through the same smoke, and purges it. Physical Raspberry Pi testing remains part of the human alpha device matrix; an x64 cross-build alone is never accepted as runtime evidence.
+- Clean public promotion remains blocked until the intended source is committed and every selected platform rebuilds with exact clean provenance.

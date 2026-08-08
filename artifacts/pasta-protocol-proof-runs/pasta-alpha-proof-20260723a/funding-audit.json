@@ -1,0 +1,52 @@
+{
+  "schema": "pasta-shadownet-funding-audit@1",
+  "runId": "pasta-alpha-proof-20260723a",
+  "recordedAt": "2026-07-23T20:09:56Z",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "primaryRpc": "https://tezos-shadownet.octez.io/",
+    "fallbackRpc": "https://tcinfra.net/rpc/tezos/shadownet",
+    "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY"
+  },
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "targetBalanceMutez": 50000000,
+  "before": {
+    "level": 4319625,
+    "block": "BL2X3JfRStpMAbmGpZPqamvxZsJBFg5Vt9a9iyU3tpftkYbW3Lu",
+    "balanceMutez": 33427215,
+    "counter": 23831497,
+    "primaryAndFallbackAgreed": true
+  },
+  "request": {
+    "client": "@tacoinfra/get-tez@1.0.8",
+    "amountMutez": 16572785,
+    "amountTez": "16.572785",
+    "network": "shadownet"
+  },
+  "operation": {
+    "hash": "ooi3YbDbBAaZ4vGcNgVTM7CdDS9QqpKpscQu5kiw4mN2kL9qpnE",
+    "status": "applied",
+    "level": 4319631,
+    "block": "BM5RMjq7t3rWWv3sD5vFiPLP3PVdEK9FtZ1jzByQnwWbFRVVk8h",
+    "timestamp": "2026-07-23T20:08:33Z",
+    "sender": "tz1a4GT7THHaGDiTxgXoatDWcZfJ5j29z5RC",
+    "target": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "amountMutez": 16572785,
+    "faucetCounter": 3081,
+    "gasUsed": 2169,
+    "storageUsed": 0,
+    "bakerFeeMutez": 491,
+    "storageFeeMutez": 0,
+    "allocationFeeMutez": 0,
+    "tzktUrl": "https://shadownet.tzkt.io/ooi3YbDbBAaZ4vGcNgVTM7CdDS9QqpKpscQu5kiw4mN2kL9qpnE"
+  },
+  "after": {
+    "level": 4319631,
+    "block": "BM5RMjq7t3rWWv3sD5vFiPLP3PVdEK9FtZ1jzByQnwWbFRVVk8h",
+    "balanceMutez": 50000000,
+    "counter": 23831497,
+    "primaryAndFallbackAgreed": true,
+    "creatorCounterUnchanged": true
+  }
+}

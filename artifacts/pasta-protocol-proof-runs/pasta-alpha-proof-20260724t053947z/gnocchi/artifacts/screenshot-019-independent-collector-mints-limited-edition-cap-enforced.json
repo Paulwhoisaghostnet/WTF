@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "independent collector mints",
+  "stageOrdinal": 19,
+  "stageName": "Limited edition cap enforced",
+  "url": "http://127.0.0.1:57829/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-24T19:46:29.234Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "05a02bf0ed509004bb790ec4a623a0a914a2674fb68d29dc3d6239b344e8fbdf",
+  "byteCount": 144114,
+  "domEvidence": [
+    {
+      "selector": "#mintInfo",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Limited Edition · unit price now: 0.000001 tez · 3 lifetime minted / 4 cap · starts 7/24/2026, 7:39:00 PM · ends 7/31/2026, 7:40:00 PM · POLICY LOCKED · ISSUANCE OPEN"
+    },
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "7:42:35 PM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 7:42:46 PM minting 1 edition(s) for 0.000001 tez (sign in wallet)… 7:42:58 PM minted ✓ 7:43:13 PM minting 1 edition(s) for 0.000001 tez (sign in wallet)… 7:43:23 PM minted ✓ 7:43:38 PM minting 1 edition(s) for 0.000001 tez (sign in wallet)… 7:43:53 PM minted ✓ ✗ 7:46:29 PM mint failed: not enough supply left"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

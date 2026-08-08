@@ -1,0 +1,33 @@
+{
+  "schema": "pasta-ravioli-open-kit@3",
+  "network": "shadownet",
+  "contract": "KT1SQEXd1q5yWrwduDkC2SRoibnubP1Hq1Y5",
+  "tokenId": 0,
+  "mode": "deterministic_vault",
+  "manifestUri": "ipfs://bafkreicgfavxdtje7zix3u4rzldddoys2oa6taf3fh73xhathjf3djkf4m",
+  "blindSecurity": "public",
+  "warning": "Exact recipes and nonces stay encrypted, while the salted cyclic serial rotation stays sealed/private until reveal. Tezos funding and reservation operations remain public.",
+  "editionPolicy": {
+    "requiresLimitedWrapper": false,
+    "wrapperEditionClass": "fixed-supply",
+    "earliestChildEnd": null,
+    "wrapperSaleStart": null,
+    "wrapperSaleEnd": null,
+    "revealDeadline": null,
+    "openDeadline": null
+  },
+  "recipes": [
+    {
+      "serial": 0,
+      "nonce": "ab7bd4566857338b835b05a0708fb8821492501cf723bedc4eb31a9a01045d7a",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1DLiDDgvNFKeSdzvBsvBdQWZUhU5XYC5Qf",
+          "tokenId": 0,
+          "amount": 1
+        }
+      ]
+    }
+  ]
+}

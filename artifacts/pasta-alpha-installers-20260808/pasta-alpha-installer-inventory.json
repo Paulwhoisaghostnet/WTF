@@ -1,0 +1,455 @@
+{
+  "schema": "wtfos.pasta.desktop-alpha-handoff.v1",
+  "generatedAt": "2026-08-08T16:35:18.307Z",
+  "version": "1.0.1-alpha.1",
+  "channel": "controlled-human-alpha",
+  "publishable": false,
+  "unsigned": true,
+  "gitSha": "81dd26f2a050a412b60a2e0236b33e6ba341f81b",
+  "sourceRevision": "81dd26f2a050a412b60a2e0236b33e6ba341f81b-dirty",
+  "target": {
+    "platform": "darwin",
+    "arch": "universal",
+    "format": "dmg+zip"
+  },
+  "summary": {
+    "apps": 9,
+    "artifacts": 18,
+    "runtimeSmokes": 18,
+    "screenshots": 18,
+    "stableOriginRelaunches": 18,
+    "failures": 0
+  },
+  "products": [
+    {
+      "app": "pasta-suite",
+      "origin": "http://127.0.0.1:30770",
+      "assetsVerified": 38,
+      "bundledToolsOpened": 8,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/pasta-suite-zip-smoke.json",
+          "receiptSha256": "53573976774535c322335a05f5c41eb2ba967e6bdf2be7ad3e378b5b62ef41b9",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/pasta-suite-zip-first-run.png",
+          "screenshotSha256": "74b66ce6961a1af876bddb2a8ff377bacda622d4ee3f483caf5ca0a5ad4a7ae5"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/pasta-suite-dmg-smoke.json",
+          "receiptSha256": "913aa6e9086a8d38070df44f5e411be77d8a20306c254f83fecd8ba772d575e8",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/pasta-suite-dmg-first-run.png",
+          "screenshotSha256": "3f32cb644d5dd6ec1d9b7f44556929300fdb423cbecff58dbcb26f25095653dd"
+        }
+      }
+    },
+    {
+      "app": "ch-ease",
+      "origin": "http://127.0.0.1:30778",
+      "assetsVerified": 34,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/ch-ease-zip-smoke.json",
+          "receiptSha256": "29a1211f9bdc3c3cb7b727cb94cc325254de3533d5772db6853f9fbe9928ca98",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/ch-ease-zip-first-run.png",
+          "screenshotSha256": "b69964365b541541d6ce1fd77fb4773c9222df8809b63e33919b32b4f8853b73"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/ch-ease-dmg-smoke.json",
+          "receiptSha256": "197f7c6bb7176f427c703f0fdacb70b1fa0ccda3aa498942ca3a46637256d728",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/ch-ease-dmg-first-run.png",
+          "screenshotSha256": "b69964365b541541d6ce1fd77fb4773c9222df8809b63e33919b32b4f8853b73"
+        }
+      }
+    },
+    {
+      "app": "macaroni",
+      "origin": "http://127.0.0.1:30771",
+      "assetsVerified": 5,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/macaroni-zip-smoke.json",
+          "receiptSha256": "2474816f1a657a2628a220dc7daeda9113f2bf96a249615bff7e2b58ece803d2",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/macaroni-zip-first-run.png",
+          "screenshotSha256": "151e7fee3a2c5b34214356a8b660c1410d4a96a2e9a430c584f9804179de1795"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/macaroni-dmg-smoke.json",
+          "receiptSha256": "b163455bab9e90fb576b43c9af62e5ce9e6f3f074ec2ba8a5f3510e651744b70",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/macaroni-dmg-first-run.png",
+          "screenshotSha256": "151e7fee3a2c5b34214356a8b660c1410d4a96a2e9a430c584f9804179de1795"
+        }
+      }
+    },
+    {
+      "app": "spaghetti",
+      "origin": "http://127.0.0.1:30772",
+      "assetsVerified": 4,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/spaghetti-zip-smoke.json",
+          "receiptSha256": "ddf1b7031cd9c3637815062ad55256863b6ca7d9788cf46c26c6136c228d293c",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/spaghetti-zip-first-run.png",
+          "screenshotSha256": "b825120d41d956bed15b62dfdd1fcd16e37c410b85b9079efe401c1389923238"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/spaghetti-dmg-smoke.json",
+          "receiptSha256": "eb43ede348120967b985166385439222a6d9875c05c1b7a6892b29fc77f736ca",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/spaghetti-dmg-first-run.png",
+          "screenshotSha256": "3d2fe588c33b3e43f1cdc2331ef4aa64ae047320fad3263c3569e9047908d172"
+        }
+      }
+    },
+    {
+      "app": "gnocchi",
+      "origin": "http://127.0.0.1:30773",
+      "assetsVerified": 4,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/gnocchi-zip-smoke.json",
+          "receiptSha256": "d90c55c8d6c288347a44194c9a5389e33a6849df99d4e5324e2f7d81197c1f31",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/gnocchi-zip-first-run.png",
+          "screenshotSha256": "bd34e11bef8ea0f0b35d45e663169d73d15e0bc632fd2025ff816ce0642d8904"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/gnocchi-dmg-smoke.json",
+          "receiptSha256": "89ecae246de2503334ed0404d09096ad6c9d8232fe2a06538a5e859c458c11b2",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/gnocchi-dmg-first-run.png",
+          "screenshotSha256": "f7992edf36cbd4c81eb744083b3446bd97903ed57eca585ca22cdf4355e1f573"
+        }
+      }
+    },
+    {
+      "app": "ravioli",
+      "origin": "http://127.0.0.1:30774",
+      "assetsVerified": 10,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/ravioli-zip-smoke.json",
+          "receiptSha256": "2d3e72ceb80a42e294638ec574b7675469019be83afab55ca0a266911511d1a5",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/ravioli-zip-first-run.png",
+          "screenshotSha256": "14c1c3ec852b9f2585bd3a5af29d186b88756be0656546677549885a5296770d"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/ravioli-dmg-smoke.json",
+          "receiptSha256": "986188f9ac5609ec894ae5156befafcaba570708c80d29f874112589ca0e08d2",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/ravioli-dmg-first-run.png",
+          "screenshotSha256": "ffba5b01c391ab3ca0671b6680beb7e4cddc3a6d961ae239c0d6d63f5d2ea5d0"
+        }
+      }
+    },
+    {
+      "app": "rotini",
+      "origin": "http://127.0.0.1:30775",
+      "assetsVerified": 6,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/rotini-zip-smoke.json",
+          "receiptSha256": "39311603632b1c33dff143463e7efe40f46f604d9d39b6c3950949032d428ae1",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/rotini-zip-first-run.png",
+          "screenshotSha256": "4a475572ed0b1a337ebbd66e57ef907476465e33b2af4cb7fd5386509ee6142d"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/rotini-dmg-smoke.json",
+          "receiptSha256": "825c8bd8341e7a90bea45eb0a2c10afa086b1f89882e0448e8fde68ead3502a7",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/rotini-dmg-first-run.png",
+          "screenshotSha256": "1d165fc9505e0e526f4ff4759b8c0fe9b23547199b9f47c5538d27c4bfeda69e"
+        }
+      }
+    },
+    {
+      "app": "penne",
+      "origin": "http://127.0.0.1:30776",
+      "assetsVerified": 4,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/penne-zip-smoke.json",
+          "receiptSha256": "04cc5bf20ccbef053ac0328bf22472d660856b8beeedd464e4c068b7ed3f2777",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/penne-zip-first-run.png",
+          "screenshotSha256": "5152d73fbe2da8211abd85a4a0e87313d6b607a7d138458834d74a742bdb10cf"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/penne-dmg-smoke.json",
+          "receiptSha256": "7e446792549631e6deacf3dcfb5a80d4ee3bc94a3e9380804191251671213cc8",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/penne-dmg-first-run.png",
+          "screenshotSha256": "369f4f485f6a1203628903c44e1882ea682cf611473b895770fce29a2c9b2e3f"
+        }
+      }
+    },
+    {
+      "app": "lasagna",
+      "origin": "http://127.0.0.1:30777",
+      "assetsVerified": 4,
+      "bundledToolsOpened": 0,
+      "stableOriginRelaunch": true,
+      "receipts": {
+        "zip": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/lasagna-zip-smoke.json",
+          "receiptSha256": "5b2c08487c5ac329f25dea8c50f9ad1a3ed9cecae175e9eeef3f827fa7731054",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/lasagna-zip-first-run.png",
+          "screenshotSha256": "0651e7af0beb4101200276b04452d2e8f16aadfd84df920e87acd5224782fddb"
+        },
+        "dmg": {
+          "receipt": "artifacts/pasta-alpha-installers-20260808/lasagna-dmg-smoke.json",
+          "receiptSha256": "2d3d69c0518eabfb9f23f5bffdeb784e7921265a496a0d45fa3c2bb1d9a9b6ee",
+          "screenshot": "artifacts/pasta-alpha-installers-20260808/lasagna-dmg-first-run.png",
+          "screenshotSha256": "e7caf1585248bade296557c9f2de71da3dcc302479107c837e604ea29f4a4b25"
+        }
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "app": "pasta-suite",
+      "distribution": "dmg",
+      "path": "apps/pasta-suite-desktop/release/Pasta-Suite-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 224929142,
+      "sha256": "2b849bb69f806c7932b9151ee4247da737d68b66d8726e930e1cf4bf6a2d894c",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "pasta-suite",
+      "distribution": "zip",
+      "path": "apps/pasta-suite-desktop/release/Pasta-Suite-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 224958650,
+      "sha256": "0ca0d291cd200221468aea1f5fcf23ee80822a3df4a79670580e7182ee75fcf2",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "ch-ease",
+      "distribution": "dmg",
+      "path": "apps/ch-ease-desktop/release/CH-EASE-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 223240265,
+      "sha256": "7e72dd382f1527d116d80a7d41148b1ebc35895422cfd75378a7f0e8121aaf91",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "ch-ease",
+      "distribution": "zip",
+      "path": "apps/ch-ease-desktop/release/CH-EASE-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 223162209,
+      "sha256": "afe140872ba4bb67551d242c24d869ff44a2db2b3e243f34dbb448d23dc42ee1",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "macaroni",
+      "distribution": "dmg",
+      "path": "apps/macaroni-desktop/release/Macaroni-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214943703,
+      "sha256": "90811b3693280acbe44fdf533168bec537916886eded27243d3100b43414199a",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "macaroni",
+      "distribution": "zip",
+      "path": "apps/macaroni-desktop/release/Macaroni-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214788841,
+      "sha256": "ab893b55161c79fbc1d09481c512de9728ff57e9897c2c69e71ba05f8a4596b6",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "spaghetti",
+      "distribution": "dmg",
+      "path": "apps/spaghetti-desktop/release/Spaghetti-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214771431,
+      "sha256": "5338895e2c1174546a9fca8787a72cde823349288148adf4d495ec82c811dc81",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "spaghetti",
+      "distribution": "zip",
+      "path": "apps/spaghetti-desktop/release/Spaghetti-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214691110,
+      "sha256": "f73799a2c8f46a295b84c97818a39633d690ec0005bf02fcd1d0499b50cde560",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "gnocchi",
+      "distribution": "dmg",
+      "path": "apps/gnocchi-desktop/release/Gnocchi-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214992460,
+      "sha256": "23f171cc97d9fedb7de53dd6471c150bb8a334514de29931e2cc07d3feaa32d7",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "gnocchi",
+      "distribution": "zip",
+      "path": "apps/gnocchi-desktop/release/Gnocchi-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214802379,
+      "sha256": "c06978337fa9d6760abf769758c482211dcbf07f97933f265e80ee6242ada81c",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "ravioli",
+      "distribution": "dmg",
+      "path": "apps/ravioli-desktop/release/Ravioli-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214894445,
+      "sha256": "d32a4937831b3e79d1bb05306ef3b992e12cc8e3ee2422e7e209e8fedc8529b8",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "ravioli",
+      "distribution": "zip",
+      "path": "apps/ravioli-desktop/release/Ravioli-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214789387,
+      "sha256": "ed8f6fb08f385bc6a6f3416f80629b045715b331a7c5e2c0eb68636364120cdb",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "rotini",
+      "distribution": "dmg",
+      "path": "apps/rotini-desktop/release/Rotini-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214930146,
+      "sha256": "9c2dd2bf0cf9abf1df618d5ca13c68544591888743de29d12977547bb8f2d595",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "rotini",
+      "distribution": "zip",
+      "path": "apps/rotini-desktop/release/Rotini-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214782106,
+      "sha256": "6cbf20ac858e9782b17157f3740482d0d7b8ebd74851d8a5150242049540f993",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "penne",
+      "distribution": "dmg",
+      "path": "apps/penne-desktop/release/Penne-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214869131,
+      "sha256": "bdcb7e4788e41a27053a9a33d2523461de346b2faca43205659c4880b1ecfb75",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "penne",
+      "distribution": "zip",
+      "path": "apps/penne-desktop/release/Penne-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214718847,
+      "sha256": "a311eb7a87aa9049091bdba9e8805c69a78f05dae02e8c451ca7f5c877be3242",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "lasagna",
+      "distribution": "dmg",
+      "path": "apps/lasagna-desktop/release/Lasagna-Studio-1.0.1-alpha.1-mac-universal.dmg",
+      "bytes": 214773921,
+      "sha256": "1797cd46901c8a3d949fd25f3b58516cb835e3a9d4045a564ab2299e840da01b",
+      "unsigned": true,
+      "verified": "dmg-verify+mount+copy+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    {
+      "app": "lasagna",
+      "distribution": "zip",
+      "path": "apps/lasagna-desktop/release/Lasagna-Studio-1.0.1-alpha.1-mac-universal.zip",
+      "bytes": 214687401,
+      "sha256": "d73eaa9d746afb8b22876ed40b029f4ef18b32b1f0eff0967582021d830ed2bc",
+      "unsigned": true,
+      "verified": "unzip-test+lipo+launch+relaunch",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    }
+  ],
+  "limitations": [
+    "dirty-preflight provenance; clean commit rebuild required before publication",
+    "unsigned and not notarized",
+    "native Windows and arm64 Debian/Raspberry Pi runtime gates are outside this macOS handoff"
+  ]
+}

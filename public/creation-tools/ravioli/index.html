@@ -42,10 +42,12 @@
       </section>
 
       <section class="pp-card">
-        <h2>2 · Router target</h2>
+        <h2>2 · Router + blind controller</h2>
+        <p class="pp-warn"><strong>First collection:</strong> the reusable router/controller pair has an estimated one-time Tezos origination and storage cost of about 11.3 tez, plus normal variable fees. Reuse that same pair for many packs.</p>
+        <p class="pp-note">“Add a pack to a router I administer” is the normal repeat-drop path. A new collection deploys its blind controller first, permanently binds that controller to the router, then records both addresses for Colander.</p>
         <div class="pp-radio">
-          <label><input type="radio" name="target" value="new_collection" checked /> Create a new Ravioli router</label>
-          <label><input type="radio" name="target" value="existing_contract" /> Add a pack to a router I administer</label>
+          <label><input type="radio" name="target" value="new_collection" checked /> Create a new reusable router + controller</label>
+          <label><input type="radio" name="target" value="existing_contract" /> Add a pack to a router I administer (normal repeat drop)</label>
         </div>
         <div id="newCollectionFields">
           <label>Collection name <input id="collName" type="text" placeholder="My Atomic Packs" /></label>
@@ -85,11 +87,19 @@
           <label>Price (tez) <input id="bnPrice" type="number" min="0" step="0.000001" value="1" /></label>
           <label>Sale quantity <input id="bnSaleCount" type="number" min="1" value="1" /></label>
         </div>
+        <div class="pp-row">
+          <label>Sale starts (local, optional) <input id="bnSaleStart" type="datetime-local" /></label>
+          <label>Primary sale ends <input id="bnSaleEnd" type="datetime-local" /></label>
+          <label>Reveal deadline <input id="bnRevealDeadline" type="datetime-local" /></label>
+          <label>Delivery / refund cutoff <input id="bnOpenDeadline" type="datetime-local" /></label>
+        </div>
+        <p id="bnEditionPolicy" class="pp-note" role="status" aria-live="polite">Blind packs are Limited Editions: the complete finite wrapper supply is sold before reveal. Ravioli checks every Pasta-native child window before any pin or transaction.</p>
+        <p class="pp-note">Blind ordering is enforced as primary sale end &lt; reveal deadline &lt; delivery/refund cutoff. Any enclosed LE also forces a finite Ravioli wrapper supply and finite sale ending strictly before that child’s earliest public mint expiry; reveal must occur no later than the expiry. The open/refund cutoff may be later because child capacity is already reserved, so delivery does not reopen public issuance.</p>
         <label>Description <textarea id="bnDesc" rows="2"></textarea></label>
         <label>Tags <input id="bnTags" type="text" placeholder="pack, generative, hybrid" /></label>
         <label>Wrapper artwork <input id="bnArtifact" type="file" accept="image/*,video/*,audio/*" /></label>
         <span id="bnArtifactStatus" class="pp-note"></span>
-        <label><input type="checkbox" id="bnMystery" /> Hide the public contents URI until an admin reveal</label>
+        <label><input type="checkbox" id="bnMystery" disabled /> Blind commit/reveal (fixed by pack type)</label>
         <input id="bnRedeemable" type="checkbox" checked hidden />
         <p id="bnMysteryNote" class="pp-warn"></p>
       </section>
@@ -144,14 +154,76 @@
         <label>Open kit file <input id="openKitFile" type="file" accept="application/json,.json" /></label>
         <label>Open kit <textarea id="openKit" rows="9" spellcheck="false" placeholder="Paste the creator-issued ravioli-open-kit JSON"></textarea></label>
         <div class="pp-row">
-          <label>Generated artifact (PNG, GIF, or offline ZIP) <input id="openArtifact" type="file" accept="image/png,image/gif,application/zip,.zip" /></label>
-          <label>Display / thumbnail image for ZIP <input id="openPreview" type="file" accept="image/png,image/gif" /></label>
+          <button id="btnDownloadOpenKit" type="button">Download current open kit</button>
+          <span id="publishRecoveryInfo" class="pp-note" role="status" aria-live="polite"></span>
+        </div>
+        <aside id="publishRecoveryPanel" class="pp-recovery" hidden aria-labelledby="publishRecoveryTitle">
+          <h3 id="publishRecoveryTitle">Recovery required before another write</h3>
+          <p id="publishRecoverySummary" class="pp-warn"></p>
+          <pre id="publishRecoveryDetails" class="pp-recovery-details"></pre>
+          <p><a id="publishRecoveryExplorer" href="#" target="_blank" rel="noreferrer" hidden>Inspect the submitted operation on TzKT</a></p>
+          <div class="pp-row">
+            <button id="btnDownloadRecovery" type="button">Download private recovery journal</button>
+            <button id="btnCheckRecovery" type="button">Check chain state (read only)</button>
+            <button id="btnDiscardRecovery" type="button" hidden>Discard untouched draft</button>
+          </div>
+          <p class="pp-warn">The private journal may contain unrevealed recipe nonces. Keep it private. Ravioli never retries an uncertain operation automatically.</p>
+        </aside>
+        <div class="pp-row">
           <button id="btnRedeem" type="button" class="pp-primary">Open one pack atomically</button>
         </div>
+        <p class="pp-note">No artwork upload is accepted. Generative children are reproduced from the committed Rotini generator plus immutable pack/serial/action/project seed, then cached as PNG, GIF, or dependency-complete offline ZIP. The generator and seed are canonical; the Tezos contract does not pixel-verify the self-rendered cache.</p>
         <div class="pp-row">
-          <label>Public contents manifest URI <input id="revealUri" type="text" placeholder="ipfs://…" /></label>
-          <button id="btnReveal" type="button">Publish one-time contents reveal</button>
+          <label>Authenticated encrypted reveal URI <input id="revealUri" type="text" placeholder="Pinned as ciphertext before sale" readonly /></label>
+          <button id="btnReveal" type="button">Publish one-time reveal key</button>
         </div>
+        <p class="pp-warn">Before sale, public metadata exposes policy/counts and authenticated ciphertext—not plaintext child identities, recipe nonces, or the serial mapping. Funding and reservations are still visible on Tezos. Revealing permanently publishes the committed key and salted cyclic rotation so holder pages can decrypt every recipe. Do it only when the mystery window is over.</p>
+        <details>
+          <summary>Transfer an unopened wrapper</summary>
+          <p class="pp-note">Transfer moves the wrapper and its exact top LIFO blind claim together. Unrevealed wrappers freeze at the reveal deadline; revealed wrappers freeze at the open/refund cutoff.</p>
+          <div class="pp-row">
+            <label>Recipient <input id="transferRecipient" type="text" placeholder="tz… or KT1…" /></label>
+            <button id="btnTransferWrapper" type="button">Transfer one wrapper + claim</button>
+          </div>
+          <p id="transferInfo" class="pp-note" role="status" aria-live="polite"></p>
+        </details>
+        <details>
+          <summary>Expired claim refunds</summary>
+          <p class="pp-note">After the applicable cutoff, anyone may credit an unopened claim’s refund to its current holder. Funds never go to the caller. The credited holder then withdraws separately, so a rejecting destination cannot block pack closure and a failed withdrawal leaves the credit intact.</p>
+          <div class="pp-row">
+            <label>Current wrapper holder <input id="refundHolder" type="text" placeholder="Defaults to connected account" /></label>
+            <button id="btnCreditRefund" type="button">Credit one expired claim</button>
+          </div>
+          <div class="pp-row">
+            <label>My withdrawal destination <input id="refundDestination" type="text" placeholder="Defaults to connected tz account" /></label>
+            <button id="btnWithdrawRefund" type="button">Withdraw my refund credit</button>
+          </div>
+          <div class="pp-row">
+            <button id="btnCancelUnrevealed" type="button">Close fully refunded unrevealed pack</button>
+          </div>
+          <p class="pp-note">Use an implicit tz account for normal withdrawal. Advanced contract testing may enter a KT1; if that contract rejects tez, the whole withdrawal reverts and the holder’s credit remains available.</p>
+          <p class="pp-note">After the reveal deadline, anyone may close an unrevealed pack only when every purchased claim is refunded and controller escrow is zero. Holder withdrawal credits remain available after closure.</p>
+          <p id="refundInfo" class="pp-note" role="status" aria-live="polite"></p>
+          <p id="closureInfo" class="pp-note" role="status" aria-live="polite"></p>
+        </details>
+        <details>
+          <summary>Recover reserved child capacity</summary>
+          <p class="pp-note">After a pack is cancelled, its administrator can release unused adapter capacity back to the child contract. Ravioli verifies the router allowance and official adapter reservation before and after the operation.</p>
+          <div class="pp-row">
+            <label>Official adapter <input id="recoverAdapter" type="text" placeholder="KT1…" /></label>
+            <label>Adapter kind
+              <select id="recoverAdapterKind">
+                <option value="1">Gnocchi allocated mint</option>
+                <option value="2">Rotini generative mint</option>
+              </select>
+            </label>
+            <label>Resource id <input id="recoverResourceId" type="number" min="0" value="0" /></label>
+            <label>Capacity <input id="recoverCapacity" type="number" min="1" value="1" /></label>
+            <button id="btnRecoverAdapter" type="button">Release reserved capacity</button>
+          </div>
+          <p class="pp-warn">This is a creator recovery write. It cannot withdraw capacity while wrappers can still be opened.</p>
+          <p id="recoverAdapterInfo" class="pp-note" role="status" aria-live="polite"></p>
+        </details>
       </section>
 
       <section class="pp-card pp-card-wide">

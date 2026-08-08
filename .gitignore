@@ -18,6 +18,7 @@ apps/penne-desktop/penne/
 apps/penne-desktop/release/
 apps/lasagna-desktop/lasagna/
 apps/lasagna-desktop/release/
+apps/*-desktop/provenance/
 .env
 .env.*
 !.env.example

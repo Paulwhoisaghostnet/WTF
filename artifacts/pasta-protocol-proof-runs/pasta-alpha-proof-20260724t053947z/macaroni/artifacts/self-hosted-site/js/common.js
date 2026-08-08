@@ -1,0 +1,1164 @@
+/* Macaroni — shared helpers (wallet, RPC, IPFS, bytes).
+   Depends on vendor/tezos.js which exposes window.TZ. */
+
+"use strict";
+
+const MD = (() => {
+  const NETWORKS = {
+    mainnet: {
+      label: "Mainnet",
+      rpc: "https://tezos-mainnet.octez.io/",
+      rpcFallbacks: ["https://tcinfra.net/rpc/tezos/mainnet"],
+      beaconNetwork: "mainnet",
+    },
+    shadownet: {
+      label: "Shadownet (test)",
+      rpc: "https://tezos-shadownet.octez.io/",
+      rpcFallbacks: ["https://tcinfra.net/rpc/tezos/shadownet"],
+      beaconNetwork: "shadownet",
+    },
+  };
+
+  const CHAIN_IDS = {
+    mainnet: "NetXdQprcVkpaWU",
+    shadownet: "NetXsqzbfFenSTS",
+  };
+
+  const DEFAULT_GATEWAY = "https://ipfs.fileship.xyz/";
+  const WALLET_SESSION_PREFIX = "macaroni.wallet.session.v1";
+  const TEZOS_MINIMAL_FEE_MUTEZ = 100;
+  const TEZOS_MINIMAL_MUTEZ_PER_BYTE = 1;
+  const TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT = 0.1;
+  const DEFAULT_OPERATION_SIZE_BYTES = 1800;
+  const HARD_STORAGE_LIMIT_PER_OPERATION = 60_000;
+  const DEFAULT_STORAGE_BASE_BYTES = 400;
+  const DEFAULT_STORAGE_PER_UNIT_BYTES = 900;
+  const DEFAULT_RPC_READ_TIMEOUT_MS = 5_000;
+
+  const ADDRESS_RE = /^(tz1|tz2|tz3|tz4|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
+  const isAddress = (s) => ADDRESS_RE.test(String(s || "").trim());
+
+  let tezos = null;
+  let wallet = null;
+  let activeAccount = null;
+  let netKey = null;
+  let rpcUrl = null;
+  let connectPromise = null;
+  let customRpcOverride = false;
+  let octezWalletInstalled = false;
+  const subscribedWalletClients = new WeakSet();
+
+  function walletSessionKey() {
+    const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
+    return `${WALLET_SESSION_PREFIX}:${netKey || "unknown"}:${path}`;
+  }
+
+  function readRouteHandoff() {
+    const params = new URLSearchParams(location.search || "");
+    const source = params.get("colanderHandoff") || params.get("handoff") || "";
+    if (source !== "colander-workspace") return null;
+    return {
+      source,
+      projectId: params.get("projectId") || "",
+      projectTitle: params.get("projectTitle") || "",
+      network: params.get("network") || "",
+    };
+  }
+
+  function recordColanderContract(contract) {
+    const handoff = readRouteHandoff();
+    if (!handoff?.projectId || !contract) return false;
+    try {
+      const key = "wtfos.pasta.colander.workspace.v1";
+      const projects = JSON.parse(localStorage.getItem(key) || "[]");
+      const next = projects.map((project) => project.id === handoff.projectId ? {
+        ...project,
+        toolId: "macaroni",
+        stage: "deployed",
+        contracts: Array.from(new Set([...(project.contracts || []), contract])),
+        updatedAt: new Date().toISOString(),
+      } : project);
+      localStorage.setItem(key, JSON.stringify(next));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function readWalletSession() {
+    try {
+      const raw = localStorage.getItem(walletSessionKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveWalletSession(address) {
+    try {
+      localStorage.setItem(
+        walletSessionKey(),
+        JSON.stringify({ address, network: netKey, rpcUrl, savedAt: new Date().toISOString() })
+      );
+    } catch (_) {
+      /* restricted storage */
+    }
+  }
+
+  function clearWalletSession() {
+    try {
+      localStorage.removeItem(walletSessionKey());
+    } catch (_) {
+      /* restricted storage */
+    }
+  }
+
+  function getNetworks() {
+    return NETWORKS;
+  }
+
+  function setupToolkit(networkKey, customRpc) {
+    netKey = networkKey;
+    customRpcOverride = Boolean(customRpc && normalizedRpc(customRpc) !== normalizedRpc(NETWORKS[networkKey].rpc));
+    rpcUrl = customRpc || NETWORKS[networkKey].rpc;
+    tezos = configureToolkit(new TZ.TezosToolkit(rpcUrl));
+    if (wallet) {
+      configureWalletClient(wallet);
+      tezos.setWalletProvider(wallet);
+    }
+    return tezos;
+  }
+
+  function configureToolkit(tk) {
+    if (
+      tk &&
+      typeof tk.setPackerProvider === "function" &&
+      typeof TZ.MichelCodecPacker === "function"
+    ) {
+      try {
+        tk.setPackerProvider(new TZ.MichelCodecPacker());
+      } catch (_) {
+        /* static bundles without the local packer fall back to RPC packing */
+      }
+    }
+    return tk;
+  }
+
+  function getToolkit() {
+    if (!tezos) throw new Error("Toolkit not initialised — pick a network first");
+    return tezos;
+  }
+
+  function useToolkitAdapter(adapter) {
+    if (
+      !adapter ||
+      !adapter.rpc ||
+      !adapter.tz ||
+      !adapter.contract ||
+      !adapter.wallet ||
+      !adapter.estimate
+    ) {
+      throw new Error("toolkit adapter is missing required Tezos capabilities");
+    }
+    tezos = adapter;
+    return tezos;
+  }
+
+  // The RPC must actually be the network the user selected (catches bad
+  // custom RPC overrides before any tez moves). In strict mode an
+  // unreachable RPC also fails (required before signing operations); in
+  // lax mode only a confirmed mismatch fails, so a momentary RPC hiccup
+  // never blocks the wallet pairing flow itself.
+  async function assertRpcChainId(strict) {
+    const expected = CHAIN_IDS[netKey];
+    if (!expected) return; // custom aliases stay opt-in for exploratory dev RPCs
+    let actual;
+    try {
+      actual = await withRpcReadFallback(() => getToolkit().rpc.getChainId());
+    } catch (e) {
+      if (!strict) return; // re-checked strictly before every operation
+      throw new Error(
+        `could not reach the ${netKey} RPC at ${rpcUrl} — check your connection or RPC override (${e.message})`
+      );
+    }
+    if (actual !== expected)
+      throw new Error(
+        `RPC network mismatch: app is set to ${netKey} (${expected}) but the RPC reports ${actual} — check your RPC override`
+      );
+  }
+
+  function accountMatchesNetwork(acc) {
+    const net = NETWORKS[netKey];
+    if (!acc || !acc.network || !net) return false;
+    if (net.beaconNetwork === "custom")
+      return acc.network.type === "custom" && acc.network.name === netKey;
+    return acc.network.type === net.beaconNetwork;
+  }
+
+  function normalizedRpc(value) {
+    return String(value || "").replace(/\/+$/, "");
+  }
+
+  function rpcFallbackUrls() {
+    if (customRpcOverride) return [];
+    const net = NETWORKS[netKey];
+    const primary = normalizedRpc(net?.rpc);
+    const current = normalizedRpc(rpcUrl);
+    return (net?.rpcFallbacks || [])
+      .filter((url) => normalizedRpc(url) !== current)
+      .filter((url) => normalizedRpc(url) !== primary || current !== primary);
+  }
+
+  function isRecoverableRpcError(err) {
+    const msg = String((err && (err.message || err.name || err.stack)) || err || "").toLowerCase();
+    return /access-control|cors|failed to fetch|load failed|networkerror|err_failed|pack_data|rpc|timeout/.test(msg);
+  }
+
+  function switchRpcFallback(err) {
+    const next = rpcFallbackUrls()[0];
+    if (!next || !isRecoverableRpcError(err)) return false;
+    rpcUrl = next;
+    tezos = configureToolkit(new TZ.TezosToolkit(rpcUrl));
+    if (wallet) {
+      configureWalletClient(wallet);
+      tezos.setWalletProvider(wallet);
+    }
+    console.warn(`[Macaroni] Switched Tezos RPC to fallback ${rpcUrl}:`, err);
+    return true;
+  }
+
+  async function withRpcFallback(fn) {
+    let lastErr;
+    const maxAttempts = rpcFallbackUrls().length + 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (!switchRpcFallback(err)) throw err;
+      }
+    }
+    throw lastErr;
+  }
+
+  function withRpcReadDeadline(fn, timeoutMs) {
+    let timer;
+    return Promise.race([
+      Promise.resolve().then(fn),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`RPC read timeout after ${timeoutMs}ms`)),
+          timeoutMs
+        );
+      }),
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  async function withRpcReadFallback(fn, options) {
+    const requestedTimeout = Number(options && options.timeoutMs);
+    const timeoutMs =
+      Number.isFinite(requestedTimeout) && requestedTimeout > 0
+        ? requestedTimeout
+        : DEFAULT_RPC_READ_TIMEOUT_MS;
+    return withRpcFallback(() => withRpcReadDeadline(fn, timeoutMs));
+  }
+
+  function accountNeedsNetworkSync(acc) {
+    if (!accountMatchesNetwork(acc)) return false;
+    const expected = beaconNetworkSpec();
+    const current = acc.network || {};
+    if (expected.type === "custom" && current.name !== expected.name) return true;
+    return normalizedRpc(current.rpcUrl) !== normalizedRpc(expected.rpcUrl);
+  }
+
+  async function syncActiveAccountNetwork(acc, options) {
+    if (!wallet || !acc || !wallet.client || !accountNeedsNetworkSync(acc)) return acc;
+    if (typeof wallet.client.setActiveAccount !== "function") {
+      if (options?.requireRpc)
+        throw new Error(`wallet cannot align operation RPC to ${rpcUrl} — reconnect your wallet and try again`);
+      return acc;
+    }
+    const updated = { ...acc, network: beaconNetworkSpec() };
+    try {
+      await wallet.client.setActiveAccount(updated);
+      return updated;
+    } catch (e) {
+      if (options?.requireRpc)
+        throw new Error(`could not align wallet operation RPC to ${rpcUrl} — reconnect your wallet and try again (${e.message || e})`);
+      return acc;
+    }
+  }
+
+  // Adopt the cached Beacon session only if it was granted for the network
+  // the app is on; otherwise drop it so a stale testnet session can never
+  // sign for a mainnet flow (or vice versa).
+  async function ensureSessionNetwork(options) {
+    if (!wallet) return activeAccount;
+    let acc = await wallet.client.getActiveAccount();
+    if (!acc) {
+      activeAccount = null;
+      return null;
+    }
+    if (!accountMatchesNetwork(acc)) {
+      await wallet.clearActiveAccount();
+      activeAccount = null;
+      return null;
+    }
+    acc = await syncActiveAccountNetwork(acc, options);
+    activeAccount = acc.address;
+    return activeAccount;
+  }
+
+  // Call before every operation that signs/sends (deploy, sync, mint).
+  async function assertOperationSafety() {
+    await assertRpcChainId(true);
+    const addr = await ensureSessionNetwork({ requireRpc: true });
+    if (!addr)
+      throw new Error(
+        `wallet is not connected on ${netKey} — click Connect to pair on the right network`
+      );
+    return addr;
+  }
+
+  function beaconNetworkSpec() {
+    const net = NETWORKS[netKey];
+    return net.beaconNetwork === "custom"
+      ? { type: "custom", name: netKey, rpcUrl }
+      : { type: net.beaconNetwork };
+  }
+
+  function beaconPreferredNetwork() {
+    const net = NETWORKS[netKey];
+    return net && net.beaconNetwork === "ghostnet" ? "ghostnet" : "mainnet";
+  }
+
+  function disableBeaconMetrics(client) {
+    if (!client) return;
+    client.enableMetrics = false;
+    client.updateMetricsStorage = async () => {};
+    client.sendMetrics = () => {};
+  }
+
+  function activeAccountEventName() {
+    const root = typeof window !== "undefined" ? window : {};
+    const sources = [TZ, root.MacaroniOctezConnect, root.beacon].filter(Boolean);
+    for (const source of sources) {
+      const eventName = source.BeaconEvent && source.BeaconEvent.ACTIVE_ACCOUNT_SET;
+      if (eventName) return eventName;
+    }
+    return "ACTIVE_ACCOUNT_SET";
+  }
+
+  function updateActiveAccountFromEvent(account) {
+    const active = account && account.account ? account.account : account;
+    activeAccount = active && active.address ? active.address : null;
+    if (activeAccount) saveWalletSession(activeAccount);
+    else clearWalletSession();
+  }
+
+  function subscribeWalletClient(client) {
+    if (!client || subscribedWalletClients.has(client) || typeof client.subscribeToEvent !== "function") return;
+    subscribedWalletClients.add(client);
+    try {
+      client.subscribeToEvent(activeAccountEventName(), updateActiveAccountFromEvent);
+    } catch (err) {
+      subscribedWalletClients.delete(client);
+      console.warn("[Macaroni] Could not subscribe to wallet active-account events:", err);
+    }
+  }
+
+  function subscribeWalletClients(w) {
+    if (!w) return;
+    if (typeof w.clients === "function") {
+      w.clients().forEach(subscribeWalletClient);
+      return;
+    }
+    subscribeWalletClient(w.client);
+  }
+
+  function configureWalletClient(w) {
+    const network = beaconNetworkSpec();
+    if (typeof w.configure === "function") {
+      w.configure({
+        network,
+        preferredNetwork: beaconPreferredNetwork(),
+        enableMetrics: false,
+        featuredWallets: ["kukai", "temple", "umami"],
+      });
+    }
+    // Beacon's DAppClient is a singleton: after a network switch the new
+    // constructor options can be ignored, so force the client network to
+    // match before any permission or operation request (kiln pattern).
+    w.client.network = network;
+    w.client.preferredNetwork = beaconPreferredNetwork();
+    w.client.featuredWallets = ["kukai", "temple", "umami"];
+    disableBeaconMetrics(w.client);
+    subscribeWalletClients(w);
+    return w;
+  }
+
+  function ensureOctezWalletInstalled() {
+    if (octezWalletInstalled) return;
+    if (typeof TZ.installOctezPrimaryWallet === "function") TZ.installOctezPrimaryWallet();
+    octezWalletInstalled = true;
+  }
+
+  function makeWallet(appName, options) {
+    const resetClient = !(options && options.resetClient === false);
+    const network = beaconNetworkSpec();
+    ensureOctezWalletInstalled();
+    const WalletClass = TZ.OctezPrimaryWallet || TZ.BeaconWallet;
+    const w = new WalletClass({
+      name: appName || "Macaroni",
+      network,
+      preferredNetwork: beaconPreferredNetwork(),
+      enableMetrics: false,
+      resetClient,
+      featuredWallets: ["kukai", "temple", "umami"],
+    });
+    return configureWalletClient(w);
+  }
+
+  function ensureWallet(appName, options) {
+    if (!wallet) wallet = makeWallet(appName, options);
+    else configureWalletClient(wallet);
+    tezos.setWalletProvider(wallet);
+    return wallet;
+  }
+
+  // A pairing left over from a previous session can be expired; Beacon then
+  // rejects every new request until its session localStorage state is wiped.
+  // Keep Beacon's local identity seed during an in-page reset; removing it
+  // underneath a live DAppClient produces "Secret seed not found".
+  function isBeaconIdentityKey(key) {
+    return /^beacon(-sdk)?:((sdk-secret-seed)|(user-id)|(sdk_version)|(matrix-selected-node)|(sdk-matrix-preserved-state))$/i.test(key);
+  }
+
+  function clearBeaconStorage(options) {
+    const preserveIdentity = Boolean(options && options.preserveIdentity);
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = localStorage.key(i);
+        if (
+          k &&
+          (k.startsWith("beacon:") || k.startsWith("beacon-sdk:")) &&
+          !(preserveIdentity && isBeaconIdentityKey(k))
+        ) keys.push(k);
+      }
+      keys.forEach((k) => localStorage.removeItem(k));
+    } catch (_) {
+      /* restricted storage */
+    }
+  }
+
+  async function resetBeaconPickerState() {
+    if (wallet) {
+      try {
+        if (typeof wallet.clearActiveAccount === "function") await wallet.clearActiveAccount();
+      } catch (_) {
+        /* stale account state may already be gone */
+      }
+      try {
+        if (wallet.client && typeof wallet.client.setActivePeer === "function")
+          await wallet.client.setActivePeer(undefined);
+      } catch (_) {
+        /* older Beacon clients keep active peer private */
+      }
+      try {
+        if (wallet.client && typeof wallet.client.setTransport === "function")
+          await wallet.client.setTransport(undefined);
+      } catch (_) {
+        /* no active transport */
+      }
+    }
+    clearBeaconStorage({ preserveIdentity: true });
+    activeAccount = null;
+  }
+
+  async function connectWallet(appName) {
+    if (!tezos) throw new Error("Pick a network first");
+    if (connectPromise) return connectPromise;
+    connectPromise = (async () => {
+      await assertRpcChainId();
+      const doConnect = async () => {
+        await resetBeaconPickerState();
+        ensureWallet(appName);
+        // Network is fixed on the client (constructor + realignment above);
+        // current Beacon SDKs reject a `network` property here.
+        await wallet.requestPermissions();
+        activeAccount = await wallet.getPKH();
+        saveWalletSession(activeAccount);
+        return activeAccount;
+      };
+      try {
+        return await doConnect();
+      } catch (e) {
+        if (!/expired/i.test(e && e.message ? e.message : String(e))) throw e;
+        clearBeaconStorage({ preserveIdentity: true });
+        return doConnect();
+      }
+    })();
+    try {
+      return await connectPromise;
+    } finally {
+      connectPromise = null;
+    }
+  }
+
+  async function disconnectWallet() {
+    await resetBeaconPickerState();
+    clearWalletSession();
+  }
+
+  async function restoreWallet(appName) {
+    if (!tezos) return null;
+    const stored = readWalletSession();
+    if (!stored || stored.network !== netKey || !stored.address) return null;
+    if (!wallet) {
+      ensureWallet(appName, { resetClient: false });
+    } else {
+      ensureWallet(appName, { resetClient: false });
+    }
+    let acc = null;
+    try {
+      acc = await wallet.client.getActiveAccount();
+    } catch (_) {
+      acc = null;
+    }
+    if (!acc || !accountMatchesNetwork(acc) || acc.address !== stored.address) {
+      clearWalletSession();
+      activeAccount = null;
+      return null;
+    }
+    activeAccount = acc.address;
+    saveWalletSession(activeAccount);
+    return activeAccount;
+  }
+
+  function getAccount() {
+    return activeAccount;
+  }
+
+  // ---------- bytes helpers ----------
+  const utf8ToHex = (s) => TZ.stringToBytes(s);
+  const hexToUtf8 = (h) => TZ.bytesToString(h);
+
+  // ---------- wtfOS API helpers ----------
+  let csrfToken = "";
+  async function getCsrfToken() {
+    if (csrfToken) return csrfToken;
+    const res = await fetch("/api/auth/csrf-token", { credentials: "same-origin" });
+    if (!res.ok) throw new Error("Could not get wtfOS CSRF token");
+    const json = await res.json();
+    csrfToken = json.csrfToken || "";
+    if (!csrfToken) throw new Error("wtfOS CSRF token response was empty");
+    return csrfToken;
+  }
+
+  async function apiFetch(url, options) {
+    const init = options || {};
+    const method = String(init.method || "GET").toUpperCase();
+    const unsafe = !["GET", "HEAD", "OPTIONS"].includes(method);
+    const send = async () => {
+      const headers = new Headers(init.headers || {});
+      if (unsafe && !headers.has("X-CSRF-Token")) {
+        headers.set("X-CSRF-Token", await getCsrfToken());
+      }
+      return fetch(url, {
+        ...init,
+        headers,
+        credentials: init.credentials || "same-origin",
+      });
+    };
+    let res = await send();
+    if (unsafe && res.status === 403) {
+      csrfToken = "";
+      res = await send();
+    }
+    return res;
+  }
+
+  // ---------- IPFS pinning ----------
+  // Providers: wtfOS server pinning, Pinata (JWT), or any IPFS HTTP API (Kubo /api/v0/add).
+  async function issueWtfosUploadTicket(blob, filename) {
+    const res = await apiFetch("/api/macaroni/ipfs/upload-ticket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: filename || "macaroni-upload",
+        byteSize: Number(blob?.size || 0),
+        mimeType: blob?.type || "application/octet-stream",
+      }),
+    });
+    if (!res.ok) throw new Error("wtfOS upload ticket error " + res.status + ": " + (await res.text()));
+    const json = await res.json();
+    if (!json.token || !json.uploadUrl) throw new Error("wtfOS upload ticket response was incomplete");
+    return json;
+  }
+
+  function responseHeadersFromXhr(raw) {
+    const headers = new Headers();
+    String(raw || "").trim().split(/[\r\n]+/).forEach((line) => {
+      const i = line.indexOf(":");
+      if (i > 0) headers.append(line.slice(0, i).trim(), line.slice(i + 1).trim());
+    });
+    return headers;
+  }
+
+  function uploadFormData(url, init, callbacks) {
+    const onUploadProgress = callbacks && callbacks.onUploadProgress;
+    const onUploadComplete = callbacks && callbacks.onUploadComplete;
+    if (typeof onUploadProgress !== "function" || typeof XMLHttpRequest === "undefined") {
+      return fetch(url, init);
+    }
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(init.method || "POST", url, true);
+      const headers = new Headers(init.headers || {});
+      headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+      xhr.withCredentials = init.credentials === "include";
+      xhr.upload.onprogress = (event) => {
+        onUploadProgress({
+          loaded: event.loaded,
+          total: event.lengthComputable ? event.total : 0,
+        });
+      };
+      xhr.upload.onload = () => {
+        if (typeof onUploadComplete === "function") onUploadComplete();
+      };
+      xhr.onerror = () => reject(new Error("Upload network request failed"));
+      xhr.ontimeout = () => reject(new Error("Upload network request timed out"));
+      xhr.onload = () => {
+        resolve(new Response(xhr.responseText, {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers: responseHeadersFromXhr(xhr.getAllResponseHeaders()),
+        }));
+      };
+      xhr.send(init.body);
+    });
+  }
+
+  async function pinBlob(provider, blob, filename, options) {
+    const uploadCallbacks = options || {};
+    if (provider.kind === "wtfos") {
+      const ticket = await issueWtfosUploadTicket(blob, filename);
+      const fd = new FormData();
+      fd.append("file", blob, filename);
+      const res = await uploadFormData(ticket.uploadUrl, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + ticket.token },
+        body: fd,
+        credentials: "omit",
+      }, uploadCallbacks);
+      if (!res.ok) {
+        const text = await res.text();
+        const route = ticket.direct ? "direct upload lane" : "standard app route";
+        const hint = res.status === 413 && !ticket.direct
+          ? " Configure the direct Macaroni upload hostname for files over the Cloudflare request limit."
+          : "";
+        throw new Error("wtfOS IPFS error " + res.status + " via " + route + ": " + text + hint);
+      }
+      const json = await res.json();
+      return json.cid || json.IpfsHash;
+    }
+    if (provider.kind === "pinata") {
+      const fd = new FormData();
+      fd.append("file", blob, filename);
+      const res = await uploadFormData("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + provider.jwt },
+        body: fd,
+      }, uploadCallbacks);
+      if (!res.ok) throw new Error("Pinata error " + res.status + ": " + (await res.text()));
+      const json = await res.json();
+      return json.IpfsHash;
+    }
+    if (provider.kind === "node") {
+      const fd = new FormData();
+      fd.append("file", blob, filename);
+      const base = provider.url.replace(/\/+$/, "");
+      const res = await uploadFormData(base + "/api/v0/add?pin=true&cid-version=1", {
+        method: "POST",
+        body: fd,
+      }, uploadCallbacks);
+      if (!res.ok) throw new Error("IPFS node error " + res.status + ": " + (await res.text()));
+      const text = await res.text();
+      const last = text.trim().split("\n").pop();
+      return JSON.parse(last).Hash;
+    }
+    throw new Error("Unknown pinning provider");
+  }
+
+  async function pinJson(provider, obj, filename, options) {
+    const blob = new Blob([JSON.stringify(obj)], { type: "application/json" });
+    return pinBlob(provider, blob, filename || "metadata.json", options);
+  }
+
+  function ipfsToHttp(uri, gateway) {
+    if (!uri) return "";
+    const gw = (gateway || DEFAULT_GATEWAY).replace(/\/+$/, "") + "/";
+    return uri.startsWith("ipfs://") ? gw + uri.slice(7) : uri;
+  }
+
+  // ---------- CSV parsing ----------
+  function assertCsvFile(file) {
+    if (!/\.csv$/i.test(file.name || "") && file.type !== "text/csv")
+      throw new Error("Only CSV files are supported.");
+  }
+
+  function parseCsvText(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') {
+            cell += '"';
+            i += 1;
+          } else {
+            quoted = false;
+          }
+        } else {
+          cell += ch;
+        }
+      } else if (ch === '"') {
+        quoted = true;
+      } else if (ch === ",") {
+        row.push(cell);
+        cell = "";
+      } else if (ch === "\n") {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+      } else if (ch !== "\r") {
+        cell += ch;
+      }
+    }
+    if (quoted) throw new Error("CSV has an unclosed quoted field.");
+    if (cell || row.length) {
+      row.push(cell);
+      rows.push(row);
+    }
+    return rows.filter((r) => r.some((v) => String(v).trim() !== ""));
+  }
+
+  async function parseCsvRows(file) {
+    assertCsvFile(file);
+    return parseCsvText(await file.text());
+  }
+
+  // Returns array of row objects with lower-cased headers.
+  async function parseCsv(file) {
+    const rows = await parseCsvRows(file);
+    if (!rows.length) return [];
+    const headers = rows[0].map((h, i) => {
+      const key = String(h || "").replace(/^\ufeff/, "").trim().toLowerCase();
+      if (!key) throw new Error(`missing header in column ${i + 1}`);
+      return key;
+    });
+    return rows.slice(1).map((r) => {
+      const out = {};
+      headers.forEach((h, i) => { out[h] = String(r[i] ?? "").trim(); });
+      return out;
+    });
+  }
+
+  // ---------- formatting ----------
+  const fmtTez = (mutez) => (Number(mutez) / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 6 }) + " ꜩ";
+  const short = (addr) => (addr ? addr.slice(0, 7) + "…" + addr.slice(-4) : "");
+
+  async function getBalanceMutez(address) {
+    const target = address || activeAccount;
+    if (!target) return null;
+    const balance = await withRpcReadFallback(() => getToolkit().tz.getBalance(target));
+    if (balance && typeof balance.toNumber === "function") return balance.toNumber();
+    return Number(balance);
+  }
+
+  function explorerUrl(networkKey, kt) {
+    const base = {
+      mainnet: "https://tzkt.io/",
+      shadownet: "https://shadownet.tzkt.io/",
+    }[networkKey] || "https://tzkt.io/";
+    return base + kt;
+  }
+
+  function objktUrl(networkKey, kt) {
+    return networkKey === "mainnet"
+      ? "https://objkt.com/collections/" + kt
+      : "https://objkt.com/collections/" + kt; // testnets are not indexed by objkt
+  }
+
+  const TZKT_API = {
+    mainnet: "https://api.tzkt.io",
+    shadownet: "https://api.shadownet.tzkt.io",
+  };
+
+  async function fetchContractStatus(networkKey, kt) {
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const [storageRes, contractRes] = await Promise.all([
+      fetch(`${api}/v1/contracts/${kt}/storage`),
+      fetch(`${api}/v1/contracts/${kt}`),
+    ]);
+    if (!storageRes.ok) throw new Error("contract not found on " + networkKey);
+    const storage = await storageRes.json();
+    const contract = contractRes.ok ? await contractRes.json() : {};
+    return { storage, metadata: contract.metadata || null };
+  }
+
+  async function transferParams(method, transferOpts) {
+    let params = transferOpts || {};
+    try {
+      params = await method.toTransferParams(transferOpts || {});
+    } catch (_) {
+      /* some methods accept transfer opts only on send */
+    }
+    return params;
+  }
+
+  function operationSizeEstimate(est, opts) {
+    const raw =
+      est?.operationSize ??
+      est?.opSize ??
+      est?.size ??
+      opts?.operationSize ??
+      opts?.opSize ??
+      DEFAULT_OPERATION_SIZE_BYTES;
+    const size = Number(raw);
+    return Number.isFinite(size) && size > 0 ? size : DEFAULT_OPERATION_SIZE_BYTES;
+  }
+
+  function feeFloorForGasLimit(gasLimit, est, opts) {
+    const gas = Number(gasLimit || 0);
+    if (!Number.isFinite(gas) || gas <= 0) return null;
+    const size = operationSizeEstimate(est, opts);
+    const base =
+      TEZOS_MINIMAL_FEE_MUTEZ +
+      size * TEZOS_MINIMAL_MUTEZ_PER_BYTE +
+      gas * TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT;
+    return Math.ceil(base * (opts?.feeFloorBuffer || 1.2) + (opts?.feeTipMutez || 1_000));
+  }
+
+  function fallbackStorageLimit(opts) {
+    opts = opts || {};
+    const unitsRaw = Number(opts.units || 1);
+    const units = Number.isFinite(unitsRaw) && unitsRaw > 0 ? Math.ceil(unitsRaw) : 1;
+    const baseRaw = Number(opts.storageBase ?? DEFAULT_STORAGE_BASE_BYTES);
+    const perUnitRaw = Number(opts.storagePerUnit ?? DEFAULT_STORAGE_PER_UNIT_BYTES);
+    const base = Number.isFinite(baseRaw) && baseRaw >= 0 ? Math.ceil(baseRaw) : DEFAULT_STORAGE_BASE_BYTES;
+    const perUnit = Number.isFinite(perUnitRaw) && perUnitRaw >= 0
+      ? Math.ceil(perUnitRaw)
+      : DEFAULT_STORAGE_PER_UNIT_BYTES;
+    return Math.min(HARD_STORAGE_LIMIT_PER_OPERATION, base + units * perUnit);
+  }
+
+  /** Estimate gas/storage with headroom — avoids wallet "script took more time" failures. */
+  async function estimateWalletOp(method, transferOpts, opts) {
+    const tezos = getToolkit();
+    opts = opts || {};
+    const params = await transferParams(method, transferOpts);
+    let gasLimit = opts.gasLimit;
+    let storageLimit = opts.storageLimit;
+    let fee;
+    let estimated = false;
+    try {
+      const est = await withRpcFallback(() => getToolkit().estimate.transfer(params));
+      gasLimit = Math.min(
+        1_040_000,
+        Math.ceil(est.gasLimit * (opts.gasBuffer || 1.65)) + (opts.gasPad || 40_000)
+      );
+      storageLimit = Math.min(
+        HARD_STORAGE_LIMIT_PER_OPERATION,
+        Math.ceil(est.storageLimit * (opts.storageBuffer || 1.5)) + (opts.storagePad || 120)
+      );
+      const estimateFee = Math.ceil(est.suggestedFeeMutez * (opts.feeBuffer || 1.35)) + (opts.feePad || 500);
+      const paddedFeeFloor = feeFloorForGasLimit(gasLimit, est, opts);
+      fee = Math.max(estimateFee, paddedFeeFloor || 0);
+      estimated = true;
+    } catch (err) {
+      if (opts.throwOnRecoverableRpcError && isRecoverableRpcError(err)) throw err;
+      const units = opts.units || 1;
+      gasLimit = gasLimit || Math.min(1_040_000, (opts.gasPerUnit || 380_000) * units);
+      if (storageLimit == null) {
+        storageLimit = fallbackStorageLimit({ ...opts, units });
+      } else {
+        const requestedStorage = Number(storageLimit);
+        storageLimit = Number.isFinite(requestedStorage) && requestedStorage >= 0
+          ? Math.min(HARD_STORAGE_LIMIT_PER_OPERATION, Math.ceil(requestedStorage))
+          : fallbackStorageLimit({ ...opts, units });
+      }
+      fee = feeFloorForGasLimit(gasLimit, null, opts);
+    }
+    return {
+      fee,
+      gasLimit,
+      storageLimit,
+      storageFeeMutez: Math.max(0, Number(storageLimit || 0)) * 250,
+      estimated,
+    };
+  }
+
+  async function sendWalletOp(method, transferOpts, opts) {
+    const limits = await estimateWalletOp(method, transferOpts, opts);
+    const sendOpts = {
+      ...(transferOpts || {}),
+      gasLimit: limits.gasLimit,
+      storageLimit: limits.storageLimit,
+    };
+    if (limits.fee != null) sendOpts.fee = limits.fee;
+    return withRpcFallback(() => method.send(sendOpts));
+  }
+
+  function submittedOperationHash(operation) {
+    return String(operation?.opHash || operation?.hash || "").trim();
+  }
+
+  function indexedOperationTarget(row) {
+    return row?.target?.address || row?.target || row?.originatedContract?.address || "";
+  }
+
+  function indexedOperationFailure(row) {
+    const error = Array.isArray(row?.errors) ? row.errors[0] : null;
+    return String(error?.id || error?.type || error?.with?.string || row?.status || "operation rejected")
+      .replace(/^proto\.[^.]+\./, "");
+  }
+
+  /**
+   * Confirmation means inclusion, not success: Tezos can include an operation
+   * with `backtracked` or `failed` status. Require an independently indexed
+   * `applied` row before the UI advances to its next state-changing step.
+   */
+  async function assertOperationApplied(operation, opts) {
+    opts = opts || {};
+    const hash = submittedOperationHash(operation);
+    if (!hash) throw new Error("wallet did not return an operation hash");
+    const api = TZKT_API[opts.network || netKey] || TZKT_API.mainnet;
+    const attempts = Math.max(1, Number(opts.attempts || 24));
+    const delayMs = Math.max(0, Number(opts.delayMs ?? 1_500));
+    let lastFailure = "not indexed";
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const response = await fetch(`${api}/v1/operations/${encodeURIComponent(hash)}`, { cache: "no-store" });
+        if (response.ok) {
+          const json = await response.json();
+          const rows = (Array.isArray(json) ? json : [json]).filter((row) => {
+            if (!row || row.hash !== hash) return false;
+            if (opts.contractAddress && indexedOperationTarget(row) !== opts.contractAddress) return false;
+            if (opts.entrypoint && row?.parameter?.entrypoint !== opts.entrypoint) return false;
+            return true;
+          });
+          if (rows.length) {
+            const rejected = rows.find((row) => row.status !== "applied");
+            if (rejected) {
+              throw new Error(
+                `operation ${short(hash)} was ${rejected.status || "rejected"}: ${indexedOperationFailure(rejected)}`
+              );
+            }
+            return rows[0];
+          }
+          lastFailure = "operation hash was indexed without the expected target or entrypoint";
+        } else {
+          lastFailure = `indexer HTTP ${response.status}`;
+        }
+      } catch (error) {
+        if (/operation .* was .*:/.test(String(error?.message || error))) throw error;
+        lastFailure = error?.message || String(error);
+      }
+      if (attempt < attempts && delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    throw new Error(`operation ${short(hash)} was not independently indexed as applied: ${lastFailure}`);
+  }
+
+  async function fetchOwnedTokenIds(networkKey, kt, holder) {
+    if (!kt || !holder) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const url = new URL(`${api}/v1/tokens/balances`);
+    url.searchParams.set("account", holder);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("balance.gt", "0");
+    url.searchParams.set("select", "token.tokenId");
+    url.searchParams.set("limit", "10000");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`owned mint lookup failed: ${res.status}`);
+    const json = await res.json();
+    return (Array.isArray(json) ? json : [])
+      .map((value) => Number(typeof value === "object" ? value?.token?.tokenId ?? value?.tokenId : value))
+      .filter((id) => Number.isInteger(id) && id >= 0)
+      .sort((a, b) => a - b);
+  }
+
+  async function fetchMintedTokenIds(networkKey, kt, holder) {
+    if (!kt || !holder) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const url = new URL(`${api}/v1/tokens/transfers`);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("to", holder);
+    url.searchParams.set("from.null", "true");
+    url.searchParams.set("select", "token.tokenId");
+    url.searchParams.set("limit", "10000");
+    url.searchParams.set("sort.desc", "id");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`minted token lookup failed: ${res.status}`);
+    const json = await res.json();
+    const seen = new Set();
+    return (Array.isArray(json) ? json : [])
+      .map((value) => Number(typeof value === "object" ? value?.token?.tokenId ?? value?.tokenId : value))
+      .filter((id) => Number.isInteger(id) && id >= 0)
+      .filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+  }
+
+  async function fetchRecentMintTransfers(networkKey, kt, limit) {
+    if (!kt) return [];
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const take = Math.min(50, Math.max(Number(limit || 8) * 4, Number(limit || 8)));
+    const url = new URL(`${api}/v1/tokens/transfers`);
+    url.searchParams.set("token.contract", kt);
+    url.searchParams.set("sort.desc", "id");
+    url.searchParams.set("limit", String(take));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`recent mints lookup failed: ${res.status}`);
+    const json = await res.json();
+    const rows = Array.isArray(json) ? json : [];
+    const seen = new Set();
+    return rows
+      .filter((row) => row && row.to && row.to.address && (!row.from || !row.from.address))
+      .map((row) => {
+        const tokenId = Number(row.token?.tokenId);
+        if (!Number.isInteger(tokenId) || tokenId < 0) return null;
+        const key = `${tokenId}:${row.to.address}:${row.transactionId || row.id}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return {
+          id: Number(row.id || 0),
+          tokenId,
+          timestamp: row.timestamp || "",
+          minter: row.to.address,
+          minterAlias: row.to.alias || "",
+          transactionId: row.transactionId || null,
+          token: row.token || {},
+        };
+      })
+      .filter(Boolean)
+      .slice(0, Math.max(1, Number(limit || 8)));
+  }
+
+  async function fetchObjktIdentities(addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const out = new Map();
+    if (!clean.length) return out;
+    const query =
+      "query MacaroniWalletProfiles($addresses:[String!]){" +
+      " holder(where:{address:{_in:$addresses}}, limit:25){ address alias tzdomain logo }" +
+      "}";
+    const res = await fetch("https://data.objkt.com/v3/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ query, variables: { addresses: clean } }),
+    });
+    if (!res.ok) throw new Error(`objkt identity lookup failed: ${res.status}`);
+    const json = await res.json();
+    for (const holder of json?.data?.holder || []) {
+      if (!holder?.address) continue;
+      out.set(holder.address, {
+        address: holder.address,
+        alias: holder.alias || "",
+        tzdomain: holder.tzdomain || "",
+        logo: holder.logo || "",
+      });
+    }
+    return out;
+  }
+
+  async function fetchTzktIdentities(networkKey, addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const api = TZKT_API[networkKey] || TZKT_API.mainnet;
+    const out = new Map();
+    await Promise.allSettled(
+      clean.map(async (address) => {
+        const res = await fetch(`${api}/v1/accounts/${address}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        out.set(address, {
+          address,
+          alias: json.alias || "",
+        });
+      })
+    );
+    return out;
+  }
+
+  async function fetchWalletIdentities(networkKey, addresses) {
+    const clean = [...new Set((addresses || []).filter(isAddress))].slice(0, 25);
+    const [objkt, tzkt] = await Promise.all([
+      networkKey === "mainnet" ? fetchObjktIdentities(clean).catch(() => new Map()) : Promise.resolve(new Map()),
+      fetchTzktIdentities(networkKey, clean).catch(() => new Map()),
+    ]);
+    const out = new Map();
+    for (const address of clean) {
+      const objktIdentity = objkt.get(address) || {};
+      const tzktIdentity = tzkt.get(address) || {};
+      const label = objktIdentity.tzdomain || objktIdentity.alias || tzktIdentity.alias || short(address);
+      out.set(address, {
+        address,
+        label,
+        logo: objktIdentity.logo || "",
+        source: objktIdentity.tzdomain || objktIdentity.alias ? "objkt" : tzktIdentity.alias ? "tzkt" : "address",
+      });
+    }
+    return out;
+  }
+
+  return {
+    getNetworks,
+    setupToolkit,
+    getToolkit,
+    useToolkitAdapter,
+    connectWallet,
+    disconnectWallet,
+    restoreWallet,
+    ensureSessionNetwork,
+    assertOperationSafety,
+    getAccount,
+    getBalanceMutez,
+    isAddress,
+    utf8ToHex,
+    hexToUtf8,
+    pinBlob,
+    pinJson,
+    apiFetch,
+    ipfsToHttp,
+    parseCsv,
+    parseCsvRows,
+    fmtTez,
+    short,
+    explorerUrl,
+    objktUrl,
+    fetchContractStatus,
+    withRpcFallback,
+    withRpcReadFallback,
+    fallbackStorageLimit,
+    estimateWalletOp,
+    sendWalletOp,
+    assertOperationApplied,
+    fetchOwnedTokenIds,
+    fetchMintedTokenIds,
+    fetchRecentMintTransfers,
+    fetchWalletIdentities,
+    readRouteHandoff,
+    recordColanderContract,
+    TZKT_API,
+    DEFAULT_GATEWAY,
+  };
+})();
+
+window.MD = MD;

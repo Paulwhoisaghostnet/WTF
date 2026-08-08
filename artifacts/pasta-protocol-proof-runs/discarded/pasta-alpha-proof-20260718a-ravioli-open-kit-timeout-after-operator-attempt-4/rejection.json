@@ -1,0 +1,195 @@
+{
+  "schema": "pastaprotocol-rejected-proof-attempt@1",
+  "status": "REJECTED-AFTER-APPLIED-WRITES",
+  "classification": "PARTIAL-CHAIN-STATE",
+  "app": "ravioli",
+  "proofRun": "pasta-alpha-proof-20260718a",
+  "attempt": 4,
+  "recordedAtUtc": "2026-07-22T21:36:44Z",
+  "reason": "The real Studio originated an empty Ravioli router and granted it one Gnocchi token-0 operator approval, then the proof runner timed out waiting only for an open-kit download. No accepted Ravioli receipt or proof manifest was produced.",
+  "failure": {
+    "kind": "OPEN_KIT_DOWNLOAD_TIMEOUT_AFTER_APPLIED_WRITES",
+    "timeoutMilliseconds": 300000,
+    "localTerminalEvidencePersisted": false,
+    "diagnosticCorrection": "The runner now races the download against a newly appended Studio publish-failure log entry so the underlying error is surfaced immediately on the next fresh attempt."
+  },
+  "chain": {
+    "network": "shadownet",
+    "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "creatorCounterBefore": 23831476,
+    "creatorCounterAfter": 23831478,
+    "primaryRpcCounterAfter": 23831478,
+    "fallbackRpcCounterAfter": 23831478,
+    "primaryRpcMempoolCreatorOperationsAfter": 0,
+    "fallbackRpcMempoolCreatorOperationsAfter": 0,
+    "router": "KT1HstSyfcFwQD7dw3KcBLFCjvHFHY5ANjoC",
+    "gnocchi": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+    "appliedOperations": [
+      {
+        "ordinal": 1,
+        "action": "originate_empty_ravioli_router",
+        "hash": "opZHgBjXKXnCZqJ6GYQFP82VALCDvU8474vPwrq1j1z6xeGR5yg",
+        "counter": 23831477,
+        "level": 4307879,
+        "timestampUtc": "2026-07-22T21:25:12Z",
+        "target": "KT1HstSyfcFwQD7dw3KcBLFCjvHFHY5ANjoC",
+        "tzktUrl": "https://shadownet.tzkt.io/opZHgBjXKXnCZqJ6GYQFP82VALCDvU8474vPwrq1j1z6xeGR5yg"
+      },
+      {
+        "ordinal": 2,
+        "action": "add_gnocchi_token_0_operator",
+        "hash": "op8v6UUkwZTBdQL1DFGVno4hEjhgJgrFszbGNPBiSnSjw5oS5NM",
+        "counter": 23831478,
+        "level": 4307881,
+        "target": "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup",
+        "entrypoint": "update_operators",
+        "parameter": [
+          {
+            "add_operator": {
+              "owner": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+              "operator": "KT1HstSyfcFwQD7dw3KcBLFCjvHFHY5ANjoC",
+              "token_id": "0"
+            }
+          }
+        ],
+        "tzktUrl": "https://shadownet.tzkt.io/op8v6UUkwZTBdQL1DFGVno4hEjhgJgrFszbGNPBiSnSjw5oS5NM"
+      }
+    ],
+    "reconciledRouterState": {
+      "administrator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "nextTokenId": "0",
+      "pack0Present": false,
+      "tokenMetadata0Present": false,
+      "totalSupply0Present": false,
+      "sale0Present": false,
+      "tokensCount": 0,
+      "transactionsReceived": 0,
+      "emptyAndInert": true
+    },
+    "reconciledDependencyState": {
+      "gnocchiToken0OperatorApprovalPresent": true,
+      "gnocchiToken1OperatorApprovalPresent": false
+    }
+  },
+  "pinning": {
+    "localPinsEvidenceDirectoryEmpty": true,
+    "absenceOfLocalPinReceiptsDoesNotProveNoPinning": true,
+    "deterministicPreOriginationPins": [
+      {
+        "name": "ravioli-ui-live-wrapper-0",
+        "cid": "bafkreigrhdcrr2mnwaflnqhqviz4skohv4cveo7hayec5hda5i6hnf2rza",
+        "sha256": "d138c518e98db00ab6c0f0aa33c929c7af05523be706082e9c60ea3c769751c8",
+        "bytes": 93,
+        "pinAndPublicGatewayVerificationCompletedBeforeOrigination": true,
+        "thisAttemptEnsuredTheContentWasPinned": true,
+        "contentAddressingCannotProveThisAttemptCreatedANewPin": true
+      },
+      {
+        "name": "collection.json",
+        "cid": "bafkreiglspdzfzigot3kx7p6kbnyi4fmk67kikojwpuxf6oaxe6kkrwb5q",
+        "sha256": "cb93c792e50674f6abfdfe505b8470ac57bea429c9b3e972f9c0b93ca546c1ec",
+        "bytes": 139,
+        "pinAndPublicGatewayVerificationCompletedBeforeOrigination": true,
+        "thisAttemptEnsuredTheContentWasPinned": true,
+        "contentAddressingCannotProveThisAttemptCreatedANewPin": true
+      }
+    ],
+    "collectionMetadata": {
+      "uri": "ipfs://bafkreiglspdzfzigot3kx7p6kbnyi4fmk67kikojwpuxf6oaxe6kkrwb5q",
+      "boundOnChainAtOrigination": true,
+      "retrievedJson": {
+        "interfaces": [
+          "TZIP-012",
+          "TZIP-016"
+        ],
+        "name": "Ravioli UI-LIVE Atomic Packs",
+        "ravioli": {
+          "fulfillment": "atomic",
+          "version": 2
+        },
+        "symbol": "RVUI"
+      }
+    },
+    "otherPossibleMemoryOnlyPins": [
+      "pack manifest",
+      "token metadata"
+    ],
+    "otherPossiblePinsEnumerated": false
+  },
+  "recovery": {
+    "required": true,
+    "authorizationRecoveryRequired": true,
+    "nativeAssetRecoveryRequired": false,
+    "assetsMoved": false,
+    "exactAction": "Submit exactly one Gnocchi update_operators remove_operator item for creator, orphan router, and token 0; then reconcile the applied operation, dual-RPC creator counters, mempools, Gnocchi operator-key absence, and unchanged empty router.",
+    "expectedNextCreatorCounter": 23831479,
+    "orphanRouterMayBeAbandonedAfterApprovalRemoval": true,
+    "retryAllowedBeforeTerminalRecoveryReceipt": false,
+    "completed": true,
+    "completedAtUtc": "2026-07-22T21:51:06Z",
+    "operation": {
+      "hash": "opRRfshVteZSev1XQtxaoxSUGmdNMsgvXqmirQ8zerpDNwEzpJB",
+      "counter": 23831479,
+      "level": 4308138,
+      "tzktUrl": "https://shadownet.tzkt.io/opRRfshVteZSev1XQtxaoxSUGmdNMsgvXqmirQ8zerpDNwEzpJB"
+    },
+    "receipt": {
+      "path": "../../pasta-alpha-proof-20260718a/ravioli-prepack-recovery/artifacts/ravioli-prepack-recovery.json",
+      "sha256": "fba76fbe82c30b2d1c3af8ddd57d8bb32d53ec529489f564e71ce8a10984327e",
+      "status": "PASSED"
+    },
+    "terminalCreatorCounter": 23831479,
+    "targetOperatorActiveAfter": false,
+    "orphanRouterEmptyAfter": true,
+    "freshAttemptNowAllowed": true
+  },
+  "eligibility": {
+    "acceptedProof": false,
+    "mayBeCombined": false,
+    "mayBeResumed": false,
+    "mayBeReconciledAsSuccessfulRavioliProof": false,
+    "freshAttemptRequiredAfterRecovery": true
+  },
+  "retainedFiles": [
+    {
+      "path": "screenshots/001-compose-five-atomic-pack-modes-same-run-dependencies-entered.png",
+      "sha256": "9474d580fa265332b8c6e30c12cc52d79c4a94f1946b377bc5c1c64d56918b0c",
+      "bytes": 97030
+    },
+    {
+      "path": "artifacts/screenshot-001-compose-five-atomic-pack-modes-same-run-dependencies-entered.json",
+      "sha256": "47c508900338b6b14ae997c1c9a18416626f656fa3b09d6c131d827907728a5f",
+      "bytes": 1044
+    },
+    {
+      "path": "screenshots/002-compose-five-atomic-pack-modes-creator-connected-on-shadownet.png",
+      "sha256": "bcb4ec9e620f6f0487fe04a5893a39aa2a6150e9a4d94d112293575b0727b638",
+      "bytes": 102804
+    },
+    {
+      "path": "artifacts/screenshot-002-compose-five-atomic-pack-modes-creator-connected-on-shadownet.json",
+      "sha256": "e0a22b8d753f9044d745141acf35e25a1f43e633f1cbabae44ab422ee20b2ae8",
+      "bytes": 850
+    },
+    {
+      "path": "screenshots/003-limited-edition-expiry-deconfliction-le-wrapper-outliving-child-rejected-before-pins-or-writes.png",
+      "sha256": "adaf14160e7df62a5d03b29ddf678e612dd01fe335bdc964b1ec476018fa425c",
+      "bytes": 96277
+    },
+    {
+      "path": "artifacts/screenshot-003-limited-edition-expiry-deconfliction-le-wrapper-outliving-child-rejected-before-pins-or-writes.json",
+      "sha256": "6a48e80b57c463aa1a0ec3b20ebf8039dcf18af714be0c6a2bac224ab3e29825",
+      "bytes": 950
+    },
+    {
+      "path": "screenshots/004-compose-five-atomic-pack-modes-deterministic-vault-configured.png",
+      "sha256": "29576ac7d695b6e10d834555b862c5b81aa6bcf0810dee0a96e40cb0f76614bf",
+      "bytes": 105464
+    },
+    {
+      "path": "artifacts/screenshot-004-compose-five-atomic-pack-modes-deterministic-vault-configured.json",
+      "sha256": "10b6c93e11d0a3fedb3596d35ba4753d74d112682e7d06582cc684a2473befba",
+      "bytes": 1046
+    }
+  ]
+}

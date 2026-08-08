@@ -1,0 +1,1 @@
+{"description":"Typed Ravioli helper for atomic Gnocchi pack fulfillment.","interfaces":["TZIP-016"],"name":"Pasta Gnocchi Pack Adapter","pasta":{"app":"ravioli","helper":"gnocchi-pack-adapter","version":1}}

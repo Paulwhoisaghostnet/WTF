@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "limited-edition expiry deconfliction",
+  "stageOrdinal": 3,
+  "stageName": "LE wrapper outliving child rejected before pins or writes",
+  "url": "http://127.0.0.1:54186/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-23T21:07:33.288Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "bb01f2dcab3c16c5750bf906e62911a4d055147b5cb6f45fd2a55a72de85bb9c",
+  "byteCount": 97990,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "9:07:24 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet ✗ 9:07:33 PM publish failed: Ravioli primary sale must end before its earliest LE child public mint expiry"
+    },
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

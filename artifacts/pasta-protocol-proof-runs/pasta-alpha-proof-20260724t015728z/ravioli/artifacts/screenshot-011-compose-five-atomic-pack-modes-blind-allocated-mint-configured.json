@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 11,
+  "stageName": "blind_allocated_mint configured",
+  "url": "http://127.0.0.1:61499/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-24T03:43:28.550Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "d2e31a8de5fbb6b0ff2210aa1b11c9af2c325edbc44ea568655df12dac275aa7",
+  "byteCount": 160969,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli"
+    },
+    {
+      "selector": "#adapterSetup",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Automatic allocation / generative adapter setup Originate and configure typed helper adapters when their recipe type is used Gnocchi contract Gnocchi token id Existing allocation adapter (optional) Rotini contract Rotini project id Existing generative adapter (optional)"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

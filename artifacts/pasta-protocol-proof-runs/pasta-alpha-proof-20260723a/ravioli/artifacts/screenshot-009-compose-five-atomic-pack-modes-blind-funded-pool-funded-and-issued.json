@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 9,
+  "stageName": "blind_funded_pool funded and issued",
+  "url": "http://127.0.0.1:61273/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-24T01:12:32.996Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "d8614612b7e2c513fa096e7ed867554ba576ef9618191e195a1edcc4f1ffd423",
+  "byteCount": 216538,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:10:01 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 1:10:11 AM verified cumulative funded-pool inventory for 2 escrow assets before pins or writes 1:10:11 AM pinning wrapper artwork… 1:10:11 AM approving Ravioli escrow on KT1Shvg…LyYi (sign in wallet)… 1:10:11 AM pinning pack manifest… 1:10:46 AM pinning authenticated encrypted reveal (plaintext nonces remain private)… 1:11:27 AM registering bounded pack config (sign in wallet)… 1:11:44 AM funding recipe 1/3 (sign in wallet)… 1:11:55 AM funding recipe 2/3 (sign in wallet)… 1:12:08 AM funding recipe 3/3 (sign in wallet)… 1:12:20 AM atomically finalizing, issuing, and listing the complete finite blind-wrapper supply (sign in wallet)… 1:12:32 AM Limited Edition blind wrapper, full-supply primary sale, and controller deadlines activated atomically ✓ 1:12:32 AM pack 1 is fully reserved and ready — open kit was saved before commitment"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,848 @@
+{
+  "app": "gnocchi",
+  "artifacts": [
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "id": "token-0-media",
+      "ipfsUri": "ipfs://bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "kind": "token-media",
+      "path": "artifacts/token-0-media.png",
+      "retrievedSha256": "dfa78990f0630983e5f3ebb41ea15556d6524a7d633c61e34c852760ada979f6",
+      "sha256": "dfa78990f0630983e5f3ebb41ea15556d6524a7d633c61e34c852760ada979f6"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+      "id": "collection-metadata",
+      "ipfsUri": "ipfs://bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+      "kind": "collection-metadata",
+      "path": "artifacts/collection-metadata.json",
+      "retrievedSha256": "b721a950727896ab55ba3a6271a4209e2b5e97f011e5cad117d28aeda68ac482",
+      "sha256": "b721a950727896ab55ba3a6271a4209e2b5e97f011e5cad117d28aeda68ac482"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "id": "token-0-metadata",
+      "ipfsUri": "ipfs://bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "kind": "token-metadata",
+      "path": "artifacts/token-0-metadata.json",
+      "retrievedSha256": "0020796ad6fa2759d1f1c52a1dc64b60e4d264b20d4cc99071ae92b01e4e8dfc",
+      "sha256": "0020796ad6fa2759d1f1c52a1dc64b60e4d264b20d4cc99071ae92b01e4e8dfc"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "id": "token-1-media",
+      "ipfsUri": "ipfs://bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "kind": "token-media",
+      "path": "artifacts/token-1-media.png",
+      "retrievedSha256": "9786aa9ccf38dafbceae83a16c19b5a37e7ba25de7f83b2938e2a533b70b0fd0",
+      "sha256": "9786aa9ccf38dafbceae83a16c19b5a37e7ba25de7f83b2938e2a533b70b0fd0"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "id": "token-1-metadata",
+      "ipfsUri": "ipfs://bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "kind": "token-metadata",
+      "path": "artifacts/token-1-metadata.json",
+      "retrievedSha256": "45fb3801000db46a6fdfca3fb62f6b89d1d5b8f3b0791f2c3f447c2d13402de1",
+      "sha256": "45fb3801000db46a6fdfca3fb62f6b89d1d5b8f3b0791f2c3f447c2d13402de1"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "id": "token-2-media",
+      "ipfsUri": "ipfs://bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "kind": "token-media",
+      "path": "artifacts/token-2-media.png",
+      "retrievedSha256": "44034c5d475d9be5eb1ecf422e48196248e084f5c261259c338c1b13562b138c",
+      "sha256": "44034c5d475d9be5eb1ecf422e48196248e084f5c261259c338c1b13562b138c"
+    },
+    {
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "id": "token-2-metadata",
+      "ipfsUri": "ipfs://bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "kind": "token-metadata",
+      "path": "artifacts/token-2-metadata.json",
+      "retrievedSha256": "39403f4c98cc1fadbadcaae3a43863ad183796e2cf54677ccfa37d3f7f3983b8",
+      "sha256": "39403f4c98cc1fadbadcaae3a43863ad183796e2cf54677ccfa37d3f7f3983b8"
+    },
+    {
+      "id": "gnocchi-current-contract-code",
+      "kind": "contract-code",
+      "path": "artifacts/gnocchi-current-contract-code.json",
+      "sha256": "0c484c641c15a71c4bd4454b4bf40b6c1a9b016b42e0c5055faf19b4e5241998"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-final.json-124044bace13",
+      "kind": "ui-live-recovery-receipt",
+      "path": "artifacts/gnocchi-current-recovery-final.json",
+      "sha256": "124044bace137e87ecddb642f0d6d6a6e07d71b597ebfabecc51e2351305abb1"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000001-screenshot-accepted.json-f1e077d48ba7",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000001-screenshot-accepted.json",
+      "sha256": "f1e077d48ba721c96085806531b1776c4c2d550ed16879264fe6396d86de16dd"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000002-prepared.json-0cf6a1406e0c",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000002-prepared.json",
+      "sha256": "0cf6a1406e0cabe968482d25bb0fd9202fd32fe485b215d1b19ddb5bc17054dd"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000003-submitted.json-30af218388da",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000003-submitted.json",
+      "sha256": "30af218388da42acc6c47fd94625883129ef73c07ee88f6f1d0ac7fbee4514d1"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000004-applied.json-9cdf661a1ca2",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000004-applied.json",
+      "sha256": "9cdf661a1ca298c6b6b2bff20fea34a352060de7d7f39ec0e1564822d7f5cf3d"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000005-screenshot-accepted.json-c4164cd9835c",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000005-screenshot-accepted.json",
+      "sha256": "c4164cd9835c05244df2f0dda144f79f3f3824cbe8810019939ebb93ff19a298"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000006-prepared.json-76e62e62dd1d",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000006-prepared.json",
+      "sha256": "76e62e62dd1d1635924ae0357bc7500b4d2d9220a7f26eafbd1e229c29a69d33"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000007-submitted.json-6d8d8914bc8e",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000007-submitted.json",
+      "sha256": "6d8d8914bc8e0ab70be17875da1449cf64389b6b6af66305302a713b15cd20ae"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000008-applied.json-d88eace02f34",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000008-applied.json",
+      "sha256": "d88eace02f34b28b35d7fb6822cce0047407f7cb6dc1f96004b56879d483b991"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000009-screenshot-accepted.json-99f7115fcda1",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000009-screenshot-accepted.json",
+      "sha256": "99f7115fcda1574bd42d67ecb5eef2086d098a827b6b2b86ca058c2297de4721"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000010-expected-rejection.json-472bc9c1853a",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000010-expected-rejection.json",
+      "sha256": "472bc9c1853ad0921f56eb7ad2b0f3c1633f3d05384f9f8a3913de99f8fb567a"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000011-screenshot-accepted.json-6d6bdd18d08e",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000011-screenshot-accepted.json",
+      "sha256": "6d6bdd18d08ec19d292916399c31c3ff25fb883af9eed4f1b9b30c65330a794e"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000012-prepared.json-3171371e4908",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000012-prepared.json",
+      "sha256": "3171371e4908e36e504f5de09ba79487ceb2d265438af1b91268533b8078ba13"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000013-submitted.json-a4b3a8310bc6",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000013-submitted.json",
+      "sha256": "a4b3a8310bc637d80b1f45bba4c045461f546bbd84895856b05d147ed577fcd3"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000014-applied.json-61b98620fa57",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000014-applied.json",
+      "sha256": "61b98620fa57911fac7888a8ab51fb911967ff34bb566a86c008e7c51221f955"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000015-screenshot-accepted.json-6636941f23ca",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000015-screenshot-accepted.json",
+      "sha256": "6636941f23ca92266909ed9d48c04f03e0d7842b24eb67e766ec3f1dfef0dd06"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000016-prepared.json-b194c4ef6afd",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000016-prepared.json",
+      "sha256": "b194c4ef6afd27a39d8d89df62e260a29a17465d79715a1338a2ddc9bb21ae9d"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000017-submitted.json-2ec368c26a74",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000017-submitted.json",
+      "sha256": "2ec368c26a74c947dc4310b45b3ca3955ae68b548b31c5caf1d0289509b19a2a"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000018-applied.json-127386a966cf",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000018-applied.json",
+      "sha256": "127386a966cf74e0891ee80da1f701e253420b06be6731040a57aeaf29ea73ed"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000019-screenshot-accepted.json-bb555328d2e3",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000019-screenshot-accepted.json",
+      "sha256": "bb555328d2e37568851960f2b63423fd17670071dd29670cdd261182063750cc"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000020-prepared.json-a787bdf2f8a8",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000020-prepared.json",
+      "sha256": "a787bdf2f8a8a15107f565dc2e2222e7938d1f77953a75ecbf0528e50eb03249"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000021-submitted.json-ac2b56377943",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000021-submitted.json",
+      "sha256": "ac2b5637794316ec60add12d82a22457121d48c48e93de1c0f6c6432b987787b"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000022-applied.json-23a97581e04b",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000022-applied.json",
+      "sha256": "23a97581e04b64f22d53139e71cab71620cbb6b2129b00eccc1de44e76659549"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000023-screenshot-accepted.json-821c7c7975e4",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000023-screenshot-accepted.json",
+      "sha256": "821c7c7975e4a3f79da52bf400d4e2b09f2dd52cf739d86748ca389e1ef3700e"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000024-prepared.json-9e159d4072b7",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000024-prepared.json",
+      "sha256": "9e159d4072b7f960671384a56c19e47ffe6cc6efd307971f7e9753ac4006f7f0"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000025-submitted.json-72de59fb64dc",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000025-submitted.json",
+      "sha256": "72de59fb64dc896d27350dd0943102e0599d082bc9345f2f7242a9fa8cb869ba"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000026-applied.json-bef66ce993ee",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000026-applied.json",
+      "sha256": "bef66ce993ee5b022e0ad9f726a931fed18e7408dad0e5910219257960d60a13"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000027-screenshot-accepted.json-c3d94fee051d",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000027-screenshot-accepted.json",
+      "sha256": "c3d94fee051d8262bbafc1c0d870c18e96db0129add34fc3db44b5e27dc30e5d"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000028-expected-rejection.json-88244ef962ec",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000028-expected-rejection.json",
+      "sha256": "88244ef962ec13bda844bfba3ec694f7a3679c2c49c4d440e45a33ba2ac08796"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000029-screenshot-accepted.json-6e2a2629fe0f",
+      "kind": "durable-recovery-event",
+      "path": "artifacts/gnocchi-current-recovery/events/000029-screenshot-accepted.json",
+      "sha256": "6e2a2629fe0ffe63e6cc3509d702a0796c6007c5ee5e5c44498870ee8c0ea8df"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-final.json-df58e2e1a44a",
+      "kind": "durable-recovery-finalization",
+      "path": "artifacts/gnocchi-current-recovery/final.json",
+      "sha256": "df58e2e1a44a56a9e0315d76219e26f1f44677bba53c6532458aff9b3c00a2fd"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-intent.json-175c7d7c9a59",
+      "kind": "durable-recovery-intent",
+      "path": "artifacts/gnocchi-current-recovery/intent.json",
+      "sha256": "175c7d7c9a592729c2fd9b4eb3239238bb9141b478fcda2777293fb0201f1237"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-recovery-artifacts-gnocchi-current-recovery-terminal-chain.json-08632608abc3",
+      "kind": "chain-reconciliation-source",
+      "path": "artifacts/gnocchi-current-recovery/terminal-chain.json",
+      "sha256": "08632608abc3cc1fb49073100428c03b8c6726744744b4cb3606eca3a4c98674"
+    },
+    {
+      "durability": "package-only",
+      "id": "gnocchi-chain-reconciliation-snapshot",
+      "kind": "chain-reconciliation-snapshot",
+      "path": "artifacts/gnocchi-chain-reconciliation-snapshot.json",
+      "sha256": "7de5559e864069a9b80b1f58fd0e90271fb168a10b3d1e3a6a7ee3cfd21f44fd"
+    },
+    {
+      "id": "ui-live-readonly-finalization",
+      "kind": "readonly-finalization-receipt",
+      "path": "artifacts/gnocchi-ui-readonly-finalization.json",
+      "sha256": "5f5ad3a8081198ef04a8ee6fda009cd13a767693459f6efcee8d10a9e9a2b2c7"
+    },
+    {
+      "id": "screenshot-sidecar-001-publish-three-edition-policies-timed-oe-configured",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-publish-three-edition-policies-timed-oe-configured.json",
+      "sha256": "1b6be9b7117b8bac14a035f51fb3bf7b08c5594ddf3f9d0fb78c81550194f95a"
+    },
+    {
+      "id": "screenshot-sidecar-002-publish-three-edition-policies-creator-connected-on-shadownet",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-publish-three-edition-policies-creator-connected-on-shadownet.json",
+      "sha256": "7aa431f6417ec0a55e3b25751e390c5012bff7c5b6d39860f2623fce0ec600dd"
+    },
+    {
+      "id": "screenshot-sidecar-003-publish-three-edition-policies-media-and-metadata-pinned",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-publish-three-edition-policies-media-and-metadata-pinned.json",
+      "sha256": "5e784c656231b07a9b357586e4756d9951e9ea3d65e16a7e616a1e9219983469"
+    },
+    {
+      "id": "screenshot-sidecar-004-publish-three-edition-policies-collection-originated",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-publish-three-edition-policies-collection-originated.json",
+      "sha256": "0a1eacee18db63017d8e1be65d4de2ed23d7124d9b807b388a5a7ea7d5eeeeb6"
+    },
+    {
+      "id": "screenshot-sidecar-005-publish-three-edition-policies-timed-oe-token-zero-live",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-005-publish-three-edition-policies-timed-oe-token-zero-live.json",
+      "sha256": "bac67187ea3adbd9baeaab4fd32df5ebeb618967c1cfc99a79319a0f032270e6"
+    },
+    {
+      "id": "screenshot-sidecar-006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-006-publish-three-edition-policies-existing-collection-verified-for-second-edition.json",
+      "sha256": "e73da291df273ca9a7965f486499aafd77ef6fdb4edf3584f20dba490d5abbe6"
+    },
+    {
+      "id": "screenshot-sidecar-007-publish-three-edition-policies-forever-oe-token-one-live",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-007-publish-three-edition-policies-forever-oe-token-one-live.json",
+      "sha256": "4dcbd2fa55be682f3bf7f40b61911518de2e92f5b149e9b834d308045868a823"
+    },
+    {
+      "id": "screenshot-sidecar-008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-008-publish-three-edition-policies-all-three-policies-live-in-one-collection.json",
+      "sha256": "247adacc1e2414ec4efa34ed8960b7b75b0ab0f35ec9cabbe8adf1c499e9e99e"
+    },
+    {
+      "id": "screenshot-sidecar-009-independent-collector-mints-collector-one-connected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-009-independent-collector-mints-collector-one-connected.json",
+      "sha256": "a1ec51ed127f687e76f189e91e86f687547895770f78e7a6952f449e87768ffb"
+    },
+    {
+      "id": "screenshot-sidecar-010-independent-collector-mints-collector-one-minted-token-0",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-010-independent-collector-mints-collector-one-minted-token-0.json",
+      "sha256": "8f7421f586287162c3bdcd68289a3c76cae4c1176fe5b5c43019d614269bc25c"
+    },
+    {
+      "id": "screenshot-sidecar-011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state.json",
+      "sha256": "b93aeb587f8968d7cb522da95ace24e91743aa9ee0156ebb5466901f5334f2d4"
+    },
+    {
+      "id": "screenshot-sidecar-012-independent-collector-mints-collector-one-minted-token-2",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-012-independent-collector-mints-collector-one-minted-token-2.json",
+      "sha256": "a5de7bf2596dcae316c085aebe115e1ce41a5a002b0c277615cdbc71994c4ca5"
+    },
+    {
+      "id": "screenshot-sidecar-013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-013-vault-and-reopen-forever-issuance-forever-oe-vaulted.json",
+      "sha256": "dd5dbaa699f99f1fe19b20a80cedc21f723c709a9793940cd8abf74f5932f4c2"
+    },
+    {
+      "id": "screenshot-sidecar-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected.json",
+      "sha256": "72f37831482d4531603460c247490a09aeb9caf87c670e2072171e41d4fd4e68"
+    },
+    {
+      "id": "screenshot-sidecar-015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state.json",
+      "sha256": "4de72e3e5274018649b9a77a325ff6cc51c134ea2777fe2e9c01e424814e2ec5"
+    },
+    {
+      "id": "screenshot-sidecar-016-independent-collector-mints-collector-two-minted-token-0",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-016-independent-collector-mints-collector-two-minted-token-0.json",
+      "sha256": "7830602b0c2332839a735db9f3da4ea34a7c0b04f00f538e8786f768916efce2"
+    },
+    {
+      "id": "screenshot-sidecar-017-independent-collector-mints-collector-two-minted-token-1",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-017-independent-collector-mints-collector-two-minted-token-1.json",
+      "sha256": "bae4af6776738e48d6f961f9d6896d0f37d39521d1886d024da9e7248e611676"
+    },
+    {
+      "id": "screenshot-sidecar-018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state.json",
+      "sha256": "684fbc13295ea373dfac0dc73ad315528de15ea6605e3dba1a9210d7bb490b76"
+    },
+    {
+      "id": "screenshot-sidecar-019-independent-collector-mints-limited-edition-cap-enforced",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-019-independent-collector-mints-limited-edition-cap-enforced.json",
+      "sha256": "2d7e2cba8b03cae9cb8be525bc9eaeccaa4acd5ea05455294495bb49d92ac0f1"
+    },
+    {
+      "id": "gnocchi-proof-time-indexer-snapshot",
+      "kind": "historical-indexer-snapshot",
+      "path": "artifacts/gnocchi-proof-time-indexer-snapshot.json",
+      "sha256": "57a613a78894224b9748310ec2bb38ba4e73707628b6c4a8783d3d21012cd07d",
+      "ipfsUri": "ipfs://bafkreicxuyj2pceuejfzosbrb3blwof2jzzxa5riw3ckq6b5huqqclgqpu",
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreicxuyj2pceuejfzosbrb3blwof2jzzxa5riw3ckq6b5huqqclgqpu",
+      "retrievedSha256": "57a613a78894224b9748310ec2bb38ba4e73707628b6c4a8783d3d21012cd07d"
+    }
+  ],
+  "capabilities": [
+    {
+      "description": "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject paused and over-cap minting, vault then reopen forever issuance through the real UI, recover an exact post-confirmation read failure without replaying any applied operation, and bind the complete continuation to an immutable checkpoint.",
+      "evidence": {
+        "artifacts": [
+          "token-0-media",
+          "collection-metadata",
+          "token-0-metadata",
+          "token-1-media",
+          "token-1-metadata",
+          "token-2-media",
+          "token-2-metadata",
+          "gnocchi-current-contract-code",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-final.json-124044bace13",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000001-screenshot-accepted.json-f1e077d48ba7",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000002-prepared.json-0cf6a1406e0c",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000003-submitted.json-30af218388da",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000004-applied.json-9cdf661a1ca2",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000005-screenshot-accepted.json-c4164cd9835c",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000006-prepared.json-76e62e62dd1d",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000007-submitted.json-6d8d8914bc8e",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000008-applied.json-d88eace02f34",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000009-screenshot-accepted.json-99f7115fcda1",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000010-expected-rejection.json-472bc9c1853a",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000011-screenshot-accepted.json-6d6bdd18d08e",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000012-prepared.json-3171371e4908",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000013-submitted.json-a4b3a8310bc6",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000014-applied.json-61b98620fa57",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000015-screenshot-accepted.json-6636941f23ca",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000016-prepared.json-b194c4ef6afd",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000017-submitted.json-2ec368c26a74",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000018-applied.json-127386a966cf",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000019-screenshot-accepted.json-bb555328d2e3",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000020-prepared.json-a787bdf2f8a8",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000021-submitted.json-ac2b56377943",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000022-applied.json-23a97581e04b",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000023-screenshot-accepted.json-821c7c7975e4",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000024-prepared.json-9e159d4072b7",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000025-submitted.json-72de59fb64dc",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000026-applied.json-bef66ce993ee",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000027-screenshot-accepted.json-c3d94fee051d",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000028-expected-rejection.json-88244ef962ec",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-events-000029-screenshot-accepted.json-6e2a2629fe0f",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-final.json-df58e2e1a44a",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-intent.json-175c7d7c9a59",
+          "gnocchi-recovery-artifacts-gnocchi-current-recovery-terminal-chain.json-08632608abc3",
+          "gnocchi-chain-reconciliation-snapshot",
+          "ui-live-readonly-finalization",
+          "screenshot-sidecar-001-publish-three-edition-policies-timed-oe-configured",
+          "screenshot-sidecar-002-publish-three-edition-policies-creator-connected-on-shadownet",
+          "screenshot-sidecar-003-publish-three-edition-policies-media-and-metadata-pinned",
+          "screenshot-sidecar-004-publish-three-edition-policies-collection-originated",
+          "screenshot-sidecar-005-publish-three-edition-policies-timed-oe-token-zero-live",
+          "screenshot-sidecar-006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+          "screenshot-sidecar-007-publish-three-edition-policies-forever-oe-token-one-live",
+          "screenshot-sidecar-008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+          "screenshot-sidecar-009-independent-collector-mints-collector-one-connected",
+          "screenshot-sidecar-010-independent-collector-mints-collector-one-minted-token-0",
+          "screenshot-sidecar-011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state",
+          "screenshot-sidecar-012-independent-collector-mints-collector-one-minted-token-2",
+          "screenshot-sidecar-013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+          "screenshot-sidecar-014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+          "screenshot-sidecar-015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state",
+          "screenshot-sidecar-016-independent-collector-mints-collector-two-minted-token-0",
+          "screenshot-sidecar-017-independent-collector-mints-collector-two-minted-token-1",
+          "screenshot-sidecar-018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state",
+          "screenshot-sidecar-019-independent-collector-mints-limited-edition-cap-enforced",
+          "gnocchi-proof-time-indexer-snapshot"
+        ],
+        "contracts": [
+          "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv"
+        ],
+        "operations": [
+          "oofWGjRT74v12NtecafggNhbSqGGdYa55pdBji5Fd9NDub5orA3",
+          "oocd9QbxGkoreGfhJoc6kqVjuGCmeTgMBNKUZc1zL1EL3CJuSoy",
+          "ooTPLe8MH2WBFXoZzUrpdvr7o146adwM4SKZ4tKkdF9PeRv7rjp",
+          "op1eRD6oequAk5dxizwCVzrfnNgG1S7ZMo4HLva8YZF7osKHyMm",
+          "oo4sZTJJ1Qd151e6y118AUQ5Z5sLXARquM57nmr8KmPTsY4TPNn",
+          "opZWxqw97DXPpZafdrTXZ31n54mzefUUv27PKGkiQB221ULj7am",
+          "oo45WmyoH3tYpZcdX4YqdtAg1y3ubD1zZ7QpRF2JQqZqZ8gcUjJ",
+          "ooHsjxG4AkueBc45414EkLf6ZQhF6QrUCagxaiCjspb62XWHK4L",
+          "opRYwPT7YQycLaJkPgmnHQjfHAdDFmrWbfbuwFD8t9QxLkWgKPh",
+          "onu8mqjvwy2s9x5uTmuSy3jFGQ9fBqzaxXRWA2kASmEi8j5v5U1",
+          "ooRFJH243JKvjNssR9kqdBiRrc6vRjHKTjX6A4Z9fXBE7PqjpUf",
+          "onkARFCB7MP9geSmhSigub8X5jfzw1gyBMM9FYQqufYHWRuQtat"
+        ],
+        "roleEvidence": [],
+        "screenshots": [
+          "001-publish-three-edition-policies-timed-oe-configured",
+          "002-publish-three-edition-policies-creator-connected-on-shadownet",
+          "003-publish-three-edition-policies-media-and-metadata-pinned",
+          "004-publish-three-edition-policies-collection-originated",
+          "005-publish-three-edition-policies-timed-oe-token-zero-live",
+          "006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+          "007-publish-three-edition-policies-forever-oe-token-one-live",
+          "008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+          "009-independent-collector-mints-collector-one-connected",
+          "010-independent-collector-mints-collector-one-minted-token-0",
+          "011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state",
+          "012-independent-collector-mints-collector-one-minted-token-2",
+          "013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+          "014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+          "015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state",
+          "016-independent-collector-mints-collector-two-minted-token-0",
+          "017-independent-collector-mints-collector-two-minted-token-1",
+          "018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state",
+          "019-independent-collector-mints-limited-edition-cap-enforced"
+        ],
+        "tokens": [
+          "gnocchi-token-0",
+          "gnocchi-token-1",
+          "gnocchi-token-2"
+        ],
+        "urls": [
+          "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+          "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/0",
+          "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/1",
+          "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/2",
+          "https://ipfs.io/ipfs/bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+          "https://ipfs.io/ipfs/bafkreifxeguva4tys2vvlor2mjy2iie6fnpjp4ar4xfncf6srlw2ncweqi",
+          "https://ipfs.io/ipfs/bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+          "https://ipfs.io/ipfs/bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+          "https://ipfs.io/ipfs/bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+          "https://ipfs.io/ipfs/bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+          "https://ipfs.io/ipfs/bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa"
+        ]
+      },
+      "id": "three-policy-collector-and-lifecycle-proof"
+    }
+  ],
+  "capturedAt": "2026-08-08T15:26:04.834Z",
+  "classification": "UI-LIVE-RECOVERED-CHECKPOINTED",
+  "contracts": [
+    {
+      "address": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "kind": "open-edition-collection"
+    }
+  ],
+  "finalizedAt": "2026-08-08T15:35:39.149Z",
+  "network": {
+    "chainId": "NetXsqzbfFenSTS",
+    "name": "shadownet",
+    "rpcUrl": "https://tezos-shadownet.octez.io/",
+    "tzktApi": "https://api.shadownet.tzkt.io/v1"
+  },
+  "operations": [
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "explorerUrl": "https://shadownet.tzkt.io/oofWGjRT74v12NtecafggNhbSqGGdYa55pdBji5Fd9NDub5orA3",
+      "hash": "oofWGjRT74v12NtecafggNhbSqGGdYa55pdBji5Fd9NDub5orA3",
+      "kind": "origination",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/oocd9QbxGkoreGfhJoc6kqVjuGCmeTgMBNKUZc1zL1EL3CJuSoy",
+      "hash": "oocd9QbxGkoreGfhJoc6kqVjuGCmeTgMBNKUZc1zL1EL3CJuSoy",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/ooTPLe8MH2WBFXoZzUrpdvr7o146adwM4SKZ4tKkdF9PeRv7rjp",
+      "hash": "ooTPLe8MH2WBFXoZzUrpdvr7o146adwM4SKZ4tKkdF9PeRv7rjp",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "create_open_edition",
+      "explorerUrl": "https://shadownet.tzkt.io/op1eRD6oequAk5dxizwCVzrfnNgG1S7ZMo4HLva8YZF7osKHyMm",
+      "hash": "op1eRD6oequAk5dxizwCVzrfnNgG1S7ZMo4HLva8YZF7osKHyMm",
+      "kind": "create",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/oo4sZTJJ1Qd151e6y118AUQ5Z5sLXARquM57nmr8KmPTsY4TPNn",
+      "hash": "oo4sZTJJ1Qd151e6y118AUQ5Z5sLXARquM57nmr8KmPTsY4TPNn",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/opZWxqw97DXPpZafdrTXZ31n54mzefUUv27PKGkiQB221ULj7am",
+      "hash": "opZWxqw97DXPpZafdrTXZ31n54mzefUUv27PKGkiQB221ULj7am",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/oo45WmyoH3tYpZcdX4YqdtAg1y3ubD1zZ7QpRF2JQqZqZ8gcUjJ",
+      "hash": "oo45WmyoH3tYpZcdX4YqdtAg1y3ubD1zZ7QpRF2JQqZqZ8gcUjJ",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "set_sale_active",
+      "explorerUrl": "https://shadownet.tzkt.io/ooHsjxG4AkueBc45414EkLf6ZQhF6QrUCagxaiCjspb62XWHK4L",
+      "hash": "ooHsjxG4AkueBc45414EkLf6ZQhF6QrUCagxaiCjspb62XWHK4L",
+      "kind": "manage",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "set_sale_active",
+      "explorerUrl": "https://shadownet.tzkt.io/opRYwPT7YQycLaJkPgmnHQjfHAdDFmrWbfbuwFD8t9QxLkWgKPh",
+      "hash": "opRYwPT7YQycLaJkPgmnHQjfHAdDFmrWbfbuwFD8t9QxLkWgKPh",
+      "kind": "manage",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/onu8mqjvwy2s9x5uTmuSy3jFGQ9fBqzaxXRWA2kASmEi8j5v5U1",
+      "hash": "onu8mqjvwy2s9x5uTmuSy3jFGQ9fBqzaxXRWA2kASmEi8j5v5U1",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/ooRFJH243JKvjNssR9kqdBiRrc6vRjHKTjX6A4Z9fXBE7PqjpUf",
+      "hash": "ooRFJH243JKvjNssR9kqdBiRrc6vRjHKTjX6A4Z9fXBE7PqjpUf",
+      "kind": "mint",
+      "status": "applied"
+    },
+    {
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "entrypoint": "open_mint",
+      "explorerUrl": "https://shadownet.tzkt.io/onkARFCB7MP9geSmhSigub8X5jfzw1gyBMM9FYQqufYHWRuQtat",
+      "hash": "onkARFCB7MP9geSmhSigub8X5jfzw1gyBMM9FYQqufYHWRuQtat",
+      "kind": "mint",
+      "status": "applied"
+    }
+  ],
+  "role": "token-publisher",
+  "roleEvidence": [],
+  "runId": "pasta-alpha-proof-20260808t140453z",
+  "schema": "pastaprotocol-app-proof@1",
+  "screenshots": [
+    {
+      "caption": "gnocchi: publish three edition policies — Timed OE configured",
+      "path": "screenshots/001-publish-three-edition-policies-timed-oe-configured.png",
+      "sha256": "230c3f3da9e6e5b84dd1bc2fa93ca7a24f0b95d9c527d97200c67e5e73bee8c4",
+      "stage": "001-publish-three-edition-policies-timed-oe-configured"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Creator connected on Shadownet",
+      "path": "screenshots/002-publish-three-edition-policies-creator-connected-on-shadownet.png",
+      "sha256": "3eb5eb43dd12d2a8b8b66a61025f1b96bf8842a9d5ec21a78ae5320534718de2",
+      "stage": "002-publish-three-edition-policies-creator-connected-on-shadownet"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Media and metadata pinned",
+      "path": "screenshots/003-publish-three-edition-policies-media-and-metadata-pinned.png",
+      "sha256": "21f2c19094e2ab766e0332fd8897274b9bc8d2572375b74e74e1912073cf5a7e",
+      "stage": "003-publish-three-edition-policies-media-and-metadata-pinned"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Collection originated",
+      "path": "screenshots/004-publish-three-edition-policies-collection-originated.png",
+      "sha256": "4b1572b7eee59979ec4cf244e31a38e4282023aafd4d70ecc710a53a1f379c20",
+      "stage": "004-publish-three-edition-policies-collection-originated"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Timed OE token zero live",
+      "path": "screenshots/005-publish-three-edition-policies-timed-oe-token-zero-live.png",
+      "sha256": "7244de756fbb94ced1f3955df929986bad23306d867b6e2f254694e230bec513",
+      "stage": "005-publish-three-edition-policies-timed-oe-token-zero-live"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Existing collection verified for second edition",
+      "path": "screenshots/006-publish-three-edition-policies-existing-collection-verified-for-second-edition.png",
+      "sha256": "d0687892d744c2a70c7113adef1f34a01d8e97441d5522afd98b2cf02c11a03d",
+      "stage": "006-publish-three-edition-policies-existing-collection-verified-for-second-edition"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — Forever OE token one live",
+      "path": "screenshots/007-publish-three-edition-policies-forever-oe-token-one-live.png",
+      "sha256": "700dafa080faa1187497acd8331bec92eea4d611573992ad63c08951e87884d4",
+      "stage": "007-publish-three-edition-policies-forever-oe-token-one-live"
+    },
+    {
+      "caption": "gnocchi: publish three edition policies — All three policies live in one collection",
+      "path": "screenshots/008-publish-three-edition-policies-all-three-policies-live-in-one-collection.png",
+      "sha256": "9ecffbd2f7583b174e05ab0d30521dba250b0ac5b75ed8b3c9e55b8e9afd14ee",
+      "stage": "008-publish-three-edition-policies-all-three-policies-live-in-one-collection"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one connected",
+      "path": "screenshots/009-independent-collector-mints-collector-one-connected.png",
+      "sha256": "22f974e8d25754833d38ab0c7894d03c18e1eb16f7aec024b1e41ab6b691ab1d",
+      "stage": "009-independent-collector-mints-collector-one-connected"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one minted token 0",
+      "path": "screenshots/010-independent-collector-mints-collector-one-minted-token-0.png",
+      "sha256": "8502ad016ae7d004c3065efa33e6b9c98c383e081f5b87a219f62dcb80381ae6",
+      "stage": "010-independent-collector-mints-collector-one-minted-token-0"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one token one mint recovered from verified chain state",
+      "path": "screenshots/011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state.png",
+      "sha256": "ff61d47f7f7a3eeea6bf18c02011ad7b7549adacb05a5a9580119b6474b5e8c0",
+      "stage": "011-independent-collector-mints-collector-one-token-one-mint-recovered-from-verified-chain-state"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector one minted token 2",
+      "path": "screenshots/012-independent-collector-mints-collector-one-minted-token-2.png",
+      "sha256": "d2827ac2638da484c3eea5f5d89b109ca7271b76cb1e835a40ed7d39fe0abd70",
+      "stage": "012-independent-collector-mints-collector-one-minted-token-2"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Forever OE vaulted",
+      "path": "screenshots/013-vault-and-reopen-forever-issuance-forever-oe-vaulted.png",
+      "sha256": "f26c03511d863ecea8fd4013b4578f1fee7ffa3ccb9f5629f65e49fd3958e227",
+      "stage": "013-vault-and-reopen-forever-issuance-forever-oe-vaulted"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Vaulted collector mint rejected",
+      "path": "screenshots/014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected.png",
+      "sha256": "6434c5d59a4d83c1ad36af18dfba8d7ceb372591d344b55dd28dc56dccab0a4d",
+      "stage": "014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected"
+    },
+    {
+      "caption": "gnocchi: vault and reopen forever issuance — Forever OE reopen recovered from verified chain state",
+      "path": "screenshots/015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state.png",
+      "sha256": "270946e12fa3520f27804fa6cc8eb47d20b33ec059ef05e15f9f0b859ee132c4",
+      "stage": "015-vault-and-reopen-forever-issuance-forever-oe-reopen-recovered-from-verified-chain-state"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two minted token 0",
+      "path": "screenshots/016-independent-collector-mints-collector-two-minted-token-0.png",
+      "sha256": "dbfd0b011b75f281d8a9c538d8693cc13dc90d3c0febe64c45b3fc93c3dfd465",
+      "stage": "016-independent-collector-mints-collector-two-minted-token-0"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two minted token 1",
+      "path": "screenshots/017-independent-collector-mints-collector-two-minted-token-1.png",
+      "sha256": "5570857eecd01295a1d2e170f88924a35bd46d849e75aa45b9d057f38df081f1",
+      "stage": "017-independent-collector-mints-collector-two-minted-token-1"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Collector two token 2 mint recovered from verified chain state",
+      "path": "screenshots/018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state.png",
+      "sha256": "45620d62357241a038283ed1cfb0e118f6c5450c1d1a3ebdf92e6baf4bc75feb",
+      "stage": "018-independent-collector-mints-collector-two-token-2-mint-recovered-from-verified-chain-state"
+    },
+    {
+      "caption": "gnocchi: independent collector mints — Limited edition cap enforced",
+      "path": "screenshots/019-independent-collector-mints-limited-edition-cap-enforced.png",
+      "sha256": "bc5fec3a149dd3f673903eea03fe49569a69fc797611bb4d7681d70d41428c49",
+      "stage": "019-independent-collector-mints-limited-edition-cap-enforced"
+    }
+  ],
+  "tokens": [
+    {
+      "artifactUri": "ipfs://bafkreig7u6ezb4ddbgb6l47lwqpkcvkw2zjeu7ldhrq6gtefe5qk3klz6y",
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/0",
+      "id": "gnocchi-token-0",
+      "mediaArtifactId": "token-0-media",
+      "metadataArtifactId": "token-0-metadata",
+      "metadataUri": "ipfs://bafkreiaaeb4wvvx2e5m5d4offio4ms3a4tjgjmqnjteza4noskyb4tun7q",
+      "tokenId": "0",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4532762,
+      "proofTotalSupply": "4",
+      "proofHoldersCount": 3
+    },
+    {
+      "artifactUri": "ipfs://bafkreiexq2vjztzy3l545ludufwbtnndpz52exph7a5ssohcuuz3ocyp2a",
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/1",
+      "id": "gnocchi-token-1",
+      "mediaArtifactId": "token-1-media",
+      "metadataArtifactId": "token-1-metadata",
+      "metadataUri": "ipfs://bafkreicf7m4acaanwrvg7x6kh63c624j2hk3r45qpepsyp2epqwrgqbn4e",
+      "tokenId": "1",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4532762,
+      "proofTotalSupply": "4",
+      "proofHoldersCount": 3
+    },
+    {
+      "artifactUri": "ipfs://bafkreiceangf2r25tps6whwpiixeqglcjdqij5ocmeszym4mdmjvmkytrq",
+      "contractAddress": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+      "explorerUrl": "https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv/tokens/2",
+      "id": "gnocchi-token-2",
+      "mediaArtifactId": "token-2-media",
+      "metadataArtifactId": "token-2-metadata",
+      "metadataUri": "ipfs://bafkreibzia7uzggmd6w3vxfk4osdqy5nda3znywpkrtxzt5dpu7x6omdxa",
+      "tokenId": "2",
+      "historicalStateArtifactId": "gnocchi-proof-time-indexer-snapshot",
+      "proofLevel": 4532762,
+      "proofTotalSupply": "3",
+      "proofHoldersCount": 3
+    }
+  ]
+}

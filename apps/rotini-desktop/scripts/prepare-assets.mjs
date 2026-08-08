@@ -20,6 +20,8 @@ const required = [
   "css/site.css",
   "js/site.js",
   "js/site-bundle.js",
+  "js/rotini-artifact.js",
+  "js/rotini-mint.js",
   "js/pasta-foundation.js",
   "vendor/tezos.js",
   "vendor/octez-connect.js",

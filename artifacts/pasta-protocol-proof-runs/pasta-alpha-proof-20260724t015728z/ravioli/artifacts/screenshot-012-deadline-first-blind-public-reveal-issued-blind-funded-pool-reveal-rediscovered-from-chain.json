@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "deadline-first blind public reveal",
+  "stageOrdinal": 12,
+  "stageName": "issued blind funded pool reveal rediscovered from chain",
+  "url": "http://127.0.0.1:63246/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-24T04:06:03.392Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "2da8f0f16a9aa5be0b336a418be3559e0d7cb804146df2a1c18642953259d65b",
+  "byteCount": 159577,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Ravioli"
+    },
+    {
+      "selector": "#opInfo",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "blind_funded_pool · 1 item(s) per open · live wrapper supply 3 · opened 0/3 · fully reserved · sale ends 7/24/2026, 3:23:00 AM · reveal by 7/24/2026, 4:23:00 AM · open/refund cutoff 7/24/2026, 5:23:00 AM"
+    },
+    {
+      "selector": "#ppNotice",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Reveal failed: Ravioli contents are already permanently published"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

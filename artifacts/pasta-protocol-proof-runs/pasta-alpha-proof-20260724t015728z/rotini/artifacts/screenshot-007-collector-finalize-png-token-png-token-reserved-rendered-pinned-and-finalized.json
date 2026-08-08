@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize PNG token",
+  "stageOrdinal": 7,
+  "stageName": "PNG token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:53068/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-24T02:00:43.823Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "65a9650c883e5a95974497152405e2193f1177dc7c7afc4ccec33fa9590f6405",
+  "byteCount": 155974,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1:59:26 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 1:59:31 AM reserving immutable token id and seed (sign in wallet)… 1:59:46 AM reservation 0 confirmed; rendering token 0 from its on-chain seed 1:59:50 AM loading reserved layer Background / Marinara… 1:59:50 AM loading reserved layer Foreground / Pesto… 1:59:53 AM pinning finalized image/png artifact… 1:59:54 AM pinning TZIP-21 token metadata… 2:00:28 AM finalizing reservation 0 (sign in wallet)… 2:00:41 AM collector finalized PNG token 0 with ootr11iirArWMsvgQXwHvJ7wUeV6FBj2HTmjx2LuPeBXVw9Gv4j"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "png finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "PNG iteration 0 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "png supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · PNG · 0.000000 tez"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

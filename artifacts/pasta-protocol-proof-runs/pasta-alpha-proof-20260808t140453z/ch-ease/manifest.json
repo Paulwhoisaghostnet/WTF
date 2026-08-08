@@ -1,0 +1,138 @@
+{
+  "schema": "pastaprotocol-app-proof@1",
+  "app": "ch-ease",
+  "role": "preparation",
+  "runId": "pasta-alpha-proof-20260808t140453z",
+  "capturedAt": "2026-08-08T14:05:13.247Z",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "rpcUrl": "https://tezos-shadownet.octez.io"
+  },
+  "screenshots": [
+    {
+      "stage": "001-prepare-portable-package-media-and-metadata-staged",
+      "path": "screenshots/001-prepare-portable-package-media-and-metadata-staged.png",
+      "sha256": "204338f6544fad9de1f9bade297b08c872c10e34e8710201aeabfac9574d76bb",
+      "caption": "ch-ease: Prepare portable package — Media and metadata staged"
+    },
+    {
+      "stage": "002-pin-prepared-media-media-pinned-and-verified",
+      "path": "screenshots/002-pin-prepared-media-media-pinned-and-verified.png",
+      "sha256": "ccd7a16c09b6fe8bdf022cf03d94d157bf0c0c7eed31b1ac813c7b7ffd12907e",
+      "caption": "ch-ease: Pin prepared media — Media pinned and verified"
+    },
+    {
+      "stage": "003-export-portable-package-json-and-media-archive-exported",
+      "path": "screenshots/003-export-portable-package-json-and-media-archive-exported.png",
+      "sha256": "ad3d2f5461d2fc503370990383f29325e5b8688776bcf412385354eee0099dcc",
+      "caption": "ch-ease: Export portable package — JSON and media archive exported"
+    },
+    {
+      "stage": "004-handoff-to-publisher-spaghetti-handoff-opened",
+      "path": "screenshots/004-handoff-to-publisher-spaghetti-handoff-opened.png",
+      "sha256": "4571872115068ba71d2cfab662b4a71fe427e9188f17511696826d7c53dd11d0",
+      "caption": "ch-ease: Handoff to publisher — Spaghetti handoff opened"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "prepared-package",
+      "kind": "prepared-package",
+      "path": "artifacts/prepared-package.chease.json",
+      "sha256": "cdad24164fa19700d1bd443482b86872231c36d673303943bfd5a25feeca1b79",
+      "ipfsUri": "ipfs://bafkreignvusbmt5bs4andpkegsblq2dsemodnvttga4uhp6vujp65sq3pe",
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreignvusbmt5bs4andpkegsblq2dsemodnvttga4uhp6vujp65sq3pe",
+      "retrievedSha256": "cdad24164fa19700d1bd443482b86872231c36d673303943bfd5a25feeca1b79"
+    },
+    {
+      "id": "prepared-media",
+      "kind": "prepared-media",
+      "path": "artifacts/prepared-media.png",
+      "sha256": "9a5b69f6d1421e93b4901f02169c06182220b2b9140cee28d9bb9cb765bf7dd5",
+      "ipfsUri": "ipfs://bafkreie2lnu7nukcd2j3jea7ailjybqyeiqlfoiubtxcrwn3ts3wlp352u",
+      "gatewayUrl": "https://ipfs.io/ipfs/bafkreie2lnu7nukcd2j3jea7ailjybqyeiqlfoiubtxcrwn3ts3wlp352u",
+      "retrievedSha256": "9a5b69f6d1421e93b4901f02169c06182220b2b9140cee28d9bb9cb765bf7dd5"
+    },
+    {
+      "id": "prepared-archive",
+      "kind": "prepared-archive",
+      "path": "artifacts/prepared-media.chease.zip",
+      "sha256": "95514d6e497c01c7b89fe5c87c93dd1b40f918ad281c651635c727f313f38bbe"
+    },
+    {
+      "id": "screenshot-sidecar-001-prepare-portable-package-media-and-metadata-staged",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-001-prepare-portable-package-media-and-metadata-staged.json",
+      "sha256": "32f3dcf0e68c58355db760d416ba8b3c95f10562dcff72867b672f3aca61e6b3"
+    },
+    {
+      "id": "screenshot-sidecar-002-pin-prepared-media-media-pinned-and-verified",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-002-pin-prepared-media-media-pinned-and-verified.json",
+      "sha256": "538e39b5671464b68c6ae9ecc58019292ba520930dbf8706c53dfcfc1600bebf"
+    },
+    {
+      "id": "screenshot-sidecar-003-export-portable-package-json-and-media-archive-exported",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-003-export-portable-package-json-and-media-archive-exported.json",
+      "sha256": "e39f30812e3243bc50da172db79cce0689d2c826f320337393102ca703656f43"
+    },
+    {
+      "id": "screenshot-sidecar-004-handoff-to-publisher-spaghetti-handoff-opened",
+      "kind": "screenshot-sidecar",
+      "path": "artifacts/screenshot-004-handoff-to-publisher-spaghetti-handoff-opened.json",
+      "sha256": "cf3d2281a2e11e520a7a697e771b6442bb075246b6ff6718bfd43adab368a631"
+    }
+  ],
+  "contracts": [],
+  "operations": [],
+  "tokens": [],
+  "roleEvidence": [
+    {
+      "kind": "package-export",
+      "artifactId": "prepared-package",
+      "url": "https://ipfs.io/ipfs/bafkreignvusbmt5bs4andpkegsblq2dsemodnvttga4uhp6vujp65sq3pe"
+    },
+    {
+      "kind": "publisher-handoff",
+      "targetApp": "spaghetti",
+      "url": "http://127.0.0.1:54566/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "prepare-pin-export-handoff",
+      "description": "Prepare media and metadata, pin the media, export portable JSON/ZIP artifacts, and hand the package to Spaghetti.",
+      "evidence": {
+        "screenshots": [
+          "001-prepare-portable-package-media-and-metadata-staged",
+          "002-pin-prepared-media-media-pinned-and-verified",
+          "003-export-portable-package-json-and-media-archive-exported",
+          "004-handoff-to-publisher-spaghetti-handoff-opened"
+        ],
+        "artifacts": [
+          "prepared-package",
+          "prepared-media",
+          "prepared-archive",
+          "screenshot-sidecar-001-prepare-portable-package-media-and-metadata-staged",
+          "screenshot-sidecar-002-pin-prepared-media-media-pinned-and-verified",
+          "screenshot-sidecar-003-export-portable-package-json-and-media-archive-exported",
+          "screenshot-sidecar-004-handoff-to-publisher-spaghetti-handoff-opened"
+        ],
+        "contracts": [],
+        "operations": [],
+        "tokens": [],
+        "roleEvidence": [
+          "package-export",
+          "publisher-handoff"
+        ],
+        "urls": [
+          "https://ipfs.io/ipfs/bafkreignvusbmt5bs4andpkegsblq2dsemodnvttga4uhp6vujp65sq3pe",
+          "https://ipfs.io/ipfs/bafkreie2lnu7nukcd2j3jea7ailjybqyeiqlfoiubtxcrwn3ts3wlp352u",
+          "http://127.0.0.1:54566/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti"
+        ]
+      }
+    }
+  ]
+}

@@ -44,9 +44,9 @@ test("enabled defaults are preserved from DEFAULT_DESKTOP_APP_CONFIG", () => {
 });
 
 test("currently-enabled builtins land in published; off apps in registered", () => {
-  const hoard = seedFromPackage(WTF_APP_PACKAGE_ACCEPTANCE.find((e) => e.id === "desktop:hoard")!);
-  assert.equal(hoard.enabled, true);
-  assert.equal(hoard.lifecycleState, "published");
+  const wtfiam = seedFromPackage(WTF_APP_PACKAGE_ACCEPTANCE.find((e) => e.id === "desktop:wtfiam")!);
+  assert.equal(wtfiam.enabled, true);
+  assert.equal(wtfiam.lifecycleState, "published");
 
   const dues = seedFromPackage(WTF_APP_PACKAGE_ACCEPTANCE.find((e) => e.id === "desktop:dues-manager")!);
   assert.equal(dues.enabled, false);

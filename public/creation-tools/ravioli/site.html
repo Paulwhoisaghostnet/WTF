@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pasta Protocol</title>
-    <link rel="icon" href="../../pasta-icons/sugo/ravioli.svg" type="image/svg+xml" />
+    <link id="pastaFavicon" rel="icon" type="image/svg+xml" />
     <link rel="stylesheet" href="css/site.css" />
   </head>
   <body>
@@ -34,15 +34,25 @@
         <button id="submit" type="button" disabled>Continue</button>
         <button id="secondarySubmit" type="button" hidden>Secondary action</button>
       </section>
+      <section id="deliveryResult" class="storage" aria-label="Confirmed atomic delivery" aria-live="polite" hidden>
+        <div>
+          <h2>Confirmed atomic delivery</h2>
+          <p id="deliverySummary">The wrapper opened and its child actions completed in one Tezos operation.</p>
+        </div>
+        <ul id="deliveryItems"></ul>
+        <a id="deliveryOperation" target="_blank" rel="noopener noreferrer">View opening operation on TzKT</a>
+      </section>
       <section id="ravioliOpen" class="storage" aria-label="Ravioli open kit" hidden>
         <div>
           <h2>Atomic pack opening</h2>
-          <p>Import the creator-issued open kit. Generative and hybrid packs also require the finished PNG, GIF, or dependency-complete offline ZIP produced for this opening.</p>
+          <p>The page authenticates and decrypts the creator's precommitted reveal after its key is on chain. For generative and hybrid packs, it reads your exact wrapper claim plus the adapter's Rotini project and immutable seed, then renders every PNG, GIF, or dependency-complete offline ZIP automatically.</p>
+          <p id="ravioliRenderNotice">No artwork upload is accepted. The Rotini generator and immutable pack/serial/action/project seed are canonical; the rendered artifact is a reproducible self-rendered cache and is not pixel-verified by the Tezos contract.</p>
         </div>
         <label>Open kit file <input id="openKitFile" type="file" accept="application/json,.json" /></label>
         <label>Open kit <textarea id="openKit" rows="8" spellcheck="false" placeholder="Paste Ravioli v3 open-kit JSON"></textarea></label>
-        <label>Generated artifact <input id="openArtifact" type="file" accept="image/png,image/gif,application/zip,.zip" /></label>
-        <label>ZIP display / thumbnail <input id="openPreview" type="file" accept="image/png,image/gif" /></label>
+        <label id="refundDestinationRow" hidden>Refund withdrawal destination
+          <input id="refundDestination" type="text" inputmode="text" autocomplete="off" placeholder="Defaults to the connected tz account" />
+        </label>
       </section>
       <section id="rotiniStorage" class="storage" aria-label="Iteration artifact storage" hidden>
         <div>

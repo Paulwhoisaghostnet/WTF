@@ -1,0 +1,1 @@
+{"interfaces":["TZIP-012","TZIP-016"],"name":"Ravioli UI-LIVE Atomic Packs","ravioli":{"controllerBinding":"immutable-router-storage","fulfillment":"atomic-router-and-blind-controller","transferExpiry":"reveal-deadline-if-unrevealed-or-open-deadline-if-revealed","version":3},"symbol":"RVUI"}

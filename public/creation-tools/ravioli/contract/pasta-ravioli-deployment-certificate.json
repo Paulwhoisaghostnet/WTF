@@ -1,0 +1,49 @@
+{
+  "schema": "pasta-ravioli-deployment-certificate@2",
+  "compiler": {
+    "name": "SmartPy",
+    "version": "0.24.1"
+  },
+  "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY",
+  "maxOperationDataLength": 32768,
+  "minimumHeadroomBytes": 1024,
+  "certifiedMetadataUriMaxBytes": 80,
+  "artifacts": {
+    "router": {
+      "path": "contract/pasta-bundle.contract.json",
+      "sha256": "999eab1ecb9179e24d20b04578fa89d3508b1abc34c3f03034eb4e6ba9bd3789",
+      "canonicalMichelsonCodeSha256": "203861ef17f41f1f4e1e1ef03a3eb69735b181edc682d6e5dfd3a8a95a3febf0",
+      "sourcePath": "contracts/pasta-protocol/PastaPackRouterFA2.py",
+      "sourceSha256": "92730950800cfcc3363cd0c4b6c72045e91ed9852dc2a62b8224539c07921b94",
+      "signedOriginationBytes": 31587,
+      "headroomBytes": 1181
+    },
+    "blindController": {
+      "path": "contract/pasta-blind-pack-controller.contract.json",
+      "sha256": "e5fbc6b68db438955550ba51197f70d0f66c7ed2fb02d31ac71e7db00360ba53",
+      "canonicalMichelsonCodeSha256": "c6c9198870b11d3d3330b5cd290a8f71a072376ef3dbce77a97ce4533472fea8",
+      "sourcePath": "contracts/pasta-protocol/PastaBlindPackController.py",
+      "sourceSha256": "69b35a799b187e81402af837130a3d734c469f729a27040329b8e0248db452c2",
+      "signedOriginationBytes": 15204,
+      "headroomBytes": 17564
+    },
+    "gnocchiAdapter": {
+      "path": "contract/pasta-gnocchi-pack-adapter.contract.json",
+      "sha256": "7aa2bfabe90843a62ac87239e3e97ec468fe2b7e0c01aa5a66aadf1424288b90",
+      "canonicalMichelsonCodeSha256": "db5ef4ee05426f24528403e97cdf3486b0ec4bf369508b427f834a1c7e461001",
+      "sourcePath": "contracts/pasta-protocol/PastaGnocchiPackAdapter.py",
+      "sourceSha256": "7230adb19f3d6e01bdaa45168f495aa39452d0515326895400c4bf61f08a1753",
+      "signedOriginationBytes": 5447,
+      "headroomBytes": 27321
+    },
+    "rotiniAdapter": {
+      "path": "contract/pasta-rotini-pack-adapter.contract.json",
+      "sha256": "0c0c1067212bc4c3109b08669ff35b1c90f79342447105fc28bb9434d54ed8fb",
+      "canonicalMichelsonCodeSha256": "0b33f7c9bab1decf258711adfa1cf34a0a507f91dfbc1e1cfe1443a16d1f9f55",
+      "sourcePath": "contracts/pasta-protocol/PastaRotiniPackAdapter.py",
+      "sourceSha256": "6c8e4a5251ad24e15e6c7db0c303ce5eebee8c6457e9104d2944fb942a51982f",
+      "signedOriginationBytes": 5460,
+      "headroomBytes": 27308
+    }
+  }
+}

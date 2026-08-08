@@ -477,10 +477,10 @@ export const BETA_PERSONAS: BetaPersona[] = [
     promise: "Find the collector path through existing WTFOS apps without guessing the next tool.",
     returnReason: "Fresh art, market motion, rewards, and social signals show what changed.",
     confusion: "Collection, portfolio, gallery, and market signals are split across names.",
-    failure: "Finds an object but does not discover Hoard, Rat Race, or creator context.",
-    hesitation: "Pauses when deciding whether Gallery, Hoard, or WTFIAM is the right next stop.",
+    failure: "Finds an object but does not discover Dashboard, Rat Race, or creator context.",
+    hesitation: "Pauses when deciding whether Gallery, Dashboard, or WTFIAM is the right next stop.",
     abandonment: "Leaves after passive browsing if no related action appears.",
-    delightedBy: "A trail from Gallery to Hoard to Rat Race to creator signals.",
+    delightedBy: "A trail from Gallery to Dashboard to Rat Race to creator signals.",
   },
   {
     key: "creator",
@@ -894,7 +894,7 @@ export const BETA_FRICTION_QUEUE: BetaFrictionQueueItem[] = [
     route: "/mission-control",
     access: "session",
     evidence: "Route Group Guide and App Visibility Atlas reduce hesitation by grouping first win, collector economy, creator pipeline, builder output, curator signal, community comms, and Count liveops routes.",
-    friction: "Similar names such as quests, challenges, gallery, hoard, marketplace, studio, tools, W, WIM, Digest, and Notifications can still make users pause before choosing the correct owner.",
+    friction: "Similar names such as quests, challenges, gallery, dashboard, marketplace, studio, tools, W, WIM, Digest, and Notifications can still make users pause before choosing the correct owner.",
     nextUiMove: "Use route-group explanation, atlas filters, and relationship chains before hiding, relabeling, or assistant-routing any existing app that appears confusing.",
     successMeasure: "Collector, creator, builder, curator, and community puppets can choose the correct route group and first owner route without scanning the full app list.",
     noWriteRule: "No beta write: beta may group, filter, and relabel navigation copy, but it must not alter route contracts, app purpose, access gates, or existing app functionality.",
@@ -952,7 +952,6 @@ export const BETA_FRICTION_QUEUE: BetaFrictionQueueItem[] = [
 
 const desktopRoutes: Record<DesktopAppKey, string> = {
   wtfiam: "/wtfiam",
-  hoard: "/hoard",
   wim: "/wim",
   w: "/w",
   tv: "/tv",
@@ -980,6 +979,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   agent: "/agent",
   applications: "/applications",
   mail: "/mail",
+  "admin-inbox": "/admin-inbox",
   "objkt-operator": "/objkt-operator",
 };
 
@@ -1021,11 +1021,12 @@ const manualApps: BetaAppCatalogEntry[] = [
   entry("challenges", "Challenges", "/challenges", "session", 1, "start", allPersonas, "Bigger missions that combine side quests, submissions, show events, and reward review.", ["/side-quests", "/leaderboard", "/admin", "/mission-control"]),
   entry("leaderboard", "Leaderboards", "/leaderboard", "public", 1, "start", allPersonas, "Public proof of EXP, rewards, holders, and visible community progress.", ["/side-quests", "/challenges", "/profile", "/w"]),
   entry("calendar-events", "Calendar", "/calendar", "public", 2, "connect", allPersonas, "Public schedule surface for events, live moments, deadlines, and return-tomorrow prompts.", ["/notifications", "/live", "/side-quests", "/w"]),
-  entry("profile", "Profile", "/profile", "session", 1, "identity", allPersonas, "Account identity, public profile, wallet linking, and social proof.", ["/user/wtf-admin", "/skywire", "/hoard", "/wtf-subdomains"]),
+  entry("dashboard", "Dashboard", "/dashboard", "session", 3, "collect", ["collector", "creator", "curator"], "Authenticated holdings, portfolio, collection, and wallet-sync context for the collector path.", ["/mission-control", "/notifications", "/profile", "/dashboard"]),
+  entry("profile", "Profile", "/profile", "session", 1, "identity", allPersonas, "Account identity, public profile, wallet linking, and social proof.", ["/user/wtf-admin", "/skywire", "/dashboard", "/wtf-subdomains"]),
   entry("notifications", "Notification Center", "/notifications", "session", 1, "start", allPersonas, "High-signal inbox for replies, room activity, publish states, rewards, and system work.", ["/mission-control", "/digest", "/settings", "/messages"]),
   entry("digest", "Digest", "/digest", "session", 2, "connect", ["community-member", "creator", "collector"], "Recap surface for missed replies, room activity, rewards, publish states, and system work.", ["/notifications", "/w", "/mail", "/mission-control"]),
   entry("system-settings", "System Settings", "/settings", "session", 3, "recover", allPersonas, "Central OS settings hub for notification preferences, account, wallet, files, appearance, W, domains, and recovery routes.", ["/notifications", "/notification-center", "/digest", "/wtf-subdomains", "/profile"]),
-  entry("on-chain-market", "On Chain Market", "/marketplace", "session", 2, "collect", ["collector", "curator", "creator"], "Authenticated market surface for listings, auctions, trade boards, and collector activity that beta can preview through read-only public signals.", ["/gallery", "/hoard", "/rat-race", "/wtfiam"]),
+  entry("on-chain-market", "On Chain Market", "/marketplace", "session", 2, "collect", ["collector", "curator", "creator"], "Authenticated market surface for listings, auctions, trade boards, and collector activity that beta can preview through read-only public signals.", ["/gallery", "/dashboard", "/rat-race", "/wtfiam"]),
   entry("trade-boards", "Trade Boards", "/trade-boards", "session", 2, "collect", ["collector", "curator", "community-member"], "Collector coordination surface for trade intent and market conversation around existing WTFOS objects.", ["/marketplace", "/rat-race", "/w", "/profile"]),
   entry("admin-control-suite", "Admin Control Suite", "/admin", "admin", 5, "operate", ["builder"], "The Count's management surface for users, roles, app gates, challenges, quests, automation, rewards, and market operations.", ["/admin", "/challenges", "/side-quests", "/wtfiam"]),
 ];
@@ -1039,7 +1040,7 @@ function tierFor(appKey: DesktopAppKey): BetaTier {
   return 3;
 }
 function stageFor(appKey: DesktopAppKey): BetaStage {
-  if (["wtfiam", "hoard", "gallery", "rat-race"].includes(appKey)) return "collect";
+  if (["wtfiam", "gallery", "rat-race"].includes(appKey)) return "collect";
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
   if (["arcade", "casino", "console", "dedrooms", "applications"].includes(appKey)) return "play";
@@ -1049,7 +1050,7 @@ function stageFor(appKey: DesktopAppKey): BetaStage {
 function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
   if (appKey === "objkt-operator") return ["collector", "curator", "builder"];
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
-  if (["hoard", "gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
+  if (["gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
   if (["w", "wim", "tv", "skywire", "wtf-live", "mail"].includes(appKey)) return ["community-member", "creator", "collector"];
   return allPersonas;
 }
@@ -1113,7 +1114,7 @@ export const BETA_UNLOCK_QUESTLINES: BetaUnlockQuestline[] = [
     label: "Collector path",
     promise: "Turn browsing into collection context, inventory, market motion, and reward spending without rushing wallet action.",
     sideQuest: "Find and save one object or creator signal from Gallery, trade-board proof, or public marketplace context.",
-    challenge: "Collector loop challenge linking Gallery, Hoard, Rat Race, and WTFIAM into one related path.",
+    challenge: "Collector loop challenge linking Gallery, Dashboard, Rat Race, and WTFIAM into one related path.",
     reward: "EXP, optional WTF reward, and a later inventory or market-sink prompt when the user is ready.",
     roleOrPermission: "Collector readiness can inform recommendations, but market and wallet surfaces keep their existing gates.",
     adminSurface: "Rewards, In-App Market, Trade Boards, App Gates",
@@ -1122,7 +1123,7 @@ export const BETA_UNLOCK_QUESTLINES: BetaUnlockQuestline[] = [
     stages: [
       { key: "notice", label: "Notice", route: "/gallery", access: "public", action: "Inspect one public object or creator signal.", proof: "Gallery gives collector curiosity a low-risk entry point." },
       { key: "act", label: "Act", route: "/side-quests", access: "session", action: "Complete an object-discovery side quest.", proof: "The side quest turns passive browsing into EXP progress." },
-      { key: "prove", label: "Prove", route: "/hoard", access: "session", action: "Inspect personal holdings or wallet context after sign-in.", proof: "Hoard explains why collection state matters." },
+      { key: "prove", label: "Prove", route: "/dashboard", access: "session", action: "Inspect personal holdings or wallet context after sign-in.", proof: "Dashboard explains why collection state matters." },
       { key: "unlock", label: "Unlock", route: "/rat-race", access: "session", action: "Move from object proof to market motion.", proof: "Rat Race shows urgency and sales context without being the whole product." },
       { key: "return", label: "Return", route: "/wtfiam", access: "session", action: "Spend or inspect earned inventory when rewards arrive.", proof: "WTFIAM connects earned progress to useful in-app economy sinks." },
     ],
@@ -1254,12 +1255,12 @@ export const BETA_UNLOCK_PASSPORTS: BetaUnlockPassport[] = [
     access: "public",
     primaryRoute: "/gallery",
     primaryAccess: "public",
-    proofRoute: "/hoard",
+    proofRoute: "/dashboard",
     proofAccess: "session",
     nextRoute: "/rat-race",
     nextAccess: "session",
     visibleNow: "Gallery, Leaderboards, trade-board signals, and public market context show objects, creators, sales motion, and collector activity.",
-    nextSafeAction: "Inspect one public object or creator signal, then use Side Quests or Hoard to turn passive discovery into route-owned collection proof.",
+    nextSafeAction: "Inspect one public object or creator signal, then use Side Quests or Dashboard to turn passive discovery into route-owned collection proof.",
     proofNeeded: "An object, creator, holding, or trade signal that can be reviewed without pretending a contract purchase has already happened.",
     unlocksNext: "Rat Race, Marketplace, WTFIAM inventory, trade boards, and reward-spend prompts become understandable after collection context exists.",
     staysLocked: "Wallet sends, trade execution, market settlement, and reward-value increases stay behind the existing session, wallet, and review boundaries.",
@@ -1405,14 +1406,14 @@ export const BETA_RELATIONSHIP_NAVIGATOR: BetaRelationshipNavigatorChain[] = [
     question: "How does browsing art become a collector path instead of a dead-end gallery visit?",
     startsWhen: "The user finds an object, creator, sale, holding, or trade signal and needs to know which collector tool owns the next move.",
     userBenefit: "Keeps collection discovery explainable by separating public inspection, signed-in collection context, market heat, trade intent, and reward inventory.",
-    comesBefore: "Gallery and public proof should come before Hoard, Rat Race, Marketplace, or trade-board action.",
+    comesBefore: "Gallery and public proof should come before Dashboard, Rat Race, Marketplace, or trade-board action.",
     consumes: "Object metadata, holder context, marketplace listings, trade-board signals, reward inventory, and user collection state.",
-    feedsInto: "Hoard, Rat Race, Marketplace, Trade Boards, WTFIAM inventory, collector quests, and market-notification preferences.",
+    feedsInto: "Dashboard, Rat Race, Marketplace, Trade Boards, WTFIAM inventory, collector quests, and market-notification preferences.",
     comesAfter: "After context exists, the user can inspect heat, coordinate trades, or see where earned rewards and inventory live.",
     countWatch: "The Count watches reward rows, price locks, sale windows, repeated completions, and market pressure before promoting collector incentives.",
     steps: [
       { key: "inspect-object", label: "Inspect object", route: "/gallery", access: "public", why: "Gallery is the safest first look at art, creators, and collections.", handoff: "Public inspection can hand off to owned collection context." },
-      { key: "check-holdings", label: "Check holdings", route: "/hoard", access: "session", why: "Hoard turns passive browsing into account-aware collection context.", handoff: "Holdings make urgency and market heat meaningful." },
+      { key: "check-holdings", label: "Check holdings", route: "/dashboard", access: "session", why: "Dashboard turns passive browsing into account-aware collection context.", handoff: "Holdings make urgency and market heat meaningful." },
       { key: "read-heat", label: "Read heat", route: "/rat-race", access: "session", why: "Rat Race explains what is moving before the user makes market assumptions.", handoff: "Heat can lead to market inspection or trade coordination." },
       { key: "inspect-market", label: "Inspect market", route: "/marketplace", access: "session", why: "Marketplace owns listing and auction depth while keeping wallet authority separate.", handoff: "Market context clarifies whether trade intent is useful." },
       { key: "coordinate-trade", label: "Coordinate trade", route: "/trade-boards", access: "session", why: "Trade Boards expose collector intent and conversation around existing objects.", handoff: "Trade intent and earned items should be visible in inventory." },
@@ -1591,15 +1592,15 @@ export const BETA_ROUTE_GROUP_GUIDE: BetaRouteGroupGuide[] = [
     atlasTier: "all",
     atlasQuery: "",
     userQuestion: "Which collector route should I open after I find an object?",
-    confusionResolved: "Gallery, Hoard, Marketplace, Rat Race, Trade Boards, and WTFIAM are separated into inspection, ownership context, market depth, urgency, trade intent, and inventory.",
+    confusionResolved: "Gallery, Dashboard, Marketplace, Rat Race, Trade Boards, and WTFIAM are separated into inspection, ownership context, market depth, urgency, trade intent, and inventory.",
     useFirst: "Use Gallery first because it lets collectors inspect objects and creators without wallet pressure.",
-    useNext: "Use Hoard for owned context, Rat Race for urgency, Marketplace for listing depth, Trade Boards for coordination, and WTFIAM for earned inventory.",
+    useNext: "Use Dashboard for owned context, Rat Race for urgency, Marketplace for listing depth, Trade Boards for coordination, and WTFIAM for earned inventory.",
     proofToLookFor: "Fresh objects, holder rows, trade-board objects, market listings, owned items, reward destinations, and collector return prompts.",
     quietRule: "If market or trade proof is quiet, keep Gallery and Leaderboards as the safe discovery path before suggesting wallet-heavy action.",
     countWatch: "The Count watches reward rows, sale windows, pricing locks, repeated completions, and market pressure before promoting collector incentives.",
     routes: [
       { label: "Inspect art", route: "/gallery", access: "public", purpose: "Safest collector entry for public objects and creators." },
-      { label: "Owned context", route: "/hoard", access: "session", purpose: "Connects browsing to personal collection state." },
+      { label: "Owned context", route: "/dashboard", access: "session", purpose: "Connects browsing to personal collection state." },
       { label: "Market depth", route: "/marketplace", access: "session", purpose: "Owns listings, auctions, and market inspection." },
       { label: "Market urgency", route: "/rat-race", access: "session", purpose: "Shows what appears to be moving quickly after the collector has object and market context." },
       { label: "Trade intent", route: "/trade-boards", access: "session", purpose: "Reveals collector coordination around existing objects." },
@@ -2068,7 +2069,7 @@ export const BETA_COUNT_LIVEOPS_RECIPES: BetaCountLiveopsRecipe[] = [
     userNeed: "A collector sees objects or market motion but needs context before spending rewards, using wallet authority, or chasing urgency.",
     expUse: "EXP shows collection learning and discovery effort; it should not imply that purchases, trades, or contract actions are safe.",
     sideQuest: "Use an object-discovery side quest that asks the collector to inspect one object, creator, holder, or trade-board signal.",
-    challenge: "Create a collector challenge linking Gallery, Hoard, Rat Race, Marketplace, and WTFIAM so urgency has context.",
+    challenge: "Create a collector challenge linking Gallery, Dashboard, Rat Race, Marketplace, and WTFIAM so urgency has context.",
     reward: "Reward object understanding or curation proof; sink value through visible WTFIAM or market items only after caps are set.",
     roleOrPermission: "Collector readiness can guide recommendations, but wallet, contract, marketplace, and role gates keep their existing authority.",
     marketOrNotificationEffect: "Market rows, sale windows, trade-board objects, and reward sinks become visible only with quiet-state copy and price uncertainty intact.",
@@ -2079,7 +2080,7 @@ export const BETA_COUNT_LIVEOPS_RECIPES: BetaCountLiveopsRecipe[] = [
     stages: [
       { key: "detect", label: "Detect object", route: "/gallery", access: "public", ownerSurface: "Gallery discovery", countAction: "Start with public object or creator context before any spend loop.", proofRequired: "Gallery or public proof explains why the collector should care about the object." },
       { key: "define", label: "Define discovery", route: "/side-quests", access: "session", ownerSurface: "Side Quests", countAction: "Turn object discovery into a capped learning task instead of market pressure.", proofRequired: "Quest criteria ask for object understanding, not a forced purchase or wallet action." },
-      { key: "prove", label: "Prove holding", route: "/hoard", access: "session", ownerSurface: "Hoard collection state", countAction: "Check whether the collector has holding, save, or identity context after sign-in.", proofRequired: "Personal collection state or wallet-adjacent context exists without pretending a purchase happened." },
+      { key: "prove", label: "Prove holding", route: "/dashboard", access: "session", ownerSurface: "Dashboard collection state", countAction: "Check whether the collector has holding, save, or identity context after sign-in.", proofRequired: "Personal collection state or wallet-adjacent context exists without pretending a purchase happened." },
       { key: "reward", label: "Reward context", route: "/wtfiam", access: "session", ownerSurface: "WTFIAM inventory", countAction: "Show where collection progress, rewards, and inventory can be inspected.", proofRequired: "Inventory or reward destination is visible and capped before a spend prompt appears." },
       { key: "gate", label: "Gate market", route: "/marketplace", access: "session", ownerSurface: "Marketplace", countAction: "Separate public preview, signed-in action, wallet authority, and admin market configuration.", proofRequired: "Listing, item, price, or sale window state is clear enough for the collector to choose responsibly." },
       { key: "return", label: "Return urgency", route: "/rat-race", access: "session", ownerSurface: "Rat Race market heat", countAction: "Use heat and sales context as a follow-up, not the first explanation.", proofRequired: "Market motion exists and quiet rows are explained as quiet instead of broken." },
@@ -2432,7 +2433,7 @@ export const BETA_ATTENTION_QUEUE: BetaAttentionQueueItem[] = [
     question: "What object, listing, or trade signal deserves a look?",
     signalKeys: ["market-trade-board", "market-listings", "market-heat"],
     whyItMatters: "Collectors need market motion and object context, but the first inspection step should stay low-risk and understandable.",
-    action: "Start from Gallery or Trade Boards, then use Rat Race, Hoard, Marketplace, or WTFIAM when the user wants depth.",
+    action: "Start from Gallery or Trade Boards, then use Rat Race, Dashboard, Marketplace, or WTFIAM when the user wants depth.",
     quietFallback: "If market heat is protected or quiet, keep the public object proof visible and explain that wallet or session routes own deeper action.",
     countControl: "The Count manages market item availability, pricing locks, sale windows, reward sinks, and suspicious repeated market loops.",
     relatedRoutes: ["/trade-boards", "/rat-race", "/wtfiam"],
@@ -2525,11 +2526,11 @@ export const BETA_PERSONA_COMMAND_CENTER: BetaPersonaCommand[] = [
     attentionKey: "collector-heat",
     dailyLoopKey: "object",
     countReview: "The Count watches market availability, pricing locks, reward sinks, and repeated collector-loop completions.",
-    success: "The collector can find an object, understand why it matters, and discover Gallery, Hoard, Rat Race, Marketplace, or WTFIAM as related tools.",
+    success: "The collector can find an object, understand why it matters, and discover Gallery, Dashboard, Rat Race, Marketplace, or WTFIAM as related tools.",
     steps: [
       { key: "orient", label: "Inspect object", route: "/gallery", access: "public", action: "Start from Gallery or public object proof.", proof: "Gallery is the low-risk inspection route before deeper collection state." },
       { key: "act", label: "Earn context", route: "/side-quests", access: "session", action: "Turn object discovery into a quest or challenge action.", proof: "Quest completion connects browsing to EXP and return loops." },
-      { key: "prove", label: "Check holdings", route: "/hoard", access: "session", action: "Inspect owned or wallet-linked collection context.", proof: "Hoard explains why objects and wallets matter after sign-in." },
+      { key: "prove", label: "Check holdings", route: "/dashboard", access: "session", action: "Inspect owned or wallet-linked collection context.", proof: "Dashboard explains why objects and wallets matter after sign-in." },
       { key: "return", label: "Follow motion", route: "/rat-race", access: "session", action: "Use Rat Race or Marketplace when market motion becomes the next question.", proof: "Market routes own urgency, listings, and deeper collector context." },
       { key: "count", label: "Count review", route: "/admin", access: "admin", action: "Review market loops only through existing admin controls.", proof: "Admin review keeps collector rewards and sinks auditable." },
     ],
@@ -2643,7 +2644,7 @@ export const BETA_WAYFINDER_ACTIONS: BetaWayfinderAction[] = [
     atlasPersona: "collector",
     atlasStage: "collect",
     proof: "The public proof board composes trade-board objects and market listings into a safe Gallery-first inspection path.",
-    nextAction: "Show collector proof, then route to Gallery, Hoard, Rat Race, Marketplace, or WTFIAM when the user wants depth.",
+    nextAction: "Show collector proof, then route to Gallery, Dashboard, Rat Race, Marketplace, or WTFIAM when the user wants depth.",
   },
   {
     key: "creator-runway",
@@ -2733,7 +2734,7 @@ export const BETA_UNLOCK_GOVERNANCE_MATRIX: BetaUnlockGovernanceItem[] = [
     key: "collector",
     label: "Collector readiness",
     playerQuestion: "Has the collector found an object and understood why it matters?",
-    evidence: "Gallery inspection, object-discovery side quest proof, Hoard context, or Rat Race market-motion follow-up.",
+    evidence: "Gallery inspection, object-discovery side quest proof, Dashboard context, or Rat Race market-motion follow-up.",
     expSignal: "EXP should indicate repeated discovery quality, not speculative wallet behavior or high-value market action.",
     rewardOrMarketSink: "WTFIAM inventory, reward rows, and in-app market sinks become useful only after collector context is clear.",
     roleBoundary: "Collector recommendations may improve discovery, but market, wallet, and role-gated actions keep their existing gates.",
@@ -2743,7 +2744,7 @@ export const BETA_UNLOCK_GOVERNANCE_MATRIX: BetaUnlockGovernanceItem[] = [
     userAccess: "public",
     adminRoute: "/admin",
     adminAccess: "admin",
-    relatedRoutes: ["/hoard", "/rat-race", "/marketplace", "/wtfiam"],
+    relatedRoutes: ["/dashboard", "/rat-race", "/marketplace", "/wtfiam"],
   },
   {
     key: "creator",
@@ -2873,12 +2874,12 @@ export const BETA_DAILY_RETURN_LOOPS: BetaDailyReturnLoop[] = [
     route: "/gallery",
     access: "public",
     question: "What new art, collection, or market object is worth a look?",
-    todayAction: "Start from Gallery or public proof, then route collectors toward Rat Race, Hoard, Marketplace, or Trade Boards when they need depth.",
+    todayAction: "Start from Gallery or public proof, then route collectors toward Rat Race, Dashboard, Marketplace, or Trade Boards when they need depth.",
     tomorrowReason: "Fresh art, listings, trade-board objects, mints, and sales create a changing collector and curator loop.",
     progressionHook: "Collector curiosity can feed quests, rewards, WTFIAM inventory, and marketplace paths without making speculation the whole product.",
     visibleProof: "Public Proof Board combines object, trade-board, market, and channel snippets when safe public reads exist.",
     countControl: "The Count manages market availability, pricing locks, reward sinks, and abusive market loops from admin-only surfaces.",
-    relatedRoutes: ["/rat-race", "/hoard", "/marketplace"],
+    relatedRoutes: ["/rat-race", "/dashboard", "/marketplace"],
   },
   {
     key: "project",

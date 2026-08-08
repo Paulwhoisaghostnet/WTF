@@ -9,19 +9,25 @@ import { MichelsonMap, type TezosToolkit } from "@taquito/taquito";
 import { validateContractAddress, ValidationResult } from "@taquito/utils";
 import type { Page } from "playwright";
 
+import { hashMichelsonScriptCode } from "./pasta-michelson-script-identity";
+import { declareReadOnlyReader, readWithBoundedRetry } from "./pasta-readonly-retry";
+
 export const PASTA_UI_LIVE_BRIDGE_SCHEMA = "pastaprotocol-ui-live-bridge@1";
 export const PASTA_UI_LIVE_RECEIPT_SCHEMA = "pastaprotocol-ui-live-receipt@1";
+export const PASTA_UI_LIVE_VIEW_RECEIPT_SCHEMA = "pastaprotocol-ui-live-view-receipt@1";
 
 const BRIDGE_PATH = "/__pasta-proof/bridge";
 const HEALTH_PATH = "/__pasta-proof/health";
 const DEFAULT_MAX_BODY_BYTES = 5_000_000;
 const MAX_PIN_BYTES = 2_000_000;
+const MAX_SCRIPT_CODE_JSON_BYTES = 2_000_000;
 const SAFE_ACTION = /^[a-z][a-z0-9_]{0,63}$/;
 const SAFE_ENTRYPOINT = /^[A-Za-z][A-Za-z0-9_.%@-]{0,127}$/;
 const SAFE_FILENAME = /^[^\\/\0\r\n]{1,255}$/;
 const ADDRESS_RE = /^(?:tz[1-4]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
 const PROHIBITED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const BRIDGE_ACTIONS = new Set([
+  "active_protocol",
   "balance",
   "batch",
   "call",
@@ -29,10 +35,12 @@ const BRIDGE_ACTIONS = new Set([
   "connect",
   "contract_at",
   "estimate_call",
+  "execute_view",
   "originate",
   "pin_blob",
   "pin_json",
   "read_storage",
+  "script_code_hash",
 ]);
 
 const MIME_TYPES = new Map([
@@ -54,6 +62,7 @@ const MIME_TYPES = new Map([
 ]);
 
 export type PastaUiLiveAction =
+  | "active_protocol"
   | "balance"
   | "batch"
   | "call"
@@ -61,10 +70,14 @@ export type PastaUiLiveAction =
   | "connect"
   | "contract_at"
   | "estimate_call"
+  | "execute_view"
   | "originate"
   | "pin_blob"
   | "pin_json"
-  | "read_storage";
+  | "read_storage"
+  | "script_code_hash";
+
+export type PastaUiLiveReceiptAction = Exclude<PastaUiLiveAction, "execute_view">;
 
 export type PastaUiLiveBridgeRequest = {
   schema: typeof PASTA_UI_LIVE_BRIDGE_SCHEMA;
@@ -77,7 +90,7 @@ export type PastaUiLivePublicReceipt = {
   schema: typeof PASTA_UI_LIVE_RECEIPT_SCHEMA;
   sequence: number;
   timestampUtc: string;
-  action: PastaUiLiveAction;
+  action: PastaUiLiveReceiptAction;
   chainId: string;
   signerAddress?: string;
   contractAddress?: string;
@@ -89,6 +102,18 @@ export type PastaUiLivePublicReceipt = {
   sha256?: string;
   byteCount?: number;
   fileName?: string;
+};
+
+export type PastaUiLiveViewReceipt = {
+  schema: typeof PASTA_UI_LIVE_VIEW_RECEIPT_SCHEMA;
+  sequence: number;
+  action: "execute_view";
+  chainId: string;
+  viewCaller: string;
+  contractAddress: string;
+  viewName: string;
+  requestSha256: string;
+  resultSha256: string;
 };
 
 export type PastaUiLivePinProof = {
@@ -111,6 +136,24 @@ export type PastaUiLiveFundingAuthorization = {
   operationReserveMutez: number;
 };
 
+export type PastaUiLiveContractViewAuthorization = {
+  contractAddress: string;
+  viewNames: ReadonlySet<string>;
+  /**
+   * Admit the session's exact actor address as Taquito's viewCaller.
+   */
+  allowSessionSigner?: boolean;
+  /**
+   * Admit only these already-authorized KT1s as viewCaller values. This
+   * supports pre-connect pages whose semantic caller is the router contract.
+   */
+  allowedCallerContractAddresses?: ReadonlySet<string>;
+};
+
+export type PastaUiLiveReadOnlyContractAuthorization = {
+  contractAddress: string;
+};
+
 export type PastaUiLiveBridgeHandler = (
   request: PastaUiLiveBridgeRequest,
 ) => Promise<unknown>;
@@ -127,11 +170,47 @@ export type StartPastaUiLiveLoopbackServerInput = {
   maxBodyBytes?: number;
 };
 
-type PastaUiLiveAppliedOperationAssertion = {
+export type PastaUiLiveAppliedOperationAssertion = {
   action: "originate" | "batch" | "call";
   operationHash: string;
   contractAddress?: string;
   entrypoints: string[];
+};
+
+export type PastaUiLiveSignerOperationAction = PastaUiLiveAppliedOperationAssertion["action"];
+
+export type PastaUiLiveContractCall = {
+  contractAddress: string;
+  entrypoint: string;
+  payload: unknown;
+};
+
+export type PastaUiLiveOperationDescriptor =
+  | { kind: "originate"; code: unknown; storage: unknown }
+  | { kind: "batch"; calls: readonly PastaUiLiveContractCall[] }
+  | { kind: "call"; call: PastaUiLiveContractCall; sendOptions: unknown };
+
+export type PastaUiLivePreparedOperation = {
+  status: "PREPARED";
+  operationSequence: number;
+  timestampUtc: string;
+  action: PastaUiLiveSignerOperationAction;
+  chainId: string;
+  signerAddress: string;
+  contractAddress?: string;
+  entrypoints: string[];
+  /**
+   * Exact decoded and validated operation input. This remains in memory so a
+   * domain runner can clone, canonicalize, and redact it before durable
+   * journaling; the bridge never persists it itself.
+   */
+  descriptor: PastaUiLiveOperationDescriptor;
+};
+
+export type PastaUiLiveSubmittedOperation = Omit<PastaUiLivePreparedOperation, "status" | "timestampUtc"> & {
+  status: "SUBMITTED";
+  timestampUtc: string;
+  operationHash: string;
 };
 
 export type TaquitoPastaUiLiveSessionOptions = {
@@ -146,16 +225,68 @@ export type TaquitoPastaUiLiveSessionOptions = {
   allowedContractAddresses?: ReadonlySet<string>;
   assertExpectedChain(stage: string): Promise<string>;
   allowedEntrypoints: ReadonlySet<string>;
+  /**
+   * Optional initial contract/view/caller policies. Contracts originated later
+   * can be authorized through `authorizeContractViews` before browser use.
+   */
+  allowedContractViews?: readonly PastaUiLiveContractViewAuthorization[];
+  initialReceiptSequence?: number;
+  initialOperationSequence?: number;
   minimumActionBalanceMutez?: number;
   pinJson(input: { value: unknown; fileName: string }): Promise<PastaUiLivePinProof>;
   pinBlob?(input: { bytes: Uint8Array; fileName: string; mimeType: string }): Promise<PastaUiLivePinProof>;
   validateOrigination?(input: { code: unknown; storage: unknown }): void | Promise<void>;
   validateCall?(input: { contractAddress: string; entrypoint: string; payload: unknown }): void | Promise<void>;
+  beforeOperationSubmit?(operation: PastaUiLivePreparedOperation): void | Promise<void>;
+  onOperationSubmitted?(operation: PastaUiLiveSubmittedOperation): void | Promise<void>;
   assertOperationApplied?(input: PastaUiLiveAppliedOperationAssertion): void | Promise<void>;
   projectStorage?(storage: unknown): unknown | Promise<unknown>;
+  /**
+   * Runs against the exact bytes the bridge is about to hand to the proof
+   * pinner. A rejection here occurs before the external IPFS side effect.
+   */
+  beforePin?(input: {
+    value?: unknown;
+    bytes: Uint8Array;
+    fileName: string;
+    mimeType: string;
+  }): void | Promise<void>;
   onPin?(input: { value?: unknown; bytes?: Uint8Array; proof: PastaUiLivePinProof }): void | Promise<void>;
   onReceipt?(receipt: PastaUiLivePublicReceipt): void | Promise<void>;
+  onViewReceipt?(receipt: PastaUiLiveViewReceipt): void | Promise<void>;
 };
+
+function deterministicPinJson(value: unknown, ancestors = new Set<object>()): string | undefined {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number") return Number.isFinite(value) ? JSON.stringify(value) : "null";
+  if (typeof value === "bigint") throw new TypeError("pin JSON does not support bigint values");
+  if (typeof value === "undefined" || typeof value === "function" || typeof value === "symbol") return undefined;
+  if (typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown> & { toJSON?: () => unknown };
+  if (ancestors.has(record)) throw new TypeError("pin JSON does not support cyclic values");
+  ancestors.add(record);
+  try {
+    if (typeof record.toJSON === "function") return deterministicPinJson(record.toJSON(), ancestors);
+    if (Array.isArray(record)) {
+      return `[${record.map((entry) => deterministicPinJson(entry, ancestors) ?? "null").join(",")}]`;
+    }
+    const properties: string[] = [];
+    for (const key of Object.keys(record).sort()) {
+      const serialized = deterministicPinJson(record[key], ancestors);
+      if (serialized !== undefined) properties.push(`${JSON.stringify(key)}:${serialized}`);
+    }
+    return `{${properties.join(",")}}`;
+  } finally {
+    ancestors.delete(record);
+  }
+}
+
+function deterministicPinJsonBytes(value: unknown): Uint8Array {
+  const serialized = deterministicPinJson(value);
+  if (serialized === undefined) throw new TypeError("pin JSON root must be serializable");
+  return Buffer.from(serialized, "utf8");
+}
 
 export class PastaUiLiveBridgeError extends Error {
   constructor(message: string, readonly statusCode = 400) {
@@ -178,8 +309,35 @@ function publicErrorMessage(error: unknown): string {
   return message.slice(0, 1_000) || "bridge action failed";
 }
 
-function isTaquitoConfirmationTimeout(error: unknown): error is Error {
-  return error instanceof Error && error.name === "ConfirmationTimeoutError";
+export class PastaUiLiveSubmittedOperationError extends PastaUiLiveBridgeError {
+  readonly code = "PASTA_UI_LIVE_OPERATION_SUBMITTED_UNRESOLVED";
+  readonly operationStatus = "SUBMITTED";
+  readonly retrySafe = false;
+  readonly action: PastaUiLiveSignerOperationAction;
+  readonly operationHash: string;
+  readonly contractAddress?: string;
+  readonly entrypoints: string[];
+
+  constructor(
+    assertion: PastaUiLiveAppliedOperationAssertion,
+    confirmationError: unknown,
+    verificationError: unknown,
+  ) {
+    const confirmationMessage = publicErrorMessage(confirmationError).slice(0, 250);
+    const verificationMessage = publicErrorMessage(verificationError).slice(0, 250);
+    super(
+      `Operation ${assertion.operationHash} was submitted. ` +
+      "Do not retry or submit this action again; reconcile the existing operation hash. " +
+      `Confirmation failed (${confirmationMessage}); exact-hash applied-state verification is unresolved ` +
+      `(${verificationMessage}).`,
+      409,
+    );
+    this.name = "PastaUiLiveSubmittedOperationError";
+    this.action = assertion.action;
+    this.operationHash = assertion.operationHash;
+    if (assertion.contractAddress) this.contractAddress = assertion.contractAddress;
+    this.entrypoints = [...assertion.entrypoints];
+  }
 }
 
 function isInside(parent: string, candidate: string): boolean {
@@ -422,6 +580,21 @@ function requireRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function requireExactKeys(
+  value: Record<string, unknown>,
+  label: string,
+  expectedKeys: readonly string[],
+): void {
+  const keys = Reflect.ownKeys(value);
+  if (
+    keys.some((key) => typeof key !== "string" || PROHIBITED_KEYS.has(key)) ||
+    keys.length !== expectedKeys.length ||
+    expectedKeys.some((key) => !Object.prototype.hasOwnProperty.call(value, key))
+  ) {
+    fail(`${label} must contain exactly ${expectedKeys.join(", ")}`);
+  }
+}
+
 function requireAddress(value: unknown, label: string, contractOnly = false): string {
   if (typeof value !== "string" || !ADDRESS_RE.test(value)) fail(`${label} is not a Tezos address`);
   if (contractOnly && validateContractAddress(value) !== ValidationResult.VALID) fail(`${label} is not a KT1 contract`);
@@ -438,6 +611,28 @@ function requireSafeInteger(value: unknown, label: string, minimum = 0): number 
   return Number(value);
 }
 
+function hashPastaUiLiveScriptCode(value: unknown): string {
+  if (!Array.isArray(value) || value.length === 0) fail("on-chain script code must be a non-empty array", 502);
+  if (value.some((section) => !section || typeof section !== "object" || Array.isArray(section))) {
+    fail("on-chain script code sections must be Micheline objects", 502);
+  }
+  let json: string;
+  try {
+    json = JSON.stringify(value);
+  } catch {
+    fail("on-chain script code is not JSON serializable", 502);
+  }
+  const bytes = Buffer.from(json, "utf8");
+  if (bytes.byteLength > MAX_SCRIPT_CODE_JSON_BYTES) {
+    fail(`on-chain script code exceeds ${MAX_SCRIPT_CODE_JSON_BYTES} bytes`, 502);
+  }
+  try {
+    return hashMichelsonScriptCode(value);
+  } catch (error) {
+    fail(`on-chain script code is not a canonical Michelson contract: ${error instanceof Error ? error.message : String(error)}`, 502);
+  }
+}
+
 export const PASTA_UI_LIVE_STORAGE_PROJECTION_LIMITS = Object.freeze({
   maximumDepth: 16,
   maximumNodes: 10_000,
@@ -447,6 +642,8 @@ export const PASTA_UI_LIVE_STORAGE_PROJECTION_LIMITS = Object.freeze({
   maximumStringBytes: 262_144,
   maximumTotalStringBytes: 1_000_000,
 });
+
+export const PASTA_UI_LIVE_ENTRYPOINT_PROJECTION_MAXIMUM_DEPTH = 32;
 
 type ProjectionMethod = (...args: never[]) => unknown;
 
@@ -484,8 +681,8 @@ function boundedProjectionFailure(reason: string): never {
  * Raw Taquito abstractions are intentionally rejected: a projectStorage callback
  * must select the finite values the browser actually needs before this boundary.
  */
-export function serializePastaUiLiveStorageProjection(value: unknown): unknown {
-  const limits = PASTA_UI_LIVE_STORAGE_PROJECTION_LIMITS;
+function serializePastaUiLiveProjection(value: unknown, maximumDepth: number): unknown {
+  const limits = { ...PASTA_UI_LIVE_STORAGE_PROJECTION_LIMITS, maximumDepth };
   const seen = new WeakSet<object>();
   let nodes = 0;
   let stringBytes = 0;
@@ -596,17 +793,144 @@ export function serializePastaUiLiveStorageProjection(value: unknown): unknown {
   return visit(value, 0);
 }
 
+export function serializePastaUiLiveStorageProjection(value: unknown): unknown {
+  return serializePastaUiLiveProjection(value, PASTA_UI_LIVE_STORAGE_PROJECTION_LIMITS.maximumDepth);
+}
+
+/**
+ * Preserve only Taquito's plain Micheline entrypoint type map across the browser
+ * proof bridge. Provider, schema-class, method, and RPC objects are deliberately
+ * excluded so a Studio can inspect an on-chain parameter shape without gaining
+ * a new capability or traversing an unbounded abstraction graph.
+ */
+export function serializePastaUiLiveEntrypoints(value: unknown): Record<string, unknown> {
+  if (value == null) return {};
+  const normalized = serializePastaUiLiveProjection(value, PASTA_UI_LIVE_ENTRYPOINT_PROJECTION_MAXIMUM_DEPTH);
+  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+    boundedProjectionFailure("entrypoint schemas must be a plain object");
+  }
+
+  const validateMicheline = (candidate: unknown, label: string): void => {
+    if (Array.isArray(candidate)) {
+      for (let index = 0; index < candidate.length; index += 1) {
+        validateMicheline(candidate[index], `${label}[${index}]`);
+      }
+      return;
+    }
+    if (!candidate || typeof candidate !== "object") {
+      boundedProjectionFailure(`${label} is not Micheline`);
+    }
+    const node = candidate as Record<string, unknown>;
+    const keys = Object.keys(node);
+    if (typeof node.prim === "string") {
+      if (!/^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(node.prim)) {
+        boundedProjectionFailure(`${label}.prim is invalid`);
+      }
+      if (keys.some((key) => !["prim", "args", "annots"].includes(key))) {
+        boundedProjectionFailure(`${label} contains a non-Micheline primitive field`);
+      }
+      if (node.args !== undefined) {
+        if (!Array.isArray(node.args)) boundedProjectionFailure(`${label}.args must be an array`);
+        for (let index = 0; index < node.args.length; index += 1) {
+          validateMicheline(node.args[index], `${label}.args[${index}]`);
+        }
+      }
+      if (node.annots !== undefined) {
+        if (!Array.isArray(node.annots)) boundedProjectionFailure(`${label}.annots must be an array`);
+        for (const annotation of node.annots) {
+          if (typeof annotation !== "string" || !/^[%:@]?\S{1,255}$/.test(annotation)) {
+            boundedProjectionFailure(`${label}.annots contains an invalid annotation`);
+          }
+        }
+      }
+      return;
+    }
+    if (keys.length !== 1) boundedProjectionFailure(`${label} is not a Micheline literal`);
+    if (typeof node.int === "string" && /^-?[0-9]+$/.test(node.int)) return;
+    if (typeof node.string === "string") return;
+    if (typeof node.bytes === "string" && /^(?:[0-9a-fA-F]{2})*$/.test(node.bytes)) return;
+    boundedProjectionFailure(`${label} is not a valid Micheline literal`);
+  };
+
+  const output = normalized as Record<string, unknown>;
+  for (const [entrypoint, schema] of Object.entries(output)) {
+    if (!SAFE_ENTRYPOINT.test(entrypoint)) boundedProjectionFailure(`entrypoint name is invalid: ${entrypoint}`);
+    validateMicheline(schema, `entrypoint ${entrypoint}`);
+  }
+  return output;
+}
+
 export class TaquitoPastaUiLiveSession {
   private fundingAuthorization: PastaUiLiveFundingAuthorization | null = null;
   private readonly receipts: PastaUiLivePublicReceipt[] = [];
-  private readonly originatedContracts = new Set<string>();
+  private readonly viewReceipts: PastaUiLiveViewReceipt[] = [];
+  private readonly writeAuthorizedContracts = new Set<string>();
+  private readonly readOnlyAuthorizedContracts = new Set<string>();
+  private readonly allowedViewCallersByContract = new Map<string, Map<string, Set<string>>>();
   private sequence = 0;
+  private viewSequence = 0;
+  private operationSequence = 0;
 
   constructor(private readonly options: TaquitoPastaUiLiveSessionOptions) {
     requireAddress(options.signerAddress, "signer address");
     if (!options.expectedChainId.trim()) fail("expected chain id is required");
+    this.sequence = requireSafeInteger(
+      options.initialReceiptSequence === undefined ? 0 : options.initialReceiptSequence,
+      "initial receipt sequence",
+    );
+    this.operationSequence = requireSafeInteger(
+      options.initialOperationSequence === undefined ? 0 : options.initialOperationSequence,
+      "initial operation sequence",
+    );
     for (const address of options.allowedContractAddresses || []) {
-      this.originatedContracts.add(requireAddress(address, "allowed contract address", true));
+      this.writeAuthorizedContracts.add(requireAddress(address, "allowed contract address", true));
+    }
+    for (const authorization of options.allowedContractViews || []) {
+      this.authorizeContractViews(authorization);
+    }
+  }
+
+  authorizeReadOnlyContract(authorization: PastaUiLiveReadOnlyContractAuthorization): void {
+    const record = requireRecord(authorization, "read-only contract authorization");
+    requireExactKeys(record, "read-only contract authorization", ["contractAddress"]);
+    this.readOnlyAuthorizedContracts.add(
+      requireAddress(record.contractAddress, "read-only contract address", true),
+    );
+  }
+
+  authorizeContractViews(authorization: PastaUiLiveContractViewAuthorization): void {
+    const contractAddress = this.requireReadableSessionContract(authorization.contractAddress);
+    if (!(authorization.viewNames instanceof Set) || authorization.viewNames.size === 0 || authorization.viewNames.size > 64) {
+      fail("contract view authorization must name between 1 and 64 views");
+    }
+    const callers = new Set<string>();
+    if (authorization.allowSessionSigner === true) callers.add(this.options.signerAddress);
+    if (authorization.allowSessionSigner !== undefined && typeof authorization.allowSessionSigner !== "boolean") {
+      fail("contract view signer authorization must be boolean");
+    }
+    if (authorization.allowedCallerContractAddresses !== undefined) {
+      if (!(authorization.allowedCallerContractAddresses instanceof Set)) {
+        fail("contract view caller contracts must be a set");
+      }
+      for (const callerAddress of authorization.allowedCallerContractAddresses) {
+        callers.add(this.requireReadableSessionContract(callerAddress));
+      }
+    }
+    if (callers.size === 0) {
+      fail("contract view authorization requires the session signer or an authorized caller contract");
+    }
+    let views = this.allowedViewCallersByContract.get(contractAddress);
+    if (!views) {
+      views = new Map();
+      this.allowedViewCallersByContract.set(contractAddress, views);
+    }
+    for (const viewName of authorization.viewNames) {
+      if (!SAFE_ENTRYPOINT.test(viewName) || PROHIBITED_KEYS.has(viewName)) {
+        fail(`allowed contract view name is invalid: ${String(viewName)}`);
+      }
+      const viewCallers = views.get(viewName) || new Set<string>();
+      for (const caller of callers) viewCallers.add(caller);
+      views.set(viewName, viewCallers);
     }
   }
 
@@ -637,8 +961,21 @@ export class TaquitoPastaUiLiveSession {
     return this.receipts.map((receipt) => ({ ...receipt, ...(receipt.entrypoints ? { entrypoints: [...receipt.entrypoints] } : {}) }));
   }
 
+  getViewReceipts(): PastaUiLiveViewReceipt[] {
+    return this.viewReceipts.map((receipt) => ({ ...receipt }));
+  }
+
+  private async readOnly<T>(label: string, read: () => Promise<T>): Promise<T> {
+    return readWithBoundedRetry({
+      primary: declareReadOnlyReader(label, read),
+    });
+  }
+
   private async assertChain(stage: string): Promise<string> {
-    const chainId = await this.options.assertExpectedChain(stage);
+    const chainId = await this.readOnly(
+      `${stage} chain identity`,
+      () => this.options.assertExpectedChain(stage),
+    );
     if (chainId !== this.options.expectedChainId) {
       fail(`${stage} returned unexpected chain id ${chainId}`);
     }
@@ -648,7 +985,10 @@ export class TaquitoPastaUiLiveSession {
   private async assertAuthorizedAndFunded(stage: string): Promise<string> {
     if (!this.fundingAuthorization) fail("funding preflight has not authorized bridge pins or writes", 409);
     const chainId = await this.assertChain(stage);
-    const balance = await this.options.tezos.tz.getBalance(this.options.signerAddress);
+    const balance = await this.readOnly(
+      `${stage} signer balance`,
+      () => this.options.tezos.tz.getBalance(this.options.signerAddress),
+    );
     const balanceMutez = Number(balance.toString());
     const minimum = this.options.minimumActionBalanceMutez ?? 50_000;
     if (!Number.isSafeInteger(balanceMutez) || balanceMutez < minimum) {
@@ -658,7 +998,7 @@ export class TaquitoPastaUiLiveSession {
   }
 
   private async record(
-    action: PastaUiLiveAction,
+    action: PastaUiLiveReceiptAction,
     chainId: string,
     fields: Omit<PastaUiLivePublicReceipt, "schema" | "sequence" | "timestampUtc" | "action" | "chainId"> = {},
   ): Promise<PastaUiLivePublicReceipt> {
@@ -675,17 +1015,90 @@ export class TaquitoPastaUiLiveSession {
     return receipt;
   }
 
-  private requireSessionContract(address: unknown): string {
+  private async recordView(
+    chainId: string,
+    input: Omit<PastaUiLiveViewReceipt, "schema" | "sequence" | "action" | "chainId">,
+  ): Promise<PastaUiLiveViewReceipt> {
+    const receipt: PastaUiLiveViewReceipt = {
+      schema: PASTA_UI_LIVE_VIEW_RECEIPT_SCHEMA,
+      sequence: ++this.viewSequence,
+      action: "execute_view",
+      chainId,
+      ...input,
+    };
+    this.viewReceipts.push(receipt);
+    await this.options.onViewReceipt?.(receipt);
+    return receipt;
+  }
+
+  private async prepareOperation(input: {
+    action: PastaUiLiveSignerOperationAction;
+    chainId: string;
+    contractAddress?: string;
+    entrypoints: string[];
+    descriptor: PastaUiLiveOperationDescriptor;
+  }): Promise<PastaUiLivePreparedOperation> {
+    if (typeof this.options.assertOperationApplied !== "function") {
+      fail("an exact-hash applied-operation verifier is required before signer submission", 409);
+    }
+    const operation: PastaUiLivePreparedOperation = {
+      status: "PREPARED",
+      operationSequence: ++this.operationSequence,
+      timestampUtc: new Date().toISOString(),
+      action: input.action,
+      chainId: input.chainId,
+      signerAddress: this.options.signerAddress,
+      ...(input.contractAddress ? { contractAddress: input.contractAddress } : {}),
+      entrypoints: [...input.entrypoints],
+      descriptor: input.descriptor,
+    };
+    await this.options.beforeOperationSubmit?.(operation);
+    return operation;
+  }
+
+  private async operationSubmitted(
+    prepared: PastaUiLivePreparedOperation,
+    operationHash: string,
+    contractAddress = prepared.contractAddress,
+  ): Promise<PastaUiLiveSubmittedOperation> {
+    const operation: PastaUiLiveSubmittedOperation = {
+      status: "SUBMITTED",
+      operationSequence: prepared.operationSequence,
+      timestampUtc: new Date().toISOString(),
+      action: prepared.action,
+      chainId: prepared.chainId,
+      signerAddress: prepared.signerAddress,
+      ...(contractAddress ? { contractAddress } : {}),
+      entrypoints: [...prepared.entrypoints],
+      descriptor: prepared.descriptor,
+      operationHash,
+    };
+    await this.options.onOperationSubmitted?.(operation);
+    return operation;
+  }
+
+  private requireWriteSessionContract(address: unknown): string {
     const contractAddress = requireAddress(address, "contract address", true);
-    if (!this.originatedContracts.has(contractAddress)) {
+    if (!this.writeAuthorizedContracts.has(contractAddress)) {
       fail(`contract ${contractAddress} is not authorized for this UI-live session`, 403);
     }
     return contractAddress;
   }
 
-  private parseCall(value: unknown): { contractAddress: string; entrypoint: string; payload: unknown } {
+  private requireReadableSessionContract(address: unknown): string {
+    const contractAddress = requireAddress(address, "contract address", true);
+    if (
+      !this.writeAuthorizedContracts.has(contractAddress) &&
+      !this.readOnlyAuthorizedContracts.has(contractAddress)
+    ) {
+      fail(`contract ${contractAddress} is not authorized for this UI-live session (read-only access)`, 403);
+    }
+    return contractAddress;
+  }
+
+  private parseCall(value: unknown): PastaUiLiveContractCall {
     const call = requireRecord(value, "contract call");
-    const contractAddress = this.requireSessionContract(call.contractAddress);
+    const contractAddress = this.requireWriteSessionContract(call.contractAddress);
     if (
       typeof call.entrypoint !== "string" ||
       !SAFE_ENTRYPOINT.test(call.entrypoint) ||
@@ -702,18 +1115,26 @@ export class TaquitoPastaUiLiveSession {
 
   private async confirmationRecoveredByAppliedAssertion(
     operation: { hash: string; confirmation(confirmations?: number): Promise<unknown> },
-    assertion: PastaUiLiveAppliedOperationAssertion | null,
+    assertion: PastaUiLiveAppliedOperationAssertion,
   ): Promise<boolean> {
-    try {
-      await operation.confirmation(1);
-      return false;
-    } catch (error) {
-      if (!isTaquitoConfirmationTimeout(error) || !assertion || !this.options.assertOperationApplied) {
-        throw error;
-      }
-      await this.options.assertOperationApplied(assertion);
-      return true;
+    const verifier = this.options.assertOperationApplied;
+    if (typeof verifier !== "function") {
+      throw new PastaUiLiveSubmittedOperationError(
+        assertion,
+        new Error("native confirmation polling is not a proof finality boundary"),
+        new Error("exact-hash applied-operation verifier is unavailable"),
+      );
     }
+    try {
+      await verifier(assertion);
+    } catch (verificationError) {
+      throw new PastaUiLiveSubmittedOperationError(
+        assertion,
+        new Error(`native confirmation polling was bypassed for submitted operation ${operation.hash}`),
+        verificationError,
+      );
+    }
+    return true;
   }
 
   async handle(request: PastaUiLiveBridgeRequest): Promise<unknown> {
@@ -728,16 +1149,42 @@ export class TaquitoPastaUiLiveSession {
       const receipt = await this.record("chain_check", chainId, { signerAddress: this.options.signerAddress });
       return { address: this.options.signerAddress, chainId, receipt };
     }
+    if (request.action === "active_protocol") {
+      requireExactKeys(payload, "active protocol payload", ["block"]);
+      if (payload.block !== "head") {
+        fail("UI-live active protocol reads are restricted to head");
+      }
+      const chainId = await this.assertChain("UI-live active protocol read");
+      const head = requireRecord(
+        await this.readOnly(
+          "UI-live active protocol head",
+          () => this.options.tezos.rpc.getBlock({ block: "head" }),
+        ),
+        "Tezos head block",
+      );
+      if (
+        typeof head.protocol !== "string" ||
+        !/^[1-9A-HJ-NP-Za-km-z]{20,128}$/.test(head.protocol)
+      ) {
+        fail("Tezos head returned an invalid active protocol identity");
+      }
+      return { block: "head", chainId, protocol: head.protocol };
+    }
     if (request.action === "balance") {
       const chainId = await this.assertChain("UI-live balance read");
       const address = requireAddress(payload.address ?? this.options.signerAddress, "balance address");
-      const balance = await this.options.tezos.tz.getBalance(address);
+      const balance = await this.readOnly(
+        `UI-live balance for ${address}`,
+        () => this.options.tezos.tz.getBalance(address),
+      );
       return { address, balanceMutez: Number(balance.toString()), chainId };
     }
     if (request.action === "pin_json") {
       const chainId = await this.assertAuthorizedAndFunded("before UI-live JSON pin");
       const fileName = requireFileName(payload.fileName ?? "metadata.json");
       const value = decodePastaUiLiveValue(payload.value);
+      const bytes = deterministicPinJsonBytes(value);
+      await this.options.beforePin?.({ value, bytes, fileName, mimeType: "application/json" });
       const proof = await this.options.pinJson({ value, fileName });
       await this.options.onPin?.({ value, proof });
       const receipt = await this.record("pin_json", chainId, {
@@ -763,6 +1210,7 @@ export class TaquitoPastaUiLiveSession {
       }
       const bytes = Buffer.from(payload.dataBase64, "base64");
       if (bytes.byteLength === 0 || bytes.byteLength > MAX_PIN_BYTES) fail("blob pin payload size is invalid");
+      await this.options.beforePin?.({ bytes, fileName, mimeType });
       const proof = await this.options.pinBlob({ bytes, fileName, mimeType });
       await this.options.onPin?.({ bytes, proof });
       const receipt = await this.record("pin_blob", chainId, {
@@ -781,24 +1229,41 @@ export class TaquitoPastaUiLiveSession {
       const code = decodePastaUiLiveValue(payload.code);
       const storage = decodePastaUiLiveValue(payload.storage);
       await this.options.validateOrigination?.({ code, storage });
+      const preparedOperation = await this.prepareOperation({
+        action: "originate",
+        chainId,
+        entrypoints: [],
+        descriptor: { kind: "originate", code, storage },
+      });
       const operation = await this.options.tezos.contract.originate({ code, storage } as never);
       const fallbackContractAddress = typeof operation.contractAddress === "string" &&
         ADDRESS_RE.test(operation.contractAddress) &&
         validateContractAddress(operation.contractAddress) === ValidationResult.VALID
         ? operation.contractAddress
         : undefined;
-      const fallbackAssertion: PastaUiLiveAppliedOperationAssertion | null = fallbackContractAddress ? {
+      await this.operationSubmitted(preparedOperation, operation.hash, fallbackContractAddress);
+      const fallbackAssertion: PastaUiLiveAppliedOperationAssertion = {
         action: "originate",
         operationHash: operation.hash,
-        contractAddress: fallbackContractAddress,
+        ...(fallbackContractAddress ? { contractAddress: fallbackContractAddress } : {}),
         entrypoints: [],
-      } : null;
+      };
       const recovered = await this.confirmationRecoveredByAppliedAssertion(operation, fallbackAssertion);
       let contractAddress: string;
       if (recovered) {
-        contractAddress = fallbackContractAddress!;
+        if (!fallbackContractAddress) {
+          throw new PastaUiLiveSubmittedOperationError(
+            fallbackAssertion,
+            new Error("confirmation did not provide an originated contract"),
+            new Error("exact-hash verification could not recover the originated contract address"),
+          );
+        }
+        contractAddress = fallbackContractAddress;
       } else {
-        const contract = await operation.contract();
+        const contract = await this.readOnly(
+          `UI-live originated contract lookup for ${operation.hash}`,
+          () => operation.contract(),
+        );
         contractAddress = requireAddress(contract.address, "originated contract address", true);
         await this.options.assertOperationApplied?.({
           action: "originate",
@@ -807,7 +1272,7 @@ export class TaquitoPastaUiLiveSession {
           entrypoints: [],
         });
       }
-      this.originatedContracts.add(contractAddress);
+      this.writeAuthorizedContracts.add(contractAddress);
       const receipt = await this.record("originate", chainId, {
         signerAddress: this.options.signerAddress,
         contractAddress,
@@ -817,22 +1282,115 @@ export class TaquitoPastaUiLiveSession {
     }
     if (request.action === "contract_at") {
       const chainId = await this.assertChain("before UI-live contract lookup");
-      const contractAddress = this.requireSessionContract(payload.contractAddress);
-      await this.options.tezos.contract.at(contractAddress);
-      return { contractAddress, chainId };
+      const contractAddress = this.requireReadableSessionContract(payload.contractAddress);
+      const contract = await this.readOnly(
+        `UI-live contract lookup ${contractAddress}`,
+        () => this.options.tezos.contract.at(contractAddress),
+      );
+      const entrypoints = serializePastaUiLiveEntrypoints(
+        (contract as unknown as { entrypoints?: { entrypoints?: unknown } }).entrypoints?.entrypoints,
+      );
+      return { contractAddress, chainId, entrypoints };
+    }
+    if (request.action === "execute_view") {
+      requireExactKeys(payload, "contract view payload", ["contractAddress", "viewName", "params", "options"]);
+      const contractAddress = this.requireReadableSessionContract(payload.contractAddress);
+      if (
+        typeof payload.viewName !== "string" ||
+        !SAFE_ENTRYPOINT.test(payload.viewName) ||
+        PROHIBITED_KEYS.has(payload.viewName) ||
+        !this.allowedViewCallersByContract.get(contractAddress)?.has(payload.viewName)
+      ) {
+        fail(`contract view is not allowed for ${contractAddress}: ${String(payload.viewName)}`, 403);
+      }
+      const viewName = payload.viewName;
+      const viewOptions = requireRecord(payload.options, "contract view options");
+      requireExactKeys(viewOptions, "contract view options", ["viewCaller"]);
+      const viewCaller = requireAddress(viewOptions.viewCaller, "contract view caller");
+      if (!this.allowedViewCallersByContract.get(contractAddress)?.get(viewName)?.has(viewCaller)) {
+        fail(`contract view caller ${viewCaller} is not authorized for ${contractAddress}.${viewName}`, 403);
+      }
+      const params = decodePastaUiLiveValue(payload.params);
+      const serializedParams = serializePastaUiLiveStorageProjection(params);
+      const chainId = await this.assertChain("before UI-live on-chain view");
+      const contract = await this.readOnly(
+        `UI-live view contract lookup ${contractAddress}`,
+        () => this.options.tezos.contract.at(contractAddress),
+      );
+      const contractViews = (contract as unknown as { contractViews?: Record<string, unknown> }).contractViews;
+      if (
+        !contractViews ||
+        typeof contractViews !== "object" ||
+        !Object.prototype.hasOwnProperty.call(contractViews, viewName) ||
+        typeof contractViews[viewName] !== "function"
+      ) {
+        fail(`contract does not expose allowed on-chain view ${viewName}`);
+      }
+      const invocation = (contractViews[viewName] as (value: unknown) => unknown)(params) as {
+        executeView?: (options: { viewCaller: string }) => Promise<unknown>;
+      } | null;
+      if (!invocation || typeof invocation.executeView !== "function") {
+        fail(`contract on-chain view ${viewName} is not executable`);
+      }
+      const value = serializePastaUiLiveStorageProjection(
+        await this.readOnly(
+          `UI-live view ${contractAddress}.${viewName}`,
+          () => invocation.executeView!({ viewCaller }),
+        ),
+      );
+      const requestSha256 = createHash("sha256").update(deterministicPinJsonBytes({
+        contractAddress,
+        params: serializedParams,
+        viewCaller,
+        viewName,
+      })).digest("hex");
+      const resultSha256 = createHash("sha256").update(deterministicPinJsonBytes(value)).digest("hex");
+      const viewReceipt = await this.recordView(chainId, {
+        viewCaller,
+        contractAddress,
+        viewName,
+        requestSha256,
+        resultSha256,
+      });
+      return { contractAddress, chainId, viewName, value, viewReceipt };
+    }
+    if (request.action === "script_code_hash") {
+      const chainId = await this.assertChain("before UI-live script identity read");
+      const contractAddress = this.requireReadableSessionContract(payload.contractAddress);
+      const script = requireRecord(
+        await this.readOnly(
+          `UI-live script identity ${contractAddress}`,
+          () => this.options.tezos.rpc.getScript(contractAddress),
+        ),
+        "on-chain contract script",
+      );
+      return {
+        contractAddress,
+        chainId,
+        codeHash: hashPastaUiLiveScriptCode(script.code),
+      };
     }
     if (request.action === "read_storage") {
       const chainId = await this.assertChain("before UI-live storage read");
-      const contractAddress = this.requireSessionContract(payload.contractAddress);
-      const contract = await this.options.tezos.contract.at(contractAddress);
-      const storage = await contract.storage();
-      const projected = this.options.projectStorage ? await this.options.projectStorage(storage) : storage;
-      return { contractAddress, chainId, storage: serializePastaUiLiveStorageProjection(projected) };
+      const contractAddress = this.requireReadableSessionContract(payload.contractAddress);
+      const storage = await this.readOnly(
+        `UI-live projected storage ${contractAddress}`,
+        async () => {
+          const contract = await this.options.tezos.contract.at(contractAddress);
+          const raw = await contract.storage();
+          const projected = this.options.projectStorage ? await this.options.projectStorage(raw) : raw;
+          return serializePastaUiLiveStorageProjection(projected);
+        },
+      );
+      return { contractAddress, chainId, storage };
     }
     if (request.action === "estimate_call") {
       const chainId = await this.assertAuthorizedAndFunded("before UI-live contract-call estimate");
       const call = this.parseCall(payload.call);
-      const contract = await this.options.tezos.contract.at(call.contractAddress);
+      const contract = await this.readOnly(
+        `UI-live estimate contract lookup ${call.contractAddress}`,
+        () => this.options.tezos.contract.at(call.contractAddress),
+      );
       const method = contract.methodsObject[call.entrypoint];
       if (typeof method !== "function") fail(`contract does not expose ${call.entrypoint}`);
       const sendOptions = decodePastaUiLiveValue(payload.sendOptions ?? {});
@@ -841,7 +1399,10 @@ export class TaquitoPastaUiLiveSession {
         fail(`contract method ${call.entrypoint} cannot produce transfer parameters`);
       }
       const transferParams = prepared.toTransferParams(sendOptions as never);
-      const estimate = await this.options.tezos.estimate.transfer(transferParams);
+      const estimate = await this.readOnly(
+        `UI-live transfer estimate ${call.contractAddress}.${call.entrypoint}`,
+        () => this.options.tezos.estimate.transfer(transferParams),
+      );
       return {
         chainId,
         contractAddress: call.contractAddress,
@@ -864,12 +1425,23 @@ export class TaquitoPastaUiLiveSession {
       const batch = this.options.tezos.contract.batch();
       for (const call of calls) {
         await this.options.validateCall?.(call);
-        const contract = await this.options.tezos.contract.at(call.contractAddress);
+        const contract = await this.readOnly(
+          `UI-live batch contract lookup ${call.contractAddress}`,
+          () => this.options.tezos.contract.at(call.contractAddress),
+        );
         const method = contract.methodsObject[call.entrypoint];
         if (typeof method !== "function") fail(`contract does not expose ${call.entrypoint}`);
         batch.withContractCall(method(call.payload));
       }
+      const preparedOperation = await this.prepareOperation({
+        action: "batch",
+        chainId,
+        contractAddress: calls[0].contractAddress,
+        entrypoints: calls.map((call) => call.entrypoint),
+        descriptor: { kind: "batch", calls },
+      });
       const operation = await batch.send();
+      await this.operationSubmitted(preparedOperation, operation.hash);
       const appliedAssertion: PastaUiLiveAppliedOperationAssertion = {
         action: "batch",
         operationHash: operation.hash,
@@ -890,11 +1462,26 @@ export class TaquitoPastaUiLiveSession {
       const chainId = await this.assertAuthorizedAndFunded("before UI-live contract call");
       const call = this.parseCall(payload.call);
       await this.options.validateCall?.(call);
-      const contract = await this.options.tezos.contract.at(call.contractAddress);
+      const contract = await this.readOnly(
+        `UI-live call contract lookup ${call.contractAddress}`,
+        () => this.options.tezos.contract.at(call.contractAddress),
+      );
       const method = contract.methodsObject[call.entrypoint];
       if (typeof method !== "function") fail(`contract does not expose ${call.entrypoint}`);
       const sendOptions = decodePastaUiLiveValue(payload.sendOptions ?? {});
-      const operation = await method(call.payload).send(sendOptions as never);
+      const preparedCall = method(call.payload);
+      if (!preparedCall || typeof preparedCall.send !== "function") {
+        fail(`contract method ${call.entrypoint} cannot submit an operation`);
+      }
+      const preparedOperation = await this.prepareOperation({
+        action: "call",
+        chainId,
+        contractAddress: call.contractAddress,
+        entrypoints: [call.entrypoint],
+        descriptor: { kind: "call", call, sendOptions },
+      });
+      const operation = await preparedCall.send(sendOptions as never);
+      await this.operationSubmitted(preparedOperation, operation.hash);
       const appliedAssertion: PastaUiLiveAppliedOperationAssertion = {
         action: "call",
         operationHash: operation.hash,
@@ -934,6 +1521,7 @@ export function buildPastaUiLiveProxyInstallerSource(
     let requestSequence = 0;
     let account = "";
     const publicReceipts = [];
+    const publicViewReceipts = [];
     const publicPins = [];
     const toolkit = {};
 
@@ -999,6 +1587,7 @@ export function buildPastaUiLiveProxyInstallerSource(
       }
       const result = decode(body.result);
       if (result && result.receipt) publicReceipts.push(result.receipt);
+      if (result && result.viewReceipt) publicViewReceipts.push(result.viewReceipt);
       return result;
     }
 
@@ -1023,13 +1612,37 @@ export function buildPastaUiLiveProxyInstallerSource(
       };
     }
 
-    function contractProxy(contractAddress) {
+    function contractProxy(contractAddress, entrypoints) {
       return {
         address: contractAddress,
+        entrypoints: { entrypoints: entrypoints || {} },
         methodsObject: new Proxy({}, {
           get(_target, entrypoint) {
             if (typeof entrypoint !== "string") return undefined;
             return (payload) => methodCall(contractAddress, entrypoint, payload);
+          },
+        }),
+        contractViews: new Proxy({}, {
+          get(_target, viewName) {
+            if (typeof viewName !== "string") return undefined;
+            return (params) => ({
+              async executeView(options) {
+                if (!options || typeof options !== "object" || Array.isArray(options)) {
+                  throw new Error("UI-live bridge contract view options must be an object");
+                }
+                const optionKeys = Object.keys(options);
+                if (optionKeys.length !== 1 || optionKeys[0] !== "viewCaller" || typeof options.viewCaller !== "string") {
+                  throw new Error("UI-live bridge contract view options permit only viewCaller");
+                }
+                const result = await request("execute_view", {
+                  contractAddress,
+                  viewName,
+                  params,
+                  options: { viewCaller: options.viewCaller },
+                });
+                return result.value;
+              },
+            });
           },
         }),
         async storage() {
@@ -1041,6 +1654,34 @@ export function buildPastaUiLiveProxyInstallerSource(
 
     toolkit.rpc = {
       async getChainId() { return (await request("chain_check", {})).chainId; },
+      async getBlock(options) {
+        if (
+          !options ||
+          typeof options !== "object" ||
+          Array.isArray(options) ||
+          Object.keys(options).length !== 1 ||
+          options.block !== "head"
+        ) {
+          throw new Error("UI-live bridge permits only the active head protocol read");
+        }
+        const result = await request("active_protocol", { block: "head" });
+        if (
+          !result ||
+          result.block !== "head" ||
+          typeof result.protocol !== "string" ||
+          !/^[1-9A-HJ-NP-Za-km-z]{20,128}$/.test(result.protocol)
+        ) {
+          throw new Error("UI-live bridge returned an invalid active protocol identity");
+        }
+        return { protocol: result.protocol };
+      },
+      async getScriptCodeHash(contractAddress) {
+        const result = await request("script_code_hash", { contractAddress });
+        if (!result || result.contractAddress !== contractAddress || typeof result.codeHash !== "string" || !/^[0-9a-f]{64}$/.test(result.codeHash)) {
+          throw new Error("UI-live bridge returned an invalid script-code hash");
+        }
+        return result.codeHash;
+      },
     };
     toolkit.tz = {
       async getBalance(address) {
@@ -1053,8 +1694,8 @@ export function buildPastaUiLiveProxyInstallerSource(
     };
     toolkit.contract = {
       async at(contractAddress) {
-        await request("contract_at", { contractAddress });
-        return contractProxy(contractAddress);
+        const result = await request("contract_at", { contractAddress });
+        return contractProxy(contractAddress, result.entrypoints);
       },
     };
     toolkit.estimate = {
@@ -1082,8 +1723,8 @@ export function buildPastaUiLiveProxyInstallerSource(
         };
       },
       async at(contractAddress) {
-        await request("contract_at", { contractAddress });
-        return contractProxy(contractAddress);
+        const result = await request("contract_at", { contractAddress });
+        return contractProxy(contractAddress, result.entrypoints);
       },
       batch() {
         const calls = [];
@@ -1158,6 +1799,7 @@ export function buildPastaUiLiveProxyInstallerSource(
       installed: true,
       classification: config.classification,
       receipts: publicReceipts,
+      viewReceipts: publicViewReceipts,
       pins: publicPins,
       getAccount: () => account,
     });

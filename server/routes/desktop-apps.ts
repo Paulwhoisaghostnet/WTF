@@ -15,6 +15,7 @@ import {
   type DesktopAppsResponse,
   type DesktopAppDocStatus,
 } from "../lib/desktop-apps";
+import { registrationExpiryFor } from "../lib/desktop-app-registration-policy";
 
 const router = Router();
 
@@ -92,6 +93,90 @@ router.get(
   }
 );
 
+router.post(
+  "/api/admin/apps/desktop/refresh-all",
+  requirePermission("manage_desktop_apps"),
+  async (req, res) => {
+    try {
+      const user = req.user as any;
+      const now = new Date();
+      const { list } = await getDesktopAppRegistrations();
+      const registrationByKey = new Map(list.map((row) => [row.key, row]));
+      const refreshedApps = DESKTOP_APPS.map((appKey) => {
+        const current = registrationByKey.get(appKey);
+        const registrationNeverExpires = current?.registrationNeverExpires ?? false;
+        return {
+          appKey,
+          enabled: current?.enabled ?? true,
+          registrationNeverExpires,
+          installKey: createInstallKeyMaterial(appKey),
+        };
+      });
+
+      await db.transaction(async (tx) => {
+        for (const refreshed of refreshedApps) {
+          const expiresAt = registrationExpiryFor(
+            now,
+            refreshed.registrationNeverExpires,
+          );
+          await tx
+            .insert(desktopAppSettings)
+            .values({
+              appKey: refreshed.appKey,
+              enabled: refreshed.enabled,
+              docStatus: "registered",
+              docRegistryVersion: "1",
+              docsUpdatedAt: now,
+              docsExpiresAt: expiresAt,
+              registrationNeverExpires: refreshed.registrationNeverExpires,
+              installKeyHash: refreshed.installKey.hash,
+              installKeyPrefix: refreshed.installKey.prefix,
+              installKeyIssuedAt: now,
+              installKeyExpiresAt: expiresAt,
+              installKeyRevokedAt: null,
+              registeredBy: user.id,
+              registeredAt: now,
+              updatedBy: user.id,
+              updatedAt: now,
+            })
+            .onConflictDoUpdate({
+              target: desktopAppSettings.appKey,
+              set: {
+                enabled: refreshed.enabled,
+                docStatus: "registered",
+                docRegistryVersion: "1",
+                docsUpdatedAt: now,
+                docsExpiresAt: expiresAt,
+                registrationNeverExpires: refreshed.registrationNeverExpires,
+                installKeyHash: refreshed.installKey.hash,
+                installKeyPrefix: refreshed.installKey.prefix,
+                installKeyIssuedAt: now,
+                installKeyExpiresAt: expiresAt,
+                installKeyRevokedAt: null,
+                updatedBy: user.id,
+                updatedAt: now,
+              },
+            });
+        }
+      });
+
+      const { apps, list: refreshedList } = await getDesktopAppRegistrations();
+      res.json({
+        ok: true,
+        refreshed: refreshedApps.length,
+        apps,
+        list: refreshedList,
+        installKeys: Object.fromEntries(
+          refreshedApps.map(({ appKey, installKey }) => [appKey, installKey.key]),
+        ),
+      });
+    } catch (err) {
+      console.error("[desktop-apps] failed to refresh all registrations:", err);
+      res.status(500).json({ error: "Failed to refresh all desktop app registrations" });
+    }
+  },
+);
+
 router.put(
   "/api/admin/apps/desktop/:appKey",
   requirePermission("manage_desktop_apps"),
@@ -101,6 +186,7 @@ router.put(
       const enabled = req.body?.enabled;
       const docStatus = req.body?.docStatus as DesktopAppDocStatus | undefined;
       const docsUpdatedAtInput = req.body?.docsUpdatedAt;
+      const registrationNeverExpiresInput = req.body?.registrationNeverExpires;
       const issueInstallKey = Boolean(req.body?.issueInstallKey);
       const revokeInstallKey = Boolean(req.body?.revokeInstallKey);
       const user = req.user as any;
@@ -110,6 +196,12 @@ router.put(
       }
       if (typeof enabled !== "boolean") {
         return res.status(400).json({ error: "enabled must be a boolean" });
+      }
+      if (
+        registrationNeverExpiresInput !== undefined &&
+        typeof registrationNeverExpiresInput !== "boolean"
+      ) {
+        return res.status(400).json({ error: "registrationNeverExpires must be a boolean" });
       }
       if (
         docStatus !== undefined &&
@@ -130,11 +222,15 @@ router.put(
       }
       const resolvedDocStatus: DesktopAppDocStatus =
         docStatus ?? (enabled ? "registered" : "pending");
+      const registrationNeverExpires = registrationNeverExpiresInput === true;
       const docsExpiresAt =
         normalizedDocsUpdatedAt && resolvedDocStatus === "registered"
-          ? new Date(normalizedDocsUpdatedAt.getTime() + 24 * 60 * 60 * 1000)
+          ? registrationExpiryFor(normalizedDocsUpdatedAt, registrationNeverExpires)
           : null;
       const installKeyMaterial = issueInstallKey ? createInstallKeyMaterial(appKey) : null;
+      const installKeyExpiresAt = installKeyMaterial
+        ? registrationExpiryFor(now, registrationNeverExpires)
+        : null;
 
       await db
         .insert(desktopAppSettings)
@@ -145,10 +241,11 @@ router.put(
           docRegistryVersion: "1",
           docsUpdatedAt: normalizedDocsUpdatedAt,
           docsExpiresAt,
+          registrationNeverExpires,
           installKeyHash: installKeyMaterial?.hash ?? null,
           installKeyPrefix: installKeyMaterial?.prefix ?? null,
           installKeyIssuedAt: installKeyMaterial ? now : null,
-          installKeyExpiresAt: installKeyMaterial ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null,
+          installKeyExpiresAt,
           installKeyRevokedAt: revokeInstallKey ? now : null,
           registeredBy: user.id,
           registeredAt: now,
@@ -163,11 +260,15 @@ router.put(
             docRegistryVersion: "1",
             docsUpdatedAt: normalizedDocsUpdatedAt,
             docsExpiresAt,
+            registrationNeverExpires:
+              registrationNeverExpiresInput === undefined
+                ? undefined
+                : registrationNeverExpires,
             installKeyHash: installKeyMaterial?.hash ?? undefined,
             installKeyPrefix: installKeyMaterial?.prefix ?? undefined,
             installKeyIssuedAt: installKeyMaterial ? now : undefined,
-            installKeyExpiresAt: installKeyMaterial ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : undefined,
-            installKeyRevokedAt: revokeInstallKey ? now : undefined,
+            installKeyExpiresAt: installKeyMaterial ? installKeyExpiresAt : undefined,
+            installKeyRevokedAt: installKeyMaterial ? null : revokeInstallKey ? now : undefined,
             registeredBy: user.id,
             registeredAt: now,
             updatedBy: user.id,

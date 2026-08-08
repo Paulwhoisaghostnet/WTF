@@ -6,6 +6,10 @@ const backgroundJobs = readFileSync("server/lib/background-jobs.ts", "utf8");
 const scheduler = readFileSync("server/lib/scheduler.ts", "utf8");
 const healthJob = readFileSync("server/lib/db-health-completion.ts", "utf8");
 const dashboard = readFileSync("client/src/pages/Dashboard.tsx", "utf8");
+const cockpitQueries = readFileSync(
+  "client/src/features/cockpit/cockpit-queries.ts",
+  "utf8"
+);
 const packageJson = readFileSync("package.json", "utf8");
 
 test("db health completion is an operator-visible scheduler job", () => {
@@ -27,7 +31,8 @@ test("scheduler honors skipInitialRun so the DB scan does not fire on deploy boo
 });
 
 test("dashboard sync tab and package script expose DB completion evidence", () => {
-  assert.match(dashboard, /\/api\/cockpit\/sync\/status/);
+  assert.match(dashboard, /useCockpitSyncStatusQuery\(\)/);
+  assert.match(cockpitQueries, /\/api\/cockpit\/sync\/status/);
   assert.match(dashboard, /syncStatus\.jobs\?\.map/);
   assert.match(packageJson, /"db:health:completion": "node scripts\/run-db-health-completion\.mjs"/);
 });

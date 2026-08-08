@@ -14,6 +14,11 @@ import { db } from "../db";
 import { desktopAppSettings } from "@shared/schema";
 import { inArray } from "drizzle-orm";
 import { isDesktopAppRuntimeAvailable } from "./desktop-app-runtime";
+import {
+  isDesktopAppDocsFresh,
+  isDesktopAppInstallKeyActive,
+  registrationExpiryFor,
+} from "./desktop-app-registration-policy";
 
 export {
   DEFAULT_DESKTOP_APP_CONFIG,
@@ -25,8 +30,6 @@ export {
   type DesktopAppsResponse,
 };
 
-const DESKTOP_APP_INSTALL_GRACE_MS = DESKTOP_APP_INSTALL_GRACE_HOURS * 60 * 60 * 1000;
-
 function isMissingRelationError(err: unknown): boolean {
   const candidate = err as { code?: string; cause?: { code?: string } } | null;
   return candidate?.code === "42P01" || candidate?.cause?.code === "42P01";
@@ -36,37 +39,10 @@ function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
 }
 
-function addHours(date: Date, hours: number): Date {
-  return new Date(date.getTime() + hours * 60 * 60 * 1000);
-}
-
 function normalizeDocStatus(value: unknown): DesktopAppDocStatus {
   return value === "registered" || value === "stale" || value === "revoked"
     ? value
     : "pending";
-}
-
-function isInstallKeyActive(row: {
-  installKeyHash: string | null;
-  installKeyRevokedAt: Date | null;
-  installKeyExpiresAt: Date | null;
-}, now: Date): boolean {
-  if (!row.installKeyHash) return true;
-  if (row.installKeyRevokedAt) return false;
-  if (row.installKeyExpiresAt && row.installKeyExpiresAt.getTime() < now.getTime()) return false;
-  return true;
-}
-
-function isDocsFresh(row: {
-  docStatus: DesktopAppDocStatus;
-  docsUpdatedAt: Date | null;
-  docsExpiresAt: Date | null;
-}, now: Date): boolean {
-  if (row.docStatus === "revoked") return false;
-  if (row.docStatus === "stale") return false;
-  if (!row.docsUpdatedAt) return row.docStatus === "registered";
-  const expiresAt = row.docsExpiresAt ?? addHours(row.docsUpdatedAt, DESKTOP_APP_INSTALL_GRACE_HOURS);
-  return expiresAt.getTime() >= now.getTime();
 }
 
 function isDesktopAppInstallable(row: {
@@ -74,14 +50,15 @@ function isDesktopAppInstallable(row: {
   docStatus: DesktopAppDocStatus;
   docsUpdatedAt: Date | null;
   docsExpiresAt: Date | null;
+  registrationNeverExpires: boolean;
   installKeyHash: string | null;
   installKeyRevokedAt: Date | null;
   installKeyExpiresAt: Date | null;
 }, now: Date): boolean {
   return (
     row.enabled &&
-    isDocsFresh(row, now) &&
-    isInstallKeyActive(row, now)
+    isDesktopAppDocsFresh(row, now) &&
+    isDesktopAppInstallKeyActive(row, now)
   );
 }
 
@@ -96,6 +73,7 @@ function buildDefaultRegistrationView(
     docRegistryVersion: "1",
     docsUpdatedAt: null,
     docsExpiresAt: null,
+    registrationNeverExpires: false,
     installKeyPrefix: null,
     installKeyIssuedAt: null,
     installKeyExpiresAt: null,
@@ -117,6 +95,7 @@ function buildRegistrationView(
     docRegistryVersion: string;
     docsUpdatedAt: Date | null;
     docsExpiresAt: Date | null;
+    registrationNeverExpires: boolean;
     installKeyHash: string | null;
     installKeyPrefix: string | null;
     installKeyIssuedAt: Date | null;
@@ -131,13 +110,16 @@ function buildRegistrationView(
 ): DesktopAppRegistrationView {
   if (!row) return buildDefaultRegistrationView(appKey, now);
   const docStatus = normalizeDocStatus(row.docStatus);
-  const docsExpiresAt = row.docsExpiresAt ?? (row.docsUpdatedAt ? addHours(row.docsUpdatedAt, DESKTOP_APP_INSTALL_GRACE_HOURS) : null);
-  const installKeyActive = isInstallKeyActive(row, now);
-  const docsFresh = isDocsFresh(
+  const docsExpiresAt = row.registrationNeverExpires
+    ? null
+    : row.docsExpiresAt ?? (row.docsUpdatedAt ? registrationExpiryFor(row.docsUpdatedAt, false) : null);
+  const installKeyActive = isDesktopAppInstallKeyActive(row, now);
+  const docsFresh = isDesktopAppDocsFresh(
     {
       docStatus,
       docsUpdatedAt: row.docsUpdatedAt,
       docsExpiresAt,
+      registrationNeverExpires: row.registrationNeverExpires,
     },
     now
   );
@@ -148,6 +130,7 @@ function buildRegistrationView(
     docRegistryVersion: row.docRegistryVersion,
     docsUpdatedAt: toIso(row.docsUpdatedAt),
     docsExpiresAt: toIso(docsExpiresAt),
+    registrationNeverExpires: row.registrationNeverExpires,
     installKeyPrefix: row.installKeyPrefix,
     installKeyIssuedAt: toIso(row.installKeyIssuedAt),
     installKeyExpiresAt: toIso(row.installKeyExpiresAt),
@@ -162,6 +145,7 @@ function buildRegistrationView(
         docStatus,
         docsUpdatedAt: row.docsUpdatedAt,
         docsExpiresAt,
+        registrationNeverExpires: row.registrationNeverExpires,
         installKeyHash: row.installKeyHash,
         installKeyRevokedAt: row.installKeyRevokedAt,
         installKeyExpiresAt: row.installKeyExpiresAt,
@@ -180,6 +164,7 @@ function registrationRowsToMap(
     docRegistryVersion: string;
     docsUpdatedAt: Date | null;
     docsExpiresAt: Date | null;
+    registrationNeverExpires: boolean;
     installKeyHash: string | null;
     installKeyPrefix: string | null;
     installKeyIssuedAt: Date | null;
@@ -217,6 +202,7 @@ export async function getDesktopAppConfig(): Promise<DesktopAppConfig> {
     docRegistryVersion: string;
     docsUpdatedAt: Date | null;
     docsExpiresAt: Date | null;
+    registrationNeverExpires: boolean;
     installKeyHash: string | null;
     installKeyPrefix: string | null;
     installKeyIssuedAt: Date | null;
@@ -236,6 +222,7 @@ export async function getDesktopAppConfig(): Promise<DesktopAppConfig> {
         docRegistryVersion: desktopAppSettings.docRegistryVersion,
         docsUpdatedAt: desktopAppSettings.docsUpdatedAt,
         docsExpiresAt: desktopAppSettings.docsExpiresAt,
+        registrationNeverExpires: desktopAppSettings.registrationNeverExpires,
         installKeyHash: desktopAppSettings.installKeyHash,
         installKeyPrefix: desktopAppSettings.installKeyPrefix,
         installKeyIssuedAt: desktopAppSettings.installKeyIssuedAt,
@@ -273,6 +260,7 @@ export async function getDesktopAppRegistrations(): Promise<DesktopAppsResponse>
     docRegistryVersion: string;
     docsUpdatedAt: Date | null;
     docsExpiresAt: Date | null;
+    registrationNeverExpires: boolean;
     installKeyHash: string | null;
     installKeyPrefix: string | null;
     installKeyIssuedAt: Date | null;
@@ -292,6 +280,7 @@ export async function getDesktopAppRegistrations(): Promise<DesktopAppsResponse>
         docRegistryVersion: desktopAppSettings.docRegistryVersion,
         docsUpdatedAt: desktopAppSettings.docsUpdatedAt,
         docsExpiresAt: desktopAppSettings.docsExpiresAt,
+        registrationNeverExpires: desktopAppSettings.registrationNeverExpires,
         installKeyHash: desktopAppSettings.installKeyHash,
         installKeyPrefix: desktopAppSettings.installKeyPrefix,
         installKeyIssuedAt: desktopAppSettings.installKeyIssuedAt,

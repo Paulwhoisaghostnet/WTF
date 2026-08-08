@@ -457,7 +457,6 @@ export function canParticipate(role: UserRoleInput): boolean {
 
 export const DESKTOP_APPS = [
   "wtfiam",
-  "hoard",
   "wim",
   "w",
   "tv",
@@ -485,13 +484,13 @@ export const DESKTOP_APPS = [
   "agent",
   "applications",
   "mail",
+  "admin-inbox",
   "objkt-operator",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
 export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   wtfiam: "WTF In-App Marketplace",
-  hoard: "Hoard!",
   wim: "WIM",
   w: "W",
   tv: "WTF TV",
@@ -519,6 +518,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   agent: "Agent",
   applications: "Applications",
   mail: "Inbox",
+  "admin-inbox": "Contact Admin",
   "objkt-operator": "Objkt Operator",
 };
 

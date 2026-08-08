@@ -30,6 +30,7 @@ export const desktopAppSettings = pgTable("desktop_app_settings", {
   docRegistryVersion: varchar("doc_registry_version", { length: 20 }).default("1").notNull(),
   docsUpdatedAt: timestamp("docs_updated_at"),
   docsExpiresAt: timestamp("docs_expires_at"),
+  registrationNeverExpires: boolean("registration_never_expires").default(false).notNull(),
   installKeyHash: varchar("install_key_hash", { length: 64 }),
   installKeyPrefix: varchar("install_key_prefix", { length: 24 }),
   installKeyIssuedAt: timestamp("install_key_issued_at"),

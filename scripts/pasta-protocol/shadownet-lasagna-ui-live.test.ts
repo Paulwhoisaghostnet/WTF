@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { MichelsonMap } from "@taquito/taquito";
+import { validateOperation, ValidationResult } from "@taquito/utils";
 import { chromium, type Page } from "playwright";
 
 import {
@@ -14,6 +15,7 @@ import {
   PASTA_UI_LIVE_RECEIPT_SCHEMA,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
 } from "./pasta-ui-live-bridge-kit";
 import {
@@ -29,7 +31,9 @@ import {
   utf8ToHex,
 } from "./shadownet-proof-kit";
 import {
+  assertLasagnaTzktOperationApplied,
   assertLasagnaUiLiveExecutionAllowed,
+  lasagnaRawSha256Cid,
   loadLasagnaReferenceTokens,
   verifyLasagnaTzktEvidence,
   type LasagnaReferenceToken,
@@ -54,21 +58,24 @@ const OPERATION_HASHES = [
   "oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h",
 ];
 const REFERENCE_CONTRACTS = [
+  "KT1TP6Q4fzj4csiJ9MgkgUdFoNcEg396Vyer",
   "KT1WTFnZAyWqcC2SB32xEjMS4F4cutnGsyVc",
   "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw",
   "KT194igzFGez1pB3HHhU8HFqyMzMLSLAPskB",
   "KT1BYMrRC1ZvoHJWaSvFpiRsd5ZM2YcRh3Ls",
   "KT1EPdyxCjmosesvJ21cr8WqoCnTXoomCpRz",
 ] as const;
-const REFERENCE_APPS = ["spaghetti", "gnocchi", "ravioli", "rotini", "penne"] as const;
+const REFERENCE_APPS = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne"] as const;
 
 const REFERENCES: LasagnaReferenceToken[] = REFERENCE_APPS.map((app, index) => ({
   app,
   contract: REFERENCE_CONTRACTS[index],
-  token_id: index === 3 ? 1 : 0,
-  tokenRecordId: `${app}-token`,
-  explorerUrl: `https://shadownet.tzkt.io/${REFERENCE_CONTRACTS[index]}/tokens/${index === 3 ? 1 : 0}`,
-  artifactUri: `ipfs://${CIDS[index % CIDS.length]}`,
+  token_id: app === "rotini" ? 1 : 0,
+  tokenRecordId: app === "macaroni" ? "macaroni-v1-token-0" : `${app}-token`,
+  explorerUrl: `https://shadownet.tzkt.io/${REFERENCE_CONTRACTS[index]}/tokens/${app === "rotini" ? 1 : 0}`,
+  artifactUri: app === "macaroni"
+    ? "ipfs://bafkreifgntgighrrzrq3btzp3rzeren5wiv3b2y3vrmxkjhacvuqsrz7x4"
+    : `ipfs://${CIDS[index % CIDS.length]}`,
 }));
 
 const REVISION_ZERO_ITEMS = REFERENCES.slice(0, 2).map(({ contract, token_id }) => ({ contract, token_id }));
@@ -111,9 +118,21 @@ type RecordedCall = {
   payload: unknown;
 };
 
+type FakeOperationRecord = {
+  hash: string;
+  signerAddress: string;
+  action: "originate" | "call";
+  contractAddress: string;
+  entrypoints: string[];
+  status: "pending" | "applied" | "rejected";
+  rejection?: string;
+};
+
 function createFakeChain() {
   let operationIndex = 0;
+  let confirmationCalls = 0;
   const calls: RecordedCall[] = [];
+  const operations = new Map<string, FakeOperationRecord>();
   const state = {
     administrator: CREATOR,
     pending_administrator: null,
@@ -123,23 +142,67 @@ function createFakeChain() {
     revision_count: 0,
     current_revision: null as number | null,
   };
-  const nextOperation = () => {
+  const nextOperation = (input: {
+    signerAddress: string;
+    action: "originate" | "call";
+    entrypoints: string[];
+    apply?: () => void;
+  }) => {
     const hash = OPERATION_HASHES[operationIndex++];
     assert.ok(hash, "fake chain exhausted operation hashes");
+    assert.equal(validateOperation(hash), ValidationResult.VALID, "fake Lasagna operation hash is invalid");
+    assert.equal(operations.has(hash), false, "fake Lasagna operation hash must be unique");
+    const record: FakeOperationRecord = {
+      hash,
+      signerAddress: input.signerAddress,
+      action: input.action,
+      contractAddress: CONTRACT,
+      entrypoints: [...input.entrypoints],
+      status: "pending",
+    };
+    operations.set(hash, record);
+    let settled = false;
+    let settlementError: unknown;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        input.apply?.();
+        record.status = "applied";
+      } catch (error) {
+        settlementError = error;
+        record.status = "rejected";
+        record.rejection = error instanceof Error ? error.message : String(error);
+      }
+    };
+    queueMicrotask(settle);
     return {
       hash,
+      contractAddress: input.action === "originate" ? CONTRACT : undefined,
       async confirmation() {
+        confirmationCalls += 1;
         await new Promise((resolve) => setTimeout(resolve, 60));
+        settle();
+        if (record.status === "rejected") {
+          throw settlementError instanceof Error
+            ? settlementError
+            : new Error(record.rejection || "fake Lasagna operation rejected");
+        }
         return 1;
       },
     };
   };
   const applyCall = (actor: string, entrypoint: string, payload: any) => {
     if (entrypoint === "add_curator") {
+      if (actor !== state.administrator) throw new Error("NOT_ADMIN");
       state.curators.set(String(payload), true);
     } else if (entrypoint === "remove_curator") {
+      if (actor !== state.administrator) throw new Error("NOT_ADMIN");
       state.curators.delete(String(payload));
     } else if (entrypoint === "publish_revision") {
+      if (actor !== state.administrator && state.curators.get(actor) !== true) {
+        throw new Error("NOT_CURATOR");
+      }
       const id = state.revision_count;
       state.revisions.set(id, {
         curator: actor,
@@ -149,6 +212,9 @@ function createFakeChain() {
       state.revision_count += 1;
       state.current_revision = id;
     } else if (entrypoint === "set_current_revision") {
+      if (actor !== state.administrator && state.curators.get(actor) !== true) {
+        throw new Error("NOT_CURATOR");
+      }
       state.current_revision = Number(payload);
     }
   };
@@ -159,9 +225,15 @@ function createFakeChain() {
         entrypoint,
         (payload: unknown) => ({
           async send() {
-            calls.push({ actor, entrypoint, payload });
-            applyCall(actor, entrypoint, payload);
-            return nextOperation();
+            return nextOperation({
+              signerAddress: actor,
+              action: "call",
+              entrypoints: [entrypoint],
+              apply: () => {
+                calls.push({ actor, entrypoint, payload });
+                applyCall(actor, entrypoint, payload);
+              },
+            });
           },
         }),
       ]),
@@ -179,9 +251,15 @@ function createFakeChain() {
     contract: {
       async originate(input: { storage: typeof state }) {
         assert.equal(actor, CREATOR);
-        state.administrator = input.storage.administrator;
-        state.metadata = input.storage.metadata;
-        const operation = nextOperation();
+        const operation = nextOperation({
+          signerAddress: actor,
+          action: "originate",
+          entrypoints: [],
+          apply: () => {
+            state.administrator = input.storage.administrator;
+            state.metadata = input.storage.metadata;
+          },
+        });
         return {
           ...operation,
           async contract() {
@@ -198,7 +276,32 @@ function createFakeChain() {
       },
     },
   });
-  return { calls, state, toolkitFor };
+  const assertOperationApplied = (
+    assertion: PastaUiLiveAppliedOperationAssertion,
+    signerAddress: string,
+  ) => {
+    assert.equal(validateOperation(assertion.operationHash), ValidationResult.VALID);
+    assert.notEqual(assertion.action, "batch", "fake Lasagna chain does not apply batches");
+    const operation = operations.get(assertion.operationHash);
+    assert.ok(operation, `fake Lasagna operation ${assertion.operationHash} is unknown`);
+    assert.equal(
+      operation.status,
+      "applied",
+      `fake Lasagna operation ${assertion.operationHash} is ${operation.status}`,
+    );
+    assert.equal(operation.signerAddress, signerAddress, "fake Lasagna operation signer drift");
+    assert.equal(operation.action, assertion.action, "fake Lasagna operation action drift");
+    assert.equal(operation.contractAddress, assertion.contractAddress, "fake Lasagna operation contract drift");
+    assert.deepEqual(operation.entrypoints, assertion.entrypoints, "fake Lasagna operation entrypoint drift");
+  };
+  return {
+    assertOperationApplied,
+    calls,
+    get confirmationCalls() { return confirmationCalls; },
+    operations,
+    state,
+    toolkitFor,
+  };
 }
 
 async function waitForLog(page: Page, expected: string): Promise<void> {
@@ -287,6 +390,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
       creatorChainStages.push(stage);
       return CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => fakeChain.assertOperationApplied(assertion, CREATOR),
     pinJson,
     validateOrigination: ({ code, storage }) => {
       assert.ok(Array.isArray(code));
@@ -343,7 +447,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
     await creatorPage.fill("#pinNode", "http://127.0.0.1:5001");
     await creatorPage.fill("#exStatement", "Loopback creator exhibition statement");
     await waitForLog(creatorPage, "from CH-EASE handoff");
-    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "5");
+    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "6");
     captures.push(await captureMockStudioStage(creatorPage, creatorMonitor, outputRoot, 1, "handoff-configured", "from CH-EASE handoff", "#refs"));
 
     await creatorPage.click("[data-draft-save]");
@@ -381,6 +485,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
         curatorChainStages.push(stage);
         return CHAIN_ID;
       },
+      assertOperationApplied: (assertion) => fakeChain.assertOperationApplied(assertion, CURATOR),
       pinJson,
       validateOrigination: () => {
         throw new Error("curator fixture cannot originate");
@@ -439,7 +544,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
       mimeType: "text/csv",
       buffer: Buffer.from(REVISION_ONE_ITEMS.map((item) => `${item.contract}, ${item.token_id}`).join("\n")),
     });
-    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "3");
+    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "4");
     await creatorPage.fill("#exStatement", "Loopback creator revision one");
     captures.push(await captureMockStudioStage(creatorPage, creatorMonitor, outputRoot, 11, "revision-one-imported", "curator added ✓", "#refs"));
 
@@ -530,6 +635,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
       curatorSession.getReceipts().filter((receipt) => receipt.operationHash).map((receipt) => receipt.operationHash),
       [OPERATION_HASHES[2], OPERATION_HASHES[4]],
     );
+    assert.equal(fakeChain.confirmationCalls, 0, "successful Studio flow must not use native confirmation polling");
     assert.equal(pinIndex, 3);
     assert.ok(creatorChainStages.includes("before UI-live origination"));
     assert.ok(creatorChainStages.includes("before UI-live contract call"));
@@ -543,6 +649,131 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
     await creatorServer.close();
     await rm(outputRoot, { recursive: true, force: true });
   }
+});
+
+test("Lasagna TzKT finality validator binds exact hash, signer, action, contract, entrypoint, and applied status", () => {
+  const timestamp = "2026-07-23T20:00:00Z";
+  const origination = {
+    type: "origination",
+    status: "applied",
+    hash: OPERATION_HASHES[0],
+    sender: { address: CREATOR },
+    originatedContract: { address: CONTRACT },
+    level: 4_320_000,
+    timestamp,
+  };
+  const call = {
+    type: "transaction",
+    status: "applied",
+    hash: OPERATION_HASHES[1],
+    sender: { address: CREATOR },
+    target: { address: CONTRACT },
+    parameter: { entrypoint: "add_curator", value: CURATOR },
+    level: 4_320_001,
+    timestamp,
+  };
+  const internalTransfer = {
+    type: "transaction",
+    status: "applied",
+    hash: OPERATION_HASHES[1],
+    sender: { address: CONTRACT },
+    target: { address: CURATOR },
+    level: 4_320_001,
+    timestamp,
+  };
+  const originationAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "originate",
+    operationHash: OPERATION_HASHES[0],
+    contractAddress: CONTRACT,
+    entrypoints: [],
+  };
+  const callAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: OPERATION_HASHES[1],
+    contractAddress: CONTRACT,
+    entrypoints: ["add_curator"],
+  };
+
+  assert.equal(
+    assertLasagnaTzktOperationApplied({
+      rows: [origination],
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }).originatedContract?.address,
+    CONTRACT,
+  );
+  assert.equal(
+    assertLasagnaTzktOperationApplied({
+      rows: [call, internalTransfer],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }).parameter?.entrypoint,
+    "add_curator",
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [{ ...call, status: "backtracked" }, internalTransfer],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /not applied/,
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [{ ...call, sender: { address: CURATOR } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [{ ...call, target: { address: UNRELATED_CONTRACT } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /target differs/,
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [{ ...call, parameter: { entrypoint: "remove_curator" } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /entrypoint differs/,
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [call, { ...call }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertLasagnaTzktOperationApplied({
+      rows: [call],
+      assertion: { ...callAssertion, action: "batch" },
+      signerAddress: CREATOR,
+    }),
+    /does not permit batch/,
+  );
+});
+
+test("fake Lasagna finality verifier rejects a submitted operation whose fake chain status is rejected", async () => {
+  const fakeChain = createFakeChain();
+  const contract = await fakeChain.toolkitFor(CURATOR).contract.at(CONTRACT);
+  const operation = await contract.methodsObject.remove_curator(CREATOR).send();
+  await assert.rejects(() => operation.confirmation(), /NOT_ADMIN/);
+  assert.throws(
+    () => fakeChain.assertOperationApplied({
+      action: "call",
+      operationHash: operation.hash,
+      contractAddress: CONTRACT,
+      entrypoints: ["remove_curator"],
+    }, CURATOR),
+    /is rejected/,
+  );
 });
 
 test("Lasagna TzKT verifier requires exact revisions, current pointer, curator removal, and every applied operation", async () => {
@@ -618,10 +849,13 @@ test("Lasagna TzKT verifier requires exact revisions, current pointer, curator r
     } else if (pathName === "/v1/bigmaps/202/keys") {
       body = [];
     } else if (pathName.startsWith("/v1/operations/originations/")) {
+      const operationHash = pathName.split("/").at(-1);
       body = {
         type: "origination",
         status: "applied",
+        hash: operationHash,
         level: 9_200_001,
+        timestamp: "2026-07-23T20:00:00Z",
         sender: { address: CREATOR },
         originatedContract: { address: CONTRACT },
       };
@@ -633,7 +867,9 @@ test("Lasagna TzKT verifier requires exact revisions, current pointer, curator r
       body = {
         type: "transaction",
         status: "applied",
+        hash: operationHash,
         level: 9_200_001 + index,
+        timestamp: `2026-07-23T20:00:0${index}Z`,
         sender: { address: operation.signerAddress },
         target: { address: CONTRACT },
         parameter: { entrypoint: operation.entrypoint },
@@ -693,7 +929,7 @@ test("Lasagna TzKT verifier requires exact revisions, current pointer, curator r
   }
 });
 
-test("Lasagna loads one fresh token reference from every publisher proof in the same run", async () => {
+test("Lasagna requires all six fresh publisher proofs and binds accepted Macaroni token and contract evidence", async () => {
   const runRoot = await mkdtemp(path.join(tmpdir(), "lasagna-reference-proof-"));
   const runId = path.basename(runRoot);
   try {
@@ -705,6 +941,11 @@ test("Lasagna loads one fresh token reference from every publisher proof in the 
         app: reference.app,
         runId,
         network: { name: "shadownet", chainId: CHAIN_ID },
+        contracts: [{
+          address: reference.contract,
+          kind: `${reference.app}-publisher`,
+          explorerUrl: `https://shadownet.tzkt.io/${reference.contract}`,
+        }],
         tokens: [{
           id: reference.tokenRecordId,
           contractAddress: reference.contract,
@@ -715,9 +956,35 @@ test("Lasagna loads one fresh token reference from every publisher proof in the 
       }));
     }
     assert.deepEqual(await loadLasagnaReferenceTokens(runRoot, runId), REFERENCES);
+    assert.deepEqual(REFERENCES[0], {
+      app: "macaroni",
+      contract: "KT1TP6Q4fzj4csiJ9MgkgUdFoNcEg396Vyer",
+      token_id: 0,
+      tokenRecordId: "macaroni-v1-token-0",
+      explorerUrl: "https://shadownet.tzkt.io/KT1TP6Q4fzj4csiJ9MgkgUdFoNcEg396Vyer/tokens/0",
+      artifactUri: "ipfs://bafkreifgntgighrrzrq3btzp3rzeren5wiv3b2y3vrmxkjhacvuqsrz7x4",
+    });
+
+    await rm(path.join(runRoot, "macaroni", "manifest.json"));
+    await assert.rejects(
+      loadLasagnaReferenceTokens(runRoot, runId),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /needs the fresh publisher proofs/);
+        assert.match(String((error as Error & { lines?: string[] }).lines?.join("\n")), /macaroni/);
+        return true;
+      },
+    );
   } finally {
     await rm(runRoot, { recursive: true, force: true });
   }
+});
+
+test("Lasagna restart recovery derives the exact raw-SHA256 CID used by the proof pinner", () => {
+  assert.equal(
+    lasagnaRawSha256Cid(Buffer.from(JSON.stringify({ hello: "world" }))),
+    "bafkreietui4xdkiu4xvmx4fi2jivjtndbhb4drzpxomrjvd4mdz4w2avra",
+  );
 });
 
 test("production Lasagna runner is fresh-only, Shadownet-only, role-correct, and recorder-free", async () => {
@@ -767,6 +1034,16 @@ test("production Lasagna runner is fresh-only, Shadownet-only, role-correct, and
   assert.match(source, /creatorPage\.click\("#btnRemoveCurator"\)/);
   assert.match(source, /creatorPage\.click\("#btnExportSite"\)/);
   assert.match(source, /PUBLIC_SITE_SCRIPT_PATH/);
+  assert.match(source, /PastaProofRestartJournal\.(?:create|open)/);
+  assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_PRIMARY/);
+  assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_FALLBACK/);
+  assert.match(source, /reconcileLasagnaPendingPin\(restartJournal, ipfs\)/);
+  assert.match(source, /expectedCurrentCounter\(actor\)/);
+  assert.equal(
+    (source.match(/assertOperationApplied: \(assertion\) => verifyLasagnaTzktOperationApplied/g) || []).length,
+    2,
+    "creator and curator sessions must independently verify exact operation hashes",
+  );
   const firstOutputWrite = source.indexOf("await mkdir");
   const creatorFundingGate = source.indexOf("creator is underfunded before any pin or chain write");
   const curatorFundingGate = source.indexOf("curator is underfunded before any pin or chain write");

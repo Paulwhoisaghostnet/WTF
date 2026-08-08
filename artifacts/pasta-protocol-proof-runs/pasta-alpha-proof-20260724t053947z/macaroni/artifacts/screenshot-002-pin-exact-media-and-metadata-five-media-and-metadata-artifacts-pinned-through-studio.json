@@ -1,0 +1,54 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "macaroni",
+  "capability": "pin exact media and metadata",
+  "stageOrdinal": 2,
+  "stageName": "Five media and metadata artifacts pinned through Studio",
+  "url": "http://127.0.0.1:64500/creation-tools/macaroni/studio.html",
+  "timestampUtc": "2026-07-24T20:14:20.773Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "c42eb6d71fea334dd3ebed232b0cdbbca3915ef8c63e3cd8598468029b2be502",
+  "byteCount": 124889,
+  "domEvidence": [
+    {
+      "selector": ".brand",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "⬤ Macaroni Studio"
+    },
+    {
+      "selector": "#netLabel",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "shadownet · https://tezos-shadownet.octez.io/"
+    },
+    {
+      "selector": "#pinStatus",
+      "name": "pin result",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "all pinned ✓"
+    },
+    {
+      "selector": "#log",
+      "name": "placeholder pin",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [8:14:11 PM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [8:14:11 PM] token sheet loaded: 1 tokens [8:14:11 PM] 1 artwork file(s) added (1 total) [8:14:11 PM] stage 1: settings saved [8:14:12 PM] cover pinned: bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu [8:14:16 PM] placeholder pinned: bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae [8:14:20 PM] pinning complete: 1 tokens"
+    },
+    {
+      "selector": "#log",
+      "name": "pin count",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ready. [8:14:11 PM] wallet connected: tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM [8:14:11 PM] token sheet loaded: 1 tokens [8:14:11 PM] 1 artwork file(s) added (1 total) [8:14:11 PM] stage 1: settings saved [8:14:12 PM] cover pinned: bafkreih3qfqmfxvemvzyz3of4p4rgf6fnjqqjwnptigm6od2tbaeikdwhu [8:14:16 PM] placeholder pinned: bafkreibzp3polkqhahkivz7epfdjgzwq577b2cmgmjkxk4r7yhnzwoxlae [8:14:20 PM] pinning complete: 1 tokens"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 1,
+  "stageName": "Timed OE configured",
+  "url": "http://127.0.0.1:62338/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-08-08T14:55:23.471Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "230c3f3da9e6e5b84dd1bc2fa93ca7a24f0b95d9c527d97200c67e5e73bee8c4",
+  "byteCount": 127018,
+  "domEvidence": [
+    {
+      "selector": "#curvePreview",
+      "name": "pricing and policy",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "First mint: 0.000001 tez · after 1 sold: 0.000001 tez · preset: Timed OE"
+    },
+    {
+      "selector": "#lockPolicy",
+      "name": "locked policy",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": ""
+    }
+  ],
+  "classification": "UI-LIVE"
+}

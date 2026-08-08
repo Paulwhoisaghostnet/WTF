@@ -554,6 +554,7 @@ test("two explicit estimates become bounded send options and send cannot invoke 
     },
   };
   const validatedCalls: any[] = [];
+  const appliedChecks: any[] = [];
   const session = new TaquitoPastaUiLiveSession({
     tezos,
     signerAddress: ADMIN,
@@ -564,6 +565,13 @@ test("two explicit estimates become bounded send options and send cannot invoke 
     assertExpectedChain: async () => SHADOWNET_CHAIN_ID,
     pinJson: async () => { throw new Error("pinning is prohibited"); },
     validateCall: (call) => validatedCalls.push(structuredClone(call)),
+    assertOperationApplied: async (input) => {
+      assert.equal(input.action, "call");
+      assert.equal(input.operationHash, operationHashes[appliedChecks.length]);
+      assert.equal(input.contractAddress, CONTRACT);
+      assert.deepEqual(input.entrypoints, ["mint"]);
+      appliedChecks.push(structuredClone(input));
+    },
   });
   session.authorizeAfterFundingPreflight({
     balanceMutez: 36_926_547,
@@ -588,6 +596,11 @@ test("two explicit estimates become bounded send options and send cannot invoke 
   assert.deepEqual(submitted.map(({ contractAddress, entrypoint, payload }) => ({ contractAddress, entrypoint, payload })), calls);
   assert.deepEqual(submitted.map((entry) => entry.sendOptions), estimates.map((entry) => entry.sendOptions));
   assert.deepEqual(validatedCalls, calls, "the bridge validates only the two live calls; estimates are bound separately");
+  assert.deepEqual(
+    appliedChecks.map((entry) => entry.operationHash),
+    operationHashes,
+    "the fixture must verify each exact submitted operation hash before accepting it",
+  );
 });
 
 test("production recovery source uses guarded estimate-before-call flow and cannot pin or broaden targets", async () => {

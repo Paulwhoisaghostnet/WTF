@@ -11,6 +11,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
 } from "./pasta-ui-live-bridge-kit";
 import {
@@ -23,8 +24,11 @@ import {
 import { deterministicJsonBytes, root, utf8ToHex } from "./shadownet-proof-kit";
 import {
   assertRotiniUiLiveExecutionAllowed,
+  assertRotiniTzktOperationApplied,
+  buildRotiniRavioliDependencyEvidence,
   buildRotiniProofLayerPng,
   configureRotiniStudio,
+  createRotiniAppliedOperationBinding,
   installRotiniBrowserAdapters,
   readRotiniBrowserProjection,
   validateRotiniOutputBytes,
@@ -56,6 +60,18 @@ type FakeReservation = {
   owner: string;
 };
 
+type FakeAppliedOperation = {
+  hash: string;
+  status: "submitted" | "applied";
+  type: "origination" | "transaction";
+  sender: { address: string };
+  originatedContract?: { address: string };
+  target?: { address: string };
+  parameter?: { entrypoint: string };
+  level: number;
+  timestamp: string;
+};
+
 type FakeState = {
   nextProjectId: number;
   nextReservationId: number;
@@ -64,6 +80,9 @@ type FakeState = {
   reservations: Record<string, FakeReservation>;
   latestReservation: Record<string, number>;
   calls: Array<{ signer: string; entrypoint: string; payload: unknown; sendOptions: unknown }>;
+  appliedOperations: Record<string, FakeAppliedOperation>;
+  verifiedOperationHashes: string[];
+  confirmationCalls: number;
 };
 
 function base32(bytes: Uint8Array): string {
@@ -134,6 +153,9 @@ function createFakeChain() {
     reservations: {},
     latestReservation: {},
     calls: [],
+    appliedOperations: {},
+    verifiedOperationHashes: [],
+    confirmationCalls: 0,
   };
   let operationIndex = 0;
 
@@ -181,10 +203,27 @@ function createFakeChain() {
                 assert.fail(`unexpected fake Rotini entrypoint ${entrypoint}`);
               }
               const hash = OPERATION_HASHES[operationIndex++];
+              const applied: FakeAppliedOperation = {
+                hash,
+                status: "submitted",
+                type: "transaction",
+                sender: { address: signer },
+                target: { address: CONTRACT },
+                parameter: { entrypoint },
+                level: 1_000 + operationIndex,
+                timestamp: `2026-07-23T20:${String(operationIndex).padStart(2, "0")}:00.000Z`,
+              };
+              state.appliedOperations[hash] = applied;
+              queueMicrotask(() => {
+                applied.status = "applied";
+              });
               return {
                 hash,
                 opHash: hash,
                 async confirmation() {
+                  state.confirmationCalls += 1;
+                  await Promise.resolve();
+                  assert.equal(applied.status, "applied", "fake Rotini call must settle independently before confirmation observes it");
                   return 1;
                 },
               };
@@ -212,9 +251,26 @@ function createFakeChain() {
       contract: {
         async originate() {
           const hash = OPERATION_HASHES[operationIndex++];
+          const applied: FakeAppliedOperation = {
+            hash,
+            status: "submitted",
+            type: "origination",
+            sender: { address: signer },
+            originatedContract: { address: CONTRACT },
+            level: 1_000 + operationIndex,
+            timestamp: `2026-07-23T20:${String(operationIndex).padStart(2, "0")}:00.000Z`,
+          };
+          state.appliedOperations[hash] = applied;
+          queueMicrotask(() => {
+            applied.status = "applied";
+          });
           return {
             hash,
+            contractAddress: CONTRACT,
             async confirmation() {
+              state.confirmationCalls += 1;
+              await Promise.resolve();
+              assert.equal(applied.status, "applied", "fake Rotini origination must settle independently before confirmation observes it");
               return 1;
             },
             async contract() {
@@ -231,6 +287,27 @@ function createFakeChain() {
   }
 
   return { state, creatorTezos: toolkit(CREATOR), collectorTezos: toolkit(COLLECTOR) };
+}
+
+function strictFakeAppliedOperationVerifier(
+  state: FakeState,
+  signerAddress: string,
+): (assertion: PastaUiLiveAppliedOperationAssertion) => Promise<void> {
+  return async (assertion) => {
+    const operation = state.appliedOperations[assertion.operationHash];
+    assert.ok(operation, `fake chain lacks submitted operation ${assertion.operationHash}`);
+    assertRotiniTzktOperationApplied({
+      rows: operation,
+      assertion,
+      signerAddress,
+    });
+    assert.equal(
+      state.verifiedOperationHashes.includes(assertion.operationHash),
+      false,
+      `fake operation ${assertion.operationHash} was verified more than once`,
+    );
+    state.verifiedOperationHashes.push(assertion.operationHash);
+  };
 }
 
 function createPinService() {
@@ -282,15 +359,33 @@ async function installProofGateway(context: BrowserContext, store: Map<string, {
   });
 }
 
-async function waitForLog(page: Page, text: string, count = 1): Promise<void> {
-  await page.waitForFunction(
-    ({ expected, minimum }) => {
-      const content = document.getElementById("log")?.textContent || "";
-      return content.split(expected).length - 1 >= minimum;
-    },
-    { expected: text, minimum: count },
-    { timeout: 30_000 },
-  );
+async function waitForLog(page: Page, text: string, count = 1, failureText = ""): Promise<void> {
+  try {
+    await page.waitForFunction(
+      ({ expected, minimum, failure }) => {
+        const log = document.getElementById("log")?.textContent || "";
+        const notice = document.getElementById("ppNotice")?.textContent || "";
+        return log.split(expected).length - 1 >= minimum ||
+          Boolean(failure && (log.includes(failure) || notice.includes(failure)));
+      },
+      { expected: text, minimum: count, failure: failureText },
+      { timeout: 30_000 },
+    );
+    const content = await page.locator("#log").textContent() || "";
+    if (content.split(text).length - 1 < count) {
+      throw new Error(`Rotini browser reported ${failureText || "an alternate failure"}`);
+    }
+  } catch (error) {
+    const [notice, log] = await Promise.all([
+      page.locator("#ppNotice").innerText().catch(() => "<unreadable>"),
+      page.locator("#log").innerText().catch(() => "<unreadable>"),
+    ]);
+    throw new Error(
+      `Rotini browser stage failed while waiting for ${JSON.stringify(text)}; ` +
+      `notice=${JSON.stringify(notice.slice(-2_000))} logTail=${JSON.stringify(log.slice(-2_000))}`,
+      { cause: error },
+    );
+  }
 }
 
 async function waitForText(page: Page, selector: string, text: string): Promise<void> {
@@ -352,6 +447,7 @@ test("actual Rotini studio completes creator publish and independent collector P
     expectedChainId: CHAIN_ID,
     allowedEntrypoints: new Set(["create_project"]),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: strictFakeAppliedOperationVerifier(chain.state, CREATOR),
     pinJson: pinService.pinJson,
     pinBlob: pinService.pinBlob,
     projectStorage: () => creatorProjection,
@@ -392,8 +488,8 @@ test("actual Rotini studio completes creator publish and independent collector P
       await installPastaUiLiveBrowserProxy(creatorPage, creatorServer, "UI-MOCK");
       await installRotiniBrowserAdapters(creatorPage, "https://proof.invalid/ipfs");
       await configureRotiniStudio(creatorPage, "http://127.0.0.1:5001");
-      await waitForLog(creatorPage, "generated 3 edition(s)");
-      captures.push(await captureMock(creatorPage, creatorPageMonitor, outputRoot, 1, "generator configured", "generated 3 edition(s)", "#genStatus"));
+      await waitForLog(creatorPage, "generated 4 edition(s)");
+      captures.push(await captureMock(creatorPage, creatorPageMonitor, outputRoot, 1, "generator configured", "generated 4 edition(s)", "#genStatus"));
 
       await creatorPage.click("#btnConnect");
       await waitForLog(creatorPage, `connected ${CREATOR} on shadownet`);
@@ -404,7 +500,7 @@ test("actual Rotini studio completes creator publish and independent collector P
           await creatorPage.check('input[name="target"][value="existing_contract"]');
         }
         await creatorPage.click("#btnPublish");
-        await waitForLog(creatorPage, "generative project published ✓", index + 1);
+        await waitForLog(creatorPage, "generative project published ✓", index + 1, "publish failed:");
         await waitForText(creatorPage, "#ppNotice", `Published ${mode.toUpperCase()} generator project ${index}`);
         assert.equal(creatorProjection.next_project_id, index + 1, "server projection must advance after project publication");
         const browserNextProjectId = await creatorPage.evaluate(async () => {
@@ -418,7 +514,7 @@ test("actual Rotini studio completes creator publish and independent collector P
       assert.equal(creatorContract, CONTRACT);
       assert.equal(chain.state.nextProjectId, 3);
       assert.equal(numeric(chain.state.projects["0"]?.price), 0);
-      assert.equal(numeric(chain.state.projects["0"]?.max_supply), 3);
+      assert.equal(numeric(chain.state.projects["0"]?.max_supply), 4);
       assert.equal(pinService.proofs.length, 13);
     } finally {
       creatorPageMonitor.dispose();
@@ -427,6 +523,7 @@ test("actual Rotini studio completes creator publish and independent collector P
     }
 
     let collectorProjection = await readRotiniBrowserProjection(chain.collectorTezos, CONTRACT, COLLECTOR);
+    const reservationCounterSnapshots: Array<{ nextReservationId: number; nextTokenId: number }> = [];
     const collectorSession = new TaquitoPastaUiLiveSession({
       tezos: chain.collectorTezos,
       signerAddress: COLLECTOR,
@@ -434,12 +531,19 @@ test("actual Rotini studio completes creator publish and independent collector P
       allowedContractAddresses: new Set([CONTRACT]),
       allowedEntrypoints: new Set(["reserve_iteration", "finalize_iteration"]),
       assertExpectedChain: async () => CHAIN_ID,
+      assertOperationApplied: strictFakeAppliedOperationVerifier(chain.state, COLLECTOR),
       pinJson: pinService.pinJson,
       pinBlob: pinService.pinBlob,
       projectStorage: () => collectorProjection,
       onReceipt: async (receipt) => {
         if (receipt.operationHash) {
           collectorProjection = await readRotiniBrowserProjection(chain.collectorTezos, CONTRACT, COLLECTOR);
+          if (receipt.entrypoints?.includes("reserve_iteration")) {
+            reservationCounterSnapshots.push({
+              nextReservationId: collectorProjection.next_reservation_id,
+              nextTokenId: collectorProjection.next_token_id,
+            });
+          }
         }
       },
     });
@@ -478,7 +582,7 @@ test("actual Rotini studio completes creator publish and independent collector P
       await page.fill("#mintProjectId", "0");
       await page.click("#btnLoadProject");
       await waitForText(page, "#mintInfo", "PNG");
-      assert.match(await page.locator("#mintInfo").innerText(), /\/ 3 · PNG/);
+      assert.match(await page.locator("#mintInfo").innerText(), /\/ 4 · PNG/);
       assert.doesNotMatch(await page.locator("#mintInfo").innerText(), /\[object Object\]/);
       captures.push(await captureMock(page, monitor, outputRoot, 3, "collector loaded project", `connected ${COLLECTOR}`, "#mintInfo"));
 
@@ -488,12 +592,22 @@ test("actual Rotini studio completes creator publish and independent collector P
         await waitForText(page, "#mintInfo", mode.toUpperCase());
         assert.doesNotMatch(await page.locator("#mintInfo").innerText(), /\[object Object\]/);
         await page.click("#btnMintIteration");
-        await waitForLog(page, `collector finalized ${mode.toUpperCase()} token ${index}`);
+        await waitForLog(
+          page,
+          `collector finalized ${mode.toUpperCase()} token ${index}`,
+          1,
+          "Iteration mint failed:",
+        );
         await waitForText(page, "#ppNotice", `${mode.toUpperCase()} iteration ${index} finalized`);
       }
       captures.push(await captureMock(page, monitor, outputRoot, 4, "three tokens finalized", "collector finalized ZIP token 2", "#mintInfo"));
 
       assert.equal(chain.state.nextTokenId, 3);
+      assert.deepEqual(reservationCounterSnapshots, [
+        { nextReservationId: 1, nextTokenId: 1 },
+        { nextReservationId: 2, nextTokenId: 2 },
+        { nextReservationId: 3, nextTokenId: 3 },
+      ], "reserve_iteration must allocate its reservation id and token id in the same confirmed operation");
       assert.equal(Object.keys(chain.state.reservations).length, 0);
       assert.equal(pinService.proofs.length, 20);
       assert.deepEqual(
@@ -516,7 +630,7 @@ test("actual Rotini studio completes creator publish and independent collector P
       }
       assert.equal(chain.state.projects["0"].minted, 1);
       assert.equal(chain.state.projects["0"].reserved, 0);
-      assert.equal(numeric(chain.state.projects["0"].max_supply) - chain.state.projects["0"].minted - chain.state.projects["0"].reserved, 2);
+      assert.equal(numeric(chain.state.projects["0"].max_supply) - chain.state.projects["0"].minted - chain.state.projects["0"].reserved, 3);
       const outputProofs = [
         pinService.proofs.find(({ fileName }) => fileName === "rotini-0.png"),
         pinService.proofs.find(({ fileName }) => fileName === "rotini-1.gif"),
@@ -533,6 +647,16 @@ test("actual Rotini studio completes creator publish and independent collector P
       assert.equal(creatorOps.length, 4);
       assert.equal(collectorOps.length, 6);
       assert.deepEqual([...creatorOps, ...collectorOps].map((receipt) => receipt.operationHash), OPERATION_HASHES);
+      assert.deepEqual(chain.state.verifiedOperationHashes, OPERATION_HASHES);
+      assert.equal(
+        chain.state.confirmationCalls,
+        0,
+        "successful Rotini UI-LIVE verification must not depend on native confirmation polling",
+      );
+      assert.ok(
+        Object.values(chain.state.appliedOperations).every(({ status }) => status === "applied"),
+        "every fake operation must be independently observed as applied",
+      );
     } finally {
       monitor.dispose();
       await collectorContext.close();
@@ -548,6 +672,171 @@ test("actual Rotini studio completes creator publish and independent collector P
     await browser.close();
     await rm(outputRoot, { recursive: true, force: true });
   }
+});
+
+test("Rotini applied-operation evidence binds exact hash, applied status, signer, contract, and entrypoint", () => {
+  const timestamp = "2026-07-23T20:00:00.000Z";
+  const originationAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "originate",
+    operationHash: OPERATION_HASHES[0],
+    contractAddress: CONTRACT,
+    entrypoints: [],
+  };
+  const origination = {
+    hash: OPERATION_HASHES[0],
+    status: "applied",
+    type: "origination",
+    sender: { address: CREATOR },
+    originatedContract: { address: CONTRACT },
+    level: 1_000,
+    timestamp,
+  };
+  assert.deepEqual(
+    assertRotiniTzktOperationApplied({
+      rows: origination,
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }),
+    {
+      operationHash: OPERATION_HASHES[0],
+      status: "applied",
+      action: "originate",
+      signerAddress: CREATOR,
+      contractAddress: CONTRACT,
+      entrypoints: [],
+      level: 1_000,
+      timestamp,
+    },
+  );
+
+  const callAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: OPERATION_HASHES[1],
+    contractAddress: CONTRACT,
+    entrypoints: ["create_project"],
+  };
+  const call = {
+    hash: OPERATION_HASHES[1],
+    status: "applied",
+    type: "transaction",
+    sender: { address: CREATOR },
+    target: { address: CONTRACT },
+    parameter: { entrypoint: "create_project" },
+    level: 1_001,
+    timestamp,
+  };
+  assert.equal(
+    assertRotiniTzktOperationApplied({
+      rows: [call],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }).entrypoints[0],
+    "create_project",
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...call, hash: OPERATION_HASHES[2] }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exact submitted hash/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...call, status: "backtracked" }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /not wholly applied/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...call, sender: { address: COLLECTOR } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one Rotini call/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...call, target: { address: "KT1E5mXCQNj9gsaw3ZYNg5fC8TLk4XHKeU6i" } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one Rotini call/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...call, parameter: { entrypoint: "reserve_iteration" } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one Rotini call/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: [{ ...origination, originatedContract: { address: "KT1E5mXCQNj9gsaw3ZYNg5fC8TLk4XHKeU6i" } }],
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one Rotini originate/,
+  );
+  assert.throws(
+    () => assertRotiniTzktOperationApplied({
+      rows: call,
+      assertion: { ...callAssertion, entrypoints: ["create_project", "reserve_iteration"] },
+      signerAddress: CREATOR,
+    }),
+    /exactly one entrypoint/,
+  );
+});
+
+test("Rotini checkpoint binding persists a receipt only after exact applied evidence", async () => {
+  const assertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: OPERATION_HASHES[1],
+    contractAddress: CONTRACT,
+    entrypoints: ["create_project"],
+  };
+  const binding = createRotiniAppliedOperationBinding({
+    signerAddress: CREATOR,
+    verifyApplied: async ({ assertion: candidate, signerAddress }) =>
+      assertRotiniTzktOperationApplied({
+        rows: {
+          hash: candidate.operationHash,
+          status: "applied",
+          type: "transaction",
+          sender: { address: signerAddress },
+          target: { address: candidate.contractAddress },
+          parameter: { entrypoint: candidate.entrypoints[0] },
+          level: 1_001,
+          timestamp: "2026-07-23T20:00:00.000Z",
+        },
+        assertion: candidate,
+        signerAddress,
+      }),
+  });
+  const receipt = {
+    action: "call",
+    operationHash: assertion.operationHash,
+    signerAddress: CREATOR,
+    contractAddress: CONTRACT,
+    entrypoints: ["create_project"],
+  } as any;
+  let persisted = false;
+  await assert.rejects(
+    binding.bindReceipt(receipt, () => {
+      persisted = true;
+    }),
+    /lacks exact applied-operation evidence/,
+  );
+  assert.equal(persisted, false);
+  await binding.assertOperationApplied(assertion);
+  await binding.bindReceipt(receipt, () => {
+    persisted = true;
+  });
+  assert.equal(persisted, true);
+  binding.assertSettled();
 });
 
 test("Rotini production runner is explicit, fresh, Shadownet-only, funded-before-write, and recorder-free", async () => {
@@ -586,6 +875,25 @@ test("Rotini production runner is explicit, fresh, Shadownet-only, funded-before
   assert.match(source, /publicGatewayVerified/);
   assert.match(source, /reservePackCapacityRequirement: "price == 0"/);
   assert.match(source, /ravioliPackCompatible: projectId === 0/);
+  assert.match(source, /scriptSha256: contractCodeArtifact\.sha256/);
+  assert.match(source, /remainingReservable, 3/);
+  assert.match(source, /createRotiniUiLiveCheckpoint\(\{/);
+  assert.match(source, /beforeOperationSubmit: \(operation\) => checkpoint\.beforeOperationSubmit\("creator", operation\)/);
+  assert.match(source, /beforeOperationSubmit: \(operation\) => checkpoint\.beforeOperationSubmit\("collector", operation\)/);
+  assert.match(source, /assertOperationApplied: creatorAppliedOperations\.assertOperationApplied/);
+  assert.match(source, /assertOperationApplied: collectorAppliedOperations\.assertOperationApplied/);
+  assert.match(source, /creatorAppliedOperations\.bindReceipt\(receipt/);
+  assert.match(source, /collectorAppliedOperations\.bindReceipt\(receipt/);
+  assert.match(source, /beforePin: \(input\) => checkpoint\.beforePin\("creator", input\)/);
+  assert.match(source, /beforePin: \(input\) => checkpoint\.beforePin\("collector", input\)/);
+  assert.match(source, /checkpoint\.finalize\(checkpointCompletedAt\)/);
+  assert.match(source, /readRotiniBrowserProjectionWithRetry\(\{/);
+  assert.match(source, /readRotiniRavioliDependencyEvidenceWithRetry\(\{/);
+  assert.match(source, /fallback: declareReadOnlyReader\(/);
+  assert.match(source, /nextProjectId: creatorValidator\.createdModes\.length/);
+  assert.match(source, /nextReservationId: collectorValidator\.reservedProjects\.length/);
+  assert.match(source, /nextTokenId: collectorValidator\.reservedProjects\.length/);
+  assert.doesNotMatch(source, /declareReadOnlyReader\([^)]*(?:pinIpfs|\.send\(|\.originate\()/s);
   assert.doesNotMatch(source, /UI-MOCK/);
   assert.doesNotMatch(source, /recordVideo|recordHar|tracing\.start|launchPersistentContext/);
   assert.doesNotMatch(source, /\b(?:edsk|p2sk|spsk)[1-9A-HJ-NP-Za-km-z]{20,}/);
@@ -593,8 +901,17 @@ test("Rotini production runner is explicit, fresh, Shadownet-only, funded-before
   const fundingGate = source.indexOf("Rotini UI-live collector is underfunded before any pin or chain write");
   const firstOutputWrite = source.indexOf("await mkdir(path.join(appRoot");
   const firstPinCallback = source.indexOf("pinIpfsProofJson({ value, fileName, options: ipfs })");
+  const checkpointFinalization = source.indexOf("checkpoint.finalize(checkpointCompletedAt)");
+  const tzktProjection = source.indexOf("verifyTzktEvidence(", checkpointFinalization);
+  const ravioliProjection = source.indexOf("readRotiniRavioliDependencyEvidenceWithRetry({", checkpointFinalization);
   assert.ok(fundingGate > 0 && firstOutputWrite > fundingGate, "output directory must be created only after both funding gates");
   assert.ok(firstPinCallback > firstOutputWrite, "live pin callbacks must be installed only after both funding gates");
+  assert.ok(
+    checkpointFinalization > firstPinCallback
+      && tzktProjection > checkpointFinalization
+      && ravioliProjection > checkpointFinalization,
+    "durable checkpoint finalization must precede optional TzKT/RPC projections",
+  );
 });
 
 test("deterministic proof layers and output validators reject format drift", () => {
@@ -611,11 +928,64 @@ test("deterministic proof layers and output validators reject format drift", () 
     symbol: utf8ToHex("ROTUI"),
     output_mode: utf8ToHex("png"),
     price: 0,
-    max_supply: 3,
+    max_supply: 4,
     minted: 0,
     reserved: 0,
   };
   assert.equal(project.output_mode, "706e67");
   assert.equal(project.price, 0);
-  assert.equal(project.max_supply - project.minted - project.reserved, 3);
+  assert.equal(project.max_supply - project.minted - project.reserved, 4);
+});
+
+test("Rotini Ravioli handoff binds project-zero free capacity and exact script", () => {
+  const evidence = buildRotiniRavioliDependencyEvidence({
+    contractAddress: CONTRACT,
+    administrator: CREATOR,
+    projectId: 0,
+    active: true,
+    outputMode: "png",
+    priceMutez: 0,
+    maxSupply: 4,
+    maxPerWallet: 4,
+    reservationTtlSeconds: 3_600,
+    minted: 1,
+    reserved: 0,
+    treasury: CREATOR,
+    generatorUri: `ipfs://${rawCid(Buffer.from("generator"))}`,
+    displayUri: `ipfs://${rawCid(Buffer.from("display"))}`,
+    nextTokenId: 3,
+    artifactSha256: "a".repeat(64),
+    artifactCodeSha256: "b".repeat(64),
+    onChainCodeSha256: "b".repeat(64),
+  }) as any;
+  assert.equal(evidence.project.projectId, 0);
+  assert.equal(evidence.project.maxSupply, 4);
+  assert.equal(evidence.baseline.minted, 1);
+  assert.equal(evidence.baseline.reserved, 0);
+  assert.equal(evidence.baseline.remainingReservable, 3);
+  assert.deepEqual(evidence.baseline.existingTokenIds, [0, 1, 2]);
+  assert.equal(evidence.generatedAtOpen.availableActions, 3);
+  assert.equal(evidence.generatedAtOpen.requiresActionIndex, true);
+  assert.equal(evidence.script.exactMatch, true);
+
+  assert.throws(() => buildRotiniRavioliDependencyEvidence({
+    contractAddress: CONTRACT,
+    administrator: CREATOR,
+    projectId: 0,
+    active: true,
+    outputMode: "png",
+    priceMutez: 0,
+    maxSupply: 4,
+    maxPerWallet: 4,
+    reservationTtlSeconds: 3_600,
+    minted: 2,
+    reserved: 0,
+    treasury: CREATOR,
+    generatorUri: `ipfs://${rawCid(Buffer.from("generator"))}`,
+    displayUri: `ipfs://${rawCid(Buffer.from("display"))}`,
+    nextTokenId: 3,
+    artifactSha256: "a".repeat(64),
+    artifactCodeSha256: "b".repeat(64),
+    onChainCodeSha256: "b".repeat(64),
+  }), /minted|three generated-at-open/i);
 });

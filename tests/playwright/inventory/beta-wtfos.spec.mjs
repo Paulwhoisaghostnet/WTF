@@ -557,7 +557,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await page.locator("[data-beta-puppet-tabs]").getByRole("button", { name: "Collector" }).click();
     await expect(commandCenter).toHaveAttribute("data-beta-journey-persona", "collector");
     await expect(commandCenter).toContainText("Gallery");
-    await expect(commandCenter).toContainText("Hoard");
+    await expect(commandCenter).toContainText("Gallery");
     await expect(commandCenter).toContainText("Rat Race");
   });
 
@@ -601,7 +601,7 @@ test.describe("interaction inventory - WTFOS beta hub", () => {
     await expect(page.locator("[data-beta-app-card]").first()).toContainText("Side Quests");
 
     await page.getByLabel("Search beta app atlas").fill("market");
-    await expect(page.locator("[data-beta-app-card]").first()).toContainText(/Market|Hoard|Rat Race|WTF/i);
+    await expect(page.locator("[data-beta-app-card]").first()).toContainText(/Market|Gallery|Rat Race|WTF/i);
 
     await page.getByRole("button", { name: "Reset atlas filters" }).click();
     await page.locator("[data-beta-app-atlas-tier-filter]").getByRole("button", { name: "Tier 1" }).click();

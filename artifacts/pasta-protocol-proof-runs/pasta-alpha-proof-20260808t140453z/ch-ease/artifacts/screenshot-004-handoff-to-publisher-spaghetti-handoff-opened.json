@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ch-ease",
+  "capability": "Handoff to publisher",
+  "stageOrdinal": 4,
+  "stageName": "Spaghetti handoff opened",
+  "url": "http://127.0.0.1:54566/creation-tools/ch-ease/index.html?network=shadownet",
+  "timestampUtc": "2026-08-08T14:05:13.024Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "4571872115068ba71d2cfab662b4a71fe427e9188f17511696826d7c53dd11d0",
+  "byteCount": 110036,
+  "domEvidence": [
+    {
+      "selector": "#status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Package handed to spaghetti."
+    },
+    {
+      "selector": "#target-app",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti · fixed editions Gnocchi · open editions Ravioli · bundles Rotini · generative Penne · claims / distributions Lasagna · exhibitions"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

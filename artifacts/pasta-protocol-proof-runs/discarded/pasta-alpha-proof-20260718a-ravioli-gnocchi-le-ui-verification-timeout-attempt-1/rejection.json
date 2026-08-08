@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-rejected-live-attempt@1",
+  "status": "REJECTED-PRE-SUBMISSION",
+  "app": "ravioli-gnocchi-le-dependency",
+  "attempt": 1,
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "failure": {
+    "stage": "real Gnocchi Studio existing-collection verification",
+    "reason": "The proof runner waited only for the success status after the Studio verification action and timed out without surfacing the Studio notice text.",
+    "processExitCode": 1
+  },
+  "submissionAudit": {
+    "pinsCommitted": 0,
+    "writeIntentProduced": false,
+    "operationSubmitted": false,
+    "chainWritePossibleAtFailureStage": false,
+    "manifestProduced": false,
+    "receiptProduced": false
+  },
+  "partialEvidence": [
+    {
+      "path": "screenshots/001-publish-ravioli-limited-edition-dependency-future-limited-edition-configured.png",
+      "sha256": "45c84b5bfa9cc2ebc158959630b664204bcbac926146d44ab26f4c8ebbebdfe2",
+      "byteCount": 126100
+    },
+    {
+      "path": "artifacts/screenshot-001-publish-ravioli-limited-edition-dependency-future-limited-edition-configured.json",
+      "sha256": "1876b7ac5a6a5ccab151dba130170f88d76f7ffabe88041291adf3d1a6eddfd4",
+      "byteCount": 927
+    }
+  ],
+  "acceptance": {
+    "mayBeCombinedWithAcceptedProof": false,
+    "mayBeResumed": false,
+    "freshAttemptRequired": true
+  }
+}

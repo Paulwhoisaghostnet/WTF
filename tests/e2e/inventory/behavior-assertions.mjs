@@ -276,6 +276,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused model proves day, six-hour, one-hour, start-time, and all-day login thresholds; viewed threshold ids persist per user in localStorage so subsequent thresholds remain eligible; cross-app handoffs use one narrow session record or explicit URL fields, and personal events persist in the existing per-user Calendar store.",
   },
   {
+    id: "calendar.ttc-source-parity-and-event-details",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["calendar"],
+    ownerSpec:
+      "server/lib/ttc-calendar.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/ttc-calendar.test.ts && npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"hosts Calendar events\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Calendar restores TTC occurrences earlier than the public iCal feed's rolling next-occurrence anchor, and every Day, Week, Month, or Agenda event card opens details that identify who created it and link directly to the original TTC listing when applicable.",
+    durableSideEffectAssertion:
+      "The focused adapter tests prove backward recurrence restoration, TTC WordPress creator enrichment, email-shaped creator-name redaction, and canonical source URLs; browser coverage proves TTC creator and source provenance are visible from an activated event without changing calendar state.",
+  },
+  {
     id: "gamma.auth-return-continuity",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],
@@ -317,7 +330,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
     userVisibleAssertion: "Each puppet wallet can complete the wallet-login challenge flow.",
@@ -327,7 +340,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "auth.wallet-provider-login-lifecycle",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec:
       "client/src/lib/tezos/wallet-connect-policy.test.ts, client/src/lib/tezos/wallet-shadownet-preflight-policy.test.ts",
     verificationCommand:
@@ -340,7 +353,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "wallet.checkout-intent-bound-to-signed-session",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard", "wtfiam"],
+    ownerSurfaceIds: ["wtfiam"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
       "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"wallet-login checkout intent\"",
@@ -352,7 +365,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "wallet.passive-refresh-no-signature",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard"],
+    ownerSurfaceIds: ["profile"],
     ownerSpec: "client/src/lib/wallet-context-policy.test.ts, client/src/pages/profile-wallet-link-policy.test.ts",
     verificationCommand:
       "npx tsx --test client/src/lib/wallet-context-policy.test.ts client/src/pages/profile-wallet-link-policy.test.ts",
@@ -494,13 +507,39 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "contracts/pasta-protocol/PastaOpenEditionFA2.py, public/creation-tools/gnocchi/index.html, public/creation-tools/gnocchi/js/studio.js, scripts/pasta-protocol/shadownet-gnocchi-e2e.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+      "contracts/pasta-protocol/PastaOpenEditionFA2.py, public/creation-tools/gnocchi/index.html, public/creation-tools/gnocchi/js/studio.js, scripts/pasta-protocol/shadownet-gnocchi-e2e.ts, scripts/pasta-protocol/shadownet-gnocchi-ui-live.ts, scripts/pasta-protocol/shadownet-gnocchi-ui-live.test.ts, scripts/pasta-protocol/shadownet-gnocchi-current-recovery.ts, scripts/pasta-protocol/shadownet-gnocchi-current-recovery.test.ts, scripts/pasta-protocol/shadownet-gnocchi-readonly-finalizer.ts, scripts/pasta-protocol/shadownet-gnocchi-readonly-finalizer.test.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
     verificationCommand:
-      "node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaOpenEditionFA2.py pasta-open-edition gnocchi && npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4391 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'Gnocchi publishes timed' --reporter=list",
+      "node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaOpenEditionFA2.py pasta-open-edition gnocchi && npm run pasta:shadownet:gnocchi:ui-live:check && npm run pasta:shadownet:gnocchi:current-recovery:check && npm run pasta:shadownet:gnocchi:readonly-finalize:check && npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4391 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'Gnocchi publishes timed' --reporter=list",
     userVisibleAssertion:
       "A Gnocchi creator can create one collection, publish a Timed OE as token 0, verify and reuse that KT1 for a Forever OE as token 1 and Limited Edition as token 2, then list and manage all three independent policies without manually calling a contract or originating helper contracts.",
     durableSideEffectAssertion:
-      "The SmartPy contract stores per-token policy locks and lifetime minted totals, counts creator reserves inside caps, prevents locked start/end/cap changes, enforces locked windows for public and delegated minting, and does not reopen cap or curve capacity after burns; the browser proof confirms one origination followed by three create_open_edition calls and renders all three token policies from confirmed collection storage.",
+      "The SmartPy contract stores per-token policy locks and lifetime minted totals, counts creator reserves inside caps, prevents locked start/end/cap changes, enforces locked windows for public and delegated minting, and does not reopen cap or curve capacity after burns; the browser proof confirms one origination followed by three create_open_edition calls and renders all three token policies from confirmed collection storage. A post-confirmation storage refresh retries only declared read-only reads, never a write-like action; the exact recovered proof binds three prefix plus nine continuation operations, zero replay, 46 hash-linked events, 19 screenshots, two no-write rejections, and the UI-LIVE-RECOVERED-CHECKPOINTED final classification.",
+  },
+  {
+    id: "pasta-protocol.ravioli-limited-edition-expiry-deconfliction",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "contracts/pasta-protocol/{PastaPackRouterFA2,PastaBlindPackController,PastaGnocchiPackAdapter,PastaRotiniPackAdapter,PastaOpenEditionFA2}.py, public/creation-tools/{gnocchi,ravioli}/contract/*.contract.json, public/creation-tools/ravioli/contract/pasta-ravioli-deployment-certificate.json, public/creation-tools/ravioli/index.html, public/creation-tools/ravioli/css/theme.css, public/creation-tools/ravioli/js/studio.js, scripts/pasta-protocol/{generate-ravioli-deployment-certificate,check-smartpy-origination-size}.mjs, scripts/pasta-protocol/pasta-michelson-script-identity.ts, scripts/pasta-protocol/pasta-michelson-script-identity.test.ts, scripts/test-pasta-ravioli-contracts.sh, scripts/pasta-protocol/site-kit/site.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/site.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts, scripts/pasta-protocol/pasta-ui-live-bridge-kit.ts, scripts/pasta-protocol/pasta-ui-live-bridge-kit.test.ts, scripts/pasta-protocol/shadownet-ravioli-fresh-dependencies.ts, scripts/pasta-protocol/shadownet-ravioli-fresh-dependencies.test.ts, scripts/pasta-protocol/shadownet-ravioli-ui-live-journal.ts, scripts/pasta-protocol/shadownet-ravioli-ui-live-journal.test.ts, scripts/pasta-protocol/shadownet-ravioli-current-v2-resume.ts, scripts/pasta-protocol/shadownet-ravioli-current-v2-resume.test.ts, scripts/pasta-protocol/shadownet-ravioli-current-v4-resume.ts, scripts/pasta-protocol/shadownet-ravioli-current-v4-resume.test.ts, scripts/pasta-protocol/shadownet-ravioli-private-recovery.ts, scripts/pasta-protocol/shadownet-ravioli-private-recovery.test.ts, scripts/pasta-protocol/shadownet-ravioli-blind-proof-verifier.ts, scripts/pasta-protocol/shadownet-ravioli-blind-proof-verifier.test.ts, scripts/pasta-protocol/shadownet-ravioli-mode0-mutation-replay.test.ts, scripts/pasta-protocol/shadownet-ravioli-ui-live.ts, scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts, scripts/pasta-protocol/shadownet-ravioli-deadline-reveal.ts, scripts/pasta-protocol/shadownet-ravioli-deadline-settlement.ts, scripts/pasta-protocol/shadownet-ravioli-deadline-recovery.test.ts, scripts/pasta-protocol/assemble-proof-package.mjs, scripts/pasta-protocol/assemble-proof-package.test.mjs, tests/pasta_ravioli_contracts_test.py, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "npm run contract:test:pasta-ravioli && npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts scripts/pasta-protocol/shadownet-ravioli-fresh-dependencies.test.ts scripts/pasta-protocol/shadownet-ravioli-current-v2-resume.test.ts scripts/pasta-protocol/shadownet-ravioli-current-v4-resume.test.ts scripts/pasta-protocol/shadownet-ravioli-private-recovery.test.ts scripts/pasta-protocol/shadownet-ravioli-blind-proof-verifier.test.ts scripts/pasta-protocol/shadownet-ravioli-mode0-mutation-replay.test.ts scripts/pasta-protocol/shadownet-ravioli-deadline-recovery.test.ts scripts/pasta-protocol/shadownet-ravioli-ui-live-journal.test.ts scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts && node --test scripts/pasta-protocol/assemble-proof-package.test.mjs && npm run test:e2e:inventory:coverage && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'exported buy, mint, claim, atomic-pack' --reporter=list",
+    userVisibleAssertion:
+      "A reserved unminted Gnocchi child whose actual on-chain policy is active, locked, capped, and timed can enter Ravioli only when the complete blind wrapper supply is a finite Limited Edition sale whose end precedes reveal and whose reveal is no later than that child; Timed OE, capped-untimed, and true Forever OE allocations remain valid after exact capacity is reserved. The Studio explains sale end < reveal deadline < open/refund cutoff, and the standalone holder page reads the bound controller, decrypts the authenticated reveal without wtfOS, remains awaiting-reveal before publication, opens only inside the delivery window, and becomes refund-only after the applicable cutoff without fetching reveal ciphertext. During an active sale, eligible holders can Buy or Open independently; sale load and purchase do not fetch reveal content, and rapid duplicate clicks cannot start a second signer request. The live proof retries only bounded read-only buyer-page initialization before wallet connection and refuses a timed purchase unless the on-chain sale retains the full readiness budget plus a safety margin; failed initialization closes its browser. Any caller may credit expiry to the current holder; after the reveal deadline, any connected caller may close a fully refunded unrevealed pack only when no claims or escrow remain. Closure zeroes wrapper supply and unclaimed inventory while preserving holder withdrawal credits, and a rejected withdrawal leaves the credit intact. Only after cancellation, the connected administrator can use the creator-facing Recover reserved child capacity controls to name the official adapter, adapter kind, resource id, and exact capacity; active-pack, unofficial-adapter, and over-capacity requests fail before signing, while success reports the verified remaining allowance and reservation. An already-expired settlement is explicitly recorded as BLOCKED_BEFORE_WRITE and stops before signer loading, counter reads, browser setup, or holder-operation preparation. Expired or dishonest policy input, tampered ciphertext, a wrong salt, unsafe terminal cancellation disagreement, resumed look-alike or legacy router/controller pairs fail closed. Crossed recovery commands remain retired and partial live boundaries are identified as audit evidence rather than successful products. After an atomic open the page shows every delivered escrowed, allocated, or generated child with metadata/artwork and TzKT links; interrupted publishing or reveal retains a downloadable private recovery journal and refuses blind retry or unsafe dismissal.",
+    durableSideEffectAssertion:
+      "The typed Gnocchi adapter forwards the router's immutable child and wrapper constraints to reserve_mint_capacity, where Gnocchi validates its locked policy and reserves exact capacity. The split router/controller `finalize_blind_pack` path atomically finalizes recipes, issues and lists the complete wrapper supply, registers the reveal/open deadlines and payment escrow, and prevents separate blind issuance paths; already reserved child delivery remains valid after a public child window closes. Before a fresh pair can pin or originate, Studio verifies the generated certificate's exact router, blind-controller, Gnocchi-adapter, and Rotini-adapter artifact/source digests, compiler record, exact match to the connected RPC head protocol, metadata URI bound, exact signed sizes, arithmetic, and at least 1 KiB headroom; a stale certificate regression proves zero pins, signatures, or originations. Fresh dependency admission accepts a checkpointed Gnocchi classification only when the interruption code, deterministic checkpoint identity, 46-record hash chain, two pin hashes, three-operation prefix, nine-operation continuation, zero replay, content provenance, and manifest/reconciliation hashes all match; relabeling it as a historical finalization fails closed. The holder runtime latches one primary or secondary action before any await, disables both signer controls, and restores only a freshly recomputed safe state after failure or confirmation. The Studio persists recipe nonces and the encrypted reveal preimage before commitment; its bounded canonical recovery encoder records each full signer intent before send. Fresh live execution requires a disjoint mode-0700 private directory and externalizes the complete blind precommit before its first signer PREPARED boundary, then captures again on handled browser failure without placing private bytes or paths in public evidence. The crossed current-v4 resume and preflight commands fail with CURRENT_V4_RECOVERY_RETIRED before ordinary execution, filesystem, or network work; the frozen 61-event/15-pin/15-operation boundary remains partial audit evidence and cannot be replayed. A bounded read-only readiness policy reloads before wallet connection, pinning, or signing, disposes its monitor and browser on terminal failure, and a twice-applied remaining-window guard plus deadline-derived chain wait prevents an expiring sale from entering a signer flow. Deadline-first reveal reconciliation accepts exactly one applied TzKT root row matching the submitted operation hash, signer, router, and set_pack_contents entrypoint; zero, failed, look-alike, wrong-hash, internal-only, or duplicate roots fail closed. At or after the immutable open cutoff, settlement emits one append-only blocked artifact and exits before signer configuration, actor-counter reads, bridge setup, or PREPARED/SUBMITTED/APPLIED holder operations. The controller authenticates one reveal, assigns stable claims and serials, freezes transfer at the applicable deadline, consumes a claim only with atomic child delivery, and credits expired claims to holders. The router/controller terminal-closure path is permissionless only after the reveal deadline and only after purchased claims and escrow reach zero; it zeroes unclaimed inventory and wrapper supply without deleting holder pull-payment credit, including when a destination rejects withdrawal. The cancellation-only recovery workflow requires the connected router administrator and cancelled pack, authenticates official adapter code, proves requested capacity exists in both router allowance and adapter reservation, submits exactly one `recover_adapter`, then records COMPLETE only after exact decrements and any Gnocchi `total_reserved` release are reread from chain. COMPLETE remains terminal; recovery closes only after an exact confirmed terminal postcondition. Fresh positive-path proof products derive configurable 24-hour sale, 48-hour post-sale reveal, and seven-day post-sale open defaults; the funded-pool product sells out two of two wrappers and reveals immediately, while an isolated two-issued/one-sold five-minute fixture waits only to prove expired creator reveal denial before refund and closure. Limited Edition children still require the wrapper sale to end before child expiry and at least the configured green runway. Live evidence binds dependency/artifact hashes, dual-RPC counters, exact pin bytes, and hash-linked PREPARED/SUBMITTED/APPLIED choreography before aggregate proof assembly accepts the capability.",
+  },
+  {
+    id: "pasta-protocol.ravioli-rotini-generated-at-open",
+    domain: "Pasta Protocol",
+    ownerSurfaceIds: ["pasta-protocol"],
+    ownerSpec:
+      "contracts/pasta-protocol/{PastaPackRouterFA2,PastaBlindPackController,PastaRotiniPackAdapter,PastaGenerativeCollectionFA2}.py, public/creation-tools/rotini/js/{rotini-artifact,rotini-mint}.js, public/creation-tools/ravioli/js/{rotini-artifact,rotini-mint,site,site-bundle}.js, scripts/pasta-protocol/site-kit/{site,site-bundle}.js, scripts/pasta-protocol/site-kit/site.html, scripts/pasta-protocol/rotini-artifact.test.mjs, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
+    verificationCommand:
+      "node scripts/pasta-protocol/sync-site-kit.mjs && node --test scripts/pasta-protocol/rotini-artifact.test.mjs && npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4392 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep 'Ravioli automatically renders Rotini' --reporter=list",
+    userVisibleAssertion:
+      "A Ravioli holder never selects an arbitrary artwork file. The portable page resolves that holder's exact blind-controller claim and serial, proves the adapter still has reserved pack capacity, reads each generative action's adapter-owned Rotini target/project/seed context for one captured opener, and automatically materializes and pins the project's declared PNG, animated GIF, or self-contained interactive ZIP plus direct metadata before asking the wallet to open the wrapper.",
+    durableSideEffectAssertion:
+      "The generated payload contains the exact SHA-256 and IPFS URIs of bytes rendered by the shared Rotini runtime; metadata binds generator URI, generator creator, captured collector minter, project, seed, pack contract/token, claim serial, action index, adapter, resource, and target. A missing claim, missing or exhausted reservation view, resource/view/project or output-format disagreement fails before submission; the blind-controller entitlement and exact connected opener are rechecked after rendering; and every Ravioli export includes byte-identical Rotini artifact/render runtimes while interactive ZIPs retain top-level index.html and zero external runtime dependencies.",
   },
   {
     id: "pasta-protocol.rotini-self-contained-artifacts",
@@ -537,9 +576,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && node --test scripts/pasta-suite-site-archive.test.mjs && npm run pasta-suite:desktop:prepare && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Macaroni and every newer Pasta publisher can download a standalone site ZIP: Macaroni exposes blind mint and reveal, Spaghetti exposes inventory-backed direct purchase, Rotini exposes reserve/render/pin/finalize for self-contained iterations, Gnocchi exposes open-edition mint, Penne exposes claim, Ravioli shows primary-sale availability together with fully reserved pack backing and exposes open-kit-driven atomic delivery of escrowed, allocated, generative, or hybrid contents, and Lasagna resolves the current exhibition revision. Inside Pasta Suite Desktop, the same export appears in Colander's Self-hosted pages registry, opens from a loopback URL, rebuilds in its exact owner app, or can be explicitly uninstalled; web Colander can rebuild or forget only its portable record without claiming to delete native files.",
+      "Macaroni and every newer Pasta publisher can download a standalone site ZIP: Macaroni exposes blind mint and reveal, Spaghetti exposes inventory-backed direct purchase, Rotini exposes reserve/render/pin/finalize for self-contained iterations, Gnocchi exposes open-edition mint, Penne exposes claim, Ravioli shows primary-sale availability together with fully reserved pack backing and exposes open-kit-driven atomic delivery of escrowed, allocated, or automatically Rotini-rendered generative/hybrid contents without arbitrary artwork uploads, and Lasagna resolves the current exhibition revision. Inside Pasta Suite Desktop, the same export appears in Colander's Self-hosted pages registry, opens from a loopback URL, rebuilds in its exact owner app, or can be explicitly uninstalled; web Colander can rebuild or forget only its portable record without claiming to delete native files.",
     durableSideEffectAssertion:
-      "Each ZIP contains index.html, its app-owned config, site styling/runtime, wallet support, and Tezos dependencies; Ravioli additionally validates a v3 open kit whose adapter actions carry an explicit exact-payload or generated-at-open commitment policy and invokes open_pack so all child deliveries and wrapper burn share one atomic operation; export emits the app-owned event; a Colander-launched Macaroni or newer-publisher export appends a self_hosted_site artifact to the portable workspace manifest and advances the project to published; native Colander safely expands the stored ZIP under Documents/Pasta Suite/sites, writes a manifest, and emits pasta_suite.site_installed; uninstall accepts only an exact managed slug, atomically removes the served directory, prunes matching artifacts, and emits pasta_suite.site_uninstalled, while record-only cleanup emits colander.site_record_forgotten without deleting bytes or touching chain state.",
+      "Each ZIP contains index.html, its app-owned config, site styling/runtime, wallet support, and Tezos dependencies; Ravioli additionally includes the shared Rotini artifact and renderer runtimes, validates a v3 open kit whose adapter actions carry an explicit exact-payload or generated-at-open commitment policy, and invokes open_pack so all child deliveries and wrapper burn share one atomic operation; export emits the app-owned event; a Colander-launched Macaroni or newer-publisher export appends a self_hosted_site artifact to the portable workspace manifest and advances the project to published; native Colander safely expands the stored ZIP under Documents/Pasta Suite/sites, writes a manifest, and emits pasta_suite.site_installed; uninstall accepts only an exact managed slug, atomically removes the served directory, prunes matching artifacts, and emits pasta_suite.site_uninstalled, while record-only cleanup emits colander.site_record_forgotten without deleting bytes or touching chain state.",
   },
   {
     id: "pasta-protocol.contract-resume-ledger",
@@ -572,13 +611,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/src/static-path.cjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+      "apps/*-desktop/src/main.cjs, apps/*-desktop/src/loopback-origin.cjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/src/static-path.cjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-desktop-origin-persistence.test.mjs, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
     verificationCommand:
-      "npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
+      "node --test scripts/pasta-desktop-origin-persistence.test.mjs && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Installed Colander displays the active project's recoverable drafts, complete remembered-contract lifecycle records, and self-hosted page artifacts, then resumes the correct bundled owner app, reopens a KT1 in the native manager, or opens the installed loopback page without requiring Objkt, Teia, or wtfOS hosting.",
+      "Installed Colander displays the active project's recoverable drafts, complete remembered-contract lifecycle records, and self-hosted page artifacts, then resumes the correct bundled owner app, reopens a KT1 in the native manager, or opens the installed loopback page without requiring Objkt, Teia, or wtfOS hosting. Closing and reopening the suite or any standalone Pasta desktop app returns to the same product-specific local origin and the same locally saved work; launching it twice focuses the existing window.",
     durableSideEffectAssertion:
-      "Native project create/load/import/storage-refresh paths normalize pasta-project@1 records, preserve backward compatibility, filter malformed draft/contract/site references and unsafe local URLs, attach chain-read contracts as pasta-contract-ref@1 records, and pass project/network/contract context back to the same bundled standalone tools that own the records. Fresh project and contract-manager controls default visibly to Shadownet while preserving explicit Mainnet opt-in. Branded universal macOS DMG and Windows NSIS artifacts include all eight tools without external runtimes; the installer workflow launches each packaged executable on its owning OS and proves Shadownet-default Colander project creation plus CH-EASE launch before upload.",
+      "Native project create/load/import/storage-refresh paths normalize pasta-project@1 records, preserve backward compatibility, filter malformed draft/contract/site references and unsafe local URLs, attach chain-read contracts as pasta-contract-ref@1 records, and pass project/network/contract context back to the same bundled standalone tools that own the records. Fresh project and contract-manager controls default visibly to Shadownet while preserving explicit Mainnet opt-in. The suite and eight standalone shells bind unique fixed 127.0.0.1 origins, never fall back to a random port, acquire Electron single-instance locks, and surface an occupied-origin error that tells creators not to clear application data; a persistent-browser relaunch regression proves localStorage remains reachable. Branded universal macOS DMG and Windows NSIS artifacts include all eight tools without external runtimes; the installer workflow launches each packaged executable on its owning OS and proves Shadownet-default Colander project creation plus CH-EASE launch before upload.",
   },
   {
     id: "pasta-protocol.colander-project-workspace",
@@ -640,7 +679,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "collekt.duplicate-art-scan-and-offer",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: ["hoard", "marketplace"],
+    ownerSurfaceIds: ["marketplace"],
     ownerSpec:
       "server/features/collekt/duplicates.test.ts, tests/playwright/inventory/collekt-duplicates.spec.mjs, client/src/lib/tezos/marketplace.ts",
     verificationCommand:
@@ -733,6 +772,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
       "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
+    id: "admin.desktop-app-registration-resilience",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel"],
+    ownerSpec:
+      "server/lib/desktop-app-registration-policy.test.ts; server/routes/desktop-apps-resilience-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"app registrations permanent\"",
+    userVisibleAssertion:
+      "An admin can mark each app license, docs, and install key as non-expiring and can refresh every app registration from one clearly labeled action without changing launcher visibility.",
+    durableSideEffectAssertion:
+      "The permanent policy is stored per desktop app, timed expiry is ignored only for permanent registrations, manual stale/revoked/disabled states remain authoritative, and bulk refresh rotates all install keys in one database transaction while preserving enabled flags.",
   },
   {
     id: "admin.broad-acute-control-suite",
@@ -1081,9 +1133,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "WTF LIVE public-room guests see each other in collapsible attendance; camera, screen, and dedicated media-file deck sources can appear as simultaneous stage tiles for the same host while mic-only guests stay out of the stage with lit mic indicators in attendance, chat remains reachable, unstyled room chat follows the receiver's default WTFOS font-library setting, a compact emoji icon inserts emoji into chat drafts, a text-style icon opens and collapses the chat style panel for Classic/Terminal/Serif fonts, color, readable 8-14 size, basic emphasis, stage-level room reaction buttons send transient guest signals, Enter submits room chat while Shift+Enter composes multiline text, and shared media can open in pop-out frames/lightboxes.",
+      "WTF LIVE public-room guests hear distinct local join/leave chimes for peer transitions plus a spoken Goodbye and three-note cue for intentional or unexpected self-disconnects, can persistently mute those room sounds, see each other in collapsible attendance, and exchange camera, screen, dedicated media-file deck, chat, reactions, and shared pop-out media without mic-only guests consuming stage space.",
     durableSideEffectAssertion:
-      "The inventory harness uses the public /ws/wtf-live room relay to exchange WebRTC signaling, activeVideo/avatar/audioOpen media-state events, room reactions, and room chat, verifies push-to-talk changes another guest's attendance mic state without creating a stage tile, verifies camera-first then screen-share switching remains visible to another guest after camera stops, verifies stage pop-outs and chat media lightboxes open/close, verifies Enter sends and clears a chat message while Shift+Enter keeps a multiline draft until the next Enter, verifies the collapsed toolbar exposes emoji and style icons with 24px-or-larger targets, verifies the emoji picker inserts into the draft and relays through chat, verifies the style panel exposes only 8-14 font-size options plus Classic/Terminal/Serif font choices, verifies unstyled chat relays without a forced style so receiver default Serif Press applies, verifies a sanitized styled chat message relays to another guest, verifies a text message plus GIF attachment reaches another guest, and verifies seven idle guests remain attendance-only without pushing the chat composer offscreen.",
+      "The inventory harness uses the public /ws/wtf-live room relay to verify ascending join and descending leave Web Audio tones, spoken and three-note Goodbye alerts for both Leave and unexpected socket closure, persistent presence-sound mute state, WebRTC signaling and media-state events, push-to-talk attendance state, camera/screen/media switching, chat keyboard/style/emoji/media behavior, room reactions, pop-outs, and crowded-room layout.",
   },
   {
     id: "wtf-live.show-kit-soundboard",
@@ -1227,6 +1279,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Inbox exposes explicit New message and New mail controls, selected mail reader Reply/Forward actions, and an inline WIM/Studio conversation reply composer so message cards and conversation tabs are not read-only dead ends.",
     durableSideEffectAssertion:
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
+  },
+  {
+    id: "admin-inbox.role-aware-feedback",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["admin-inbox", "mail"],
+    ownerSpec:
+      "client/src/pages/admin-inbox-presentation-policy.test.ts; server/routes/admin-inbox-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "Contact Admin is a separate core desktop app on every default desktop: non-admin users receive an evidence-oriented compose form with screenshot prompts, while admin-role users receive the inbox, raw field table, email rendering, agent-ready Markdown, screenshot viewer, and reply composer. Inbox also exposes the same conversations under an Admin contact tab.",
+    durableSideEffectAssertion:
+      "Server-authenticated APIs persist admin_inbox_messages and admin_inbox_replies, validate screenshot media ownership and image readiness, restrict global list/read access to admin roles, restrict user thread access to the reporting account, and contribute role-correct unread counts to GET /api/comms/unread-count.",
   },
   {
     id: "desktop-reggie.summon-wim-messages",

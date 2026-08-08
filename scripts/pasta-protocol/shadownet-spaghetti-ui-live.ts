@@ -2,14 +2,19 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { deflateSync } from "node:zlib";
 
 import { MichelsonMap } from "@taquito/taquito";
-import { validateContractAddress, validateOperation, ValidationResult } from "@taquito/utils";
+import {
+  validateAddress,
+  validateContractAddress,
+  validateOperation,
+  ValidationResult,
+} from "@taquito/utils";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 
 import {
@@ -18,6 +23,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
   type PastaUiLivePublicReceipt,
 } from "./pasta-ui-live-bridge-kit";
@@ -27,6 +33,22 @@ import {
   PASTA_PROOF_VIEWPORT,
   type CapturePastaProofStageResult,
 } from "./pasta-proof-screenshot-kit";
+import {
+  PastaProofRestartJournal,
+  type PastaProofRestartActor,
+  type PastaProofRestartStep,
+} from "./pasta-proof-restart-journal";
+import {
+  assertPastaProofRestartCounterBoundary,
+  assertPastaProofRestartOrigination,
+  assertPastaProofRestartTransaction,
+  authenticatePastaProofRestartInitialCounters,
+  capturePastaProofRestartInitialCounters,
+  readPastaProofRestartActorState,
+  reconcilePastaProofRestartOperation,
+  reconcilePastaProofRestartPin,
+  type PastaProofRestartPendingOperation,
+} from "./pasta-proof-restart-chain";
 import {
   assertShadownet,
   block,
@@ -57,6 +79,7 @@ const TOKEN_PRICE_MUTEZ = 1_000;
 const TOKEN_EDITIONS = 2;
 const TOKEN_SALE_COUNT = 1;
 const HANDOFF_KEY = "wtfos.pasta.handoff.v1:spaghetti-ui-live-proof";
+const RESTART_CHECKPOINT_PATH = "artifacts/spaghetti-restart-checkpoint.json";
 const SAFE_RUN_ID = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const CONTRACT_ARTIFACT_PATH = path.join(
   root,
@@ -67,6 +90,17 @@ const CONTRACT_ARTIFACT_PATH = path.join(
   "pasta-standard-collection.contract.json",
 );
 const STATIC_ROOT = path.join(root, "public");
+
+export const SPAGHETTI_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.freeze([
+  { id: "media", actor: "creator", kind: "pin", fileName: "spaghetti-ui-live-proof.png", transport: "direct" },
+  { id: "collection-metadata", actor: "creator", kind: "pin", fileName: "collection.json", transport: "bridge" },
+  { id: "originate", actor: "creator", kind: "operation", action: "originate", transport: "bridge" },
+  { id: "token-metadata", actor: "creator", kind: "pin", fileName: "token.json", transport: "bridge" },
+  { id: "create-token", actor: "creator", kind: "operation", action: "batch", entrypoints: ["create_token"], transport: "bridge" },
+  { id: "mint-editions", actor: "creator", kind: "operation", action: "batch", entrypoints: ["mint"], transport: "bridge" },
+  { id: "open-sale", actor: "creator", kind: "operation", action: "batch", entrypoints: ["set_sale"], transport: "bridge" },
+  { id: "collector-buy", actor: "collector", kind: "operation", action: "call", entrypoint: "buy", transport: "bridge" },
+]);
 
 function crc32(bytes: Uint8Array): number {
   let value = 0xffffffff;
@@ -165,7 +199,9 @@ function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function requireFreshAppOutputDirectory(runRoot: string): Promise<{ appRoot: string; runId: string }> {
+async function requireFreshAppOutputDirectory(
+  runRoot: string,
+): Promise<{ appRoot: string; runId: string; existing: boolean }> {
   const absoluteRunRoot = path.resolve(runRoot);
   let runRootStat;
   try {
@@ -187,14 +223,33 @@ async function requireFreshAppOutputDirectory(runRoot: string): Promise<{ appRoo
   }
   const appRoot = path.join(absoluteRunRoot, "spaghetti");
   try {
-    await stat(appRoot);
-    block("Spaghetti proof output directory already exists", [
-      `Refusing to overwrite \`${appRoot}\`; use a fresh proof-run directory.`,
-    ]);
+    const info = await lstat(appRoot);
+    if (!info.isDirectory() || info.isSymbolicLink()) {
+      block("Spaghetti proof output path is not a regular directory", [`Refusing \`${appRoot}\`.`]);
+    }
+    try {
+      await lstat(path.join(appRoot, "manifest.json"));
+      block("Spaghetti proof is already complete", [
+        `A final manifest already exists at \`${path.join(appRoot, "manifest.json")}\`.`,
+      ]);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    try {
+      await lstat(path.join(appRoot, RESTART_CHECKPOINT_PATH));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        block("Spaghetti output exists without a restart checkpoint", [
+          `Refusing unauthenticated partial output at \`${appRoot}\`.`,
+        ]);
+      }
+      throw error;
+    }
+    return { appRoot, runId, existing: true };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { appRoot, runId };
+  return { appRoot, runId, existing: false };
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
@@ -284,7 +339,7 @@ function validateCollectorCall(
   assert.equal(Number(payload.amount), 1);
 }
 
-function buildCheasePackage(artifactUri: string) {
+function buildCheasePackage(artifactUri: string, runId: string) {
   return {
     schemaVersion: "wtfos.pasta.chease-package.v1",
     kind: "collection",
@@ -293,7 +348,7 @@ function buildCheasePackage(artifactUri: string) {
     description: "Actual Spaghetti studio controls backed by a Node-only platform-keyring signer.",
     symbol: "SPGUI",
     relationship: {
-      collection_group: `spaghetti-ui-live-${Date.now().toString(36)}`,
+      collection_group: `spaghetti-ui-live-${runId}`,
     },
     items: [
       {
@@ -307,12 +362,57 @@ function buildCheasePackage(artifactUri: string) {
   };
 }
 
-async function waitForLog(page: Page, expected: string, timeout = 300_000): Promise<void> {
+export async function waitForSpaghettiLog(
+  page: Page,
+  expected: string,
+  timeout = 300_000,
+): Promise<void> {
   await page.locator("#log").waitFor({ state: "visible", timeout });
   await page.waitForFunction(
-    (text) => document.getElementById("log")?.textContent?.includes(text),
+    (text) => {
+      const log = document.getElementById("log")?.textContent || "";
+      return log.includes(text) || log.includes("publish failed:");
+    },
     expected,
     { timeout },
+  );
+  const log = (await page.locator("#log").textContent()) || "";
+  if (log.includes("publish failed:")) {
+    const failure = log.slice(log.lastIndexOf("publish failed:")).slice(0, 2_000);
+    throw new Error(`actual Spaghetti Studio ${failure}`);
+  }
+  assert.ok(log.includes(expected), `Spaghetti Studio log is missing ${expected}`);
+}
+
+export async function waitForSpaghettiCollectorWrite(
+  page: Page,
+  expectedStatus: string,
+  expectedChainState: string,
+  timeout = 120_000,
+): Promise<void> {
+  await page.locator("#status").waitFor({ state: "visible", timeout });
+  await page.waitForFunction(
+    ({ expectedStatus, expectedChainState }) => {
+      const status = document.getElementById("status");
+      return status?.dataset.error === "true" ||
+        (
+          status?.textContent === expectedStatus &&
+          document.getElementById("chainState")?.textContent === expectedChainState
+        );
+    },
+    { expectedStatus, expectedChainState },
+    { timeout },
+  );
+  const status = page.locator("#status");
+  const statusText = (await status.textContent()) || "";
+  if (await status.getAttribute("data-error") === "true") {
+    throw new Error(`actual Spaghetti collector write failed: ${statusText.slice(0, 2_000)}`);
+  }
+  assert.equal(statusText, expectedStatus, "Spaghetti collector confirmation status drift");
+  assert.equal(
+    (await page.locator("#chainState").textContent()) || "",
+    expectedChainState,
+    "Spaghetti collector terminal chain state drift",
   );
 }
 
@@ -492,6 +592,297 @@ async function writePinnedMetadataArtifacts(
   return output;
 }
 
+type SpaghettiTzktOperationRow = {
+  type?: unknown;
+  status?: unknown;
+  hash?: unknown;
+  sender?: { address?: unknown };
+  target?: { address?: unknown };
+  originatedContract?: { address?: unknown };
+  parameter?: { entrypoint?: unknown; value?: unknown };
+  counter?: unknown;
+  amount?: unknown;
+  storage?: unknown;
+  level?: unknown;
+  timestamp?: unknown;
+};
+
+function projectedRecord(value: unknown, label: string): Record<string, any> {
+  assert.ok(value && typeof value === "object" && !Array.isArray(value), `${label} must be an object`);
+  return value as Record<string, any>;
+}
+
+function projectedMapEntries(value: unknown, label: string): unknown[][] {
+  const record = projectedRecord(value, label);
+  assert.ok(Array.isArray(record.__map), `${label} must be a projected Michelson map`);
+  return record.__map;
+}
+
+async function assertSpaghettiRestartApplied(input: {
+  row: unknown;
+  pending: PastaProofRestartPendingOperation;
+  signerAddress: string;
+  tezos: ReturnType<typeof buildToolkit>;
+  expectedCodeHash: string;
+}): Promise<{ contractAddress: string; entrypoints: string[] }> {
+  if (input.pending.step.action !== "originate") {
+    return assertPastaProofRestartTransaction(input);
+  }
+  const resolved = assertPastaProofRestartOrigination(input);
+  const descriptor = projectedRecord(input.pending.descriptor, "Spaghetti restart origination descriptor");
+  assert.equal(hashJsonForBridge(descriptor.code), input.expectedCodeHash, "Spaghetti restart artifact identity differs");
+  const requestedStorage = projectedRecord(descriptor.storage, "Spaghetti restart origination storage");
+  assert.equal(requestedStorage.administrator, input.signerAddress);
+  assert.equal(requestedStorage.pending_administrator, null);
+  assert.equal(Number(requestedStorage.next_token_id), 0);
+  const metadataEntries = projectedMapEntries(requestedStorage.metadata, "Spaghetti restart metadata");
+  assert.equal(metadataEntries.length, 1);
+  assert.equal(metadataEntries[0][0], "");
+  const expectedMetadataHex = String(metadataEntries[0][1]);
+  for (const key of ["ledger", "operators", "token_metadata", "total_supply", "sales", "minters"]) {
+    assert.deepEqual(projectedMapEntries(requestedStorage[key], `Spaghetti restart ${key}`), []);
+  }
+  const rowStorage = projectedRecord((input.row as SpaghettiTzktOperationRow).storage, "Spaghetti indexed origination storage");
+  assert.equal(rowStorage.administrator, input.signerAddress);
+  assert.equal(rowStorage.pending_administrator, null);
+  assert.equal(Number(rowStorage.next_token_id), 0);
+  const script = await input.tezos.rpc.getScript(resolved.contractAddress);
+  assert.equal(hashJsonForBridge(script.code), input.expectedCodeHash, "Spaghetti recovered on-chain code differs");
+  const contract = await input.tezos.contract.at(resolved.contractAddress);
+  const storage = await contract.storage() as { metadata: { get(key: string): Promise<unknown> } };
+  assert.equal(await storage.metadata.get(""), expectedMetadataHex, "Spaghetti recovered collection metadata URI differs");
+  return resolved;
+}
+
+function spaghettiTzktOperationRows(value: unknown): SpaghettiTzktOperationRow[] {
+  const rows = Array.isArray(value) ? value : [value];
+  assert.ok(
+    rows.length > 0 && rows.every((row) => row && typeof row === "object" && !Array.isArray(row)),
+    "TzKT operation response must contain operation objects",
+  );
+  return rows as SpaghettiTzktOperationRow[];
+}
+
+export function assertSpaghettiTzktOperationApplied(input: {
+  rows: unknown;
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): SpaghettiTzktOperationRow {
+  assert.equal(
+    validateOperation(input.assertion.operationHash),
+    ValidationResult.VALID,
+    "Spaghetti operation hash is invalid",
+  );
+  assert.equal(
+    validateAddress(input.signerAddress),
+    ValidationResult.VALID,
+    "Spaghetti operation signer is invalid",
+  );
+  assert.equal(
+    validateContractAddress(input.assertion.contractAddress || ""),
+    ValidationResult.VALID,
+    "Spaghetti operation contract address is invalid",
+  );
+  if (input.assertion.action === "originate") {
+    assert.deepEqual(input.assertion.entrypoints, [], "Spaghetti origination cannot claim entrypoints");
+  } else {
+    assert.equal(
+      input.assertion.entrypoints.length,
+      1,
+      "Spaghetti transaction must claim exactly one entrypoint",
+    );
+    assert.match(
+      input.assertion.entrypoints[0],
+      /^(?:create_token|mint|set_sale|buy)$/,
+      "Spaghetti transaction claimed an unsupported entrypoint",
+    );
+  }
+
+  const signerRows = spaghettiTzktOperationRows(input.rows).filter((row) =>
+    row.hash === input.assertion.operationHash &&
+    row.sender?.address === input.signerAddress
+  );
+  assert.equal(
+    signerRows.length,
+    1,
+    "TzKT must expose exactly one Spaghetti operation for the exact hash and signer",
+  );
+  const operation = signerRows[0];
+  assert.equal(operation.status, "applied", "Spaghetti operation is not applied");
+  assert.ok(
+    Number.isSafeInteger(Number(operation.level)) && Number(operation.level) > 0,
+    "Spaghetti operation level is invalid",
+  );
+  assert.ok(
+    typeof operation.timestamp === "string" &&
+      /^\d{4}-\d{2}-\d{2}T/.test(operation.timestamp) &&
+      Number.isFinite(Date.parse(operation.timestamp)),
+    "Spaghetti operation timestamp is invalid",
+  );
+
+  if (input.assertion.action === "originate") {
+    assert.equal(operation.type, "origination", "Spaghetti origination action differs from TzKT");
+    assert.equal(
+      operation.originatedContract?.address,
+      input.assertion.contractAddress,
+      "Spaghetti originated address differs from TzKT",
+    );
+  } else {
+    assert.equal(operation.type, "transaction", "Spaghetti transaction action differs from TzKT");
+    assert.equal(
+      operation.target?.address,
+      input.assertion.contractAddress,
+      "Spaghetti transaction target differs from TzKT",
+    );
+    assert.equal(
+      operation.parameter?.entrypoint,
+      input.assertion.entrypoints[0],
+      "Spaghetti transaction entrypoint differs from TzKT",
+    );
+  }
+  return operation;
+}
+
+async function verifySpaghettiTzktOperationApplied(input: {
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): Promise<void> {
+  const endpoint = input.assertion.action === "originate" ? "originations" : "transactions";
+  const url = `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${endpoint}/${encodeURIComponent(input.assertion.operationHash)}`;
+  const rows = await pollJson(
+    `Spaghetti exact-hash ${input.assertion.action} finality`,
+    url,
+    (value) => {
+      try {
+        assertSpaghettiTzktOperationApplied({ rows: value, ...input });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  assertSpaghettiTzktOperationApplied({ rows, ...input });
+}
+
+async function prepareSpaghettiRestartJournal(input: {
+  appRoot: string;
+  runId: string;
+  existing: boolean;
+  creatorAddress: string;
+  collectorAddress: string;
+  tezos: ReturnType<typeof buildToolkit>;
+  collectorTezos: ReturnType<typeof buildToolkit>;
+  code: unknown[];
+  ipfs: IpfsProofConfig;
+}): Promise<PastaProofRestartJournal> {
+  const actors = { creator: input.creatorAddress, collector: input.collectorAddress } as const;
+  const expectedCodeHash = hashJsonForBridge(input.code);
+  const intent = {
+    contractArtifactPath: path.relative(root, CONTRACT_ARTIFACT_PATH),
+    contractArtifactSha256: expectedCodeHash,
+    mediaSha256: sha256(PROOF_ARTIFACT_BYTES),
+    mediaByteLength: PROOF_ARTIFACT_BYTES.byteLength,
+    relationshipGroup: `spaghetti-ui-live-${input.runId}`,
+    product: {
+      editions: TOKEN_EDITIONS,
+      saleCount: TOKEN_SALE_COUNT,
+      priceMutez: TOKEN_PRICE_MUTEZ,
+    },
+  };
+  const checkpointPath = path.join(input.appRoot, RESTART_CHECKPOINT_PATH);
+  const journal = input.existing
+    ? await PastaProofRestartJournal.open(checkpointPath, {
+        app: "spaghetti",
+        runId: input.runId,
+        actors,
+        plan: SPAGHETTI_RESTART_PLAN,
+        intent,
+        authenticateInitialCounters: (counters) => authenticatePastaProofRestartInitialCounters({
+          counters,
+          actors,
+          plan: SPAGHETTI_RESTART_PLAN,
+        }),
+      })
+    : await PastaProofRestartJournal.create({
+        filePath: checkpointPath,
+        app: "spaghetti",
+        runId: input.runId,
+        actors,
+        initialCounters: await capturePastaProofRestartInitialCounters({ actors }),
+        plan: SPAGHETTI_RESTART_PLAN,
+        intent,
+      });
+
+  await journal.reconcilePin((pending) => reconcilePastaProofRestartPin({ ...pending, ipfs: input.ipfs }));
+  const actorToolkit = (actor: PastaProofRestartActor) => {
+    if (actor === "creator") return input.tezos;
+    if (actor === "collector") return input.collectorTezos;
+    throw new Error(`Spaghetti restart plan contains unsupported actor ${actor}`);
+  };
+  const actorAddress = (actor: PastaProofRestartActor) => {
+    if (actor === "creator") return input.creatorAddress;
+    if (actor === "collector") return input.collectorAddress;
+    throw new Error(`Spaghetti restart plan contains unsupported actor ${actor}`);
+  };
+  const reconcile = (pending: PastaProofRestartPendingOperation) => reconcilePastaProofRestartOperation({
+    label: `Spaghetti restart ${pending.step.id}`,
+    pending,
+    signerAddress: actorAddress(pending.step.actor),
+    validateApplied: (row) => assertSpaghettiRestartApplied({
+      row,
+      pending,
+      signerAddress: actorAddress(pending.step.actor),
+      tezos: actorToolkit(pending.step.actor),
+      expectedCodeHash,
+    }),
+  });
+  await journal.reconcile(reconcile);
+
+  const actorStates = new Map<PastaProofRestartActor, Awaited<ReturnType<typeof readPastaProofRestartActorState>>>();
+  for (const actor of ["creator", "collector"] as const) {
+    actorStates.set(actor, await readPastaProofRestartActorState({ signerAddress: actorAddress(actor) }));
+  }
+  for (const applied of journal.appliedOperations()) {
+    const operationHash = applied.receipt.operationHash;
+    assert.equal(typeof operationHash, "string", `Spaghetti restart ${applied.step.id} receipt lacks an operation hash`);
+    const pending: PastaProofRestartPendingOperation = {
+      step: applied.step,
+      phase: "SUBMITTED",
+      operationSequence: applied.operationSequence,
+      expectedCounter: applied.expectedCounter,
+      descriptor: applied.descriptor,
+      descriptorSha256: applied.descriptorSha256,
+      operationHash,
+      ...(applied.receipt.contractAddress ? { contractAddress: applied.receipt.contractAddress } : {}),
+    };
+    const resolution = await reconcilePastaProofRestartOperation({
+      label: `Spaghetti applied-prefix ${applied.step.id}`,
+      pending,
+      signerAddress: actorAddress(applied.step.actor),
+      actorState: actorStates.get(applied.step.actor),
+      validateApplied: (row) => assertSpaghettiRestartApplied({
+        row,
+        pending,
+        signerAddress: actorAddress(applied.step.actor),
+        tezos: actorToolkit(applied.step.actor),
+        expectedCodeHash,
+      }),
+    });
+    assert.equal(resolution.status, "applied", `Spaghetti applied-prefix ${applied.step.id} is no longer applied`);
+    if (resolution.status === "applied") {
+      assert.equal(resolution.operationHash, operationHash, `Spaghetti applied-prefix ${applied.step.id} hash differs`);
+    }
+  }
+  for (const actor of ["creator", "collector"] as const) {
+    await assertPastaProofRestartCounterBoundary({
+      signerAddress: actorAddress(actor),
+      expectedCounter: journal.expectedCurrentCounter(actor),
+      label: `Spaghetti authenticated ${actor} prefix`,
+    });
+  }
+  return journal;
+}
+
 async function verifyTzktEvidence(input: {
   contractAddress: string;
   creatorAddress: string;
@@ -579,34 +970,40 @@ async function verifyTzktEvidence(input: {
   const operations = [];
   for (const receipt of input.operationReceipts) {
     const family = receipt.action === "originate" ? "originations" : "transactions";
+    assert.ok(
+      receipt.action === "originate" || receipt.action === "batch" || receipt.action === "call",
+      `Spaghetti receipt ${receipt.operationHash} has a non-operation action`,
+    );
+    const assertion: PastaUiLiveAppliedOperationAssertion = {
+      action: receipt.action,
+      operationHash: receipt.operationHash,
+      contractAddress: input.contractAddress,
+      entrypoints: [...(receipt.entrypoints || [])],
+    };
+    const signerAddress = receipt.signerAddress || "";
     const indexed = await pollJson(
       `Spaghetti UI-live ${family} ${receipt.operationHash}`,
       `${base}/operations/${family}/${encodeURIComponent(receipt.operationHash)}`,
-      (json) =>
-        json?.status === "applied" ||
-        (Array.isArray(json) && json.some((entry) => entry?.status === "applied")),
+      (json) => {
+        try {
+          assertSpaghettiTzktOperationApplied({ rows: json, assertion, signerAddress });
+          return true;
+        } catch {
+          return false;
+        }
+      },
     );
-    const record = Array.isArray(indexed)
-      ? indexed.find((entry) => entry?.status === "applied")
-      : indexed;
-    const targetAddress = record?.target?.address || record?.originatedContract?.address;
-    assert.equal(targetAddress, input.contractAddress, `TzKT target differs for ${receipt.operationHash}`);
-    if (receipt.action !== "originate") {
-      assert.equal(record?.sender?.address, receipt.signerAddress, `TzKT sender differs for ${receipt.operationHash}`);
-      assert.equal(
-        record?.parameter?.entrypoint,
-        receipt.entrypoints?.[0],
-        `TzKT entrypoint differs for ${receipt.operationHash}`,
-      );
-    }
+    const record = assertSpaghettiTzktOperationApplied({ rows: indexed, assertion, signerAddress });
+    const targetAddress = record.target?.address || record.originatedContract?.address;
     operations.push({
       hash: receipt.operationHash,
-      status: record?.status,
-      type: record?.type,
-      sender: record?.sender?.address,
+      status: record.status,
+      type: record.type,
+      sender: record.sender?.address,
       target: targetAddress,
-      entrypoint: record?.parameter?.entrypoint || null,
-      level: record?.level,
+      entrypoint: record.parameter?.entrypoint || null,
+      level: record.level,
+      timestamp: record.timestamp,
     });
   }
 
@@ -644,7 +1041,7 @@ async function verifyTzktEvidence(input: {
 export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
   assertSpaghettiUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV] || "");
-  const { appRoot, runId } = await requireFreshAppOutputDirectory(runRoot);
+  const { appRoot, runId, existing } = await requireFreshAppOutputDirectory(runRoot);
   const ipfs: IpfsProofConfig = resolveIpfsProofConfig();
   const rpc = await probeRpcChainId();
   assert.equal(rpc.chainId, SHADOWNET_CHAIN_ID);
@@ -686,27 +1083,75 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
   }
 
   await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
-  const artifactPin = await pinIpfsProofBytes({
-    bytes: PROOF_ARTIFACT_BYTES,
-    fileName: "spaghetti-ui-live-proof.png",
-    mimeType: "image/png",
-    options: ipfs,
+  const expectedCodeHash = hashJsonForBridge(code);
+  const restartJournal = await prepareSpaghettiRestartJournal({
+    appRoot,
+    runId,
+    existing,
+    creatorAddress: creator.address,
+    collectorAddress: collector.address,
+    tezos,
+    collectorTezos,
+    code,
+    ipfs,
   });
+  let artifactPin = restartJournal.appliedPin("media")?.proof;
+  if (artifactPin) {
+    assert.deepEqual(
+      restartJournal.appliedPin("media")?.bytes,
+      Uint8Array.from(PROOF_ARTIFACT_BYTES),
+      "Spaghetti recovered media bytes differ",
+    );
+  } else {
+    await restartJournal.beforePin("creator", {
+      bytes: PROOF_ARTIFACT_BYTES,
+      fileName: "spaghetti-ui-live-proof.png",
+      mimeType: "image/png",
+    });
+    artifactPin = await pinIpfsProofBytes({
+      bytes: PROOF_ARTIFACT_BYTES,
+      fileName: "spaghetti-ui-live-proof.png",
+      mimeType: "image/png",
+      options: ipfs,
+    });
+    await restartJournal.onPin("creator", { proof: artifactPin });
+  }
   const artifactRelativePath = "artifacts/spaghetti-ui-live-proof.png";
   await writeFile(path.join(appRoot, artifactRelativePath), PROOF_ARTIFACT_BYTES);
   assert.equal(sha256(PROOF_ARTIFACT_BYTES), artifactPin.sha256);
 
-  const pinnedMetadata: PinnedMetadataRecord[] = [];
-  const expectedCodeHash = hashJsonForBridge(code);
+  const pinnedMetadata: PinnedMetadataRecord[] = restartJournal.pinRecords().flatMap((record) =>
+    record.value === undefined || record.proof.mimeType !== "application/json"
+      ? []
+      : [{ value: record.value, proof: record.proof }]);
   const session = new TaquitoPastaUiLiveSession({
     tezos,
     signerAddress: creator.address,
     expectedChainId: SHADOWNET_CHAIN_ID,
+    ...(restartJournal.contractAddress()
+      ? { allowedContractAddresses: new Set([restartJournal.contractAddress()!]) }
+      : {}),
     allowedEntrypoints: new Set(["create_token", "mint", "set_sale"]),
+    initialOperationSequence: restartJournal.completedOperationCount("creator"),
     assertExpectedChain: async (stage) => {
       await assertShadownet(tezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => verifySpaghettiTzktOperationApplied({
+      assertion,
+      signerAddress: creator.address,
+    }),
+    beforeOperationSubmit: async (operation) => {
+      await restartJournal.beforeOperationSubmit("creator", operation);
+      await assertPastaProofRestartCounterBoundary({
+        signerAddress: creator.address,
+        expectedCounter: restartJournal.expectedCurrentCounter("creator"),
+        label: `Spaghetti pre-submit creator operation ${operation.operationSequence}`,
+      });
+    },
+    onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("creator", operation),
+    onReceipt: (receipt) => restartJournal.onReceipt("creator", receipt),
+    beforePin: (pin) => restartJournal.beforePin("creator", pin),
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
     validateOrigination: (input) => validateBrowserOrigination(input, expectedCodeHash, creator.address),
@@ -717,7 +1162,8 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
         ? (storage as { next_token_id: { toNumber(): number } }).next_token_id.toNumber()
         : (storage as { next_token_id?: number }).next_token_id || 0),
     }),
-    onPin: ({ value, proof }) => {
+    onPin: async ({ value, proof }) => {
+      await restartJournal.onPin("creator", { proof });
       if (value !== undefined) pinnedMetadata.push({ value, proof });
     },
   });
@@ -730,7 +1176,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
 
   const bridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: (request) => session.handle(request),
+    handleAction: (request) => restartJournal.replayOrHandle("creator", request, () => session.handle(request)),
   });
   let browser: Browser | null = null;
   let monitor: ReturnType<typeof monitorPastaProofPage> | null = null;
@@ -739,7 +1185,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
   try {
     const opened = await openBrowser();
     browser = opened.browser;
-    const packageValue = buildCheasePackage(artifactPin.uri);
+    const packageValue = buildCheasePackage(artifactPin.uri, runId);
     await opened.context.addInitScript({
       content: `sessionStorage.setItem(${JSON.stringify(HANDOFF_KEY)}, ${JSON.stringify(JSON.stringify(packageValue)).replace(/</g, "\\u003c")});`,
     });
@@ -750,7 +1196,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     await opened.page.locator("#tokens .pp-token").waitFor({ state: "visible" });
     await installPastaUiLiveBrowserProxy(opened.page, bridge, "UI-LIVE");
     await configureActualStudio(opened.page, ipfs.apiUrl);
-    await waitForLog(opened.page, "imported 1 token(s) from CH-EASE handoff", 30_000);
+    await waitForSpaghettiLog(opened.page, "imported 1 token(s) from CH-EASE handoff", 30_000);
     screenshots.push(await captureStage(
       opened.page,
       monitor,
@@ -767,7 +1213,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
 
     await opened.page.click("#btnConnect");
     await opened.page.waitForFunction(() => document.getElementById("account")?.textContent !== "not connected");
-    await waitForLog(opened.page, `connected ${creator.address} on shadownet`);
+    await waitForSpaghettiLog(opened.page, `connected ${creator.address} on shadownet`);
     screenshots.push(await captureStage(
       opened.page,
       monitor,
@@ -780,23 +1226,23 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     ));
 
     await opened.page.click("#btnPublish");
-    await waitForLog(opened.page, "originating collection contract");
+    await waitForSpaghettiLog(opened.page, "originating collection contract");
     await opened.page.waitForFunction(() => (window as any).__pastaUiLiveBridge?.pins?.length >= 1);
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 3, "pin collection metadata", "metadata pinned", "originating collection contract"));
 
-    await waitForLog(opened.page, "collection deployed:");
+    await waitForSpaghettiLog(opened.page, "collection deployed:");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 4, "originate standard collection", "contract originated", "collection deployed:"));
 
-    await waitForLog(opened.page, "token types created");
+    await waitForSpaghettiLog(opened.page, "token types created");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 5, "create token type", "token created", "token types created"));
 
-    await waitForLog(opened.page, "editions minted");
+    await waitForSpaghettiLog(opened.page, "editions minted");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 6, "mint creator editions", "minted", "editions minted"));
 
-    await waitForLog(opened.page, "direct primary sales opened");
+    await waitForSpaghettiLog(opened.page, "direct primary sales opened");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 7, "open direct primary sale", "sale opened", "direct primary sales opened"));
 
-    await waitForLog(opened.page, "done — collection");
+    await waitForSpaghettiLog(opened.page, "done — collection");
     await opened.page.waitForFunction(() => !document.getElementById("btnPublish")?.hasAttribute("disabled"));
     await focusSpaghettiCompletionNotice(opened.page);
     screenshots.push(await captureStage(
@@ -820,20 +1266,21 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
         pinCount: bridgeState?.pins?.length || 0,
       };
     });
-    assert.deepEqual(publicBridgeState, {
-      installed: true,
-      classification: "UI-LIVE",
-      account: creator.address,
-      receiptCount: session.getReceipts().length,
-      pinCount: 2,
-    });
+    assert.equal(publicBridgeState.installed, true);
+    assert.equal(publicBridgeState.classification, "UI-LIVE");
+    assert.equal(publicBridgeState.account, creator.address);
+    assert.equal(publicBridgeState.pinCount, 2);
+    assert.ok(
+      publicBridgeState.receiptCount >= restartJournal.completedOperationCount("creator") + 2,
+      "Spaghetti browser omitted replayed creator receipts",
+    );
   } finally {
     monitor?.dispose();
     await browser?.close();
     await bridge.close();
   }
 
-  const receipts = session.getReceipts();
+  const receipts = restartJournal.operationReceipts().filter((receipt) => receipt.signerAddress === creator.address);
   const identifiers = assertReceiptIdentifiers(receipts);
   const collectorSession = new TaquitoPastaUiLiveSession({
     tezos: collectorTezos,
@@ -841,10 +1288,25 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     expectedChainId: SHADOWNET_CHAIN_ID,
     allowedContractAddresses: new Set([identifiers.contractAddress]),
     allowedEntrypoints: new Set(["buy"]),
+    initialOperationSequence: restartJournal.completedOperationCount("collector"),
     assertExpectedChain: async (stage) => {
       await assertShadownet(collectorTezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => verifySpaghettiTzktOperationApplied({
+      assertion,
+      signerAddress: collector.address,
+    }),
+    beforeOperationSubmit: async (operation) => {
+      await restartJournal.beforeOperationSubmit("collector", operation);
+      await assertPastaProofRestartCounterBoundary({
+        signerAddress: collector.address,
+        expectedCounter: restartJournal.expectedCurrentCounter("collector"),
+        label: `Spaghetti pre-submit collector operation ${operation.operationSequence}`,
+      });
+    },
+    onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("collector", operation),
+    onReceipt: (receipt) => restartJournal.onReceipt("collector", receipt),
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     validateCall: validateCollectorCall,
     projectStorage: async (rawStorage) => {
@@ -878,7 +1340,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
 
   const collectorBridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: (request) => collectorSession.handle(request),
+    handleAction: (request) => restartJournal.replayOrHandle("collector", request, () => collectorSession.handle(request)),
   });
   let collectorBrowser: Browser | null = null;
   let collectorMonitor: ReturnType<typeof monitorPastaProofPage> | null = null;
@@ -958,13 +1420,10 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     );
 
     await opened.page.click("#submit");
-    await opened.page.waitForFunction(
-      () =>
-        document.getElementById("status")?.textContent ===
-          "Confirmed on Tezos. On-chain state refreshed." &&
-        document.getElementById("chainState")?.textContent === "Sold out",
-      undefined,
-      { timeout: 120_000 },
+    await waitForSpaghettiCollectorWrite(
+      opened.page,
+      "Confirmed on Tezos. On-chain state refreshed.",
+      "Sold out",
     );
     screenshots.push(
       await captureCollectorStage(
@@ -984,7 +1443,19 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     await collectorBridge.close();
   }
 
-  const collectorReceipts = collectorSession.getReceipts();
+  const collectorReceipts = restartJournal.operationReceipts().filter((receipt) => receipt.signerAddress === collector.address);
+  await Promise.all([
+    assertPastaProofRestartCounterBoundary({
+      signerAddress: creator.address,
+      expectedCounter: restartJournal.expectedCurrentCounter("creator"),
+      label: "Spaghetti terminal creator boundary",
+    }),
+    assertPastaProofRestartCounterBoundary({
+      signerAddress: collector.address,
+      expectedCounter: restartJournal.expectedCurrentCounter("collector"),
+      label: "Spaghetti terminal collector boundary",
+    }),
+  ]);
   const collectorOperationReceipts = collectorReceipts.filter(
     (entry): entry is PastaUiLivePublicReceipt & { operationHash: string } =>
       typeof entry.operationHash === "string",
@@ -1051,6 +1522,13 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     metadataUri: tokenMetadataArtifact.ipfsUri,
     artifactUri: mediaArtifact.ipfsUri,
   };
+  const restartCheckpointBytes = await readFile(path.join(appRoot, RESTART_CHECKPOINT_PATH));
+  const restartCheckpointArtifact = {
+    id: "spaghetti-restart-checkpoint",
+    kind: "restart-checkpoint",
+    path: RESTART_CHECKPOINT_PATH,
+    sha256: sha256(restartCheckpointBytes),
+  };
   const completedAt = new Date().toISOString();
   const receipt = {
     schema: "pastaprotocol-spaghetti-ui-live-run@1",
@@ -1082,6 +1560,11 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
     screenshotSidecars: screenshots.map((capture) => capture.manifestSidecarArtifact),
     tzktEvidence: { path: tzktRelativePath, sha256: sha256(tzktBytes) },
+    restartSafety: {
+      checkpoint: restartCheckpointArtifact,
+      exactSemanticReplay: true,
+      terminalCountersAuthenticated: true,
+    },
   };
   const receiptBytes = deterministicJsonBytes(receipt);
   const receiptRelativePath = "artifacts/spaghetti-ui-live-run.json";
@@ -1090,6 +1573,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
 
   const localArtifacts = [
     ...screenshots.map((capture) => capture.manifestSidecarArtifact),
+    restartCheckpointArtifact,
     {
       id: "spaghetti-ui-live-tzkt-index",
       kind: "indexer-evidence",
@@ -1134,7 +1618,11 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
         description: "Use the actual Spaghetti studio to import a CH-EASE package, pin exact collection/token/media bytes, originate a fresh standard collection, create and mint token 0, and open a direct primary sale.",
         evidence: {
           screenshots: creatorScreenshotStages,
-          artifacts: [...pinnedArtifacts.map((artifact) => artifact.id), ...creatorSidecars],
+          artifacts: [
+            ...pinnedArtifacts.map((artifact) => artifact.id),
+            ...creatorSidecars,
+            restartCheckpointArtifact.id,
+          ],
           contracts: [identifiers.contractAddress],
           operations: creatorOperationHashes,
           tokens: [token.id],

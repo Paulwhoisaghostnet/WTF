@@ -335,8 +335,13 @@ router.get("/api/calendar/events", async (req, res) => {
     const includeExternal = String(req.query.includeExternal ?? "1") !== "0";
 
     const rows = await db
-      .select()
+      .select({
+        event: gameshowEvents,
+        creatorUsername: users.username,
+        creatorDisplayName: users.displayName,
+      })
       .from(gameshowEvents)
+      .leftJoin(users, eq(users.id, gameshowEvents.createdBy))
       .where(
         and(
           inArray(gameshowEvents.visibility, allowed),
@@ -348,13 +353,19 @@ router.get("/api/calendar/events", async (req, res) => {
       .orderBy(gameshowEvents.startsAt);
 
     const wtfRows = rows.map((row) => ({
-      ...row,
+      ...row.event,
       sourceProvider: "wtf" as const,
       sourceRank: 10,
       location: null,
-      categories: [row.kind],
+      categories: [row.event.kind],
       imageUrl: null,
-      externalId: `wtf:${row.id}`,
+      externalId: `wtf:${row.event.id}`,
+      sourceUrl: null,
+      creatorName:
+        row.creatorDisplayName || row.creatorUsername || "WTF staff",
+      creatorUrl: row.creatorUsername
+        ? `/user/${encodeURIComponent(row.creatorUsername)}`
+        : null,
     }));
     const ttcRows = includeExternal
       ? await loadTtcCalendarEvents(from, to)

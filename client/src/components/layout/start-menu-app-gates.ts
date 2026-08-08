@@ -12,7 +12,6 @@ export type GateableStartMenuGroup<TItem extends GateableStartMenuItem> = {
 
 export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/wtfiam": "wtfiam",
-  "/hoard": "hoard",
   "/wim": "wim",
   "/w": "w",
   "/tv": "tv",
@@ -50,7 +49,9 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/map-lab": "map-lab",
   "/agent": "agent",
   "/applications": "applications",
+  "/objkt-operator": "objkt-operator",
   "/mail": "mail",
+  "/admin-inbox": "admin-inbox",
 };
 
 export function isStartMenuItemEnabled(

@@ -1,6 +1,6 @@
 # Spaghetti Desktop Packaging
 
-Spaghetti Desktop wraps the static Spaghetti standard collection publisher in Electron so users can install the tool without Python, npm, Node, or a local web server. The native app starts a private `127.0.0.1` server, loads the bundled publisher, and keeps the same Tezos wallet/RPC and self-managed artifact workflow as the wtfOS version.
+Spaghetti Desktop wraps the static Spaghetti standard collection publisher in Electron so users can install the tool without Python, npm, Node, or a local web server. The native app starts its private stable origin at `http://127.0.0.1:30772`, loads the bundled publisher, and keeps the same Tezos wallet/RPC and self-managed artifact workflow as the wtfOS version. The fixed origin keeps browser-saved drafts available after quit/relaunch; a second launch focuses the existing window, and an occupied origin fails explicitly instead of silently switching storage namespaces.
 
 The desktop build intentionally does not include wtfOS hosted resources:
 
@@ -18,18 +18,19 @@ Packaging contributors should use Node 22+ for these commands. End users do not 
 npm run spaghetti:desktop:check
 npm run spaghetti:desktop:prepare
 npm run pack --prefix apps/spaghetti-desktop
-npm run dist:mac --prefix apps/spaghetti-desktop
+npm run dist:alpha:mac --prefix apps/spaghetti-desktop
 ```
 
 `npm run pack --prefix apps/spaghetti-desktop` creates an unpacked local app for inspection. Installer builds write to `apps/spaghetti-desktop/release/`.
+Use `dist:alpha:mac` only for a controlled, explicitly dirty-preflight human-alpha artifact. The normal `dist:mac` publication command continues to require clean exact-commit provenance.
 
 ## CI Release Flow
 
 Run the **Spaghetti Desktop Installers** workflow manually or push a tag like:
 
 ```bash
-git tag spaghetti-desktop-v1.0.0
-git push origin spaghetti-desktop-v1.0.0
+git tag spaghetti-desktop-v1.0.1-alpha.1
+git push origin spaghetti-desktop-v1.0.1-alpha.1
 ```
 
 The workflow builds:
@@ -38,11 +39,11 @@ The workflow builds:
 - Windows x64 NSIS installer on `windows-latest`
 - Raspberry Pi Linux arm64 DEB on `ubuntu-latest`
 
-For a manual release, run the workflow with `publish_release=true` and `release_tag=spaghetti-desktop-v1.0.0`.
+For a manual release, run the workflow with `publish_release=true` and `release_tag=spaghetti-desktop-v1.0.1-alpha.1`. The tag must match the package version. The workflow embeds exact clean source provenance, publishes a hyphenated alpha tag as a prerelease, and runs the packaged macOS/Windows app through boot plus stable-origin relaunch smoke.
 
-## Published 1.0.0 Release Metadata
+## Historical stable 1.0.0 release metadata
 
-Use the GitHub release asset metadata as the production checksum authority:
+These values describe the already-published stable `1.0.0` release. They are retained as historical deployment data; they are not valid checksums or filenames for `1.0.1-alpha.1`.
 
 ```bash
 SPAGHETTI_INSTALLER_VERSION=1.0.0

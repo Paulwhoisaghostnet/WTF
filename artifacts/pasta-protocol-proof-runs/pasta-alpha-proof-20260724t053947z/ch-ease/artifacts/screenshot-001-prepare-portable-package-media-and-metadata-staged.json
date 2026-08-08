@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ch-ease",
+  "capability": "Prepare portable package",
+  "stageOrdinal": 1,
+  "stageName": "Media and metadata staged",
+  "url": "http://127.0.0.1:64403/creation-tools/ch-ease/index.html?network=shadownet",
+  "timestampUtc": "2026-07-24T20:13:42.038Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "d7a5f5176c7a98a17387aa46f021aa424032ee3df427bc3fd5713ae3f9455be6",
+  "byteCount": 105715,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "CH-EASE"
+    },
+    {
+      "selector": "#summary",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1 item · 1 file loaded · 0 durable · spaghetti collection"
+    },
+    {
+      "selector": ".file-name",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "1. chease-pasta-alpha-proof-20260724t053947z.png"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

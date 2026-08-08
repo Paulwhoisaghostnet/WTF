@@ -1,0 +1,64 @@
+{
+  "schema": "pasta-ravioli-open-kit@3",
+  "network": "shadownet",
+  "contract": "KT1N6ZEgWS4HyJte7EtSuwHtrnNSVThaNhb7",
+  "tokenId": 1,
+  "mode": "blind_funded_pool",
+  "manifestUri": "ipfs://bafkreihmybkblxisf3nkaqujzyw54dudyops7whgnksqsxh5rz3kselpsu",
+  "blindSecurity": "commit-reveal-ui-hidden-chain-public",
+  "warning": "Exact recipes and nonces stay encrypted, while the salted cyclic serial rotation stays sealed/private until reveal. Tezos funding and reservation operations remain public.",
+  "editionPolicy": {
+    "requiresLimitedWrapper": false,
+    "wrapperEditionClass": "limited-edition",
+    "earliestChildEnd": null,
+    "wrapperSaleStart": null,
+    "wrapperSaleEnd": "2026-07-24T01:22:00.000Z",
+    "revealDeadline": "2026-07-24T02:22:00.000Z",
+    "openDeadline": "2026-07-24T03:22:00.000Z"
+  },
+  "recipes": [
+    {
+      "serial": 0,
+      "nonce": "16a5236cecf701eb660ff0ec76069e4fb4782984845f39bffad01df14fb1b14f",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1ShvgCuQZAKWTUFeCQZphNcn1y6Bi7LyYi",
+          "tokenId": 0,
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "serial": 1,
+      "nonce": "e84fc60b6accb895a13880e705e356e534abfdffdac3930dd6cf595fae6c9c87",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1ShvgCuQZAKWTUFeCQZphNcn1y6Bi7LyYi",
+          "tokenId": 1,
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "serial": 2,
+      "nonce": "5032fddc14b2639da345c5d4471847d5db208fcf162a5bd005f4fae10e72e580",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1ShvgCuQZAKWTUFeCQZphNcn1y6Bi7LyYi",
+          "tokenId": 1,
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "sealedReveal": {
+    "schema": "pasta-ravioli-sealed-reveal-reference@1",
+    "contentsUri": "ipfs://bafkreievrxdxngytb6f4c7jbeyqgxwplkxonqb3kryy63yy6fd7pn7rqjy",
+    "salt": "3c604fe0b30dc2758d0424518ec4aa40bd42d4a94701e4b40e85ba3b94184273",
+    "offset": 1,
+    "envelopeSha256": "958dc7769b130f8bc17d2126206bd9eb55dcd8076a8e31ede31e28fef6fe304e"
+  }
+}

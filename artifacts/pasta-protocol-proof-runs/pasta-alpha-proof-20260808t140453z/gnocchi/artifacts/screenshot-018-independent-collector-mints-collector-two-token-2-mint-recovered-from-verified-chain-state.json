@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "independent collector mints",
+  "stageOrdinal": 18,
+  "stageName": "Collector two token 2 mint recovered from verified chain state",
+  "url": "http://127.0.0.1:50388/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-08-08T15:26:00.701Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "45620d62357241a038283ed1cfb0e118f6c5450c1d1a3ebdf92e6baf4bc75feb",
+  "byteCount": 123778,
+  "domEvidence": [
+    {
+      "selector": "#account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1RWvy…8wTZ"
+    },
+    {
+      "selector": "#mintInfo",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Limited Edition · unit price now: 0.000001 tez · 3 lifetime minted / 4 cap · starts 8/8/2026, 2:54:00 PM · ends 12/31/9999, 11:58:00 PM · POLICY LOCKED · ISSUANCE OPEN"
+    },
+    {
+      "selector": "#mintInfo",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Limited Edition · unit price now: 0.000001 tez · 3 lifetime minted / 4 cap · starts 8/8/2026, 2:54:00 PM · ends 12/31/9999, 11:58:00 PM · POLICY LOCKED · ISSUANCE OPEN"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

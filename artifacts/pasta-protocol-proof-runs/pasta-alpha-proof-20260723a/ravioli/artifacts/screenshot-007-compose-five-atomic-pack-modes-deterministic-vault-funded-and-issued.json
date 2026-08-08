@@ -1,0 +1,25 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 7,
+  "stageName": "deterministic_vault funded and issued",
+  "url": "http://127.0.0.1:54523/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-24T00:21:34.217Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "af80fa4543fa51780300483346be1cdc0d0d1536e8525aad9f70122fa3af229f",
+  "byteCount": 198575,
+  "domEvidence": [
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "12:21:31 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 12:21:32 AM pinning wrapper artwork… 12:21:32 AM pinning blind-controller contract metadata… 12:21:32 AM deployment preflight ✓ router ≤ 31587 signed bytes (1181 headroom); controller ≤ 15204 signed bytes (17564 headroom); Gnocchi adapter ≤ 5447 signed bytes (27321 headroom); Rotini adapter ≤ 5460 signed bytes (27308 headroom); estimated one-time pair cost ≈11.3 tez—reuse this pair for later packs 12:21:32 AM originating Ravioli blind pack controller (sign in wallet)… 12:21:32 AM Ravioli blind pack controller deployed: KT1P7qjWpPjsqJCUuzWW6qgf7JGfeNbb1jNK 12:21:32 AM originating Ravioli pack router (sign in wallet)… 12:21:32 AM Ravioli pack router deployed: KT1N6ZEgWS4HyJte7EtSuwHtrnNSVThaNhb7 12:21:33 AM approving Ravioli escrow on KT1Shvg…LyYi (sign in wallet)… 12:21:33 AM pinning pack manifest… 12:21:33 AM pinning public open-kit reveal for the deterministic pack… 12:21:34 AM registering bounded pack config (sig"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

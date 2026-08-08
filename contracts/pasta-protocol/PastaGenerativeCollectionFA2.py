@@ -9,7 +9,10 @@
 # randomness. It binds payment and supply capacity while the browser creates a PNG, GIF, or dependency-
 # free interactive ZIP. Abandoned reservations can be refunded after their creator-chosen TTL.
 # Ravioli pack adapters may reserve zero-price project capacity before wrapper sale and later create a
-# normal Rotini token atomically during pack opening from a deterministic pack serial seed.
+# normal Rotini token atomically during pack opening from a deterministic pack serial seed. For pack
+# mints, that immutable generator + seed pair is the canonical generative identity. The submitted
+# PNG/GIF/offline-ZIP URI and hash are a self-rendered reproducible cache/holder attestation; the
+# contract does not claim to verify rendered pixels against the generator on chain.
 
 import smartpy as sp
 
@@ -97,6 +100,7 @@ def pasta_generative_collection_main():
         pack_contract=sp.address,
         pack_token_id=sp.nat,
         open_serial=sp.nat,
+        action_index=sp.nat,
         project_id=sp.nat,
         metadata_uri=sp.bytes,
         artifact_uri=sp.bytes,
@@ -466,7 +470,8 @@ def pasta_generative_collection_main():
         def release_pack_capacity(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, PackCapacityType)
-            assert sp.sender in self.data.pack_minters, "NOT_PACK_MINTER"
+            # The sender-owned reservation key is durable authority; removing
+            # a pack minter only prevents reserve_pack_capacity from adding more.
             assert params.project_id in self.data.projects, "NO_PROJECT"
             assert params.amount > 0, "BAD_AMOUNT"
             project = self.data.projects[params.project_id]
@@ -498,7 +503,7 @@ def pasta_generative_collection_main():
         def mint_pack_iteration(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, MintPackIterationType)
-            assert sp.sender in self.data.pack_minters, "NOT_PACK_MINTER"
+            # Existing capacity remains fulfillable after pack-minter revocation.
             assert params.project_id in self.data.projects, "NO_PROJECT"
             project = self.data.projects[params.project_id]
             reserve_key = sp.record(owner=sp.sender, token_id=params.project_id)
@@ -528,7 +533,7 @@ def pasta_generative_collection_main():
                         pack_contract=params.pack_contract,
                         pack_token_id=params.pack_token_id,
                         open_serial=params.open_serial,
-                        recipient=params.recipient,
+                        action_index=params.action_index,
                         project_id=params.project_id,
                     )
                 )
@@ -548,8 +553,12 @@ def pasta_generative_collection_main():
                 "pasta:packContract": sp.pack(params.pack_contract),
                 "pasta:packTokenId": sp.pack(params.pack_token_id),
                 "pasta:packSerial": sp.pack(params.open_serial),
+                "pasta:packActionIndex": sp.pack(params.action_index),
                 "pasta:mimeType": params.mime_type,
                 "pasta:artifactSha256": params.artifact_hash,
+                "pasta:artifactPolicy": sp.bytes(
+                    "0x73656c662d72656e64657265642d6361636865"
+                ),
             }
             self.data.token_metadata[token_id] = sp.record(token_id=token_id, token_info=token_info)
             self.data.total_supply[token_id] = 1

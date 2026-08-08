@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "publish PNG generator",
+  "stageOrdinal": 3,
+  "stageName": "PNG project pinned and published",
+  "url": "http://127.0.0.1:50460/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-08-08T15:28:00.101Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "f38d1ebe6b690397a8088b7f2f523b28dbfaf82624bd7df8110b169ba82d8fe7",
+  "byteCount": 157930,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#network",
+      "name": "network",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Shadownet (test) Mainnet"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "3:27:23 PM generated 4 edition(s) from seed \"rotini-ui-live-proof\" 3:27:24 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 3:27:24 PM encoding and pinning collection preview… 3:27:26 PM pinning generator layer Background / Marinara… 3:27:26 PM pinning generator layer Foreground / Pesto… 3:27:26 PM pinning generator manifest… 3:27:35 PM pinning collection metadata… 3:27:36 PM originating collection contract (sign in wallet)… 3:27:48 PM collection deployed: KT1SPmwEvb4rFck3pQtviLoCAgtkDLT8Ecuf 3:27:48 PM explorer: https://shadownet.tzkt.io/KT1SPmwEvb4rFck3pQtviLoCAgtkDLT8Ecuf 3:27:48 PM registering collector-finalized generator project (sign in wallet)… 3:28:00 PM generative project published ✓ — no iteration tokens exist until collectors finalize artifacts"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "png publication",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Published PNG generator project 0. Collector reservations become tokens only after artifact finalization."
+    }
+  ],
+  "classification": "UI-LIVE"
+}

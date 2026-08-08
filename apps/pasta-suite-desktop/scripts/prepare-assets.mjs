@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,8 +8,10 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceRoot = path.join(repoRoot, "public/creation-tools");
+const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
 const outDir = path.join(appDir, "pasta");
 const outToolsDir = path.join(outDir, "creation-tools");
+const packageJson = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
 
 const tools = [
   {
@@ -90,11 +92,16 @@ const tools = [
       "css/site.css",
       "js/site.js",
       "js/site-bundle.js",
+      "js/rotini-artifact.js",
+      "js/rotini-mint.js",
       "js/pasta-foundation.js",
       "vendor/tezos.js",
       "vendor/octez-connect.js",
       "contract/pasta-bundle.contract.json",
       "contract/pasta-bundle.template.json",
+      "contract/pasta-blind-pack-controller.contract.json",
+      "contract/pasta-blind-pack-controller.template.json",
+      "contract/pasta-ravioli-deployment-certificate.json",
       "contract/pasta-gnocchi-pack-adapter.contract.json",
       "contract/pasta-gnocchi-pack-adapter.template.json",
       "contract/pasta-rotini-pack-adapter.contract.json",
@@ -115,6 +122,8 @@ const tools = [
       "css/site.css",
       "js/site.js",
       "js/site-bundle.js",
+      "js/rotini-artifact.js",
+      "js/rotini-mint.js",
       "js/pasta-foundation.js",
       "vendor/tezos.js",
       "vendor/octez-connect.js",
@@ -167,6 +176,10 @@ if (!existsSync(sourceRoot)) {
   console.error(`Pasta source assets not found: ${sourceRoot}`);
   process.exit(1);
 }
+if (!existsSync(iconSourceRoot)) {
+  console.error(`Pasta icon assets not found: ${iconSourceRoot}`);
+  process.exit(1);
+}
 
 for (const tool of tools) {
   const sourceDir = path.join(sourceRoot, tool.id);
@@ -185,6 +198,7 @@ for (const tool of tools) {
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outToolsDir, { recursive: true });
+cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 
 for (const tool of tools) {
   const sourceDir = path.join(sourceRoot, tool.id);
@@ -200,7 +214,7 @@ for (const tool of tools) {
 }
 
 writeFileSync(path.join(outDir, "index.html"), suiteIndexHtml(), "utf8");
-writeFileSync(path.join(outDir, "suite-manifest.json"), JSON.stringify({ version: "1.0.0", tools }, null, 2), "utf8");
+writeFileSync(path.join(outDir, "suite-manifest.json"), JSON.stringify({ version: packageJson.version, tools }, null, 2), "utf8");
 
 console.log(`Prepared Pasta suite assets in ${path.relative(repoRoot, outDir)}`);
 

@@ -23,6 +23,11 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { YearProgressWidget } from "../features/desktop/widgets/YearProgressWidget";
 import { WalletButton } from "../components/WalletButton";
 import { OwnedTokensGallery } from "../components/OwnedTokensGallery";
+import {
+  cockpitQueryKeys,
+  useCockpitChallengesQuery,
+  useCockpitSyncStatusQuery,
+} from "../features/cockpit/cockpit-queries";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -500,10 +505,7 @@ export function Dashboard() {
 
   const activeSeason = seasons?.find((s: any) => s.status === "active");
 
-  const { data: activeChallenges } = useQuery({
-    queryKey: ["challenges", "active"],
-    queryFn: () => api.get<any[]>("/api/challenges"),
-  });
+  const { data: activeChallenges } = useCockpitChallengesQuery();
 
   const openChallenges =
     activeChallenges?.filter((c: any) => c.status === "active") || [];
@@ -514,11 +516,7 @@ export function Dashboard() {
     enabled: !!user,
   });
 
-  const { data: syncStatus } = useQuery({
-    queryKey: ["cockpit-sync-status"],
-    queryFn: () => api.get<any>("/api/cockpit/sync/status"),
-    refetchInterval: 60_000,
-  });
+  const { data: syncStatus } = useCockpitSyncStatusQuery();
 
   const { data: activity } = useQuery({
     queryKey: ["cockpit-activity"],
@@ -575,7 +573,7 @@ export function Dashboard() {
     mutationFn: (wallet: string) =>
       api.post(`/api/cockpit/sync/${encodeURIComponent(wallet)}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cockpit-sync-status"] });
+      queryClient.invalidateQueries({ queryKey: cockpitQueryKeys.syncStatus });
     },
   });
 
@@ -1087,7 +1085,7 @@ export function Dashboard() {
           <TabPanel>
             <DashboardGroupBox label="Indexed holdings">
               <p style={{ fontSize: DASHBOARD_CAPTION_TYPE, marginBottom: 8 }}>
-                Same data as Profile / Hoard — sourced from `wallet_holdings` + shared
+                Same data as Profile — sourced from `wallet_holdings` + shared
                 metadata cache.
               </p>
               <OwnedTokensGallery

@@ -1,6 +1,8 @@
 import { WTFOS_PLATFORM_ORIGIN } from "@shared/platform-branding";
 
 const DEFAULT_TTC_ICAL_URL = "https://thetezos.com/?mec-ical-feed=1";
+const DEFAULT_TTC_WORDPRESS_API_URL =
+  "https://thetezos.com/wp-json/wp/v2/mec-events";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3500;
 
@@ -23,6 +25,9 @@ export interface TtcCalendarEvent {
   categories: string[];
   imageUrl: string | null;
   externalId: string;
+  sourceUrl: string | null;
+  creatorName: string | null;
+  creatorUrl: string | null;
 }
 
 interface ParsedIcsEvent {
@@ -37,12 +42,17 @@ interface ParsedIcsEvent {
   endsAt: Date | null;
   allDay: boolean;
   rrule: Record<string, string> | null;
+  recurrenceFloor: Date | null;
+  creatorName: string | null;
+  creatorUrl: string | null;
 }
 
 let cache:
   | {
       fetchedAt: number;
       events: ParsedIcsEvent[];
+      feedUrl: string;
+      wordpressApiUrl: string;
     }
   | null = null;
 
@@ -134,6 +144,15 @@ function parseIcs(text: string): ParsedIcsEvent[] {
         const startsAt = parseIcsDate(values.get("DTSTART") ?? "");
         if (startsAt) {
           const endsAt = parseIcsDate(values.get("DTEND") ?? "");
+          const startsAtRaw = values.get("DTSTART") ?? "";
+          const endsAtRaw = values.get("DTEND") ?? "";
+          const midnightUtcSpan = Boolean(
+            endsAt &&
+            /^\d{8}T000000Z$/.test(startsAtRaw) &&
+            /^\d{8}T000000Z$/.test(endsAtRaw) &&
+            endsAt.getTime() > startsAt.getTime() &&
+            (endsAt.getTime() - startsAt.getTime()) % (24 * 60 * 60 * 1000) === 0
+          );
           const title = unescapeIcs(values.get("SUMMARY") ?? "TTC event");
           const uid = unescapeIcs(values.get("UID") ?? `${title}:${startsAt.toISOString()}`);
           const url = values.get("URL") ? unescapeIcs(values.get("URL") ?? "") : null;
@@ -156,8 +175,11 @@ function parseIcs(text: string): ParsedIcsEvent[] {
               : null,
             startsAt,
             endsAt,
-            allDay: /^\d{8}$/.test(values.get("DTSTART") ?? ""),
+            allDay: /^\d{8}$/.test(startsAtRaw) || midnightUtcSpan,
             rrule: parseRrule(values.get("RRULE") ?? null),
+            recurrenceFloor: parseIcsDate(values.get("CREATED") ?? ""),
+            creatorName: null,
+            creatorUrl: null,
           });
         }
       }
@@ -178,6 +200,10 @@ function addInterval(date: Date, freq: string, interval: number): Date {
   else if (freq === "YEARLY") next.setUTCFullYear(next.getUTCFullYear() + interval);
   else next.setUTCDate(next.getUTCDate() + 7 * interval);
   return next;
+}
+
+function subtractInterval(date: Date, freq: string, interval: number): Date {
+  return addInterval(date, freq, -interval);
 }
 
 function overlaps(start: Date, end: Date, from: Date, to: Date): boolean {
@@ -204,6 +230,19 @@ function expandEvent(event: ParsedIcsEvent, from: Date, to: Date): ParsedIcsEven
   const expanded: ParsedIcsEvent[] = [];
   let occurrence = event.startsAt;
 
+  // MEC's aggregate iCal feed advances DTSTART to the next occurrence. Rewind
+  // open-ended series so a requested week still contains occurrences that
+  // happened before the feed was fetched.
+  if (!event.rrule.COUNT) {
+    for (let count = 0; count < 5000; count += 1) {
+      const previous = subtractInterval(occurrence, freq, interval);
+      const previousEnd = new Date(previous.getTime() + durationMs);
+      if (event.recurrenceFloor && previous < event.recurrenceFloor) break;
+      if (previousEnd <= from) break;
+      occurrence = previous;
+    }
+  }
+
   for (let count = 0; count < countLimit && count < 5000; count += 1) {
     const end = new Date(occurrence.getTime() + durationMs);
     if (until && occurrence > until) break;
@@ -217,24 +256,160 @@ function expandEvent(event: ParsedIcsEvent, from: Date, to: Date): ParsedIcsEven
   return expanded;
 }
 
+function eventSlug(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "thetezos.com" && parsed.hostname !== "www.thetezos.com") {
+      return null;
+    }
+    const match = /^\/events\/([^/]+)\/?$/.exec(parsed.pathname);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function eventWordpressId(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "thetezos.com" && parsed.hostname !== "www.thetezos.com") {
+      return null;
+    }
+    const id = parsed.searchParams.get("p");
+    return id && /^\d+$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function publicCreatorName(value: unknown): string | null {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!name) return null;
+  const email = /^([^@\s]+)@[^@\s]+$/.exec(name);
+  return email?.[1] ?? name;
+}
+
+async function enrichTtcCreators(
+  events: ParsedIcsEvent[],
+  wordpressApiUrl: string,
+  signal: AbortSignal
+): Promise<ParsedIcsEvent[]> {
+  const slugs = [...new Set(events.map((event) => eventSlug(event.url)).filter(Boolean))] as string[];
+  const ids = [...new Set(events.map((event) => eventWordpressId(event.url)).filter(Boolean))] as string[];
+  if (slugs.length === 0 && ids.length === 0) return events;
+
+  try {
+    type CreatorRow = {
+      id?: number;
+      slug?: string;
+      _embedded?: {
+        author?: Array<{ name?: unknown; link?: unknown }>;
+      };
+    };
+    const loadRows = async (
+      parameter: "slug" | "include",
+      values: string[]
+    ): Promise<CreatorRow[]> => {
+      if (values.length === 0) return [];
+      const url = new URL(wordpressApiUrl);
+      url.searchParams.set(parameter, values.join(","));
+      url.searchParams.set("per_page", String(Math.min(100, values.length)));
+      url.searchParams.set("_embed", "author");
+      const response = await fetch(url, {
+        headers: { "User-Agent": `WTFCalendar/1.0 (+${WTFOS_PLATFORM_ORIGIN})` },
+        signal,
+      });
+      if (!response.ok) {
+        throw new Error(`TTC event metadata returned ${response.status}`);
+      }
+      return await response.json() as CreatorRow[];
+    };
+    const rows = (
+      await Promise.all([
+        loadRows("slug", slugs),
+        loadRows("include", ids),
+      ])
+    ).flat();
+    const creators = new Map(
+      rows.flatMap((row) => {
+        const author = row._embedded?.author?.[0];
+        const name = publicCreatorName(author?.name);
+        const key = row.slug
+          ? `slug:${row.slug}`
+          : row.id
+            ? `id:${row.id}`
+            : null;
+        if (!key || !name) return [];
+        const link = typeof author?.link === "string" ? author.link : null;
+        return [[key, { name, link }] as const];
+      })
+    );
+    const verifiedRefs = new Set(
+      rows.flatMap((row) => [
+        ...(row.slug ? [`slug:${row.slug}`] : []),
+        ...(row.id ? [`id:${row.id}`] : []),
+      ])
+    );
+
+    return events.flatMap((event) => {
+      const slug = eventSlug(event.url);
+      const id = eventWordpressId(event.url);
+      const key = slug ? `slug:${slug}` : id ? `id:${id}` : null;
+      if (key && !verifiedRefs.has(key)) return [];
+      const creator = slug
+        ? creators.get(`slug:${slug}`)
+        : id
+          ? creators.get(`id:${id}`)
+          : null;
+      return [
+        creator
+          ? { ...event, creatorName: creator.name, creatorUrl: creator.link }
+          : event,
+      ];
+    });
+  } catch {
+    return events;
+  }
+}
+
 async function loadTtcBaseEvents(): Promise<ParsedIcsEvent[]> {
   const now = Date.now();
-  if (cache && now - cache.fetchedAt < CACHE_TTL_MS) return cache.events;
+  const feedUrl = process.env.TTC_CALENDAR_FEED_URL || DEFAULT_TTC_ICAL_URL;
+  const wordpressApiUrl =
+    process.env.TTC_CALENDAR_WORDPRESS_API_URL || DEFAULT_TTC_WORDPRESS_API_URL;
+  if (
+    cache &&
+    cache.feedUrl === feedUrl &&
+    cache.wordpressApiUrl === wordpressApiUrl &&
+    now - cache.fetchedAt < CACHE_TTL_MS
+  ) {
+    return cache.events;
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  const url = process.env.TTC_CALENDAR_FEED_URL || DEFAULT_TTC_ICAL_URL;
-
   try {
-    const response = await fetch(url, {
+    const response = await fetch(feedUrl, {
       headers: { "User-Agent": `WTFCalendar/1.0 (+${WTFOS_PLATFORM_ORIGIN})` },
       signal: controller.signal,
     });
     if (!response.ok) {
       throw new Error(`TTC calendar returned ${response.status}`);
     }
-    const events = parseIcs(await response.text());
-    cache = { fetchedAt: now, events };
+    const parsedEvents = parseIcs(await response.text());
+    const shouldEnrich =
+      Boolean(process.env.TTC_CALENDAR_WORDPRESS_API_URL) ||
+      /^https:\/\/(?:www\.)?thetezos\.com\//i.test(feedUrl);
+    const events = shouldEnrich
+      ? await enrichTtcCreators(
+          parsedEvents,
+          wordpressApiUrl,
+          controller.signal
+        )
+      : parsedEvents;
+    cache = { fetchedAt: now, events, feedUrl, wordpressApiUrl };
     return events;
   } finally {
     clearTimeout(timeout);
@@ -270,6 +445,9 @@ export async function loadTtcCalendarEvents(
         categories: event.categories,
         imageUrl: event.imageUrl,
         externalId: event.uid,
+        sourceUrl: event.url,
+        creatorName: event.creatorName,
+        creatorUrl: event.creatorUrl,
       }))
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
       .slice(0, 500);

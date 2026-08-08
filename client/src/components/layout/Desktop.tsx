@@ -97,6 +97,7 @@ type InboxUnreadCountResponse = {
   notifications: number;
   dms: number;
   mail: number;
+  adminInbox: number;
 };
 
 type DesktopClientEventPayload = {
@@ -557,7 +558,6 @@ export function Desktop({
   }, [user?.role, user?.roles]);
   const apps = {
     wtfiam: sourceApps.wtfiam,
-    hoard: sourceApps.hoard,
     wim: sourceApps.wim,
     w: sourceApps.w,
     tv: sourceApps.tv,
@@ -610,7 +610,6 @@ export function Desktop({
       apps.arcade,
       apps.casino,
       apps["dues-manager"],
-      apps.hoard,
       apps.mail,
       apps.skywire,
       apps["wtf-live"],

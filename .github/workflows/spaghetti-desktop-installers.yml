@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       release_tag:
-        description: "Release tag to publish, for example spaghetti-desktop-v1.0.0"
+        description: "Release tag to publish, for example spaghetti-desktop-v1.0.1-alpha.1"
         required: false
         type: string
   push:
@@ -35,7 +35,7 @@ jobs:
             command: npm run dist:windows --prefix apps/spaghetti-desktop
             artifact: spaghetti-desktop-windows
           - label: Raspberry Pi arm64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
             command: npm run dist:raspberry-pi --prefix apps/spaghetti-desktop
             artifact: spaghetti-desktop-raspberry-pi
 
@@ -64,6 +64,41 @@ jobs:
       - name: Build installer
         run: ${{ matrix.command }}
 
+      - name: Install and smoke packaged macOS artifacts
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./apps/spaghetti-desktop/package.json').version")
+          bash scripts/pasta-desktop-macos-artifact-smoke.sh \
+            "spaghetti" \
+            "apps/spaghetti-desktop/release/Spaghetti-Studio-${VERSION}-mac-universal.dmg" \
+            "apps/spaghetti-desktop/release/Spaghetti-Studio-${VERSION}-mac-universal.zip" \
+            "spaghetti-studio.app" \
+            "spaghetti-studio"
+
+      - name: Install and smoke packaged Windows application
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = node -p "require('./apps/spaghetti-desktop/package.json').version"
+          $installer = Join-Path "${{ github.workspace }}" "apps\spaghetti-desktop\release\Spaghetti-Studio-$version-win-x64.exe"
+          & ".\scripts\pasta-desktop-windows-installer-smoke.ps1" `
+            -AppKey "spaghetti" `
+            -InstallerPath $installer `
+            -ExecutableName "spaghetti-studio.exe" `
+            -ShortcutName "Spaghetti Studio"
+
+      - name: Install and smoke packaged Raspberry Pi application
+        if: matrix.os == 'ubuntu-24.04-arm'
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./apps/spaghetti-desktop/package.json').version")
+          bash scripts/pasta-desktop-linux-installer-smoke.sh \
+            "spaghetti" \
+            "apps/spaghetti-desktop/release/Spaghetti-Studio-${VERSION}-linux-arm64.deb" \
+            "spaghetti-studio" \
+            "spaghetti-studio"
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -83,12 +118,25 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/spaghetti-desktop-v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
     steps:
-      - name: Validate manual release tag
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout release source
+        uses: actions/checkout@v5
+
+      - name: Validate release tag
         shell: bash
         run: |
-          if [ -z "${{ inputs.release_tag }}" ]; then
-            echo "release_tag is required when publish_release is true"
+          VERSION=$(node -p "require('./apps/spaghetti-desktop/package.json').version")
+          EXPECTED_TAG="spaghetti-desktop-v${VERSION}"
+          ACTUAL_TAG="${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}"
+          if [ "$ACTUAL_TAG" != "$EXPECTED_TAG" ]; then
+            echo "release tag must match package version: expected $EXPECTED_TAG, got ${ACTUAL_TAG:-empty}"
+            exit 1
+          fi
+          REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/${ACTUAL_TAG}^{}" | awk 'NR == 1 { print $1 }')"
+          if [ -z "$REMOTE_SHA" ]; then
+            REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/${ACTUAL_TAG}" | awk 'NR == 1 { print $1 }')"
+          fi
+          if [ -n "$REMOTE_SHA" ] && [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
+            echo "existing release tag must identify the workflow source: expected $GITHUB_SHA, got $REMOTE_SHA"
             exit 1
           fi
 
@@ -107,6 +155,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           name: Spaghetti Desktop ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
           files: release/*
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name, '-alpha.') || contains(github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name, '-beta.') || contains(github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name, '-rc.') }}

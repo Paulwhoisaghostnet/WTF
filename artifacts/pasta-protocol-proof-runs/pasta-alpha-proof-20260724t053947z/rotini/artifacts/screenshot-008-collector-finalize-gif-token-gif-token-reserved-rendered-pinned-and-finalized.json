@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize GIF token",
+  "stageOrdinal": 8,
+  "stageName": "GIF token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:50749/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-24T06:00:17.036Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "b74c2169dad7316bd1a8f280c10bf49e5248f6ff509255c320d2553397993978",
+  "byteCount": 149772,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "gif finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "GIF iteration 1 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "gif supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · GIF · 0.000001 tez"
+    },
+    {
+      "selector": "#log",
+      "name": "gif operation",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "5:59:40 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 5:59:45 AM resuming unfinalized reservation 1 5:59:45 AM loading reserved layer Background / Marinara… 5:59:45 AM loading reserved layer Foreground / Pesto… 5:59:45 AM pinning finalized image/gif artifact… 5:59:46 AM pinning TZIP-21 token metadata… 5:59:59 AM finalizing reservation 1 (sign in wallet)… 6:00:15 AM collector finalized GIF token 1 with opZQa7natSqHLYQf1gfaSohJChkjngKS6NvyMj9BVC33W8VDB3B"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

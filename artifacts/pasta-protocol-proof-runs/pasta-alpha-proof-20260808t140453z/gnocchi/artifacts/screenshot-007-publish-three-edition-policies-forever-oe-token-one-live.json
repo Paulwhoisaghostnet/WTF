@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 7,
+  "stageName": "Forever OE token one live",
+  "url": "http://127.0.0.1:62338/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-08-08T14:56:14.070Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "700dafa080faa1187497acd8331bec92eea4d611573992ad63c08951e87884d4",
+  "byteCount": 175849,
+  "domEvidence": [
+    {
+      "selector": "#publishTargetStatus",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Collection now has 2 editions · next token #2"
+    },
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "2:55:23 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 2:55:23 PM pinning artifact… 2:55:27 PM pinning collection metadata… 2:55:37 PM pinning token metadata… 2:55:37 PM originating multi-edition Gnocchi collection (sign in wallet)… 2:55:49 PM collection deployed: KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv 2:55:49 PM explorer: https://shadownet.tzkt.io/KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv 2:55:49 PM publishing timed edition #0 (sign in wallet)… 2:56:00 PM Timed OE live ✓ — token id 0 2:56:04 PM pinning artifact… 2:56:05 PM pinning token metadata… 2:56:05 PM adding edition token #1 to verified collection KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv 2:56:05 PM publishing forever edition #1 (sign in wallet)… 2:56:12 PM Forever OE live ✓ — token id 1"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

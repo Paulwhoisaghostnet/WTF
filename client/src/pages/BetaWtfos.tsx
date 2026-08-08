@@ -974,7 +974,7 @@ export function BetaWtfos() {
       detail: freshTradeObject
         ? `${displayTradeBoardOwner(freshTradeObject)} made this visible through Trade Boards; Gallery is the safe inspection step.`
         : freshListing
-          ? `${displayListingName(freshListing)} appears in Marketplace; Gallery and Hoard explain collector context.`
+          ? `${displayListingName(freshListing)} appears in Marketplace; Gallery and Profile explain collector context.`
           : "Fresh object proof will appear from public trade-board or marketplace rows when existing data returns.",
     },
     {
@@ -3844,7 +3844,6 @@ const betaPresentationHostSelector = `:is(
   [data-gallery-presentation-host="beta"],
   [data-game-studio-presentation-host="beta"],
   [data-gamma-utility-presentation-host="beta"],
-  [data-hoard-presentation-host="beta"],
   [data-ipfs-pinning-presentation-host="beta"],
   [data-mail-presentation-host="beta"],
   [data-map-lab-presentation-host="beta"],
@@ -3934,8 +3933,6 @@ const betaPresentationClusterSelector = `:where(
   [data-game-studio-surface],
   [data-gamma-utility-region],
   [data-gamma-utility-surface],
-  [data-hoard-region],
-  [data-hoard-surface],
   [data-ipfs-pinning-region],
   [data-ipfs-pinning-surface],
   [data-mail-region],

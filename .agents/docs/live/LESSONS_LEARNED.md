@@ -1,3 +1,33 @@
+## 2026-07-23 - All-day feed semantics must survive timezone presentation
+
+**What happened**: TTC displayed The Baking Sheet as an all-day event but MEC exported it as a midnight-to-midnight UTC interval rather than an iCal `VALUE=DATE`. The server classified it as timed, and Pacific-time rendering spread the same occurrence across Thursday evening and Friday.
+
+**Why it mattered**: Correct occurrence ingestion can still produce a visibly duplicated, wrong-day calendar when a provider encodes date-only intent as UTC instants and the client applies local-time overlap rules.
+
+**Rule**: Treat exact positive whole-day midnight-UTC MEC spans as all-day records, preserve their UTC calendar date during day membership and labels, and visually smoke a representative all-day event in production after deploy. Recurrence parity tests must assert both occurrence timestamps and all-day semantics.
+
+---
+
+## 2026-07-23 - Rolling calendar exports need occurrence reconstruction and source validation
+
+**What happened**: The TTC aggregate iCal feed advanced each recurring event's `DTSTART` to its next occurrence, while WTF Calendar only expanded recurrence forward. That made the current week's earlier TTC occurrences disappear. The same feed retained at least one deleted event whose TTC permalink returned 404 and which was absent from TTC's rendered calendar.
+
+**Why it mattered**: Treating an aggregate iCal response as a complete occurrence ledger produced both false negatives and false positives: real TTC events vanished from the app, while stale feed rows looked like valid listings without a sourceable TTC record.
+
+**Rule**: For rolling third-party recurrence feeds, reconstruct bounded earlier occurrences from the published anchor and creation floor, then validate source records against the provider's public canonical metadata when available. Preserve feed-only fallback on metadata outages, filter canonical 404/deleted records only after a successful metadata response, expose the original source link and public creator attribution, and redact email-shaped display names before returning them to clients.
+
+---
+
+## 2026-07-22 - Intentional secret disclosure must be validated before the external side effect
+
+**What happened**: Ravioli's UI-live journal learned about pinned bytes only through a post-pin callback and rejected every known raw recipe nonce. That protected ordinary evidence, but it could neither safely admit the product's intentional public reveal nor prevent malformed reveal bytes from reaching IPFS before validation. It also did not bind a reveal CID to the immediately following `create_pack` or `set_pack_contents` call.
+
+**Why it mattered**: A public reveal is supposed to disclose opening capability material exactly once and only for the committed router/token/recipes. Post-side-effect validation can identify a bad pin but cannot undo it, while a generic nonce exception would let unrelated artifacts leak the same capability material without a durable semantic trail.
+
+**Rule**: Give external pinning a pre-side-effect exact-byte validation hook. Model intentional disclosure as its own replayable journal phase, persist only redacted commitments in events, permit raw preimages only in an explicitly labeled validated artifact, and require its proof URI in the immediate on-chain binding operation. Ordinary nonce-bearing pins must continue to fail closed.
+
+---
+
 ## 2026-07-18 - Browser fixtures should preserve production process boundaries
 
 **What happened**: Ravioli's real-page regression reused one Chromium process across six collector contexts even though the production proof runner launches a fresh browser for each collector page. One otherwise successful full-suite pass stalled for more than seventeen minutes and the final local `page.goto` hit its 30-second timeout; no application assertion or chain simulation had failed.
@@ -9258,6 +9288,766 @@
 
 ---
 
+## 2026-07-22 - Existing-collection proof writes need a durable pre-submit barrier
+
+**What happened**: The first Ravioli Gnocchi-LE supplement design could wait forever for its pre-submit callback if the real Studio failed during pinning or call validation. It also deferred copying the exact pinned media and metadata bytes until after the operation, so a process failure between application and receipt creation could leave a valid token without its complete local evidence set.
+
+**Why it mattered**: An existing-collection write has no fresh-contract address to distinguish a retry, and its next token id advances permanently. A generic timeout or missing local artifact after application could therefore tempt a duplicate publish or make read-only reconciliation unable to prove the exact bytes that were committed.
+
+**Rule**: Persist each verified pin locally as it completes, write an immutable exact-call intent before the bridge can submit, bind the exact estimate to explicit send limits, race the intent wait against the Studio's visible failure channel, and forbid execution whenever the supplement directory already exists. If the call applied without a final receipt, reconcile from the intent, exact TzKT operation, terminal token state, and clear dual-RPC signer counters without loading a signer or resubmitting anything.
+
+---
+
+## 2026-07-22 - Cross-contract safety proof must bind both sides of the policy
+
+**What happened**: The aggregate Pasta proof validator required every Ravioli screenshot, artifact, contract, operation, and token to be referenced by some capability, but that generic coverage could still pass without one capability binding the LE child expiry to the finite wrapper sale. The self-hosted buyer page also rendered an open sale and reserved backing without naming either deadline.
+
+**Why it mattered**: A pile of individually valid evidence does not prove a relationship between two contracts. Reviewers could not tell which child token imposed the limit, which wrapper inherited it, or whether the page collectors actually use disclosed the constrained window.
+
+**Rule**: Give every cross-contract safety invariant a dedicated capability that owns visible screenshot evidence, the enforcing contract and wrapper token, a machine-readable policy artifact, and exact explorer links for both child and wrapper. Test omission of each edge independently, and expose the same immutable bound plus sale deadline in the shipped self-hosted buyer runtime without changing unrelated app displays.
+
+---
+
+## 2026-07-22 - Live UI proof waits must race success against the application's error channel
+
+**What happened**: The Ravioli Gnocchi-LE dependency runner clicked the real Studio's existing-collection verifier and then waited only for its success status. The Studio catches verification errors, clears that status, and reports the cause through its visible notice region, so the proof process waited five minutes and discarded the actionable error even though no pin, intent, signature, or chain write had occurred.
+
+**Why it mattered**: A one-sided success wait turns a bounded pre-submit failure into an opaque timeout. That slows diagnosis and makes it harder to prove whether a retry is safe at exactly the boundary where the runner must distinguish a harmless UI/RPC read failure from a submitted operation.
+
+**Rule**: After triggering a live UI action, race the exact success predicate against the application's canonical visible error channel. On either outcome, read both DOM values and include them in the thrown diagnostic; keep the wait bounded, and preserve failed pre-submit screenshots in a rejected-evidence lane before attempting a fresh run.
+
+---
+
+## 2026-07-22 - Bound bridge projections by semantic data class
+
+**What happened**: The UI-live bridge applied its storage projection depth limit to Taquito's legitimate entrypoint type map. The accepted Gnocchi contract's `create_open_edition` comb type reaches depth 26 (27 including the entrypoint map), so `contract.at()` failed before the separately sanitized storage projection even ran.
+
+**Why it mattered**: Storage values and Micheline type schemas have different legitimate shapes. Reusing one small depth ceiling made a secure bounded serializer reject the real contract interface, while globally raising the storage ceiling would have weakened the least-privilege boundary unnecessarily.
+
+**Rule**: Keep common node, collection, key, and byte budgets, but assign depth budgets by validated semantic class. Storage projections retain the shallow limit; entrypoint maps get the smallest measured Tezos-compatible limit and must additionally pass strict Micheline field, literal, annotation, and entrypoint-name validation. Regression-test both acceptance and over-limit rejection.
+
+---
+
+## 2026-07-22 - A zero-supply FA2 definition is not yet an indexed token
+
+**What happened**: Gnocchi successfully registered Ravioli's capped token-3 allocation, the operation applied, contract storage advanced, and the real Studio rendered the new edition. The proof runner nevertheless waited for a TzKT `/tokens` row that remained absent because no supply had been minted yet.
+
+**Why it mattered**: Treating token metadata plus sale policy as an already minted token contradicted the protocol lifecycle and created a false post-write failure. It also blocked Ravioli from performing the very allocation mint that should create the indexable token row.
+
+**Rule**: Distinguish `DEFINED_UNMINTED` from `MINTED_INDEXED` in evidence and release gates. Before the first mint, bind the exact create operation, metadata URI, sale big-map state, cap, lock, zero supply, and the indexer's observed presence or absence without requiring a token row. The product that performs the first mint must then require the token row, supply, and recipient balance in its terminal proof. Never resubmit a successful definition merely because a supply-driven index is empty.
+
+---
+
+## 2026-07-22 - Compare cross-source timestamps as instants, not spellings
+
+**What happened**: Ravioli's final dependency preflight compared the Gnocchi receipt expiry `2026-07-29T21:11:00.000Z` to the on-chain/indexer rendering `2026-07-29T21:11:00Z` as raw strings and rejected the same instant before any write.
+
+**Why it mattered**: RFC 3339 permits equivalent precision spellings. Raw string equality turns harmless encoder normalization into a false integrity failure at a release-critical boundary.
+
+**Rule**: Validate and compare timestamps by parsed epoch value across RPC, indexer, receipt, and browser boundaries. Preserve a canonical ISO string when writing new evidence, but never use formatting differences alone as drift evidence; regression-test equivalent fractional-second representations and genuinely different instants.
+
+---
+
+## 2026-07-22 - Negative UI gates must classify receipts by side effect
+
+**What happened**: Ravioli's required outliving-LE rejection performed an ordinary preflight chain check before the Studio rejected the invalid policy. The proof compared the total bridge-receipt count and mislabeled that read-only receipt as a chain action even though no pin, signature, counter, mempool item, or operation existed.
+
+**Why it mattered**: Receipt count is not a write boundary. Treating connection and safety reads as mutations creates false negatives; ignoring receipt types altogether could hide a real origination or call.
+
+**Rule**: For pre-write rejection proofs, independently assert zero durable pins and no new receipts whose action is `originate`, `call`, or `batch`. Permit and retain read-only `connect`/`chain_check` evidence, then verify the signer counter and mempool before recycling a failed fresh lane.
+
+---
+
+## 2026-07-22 - Artifact waits must not hide already-applied publish stages
+
+**What happened**: Ravioli's real Studio originated an empty router and granted it a Gnocchi token-0 operator approval, then the proof runner waited only for the eventual open-kit download. When a later publish stage failed or stalled, the runner timed out after five minutes without surfacing the Studio error or durably persisting the two applied operations.
+
+**Why it mattered**: A UI artifact is the end of a multi-operation workflow, not its mutation boundary. Treating a missing download as a generic failure concealed a live authorization that had to be revoked before any safe retry, and the lack of incremental receipts forced a forensic counter, TzKT, storage, and operator-key reconstruction.
+
+**Rule**: Race every terminal artifact wait against the application's canonical failure channel, but also persist immutable intent and append-only progress immediately before and after each signer submission. On any interruption, freeze the lane, reconcile counters and state without loading a signer, and use a separately gated exact recovery operation; never infer that a missing final download means no writes occurred.
+
+---
+
+## 2026-07-22 - Cross-suite proofs must derive their publisher set from the suite contract
+
+**What happened**: Lasagna's Shadownet proof claimed to curate one token from every Pasta publisher but its hand-maintained reference list omitted Macaroni, even though Macaroni is an accepted token publisher with two proven contracts. The package scripts also exposed legacy historical E2E commands under the shortest Ravioli and Lasagna names while the canonical same-run UI-live runners had no explicit aliases.
+
+**Why it mattered**: A passing cross-app proof could cover five of six publishers and still overstate suite integration. Ambiguous operator commands made it easy to run a historical standalone fixture that cannot satisfy the aggregate proof contract.
+
+**Rule**: Treat the aggregate app-role inventory as the source of truth for cross-suite dependency sets, assert every referenced token is backed by contract evidence in its accepted manifest, and include a fail-closed omission test. Give canonical same-run UI-live runners explicit command aliases; label legacy paths by purpose instead of relying on operator memory.
+
+---
+
+## 2026-07-22 - TzKT operator history is not the current authorization set
+
+**What happened**: Ravioli's pre-pack recovery gate queried the Gnocchi operator big-map and found both the original active record and the later inactive removal tombstone. A predicate that matched only owner, operator, and token id interpreted that historical row as a still-active authorization and rejected an otherwise verified recovery.
+
+**Why it mattered**: TzKT deliberately preserves big-map update history. Treating every matching row as current state creates false safety failures; ignoring the update state could make the opposite mistake and permit a genuinely active orphan operator.
+
+**Rule**: When an indexer returns big-map history, require and validate its explicit active/current-state marker, then evaluate only active rows. Bind that result to the exact recovery operation and independently verify the current key through chain/indexer state before a new signer is loaded. Regression-test active, inactive-tombstone, and malformed records separately.
+
+---
+
+## 2026-07-22 - A UI policy is not a token invariant
+
+**What happened**: Ravioli's Studio rejected conflicting Limited Edition deadlines, but the router trusted caller-declared child policy and allowed finite-wrapper issuance to be decomposed from its required direct sale.
+
+**Why it mattered**: A direct caller, alternate client, or look-alike resumed router could create a product the official UI prohibited, so the suite could not honestly describe the relationship as an on-chain guarantee.
+
+**Rule**: Validate dependent policy from the actual target contract through a typed adapter, classify every explicitly supported policy shape, commit inherited deadlines immutably, and atomically create every state promised by the product. Reject decomposed issuance paths and require exact implementation identity when resuming a contract.
+
+---
+
+## 2026-07-22 - Compiling both contracts does not prove their cross-contract handle agrees
+
+**What happened**: Adding Limited Edition fields to the Gnocchi adapter's reservation payload accidentally widened the adapter's release payload too, while the router's cancellation path continued sending the original five-field release record. The router and adapter each compiled independently even though that recovery call would have failed at runtime.
+
+**Why it mattered**: A cancelled partially prepared pack could retain reserved child capacity indefinitely, and ordinary happy-path tests would not exercise the incompatible handle.
+
+**Rule**: Give semantically different cross-contract entrypoints distinct parameter types even when their original fields coincide. Whenever one side of an inter-contract payload changes, test the actual caller-to-callee path—including cancellation and recovery—and compare the generated public artifact to the source build before deployment.
+
+---
+
+## 2026-07-22 - A predicted token id and a pinned manifest need one immutable identity boundary
+
+**What happened**: Ravioli pinned an open kit and pack metadata for the router's observed `next_token_id`, then called `create_pack` without requiring that id or storing the exact manifest URI in immutable pack state. Another creator action or a substituted local kit could therefore separate the pinned product identity from the token actually created.
+
+**Why it mattered**: Recovery, public reveal, and holder opening all depend on one exact contract/token/manifest tuple. A race or mutable off-chain association can leave valid bytes and valid tokens that do not describe each other.
+
+**Rule**: Every multi-stage token publication must submit an expected next id atomically, fail before writes when it is stale, store the canonical manifest URI immutably on chain, and revalidate that identity before reveal, opening, recovery, or proof acceptance.
+
+---
+
+## 2026-07-22 - JSON serializable is not the same as losslessly recoverable
+
+**What happened**: Ravioli recorded a supposedly exact signer intent with `JSON.stringify`, but Taquito `MichelsonMap` instances serialized their internal maps without entries. The UI then blocked all future writes after interruption while offering only an open-kit download, so an early draft could neither export its actual journal nor safely resolve it.
+
+**Why it mattered**: A hash of a lossy representation cannot prove which token metadata or initial storage a wallet signed. A fail-closed lock without inspect/export/reconcile controls prevents duplicate writes but strands the creator.
+
+**Rule**: Recovery journals must canonicalize only explicitly supported values: sorted Michelson-map entries, exact tagged large integers, primitives, arrays, and accessor-free plain objects under node/depth/byte limits. Reject provider graphs, accessors, cycles, unsafe numbers, and legacy lossy records. Restore a visible private-journal panel, never mutate it merely because a blocked retry was clicked, and close it automatically only when an exact confirmed terminal stage and its current chain postcondition both match.
+
+---
+
+## 2026-07-22 - Reserved obligations outlive mutable authorization
+
+**What happened**: Gnocchi, Rotini, and their Ravioli adapters rechecked current minter/router roles when fulfilling or releasing capacity that had already been reserved to an exact adapter/router/pack key.
+
+**Why it mattered**: Removing a role correctly prevents future reservations, but applying that change retroactively can strand sold wrappers whose backing is still locked for them.
+
+**Rule**: Check mutable authorization when creating a reservation. Fulfillment and release must instead require and consume the exact existing reservation owned by the caller; regression tests must revoke roles after reservation and still prove both delivery and cancellation cleanup while callers without reservations remain unable to act.
+
+---
+
+## 2026-07-22 - Per-action bounds do not bound a Tezos operation tree
+
+**What happened**: Ravioli bounded each adapter payload but not their aggregate, and Rotini's generated seed omitted the ordered action index. Multiple generative actions could therefore build an oversized call or produce the same seed when they targeted one project in one pack opening.
+
+**Why it mattered**: The most niche hybrid product intentionally composes several child actions. It must remain within protocol limits and every generated child must be uniquely bound to its position even when contract, pack token, serial, and project are identical.
+
+**Rule**: Bound both every payload and the aggregate adapter bytes on the Studio and router, carry a zero-based action index through the router/adapter/target ABI, include it in the generative seed and metadata, and prove two same-project actions in one atomic open yield distinct children.
+
+---
+
+## 2026-07-22 - A terminal verifier is downstream of the mutation boundary
+
+**What happened**: Fresh Gnocchi contract `KT1Qzue6Uxojgsf2SxhVk5sqv1T3BGB9Ba69` completed its origination and every UI operation, pin, and screenshot, then an HTTP 429 during a final Taquito big-map read prevented the in-memory receipts from being packaged. Rotini had the same persistence order before its next live launch.
+
+**Why it mattered**: A rate-limited observation after irreversible writes made a complete run look ambiguous and made a blind rerun unsafe. Retrying only the terminal request was not sufficient because the exact operation/pin evidence had not crossed a durable boundary.
+
+**Rule**: Persist exact pin bytes before remote pinning; persist signer actions as fsynced, hash-chained PREPARED, SUBMITTED, and CONFIRMED records; finalize the mutation journal immediately after the last expected confirmation and before optional RPC/indexer projections. Retry only explicitly declared read-only work under bounded primary/fallback budgets, require stale-state predicates, and recover terminal evidence through a separately gated signer-free GET-only finalizer that never synthesizes missing UI receipts or funding evidence.
+
+---
+
+## 2026-07-22 - Durable intent comparisons must use their canonical bytes
+
+**What happened**: Rotini's first strict checkpoint loader compared its parsed operation matrix with the in-memory matrix using `JSON.stringify`. The checkpoint writer had correctly sorted object keys for canonical JSON, so a byte-valid immutable intent reopened with different JavaScript insertion order and was falsely rejected. The same first pass treated macOS's intentional `/var` to `/private/var` alias as though the newly created checkpoint parent itself were a symlink.
+
+**Why it mattered**: A recovery boundary that rejects its own valid output cannot distinguish real tampering from representation or platform normalization. That failure would appear only after pins or signer operations and could pressure an unsafe rerun even though the append-only evidence was intact.
+
+**Rule**: Compare structured durable intent through the same canonical byte encoder used to hash and persist it, never through incidental object insertion order. Reject symlinks at the operator-owned checkpoint root, direct parent, generated directories, and files; do not reject a platform's canonical ancestor alias when the direct evidence boundary is real. Regression-test clean reopen, canonical tampering, symlink injection, and exact large-number/Michelson-map recovery before a live lane.
+
+---
+
+## 2026-07-22 - Durable phase writers and readers need round-trip grammar coverage
+
+**What happened**: Rotini's checkpoint writer correctly emitted `PIN_PREPARED` and `PIN_CONFIRMED` records as `pin_prepared` and `pin_confirmed` filenames, while the first strict loader filename allowlist accepted only single-token phase names. The write-side tests passed, but reopening a checkpoint containing pins failed before its hash chain could be replayed.
+
+**Why it mattered**: A durable recovery boundary is useful only if every state the writer can persist is also accepted and validated by the reader. A writer/reader grammar mismatch after remote pins or signer operations can turn intact evidence into an apparent orphan and pressure an unsafe rerun.
+
+**Rule**: Derive durable filename grammars from the exact persisted phase set and round-trip reopen every phase boundary, including multi-word phases. A checkpoint test suite must write, close, reopen, and replay full operation and pin lifecycles—not only inspect successful in-memory writes.
+
+---
+
+## 2026-07-22 - Reservation counters allocate identity before finalization
+
+**What happened**: Rotini's proof projection assumed `next_token_id` tracked finalized supply. The contract actually advances both `next_reservation_id` and `next_token_id` when a collector reserves an immutable token id and seed, so the honest live state was rejected immediately after reservation.
+
+**Why it mattered**: A two-step generative mint has an identity-allocation boundary before metadata, supply, and ownership exist. Modeling only finalized tokens can misclassify an honest reservation as drift and encourage a duplicate reserve.
+
+**Rule**: Derive counter expectations from the contract entrypoint that allocates identity, not from the later operation that publishes supply. Test the exact intermediate state after every multi-operation lifecycle boundary, including reserved-but-unminted tokens.
+
+---
+
+## 2026-07-22 - Every post-submit confirmation error is ambiguous
+
+**What happened**: Rotini finalization was injected, entered the mempool, and applied, but Taquito's confirmation read returned HTTP 404. The bridge treated only its named timeout class as ambiguous, so the real UI reported failure and suggested pressing again even though the token already existed.
+
+**Why it mattered**: Once an operation hash exists, an HTTP status, decoder error, provider reset, or index lag cannot prove the operation failed. Retry-oriented copy at that boundary can duplicate a non-idempotent action.
+
+**Rule**: Treat every exception after `send()` as submitted/ambiguous. Reconcile the exact hash with bounded read-only evidence before emitting success or terminal failure; otherwise preserve `SUBMITTED`, expose the hash with `retrySafe: false`, and never suggest or perform a resubmission.
+
+---
+
+## 2026-07-22 - Recover immutable rendering inputs by exact content identity
+
+**What happened**: After Rotini safely reserved ZIP token 2, the single public IPFS gateway returned a transient 504 for the immutable generator manifest. The exact CID remained valid and became publicly retrievable again, while the on-chain reservation and its seed remained intact.
+
+**Why it mattered**: Repeating the whole flow would have created another reservation, while repeatedly depending on one public gateway could move the checkpoint boundary again. The renderer needed availability without weakening its content binding.
+
+**Rule**: A recovery lane may serve already checkpointed bytes only after revalidating their CID/hash/MIME and independently proving public retrieval. Gate the lane to the exact on-chain reservation, reuse its token id and seed, permit only the remaining finalization, and retain public-gateway verification as separate evidence.
+
+---
+
+## 2026-07-23 - A service-owned Unix socket needs a service-owned runtime directory
+
+**What happened**: The production operator signer had accumulated more than 525,000 restart attempts because `/run/wtf` was recreated as `root:root` mode `0755`; the unprivileged signer user could not bind its socket even though the unit itself was otherwise valid.
+
+**Why it mattered**: Reward signing and contract administration were unavailable while application health could still look unrelated to the isolated signer. Making the socket world-writable would have hidden the directory-ownership defect and weakened the signer boundary.
+
+**Rule**: Let systemd create ephemeral signer directories with `RuntimeDirectory`, an explicit shared group, mode `0770`, and `RuntimeDirectoryPreserve=restart`; create the socket as `0660`; make provisioning and deploy scripts preserve the same ownership contract; and verify active state, restart count, directory mode, socket mode, and visibility from inside every bind-mounted app container after each signer or app deploy.
+
+---
+
+## 2026-07-23 - A gateway timeout after injection requires reconciliation, not resubmission
+
+**What happened**: The fresh Shadownet reward-escrow rehearsal crossed Cloudflare's request timeout while a long sequence of contract calls continued applying. A naive rerun would have repeated non-idempotent redemptions and role rotations. Mainnet origination similarly completed even though the local request client closed before receiving the signer response.
+
+**Why it mattered**: Once an operation can have reached a signer or node, transport failure is ambiguous. Retrying the request can duplicate live state, while stopping without reconciliation leaves ownership and balances uncertain.
+
+**Rule**: Persist or recover the operation identity, then reconcile sender history, exact entrypoints, storage, big-map records, and FA2 balances through RPC/indexer reads before deciding whether any retry is safe. Deployment helpers must keep the socket open for the response, enforce a bounded timeout, and treat an empty response as unknown—not failed.
+
+---
+
+## 2026-07-22 - Big-map key history is not current contract state
+
+**What happened**: Ravioli's fresh dependency reader queried TzKT's big-map keys endpoint without an explicit active-state filter. TzKT correctly returned Rotini's three consumed reservation rows as `active: false`, and the pre-write gate mislabeled them as open reservations.
+
+**Why it mattered**: Historical keys are valuable audit evidence but must not be used as the present authorization, reservation, or inventory set. Endpoint defaults can expose history and turn a clean contract into a false blocker—or conceal a live key if filtering is handled inconsistently.
+
+**Rule**: Every indexer-backed current-state read must request the explicit active/current filter and validate the marker on every returned row. Keep historical queries separate and named as history. Regression-test both inactive tombstones and genuinely active keys at every authorization or reserved-capacity boundary.
+
+---
+
+## 2026-07-22 - Durable proof choreography must verify semantic shape, not only operation counts
+
+**What happened**: Ravioli's durable journal still modeled mode 3 as one `generative_mint` action in both `commit_recipe` and `open_pack`, while the live runner's `PACK_SPECS[3]` correctly required two ordered generative actions. The journal's regression asserted the 46/8/4 actor totals and 3/55/6/6 operation totals but never compared action multiplicity or order with the product specification.
+
+**Why it mattered**: The journal would reject the correct real Studio payload only after earlier live operations had already committed state, leaving a safely recoverable but incomplete proof lane. Counts alone cannot distinguish a one-item pack from a same-project two-item generative pack.
+
+**Rule**: For every durable proof matrix, derive a regression from the real product specification and compare the ordered semantic payload at both commitment and fulfillment boundaries. Assert primitive multiplicity and order for every mode in addition to actor and operation totals.
+
+---
+
+## 2026-07-22 - A fresh-only journal must own its ancestor-creation boundary
+
+**What happened**: Ravioli's runner correctly required its app output lane to be absent and its journal correctly used exclusive, non-recursive creation, but the caller never created `ravioli/artifacts` between those two boundaries. The first truly clean-tree launch therefore passed all remote preflights and failed locally with `ENOENT` before intent creation.
+
+**Why it mattered**: Unit tests had enshrined the journal's correct missing-parent rejection without testing the production caller from an absent app tree. Manually pre-creating the hidden path would conceal an out-of-box failure, while changing the journal to recursive creation would weaken ownership, durability, and race guarantees.
+
+**Rule**: After the last read-only freshness check and before every pin or signer boundary, the production runner must exclusively claim and fsync each app-owned ancestor, reject pre-existing or symlinked lanes, then invoke the unchanged exclusive journal creator. Regression-test the composed production path from a genuinely absent tree, duplicate claims, symlinked parents, and the exact ordering `freshness recheck -> output claim -> immutable intent -> external write`.
+
+---
+
+## 2026-07-22 - Durable intent begins recovery before the first mutation
+
+**What happened**: Ravioli durably claimed its fresh lane and captured two UI-live screenshots, then a read-only Studio policy request did not produce the one log phrase the runner awaited. The operation/pin journal was still empty, but the default fresh-only gate correctly refused to overwrite the existing intent on another launch.
+
+**Why it mattered**: A proof can need recovery after durable local evidence but before an external mutation. Deleting the lane would discard the very ownership boundary meant to prevent ambiguity, while treating it as an ordinary mutation resume would allow more state than necessary. Waiting for one success/failure phrase also hid alternate UI failures behind a long timeout.
+
+**Rule**: Provide a separately gated pre-write resume that replays the immutable intent, requires identical signer counters and dependency/code hashes, zero operation and pin events, exact existing evidence files, and no symlinks or unexpected artifacts. Reuse verified screenshots without overwriting them and resume only the browser choreography. Every UI wait at a policy boundary must distinguish the expected outcome from a newly logged alternate failure and include the bounded current log in its exception.
+
+---
+
+## 2026-07-22 - Contract identity must be one cross-runtime definition
+
+**What happened**: Ravioli's Node dependency verifier used canonical Michelson identity and correctly accepted the live Gnocchi contract, but the proof bridge and Studio independently hashed raw JSON arrays. Taquito/Octez had reordered the same top-level script sections, so the browser rejected the already-proven contract before the intended LE policy check.
+
+**Why it mattered**: A safety rule implemented with different identity functions at two runtime boundaries can contradict itself in production even when each local unit test passes. Weakening the browser check would admit look-alike contracts; preserving raw serialization would reject honest originated code.
+
+**Rule**: Define contract identity as recursively key-sorted Micheline objects plus sorted complete top-level `parameter`, `storage`, `code`, and uniquely named `view` sections, while preserving every nested array exactly. Use that definition in compiler/dependency verification, bridge reads, and browser artifact checks. Test real compiled artifacts against protocol-reordered RPC representations and separately prove that a changed nested instruction still produces a mismatch.
+
+---
+
+## 2026-07-22 - A recovery escape must work inside the same sandbox as the publisher
+
+**What happened**: Ravioli correctly restricted recovery discard to a canonical draft with no signer intent, but the final acknowledgement used `window.confirm`. The creation-tools sandbox policy rejects browser modals, so the only safe escape from a mutation-free recovery could fail in the installed or self-hosted app.
+
+**Why it mattered**: A fail-closed recovery lock is useful only when its proven no-chain escape remains reachable in every supported host. A modal also hides destructive state outside the page's auditable, accessible interaction surface.
+
+**Rule**: Destructive recovery controls must use scoped inline confirmation. The first activation visibly arms the exact recovery key and stored bytes and must not mutate evidence; only a second activation of that unchanged key/value pair may close a no-chain draft. Any signer intent, legacy record, account mismatch, byte or key change, reload, or rerender must remain blocked or disarm confirmation, and a real-page regression must prove the complete interaction without modal APIs.
+
+---
+
+## 2026-07-22 - A seed beside arbitrary media is not generative provenance
+
+**What happened**: Ravioli's generated-at-open action accepted an arbitrary collector-selected PNG, GIF, or ZIP, then attached a valid adapter seed and artifact hash. The operation proved that those uploaded bytes were delivered atomically, but it did not prove that the committed Rotini project and seed produced them.
+
+**Why it mattered**: A wrapper advertised as generative must derive its child from the committed generator context. Merely recording a seed beside unrelated media lets the client substitute any artwork while preserving superficially convincing on-chain provenance.
+
+**Rule**: Generated-at-open products must resolve the holder's exact claim, obtain target/project/seed from the authoritative adapter view, render through the same deterministic project runtime, bind direct metadata to the resulting bytes and generator identity, and recheck the unchanged claim before signing. Remove arbitrary artifact inputs, package every renderer dependency into standalone and installer exports, and test resource, format, seed, and claim-race failures alongside every supported output type.
+
+---
+
+## 2026-07-22 - Recipient-bound rendering needs one immutable local opener
+
+**What happened**: Ravioli initially passed mutable `state.account` into the adapter's render-context view and metadata, then rechecked only claim id and serial after rendering. Because Rotini includes the recipient in its authoritative seed, a wallet switch during the render window could leave pinned bytes tied to the old address while the eventual operation used a new opener. The page also rendered before confirming that adapter reservation capacity remained available.
+
+**Why it mattered**: Claim identity alone is not the complete generative context, and valid project configuration does not prove backing is still consumable. A stale recipient or exhausted reservation can turn deterministic-looking output into an unusable orphan even when all individual fields appear valid.
+
+**Rule**: Capture one opener before entitlement resolution and thread it explicitly through controller queries, view callers, render context, provenance, metadata, and the final account-stability gate. Before downloading or pinning, require the exact adapter reservation view to exist and report positive capacity. Test account switches, claim changes, missing claims, missing reservation views, and exhausted capacity as zero-submit failures.
+
+---
+
+## 2026-07-22 - Transferable generative claims must not use the recipient as artwork entropy
+
+**What happened**: Ravioli's first automatic Rotini path included the eventual recipient in the pack seed and `get_render_context` request. Because blind-pack claims are transferable, a holder could preview the same revealed entitlement through several controlled wallet addresses, transfer it to the address producing the preferred output, and mint that selected variant.
+
+**Why it mattered**: One assigned pack serial should identify one generated artwork regardless of who later owns or opens it. Wallet-dependent entropy turns normal FA2 transferability into an output-grinding mechanism.
+
+**Rule**: Derive pack artwork only from immutable entitlement inputs—pack contract, pack token id, assigned serial, action index, and project id. Keep the captured opener in claim authorization, transaction signing, minter/provenance metadata, and the final account-stability check, but omit it from generator seed inputs and prove a transferred entitlement renders identical bytes.
+
+---
+
+## 2026-07-22 - Compile success is not an origination-size proof
+
+**What happened**: The complete Ravioli blind-pack logic compiled successfully as one SmartPy contract but forged into a 39,506-byte signed origination, beyond Tezos's 32,768-byte operation-data ceiling. After splitting claim, reveal, escrow, and refund state into a controller, the router fit—but a placeholder metadata URI still overstated its safety margin.
+
+**Why it mattered**: Source compilation and an empty-storage estimate can both pass while a real creator-supplied metadata URI makes the signed operation undeployable. Discovering that only after wallet approval would turn a deterministic release defect into an apparent user, RPC, or wallet failure.
+
+**Rule**: Certify every shipped origination from the exact public artifact and generated storage, forge the complete manager operation including branch and signature, substitute a documented maximum realistic metadata URI, and require explicit headroom below the protocol limit. Bind the certificate to raw artifact and source SHA-256 values and make the publisher refuse stale or missing certificates before requesting a signature.
+
+---
+
+## 2026-07-22 - Cross-contract commitments need one explicit packed layout
+
+**What happened**: Ravioli's router and blind controller initially packed the same logical reveal fields with different inferred SmartPy record layouts. The creator supplied the correct contents URI, salt, and offset, but the controller rejected the reveal as `BAD_REVEAL`.
+
+**Why it mattered**: A commitment can be cryptographically sound and still become permanently unrevealable when two contracts serialize the same fields differently. Field names alone do not establish Michelson pair layout.
+
+**Rule**: Define one explicit record layout for every cross-contract packed commitment, reuse that type on both sides, and test the exact off-chain bytes against both contracts. Include wrong-field and wrong-layout preimages as negative tests so a compiler-inferred layout cannot silently become part of the product protocol.
+
+---
+
+## 2026-07-22 - Permissionless cleanup cannot push tez to an arbitrary holder
+
+**What happened**: Ravioli's permissionless expiry path burned a holder's wrapper and then pushed the refund directly to that holder address. A KT1 holder without a payable default entrypoint—or one that deliberately rejected tez—would roll back the burn, claim removal, escrow release, and backing cleanup forever.
+
+**Why it mattered**: The party entitled to a refund is not necessarily an implicit account, and permissionless liveness cannot depend on arbitrary recipient code. A secondary transfer to one incompatible contract could strand every remaining pack participant and reserved child.
+
+**Rule**: Expiry must atomically burn the wrapper and convert its exact escrow liability into a holder-owned pull-payment credit without an external tez call. Only the credited address may withdraw, it may choose the payable destination, and a rejected withdrawal must roll back without reducing credit. Test rejecting KT1 holders, third-party expiry, unauthorized withdrawal, overdraw, rejecting destinations, partial/exact withdrawal, and successful routed payment.
+
+---
+
+## 2026-07-22 - A recovery path must not depend on the failed delivery path
+
+**What happened**: The standalone Ravioli page authenticated and downloaded revealed ciphertext before deciding whether a pack was already refund-only. Unavailable or tampered IPFS data could therefore suppress the refund UI, and terminal controller cancellation also disabled a holder's already-earned withdrawal credit.
+
+**Why it mattered**: Expiry refunds exist specifically for delivery that never becomes usable. Requiring reveal availability to reach that remedy, or tying durable credit withdrawal to the pack's lifecycle flag, recreated the same liveness dependency at the user interface.
+
+**Rule**: Derive sale/reveal/open deadline state and holder credit from authenticated chain state first. Fetch/decrypt reveal material only for an eligible open; never for buying, awaiting reveal, crediting an expired claim, or withdrawing durable credit. Pack cancellation may disable new claim settlement but must never disable an existing pull-payment credit. Test missing/tampered IPFS, safe and unsafe terminal asymmetry, rejected destinations, and successful retry after closure.
+
+---
+
+## 2026-07-22 - A size certificate is valid only for the active protocol it measured
+
+**What happened**: Ravioli validated the deployment certificate's protocol field as a nonempty string but did not compare it with the connected Tezos head. A protocol upgrade could therefore leave artifact hashes and arithmetic internally correct while invalidating the operation-size ceiling or encoding assumptions used by the certificate.
+
+**Why it mattered**: A stale certificate can fail only after a creator has pinned metadata or reached a wallet origination prompt, turning a deterministic compatibility failure into avoidable cost and ambiguous recovery state.
+
+**Rule**: Before the first pin, signer intent, or origination of a certified contract, read the connected RPC head, require its exact active protocol to equal the certificate protocol (or an explicitly certified compatibility set), then validate artifact identities and headroom. A mismatch regression must prove zero pins, signatures, and originations.
+
+---
+
+## 2026-07-23 - An aggregate installer must inherit the standalone app's complete asset gate
+
+**What happened**: CH-EASE recursively copied Ravioli's source directory, but its pre-package validation required only the main page, shared runtime, router, and two adapter artifacts. It did not require Ravioli's collector page, controller, templates, deployment certificate, or Rotini rendering runtimes even though the standalone Ravioli installer did.
+
+**Why it mattered**: Recursive copying can make a complete checkout look healthy while allowing a partial or stale release input to pass packaging. The central installer could then ship a Ravioli publisher that opens but cannot certify all four contracts, export a working holder page, or render generated children offline.
+
+**Rule**: Every aggregate installer must validate the exact required-asset set owned by each standalone app before copying it. Keep that relationship executable with a parity regression, and require every listed source file to exist and be nonempty so standalone and central packages cannot drift silently.
+
+---
+
+## 2026-07-23 - Every UI-live writer needs an exact-hash finality verifier
+
+**What happened**: The guarded proof bridge began correctly refusing signer operations without an `assertOperationApplied` callback, but Gnocchi's creator and collector fixtures—and the corresponding production sessions—still omitted it. The real Studio pinned its local fixture artifacts, received HTTP 409 before origination, logged the exact verifier error, and then looked like a generic browser timeout because the harness waited only for success text.
+
+**Why it mattered**: Removing the bridge guard would make confirmation failures ambiguously retryable, while fixing only the first fixture actor would move the same release failure to later collector operations. Production proof code must independently establish that the exact submitted hash, signer, operation kind, contract, entrypoint, and applied status agree before emitting success.
+
+**Rule**: Bind every creator and collector writer session to an exact-hash applied-operation verifier; model applied and rejected finality in fake chains; and race browser success waits against the action's visible failure prefix with bounded log output. Client-side rejections may emit safety-check receipts, so assert that they create no operation hash, submission, or operation receipt rather than requiring total receipt count to remain unchanged.
+
+---
+
+## 2026-07-23 - Real-page pack fixtures must model controller claims and reveal order
+
+**What happened**: Ravioli's real v3 pages published all five products, but the loopback browser fixture still projected router-only storage, skipped blind-controller views, opened blind wrappers before authenticated reveal, and injected generated image files through a control the production page had removed. This made a fixture failure look like a product failure and left the proof runner unable to exercise automatic Rotini rendering.
+
+**Why it mattered**: A wrapper balance is not sufficient evidence for a blind pack. The assigned claim ID, salted serial rotation, reveal material, adapter reservation, generator context, and clean-browser IPFS discovery determine which immutable recipe may open. Bypassing any of those boundaries cannot prove portable pack behavior.
+
+**Rule**: Real-page Ravioli fixtures and proof runners must sell the complete finite blind inventory (or wait for its sale end), publish the precommitted authenticated reveal, discover only the public kit from a fresh browser, resolve the exact holder claim and controller serial, and let Rotini render from its on-chain project plus immutable seed. Serve the exact pinned bytes through every runtime gateway and assert that no manual generative-artifact upload control exists.
+
+---
+
+## 2026-07-23 - TzKT operation hashes and numeric entity ids are different lookup types
+
+**What happened**: The in-app-market scheduler passed a numeric TzKT transaction id to a path that expects an operation hash. The underlying purchase was valid, but the readiness job degraded while trying to reload it.
+
+**Why it mattered**: Reconciliation is a release boundary. Using a valid identifier with the wrong endpoint can make applied commerce look unavailable and can delay the durable grant.
+
+**Rule**: Query TzKT numeric transaction ids through the collection endpoint's exact `id` filter; reserve hash-path endpoints for operation hashes. Test both identifier forms against representative upstream responses.
+
+---
+
+## 2026-07-23 - Browser entrypoint encoding must follow compiled Michelson
+
+**What happened**: Casino membership source used a named one-field parameter, but the compiled entrypoint accepted a scalar string. The browser encoded an object and failed before broadcast.
+
+**Why it mattered**: Source-level field names do not guarantee a Michelson record. A fully tested contract can still be unusable when the application binds to an assumed ABI.
+
+**Rule**: Inspect the compiled parameter schema for every wallet-facing entrypoint and make the client call that exact scalar or record shape. Include an encoder policy test and a bounded network smoke.
+
+---
+
+## 2026-07-23 - Dependent role operations require applied-state checkpoints
+
+**What happened**: The first Club Dues role-transfer runner estimated `accept_admin` before the preceding proposal was visible to the selected RPC, and a resumed run initially obscured which steps had already applied.
+
+**Why it mattered**: Sequential signer responses prove injection, not state visibility. Blind retry can duplicate an irreversible action or estimate against stale storage.
+
+**Rule**: After every dependent operation, wait for the exact hash to reach applied status, reread authoritative storage before resuming, and make resume stages require the hashes of all prior steps.
+
+---
+
+## 2026-07-23 - Mainnet smoke budgets must include first-write storage
+
+**What happened**: The Club Dues manager held enough for the 1 XTZ face-value payment but not the first membership big-map writes and transaction fees, so simulation failed without broadcast.
+
+**Why it mattered**: A balance equal to the economic amount is not enough to prove a state-creating entrypoint. Misreading simulation failure as an applied operation risks unsafe replay.
+
+**Rule**: Budget face value plus baker fee, allocation, and worst-case first-write storage before a mainnet smoke. If a public entrypoint is being tested, use an appropriately funded non-authority system wallet and record that wallet separately from contract control.
+
+---
+
+## 2026-07-23 - Desktop app registries must update their launcher gate in the same change
+
+**What happened**: A new `objkt-operator` desktop app key, route, private-access probe, and launcher tests were present, but the central Start Menu app-gate map omitted that key. The Pasta inventory coverage gate therefore failed during an otherwise unrelated release pass.
+
+**Why it mattered**: Desktop configuration, route availability, and private-access checks do not make an app inventory-complete when the canonical launcher gate cannot associate its route with the registered app key. Cross-domain release gates then fail late and obscure which registry edge is missing.
+
+**Rule**: Whenever a desktop app key is added, update its route-to-app launcher gate in the same change and run both the focused Start Menu gate tests and `npm run test:e2e:inventory:coverage`. Private visibility probes are an additional access boundary, not a substitute for the canonical app gate.
+
+---
+
+## 2026-07-23 - Disabled product fields must be cleared and zero-write proof boundaries must be resumable
+
+**What happened**: Ravioli's real Studio correctly rejected an LE wrapper whose deadline outlived its child, but the blind reveal and open deadlines remained populated after the same page switched back to deterministic mode. The proof stopped before any pin or chain write, while its resume loader recognized only the earlier two-screenshot boundary and not the equally safe retained three-screenshot boundary.
+
+**Why it mattered**: Disabling a field does not remove its stale value, so product-specific state can leak across modes and later become observable or accidentally submitted. A fail-closed proof that cannot resume an authenticated zero-write boundary also pressures operators to delete valid evidence or replay work unnecessarily.
+
+**Rule**: Clear every mode-only value at the transition that disables it, and exercise that transition through the real page rather than a reduced fixture. Enumerate each accepted zero-write resume boundary explicitly and require exact retained files, empty pin and journal-write sets, unchanged signer counters and mempools, and unchanged dependency identities before continuing.
+
+---
+
+## 2026-07-23 - Recovery depth budgets belong to authenticated components, not wrapper nesting
+
+**What happened**: The certified Ravioli router's Micheline code was depth 63 and its complete origination descriptor was exactly depth 64, both within the journal's depth-64 boundary. Wrapping that already-bounded descriptor inside the PREPARED operation and event raised the structural depths to 65 and 66, so the journal rejected the router before submission even though the smaller controller passed.
+
+**Why it mattered**: Raising the global projection ceiling would admit deeper arbitrary values throughout pins, evidence, calls, and journal replay merely to accommodate two fixed recovery wrappers. It would also confuse contract complexity with envelope nesting and weaken the memory-safety boundary established after the earlier unbounded storage failure.
+
+**Rule**: Project an authenticated PREPARED origination as separately bounded event envelope, operation envelope, and exact descriptor roots while sharing the same aggregate node and string-byte budget. Keep the universal depth ceiling unchanged, require exact origination event/operation/descriptor fields before using the split-root path, and regression-test both the certified compiled artifacts and an over-depth arbitrary object.
+
+---
+
+## 2026-07-23 - Recovery mutation order must ignore every current read-only bridge action
+
+**What happened**: Ravioli's exact controller-resume interceptor recognized the existing connection and storage reads but did not recognize the Studio certificate preflight's `active_protocol` request. It therefore treated a non-mutating protocol lookup as the first new mutation and stopped before replaying any pin or submitting any operation.
+
+**Why it mattered**: The fail-closed stop preserved the authenticated journal boundary, but a recovery allowlist that drifts from the production bridge can make a safe continuation unusable. Retrying without proving that the unexpected action is read-only could instead advance or duplicate a signer step.
+
+**Rule**: Keep recovery read-through actions aligned with the canonical bridge's complete read-only surface and regression-test the real Studio preflight order, including `active_protocol`. Read-only requests may delegate but must never consume a replay step; any unrecognized action must continue to fail closed before a write.
+
+---
+
+## 2026-07-23 - JSON proof equality must not depend on JavaScript object prototypes
+
+**What happened**: Ravioli pinned and applied its deterministic-vault product correctly, then rejected the captured public open kit because journal projection produced null-prototype records while the browser capture produced ordinary records. Node's prototype-sensitive deep equality reported a mismatch even though their complete JSON values and canonical bytes were identical.
+
+**Why it mattered**: JavaScript prototypes are not represented in JSON, IPFS content, Michelson storage, or the proof manifest. Treating them as evidence can stop a live proof after valid writes and force a new authenticated recovery boundary for data that never actually drifted.
+
+**Rule**: Compare JSON proof artifacts by deterministic canonical bytes or a digest of those bytes. Regression-test nested null-prototype records and reordered insertion while also proving that a real leaf-value change still fails.
+
+---
+
+## 2026-07-23 - Recovery tests must remain bound to the journal and artifact generation they were written for
+
+**What happened**: The retired Ravioli July 22 mode-0 replay tests still constructed their old two-operation boundary through the current journal sanitizer. Once the certified controller/router artifacts and journal-v2 descriptor rules changed, the obsolete fixtures failed with `Ravioli origination descriptor drift` even though the active July 23 current-v2 recovery and all production browser tests passed.
+
+**Why it mattered**: A historical recovery lane must never be silently reinterpreted through a newer contract or journal schema. Leaving its old executable tests in the active wildcard gate created a false release failure; updating their expected hashes to current artifacts would have been worse because it could imply that the superseded writer remained safe to run.
+
+**Rule**: Give every mutation recovery lane an explicit version and immutable identity. When a lane is retired, remove its runnable command, fail its flag before filesystem or network work, preserve its implementation/tests only as clearly named quarantine evidence, and replace its active regression with proof that the lane is unreachable. A replacement lane must have its own exact journal, artifact, dependency-delta, next-pin, and next-operation tests.
+
+---
+
+## 2026-07-23 - Historical signer fixtures must evolve with bridge finality guards
+
+**What happened**: The full Ravioli wildcard gate reached an older dependency-recovery fixture that still modeled explicit estimates and bounded sends but did not supply the bridge's now-mandatory exact-hash applied-operation verifier. Production recovery already had the verifier, so the hardened bridge correctly rejected only the stale test session.
+
+**Why it mattered**: A passing feature-focused browser suite can hide stale signer fixtures in less frequently run recovery families. Removing the guard would weaken every live writer; excluding the fixture would leave an important estimate-before-submit path untested.
+
+**Rule**: Whenever a shared signer bridge adds a mandatory safety callback, search every production and fixture constructor across active and historical recovery families. Test fixtures that intentionally submit must model exact operation-hash, action, target, and entrypoint finality; truly read-only fixtures must remain unable to submit.
+
+---
+
+## 2026-07-23 - Edition-window UI assertions must distinguish public mint expiry from reserved delivery
+
+**What happened**: The Ravioli holder page deliberately clarified its LE child status from the vague phrase “Immutable LE child expires” to “LE child public mint ends,” followed by an explicit statement that already reserved pack capacity remains deliverable until the wrapper's open cutoff. The browser inventory still asserted the obsolete phrase.
+
+**Why it mattered**: Treating the child mint window as the token or allocation itself “expiring” misstates the contract behavior and can make creators think a properly reserved pack becomes undeliverable when public issuance closes.
+
+**Rule**: In UI copy and E2E assertions, name the exact deadline that ends: public child minting, wrapper primary sale, reveal, or open/refund. When reserved allocations survive public mint closure, assert that continuation explicitly rather than using generic “token expires” language.
+
+---
+
+## 2026-07-23 - Primary purchase and holder redemption are independent Ravioli actions
+
+**What happened**: Reveal/refund hardening made the active-sale branch return after configuring Buy, which silently removed the secondary Open action for collectors who already held deterministic or revealed wrappers. The same branch risked making sale availability depend on reveal/open-kit retrieval.
+
+**Why it mattered**: An existing holder must not wait for the creator's sale to end to redeem a valid wrapper, while a new buyer must still be able to inspect and purchase when an IPFS reveal gateway is unavailable. Treating these as one action state couples unrelated user needs and creates a marketplace-style dependency in a self-hosted page.
+
+**Rule**: Model primary purchase and holder redemption as independent actions. During an active sale, expose Open only when finalized/cancellation/reveal/deadline state permits it, never fetch reveal/open-kit content merely to load or buy, and resolve or validate that content only after the holder chooses Open. Browser coverage must execute both actions and poison-count the reveal request path.
+
+---
+
+## 2026-07-23 - Every wallet action surface needs one synchronous submission latch
+
+**What happened**: The portable holder page set `operationPending` only after wallet connection, safety validation, and contract lookup, and disabled only the primary button. Two rapid clicks on the restored secondary Open control could enter the asynchronous signer path twice and consume two wrappers.
+
+**Why it mattered**: Disabling a button after an await is presentation feedback, not concurrency control. A second valid Tezos operation can be signed while the first is pending even when both originated from one apparent user gesture.
+
+**Rule**: Resolve whether an action exists, then latch it synchronously before the first await. Every primary, secondary, keyboard, or programmatic handler for that signer surface must share the same latch; disable all related action and account-switch controls, and restore only the last safe configured state after failure or confirmation. Regression-test two same-tick clicks with the first safety call deliberately delayed and require exactly one signer request, send, and confirmation.
+
+---
+
+## 2026-07-23 - Recovery storage checks must follow the certified contract schema exactly
+
+**What happened**: The current-v2 Ravioli verifier authenticated its journal, dependencies, contracts, operations, pins, counters, and mempools, then required an `opened_by` big map that had been removed from the certified router in favor of the aggregate `opened` map.
+
+**Why it mattered**: The stale check blocked a safe continuation immediately before the next pin, despite both RPCs agreeing with the exact certified code and storage. Relaxing storage validation wholesale would be equally unsafe because it could hide real pack, supply, or recipe drift.
+
+**Rule**: Derive recovery storage expectations from the exact certified source/artifact generation. Require every surviving field and reject superseded fields when the certificate makes the schema immutable; regression-test both the accepted live shape and genuine missing/extra-field drift. Historical verifier schemas may remain only behind a proven-retired command boundary.
+
+---
+
+## 2026-07-23 - Visible iframes are not necessarily navigated Playwright frames
+
+**What happened**: A full Pasta browser run saw the Rotini iframe element become visible just before Playwright's frame list contained its `/creation-tools/rotini/index.html` navigation, so an immediate lookup returned `undefined` even though the app loaded normally.
+
+**Why it mattered**: Element visibility proves layout attachment, not completion of the nested browsing context's navigation. An intermittent harness failure obscures product regressions and wastes release-gate time.
+
+**Rule**: After asserting an iframe element is visible, poll for the expected frame URL before installing an in-frame harness or evaluating its globals. Use the same frame-ready helper for every Pasta publisher rather than duplicating immediate `page.frames().find(...)` lookups.
+
+---
+
+## 2026-07-23 - Exact presentation bytes and canonical JSON identity are different proof invariants
+
+**What happened**: Ravioli's authenticated current-v2 recovery accepted the journal, dependencies, operations, IPFS pins, counters, and contract storage, then rejected the frozen open-kit download because it was not deterministic minified JSON. The Studio intentionally downloads `JSON.stringify(value, null, 2) + "\n"` for a readable creator-owned recovery file, and the captured byte hash exactly matched that output; only the progress record and pinned public reveal are written as canonical JSON.
+
+**Why it mattered**: Requiring canonical bytes for an artifact whose product contract promises exact human-readable download bytes made a valid recovery boundary unusable immediately before the next pin. Reformatting the frozen file would have destroyed its authenticated SHA-256 identity, while relaxing all canonical checks would have weakened the journal and IPFS evidence.
+
+**Rule**: Define the byte contract for every proof artifact at its producer. Preserve and hash exact presentation bytes for user downloads, require canonical raw bytes only for artifacts produced canonically, and compare equivalent JSON across those formats by deterministic canonical value. Regression-test both the intentional formatting difference and a real nested-value mutation.
+
+---
+
+## 2026-07-23 - Blind-pack policy assertions must describe the artifact layer being verified
+
+**What happened**: Ravioli's mode-1 Studio correctly pinned an aggregate commit–reveal manifest and authenticated ciphertext, then the live verifier rejected the next token metadata because it required the manifest's protocol label on the token's pre-reveal state. The token correctly said `authenticated-ciphertext-until-reveal` and bound the public manifest URI, sealed contents URI, and reveal commitment.
+
+**Why it mattered**: Both labels were truthful in their own layer, but treating them as interchangeable stopped a valid workflow after durable side effects. The ephemeral proof browser then closed before an open kit existed, so the encrypted precommit could not be safely continued.
+
+**Rule**: Derive proof policy from each producer's exact schema and lifecycle layer: aggregate protocol, current token disclosure state, and private recovery state are separate invariants. Exercise real producer output through the production `beforePin` policy. For any blind workflow, persist the private preimage outside an ephemeral browser before or alongside its first durable ciphertext pin, and prove decryptability plus commitment identity before signing the on-chain pack.
+
+---
+
+## 2026-07-23 - Resource allocators must clean up failures that happen before ownership transfer
+
+**What happened**: Ravioli's buyer-page allocator launched Chromium, created a context, page, and monitor, then timed out while waiting for read-only on-chain state before returning the actor object. The caller could not close resources it never received, so the orphaned browser kept the proof process alive after the handled exception.
+
+**Why it mattered**: A harmless RPC/view delay became a process-lifecycle failure and consumed time from an immutable Limited Edition sale. Outer cleanup is insufficient when ownership has not yet crossed the function boundary.
+
+**Rule**: Any function that allocates a browser, socket, server, file handle, or signer session must wrap all pre-return initialization in its own `try/catch` and dispose every allocated child before rethrowing. Transfer cleanup ownership only after the fully initialized object is returned, and regression-test both eventual success and exhausted initialization.
+
+---
+
+## 2026-07-23 - Timed live proofs must budget recovery before entering a signer flow
+
+**What happened**: Ravioli used a fixed 12-minute primary-sale window. Publication and the first purchase succeeded, but one 30-second buyer readiness timeout plus careful chain reconciliation consumed the remaining sale time before a safe continuation could be constructed.
+
+**Why it mattered**: Contract correctness did not help once the immutable product deadline expired. A timed E2E proof must allow for bounded RPC retries, browser setup, indexing, confirmation, evidence capture, and forensic pause—not only the expected happy-path clicks.
+
+**Rule**: Derive proof windows from the worst-case bounded retry and confirmation budget. Before opening a timed buyer surface and again immediately before submission, read the committed deadline from chain and require the complete remaining budget plus a safety margin. Derive chain-timestamp wait limits from the same committed deadline.
+
+---
+
+## 2026-07-23 - Blind preimages must leave ephemeral state before the first signer boundary
+
+**What happened**: Earlier recovery capture was enabled only for named resume lanes. A fresh blind run could still create durable pins and approach `create_pack` while its complete salt, nonces, offset, and plaintext lived only inside an ephemeral browser.
+
+**Why it mattered**: Recovery is a property of every blind mutation, not merely of runs already known to be interrupted. Capturing after a failure is too late if browser teardown or process loss destroys the only decryptable preimage.
+
+**Rule**: Require a disjoint permission-restricted private recovery root for every fresh blind live execution. Copy and validate the complete precommit there before journal PREPARED or signer delegation, capture again on handled failure, and categorically exclude private bytes and paths from public proof/package output.
+
+---
+
+## 2026-07-23 - Crossed recovery commands must be retired as soon as their exact boundary advances
+
+**What happened**: The one-shot current-v4 continuation correctly crossed fresh pins and operations 10–15, then stopped on a read-only buyer timeout. Leaving its resume or preflight command available would have invited replay against a 61-event state that no longer matched the authenticated 40-event input boundary.
+
+**Why it mattered**: A recovery command is safe only for one exact immutable prefix. Once any new pin or accepted operation exists, even a preflight entrypoint can mislead operators into treating the old boundary as current.
+
+**Rule**: Immediately remove runnable package commands and fail every crossed recovery flag before ordinary validation, filesystem, or network work. Preserve historical loaders only as quarantine audit code with test-only immutable-prefix fixtures; require a new run root for the next live product.
+
+---
+
+## 2026-07-23 - Proof run identifiers must be portable before the first write
+
+**What happened**: A timestamp-shaped proof identifier used uppercase `T` and `Z`, while the suite's portable run contract accepts only lowercase `[a-z0-9][a-z0-9._-]{0,127}` identifiers. Discovering that after evidence exists would make renaming break path-bound hashes and same-run dependency checks.
+
+**Why it mattered**: A proof package must survive shells, filesystems, archives, URLs, and installer handoffs without gaining aliases or changing identity after its first external side effect.
+
+**Rule**: Generate run identifiers through the shared lowercase validator and validate the final run-root basename before any pin, signature, or chain write. Never rename a proof run after evidence exists.
+
+---
+
+## 2026-07-23 - A confirmed write must survive its post-write refresh
+
+**What happened**: Gnocchi token 1 was confirmed on Shadownet, then the Studio's post-confirmation `read_storage` refresh returned a transient loopback HTTP 500. The contract mutation was valid, but the non-checkpointed runner lost its in-memory receipt stream on exit.
+
+**Why it mattered**: A read failure after confirmation must not turn an applied operation into an unsafe ordinary rerun or an unverifiable product.
+
+**Rule**: Retry only explicitly declared read-only storage projections with a bounded reader; never retry write-like bridge actions. Before every external effect, durably record pin bytes or PREPARED intent, then append SUBMITTED and APPLIED records so post-write refresh failure is recoverable without replay.
+
+---
+
+## 2026-07-23 - Normalized artifact paths are not unique identities
+
+**What happened**: Converting recovery paths into readable IDs by replacing separators made distinct slash- and hyphen-shaped paths collide during Gnocchi final packaging.
+
+**Why it mattered**: Duplicate proof IDs make otherwise hash-valid artifacts ambiguous to manifests, validators, and downstream app admission.
+
+**Rule**: Build proof artifact IDs from a bounded readable prefix plus a content-digest suffix, assert ID and path uniqueness before publication, and keep a regression whose distinct paths normalize to the same readable prefix.
+
+---
+
+## 2026-07-24 - Protocol timestamps are instants, not presentation strings
+
+**What happened**: Ravioli mode-2 policy rejected `2026-07-31T02:07:00.000Z` against `2026-07-31T02:07:00Z` after adapter setup and durable pins, even though both strings encode the same instant.
+
+**Why it mattered**: Formatting-only drift stopped a valid live workflow at a recovery boundary and could have encouraged replay of already-applied operations or pins.
+
+**Rule**: Parse strict protocol timestamps, reject invalid values, and compare their epoch instants or chronology. Preserve original ISO text for evidence, but never use textual equality to decide deadline identity.
+
+---
+
+## 2026-07-24 - Self-disconnect alerts must cover the socket, not only the Leave button
+
+**What happened**: WTF LIVE gained peer join/leave sounds, but the local participant still received no audible warning when their own room socket ended. An explicit Leave button alone could not cover kicks, transient network loss, or server-side disconnects.
+
+**Why it mattered**: A participant can appear present while their realtime connection has already ended. Without a local cue, hosts and guests may continue speaking or presenting to a room they are no longer in.
+
+**Rule**: Route intentional exits and the active socket's unexpected close event through one local goodbye alert, clear the closed socket reference, and pair the audible cue with explicit unexpected-disconnect status. Browser coverage must force-close the socket as well as click Leave.
+
+---
+
+## 2026-07-24 - Operation-hash lookups may include the root and its internal transactions
+
+**What happened**: After Ravioli's valid `set_pack_contents` operation applied, the TzKT operation-hash endpoint returned the top-level router transaction plus its internal controller transaction. A verifier that required the response array to contain exactly one row timed out after the write.
+
+**Why it mattered**: A normal Tezos operation tree was misclassified as ambiguous, turning an applied deadline-sensitive mutation into an apparent failure.
+
+**Rule**: From an operation-hash response, select the unique root transaction by exact operation hash, signer, top-level target, and requested entrypoint; retain internal transactions as operation-tree evidence. Reject zero or multiple matching roots, not a response merely because it contains internals.
+
+---
+
+## 2026-07-24 - Deadline-critical proof transitions need recovery-aware orchestration
+
+**What happened**: Ravioli's reveal was preserved before its immutable cutoff, but the holder-settlement lane was still being built when the later open deadline expired. Its guard correctly stopped before any holder intent or chain write, leaving opening/delivery unproved.
+
+**Why it mattered**: A window sized for happy-path execution can expire during debugging, evidence capture, indexing, or safe reconciliation even when every contract transition is correct.
+
+**Rule**: Schedule the nearest immutable transition first, budget implementation and forensic recovery in addition to bounded execution, and fail before signing when the remaining window cannot cover the complete lane. Record any deadline-first out-of-order mutation as a first-class authenticated sidecar, and use a fresh adequately bounded product when a required cutoff is missed rather than replaying or overstating proof.
+
+---
+
+## 2026-07-24 - Presence sounds belong to live deltas, not room snapshots
+
+**What happened**: WTF LIVE exposed exact peer-joined and peer-left WebSocket events but had no audible feedback for those room transitions. The initial room snapshot also contains peers, so treating every discovered peer alike would replay a burst of false join sounds when the current user connects.
+
+**Why it mattered**: Notification audio is useful only when it communicates a new event. Snapshot noise, self-join tones, or audio that ignores browser autoplay and mute preferences would make busy rooms less usable.
+
+**Rule**: Unlock local Web Audio from the room join gesture, play presence cues only for subsequent peer join/leave deltas, keep them outside the shared WebRTC audio graph, and provide a persistent local mute control. Browser coverage must distinguish the join and leave tone plans and verify the preference state.
+
+---
+
+## 2026-07-24 - Positive and expiry-negative live proofs need separate timed products
+
+**What happened**: Ravioli's positive funded-pool proof deliberately sold only two of three wrappers. The controller correctly required either full sellout or sale expiry before reveal, so lengthening that same sale for recovery safety would have made the proof runner sleep for hours or days. Earlier short windows instead expired while debugging and prevented atomic opening from being proved.
+
+**Why it mattered**: One product cannot simultaneously provide a generous positive-path recovery budget and a fast deterministic expiry test when its intended partial sale makes the positive reveal depend on the sale clock. Coupling those goals either creates brittle deadlines or an impractically long test.
+
+**Rule**: Give green-path live products long configurable sale, reveal, and open windows, and make any reveal intended before sale end a complete sellout. Put expired-permission, refund, and permissionless-closure assertions in a separate explicitly short, partially sold fixture. Preserve every stronger cross-product invariant—especially a Limited Edition child expiring after the wrapper sale—and record the two proof lanes independently.
+
+---
+
+## 2026-07-24 - A loopback port is part of an installed app's persistence schema
+
+**What happened**: Every Pasta Electron shell asked the operating system for a random loopback port while its local-first workspace, drafts, contract records, and recovery indexes lived in browser localStorage. Because localStorage is scoped to the complete origin, an ordinary relaunch could select a new port and make intact creator data appear erased.
+
+**Why it mattered**: Packaging the app did not make its browser state native or origin-independent. A changing localhost port silently changed the application's data namespace, undermining the central promise that an installed Colander workspace survives without wtfOS or another hosted service.
+
+**Rule**: Treat an installed loopback origin like a database schema identifier: assign a documented immutable host and product-specific port, reserve one instance per product, and fail clearly if the origin is occupied instead of falling back. Regression coverage must restart both the server and a persistent browser profile and read the pre-relaunch value from the same origin.
+
+---
+
+## 2026-07-24 - Actual-page fake writers must model the production finality contract
+
+**What happened**: Macaroni's production V1 and V2 proof sessions already supplied the bridge's mandatory exact-hash verifier, but both actual-Studio fake chains predated that guard. Their creator and collector sessions omitted the callback, so the hardened bridge stopped each browser journey at its first post-origination write even though the fake state transition itself was valid.
+
+**Why it mattered**: A real-page alpha gate is only useful when its fake signer boundary enforces the same safety contract as production. A test fixture that merely returns plausible operation hashes can either fail for irrelevant parity drift or, if the guard is weakened to accommodate it, hide signer, target, entrypoint, or finality bugs.
+
+**Rule**: Every fake chain used by an actual-page writer must retain an operation ledger and verify the exact hash, signer, action, contract, entrypoint sequence, and applied status for every actor session. When a shared signer guard changes, audit fixture constructors and production constructors together, keep the guard fail-closed, and add a negative scope-drift regression rather than using an unconditional success callback.
+
+---
+
+## 2026-07-24 - Installer compilation is not packaged-runtime proof
+
+**What happened**: Pasta's desktop source policies could confirm Electron configuration while eight standalone workflows never launched their packaged outputs, packages carried no exact source provenance, and the suite smoke covered only one of eight bundled tools. The release audit also inferred JavaScript route-module names from URL slugs, falsely rejecting both CH-EASE's camel-cased identifier and Macaroni's combined route module, while a generic hyphen check would have classified every hyphenated product tag as a prerelease.
+
+**Why it mattered**: An installer can compile yet omit current contract/runtime assets, start on the wrong origin, lose browser-scoped creator data after relaunch, or be impossible to trace to one clean commit. False release blockers and incorrect release-channel metadata make those real failures harder to distinguish.
+
+**Rule**: Every publishable desktop artifact must embed clean exact-commit provenance, match the workflow source SHA, bind any existing release tag to that same commit, and pass a post-package boot plus same-profile relaunch smoke on the operating system that will install it. Suite smoke must traverse every bundled product, assert version-critical assets, and classify browser failures through exact URL/status evidence rather than blanket console suppression. Model route files, registered identifiers, and prerelease versions explicitly; never derive code identifiers or release channels from punctuation in product slugs.
+
+---
+
+## 2026-07-24 - A red-light contract assertion must never submit the forbidden operation
+
+**What happened**: Macaroni proved its wallet-limit and sold-out boundaries by calling `.send()` and expecting the contract to reject. That works while the contract is correct, but a regression would make the supposedly negative test inject a real second mint before the assertion noticed that rejection was missing. The interrupted V2 lane also showed that actor counters cannot serve as immutable recovery identity because unrelated contract work may legitimately advance them before a target-specific continuation runs.
+
+**Why it mattered**: A proof harness must not convert the failure it is designed to detect into a durable chain mutation. Recovery must distinguish unrelated wallet activity from mutations of the exact contract under proof without replaying already-applied work.
+
+**Rule**: Prove expected contract failures with signer-free estimation or RPC simulation, then assert unchanged counters and target history; never use `.send()` for a red-light assertion. Bind recovery identity to exact target history, code, storage, and content, use actor counters only as authenticated floors, capture the live counter immediately before an authorized submission, and require that operation at exactly counter plus one.
+
+---
+
 ## 2026-07-24 - Production contract cutovers must update both durable env copies
 
 **What happened**: Marketplace V2 was originated and `/etc/wtf/wtf.env` was updated, but the normal Hetzner deployment path reads `/opt/platform/repos/wtf-app/.env`, which is a separate regular file rather than a symlink. Updating only the service-oriented env copy would have allowed the next image build to bake the legacy V1 browser address back into wtfOS.
@@ -9267,3 +10057,538 @@
 **Rule**: Before a production contract cutover, resolve the exact env file used by the normal deploy checkout and compare it with any `/etc/wtf` service env. Back up and update both when they are distinct, preserve the retired address under an explicit legacy variable, then rebuild through the normal deployment path and verify the public API plus browser bundle report the new KT1.
 
 ---
+
+## 2026-07-24 - A proof must not catch its own expected-failure assertion
+
+**What happened**: Macaroni's read-only negative check placed both the estimator call and `assert.fail("...WALLET_LIMIT")` inside one `try`. When a broken contract accepted the forbidden mint, the assertion was caught as though it were an RPC rejection, and its own marker text satisfied the subsequent regular expression. The recovery checkpoint also wrote `COMPLETED` before its receipt, index, artifact inventory, and manifest had been assembled.
+
+**Why it mattered**: The harness could certify the exact missing restriction it was meant to detect, while a local packaging failure could leave an unrestartable checkpoint falsely claiming a complete proof. Both defects turn proof-control text into stronger evidence than the external state it is supposed to describe.
+
+**Rule**: Catch only the external simulation call, validate the marker from that caught external error, and place the "unexpected success" assertion after the catch boundary. Normalize every active mempool representation before allowing a one-shot write. A recovery checkpoint may record applied continuation state before packaging, but it must not claim completion; write and validate all evidence first, then make the package manifest the final, unambiguous completion marker.
+
+---
+
+## 2026-07-24 - Downstream negative proofs must satisfy every upstream invariant
+
+**What happened**: Ravioli intended to prove that the official Gnocchi allocation path rejects a declared child expiry later than the child's locked on-chain expiry. Its simulated blind pack omitted mandatory reveal/open deadlines and a reveal commitment, so the Router correctly rejected the fixture before the adapter or Gnocchi target ran.
+
+**Why it mattered**: The observed error did not prove the cross-contract restriction named by the test, and the malformed read-only fixture repeatedly stopped an otherwise unchanged authenticated continuation before its first semantic write.
+
+**Rule**: Construct negative fixtures as valid members of every earlier validation layer, accept only the exact intended downstream error, and run the complete live simulation before releasing a continuation command. Never use a union of earlier and intended error markers to make an end-to-end contract assertion pass.
+
+---
+
+## 2026-07-24 - Recovery decisions compare continuation deltas, not total history
+
+**What happened**: Ravioli failure handling treated total session receipts and total browser recovery records as new work. An authenticated event-86 continuation therefore mistook its recovered prefix for current-process side effects and attempted an empty private capture after a read-only pre-write rejection.
+
+**Why it mattered**: The unnecessary capture failed and obscured the actual contract-simulation error, even though no new pin, operation, counter, journal event, or recovery record existed.
+
+**Rule**: Snapshot each actor's write-receipt count and the browser recovery-record count before continuation work begins, count only state-changing receipt actions, and require private capture only for a positive delta. Read-only connections, chain checks, recovered receipts, and pre-existing records belong to the baseline.
+
+---
+
+## 2026-07-24 - A live preflight must reproduce the runner's decoder transport
+
+**What happened**: Ravioli's TzKT dependency validation correctly observed Rotini project 0 with `max_supply: "4"`, but the operation-adjacent capacity check reread the same Michelson `option nat` through Taquito. Taquito returned `{ Some: BigNumber(4) }`; direct `Number()` conversion produced `NaN` and stopped the exact event-86 continuation before its next write.
+
+**Why it mattered**: The chain state and reserved capacity were valid, yet a read-only integration mismatch repeatedly stranded an authenticated recovery. A scalar indexer fixture could not prove that the signer-side client would decode the same field into an arithmetic-safe value.
+
+**Rule**: Normalize Michelson options at the client boundary, require `Some`/non-null before safe-integer arithmetic, and share that normalization across prewrite and terminal checks. Before releasing a recovery command, run a signer-free, env-gated preflight against the exact contract through the same SDK and storage path the runner will use; indexer-only evidence is not a substitute for SDK decoder-shape coverage.
+
+---
+
+## 2026-07-24 - Electron Builder resource directories are not packaged application namespaces
+
+**What happened**: Every desktop package generated an exact build-provenance manifest and attempted to remap it to `build/build-provenance.json`. Electron Builder reserves `build` for build resources and omitted that destination from the application archive, so a successful package had no packaged provenance.
+
+**Why it mattered**: Source policy and a successful installer compile both passed while the first real packaged-runtime check failed. The release artifacts could not prove which revision or target created them.
+
+**Rule**: Put runtime-readable generated files in an explicit non-reserved application subtree, inspect the real `app.asar`, and launch the packaged executable before calling a packaging path ready. Never assume a FileSet destination below Electron Builder's build-resources directory becomes application content.
+
+---
+
+## 2026-07-24 - Child BrowserWindows do not inherit a native preload contract automatically
+
+**What happened**: Pasta Suite supplied its native preload to the main window but replaced child-window preferences without adding the preload. Bundled tools opened successfully yet lacked the desktop marker and attempted hosted API behavior.
+
+**Why it mattered**: A central native shell can appear healthy while child products silently lose offline behavior, native feature detection, and the independence the installer is meant to provide.
+
+**Rule**: Treat every `BrowserWindow` and `setWindowOpenHandler` override as a separate security and capability boundary. Declare the intended preload explicitly for each boundary, assert it from a real packaged child, and smoke every bundled product—not only the launcher.
+
+---
+
+## 2026-07-24 - Packaged readiness is an application contract, not global network idleness
+
+**What happened**: Desktop publishers intentionally ignored the body of documented local 401/404 API stubs. Playwright observed the HTTP response but never considered that request finished, so `networkidle` timed out after an otherwise healthy page had loaded.
+
+**Why it mattered**: A generic readiness heuristic turned correct application behavior into a release blocker across every standalone installer.
+
+**Rule**: Define packaged readiness with document state plus explicit product and asset assertions. Observe page exceptions, failed requests, and unexpected responses during the controlled navigation, but permit only exact documented URL/method/status stubs; do not use global network idleness as a proxy for desktop health.
+
+---
+
+## 2026-07-24 - macOS artifact paths follow Electron Builder's executable name
+
+**What happened**: All eight standalone workflows looked for display-name bundles such as `Spaghetti Studio.app`, while their package manifests set `executableName: "spaghetti-studio"` and Electron Builder emitted `spaghetti-studio.app`.
+
+**Why it mattered**: Every macOS workflow would fail before launching or uploading a valid artifact, even though packaging itself succeeded.
+
+**Rule**: Derive macOS bundle paths from the effective Electron Builder executable name, with the product name only as the fallback when no executable name exists. Regression-test workflow arguments against package metadata and prove at least one fresh real bundle path before generalizing the matrix.
+
+---
+
+## 2026-07-24 - Resource identity is not a substitute for an authenticated collection counter
+
+**What happened**: Ravioli selected Rotini project 0 but derived the collection's expected `next_project_id` as `projectId + 1`. The exact dependency already contained projects 0, 1, and 2, so its valid authenticated counter was 3. A separate live preflight hardcoded 3 and passed, concealing that production still expected 1.
+
+**Why it mattered**: A green test and a correct live read did not protect the continuation because test and production constructed different expectations. Reusing a selected resource identifier as global collection state caused deterministic false drift immediately before the first new operation.
+
+**Rule**: Build operation-adjacent and terminal expectations from one shared constructor fed by authenticated dependency state. Cross-bind resource identity, contract identity, collection counters, and planned token ids, but never infer a global allocation counter from one selected id. Exact live tests must call the production constructor rather than restating its expected values independently.
+
+---
+
+## 2026-07-24 - Blind-pack disclosure and cancellation are capacity lifecycle boundaries
+
+**What happened**: Ravioli's proof plan treated a blind pack's reveal as a later plaintext IPFS publication even though the Studio had already committed and pinned an authenticated encrypted envelope before sale. The withheld-reveal path also refunded and burned every wrapper without releasing the allocation capacity reserved through its child adapter, and the first append-only correction could not reopen if execution stopped immediately after recording the new plan-extension event.
+
+**Why it mattered**: Publishing plaintext early would destroy the blind product, repinning later would certify evidence different from the sale commitment, and closing only wrapper state would strand child mint capacity indefinitely. A non-restartable event boundary would turn a durable safety record into a new recovery trap before the first corrected signer operation.
+
+**Rule**: For blind products, create and authenticate the canonical encrypted reveal envelope before sale, bind its URI and commitment into the pack, reject plaintext reveal artifacts before any pin side effect, and later reveal only the decryption material already committed. After a cancelled pack reaches zero claims and wrapper supply, recover every unused router allowance, adapter reservation, and target reservation with exact before/after checks. Every append-only plan-extension boundary must reopen idempotently before subsequent signer work.
+
+---
+
+## 2026-08-05 - Expiring registration health needs an explicit permanent policy and must not gate launchers
+
+**What happened**: Desktop-app docs and install-key refreshes always wrote fixed 24-hour expiries and required admins to renew every app one row at a time. When many of those timestamps elapsed on 2026-06-21, the then-current runtime gate incorrectly reused registration installability as launcher availability, producing a broad app brownout even though the affected apps remained explicitly enabled.
+
+**Why it mattered**: Documentation and key freshness are operational health signals, while launcher visibility is an intentional product control. A maintenance clock must not silently override that product decision, and permanent first-party registrations should not require a daily manual ritual.
+
+**Rule**: Keep launcher availability bound only to explicit enablement (plus deliberate user entitlement gates). Give registration credentials an explicit persisted permanent/expiring policy; permanent bypasses only clock expiry, never manual stale, revoke, integrity, entitlement, or disable decisions. Bulk renewal must be transactional, preserve launcher state, clear prior key revocation only when a replacement key is actually issued, and have an inventory-owned browser proof.
+
+---
+
+## 2026-08-05 - Hook dependencies must not reference later derived bindings
+
+**What happened**: The Inbox admin-contact integration placed a read-marking effect before the `selectedAdminContact` binding used by the effect and its dependency array. Type checking and the production build passed, but opening `/mail` crashed during render with a temporal-dead-zone error.
+
+**Why it mattered**: Static verification did not exercise JavaScript's runtime initialization order, so a secondary integration path could have made the existing Inbox unusable even though its types were sound.
+
+**Rule**: Declare derived render values and helper bindings before every hook that evaluates them, including dependency arrays. After inserting cross-app state into an existing screen, run a real route-level browser smoke test in addition to type checking and builds.
+
+---
+
+## 2026-08-05 - Cross-platform icon generation should keep the source PNG canonical
+
+**What happened**: Attempting to assemble checked-in macOS `.icns` files with `iconutil` rejected locally generated iconsets even though their PNG dimensions and RGBA channels matched extracted iconsets. ImageMagick also aborted on one valid SVG path shape when rasterizing directly.
+
+**Why it mattered**: Native icon preparation could fail before Electron packaging and make a visual asset pass platform-dependent.
+
+**Rule**: Keep the palette SVG and 1024px RGBA PNG as canonical tracked assets, use `rsvg-convert` with a guarded ImageMagick fallback for rasterization, let Electron Builder derive platform wrappers from the canonical PNG/ICO inputs, and verify the resulting files with `file` plus a local package preflight.
+
+---
+
+## 2026-08-06 - Cache identity normalization must not rewrite active fetch traversal
+
+**What happened**: WTF TV used the same IPFS canonicalizer for stable source/cache identity, gateway fallback candidates, and HTTP redirect targets. Every configured candidate collapsed to the primary gateway, and a valid NFT.Storage redirect to `dweb.link` was rewritten back to NFT.Storage until the redirect cap failed. A two-minute warmer repeated the same five failures about 14,640 times in one retained production day.
+
+**Why it mattered**: Work intended to warm media never reached a healthy fallback, multiplied outbound traffic and logs, and left viewers exposed to cold or failed media while appearing to have a complete gateway policy.
+
+**Rule**: Keep canonical resource identity separate from network traversal. Normalize a source once for cache keys, but validate each concrete candidate and redirect without changing its approved host; regression-test distinct fallback URLs, real redirect progression, and rejection of private or unallowlisted targets before any follow-up request.
+
+---
+
+## 2026-08-06 - Declared SystemEvent handles need ingestion-policy parity tests
+
+**What happened**: The desktop client, interaction inventory, and E2E workflow declared shortcut lifecycle and context-menu event names that the server allowlist omitted. Ingestion silently replaced those names with `desktop.object.clicked`; 19 historical shortcut launches were recoverable only by reconstructing their raw reference and metadata shape.
+
+**Why it mattered**: Usage ordering, challenge triggers, and admin observability could not rely on the documented normalized handles even though every upstream declaration looked complete.
+
+**Rule**: Whenever a client declares a normalized SystemEvent, prove the ingestion boundary preserves that exact name and keep unknown-name fallback as a separate assertion. Inventory coverage proves a handle is documented and representable; it does not replace a parity test against the server normalization policy.
+
+---
+
+## 2026-08-06 - One launch gesture must have one activation owner
+
+**What happened**: The shared desktop icon opened on every clean pointer-up and again from `dblclick`. A familiar double-click therefore invoked the same native-icon or shortcut callback three times, refocused the same window repeatedly, and persisted three independently identified launch events.
+
+**Why it mattered**: The UI appeared to open one app while operational work and usage telemetry counted three activations, making raw launch frequency unreliable for prioritization.
+
+**Rule**: Give a gesture exactly one activation owner. Use browser click count to preserve single-click/tap while suppressing the second click of a double-click sequence; keep pointer-up limited to drag completion, make pointer cancellation non-activating, and prove the persisted event count with a real browser gesture rather than only a callback unit test.
+
+---
+
+## 2026-08-06 - Shared endpoint reads need one canonical query identity
+
+**What happened**: Dashboard and Mission Control independently polled the same sync-status endpoint on the same cadence and independently loaded the same challenge list, but named both TanStack Query entries differently. Two windows in one session therefore could not share in-flight work or one cached snapshot.
+
+**Why it mattered**: High-reach OS surfaces multiplied routine server reads and could display different versions of the same state even though they used identical endpoints and caller authority.
+
+**Rule**: Give a shared read one typed query-options owner and one canonical key. Consumers may project that response differently, but they must not rename identical endpoint semantics; prove concurrent reads coalesce through one QueryClient.
+
+---
+
+## 2026-08-06 - Routine state needs one durable observability authority
+
+**What happened**: Every scheduler run wrote its complete status to `sync_runs`, then healthy starts and successes were also inserted as two master system-log events. Production accumulated 28,174 redundant master-log rows for 14,185 authoritative runs in one day.
+
+**Why it mattered**: Duplicate inserts and index churn consumed operational capacity while burying failures, skips, and actionful events in routine noise. The cockpit and readiness paths already read the authoritative run table.
+
+**Rule**: Persist a routine fact once in its canonical audit store. Secondary traces may remain in bounded files, but database event streams should retain anomalies and independently meaningful actions; prove both the suppression and the failure/skip exceptions.
+
+---
+
+## 2026-08-06 - Structured-log privacy must sanitize opaque strings
+
+**What happened**: The system logger redacted secret-looking object keys, but accepted arbitrary message, error, stack, and console strings unchanged. Drizzle error text placed bound values on a `params:` line, and five current production file entries contained that structure.
+
+**Why it mattered**: A logger with safe structured fields could still persist user content, internal identifiers, or future credentials when a dependency flattened them into opaque text.
+
+**Rule**: Apply dependency-aware text sanitization at the shared logging boundary as well as key-based object redaction. Retain diagnostic labels and query context, remove bound-value payloads in every message/error/metadata/file channel, and prove removal with a synthetic sentinel.
+
+---
+
+## 2026-08-06 - A shared query key does not own observer polling
+
+**What happened**: The first shared-query correction gave Dashboard and Mission Control one TanStack Query key, but each mounted observer still owned its own interval. Staggered windows therefore issued separate reads during the same established polling cadence even though simultaneous requests coalesced.
+
+**Why it mattered**: Cache identity removed one class of duplicate work but left routine network load dependent on how many high-reach surfaces were open and when they mounted.
+
+**Rule**: When polling is shared across surfaces, use one reference-counted polling owner per QueryClient and treat the established cadence as the stale window. Preserve explicit invalidation and focus semantics, and prove concurrent, staggered, subscribe, and unsubscribe behavior.
+
+---
+
+## 2026-08-06 - Log redaction must govern error selection across argument boundaries
+
+**What happened**: The first `params:` correction redacted message and metadata arguments after a standalone marker, but the console bridge still selected a raw Error from that redacted argument region and reattached its message and stack to the structured entry.
+
+**Why it mattered**: A sensitive bound value could disappear from the visible console message yet survive through independently selected error fields in the same log record.
+
+**Rule**: Use one argument-boundary policy for message construction, metadata normalization, and Error attachment. Prove it with split string and Error sentinels, not only a same-string fixture.
+
+---
+
+## 2026-08-08 - Retiring a generated catalog owner requires an explicit replacement owner
+
+**What happened**: Hoard's generated Beta catalog entry disappeared when Hoard was retired, while nine collector and creator relationships were migrated to `/dashboard` without giving Dashboard its own canonical catalog entry.
+
+**Why it mattered**: The replacement route remained reachable but had no catalog owner, so route-derived navigation and relationship assertions failed across the most-used Beta journeys.
+
+**Rule**: When retiring a generated app key, add an explicit replacement owner with the exact route, access, stage, and personas before removing the old owner. Prove ownership is unique and that the retired route is not resurrected.
+
+---
+
+## 2026-08-08 - Portable branding must be generated and self-contained
+
+**What happened**: Six publisher outputs gained app-specific relative favicon links by hand while the canonical Pasta site kit remained unaware of them. Regeneration would erase the branding, and extracted portable sites could not resolve the repository-relative assets.
+
+**Why it mattered**: The checked-in outputs looked correct inside the repository but violated their generation authority and portability contract.
+
+**Rule**: Own portable branding in the canonical generator and derive app-specific assets from existing configuration into self-contained data. Prove exact generated parity and behavior from an extracted-site context rather than accepting repository-relative links.
+
+---
+
+## 2026-08-08 - Recovery compatibility must distinguish supported generations from retired evidence
+
+**What happened**: An active Ravioli controller accepted only the legacy journal schema while current journals used the enumerated effective schema, and a retired current-v4 test lane was still discovered against an evolved intent matrix.
+
+**Why it mattered**: Authenticated recovery could fail on a supported current journal, while frozen historical evidence risked being reinterpreted as if it were a current mutation path.
+
+**Rule**: A supported recovery reader may accept only explicitly enumerated schemas and must bind the exact opened schema, matrix, and matrix hash. Retired mutation lanes must fail before I/O and keep their executable evidence quarantined instead of relabeling frozen identities to current artifacts.
+
+---
+
+## 2026-08-08 - Public release gates must scan the current candidate tree
+
+**What happened**: The public-boundary checker read only the Git index, so intended unstaged deletions still appeared active while nonignored untracked release inputs were invisible. Two reviewed chain-transparency documents also lived under the private `.agents` namespace.
+
+**Why it mattered**: The gate did not represent what the dirty worktree would actually ship and mixed public product evidence with private operator material.
+
+**Rule**: Evaluate cached and nonignored untracked files that currently exist, keep operator evidence ignored, and place reviewed transparency documents under the public docs owner with an explicit machine-readable allowlist.
+
+---
+
+## 2026-08-08 - datetime-local proof fixtures must use the browser timezone
+
+**What happened**: Macaroni's UI-live harness formatted sale starts with host-local getters while its Playwright page was fixed to UTC. Under Dublin daylight time, both intended past starts appeared about one hour in the future.
+
+**Why it mattered**: Valid exported collector pages looked unavailable and timed out despite healthy storage, wallet, bridge, and runtime behavior.
+
+**Rule**: Format `datetime-local` fixtures in the configured proof-browser timezone and retain a regression under a non-UTC host. Do not lengthen waits or weaken the user-visible sale assertion to hide a clock-domain mismatch.
+
+---
+
+## 2026-08-08 - Generated release inventories are final integration artifacts
+
+**What happened**: The checked-in environment inventory trailed the integrated release tree by 76 source inputs and 45 discovered variables.
+
+**Why it mattered**: Operational configuration governance stayed stale even after the underlying feature work was otherwise ready to verify.
+
+**Rule**: Regenerate deterministic release inventories after source edits settle, review the generated delta, and prove the checked-in artifact equals a fresh generation. Never repair generated inventory by hand.
+
+---
+
+## 2026-08-08 - Expired composite products require a complete liability graph
+
+**What happened**: The stranded Ravioli event-86 lane was first described as one stale Gnocchi allocation, but live state also contained an earlier expired blind funded-pool pack with two transferred claims, escrowed proceeds, pull-payment liability, and two funded-asset allowances.
+
+**Why it mattered**: Cancelling only the unsold allocated pack would have cleared one visible reservation while leaving holder refunds and recoverable funded inventory stranded. Conversely, treating every old allowance as stale would have dismantled active deterministic token 0.
+
+**Rule**: Before retiring a composite token product, project the complete on-chain liability graph—holders, claim stack order, escrow, refund credits, unsold wrappers, funded assets, Router allowances, adapter reservations, provider-owner reservations, and provider aggregates. Derive one exact prefix-reconcilable terminal plan, leave unrelated active products untouched, and prove each write first by public-key-only simulation and afterward by exact TzKT identity plus all corresponding zero-state postconditions.
+
+---
+
+## 2026-08-08 - Restart-safe writers also need retry-safe reads
+
+**What happened**: Ravioli's cleanup correctly journaled `PREPARED`, submitted the first refund once, and then stopped when a Shadownet RPC returned HTTP 429 during post-operation state reconciliation.
+
+**Why it mattered**: The chain mutation was safe and recoverable, but a transient read limit interrupted an otherwise valid exact-prefix workflow before it could record `APPLIED` and proceed.
+
+**Rule**: Every network read surrounding a restart-safe mutation must use the bounded GET-only retry capability, including long query URLs whose diagnostic labels must remain within the retry API's declared label contract. Never place signing, injection, pinning, or file writes inside that retry boundary; prove recovery by adopting the one exact indexed operation before any resubmission.
+
+---
+
+## 2026-08-08 - Browser build variables are public distribution inputs
+
+**What happened**: Particle Painter's source expected a Pinata JWT through a Vite client variable, and a generated public chunk retained a real credential even after later work treated operator pinning secrets correctly elsewhere.
+
+**Why it mattered**: A browser-delivered variable is not a secret boundary. Removing the source reference alone would still leave the stale hashed chunk distributable, while a file-size-capped release scan could skip credentials in large generated JavaScript.
+
+**Rule**: Never put shared or operator credentials in client build variables. Use an authenticated server boundary or an explicitly entered user-owned credential held only in volatile UI state; rebuild and replace every generated asset, keep upstream errors from reflecting credentials, scan all text-like release inputs regardless of bundle size, and require out-of-band revocation for anything already exposed.
+
+---
+
+## 2026-08-08 - Big-map proof reads need local packing and coherent failure
+
+**What happened**: Macaroni's exact recovery read eleven big-map keys through a Taquito toolkit whose default packer called the Shadownet `pack_data` RPC for every key. The resulting burst hit HTTP 429 before the first authorized reveal, and an earlier fallback path could mistake a failed key representation for an absent value.
+
+**Why it mattered**: A read-only proof lane could rate-limit itself and combine partial network success with zero-like map values, blocking a valid continuation or misrepresenting ownership.
+
+**Rule**: Install a local Michelson codec packer on proof toolkits, propagate failed big-map reads instead of converting them to absence, and place only the complete read projection inside an explicitly declared retry boundary. Prove packing makes zero RPC requests and transient recovery invokes no mutation.
+
+---
+
+## 2026-08-08 - Licensed DMG smoke tests must accept the license explicitly
+
+**What happened**: Installer-source review found that a noninteractive macOS smoke could not mount a licensed DMG with a plain `hdiutil attach`, even though the artifact itself was valid.
+
+**Why it mattered**: CI could reject a distributable macOS installer before copying or launching the app, leaving the packaged path unproved.
+
+**Rule**: For licensed DMGs, pipe explicit acceptance into the noninteractive mount command, then copy the mounted app and smoke the installed copy. Keep ZIP extraction as a separate distributed-format check.
+
+---
+
+## 2026-08-08 - Fake-chain inclusion must not depend on the client confirmation observer
+
+**What happened**: Gnocchi's real-Studio fixture left every fake submission pending until its synthetic `confirmation()` method ran. Once the production proof bridge correctly made exact-hash applied-state verification authoritative and bypassed Taquito confirmation polling, the fixture rejected its first valid origination as unresolved.
+
+**Why it mattered**: A test double encoded the obsolete client lifecycle and made the focused release gate fail, while restoring native confirmation in production would have weakened the live recovery boundary.
+
+**Rule**: Model fake-chain inclusion independently after submission and make confirmation an idempotent observer of the settled result. Prove successful exact-hash flows invoke no native confirmation, while an explicit rejected-operation observation still returns the original terminal chain error.
+
+---
+
+## 2026-08-08 - Bind Tezos semantics separately from transport representation
+
+**What happened**: Macaroni's authenticated V1 artifact encoded the epoch in `PUSH timestamp` as RFC3339 text, while the applied Shadownet script exposed the same instant as integer `0`. The original pre-reveal TzKT snapshot also used head-only big-map rows whose raw shape differs from later `historical_keys` rows even when every key and value agrees.
+
+**Why it mattered**: Raw JSON hashing falsely rejected both a semantically identical contract and an exact historical state reconstruction. Broad normalization, however, would have weakened the identity boundary enough to accept unrelated script or indexer drift.
+
+**Rule**: Preserve raw file and checkpoint hashes as immutable transport identity, then add a separate narrowly typed semantic comparison for protocol-normalized values. Normalize only literals whose Michelson instruction proves their type; validate historical indexer state through complete domain assertions and retain the original raw snapshot digest instead of claiming two different endpoint representations are byte-identical.
+
+---
+
+## 2026-08-08 - A complete screenshot inventory does not prove every capability is visual
+
+**What happened**: Macaroni finalized fifteen valid screenshot stages, but its dedicated zero-replay recovery capability referenced only checkpoint files and no screenshot ids. The strict per-app validator correctly rejected that otherwise complete manifest.
+
+**Why it mattered**: Evidence can exist globally while remaining unreachable from the claim it is supposed to prove, making the distributable proof graph incomplete.
+
+**Rule**: Validate each app manifest immediately after finalization, not only its global evidence sets. Every capability must directly reference the already-captured visual stage that demonstrates it; never rely on another capability's references or add a new screenshot solely to satisfy packaging.
+
+---
+
+## 2026-08-08 - Fake originations need submission-time contract identity
+
+**What happened**: Rotini's fake origination exposed its KT1 only through `operation.contract()` and marked the operation applied only inside `confirmation()`. Once exact-hash verification correctly bypassed native confirmation polling, the verifier received no originated contract address and could not authenticate the otherwise deterministic fake operation.
+
+**Why it mattered**: Independent fake-chain settlement alone is insufficient for an origination proof. The exact-hash boundary must bind the submitted hash to the originated KT1 before granting write authorization or emitting a receipt.
+
+**Rule**: A Taquito-shaped fake origination must expose its deterministic `contractAddress` in the submission result, settle independently of the confirmation observer, and prove successful exact-hash flows make zero native confirmation calls. Keep `operation.contract()` as a later read abstraction, not the first source of origination identity.
+
+---
+
+## 2026-08-08 - Composite deadline runway belongs to the constrained lane
+
+**What happened**: Ravioli's maximum-horizon Gnocchi LE path correctly ended the wrapper sale before the child expiry, but then required that earlier wrapper end to preserve the complete non-LE green sale duration. Those two independent rules differ by the reserved reveal interval, so the valid default composition failed exactly one minute short. The same focused pass also showed that HTTP failure console messages are optional browser diagnostics, while durable recovery state and explicit failed reads are the authoritative evidence.
+
+**Why it mattered**: Reusing an unconstrained lane's duration as a constrained child's minimum made a deliberately long-lived product impossible before any pin or write. Requiring an incidental Chromium message then made a correct terminal recovery test depend on browser presentation rather than the application and chain-state boundary.
+
+**Rule**: At a composite deadline boundary, enforce the operational minimum needed for the next irreversible action, then separately enforce child ordering and absolute horizon invariants. Test the exact default composition, and assert durable state plus explicit read/write counters instead of requiring optional browser-console side effects.
+
+---
+## 2026-08-08 — A recovery lane must resume every safe APPLIED boundary, not only the first observed interruption
+
+- What went wrong: Gnocchi's exact recovery safely resumed an initial six-operation prefix, but Shadownet then exposed two more transient browser-resource HTTP 500 failures after confirmed continuation calls. A recovery implementation tied only to the original interruption would have stranded each later APPLIED operation or tempted a replay.
+- Why: the chain checkpoint was durable, but the first continuation implementation recognized only one fixed event count and assumed the rest of the browser sequence would finish in one process.
+- Rule going forward: model the complete canonical event sequence, accept only authenticated safe boundaries with no pending PREPARED/SUBMITTED operation, reconstruct actor sequence numbers and projected state from every APPLIED prefix, and regenerate missing screenshots from verified chain state. Never require an already-applied call to be replayed merely because its post-confirmation UI refresh failed.
+
+---
+
+## 2026-08-08 — Validate proof provenance before an external content-addressed pin
+
+**What happened**: Gnocchi's recovered finalizer emitted a complete proof graph but left `network.rpcUrl` null. The historical-indexer supplement pinned its deterministic snapshot first, then strict app validation rejected the pre-existing manifest field and rolled back only the local supplement outputs.
+
+**Why it mattered**: The live contract evidence was valid and the repeated CID was harmless, but a packaging-only schema defect caused an avoidable external action and temporarily blocked an otherwise complete app proof.
+
+**Rule**: Every read-only finalizer must emit authoritative, schema-valid network provenance and pass strict single-app validation before downstream supplements perform external pins. When a deterministic pin has already occurred, preserve its exact bytes and CID; repair only derived local evidence and never repeat chain mutations.
+
+---
+
+## 2026-08-08 — Exact-hash fixtures must model inclusion independently across every sibling lane
+
+**What happened**: Spaghetti and Penne already had exact-hash verifier callbacks, but their fake chains still changed a submitted operation from pending to applied only inside the synthetic `confirmation()` method. Once the shared bridge correctly stopped using native confirmation polling, both real-page fixtures failed even though their production verifiers were correct.
+
+**Why it mattered**: A shared safety correction can leave sibling application gates red when their test chains model the client observer as the source of consensus. That fixture error obscures whether the shipped Studio, portable page, and exact-hash boundary work together.
+
+**Rule**: When operation finality ownership changes in a shared bridge, audit every sibling fake chain in the same pass. Fake inclusion must settle independently and idempotently, successful journeys must assert zero native confirmation calls, and a separate rejected-operation test must retain confirmation only as an observer of terminal chain state.
+
+---
+
+## 2026-08-08 — Restart safety belongs to authenticated state, not named recovery generations
+
+**What happened**: The fresh Ravioli journal retained enough hash-chained evidence for safe continuation, but existing recovery paths were coupled to particular historical runs and fixed interruption prefixes.
+
+**Why it mattered**: A valid interruption at any other APPLIED boundary could strand recoverable work or encourage replay of an already-applied pin or signer operation.
+
+**Rule**: Expose a redacted authenticated restart snapshot and derive replay receipts, live verification, actor sequences, counter offsets, private browser restoration, and the next UI stage from that state at every APPLIED prefix. Never delegate a retained mutation or pin; fail closed at PREPARED, and advance SUBMITTED only after exact-hash application evidence.
+
+---
+
+## 2026-08-08 — Downstream proof gates must authenticate recovery profiles, not one historical interruption
+
+**What happened**: Gnocchi completed its exact twelve-operation lifecycle through a six-operation recovered prefix, but Ravioli's fresh dependency gate still hardcoded an earlier three-operation interruption. The valid current proof stopped before any signer, pin, output directory, or chain write.
+
+**Why it mattered**: A recovery mechanism can evolve to recognize later safe APPLIED boundaries while its downstream consumer silently remains coupled to the first historical shape. Replacing hardcoded counts with unconstrained receipt-derived values would have made the gate permissive instead of compatible.
+
+**Rule**: Couple every accepted recovery to an explicit authenticated profile discriminator and derive all journal phases, operation/content partitions, screenshot ranges, and receipt counts from that profile. Admit a new profile only with exact success and mixed-profile mutation tests, and keep all external capabilities unreachable until selection and full validation succeed.
+
+---
+
+## 2026-08-08 — UI operation sequence and Tezos manager counter are different restart facts
+
+**What happened**: The first generic Pasta restart journal derived every expected manager counter as `initial counter + successful UI operation sequence`. That is correct only while every submission applies. An included failed operation consumes its Tezos manager counter without completing the semantic UI step, so a retry must retain the same UI sequence while using the next manager counter.
+
+**Why it mattered**: Conflating those counters could either strand a safely retryable proof or authenticate a later operation against the wrong chain position. The same ambiguity appears after a crash between an external pin and its local proof record unless the exact content-addressed bytes are recoverable.
+
+**Rule**: Persist UI sequence and expected manager counter independently at PREPARED, record whether every terminal rejection consumed its counter, and derive the next boundary from APPLIED plus counter-consuming abandoned attempts. Before any retry, require exact TzKT evidence, agreement from both approved RPC counters, and absence from active mempool lanes; recover a prepared IPFS pin only from its exact raw-SHA256 CID and bytes.
+
+---
+
+## 2026-08-08 — Fresh proof runners need semantic restart journals, not output-directory refusal
+
+**What happened**: Spaghetti and Penne treated any existing app output directory as terminal even though each lifecycle crosses multiple IPFS pins and creator/collector manager operations. Their CH-EASE handoffs also derived relationship metadata from the wall clock, so recreating the same browser journey after a crash could change the exact pinned token bytes.
+
+**Why it mattered**: A browser, RPC, or process failure after an applied step left valid work stranded and made an ordinary retry capable of duplicating supply, a sale, a claim, an airdrop, or a paid operation. Even a correct replay journal cannot safely recognize an earlier pin when the UI regenerates different metadata bytes.
+
+**Rule**: Bind every restartable proof to immutable run-derived UI input plus a complete semantic plan before its first external action. Journal exact pin bytes and operation descriptors atomically, authenticate persisted counter floors, reconcile pins by deterministic CID and exact gateway bytes, reconcile manager operations by exact TzKT/RPC identity, restore each actor's UI sequence and validation phase, and replay only byte/descriptor-identical browser requests for APPLIED work. Prove every PIN_PREPARED/PIN_APPLIED and PREPARED/SUBMITTED/APPLIED boundary before authorizing a human-alpha run.
+
+---
+
+## 2026-08-08 — A replay coordinator still needs an independent production verifier
+
+**What happened**: Ravioli's generation-independent resume planner could authenticate and replay its local hash-chained prefix, but its live-verifier interface existed only as test fakes. That left no reusable production boundary proving that retained counters, operations, pins, and target scripts still matched Shadownet before replay began.
+
+**Why it mattered**: A correct local journal is necessary but cannot prove that both approved RPC lanes are clear, TzKT still exposes the exact applied manager operations, both IPFS gateways return the checkpointed bytes, or each bound KT1 still runs the compiled role artifact. Authorizing continuation without those independent reads could turn stale or drifted evidence into a duplicate write.
+
+**Rule**: Pair every restart replay coordinator with a capability-minimal production verifier whose only external transport is bounded HTTP GET. Require both approved RPC counter/mempool lanes, exact hash/signer/counter/target/entrypoint/level/timestamp TzKT evidence, exact local and independent public IPFS bytes, and on-chain script identity against caller-supplied artifacts before delegating any continuation mutation.
+
+---
+
+## 2026-08-08 — Playwright callbacks must carry their transpiler runtime boundary
+
+**What happened**: A fail-closed browser entropy override passed its Node-side loader tests but its first Playwright installation failed before touching application state because tsx preserved names for nested callback closures with an injected `__name` helper that did not exist in the serialized browser realm.
+
+**Why it mattered**: TypeScript compilation and valid callback source were insufficient; the browser received a function whose nested closure construction depended on a Node-side transform helper, blocking exact recovery immediately before a sensitive blind-material replay.
+
+**Rule**: Define browser-evaluated callbacks as top-level serialization owners and explicitly provide any transform helper they retain while nested closures are constructed, non-enumerably and only for that construction window. Remove the helper afterward, then execute the real browser path and assert neither helper nor override remains after successful consumption.
+
+---
+
+## 2026-08-08 — Controlled alpha installability and publication provenance are separate boundaries
+
+**What happened**: Pasta's release commands correctly refused a dirty checkout, but the integrated human-alpha candidate existed only as unpacked directory builds. That made it impossible to test the real drag-to-Applications and ZIP distribution paths before consolidating a large intended shared worktree into a clean release commit.
+
+**Why it mattered**: Weakening release provenance would make an unauthenticated artifact publishable, while skipping installable preflight testing would defer DMG, archive, bundle-name, architecture, first-run, and relaunch failures until after source promotion.
+
+**Rule**: Keep clean release commands fail-closed, and provide a separately named controlled-alpha packaging lane whose embedded provenance explicitly says dirty/preflight. Smoke every distributed form after extraction or installation, persist one receipt and screenshot per form, bind the handoff to exact artifact checksums, and label the resulting binaries non-publishable until a clean exact-commit rebuild passes the same platform-native gates.
+
+---
+
+## 2026-08-08 — Resume identity must preserve authenticated historical-only fields
+
+**What happened**: Ravioli's current resume derived the eight reproducible dependency artifact hashes correctly, but omitted the journal's ninth `tzktBaseline` digest when constructing the exact expected identity. The first live continuation therefore stopped at read-only preflight even though every stable dependency hash matched.
+
+**Why it mattered**: The baseline is intentionally a historical snapshot digest: its bytes should not be regenerated from today's indexer state, but omitting it changes the immutable journal identity. Treating all dependency fields as either reproducible or ignorable made a valid fail-closed gate unusable.
+
+**Rule**: Split resume identity fields by provenance. Recompute and compare every stable artifact hash from current evidence; preserve historical-only digests from the authenticated hash-chained intent, validate their exact shape, and include them when comparing the complete immutable identity. Never replace a historical snapshot with a fresh mutable indexer response.
+
+---
+
+## 2026-08-08 — Zero balances are part of a pre-continuation inventory proof
+
+**What happened**: Ravioli's final dependency reader correctly queried both Gnocchi token IDs authorized by the recovered operator, but the current-v3 validator expected the router-balance object to contain only token 0. The explicit token-1 value was zero and TzKT independently showed no positive token-1 balance, yet the stronger snapshot failed its narrower schema.
+
+**Why it mattered**: Immediately before a funded-pool continuation, proving the router has zero of the next child token is materially stronger than omitting that token from the read. A mismatch between query scope and validator scope can reject valid evidence or tempt a caller to drop a useful safety check.
+
+**Rule**: For every resource the next recovered operation can consume, include an explicit balance in the live snapshot even when it is zero, and validate that zero exactly. Keep reader and recovery-profile key inventories identical and add positive-balance drift tests before authorizing continuation.
+
+---
+
+## 2026-08-08 — Product proof verifiers must authenticate configured supply, not a historical fixture
+
+**What happened**: Ravioli replayed the exact retained two-recipe blind pool, but its independent pre-operation proof verifier still required the three recipes used by an older recovery fixture. The browser reached the signer boundary and failed safely before the operation was journaled or submitted.
+
+**Why it mattered**: Supply is a product configuration bounded by the router contract, not a protocol-wide constant. A verifier that hardcodes one fixture can reject valid products and cannot prove the general capability the application claims.
+
+**Rule**: Derive bounded supply and item count from the authenticated private open kit, then cross-check the same values independently in the pinned manifest, decrypted public reveal, token metadata, and prepared Tezos operation. Keep only contract-authoritative maxima as constants, and test more than one valid supply.
+
+---
+
+## 2026-08-08 — Live-reconciled state must not depend on synthetic browser replay
+
+**What happened**: Ravioli independently authenticated the native event-85 prefix with fifteen pins and twenty-three APPLIED operations, but its coordinator could advance only after a browser reissued all thirty-eight historical requests. The restored Studio correctly began at operation 24, so no real page journey existed that could consume that replay gate.
+
+**Why it mattered**: Requiring an already reconstructed UI to fabricate obsolete requests turns a safe APPLIED checkpoint into an unusable continuation and encourages test-only browser choreography at the signer boundary. Unconditionally treating every repeated descriptor as invalid also broke legitimate browser-exact matrix steps because distinct semantic operations can share identical call bytes.
+
+**Rule**: Keep browser-exact replay as the default, but allow an explicit primed mode only for the exact plan object that completed independent live reconciliation. In that mode, mark the authenticated prefix consumed, reject every historical fingerprint, permit genuinely new content-addressed pins without consuming the signer gate, and delegate the first signer mutation only when it matches the next global operation's exact actor/action/entrypoint. Scope the stronger duplicate rule to primed state; descriptor equality alone cannot distinguish every legitimate later semantic step in ordinary replay mode.
+
+---
+
+## 2026-08-08 — Maximum-horizon green fixtures and expiry red fixtures must be independent
+
+**What happened**: Ravioli correctly placed its green Limited Edition child near the four-digit RFC3339 ceiling, then tried to prove an invalid outliving composition by adding time to that same timestamp. The derived year-10000 value was outside both the browser `datetime-local` domain and the contract timestamp domain, so the test failed before reaching the policy it claimed to exercise.
+
+**Why it mattered**: A long-lived green product is the right way to prevent ordinary test execution from racing its permissions, but it is the wrong input for expiry and outliving rejection tests. Coupling the two made a valid green proof fragile and produced a false red-light failure unrelated to the contract invariant.
+
+**Rule**: Give green proof products a representable maximum-horizon deadline. Prove expired permissions and cross-product deadline mismatches with separately identified, deliberately short, estimate-only fixtures whose complete transaction group is simulated without injection. For an outliving check against a maximum-horizon child, derive the smallest representable later instant within the authoritative timestamp ceiling; never roll into a wider year domain.
+
+---
+
+## 2026-08-08 — A chain-authenticated resume must also freeze retained private product bytes
+
+**What happened**: Ravioli's event-85 resume independently authenticated fifteen pins and twenty-three applied operations, but its initial/final preflight comparison returned only screenshot records. A self-consistent replacement open-kit progress file and token-2 kit could therefore pass structural loading and fail only when a later open exposed a nonce or recipe mismatch after fresh writes.
+
+**Why it mattered**: Blind product delivery depends on private nonce/action material as well as public chain state. Authenticating the operations without freezing the retained kit and recovery record leaves the first new mutation dependent on mutable local evidence.
+
+**Rule**: Before authorizing a resumed signer boundary, hash-freeze the progress inventory and every retained kit, bind each private record by a path-free public identity, and independently compare the private kit's nonce, actions, sealed reveal, manifest, metadata, deadlines, and terminal recovery operation to the authenticated creation/commit/finalization descriptors. Revalidate the same identities immediately before continuation and expose only hashes and public chain identifiers in proof output.
+
+---
+
+## 2026-08-08 — Adapter resource creation and downstream capacity reservation are different chain events
+
+**What happened**: Ravioli's current-resume dependency expectation sourced Gnocchi's reserved-mint `firstLevel` from `create_allocation`. That operation only created adapter resource metadata. The reservation was actually created three operations later when `commit_recipe` executed the internal tree `Router → Adapter.reserve → Gnocchi.reserve_mint_capacity`.
+
+**Why it mattered**: The strict live validator correctly rejected the earlier level, but the caller supplied a semantically adjacent journal event instead of the event that mutated the target big map. Relaxing the validator would have hidden incorrect provenance for reserved child capacity.
+
+**Rule**: Derive a downstream state row's level from the exact operation tree that mutates that row, not from configuration that merely makes the later mutation possible. For adapter-backed reservations, bind target `reserved_mints` provenance to the outer `commit_recipe` operation and assert its entrypoint, internal reserve path, and exact TzKT first/last level while keeping allocation creation as separate resource evidence.

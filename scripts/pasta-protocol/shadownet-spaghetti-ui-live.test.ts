@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { MichelsonMap } from "@taquito/taquito";
+import { validateOperation, ValidationResult } from "@taquito/utils";
 import { chromium } from "playwright";
 
 import {
@@ -12,6 +13,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
 } from "./pasta-ui-live-bridge-kit";
 import {
@@ -23,13 +25,17 @@ import {
 } from "./pasta-proof-screenshot-kit";
 import { root } from "./shadownet-proof-kit";
 import {
+  assertSpaghettiTzktOperationApplied,
   assertSpaghettiUiLiveExecutionAllowed,
   focusSpaghettiCompletionNotice,
+  waitForSpaghettiCollectorWrite,
+  waitForSpaghettiLog,
 } from "./shadownet-spaghetti-ui-live";
 
 const CREATOR = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 const COLLECTOR = "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej";
 const CONTRACT = "KT1U9cZBQAZwTTnSrwdgBso5W25LqjgeSsYy";
+const OTHER_CONTRACT = "KT1DxL652xGhAwWnsaC32TcdDP7BL7KwrStw";
 const CHAIN_ID = "NetXsqzbfFenSTS";
 const CID = "bafkreic26kagcnqlehjbf2nt6u5pqdl3os3wk3vpptabzhs4qkt2vmupba";
 const OPERATION_HASHES = [
@@ -55,8 +61,96 @@ function fakeProof(fileName: string): PastaUiLivePinProof {
   };
 }
 
+type FakeSpaghettiOperationRecord = {
+  hash: string;
+  signerAddress: string;
+  action: PastaUiLiveAppliedOperationAssertion["action"];
+  contractAddress: string;
+  entrypoints: string[];
+  status: "pending" | "applied" | "rejected";
+  rejection?: string;
+};
+
+class FakeSpaghettiFinality {
+  readonly operations = new Map<string, FakeSpaghettiOperationRecord>();
+  confirmationCalls = 0;
+  private operationIndex = 0;
+
+  constructor(private readonly hashes: readonly string[]) {}
+
+  submit(input: {
+    signerAddress: string;
+    action: PastaUiLiveAppliedOperationAssertion["action"];
+    contractAddress?: string;
+    entrypoints: string[];
+    apply?: () => void;
+  }) {
+    const hash = this.hashes[this.operationIndex++];
+    assert.ok(hash, "fake Spaghetti operation hash fixture is exhausted");
+    assert.equal(validateOperation(hash), ValidationResult.VALID, "fake Spaghetti operation hash is invalid");
+    assert.equal(this.operations.has(hash), false, "fake Spaghetti operation hash must be unique");
+    const record: FakeSpaghettiOperationRecord = {
+      hash,
+      signerAddress: input.signerAddress,
+      action: input.action,
+      contractAddress: input.contractAddress || CONTRACT,
+      entrypoints: [...input.entrypoints],
+      status: "pending",
+    };
+    this.operations.set(hash, record);
+    let settled = false;
+    let settlementError: unknown;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        input.apply?.();
+        record.status = "applied";
+      } catch (error) {
+        settlementError = error;
+        record.status = "rejected";
+        record.rejection = error instanceof Error ? error.message : String(error);
+      }
+    };
+    queueMicrotask(settle);
+    return {
+      hash,
+      ...(input.action === "originate" ? { contractAddress: record.contractAddress } : {}),
+      confirmation: async () => {
+        this.confirmationCalls += 1;
+        await Promise.resolve();
+        settle();
+        if (record.status === "rejected") {
+          throw settlementError instanceof Error
+            ? settlementError
+            : new Error(record.rejection || "fake Spaghetti operation rejected");
+        }
+        return 1;
+      },
+    };
+  }
+
+  assertOperationApplied(
+    assertion: PastaUiLiveAppliedOperationAssertion,
+    signerAddress: string,
+  ): void {
+    assert.equal(validateOperation(assertion.operationHash), ValidationResult.VALID);
+    const operation = this.operations.get(assertion.operationHash);
+    assert.ok(operation, `fake Spaghetti operation ${assertion.operationHash} is unknown`);
+    assert.equal(
+      operation.status,
+      "applied",
+      `fake Spaghetti operation ${assertion.operationHash} is ${operation.status}`,
+    );
+    assert.equal(operation.signerAddress, signerAddress, "fake Spaghetti operation signer drift");
+    assert.equal(operation.action, assertion.action, "fake Spaghetti operation action drift");
+    assert.equal(operation.contractAddress, assertion.contractAddress, "fake Spaghetti operation contract drift");
+    assert.deepEqual(operation.entrypoints, assertion.entrypoints, "fake Spaghetti operation entrypoint drift");
+  }
+}
+
 function createFakeTezos() {
-  let operationIndex = 0;
+  const finality = new FakeSpaghettiFinality(OPERATION_HASHES);
   const calls: Array<{ entrypoint: string; payload: unknown }> = [];
   const contract = {
     address: CONTRACT,
@@ -77,6 +171,7 @@ function createFakeTezos() {
   };
   return {
     calls,
+    finality,
     tezos: {
       tz: {
         async getBalance() {
@@ -86,11 +181,14 @@ function createFakeTezos() {
       contract: {
         async originate() {
           await new Promise((resolve) => setTimeout(resolve, 250));
+          const operation = finality.submit({
+            signerAddress: CREATOR,
+            action: "originate",
+            contractAddress: CONTRACT,
+            entrypoints: [],
+          });
           return {
-            hash: OPERATION_HASHES[operationIndex++],
-            async confirmation() {
-              return 1;
-            },
+            ...operation,
             async contract() {
               return contract;
             },
@@ -109,13 +207,13 @@ function createFakeTezos() {
             },
             async send() {
               await new Promise((resolve) => setTimeout(resolve, 250));
-              calls.push(...pending);
-              return {
-                hash: OPERATION_HASHES[operationIndex++],
-                async confirmation() {
-                  return 1;
-                },
-              };
+              return finality.submit({
+                signerAddress: CREATOR,
+                action: "batch",
+                contractAddress: CONTRACT,
+                entrypoints: pending.map((call) => call.entrypoint),
+                apply: () => calls.push(...pending),
+              });
             },
           };
         },
@@ -149,18 +247,10 @@ async function captureMockStage(
   });
 }
 
-async function waitForLog(page: import("playwright").Page, text: string): Promise<void> {
-  await page.waitForFunction(
-    (expected) => document.getElementById("log")?.textContent?.includes(expected),
-    text,
-    { timeout: 30_000 },
-  );
-}
-
 test("real Spaghetti studio completes loopback browser choreography through fake Node callbacks", async () => {
   const outputRoot = await import("node:fs/promises").then(({ mkdtemp }) =>
     mkdtemp(path.join(tmpdir(), "spaghetti-ui-live-browser-")));
-  const { tezos, calls } = createFakeTezos();
+  const { tezos, calls, finality } = createFakeTezos();
   const chainStages: string[] = [];
   const session = new TaquitoPastaUiLiveSession({
     tezos,
@@ -171,6 +261,7 @@ test("real Spaghetti studio completes loopback browser choreography through fake
       chainStages.push(stage);
       return CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => finality.assertOperationApplied(assertion, CREATOR),
     pinJson: async ({ fileName }) => {
       await new Promise((resolve) => setTimeout(resolve, 200));
       return fakeProof(fileName);
@@ -242,25 +333,25 @@ test("real Spaghetti studio completes loopback browser choreography through fake
     await page.locator(".t-editions").fill("2");
     await page.locator(".t-price").fill("0.001");
     await page.locator(".t-sale-count").fill("1");
-    await waitForLog(page, "imported 1 token(s) from CH-EASE handoff");
+    await waitForSpaghettiLog(page, "imported 1 token(s) from CH-EASE handoff", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 1, "configured", "imported 1 token(s)"));
 
     await page.click("#btnConnect");
-    await waitForLog(page, `connected ${CREATOR} on shadownet`);
+    await waitForSpaghettiLog(page, `connected ${CREATOR} on shadownet`, 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 2, "connected", `connected ${CREATOR}`));
 
     await page.click("#btnPublish");
-    await waitForLog(page, "originating collection contract");
+    await waitForSpaghettiLog(page, "originating collection contract", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 3, "metadata-pinned", "originating collection contract"));
-    await waitForLog(page, "collection deployed:");
+    await waitForSpaghettiLog(page, "collection deployed:", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 4, "contract-originated", "collection deployed:"));
-    await waitForLog(page, "token types created");
+    await waitForSpaghettiLog(page, "token types created", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 5, "token-created", "token types created"));
-    await waitForLog(page, "editions minted");
+    await waitForSpaghettiLog(page, "editions minted", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 6, "minted", "editions minted"));
-    await waitForLog(page, "direct primary sales opened");
+    await waitForSpaghettiLog(page, "direct primary sales opened", 30_000);
     captures.push(await captureMockStage(page, monitor, outputRoot, 7, "sale-opened", "direct primary sales opened"));
-    await waitForLog(page, `done — collection ${CONTRACT}`);
+    await waitForSpaghettiLog(page, `done — collection ${CONTRACT}`, 30_000);
     await focusSpaghettiCompletionNotice(page);
     assert.deepEqual(
       await page.locator("#ppNotice").evaluate((element) => {
@@ -292,6 +383,11 @@ test("real Spaghetti studio completes loopback browser choreography through fake
     assert.deepEqual(
       session.getReceipts().filter((receipt) => receipt.operationHash).map((receipt) => receipt.operationHash),
       OPERATION_HASHES,
+    );
+    assert.equal(
+      finality.confirmationCalls,
+      0,
+      "successful Spaghetti Studio verification must not depend on native confirmation polling",
     );
     assert.ok(chainStages.includes("before UI-live origination"));
     assert.ok(chainStages.includes("before UI-live batch"));
@@ -327,6 +423,7 @@ test("real Spaghetti self-hosted page completes a separate-collector buy through
   const tokenInfo = new MichelsonMap<string, string>();
   tokenInfo.set("", "697066733a2f2f" + Buffer.from(CID).toString("hex"));
   const buyCalls: Array<{ payload: unknown; options: unknown }> = [];
+  const collectorFinality = new FakeSpaghettiFinality([BUY_HASH]);
   const rawStorage = {
     sales: { get: async () => sale },
     token_metadata: {
@@ -339,8 +436,15 @@ test("real Spaghetti self-hosted page completes a separate-collector buy through
       buy: (payload: unknown) => ({
         send: async (options: unknown) => {
           buyCalls.push({ payload, options });
-          sale.remaining = 0;
-          return { hash: BUY_HASH, confirmation: async () => 1 };
+          return collectorFinality.submit({
+            signerAddress: COLLECTOR,
+            action: "call",
+            contractAddress: CONTRACT,
+            entrypoints: ["buy"],
+            apply: () => {
+              sale.remaining = 0;
+            },
+          });
         },
       }),
     },
@@ -357,6 +461,7 @@ test("real Spaghetti self-hosted page completes a separate-collector buy through
     allowedContractAddresses: new Set([CONTRACT]),
     allowedEntrypoints: new Set(["buy"]),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: (assertion) => collectorFinality.assertOperationApplied(assertion, COLLECTOR),
     pinJson: async ({ fileName }) => fakeProof(fileName),
     projectStorage: async (storageValue) => {
       const storage = storageValue as typeof rawStorage;
@@ -461,10 +566,11 @@ test("real Spaghetti self-hosted page completes a separate-collector buy through
     }));
 
     await page.click("#submit");
-    await page.waitForFunction(
-      () =>
-        document.getElementById("status")?.textContent === "Confirmed on Tezos. On-chain state refreshed." &&
-        document.getElementById("chainState")?.textContent === "Sold out",
+    await waitForSpaghettiCollectorWrite(
+      page,
+      "Confirmed on Tezos. On-chain state refreshed.",
+      "Sold out",
+      30_000,
     );
     captures.push(await capturePastaProofStage({
       page,
@@ -488,11 +594,249 @@ test("real Spaghetti self-hosted page completes a separate-collector buy through
       { payload: { token_id: 0, amount: 1 }, options: { amount: 1_000, mutez: true } },
     ]);
     assert.equal(session.getReceipts().filter((entry) => entry.operationHash)[0]?.operationHash, BUY_HASH);
+    assert.equal(
+      collectorFinality.confirmationCalls,
+      0,
+      "successful Spaghetti collector verification must not depend on native confirmation polling",
+    );
   } finally {
     monitor.dispose();
     await browser.close();
     await server.close();
     await rm(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test("Spaghetti exact-hash TzKT validator accepts only the unambiguous applied signer operation", () => {
+  const timestamp = "2026-07-23T12:34:56Z";
+  const originationAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "originate",
+    operationHash: OPERATION_HASHES[0],
+    contractAddress: CONTRACT,
+    entrypoints: [],
+  };
+  const origination = {
+    type: "origination",
+    status: "applied",
+    hash: OPERATION_HASHES[0],
+    sender: { address: CREATOR },
+    originatedContract: { address: CONTRACT },
+    level: 4_300_000,
+    timestamp,
+  };
+  assert.equal(
+    assertSpaghettiTzktOperationApplied({
+      rows: origination,
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }),
+    origination,
+  );
+
+  const batchAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "batch",
+    operationHash: OPERATION_HASHES[1],
+    contractAddress: CONTRACT,
+    entrypoints: ["create_token"],
+  };
+  const transaction = {
+    type: "transaction",
+    status: "applied",
+    hash: OPERATION_HASHES[1],
+    sender: { address: CREATOR },
+    target: { address: CONTRACT },
+    parameter: { entrypoint: "create_token" },
+    level: 4_300_001,
+    timestamp,
+  };
+  const internalTransaction = {
+    ...transaction,
+    sender: { address: CONTRACT },
+    target: { address: CREATOR },
+    parameter: { entrypoint: "default" },
+  };
+  assert.equal(
+    assertSpaghettiTzktOperationApplied({
+      rows: [transaction, internalTransaction],
+      assertion: batchAssertion,
+      signerAddress: CREATOR,
+    }),
+    transaction,
+  );
+
+  const buyAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: BUY_HASH,
+    contractAddress: CONTRACT,
+    entrypoints: ["buy"],
+  };
+  const buy = {
+    ...transaction,
+    hash: BUY_HASH,
+    sender: { address: COLLECTOR },
+    parameter: { entrypoint: "buy" },
+  };
+  assert.equal(
+    assertSpaghettiTzktOperationApplied({
+      rows: [buy],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    buy,
+  );
+
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, status: "backtracked" }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /not applied/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, sender: { address: CREATOR } }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [buy, { ...buy }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...origination, type: "transaction" }],
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }),
+    /origination action differs/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...origination, originatedContract: { address: OTHER_CONTRACT } }],
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }),
+    /originated address differs/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, target: { address: OTHER_CONTRACT } }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /target differs/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, parameter: { entrypoint: "mint" } }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /entrypoint differs/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, level: 0 }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /level is invalid/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [{ ...buy, timestamp: "not-a-timestamp" }],
+      assertion: buyAssertion,
+      signerAddress: COLLECTOR,
+    }),
+    /timestamp is invalid/,
+  );
+  assert.throws(
+    () => assertSpaghettiTzktOperationApplied({
+      rows: [buy],
+      assertion: { ...buyAssertion, entrypoints: ["buy", "mint"] },
+      signerAddress: COLLECTOR,
+    }),
+    /exactly one entrypoint/,
+  );
+});
+
+test("fake Spaghetti finality rejects pending and rejected operation states", async () => {
+  const finality = new FakeSpaghettiFinality([BUY_HASH]);
+  const operation = finality.submit({
+    signerAddress: COLLECTOR,
+    action: "call",
+    contractAddress: CONTRACT,
+    entrypoints: ["buy"],
+    apply: () => {
+      throw new Error("SALE_INACTIVE");
+    },
+  });
+  const assertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: operation.hash,
+    contractAddress: CONTRACT,
+    entrypoints: ["buy"],
+  };
+  assert.throws(
+    () => finality.assertOperationApplied(assertion, COLLECTOR),
+    /is pending/,
+  );
+  await assert.rejects(() => operation.confirmation(), /SALE_INACTIVE/);
+  assert.equal(finality.confirmationCalls, 1, "explicit rejection observation must retain confirmation coverage");
+  assert.throws(
+    () => finality.assertOperationApplied(assertion, COLLECTOR),
+    /is rejected/,
+  );
+});
+
+test("Spaghetti browser waits surface Studio and collector write failures without timing out", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<pre id="log"></pre>');
+    const studioStartedAt = Date.now();
+    await page.evaluate(() => {
+      setTimeout(() => {
+        const log = document.getElementById("log");
+        if (log) log.textContent = "publish failed: exact finality rejected";
+      }, 25);
+    });
+    await assert.rejects(
+      () => waitForSpaghettiLog(page, "done — collection", 5_000),
+      /actual Spaghetti Studio publish failed: exact finality rejected/,
+    );
+    assert.ok(Date.now() - studioStartedAt < 3_000, "Studio publish failure should surface before its timeout");
+
+    await page.setContent('<p id="status"></p><p id="chainState">Primary sale open</p>');
+    const collectorStartedAt = Date.now();
+    await page.evaluate(() => {
+      setTimeout(() => {
+        const status = document.getElementById("status");
+        if (status) {
+          status.textContent = "Operation rejected by exact finality verifier.";
+          status.dataset.error = "true";
+        }
+      }, 25);
+    });
+    await assert.rejects(
+      () => waitForSpaghettiCollectorWrite(
+        page,
+        "Confirmed on Tezos. On-chain state refreshed.",
+        "Sold out",
+        5_000,
+      ),
+      /actual Spaghetti collector write failed: Operation rejected by exact finality verifier/,
+    );
+    assert.ok(Date.now() - collectorStartedAt < 3_000, "collector write failure should surface before its timeout");
+  } finally {
+    await browser.close();
   }
 });
 
@@ -524,6 +868,11 @@ test("production runner is execute-gated, Shadownet-only, and contains no record
   assert.match(source, /pastaprotocol-spaghetti-tzkt-index@1/);
   assert.match(source, /tokens\/balances\?account=/);
   assert.match(source, /publicGatewayVerified/);
+  assert.equal(
+    (source.match(/assertOperationApplied: \(assertion\) => verifySpaghettiTzktOperationApplied/g) || []).length,
+    2,
+    "creator and collector sessions must independently verify exact operation hashes",
+  );
   assert.doesNotMatch(source, /UI-MOCK/);
   assert.doesNotMatch(source, /recordVideo|recordHar|tracing\.start|launchPersistentContext/);
 });

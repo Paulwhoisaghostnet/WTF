@@ -18,6 +18,7 @@ export type DesktopAppRegistrationView = {
   docRegistryVersion: string;
   docsUpdatedAt: string | null;
   docsExpiresAt: string | null;
+  registrationNeverExpires: boolean;
   installKeyPrefix: string | null;
   installKeyIssuedAt: string | null;
   installKeyExpiresAt: string | null;
@@ -37,7 +38,6 @@ export type DesktopAppsResponse = {
 
 export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   wtfiam: true,
-  hoard: true,
   wim: true,
   w: true,
   tv: true,
@@ -65,6 +65,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   agent: true,
   applications: true,
   mail: true,
+  "admin-inbox": true,
   "objkt-operator": true,
 };
 

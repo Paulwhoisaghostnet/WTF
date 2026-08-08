@@ -1,0 +1,52 @@
+{
+  "schema": "pasta-ravioli-open-kit@3",
+  "network": "shadownet",
+  "contract": "KT1GVYrXn9dw4mYjcme3YVupFFev9SHtY2dq",
+  "tokenId": 1,
+  "mode": "blind_funded_pool",
+  "manifestUri": "ipfs://bafkreifexw2vau4xn6cewvsa2xz7ccix7jtwr54ctcb5i4aobgj4itwjgi",
+  "blindSecurity": "commit-reveal-ui-hidden-chain-public",
+  "warning": "Exact recipes and nonces stay encrypted, while the salted cyclic serial rotation stays sealed/private until reveal. Tezos funding and reservation operations remain public.",
+  "editionPolicy": {
+    "requiresLimitedWrapper": false,
+    "wrapperEditionClass": "limited-edition",
+    "earliestChildEnd": null,
+    "wrapperSaleStart": null,
+    "wrapperSaleEnd": "9999-12-31T23:57:00.000Z",
+    "revealDeadline": "9999-12-31T23:58:00.000Z",
+    "openDeadline": "9999-12-31T23:59:00.000Z"
+  },
+  "recipes": [
+    {
+      "serial": 0,
+      "nonce": "17f613cdf7482dc0fd50185804c937ba3d89a82282b5ab4dfe12117c7a44da7f",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+          "tokenId": 0,
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "serial": 1,
+      "nonce": "795d6dd2f3f8320682d7cf000d6b21184bacdc8379ffa4bfbc0cdceb514015d7",
+      "actions": [
+        {
+          "kind": "escrow",
+          "fa2": "KT1KGB1PRsJw58fgZPGRjoj4ZHNsFR7SuEzv",
+          "tokenId": 1,
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "sealedReveal": {
+    "schema": "pasta-ravioli-sealed-reveal-reference@1",
+    "contentsUri": "ipfs://bafkreicqustw3prn3z3okma2nkqfbkapbey4ms2a4njphbtaygpvr6nn7i",
+    "salt": "777dcae9d120ce8e9e5b34f420db41946626686a279eca261052c560e7880aa7",
+    "offset": 1,
+    "envelopeSha256": "50a4a76dbe2dde76e5301a6aa050a80f0931c64b40e352f38660c19f58f9adfa"
+  }
+}

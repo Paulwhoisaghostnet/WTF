@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "gnocchi",
+  "capability": "publish three edition policies",
+  "stageOrdinal": 2,
+  "stageName": "Creator connected on Shadownet",
+  "url": "http://127.0.0.1:62208/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-23T00:56:30.206Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "23370b7604ead2941cc4908e26a0f34c44ae8f4e42cb40bad4e62d697c720976",
+  "byteCount": 126873,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Gnocchi"
+    },
+    {
+      "selector": "#account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1QBFT…S3cM"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

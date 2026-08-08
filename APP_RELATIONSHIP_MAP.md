@@ -8,8 +8,8 @@ Recommended model: Community Hub first, Creator Workspace second, Operating Syst
 | --- | --- | --- | --- | --- | --- |
 | Start | Beta hub, login | Side Quests | Challenges, Leaderboards | EXP, reward ledger, role readiness | Discovery becomes a small playable action. |
 | Start | Side Quests, Rounds | Challenges | Rewards, role review | EXP, reward flags, automation | Apps become missions instead of isolated icons. |
-| Identity | Login, Side Quests | Profile | Skywire, Hoard, Domains | Public profile, wallet/social proof | Users become legible to the ecosystem. |
-| Collect | Beta hub, Profile, public trade-board cache | Gallery | Hoard, Trade Boards, Rat Race, CRP | Collection, nominations, social shares, trade intent | Public value before sign-in. |
+| Identity | Login, Side Quests | Profile | Skywire, portfolio, Domains | Public profile, wallet/social proof | Users become legible to the ecosystem. |
+| Collect | Beta hub, Profile, public trade-board cache | Gallery | portfolio, Trade Boards, Rat Race, CRP | Collection, nominations, social shares, trade intent | Public value before sign-in. |
 | Create | Profile, media | Studio | Broot, Macaroni, Pinning | Creator tools, Gallery, TV | Creator work gets a home base. |
 | Publish | Studio, tools | IPFS Pinning | Gallery, WTF Domains | Durable media and records | Publishing durability is visible. |
 | Connect | Profile activity, Social | W Feed | WIM, LIVE, Digest | Notifications, XP, social proof | Other people feel present. |
@@ -91,7 +91,7 @@ The Section Compass sits immediately after the Wayfinder and before live proof. 
 | Progress and unlocks | Side Quests, Challenges, EXP events | `/side-quests` | Rewards, leaderboards, role readiness | Daily loop and unlock ladder | Progress feels playable instead of hidden. |
 | Live and scheduled moments | Calendar, rooms, stages | `/live` | WIM, Digest, Skywire | Presence and collaboration | Time-bound activity feels worth returning for. |
 | Creator recovery | Studio, Broot, Macaroni, pinning jobs | `/studio` | Gallery, TV, Domains, Skywire | Publish and recovery loops | Creators know what needs finishing. |
-| Collector and market motion | Gallery, Hoard, listings, trade boards | `/rat-race` | WTFIAM, Trade Boards, profiles | Market and collection loops | Collectors see urgency without hunting through app names. |
+| Collector and market motion | Gallery, portfolio, listings, trade boards | `/rat-race` | WTFIAM, Trade Boards, profiles | Market and collection loops | Collectors see urgency without hunting through app names. |
 | Count admin attention | Quests, challenges, rewards, roles, market ops | `/admin` | Audit logs, permissions, reward tuning | Governed liveops | The Count can review operations without exposing admin power to normal users. |
 
 `client/src/features/beta/beta-app-catalog.ts` classifies every current desktop app key and every creation tool route with tier, stage, persona fit, purpose, related routes, beta action, and Count liveops command context.

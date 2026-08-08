@@ -1,0 +1,31 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli",
+  "capability": "compose five atomic pack modes",
+  "stageOrdinal": 2,
+  "stageName": "Creator connected on Shadownet",
+  "url": "http://127.0.0.1:61931/creation-tools/ravioli/index.html",
+  "timestampUtc": "2026-07-22T21:24:55.973Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "bcb4ec9e620f6f0487fe04a5893a39aa2a6150e9a4d94d112293575b0727b638",
+  "byteCount": 102804,
+  "domEvidence": [
+    {
+      "selector": "#account",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "tz1QBFT…S3cM"
+    },
+    {
+      "selector": "#log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "9:24:55 PM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

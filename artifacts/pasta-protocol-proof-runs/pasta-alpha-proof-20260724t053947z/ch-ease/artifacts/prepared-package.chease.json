@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "wtfos.pasta.chease-package.v1",
+  "kind": "collection",
+  "targetApp": "spaghetti",
+  "title": "CH-EASE proof pasta-alpha-proof-20260724t053947z",
+  "description": "Role-correct CH-EASE preparation, durable media, export, and publisher handoff proof.",
+  "symbol": "CHEESE",
+  "items": [
+    {
+      "name": "CH-EASE Prepared Token",
+      "description": "Prepared locally and handed to Spaghetti.",
+      "artifactUri": "ipfs://bafkreie2lnu7nukcd2j3jea7ailjybqyeiqlfoiubtxcrwn3ts3wlp352u",
+      "mimeType": "image/png",
+      "tags": [
+        "ch-ease",
+        "shadownet",
+        "proof"
+      ]
+    }
+  ]
+}

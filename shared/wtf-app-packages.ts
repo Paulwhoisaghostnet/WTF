@@ -68,7 +68,6 @@ const domainGuides = {
 
 const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof typeof domainGuides]>> = {
   wtfiam: domainGuides.commerceAndWallets,
-  hoard: domainGuides.tezosPlatform,
   wim: domainGuides.identityAndSocial,
   w: domainGuides.identityAndSocial,
   tv: domainGuides.mediaTvStudio,
@@ -96,11 +95,11 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   agent: domainGuides.wtfOs,
   applications: domainGuides.arcadeConsoleGameStudio,
   mail: domainGuides.identityAndSocial,
+  "admin-inbox": domainGuides.identityAndSocial,
   "objkt-operator": domainGuides.operations,
 };
 
 const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> = {
-  hoard: ["Tezos wallets", "TzKT", "Objkt", "Tezos Domains"],
   wim: [],
   w: ["X API"],
   tv: ["Media storage", "token media sources"],
@@ -149,12 +148,12 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
   agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
   applications: ["Hetzner remote application host", "Steam Linux runtime", "WebRTC browser media transport"],
   mail: ["Resend inbound email"],
+  "admin-inbox": ["Private media storage for screenshot evidence"],
   "objkt-operator": ["Objkt API", "Kukai", "Tezos mainnet RPC"],
 };
 
 const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   wtfiam: ["in_app_market_*", "inventory_items", "xp_events"],
-  hoard: ["wallets", "token ownership caches", "profile inventory views"],
   wim: ["dm_conversations", "dm_messages", "system_events"],
   w: ["w_posts", "w_stream_rules", "x_dm_events"],
   tv: ["media_items", "tv_playlist", "system_events"],
@@ -212,6 +211,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
     "transient WebRTC stream lifecycle",
   ],
   mail: ["mailboxes", "mail_messages", "comms_items"],
+  "admin-inbox": ["admin_inbox_messages", "admin_inbox_replies", "user_media_library", "comms_items", "user_notifications"],
   "objkt-operator": ["objkt_operator_states", "desktop_app_settings"],
 };
 

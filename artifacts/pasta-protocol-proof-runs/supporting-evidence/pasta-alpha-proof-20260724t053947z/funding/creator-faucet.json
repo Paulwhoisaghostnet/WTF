@@ -1,0 +1,26 @@
+{
+  "schema": "pastaprotocol-shadownet-faucet-funding@1",
+  "status": "APPLIED",
+  "network": {
+    "name": "shadownet",
+    "chainId": "NetXsqzbfFenSTS"
+  },
+  "faucet": {
+    "provider": "@tacoinfra/get-tez",
+    "version": "1.0.8"
+  },
+  "operation": {
+    "hash": "ooyySxPwJBehYLFtda6jzyaZ2hKYcN7sVFoAhCn68X883peYrgV",
+    "explorerUrl": "https://shadownet.tzkt.io/ooyySxPwJBehYLFtda6jzyaZ2hKYcN7sVFoAhCn68X883peYrgV",
+    "level": 4324179,
+    "timestamp": "2026-07-24T05:39:33Z",
+    "sender": "tz1a4GT7THHaGDiTxgXoatDWcZfJ5j29z5RC",
+    "recipient": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+    "amountMutez": 20000000
+  },
+  "balance": {
+    "beforeMutez": 31657183,
+    "afterMutez": 51657183,
+    "targetMinimumMutez": 50000000
+  }
+}

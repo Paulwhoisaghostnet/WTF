@@ -1,0 +1,37 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "ravioli-le-dependency",
+  "capability": "publish Ravioli limited-edition dependency",
+  "stageOrdinal": 4,
+  "stageName": "Token three live",
+  "url": "http://127.0.0.1:60718/creation-tools/gnocchi/index.html",
+  "timestampUtc": "2026-07-22T21:12:00.909Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "ae9bbbf50912ad973d04200d0f33a2f101c81ed6f81995a5870bf9d69c388e8a",
+  "byteCount": 147079,
+  "domEvidence": [
+    {
+      "selector": "#publishTargetStatus",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Collection now has 4 editions · next token #4"
+    },
+    {
+      "selector": "#editionList .pp-token strong",
+      "matchCount": 4,
+      "selectedIndex": 3,
+      "text": "Token #3 · Limited Edition"
+    },
+    {
+      "selector": "#editionList .pp-token .pp-note",
+      "matchCount": 4,
+      "selectedIndex": 3,
+      "text": "0 current supply · 0 / 3 lifetime minted · issuance open · policy locked · starts 7/22/2026, 9:06:00 PM · ends 7/29/2026, 9:11:00 PM"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

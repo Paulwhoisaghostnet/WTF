@@ -1,0 +1,47 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "rotini",
+  "capability": "collector finalize ZIP token",
+  "stageOrdinal": 9,
+  "stageName": "ZIP token reserved rendered pinned and finalized",
+  "url": "http://127.0.0.1:50749/creation-tools/rotini/index.html",
+  "timestampUtc": "2026-07-24T06:00:50.051Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "604eec174ad71f83a9b631330f5e36238d8638ad458706626d2ef8adad1c7b97",
+  "byteCount": 179084,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Rotini"
+    },
+    {
+      "selector": "#ppNotice",
+      "name": "zip finalization",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "ZIP iteration 2 finalized. Objkt-compatible metadata, supply, and ownership now exist on-chain."
+    },
+    {
+      "selector": "#mintInfo",
+      "name": "zip supply",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "minting open · 1 finalized + 0 rendering / 4 · ZIP · 0.000001 tez"
+    },
+    {
+      "selector": "#log",
+      "name": "zip operation",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "5:59:40 AM connected tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej on shadownet 5:59:45 AM resuming unfinalized reservation 1 5:59:45 AM loading reserved layer Background / Marinara… 5:59:45 AM loading reserved layer Foreground / Pesto… 5:59:45 AM pinning finalized image/gif artifact… 5:59:46 AM pinning TZIP-21 token metadata… 5:59:59 AM finalizing reservation 1 (sign in wallet)… 6:00:15 AM collector finalized GIF token 1 with opZQa7natSqHLYQf1gfaSohJChkjngKS6NvyMj9BVC33W8VDB3B 6:00:20 AM reserving immutable token id and seed (sign in wallet)… 6:00:33 AM reservation 2 confirmed; rendering token 2 from its on-chain seed 6:00:33 AM loading reserved layer Background / Marinara… 6:00:33 AM loading reserved layer Foreground / Pesto… 6:00:33 AM interactive ZIP validated offline (2,855 source bytes) 6:00:33 AM pinning finalized application/zip artifact… 6:00:34 AM pinning interactive token cover… 6:00:34 AM pinning TZIP-21 token metadata… 6:00:39 AM finalizing reservation 2 (sign in wallet)… 6:00:47 A"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -1,0 +1,1 @@
+{"description":"Typed Ravioli v3 claim, reveal, proceeds-escrow, delivery-cutoff, and refund controller.","interfaces":["TZIP-016"],"name":"Pasta Ravioli Blind Pack Controller","pasta":{"app":"ravioli","helper":"blind-pack-controller","version":3}}

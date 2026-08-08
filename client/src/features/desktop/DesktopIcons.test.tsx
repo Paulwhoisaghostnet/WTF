@@ -5,6 +5,7 @@ import { DESKTOP_APPS, EXPERIMENTAL_DESKTOP_APPS } from "@shared/types";
 import { isAppStoreAppKey, isDefaultDesktopAppKey } from "@shared/wtfos-app-catalog";
 import {
   buildDesktopIconDefs,
+  shouldOpenDesktopIconFromClick,
   type DesktopAppAvailability,
 } from "./DesktopIcons";
 
@@ -83,4 +84,37 @@ test("private Objkt Operator desktop icon is owner-gated", () => {
   const operator = visible.find((icon) => icon.key === "objkt-operator");
   assert.equal(operator?.openPath, "/objkt-operator");
   assert.equal(operator?.enabled, true);
+});
+
+test("desktop icon click policy opens once across single, double, drag, and context gestures", () => {
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 0, clickCount: 1, moved: false, shiftKey: false }),
+    true,
+    "an ordinary single click should open"
+  );
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 0, clickCount: 0, moved: false, shiftKey: false }),
+    true,
+    "a keyboard or synthetic primary click should open"
+  );
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 0, clickCount: 2, moved: false, shiftKey: false }),
+    false,
+    "the second click in a double-click sequence must not reopen"
+  );
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 0, clickCount: 1, moved: true, shiftKey: false }),
+    false,
+    "a drag release must not open"
+  );
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 0, clickCount: 1, moved: false, shiftKey: true }),
+    false,
+    "Shift-click belongs to the context-menu path"
+  );
+  assert.equal(
+    shouldOpenDesktopIconFromClick({ button: 2, clickCount: 1, moved: false, shiftKey: false }),
+    false,
+    "a secondary-button gesture must not open"
+  );
 });

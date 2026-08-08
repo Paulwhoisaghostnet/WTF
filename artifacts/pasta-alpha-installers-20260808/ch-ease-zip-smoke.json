@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "app": "ch-ease",
+  "executablePath": "/private/tmp/pasta-alpha-installer-smoke-20260808/pasta-ch-ease-artifact-smoke/zip/ch-ease-studio.app/Contents/MacOS/ch-ease-studio",
+  "origin": "http://127.0.0.1:30778",
+  "title": "CH-EASE — Pasta Protocol preparation studio",
+  "assetsVerified": 34,
+  "stableOriginRelaunch": true,
+  "bundledToolsOpened": 0,
+  "provenance": {
+    "schema": "wtfos.pasta.desktop-build-provenance.v1",
+    "app": "@wtf/ch-ease-desktop",
+    "version": "1.0.1-alpha.1",
+    "gitSha": "81dd26f2a050a412b60a2e0236b33e6ba341f81b",
+    "dirty": true,
+    "sourceRevision": "81dd26f2a050a412b60a2e0236b33e6ba341f81b-dirty",
+    "target": {
+      "platform": "darwin",
+      "arch": "universal",
+      "format": "dmg+zip"
+    }
+  },
+  "screenshotPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF/artifacts/pasta-alpha-installers-20260808/ch-ease-zip-first-run.png"
+}

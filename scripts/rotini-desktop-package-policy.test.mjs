@@ -22,7 +22,7 @@ const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs",
 
 test("Rotini desktop package bundles the generative publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/rotini-desktop");
-  assert.equal(desktopPackage.version, "1.0.0");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.1");
   assert.equal(desktopPackage.main, "src/main.cjs");
   assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
@@ -34,7 +34,12 @@ test("Rotini desktop package bundles the generative publisher in an Electron she
   assert.match(desktopPackage.scripts["dist:mac"], /--mac dmg zip --universal/);
   assert.match(desktopPackage.scripts["dist:windows"], /--win nsis --x64/);
   assert.match(desktopPackage.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
-  assert.deepEqual(desktopPackage.build.files, ["package.json", "src/**/*", "rotini/**/*"]);
+  assert.deepEqual(desktopPackage.build.files, [
+    "package.json",
+    "src/**/*",
+    "rotini/**/*",
+    "provenance/**/*",
+  ]);
   assert.equal(desktopPackage.build.artifactName, "Rotini-Studio-${version}-${os}-${arch}.${ext}");
   assert.equal(desktopPackage.build.executableName, "rotini-studio");
   assert.equal(desktopPackage.build.linux.maintainer, "wtfOS <support@wtfos.app>");
@@ -49,6 +54,8 @@ test("Rotini desktop package bundles the generative publisher in an Electron she
 test("Rotini desktop asset preparation preserves the static publisher contract", () => {
   assert.match(prepareSource, /public\/creation-tools\/rotini/);
   assert.match(prepareSource, /contract\/pasta-generative-collection\.contract\.json/);
+  assert.match(prepareSource, /js\/rotini-artifact\.js/);
+  assert.match(prepareSource, /js\/rotini-mint\.js/);
   assert.match(prepareSource, /js\/pasta-foundation\.js/);
   assert.match(prepareSource, /vendor\/tezos\.js/);
   assert.match(prepareSource, /vendor\/octez-connect\.js/);
@@ -77,7 +84,7 @@ test("Rotini desktop asset preparation preserves the static publisher contract",
 
 test("Rotini desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
   assert.match(mainSource, /http\.createServer/);
-  assert.match(mainSource, /baseUrl = `http:\/\/127\.0\.0\.1:\$\{address\.port\}`/);
+  assert.match(mainSource, /listenOnStableOrigin\(nextServer, PRODUCT_NAME\)/);
   assert.match(mainSource, /mainWindow\.loadURL\(`\$\{baseUrl\}\/`\)/);
   assert.match(mainSource, /path\.join\(appRoot\(\), "rotini"\)/);
   assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/user"/);

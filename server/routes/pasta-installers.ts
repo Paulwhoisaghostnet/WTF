@@ -86,7 +86,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "CH-EASE Desktop",
     purpose: "Local media and metadata package preparation with bundled publisher handoffs",
     manifestPath: "/api/ch-ease/installers",
-    releaseTag: "ch-ease-desktop-v1.0.0",
+    releaseTagPrefix: "ch-ease-desktop-v",
     versionEnv: "CH_EASE_INSTALLER_VERSION",
     envPrefix: "CH_EASE_INSTALLER",
     fileNames: {
@@ -101,7 +101,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Macaroni Desktop",
     purpose: "Blind-mint drop publisher",
     manifestPath: "/api/macaroni/installers",
-    releaseTag: "macaroni-desktop-v1.0.0",
+    releaseTagPrefix: "macaroni-desktop-v",
     versionEnv: "MACARONI_INSTALLER_VERSION",
     envPrefix: "MACARONI_INSTALLER",
     fileNames: {
@@ -116,7 +116,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Spaghetti Desktop",
     purpose: "Standard collection publisher",
     manifestPath: "/api/spaghetti/installers",
-    releaseTag: "spaghetti-desktop-v1.0.0",
+    releaseTagPrefix: "spaghetti-desktop-v",
     versionEnv: "SPAGHETTI_INSTALLER_VERSION",
     envPrefix: "SPAGHETTI_INSTALLER",
     fileNames: {
@@ -131,7 +131,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Gnocchi Desktop",
     purpose: "Open-edition publisher",
     manifestPath: "/api/gnocchi/installers",
-    releaseTag: "gnocchi-desktop-v1.0.0",
+    releaseTagPrefix: "gnocchi-desktop-v",
     versionEnv: "GNOCCHI_INSTALLER_VERSION",
     envPrefix: "GNOCCHI_INSTALLER",
     fileNames: {
@@ -146,7 +146,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Ravioli Desktop",
     purpose: "Bundle token publisher",
     manifestPath: "/api/ravioli/installers",
-    releaseTag: "ravioli-desktop-v1.0.0",
+    releaseTagPrefix: "ravioli-desktop-v",
     versionEnv: "RAVIOLI_INSTALLER_VERSION",
     envPrefix: "RAVIOLI_INSTALLER",
     fileNames: {
@@ -161,7 +161,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Rotini Desktop",
     purpose: "Generative collection publisher",
     manifestPath: "/api/rotini/installers",
-    releaseTag: "rotini-desktop-v1.0.0",
+    releaseTagPrefix: "rotini-desktop-v",
     versionEnv: "ROTINI_INSTALLER_VERSION",
     envPrefix: "ROTINI_INSTALLER",
     fileNames: {
@@ -176,7 +176,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Penne Desktop",
     purpose: "Distribution and claim publisher",
     manifestPath: "/api/penne/installers",
-    releaseTag: "penne-desktop-v1.0.0",
+    releaseTagPrefix: "penne-desktop-v",
     versionEnv: "PENNE_INSTALLER_VERSION",
     envPrefix: "PENNE_INSTALLER",
     fileNames: {
@@ -191,7 +191,7 @@ const INDIVIDUAL_PASTA_INSTALLER_PRODUCTS = [
     label: "Lasagna Desktop",
     purpose: "Exhibition and curation publisher",
     manifestPath: "/api/lasagna/installers",
-    releaseTag: "lasagna-desktop-v1.0.0",
+    releaseTagPrefix: "lasagna-desktop-v",
     versionEnv: "LASAGNA_INSTALLER_VERSION",
     envPrefix: "LASAGNA_INSTALLER",
     fileNames: {
@@ -264,7 +264,7 @@ function suiteManifest() {
     kind: "suite",
     purpose: "Bundled local desktop suite for CH-EASE, Macaroni, and Pasta publishers",
     manifestPath: "/api/pasta/installers",
-    releaseTag: "pasta-suite-desktop-v1.0.0",
+    releaseTag: version ? `pasta-suite-desktop-v${version}` : null,
     version: version || null,
     bundledApps: BUNDLED_PASTA_APPS,
     installers: installerItems(INSTALLER_PLATFORMS),
@@ -281,7 +281,7 @@ function individualManifest(product: (typeof INDIVIDUAL_PASTA_INSTALLER_PRODUCTS
     kind: "individual",
     purpose: product.purpose,
     manifestPath: product.manifestPath,
-    releaseTag: product.releaseTag,
+    releaseTag: version ? `${product.releaseTagPrefix}${version}` : null,
     includedInSuite: true,
     version: version || null,
     installers,

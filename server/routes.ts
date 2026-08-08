@@ -34,6 +34,7 @@ import notificationRoutes from "./routes/notifications";
 import commsRoutes from "./routes/comms";
 import mailRoutes from "./routes/mail";
 import bugReportRoutes from "./routes/bug-reports";
+import adminInboxRoutes from "./routes/admin-inbox";
 import browserRoutes from "./routes/browser";
 import appHostRoutes from "./routes/apphost";
 import mediaLibraryRoutes from "./routes/media-library";
@@ -354,6 +355,7 @@ export function registerRoutes(app: Express) {
   app.use(commsRoutes);
   app.use(mailRoutes);
   app.use(bugReportRoutes);
+  app.use(adminInboxRoutes);
   app.use(browserRoutes);
   app.use(appHostRoutes);
   app.use(mediaLibraryRoutes);

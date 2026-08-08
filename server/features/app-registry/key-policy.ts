@@ -25,7 +25,7 @@ export interface AppKeyMaterial {
   hash: string;
 }
 
-/** Normalize an appId ("desktop:hoard") into a key-safe slug ("desktop-hoard"). */
+/** Normalize an appId ("desktop:arcade") into a key-safe slug ("desktop-arcade"). */
 export function appIdToKeySlug(appId: string): string {
   return appId
     .toLowerCase()

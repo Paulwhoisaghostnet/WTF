@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "app": "macaroni",
+  "executablePath": "/private/tmp/pasta-alpha-installer-smoke-20260808/pasta-macaroni-artifact-smoke/zip/macaroni-studio.app/Contents/MacOS/macaroni-studio",
+  "origin": "http://127.0.0.1:30771",
+  "title": "Macaroni Studio — create your drop",
+  "assetsVerified": 5,
+  "stableOriginRelaunch": true,
+  "bundledToolsOpened": 0,
+  "provenance": {
+    "schema": "wtfos.pasta.desktop-build-provenance.v1",
+    "app": "@wtf/macaroni-desktop",
+    "version": "1.0.1-alpha.1",
+    "gitSha": "81dd26f2a050a412b60a2e0236b33e6ba341f81b",
+    "dirty": true,
+    "sourceRevision": "81dd26f2a050a412b60a2e0236b33e6ba341f81b-dirty",
+    "target": {
+      "platform": "darwin",
+      "arch": "universal",
+      "format": "dmg+zip"
+    }
+  },
+  "screenshotPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/WTF/artifacts/pasta-alpha-installers-20260808/macaroni-zip-first-run.png"
+}

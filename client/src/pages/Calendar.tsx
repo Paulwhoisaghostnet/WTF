@@ -371,12 +371,23 @@ const Agenda = styled.div`
   padding: 10px;
 `;
 
-const AgendaEvent = styled.div`
+const AgendaEvent = styled.button`
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 10px;
+  width: 100%;
   padding: 8px 0;
   border-bottom: 1px solid #d0d0d0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible { outline: 2px solid #000080; outline-offset: 1px; }
 
   @media (max-width: 560px) { grid-template-columns: 1fr; }
 `;
@@ -499,6 +510,9 @@ interface CalendarEvent {
   categories?: string[];
   imageUrl?: string | null;
   externalId?: string;
+  sourceUrl?: string | null;
+  creatorName?: string | null;
+  creatorUrl?: string | null;
 }
 
 interface PersonalEvent {
@@ -612,9 +626,25 @@ function formatEventTime(event: CalendarEvent): string {
   const start = new Date(event.startsAt);
   const end = event.endsAt ? new Date(event.endsAt) : null;
   if (event.allDay) {
+    if (event.sourceProvider === "ttc") {
+      const dateOptions = { timeZone: "UTC" } as const;
+      const startLabel = start.toLocaleDateString([], dateOptions);
+      if (!end) return startLabel;
+      const inclusiveEnd = new Date(end.getTime() - 1);
+      const endLabel = inclusiveEnd.toLocaleDateString([], dateOptions);
+      return endLabel === startLabel ? startLabel : `${startLabel} - ${endLabel}`;
+    }
     return end ? `${start.toLocaleDateString()} - ${end.toLocaleDateString()}` : start.toLocaleDateString();
   }
   return `${start.toLocaleString()}${end ? ` -> ${end.toLocaleString()}` : ""}`;
+}
+
+function eventDateLabel(event: CalendarEvent): string {
+  return new Date(event.startsAt).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    ...(event.allDay && event.sourceProvider === "ttc" ? { timeZone: "UTC" } : {}),
+  });
 }
 
 function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
@@ -637,6 +667,9 @@ function personalToCalendarEvent(event: PersonalEvent): CalendarEvent {
     categories: ["Personal"],
     imageUrl: null,
     externalId: event.id,
+    sourceUrl: null,
+    creatorName: "You",
+    creatorUrl: null,
   };
 }
 
@@ -700,6 +733,14 @@ function moveCalendarAnchor(view: CalendarView, anchorDate: Date, direction: -1 
 }
 
 function eventFallsOnDay(event: CalendarEvent, day: Date): boolean {
+  if (event.allDay && event.sourceProvider === "ttc") {
+    const utcDay = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()));
+    const nextUtcDay = new Date(utcDay);
+    nextUtcDay.setUTCDate(nextUtcDay.getUTCDate() + 1);
+    const start = new Date(event.startsAt);
+    const end = eventEnd(event);
+    return start < nextUtcDay && end > utcDay;
+  }
   const next = new Date(day);
   next.setDate(next.getDate() + 1);
   const start = new Date(event.startsAt);
@@ -955,8 +996,14 @@ export function Calendar() {
                       {visibleEvents.length === 0 ? (
                         <Muted data-calendar-region="empty">No upcoming events in this window.</Muted>
                       ) : visibleEvents.map((event) => (
-                        <AgendaEvent key={`${event.sourceProvider ?? "wtf"}:${event.id}`} data-calendar-region="event-card">
-                          <div><strong>{new Date(event.startsAt).toLocaleDateString([], { month: "short", day: "numeric" })}</strong><br />{eventClockLabel(event)}</div>
+                        <AgendaEvent
+                          key={`${event.sourceProvider ?? "wtf"}:${event.id}`}
+                          type="button"
+                          data-calendar-region="event-card"
+                          onClick={() => setSelectedEvent(event)}
+                          aria-label={`${event.title}, ${formatEventTime(event)}`}
+                        >
+                          <div><strong>{eventDateLabel(event)}</strong><br />{eventClockLabel(event)}</div>
                           <div>
                             <Row>
                               <SourceBadge $source={event.sourceProvider ?? "wtf"} data-calendar-region="source-badge">{(event.sourceProvider ?? "wtf").toUpperCase()}</SourceBadge>
@@ -1058,7 +1105,28 @@ export function Calendar() {
                     </Row>
                     <h3>{selectedEvent.title}</h3>
                     <Muted data-calendar-region="meta">{formatEventTime(selectedEvent)}{selectedEvent.location ? ` · ${selectedEvent.location}` : ""}</Muted>
+                    <p data-calendar-region="event-creator">
+                      Created by{" "}
+                      {selectedEvent.creatorUrl ? (
+                        <a
+                          href={selectedEvent.creatorUrl}
+                          target={selectedEvent.creatorUrl.startsWith("http") ? "_blank" : undefined}
+                          rel={selectedEvent.creatorUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+                        >
+                          {selectedEvent.creatorName || "TTC contributor"}
+                        </a>
+                      ) : (
+                        selectedEvent.creatorName || (selectedEvent.sourceProvider === "ttc" ? "TTC contributor" : "WTF staff")
+                      )}
+                    </p>
                     {selectedEvent.description ? <p data-calendar-region="event-description">{selectedEvent.description}</p> : null}
+                    {selectedEvent.sourceUrl ? (
+                      <p data-calendar-region="event-source-link">
+                        <a href={selectedEvent.sourceUrl} target="_blank" rel="noopener noreferrer">
+                          View original event on TTC
+                        </a>
+                      </p>
+                    ) : null}
                     {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
                   </EventDetail>
                 ) : null}
@@ -1067,7 +1135,7 @@ export function Calendar() {
               <div data-calendar-region="source-panel">
                 <SourcePanel label="Sources">
                   <Stack>
-                    <Muted data-calendar-region="source-copy">TTC events are pulled from TheTezosCommunity iCal feed and ranked above WTF entries when duplicates share the same title and start time.</Muted>
+                    <Muted data-calendar-region="source-copy">TTC events are pulled from TheTezosCommunity iCal feed, checked against TTC's public event records, and ranked above WTF entries when duplicates share the same title and start time.</Muted>
                     <Muted data-calendar-region="source-copy">WTF entries come from approved WTF calendar tickets and staff-created events.</Muted>
                     <Muted data-calendar-region="source-copy">Personal entries stay in this browser profile only.</Muted>
                     <Separator />
