@@ -638,7 +638,12 @@ export function AdminInbox() {
                   {selected.attachments.length ? (
                     <AttachmentLinks aria-label="Attached screenshots">
                       {selected.attachments.map((attachment) => (
-                        <a key={attachment.mediaId} href={attachment.url} target="_blank" rel="noreferrer">
+                        <a
+                          key={attachment.mediaId}
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           <img src={attachment.url} alt={`Screenshot evidence: ${attachment.name}`} loading="lazy" />
                           {attachment.name}
                         </a>

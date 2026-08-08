@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { MichelsonMap } from "@taquito/taquito";
+import { validateOperation, ValidationResult } from "@taquito/utils";
 import { chromium, type Page } from "playwright";
 
 import {
@@ -13,6 +14,7 @@ import {
   PASTA_UI_LIVE_RECEIPT_SCHEMA,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
 } from "./pasta-ui-live-bridge-kit";
 import {
@@ -24,6 +26,7 @@ import {
 } from "./pasta-proof-screenshot-kit";
 import { root, utf8ToHex } from "./shadownet-proof-kit";
 import {
+  assertPenneTzktOperationApplied,
   assertPenneUiLiveExecutionAllowed,
   verifyPenneTzktEvidence,
 } from "./shadownet-penne-ui-live";
@@ -65,16 +68,67 @@ type RecordedCall = {
   payload: unknown;
 };
 
+type FakeOperationRecord = {
+  hash: string;
+  signerAddress: string;
+  action: "originate" | "call";
+  contractAddress: string;
+  entrypoints: string[];
+  status: "pending" | "applied" | "rejected";
+  rejection?: string;
+};
+
 function createFakeChain() {
   let operationIndex = 0;
   const calls: RecordedCall[] = [];
-  const nextOperation = () => {
+  const operations = new Map<string, FakeOperationRecord>();
+  const finalityState = { confirmationCalls: 0 };
+  const nextOperation = (input: {
+    signerAddress: string;
+    action: "originate" | "call";
+    entrypoints: string[];
+    apply?: () => void;
+  }) => {
     const hash = OPERATION_HASHES[operationIndex++];
     assert.ok(hash, "fake chain exhausted operation hashes");
+    assert.equal(validateOperation(hash), ValidationResult.VALID, "fake Penne operation hash is invalid");
+    assert.equal(operations.has(hash), false, "fake Penne operation hash must be unique");
+    const record: FakeOperationRecord = {
+      hash,
+      signerAddress: input.signerAddress,
+      action: input.action,
+      contractAddress: CONTRACT,
+      entrypoints: [...input.entrypoints],
+      status: "pending",
+    };
+    operations.set(hash, record);
+    let settled = false;
+    let settlementError: unknown;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        input.apply?.();
+        record.status = "applied";
+      } catch (error) {
+        settlementError = error;
+        record.status = "rejected";
+        record.rejection = error instanceof Error ? error.message : String(error);
+      }
+    };
+    queueMicrotask(settle);
     return {
       hash,
+      ...(input.action === "originate" ? { contractAddress: CONTRACT } : {}),
       async confirmation() {
+        finalityState.confirmationCalls += 1;
         await new Promise((resolve) => setTimeout(resolve, 120));
+        settle();
+        if (record.status === "rejected") {
+          throw settlementError instanceof Error
+            ? settlementError
+            : new Error(record.rejection || "fake Penne operation rejected");
+        }
         return 1;
       },
     };
@@ -86,8 +140,15 @@ function createFakeChain() {
         entrypoint,
         (payload: unknown) => ({
           async send() {
-            calls.push({ actor, entrypoint, payload });
-            return nextOperation();
+            return nextOperation({
+              signerAddress: actor,
+              action: "call",
+              entrypoints: [entrypoint],
+              apply: () => {
+                if (entrypoint !== "claim" && actor !== CREATOR) throw new Error("NOT_ADMIN");
+                calls.push({ actor, entrypoint, payload });
+              },
+            });
           },
         }),
       ]),
@@ -105,7 +166,11 @@ function createFakeChain() {
     contract: {
       async originate() {
         assert.equal(actor, CREATOR);
-        const operation = nextOperation();
+        const operation = nextOperation({
+          signerAddress: actor,
+          action: "originate",
+          entrypoints: [],
+        });
         return {
           ...operation,
           async contract() {
@@ -122,7 +187,25 @@ function createFakeChain() {
       },
     },
   });
-  return { calls, toolkitFor };
+  const assertOperationApplied = (
+    assertion: PastaUiLiveAppliedOperationAssertion,
+    signerAddress: string,
+  ) => {
+    assert.equal(validateOperation(assertion.operationHash), ValidationResult.VALID);
+    assert.notEqual(assertion.action, "batch", "fake Penne chain does not apply batches");
+    const operation = operations.get(assertion.operationHash);
+    assert.ok(operation, `fake Penne operation ${assertion.operationHash} is unknown`);
+    assert.equal(
+      operation.status,
+      "applied",
+      `fake Penne operation ${assertion.operationHash} is ${operation.status}`,
+    );
+    assert.equal(operation.signerAddress, signerAddress, "fake Penne operation signer drift");
+    assert.equal(operation.action, assertion.action, "fake Penne operation action drift");
+    assert.equal(operation.contractAddress, assertion.contractAddress, "fake Penne operation contract drift");
+    assert.deepEqual(operation.entrypoints, assertion.entrypoints, "fake Penne operation entrypoint drift");
+  };
+  return { assertOperationApplied, calls, finalityState, operations, toolkitFor };
 }
 
 async function waitForLog(page: Page, expected: string): Promise<void> {
@@ -175,6 +258,7 @@ test("real Penne studio completes creator deploy, collector claim, and creator a
       creatorChainStages.push(stage);
       return CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => fakeChain.assertOperationApplied(assertion, CREATOR),
     pinJson: async ({ fileName }) => {
       await new Promise((resolve) => setTimeout(resolve, 120));
       return fakeProof(fileName);
@@ -200,6 +284,7 @@ test("real Penne studio completes creator deploy, collector claim, and creator a
       collectorChainStages.push(stage);
       return CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => fakeChain.assertOperationApplied(assertion, COLLECTOR),
     pinJson: async () => {
       throw new Error("collector fixture must not pin");
     },
@@ -367,6 +452,11 @@ test("real Penne studio completes creator deploy, collector claim, and creator a
       collectorSession.getReceipts().filter((receipt) => receipt.operationHash).map((receipt) => receipt.operationHash),
       [OPERATION_HASHES[4]],
     );
+    assert.equal(
+      fakeChain.finalityState.confirmationCalls,
+      0,
+      "successful Penne UI-LIVE verification must not depend on native confirmation polling",
+    );
     assert.ok(creatorChainStages.includes("before UI-live origination"));
     assert.ok(creatorChainStages.includes("before UI-live contract call"));
     assert.ok(collectorChainStages.includes("before UI-live contract call"));
@@ -387,6 +477,132 @@ test("real Penne studio completes creator deploy, collector claim, and creator a
     await Promise.all([creatorServer.close(), collectorServer.close()]);
     await rm(outputRoot, { recursive: true, force: true });
   }
+});
+
+test("Penne TzKT finality validator binds exact hash, signer, action, contract, entrypoint, and applied status", () => {
+  const timestamp = "2026-07-23T20:00:00Z";
+  const origination = {
+    type: "origination",
+    status: "applied",
+    hash: OPERATION_HASHES[0],
+    sender: { address: CREATOR },
+    originatedContract: { address: CONTRACT },
+    level: 4_320_000,
+    timestamp,
+  };
+  const call = {
+    type: "transaction",
+    status: "applied",
+    hash: OPERATION_HASHES[1],
+    sender: { address: CREATOR },
+    target: { address: CONTRACT },
+    parameter: { entrypoint: "create_token" },
+    level: 4_320_001,
+    timestamp,
+  };
+  const internalTransfer = {
+    type: "transaction",
+    status: "applied",
+    hash: OPERATION_HASHES[1],
+    sender: { address: CONTRACT },
+    target: { address: CREATOR },
+    level: 4_320_001,
+    timestamp,
+  };
+  const originationAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "originate",
+    operationHash: OPERATION_HASHES[0],
+    contractAddress: CONTRACT,
+    entrypoints: [],
+  };
+  const callAssertion: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash: OPERATION_HASHES[1],
+    contractAddress: CONTRACT,
+    entrypoints: ["create_token"],
+  };
+
+  assert.equal(
+    assertPenneTzktOperationApplied({
+      rows: [origination],
+      assertion: originationAssertion,
+      signerAddress: CREATOR,
+    }).originatedContract?.address,
+    CONTRACT,
+  );
+  assert.equal(
+    assertPenneTzktOperationApplied({
+      rows: [call, internalTransfer],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }).parameter?.entrypoint,
+    "create_token",
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [{ ...call, status: "backtracked" }, internalTransfer],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /not applied/,
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [{ ...call, sender: { address: COLLECTOR } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [{ ...call, target: { address: UNRELATED_CONTRACT } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /target differs/,
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [{ ...call, parameter: { entrypoint: "set_allocations" } }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /entrypoint differs/,
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [call, { ...call }],
+      assertion: callAssertion,
+      signerAddress: CREATOR,
+    }),
+    /exactly one.*exact hash and signer/,
+  );
+  assert.throws(
+    () => assertPenneTzktOperationApplied({
+      rows: [call],
+      assertion: { ...callAssertion, action: "batch" },
+      signerAddress: CREATOR,
+    }),
+    /does not permit batch/,
+  );
+});
+
+test("fake Penne finality verifier rejects a submitted operation whose fake chain status is rejected", async () => {
+  const fakeChain = createFakeChain();
+  const contract = await fakeChain.toolkitFor(COLLECTOR).contract.at(CONTRACT);
+  const operation = await contract.methodsObject.airdrop([{ recipient: CREATOR, token_id: 0 }]).send();
+  await assert.rejects(() => operation.confirmation(), /NOT_ADMIN/);
+  assert.equal(fakeChain.finalityState.confirmationCalls, 1, "explicit rejection observation must retain confirmation coverage");
+  assert.throws(
+    () => fakeChain.assertOperationApplied({
+      action: "call",
+      operationHash: operation.hash,
+      contractAddress: CONTRACT,
+      entrypoints: ["airdrop"],
+    }, COLLECTOR),
+    /is rejected/,
+  );
 });
 
 test("Penne TzKT verifier requires the fresh contract, exact metadata, exhausted allocations, final balances, and every applied operation", async () => {
@@ -468,10 +684,13 @@ test("Penne TzKT verifier requires the fresh contract, exact metadata, exhausted
         balance: account === CREATOR ? "2" : indexedCollectorBalance,
       }];
     } else if (pathName.startsWith("/v1/operations/originations/")) {
+      const operationHash = pathName.split("/").at(-1);
       body = {
         type: "origination",
         status: "applied",
+        hash: operationHash,
         level: 9_100_001,
+        timestamp: "2026-07-23T20:00:00Z",
         sender: { address: CREATOR },
         originatedContract: { address: CONTRACT },
       };
@@ -483,7 +702,9 @@ test("Penne TzKT verifier requires the fresh contract, exact metadata, exhausted
       body = {
         type: "transaction",
         status: "applied",
+        hash: operationHash,
         level: 9_100_001 + index,
+        timestamp: `2026-07-23T20:00:0${index}Z`,
         sender: { address: operation.signerAddress },
         target: { address: CONTRACT },
         parameter: { entrypoint: operation.entrypoint },
@@ -583,6 +804,11 @@ test("production Penne runner is execute-gated, Shadownet-only, and recorder-fre
   assert.match(source, /retrievedSha256/);
   assert.match(source, /pollJson/);
   assert.match(source, /\/tokens\?contract=/);
+  assert.equal(
+    (source.match(/assertOperationApplied: \(assertion\) => verifyPenneTzktOperationApplied/g) || []).length,
+    2,
+    "creator and collector sessions must independently verify exact operation hashes",
+  );
   const firstOutputWrite = source.indexOf("await mkdir");
   const creatorFundingGate = source.indexOf("creator is underfunded before any pin or chain write");
   const collectorFundingGate = source.indexOf("collector is underfunded before any pin or chain write");

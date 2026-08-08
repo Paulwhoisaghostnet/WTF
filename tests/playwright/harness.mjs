@@ -809,6 +809,8 @@ const desktopApps = {
   mail: true,
 };
 
+const permanentDesktopAppRegistrations = new Set();
+
 const harnessAppStoreAppKeys = [
   "tv",
   "dicksword",
@@ -1731,7 +1733,7 @@ const harnessRoleSurfaces = [
     adminPanelTabs: ["desktop-apps", "os-admin"],
     nativeSettings: ["desktop.apps.enabled", "startMenu.visible"],
     automationHandles: ["admin.app_gate.updated", "desktop.app.disabled_by_admin"],
-    adminRoutes: ["/api/admin/apps/desktop"],
+    adminRoutes: ["/api/admin/apps/desktop", "/api/admin/apps/desktop/refresh-all"],
   },
   {
     id: "market-admin",
@@ -1898,16 +1900,18 @@ function arcadePlayStatusPayload() {
 }
 
 function desktopAppListEntry(key, enabled) {
+  const registrationNeverExpires = permanentDesktopAppRegistrations.has(key);
   return {
     key,
     enabled,
     docStatus: enabled ? "registered" : "pending",
     docRegistryVersion: "1",
     docsUpdatedAt: nowIso(),
-    docsExpiresAt: nowIso(),
+    docsExpiresAt: registrationNeverExpires ? null : nowIso(),
+    registrationNeverExpires,
     installKeyPrefix: enabled ? `${key}-install` : null,
     installKeyIssuedAt: enabled ? nowIso() : null,
-    installKeyExpiresAt: enabled ? nowIso() : null,
+    installKeyExpiresAt: enabled && !registrationNeverExpires ? nowIso() : null,
     installKeyRevokedAt: null,
     registeredBy: 1,
     registeredAt: nowIso(),
@@ -2005,11 +2009,33 @@ function apiMock(req, res) {
       ),
     });
   }
-  if (pathName.startsWith("/api/admin/apps/desktop/")) {
+  if (pathName === "/api/admin/apps/desktop/refresh-all" && req.method === "POST") {
     return res.json({
       ok: true,
-      app: pathName.split("/").pop(),
-      enabled: true,
+      refreshed: Object.keys(desktopApps).length,
+      apps: desktopApps,
+      list: Object.entries(desktopApps).map(([key, enabled]) =>
+        desktopAppListEntry(key, enabled)
+      ),
+      installKeys: Object.fromEntries(
+        Object.keys(desktopApps).map((key) => [key, `wtf_app_${key}_mock_refresh_key`])
+      ),
+    });
+  }
+  if (pathName.startsWith("/api/admin/apps/desktop/")) {
+    const appKey = decodeURIComponent(pathName.split("/").pop());
+    if (typeof req.body?.enabled === "boolean" && appKey in desktopApps) {
+      desktopApps[appKey] = req.body.enabled;
+    }
+    if (req.body?.registrationNeverExpires === true) {
+      permanentDesktopAppRegistrations.add(appKey);
+    } else if (req.body?.registrationNeverExpires === false) {
+      permanentDesktopAppRegistrations.delete(appKey);
+    }
+    return res.json({
+      ok: true,
+      app: appKey,
+      enabled: desktopApps[appKey],
       installKey: "wtf_app_mock_install_key",
       apps: desktopApps,
       list: Object.entries(desktopApps).map(([key, enabled]) =>

@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 
 import { MichelsonMap, type TezosToolkit } from "@taquito/taquito";
 import {
+  validateAddress,
   validateContractAddress,
   validateOperation,
   ValidationResult,
@@ -23,6 +24,7 @@ import {
   PastaUiLiveBridgeError,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLiveBridgeRequest,
   type PastaUiLiveFundingAuthorization,
   type PastaUiLivePinProof,
@@ -36,6 +38,12 @@ import {
   type PastaProofPageMonitor,
   type RequiredDomEvidence,
 } from "./pasta-proof-screenshot-kit";
+import { hashMichelsonScriptCode } from "./pasta-michelson-script-identity";
+import {
+  PASTA_DATETIME_LOCAL_RESOLUTION_MS,
+  pastaDeadlineBeforeCeiling,
+} from "./pasta-proof-deadline-policy";
+import { declareReadOnlyReader, readWithBoundedRetry } from "./pasta-readonly-retry";
 import {
   assertShadownet,
   block,
@@ -75,9 +83,18 @@ const CREATOR_OPERATION_RESERVE_MUTEZ = 1_500_000;
 const COLLECTOR_OPERATION_RESERVE_MUTEZ = 500_000;
 const MINIMUM_COLLECTOR_BALANCE_MUTEZ = COLLECTOR_OPERATION_RESERVE_MUTEZ;
 const PRICE_MUTEZ = 1;
-const LIMITED_SUPPLY = 3;
+const LIMITED_SUPPLY = 4;
 const LIMITED_CREATOR_RESERVE = 1;
 const RAVIOLI_ESCROW_CREATOR_RESERVE = 2;
+// Leave Ravioli one whole-minute input slot after the child expiry for its
+// open cutoff. The child itself therefore uses the latest interoperable minute
+// below the browser/RFC3339 four-digit ceiling.
+export const GNOCCHI_PROOF_MAXIMUM_FINITE_END_ISO = pastaDeadlineBeforeCeiling(1);
+// A Ravioli LE wrapper needs two distinct whole-minute slots between its sale
+// end and this child expiry: one for the sale/reveal ordering boundary and one
+// for the reveal/child ordering boundary.
+const RAVIOLI_WRAPPER_EXPIRY_MARGIN_MS = 2 * PASTA_DATETIME_LOCAL_RESOLUTION_MS;
+const CONTRACT_CODE_EVIDENCE_PATH = "artifacts/gnocchi-current-contract-code.json";
 const PNG_BYTES = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z4WQAAAAASUVORK5CYII=",
   "base64",
@@ -159,19 +176,26 @@ function mapValue(map: unknown, key: string): unknown {
   return map.get(key);
 }
 
+function unwrapMichelsonOption(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  if ("Some" in value) return (value as { Some: unknown }).Some;
+  if ("some" in value) return (value as { some: unknown }).some;
+  return value;
+}
+
 function normalizeSale(value: unknown): SaleSnapshot {
   assert.ok(value && typeof value === "object" && !Array.isArray(value), "sale must be an object");
   const sale = value as Record<string, unknown>;
   const normalized: SaleSnapshot = {
     active: sale.active === true,
-    start: sale.start == null ? null : String(sale.start),
-    end: sale.end == null ? null : String(sale.end),
+    start: sale.start == null ? null : String(unwrapMichelsonOption(sale.start)),
+    end: sale.end == null ? null : String(unwrapMichelsonOption(sale.end)),
     base_price: asSafeInteger(sale.base_price, "sale.base_price"),
     increment: asSafeInteger(sale.increment, "sale.increment"),
     step_size: asSafeInteger(sale.step_size, "sale.step_size"),
-    min_price: sale.min_price == null ? null : asSafeInteger(sale.min_price, "sale.min_price"),
-    max_price: sale.max_price == null ? null : asSafeInteger(sale.max_price, "sale.max_price"),
-    max_supply: sale.max_supply == null ? null : asSafeInteger(sale.max_supply, "sale.max_supply"),
+    min_price: sale.min_price == null ? null : asSafeInteger(unwrapMichelsonOption(sale.min_price), "sale.min_price"),
+    max_price: sale.max_price == null ? null : asSafeInteger(unwrapMichelsonOption(sale.max_price), "sale.max_price"),
+    max_supply: sale.max_supply == null ? null : asSafeInteger(unwrapMichelsonOption(sale.max_supply), "sale.max_supply"),
     treasury: String(sale.treasury || ""),
   };
   assert.ok(normalized.step_size >= 1, "sale step_size must be positive");
@@ -280,6 +304,117 @@ export class GnocchiUiStateMirror {
   tokenSnapshots(): TokenSnapshot[] {
     return this.tokens.map((token) => ({ ...token, sale: { ...token.sale } }));
   }
+}
+
+export function buildGnocchiRavioliDependencyEvidence(input: {
+  contractAddress: string;
+  administrator: string;
+  collectorOne: string;
+  collectorTwo: string;
+  metadataUri: string;
+  sale: SaleSnapshot;
+  policyLocked: boolean;
+  totalSupply: number;
+  totalMinted: number;
+  totalReserved: number;
+  creatorBalance: number;
+  collectorOneBalance: number;
+  collectorTwoBalance: number;
+  artifactSha256: string;
+  artifactCodeSha256: string;
+  onChainCodeSha256: string;
+}): Record<string, unknown> {
+  assert.equal(validateContractAddress(input.contractAddress), ValidationResult.VALID);
+  for (const [label, address] of [
+    ["administrator", input.administrator],
+    ["collector one", input.collectorOne],
+    ["collector two", input.collectorTwo],
+  ] as const) {
+    assert.ok(address.startsWith("tz"), `${label} must be an implicit Tezos account`);
+  }
+  assert.match(input.metadataUri, /^ipfs:\/\//);
+  assert.equal(input.sale.active, true);
+  assert.ok(input.sale.start && Number.isFinite(Date.parse(input.sale.start)), "LE start must be a timestamp");
+  assert.ok(input.sale.end && Number.isFinite(Date.parse(input.sale.end)), "LE end must be a timestamp");
+  assert.ok(Date.parse(input.sale.end) > Date.parse(input.sale.start), "LE end must follow its start");
+  assert.ok(
+    Date.parse(input.sale.end) <= Date.parse(GNOCCHI_PROOF_MAXIMUM_FINITE_END_ISO),
+    "LE child expiry exceeds the maximum interoperable finite horizon",
+  );
+  assert.equal(input.sale.base_price, PRICE_MUTEZ);
+  assert.equal(input.sale.increment, 0);
+  assert.equal(input.sale.step_size, 1);
+  assert.equal(input.sale.min_price, null);
+  assert.equal(input.sale.max_price, null);
+  assert.equal(input.sale.max_supply, LIMITED_SUPPLY);
+  assert.equal(input.sale.treasury, input.administrator);
+  assert.equal(input.policyLocked, true);
+  assert.equal(input.totalSupply, LIMITED_CREATOR_RESERVE + 2, "Gnocchi LE baseline total supply drift");
+  assert.equal(input.totalMinted, LIMITED_CREATOR_RESERVE + 2, "Gnocchi LE baseline total minted drift");
+  assert.equal(input.totalReserved, 0, "Gnocchi LE baseline total reserved drift");
+  assert.equal(input.creatorBalance, LIMITED_CREATOR_RESERVE);
+  assert.equal(input.collectorOneBalance, 1);
+  assert.equal(input.collectorTwoBalance, 1);
+  const remainingMintable = LIMITED_SUPPLY - input.totalMinted - input.totalReserved;
+  assert.equal(remainingMintable, 1, "Gnocchi proof must leave exactly one unminted LE allocation");
+  for (const [label, digest] of [
+    ["artifact", input.artifactSha256],
+    ["artifact code", input.artifactCodeSha256],
+    ["on-chain code", input.onChainCodeSha256],
+  ] as const) assert.match(digest, /^[0-9a-f]{64}$/, `${label} digest is invalid`);
+  assert.equal(input.onChainCodeSha256, input.artifactCodeSha256, "originated Gnocchi script differs from the current artifact");
+  const recommendedRavioliSaleEnd = new Date(
+    Date.parse(input.sale.end) - RAVIOLI_WRAPPER_EXPIRY_MARGIN_MS,
+  ).toISOString();
+  return {
+    schema: "pastaprotocol-gnocchi-ravioli-dependency@1",
+    contractAddress: input.contractAddress,
+    administrator: input.administrator,
+    script: {
+      artifactPath: CONTRACT_CODE_EVIDENCE_PATH,
+      artifactSha256: input.artifactSha256,
+      artifactCodeSha256: input.artifactCodeSha256,
+      onChainCodeSha256: input.onChainCodeSha256,
+      exactMatch: true,
+    },
+    limitedEdition: {
+      tokenId: 2,
+      metadataUri: input.metadataUri,
+      policy: {
+        active: true,
+        start: input.sale.start,
+        end: input.sale.end,
+        basePriceMutez: PRICE_MUTEZ,
+        incrementMutez: 0,
+        stepSize: 1,
+        minPriceMutez: null,
+        maxPriceMutez: null,
+        maxSupply: LIMITED_SUPPLY,
+        treasury: input.administrator,
+        policyLocked: true,
+      },
+      baseline: {
+        totalSupply: input.totalSupply,
+        totalMinted: input.totalMinted,
+        totalReserved: input.totalReserved,
+        remainingMintable,
+        balances: {
+          creator: { address: input.administrator, balance: input.creatorBalance },
+          collectorOne: { address: input.collectorOne, balance: input.collectorOneBalance },
+          collectorTwo: { address: input.collectorTwo, balance: input.collectorTwoBalance },
+        },
+      },
+      allocation: {
+        availableAmount: remainingMintable,
+        reserveEntrypoint: "reserve_mint_capacity",
+        fulfillEntrypoint: "mint_reserved",
+        releaseEntrypoint: "release_mint_capacity",
+        ravioliWrapperMustBeLimitedEdition: true,
+        wrapperSaleEndMustBeNoLaterThan: input.sale.end,
+        recommendedRavioliSaleEnd,
+      },
+    },
+  };
 }
 
 export function assertFreshGnocchiContractGrant(
@@ -435,16 +570,27 @@ function validateCreatorCall(
 function validateCollectorCall(
   input: { entrypoint: string; payload: unknown },
   sendOptionsByPayload?: unknown,
+  mirror?: GnocchiUiStateMirror,
 ): void {
   assert.equal(input.entrypoint, "open_mint");
   assert.ok(input.payload && typeof input.payload === "object" && !Array.isArray(input.payload));
   const payload = input.payload as Record<string, unknown>;
   const tokenId = asSafeInteger(payload.token_id, "open_mint token");
   assert.ok(tokenId >= 0 && tokenId <= 2, "collector may only mint the three proof tokens");
-  assert.equal(asSafeInteger(payload.amount, "open_mint amount"), 1);
+  const amount = asSafeInteger(payload.amount, "open_mint amount");
+  if (amount === 2) {
+    assert.equal(tokenId, 2, "the only multi-unit proof request is the LE over-cap rejection");
+    const limited = mirror?.tokenSnapshots()[2];
+    assert.ok(limited, "LE over-cap rejection requires the live token-two baseline");
+    assert.equal(limited.sale.max_supply, LIMITED_SUPPLY);
+    assert.equal(limited.totalMinted, LIMITED_SUPPLY - 1, "LE over-cap rejection requires exactly one unit left");
+    assert.ok(amount > LIMITED_SUPPLY - limited.totalMinted, "LE negative request must exceed remaining capacity");
+  } else {
+    assert.equal(amount, 1, "successful collector mints must request one edition");
+  }
   if (sendOptionsByPayload && typeof sendOptionsByPayload === "object") {
     const options = sendOptionsByPayload as Record<string, unknown>;
-    assert.equal(asSafeInteger(options.amount, "open_mint amount mutez"), PRICE_MUTEZ);
+    assert.equal(asSafeInteger(options.amount, "open_mint amount mutez"), PRICE_MUTEZ * amount);
     assert.equal(options.mutez, true);
   }
 }
@@ -478,8 +624,22 @@ export function createMirroredSessionHandler(input: {
       throw new PastaUiLiveBridgeError(`collector bridge action is not allowed: ${request.action}`, 403);
     }
     const call = decodedCall(request);
-    if (input.role === "collector" && call) validateCollectorCall(call, call.sendOptions);
-    const result = await input.session.handle(request) as Record<string, unknown>;
+    if (input.role === "collector" && call) validateCollectorCall(call, call.sendOptions, input.mirror);
+    const result = (
+      request.action === "read_storage"
+        ? await readWithBoundedRetry({
+          primary: declareReadOnlyReader(
+            "Gnocchi UI-live projected storage",
+            () => input.session.handle(request),
+          ),
+        }, {
+          maxAttempts: 3,
+          deadlineMs: 30_000,
+          baseDelayMs: 250,
+          maxDelayMs: 2_000,
+        })
+        : await input.session.handle(request)
+    ) as Record<string, unknown>;
     if (request.action === "originate") {
       const contractAddress = String(result.contractAddress || "");
       const receipt = result.receipt as PastaUiLivePublicReceipt;
@@ -493,12 +653,133 @@ export function createMirroredSessionHandler(input: {
   };
 }
 
-async function readProjectedMapValue(source: unknown, key: string): Promise<unknown> {
+async function readProjectedMapValue(source: unknown, key: unknown): Promise<unknown> {
   if (!source || typeof source !== "object") return undefined;
   if (typeof (source as { get?: unknown }).get === "function") {
-    return (source as { get(key: string): unknown | Promise<unknown> }).get(key);
+    return (source as { get(key: unknown): unknown | Promise<unknown> }).get(key);
   }
-  return (source as Record<string, unknown>)[key];
+  return (source as Record<string, unknown>)[String(key)];
+}
+
+type GnocchiRavioliDependencyProjection = {
+  rawSale: unknown;
+  totalSupplyValue: unknown;
+  totalMintedValue: unknown;
+  totalReservedValue: unknown;
+  policyLockedValue: unknown;
+  creatorBalanceValue: unknown;
+  collectorOneBalanceValue: unknown;
+  collectorTwoBalanceValue: unknown;
+  script: unknown;
+};
+
+export async function readGnocchiRavioliDependencyEvidence(input: {
+  tezos: TezosToolkit;
+  contractAddress: string;
+  administrator: string;
+  collectorOne: string;
+  collectorTwo: string;
+  mirror: GnocchiUiStateMirror;
+  artifactSha256: string;
+  artifactCodeSha256: string;
+}): Promise<Record<string, unknown>> {
+  const limited = input.mirror.tokenSnapshots()[2];
+  assert.ok(limited, "Gnocchi dependency evidence requires token two");
+  const projection = await readWithBoundedRetry<GnocchiRavioliDependencyProjection>({
+    primary: declareReadOnlyReader<GnocchiRavioliDependencyProjection>(
+      "Gnocchi terminal Ravioli dependency projection",
+      async () => {
+        const contract = await input.tezos.contract.at(input.contractAddress);
+        const storage = await contract.storage() as Record<string, unknown>;
+        const rawSale = await readProjectedMapValue(storage.sales, "2");
+        const totalSupplyValue = await readProjectedMapValue(storage.total_supply, "2");
+        const totalMintedValue = await readProjectedMapValue(storage.total_minted, "2");
+        const totalReservedValue = await readProjectedMapValue(storage.total_reserved, "2");
+        const policyLockedValue = await readProjectedMapValue(storage.policy_locked, "2");
+        const creatorBalanceValue = await readProjectedMapValue(
+          storage.ledger,
+          { owner: input.administrator, token_id: 2 },
+        );
+        const collectorOneBalanceValue = await readProjectedMapValue(
+          storage.ledger,
+          { owner: input.collectorOne, token_id: 2 },
+        );
+        const collectorTwoBalanceValue = await readProjectedMapValue(
+          storage.ledger,
+          { owner: input.collectorTwo, token_id: 2 },
+        );
+        const script = await input.tezos.rpc.getScript(input.contractAddress);
+        return {
+          rawSale,
+          totalSupplyValue,
+          totalMintedValue,
+          totalReservedValue,
+          policyLockedValue,
+          creatorBalanceValue,
+          collectorOneBalanceValue,
+          collectorTwoBalanceValue,
+          script,
+        };
+      },
+    ),
+  }, {
+    maxAttempts: 3,
+    deadlineMs: 30_000,
+    baseDelayMs: 250,
+    maxDelayMs: 2_000,
+  });
+  const {
+    rawSale,
+    totalSupplyValue,
+    totalMintedValue,
+    totalReservedValue,
+    policyLockedValue,
+    creatorBalanceValue,
+    collectorOneBalanceValue,
+    collectorTwoBalanceValue,
+    script,
+  } = projection;
+  assert.ok(rawSale, "Gnocchi token-two sale is absent from live storage");
+  for (const [label, value] of [
+    ["total supply", totalSupplyValue],
+    ["total minted", totalMintedValue],
+    ["total reserved", totalReservedValue],
+    ["creator balance", creatorBalanceValue],
+    ["collector-one balance", collectorOneBalanceValue],
+    ["collector-two balance", collectorTwoBalanceValue],
+  ] as const) assert.notEqual(value, undefined, `Gnocchi token-two ${label} is absent from live storage`);
+  const sale = normalizeSale(rawSale);
+  assert.equal(sale.active, limited.sale.active);
+  assert.equal(Date.parse(sale.start || ""), Date.parse(limited.sale.start || ""));
+  assert.equal(Date.parse(sale.end || ""), Date.parse(limited.sale.end || ""));
+  assert.equal(sale.base_price, limited.sale.base_price);
+  assert.equal(sale.increment, limited.sale.increment);
+  assert.equal(sale.step_size, limited.sale.step_size);
+  assert.equal(sale.min_price, limited.sale.min_price);
+  assert.equal(sale.max_price, limited.sale.max_price);
+  assert.equal(sale.max_supply, limited.sale.max_supply);
+  assert.equal(sale.treasury, limited.sale.treasury);
+  assert.equal(policyLockedValue, true);
+  const scriptCode = (script as { code?: unknown }).code;
+  assert.ok(Array.isArray(scriptCode), "originated Gnocchi script code is missing");
+  return buildGnocchiRavioliDependencyEvidence({
+    contractAddress: input.contractAddress,
+    administrator: input.administrator,
+    collectorOne: input.collectorOne,
+    collectorTwo: input.collectorTwo,
+    metadataUri: limited.metadataUri,
+    sale,
+    policyLocked: policyLockedValue === true,
+    totalSupply: asSafeInteger(totalSupplyValue, "Gnocchi token-two total supply"),
+    totalMinted: asSafeInteger(totalMintedValue, "Gnocchi token-two total minted"),
+    totalReserved: asSafeInteger(totalReservedValue, "Gnocchi token-two total reserved"),
+    creatorBalance: asSafeInteger(creatorBalanceValue, "Gnocchi token-two creator balance"),
+    collectorOneBalance: asSafeInteger(collectorOneBalanceValue, "Gnocchi token-two collector-one balance"),
+    collectorTwoBalance: asSafeInteger(collectorTwoBalanceValue, "Gnocchi token-two collector-two balance"),
+    artifactSha256: input.artifactSha256,
+    artifactCodeSha256: input.artifactCodeSha256,
+    onChainCodeSha256: hashMichelsonScriptCode(scriptCode),
+  });
 }
 
 export async function projectGnocchiStorage(storage: unknown): Promise<Record<string, unknown>> {
@@ -536,21 +817,29 @@ function localDateTime(epochMs: number): string {
 
 async function openActorPage(bridge: ActorSession["bridge"]): Promise<ActorPage> {
   const browser = await chromium.launch({ headless: process.env.PASTA_UI_LIVE_HEADFUL !== "1" });
-  const context = await browser.newContext({
-    viewport: PASTA_PROOF_VIEWPORT,
-    deviceScaleFactor: 1,
-    locale: "en-US",
-    timezoneId: "UTC",
-    reducedMotion: "reduce",
-    serviceWorkers: "block",
-    acceptDownloads: false,
-  });
-  const page = await context.newPage();
-  const monitor = monitorPastaProofPage(page);
-  await page.goto(`${bridge.origin}${APP_PATH}`, { waitUntil: "networkidle", timeout: 30_000 });
-  await page.waitForFunction(() => Boolean((window as any).MD && (window as any).TZ?.MichelsonMap));
-  await installPastaUiLiveBrowserProxy(page, bridge, "UI-LIVE");
-  return { browser, context, page, monitor };
+  let context: BrowserContext | null = null;
+  let monitor: PastaProofPageMonitor | null = null;
+  try {
+    context = await browser.newContext({
+      viewport: PASTA_PROOF_VIEWPORT,
+      deviceScaleFactor: 1,
+      locale: "en-US",
+      timezoneId: "UTC",
+      reducedMotion: "reduce",
+      serviceWorkers: "block",
+      acceptDownloads: false,
+    });
+    const page = await context.newPage();
+    monitor = monitorPastaProofPage(page);
+    await page.goto(`${bridge.origin}${APP_PATH}`, { waitUntil: "networkidle", timeout: 30_000 });
+    await page.waitForFunction(() => Boolean((window as any).MD && (window as any).TZ?.MichelsonMap));
+    await installPastaUiLiveBrowserProxy(page, bridge, "UI-LIVE");
+    return { browser, context, page, monitor };
+  } catch (error) {
+    monitor?.dispose();
+    await browser.close().catch(() => undefined);
+    throw error;
+  }
 }
 
 async function configureBase(page: Page, kuboApiUrl: string): Promise<void> {
@@ -616,6 +905,43 @@ async function waitForLog(page: Page, expected: string, timeout = 300_000): Prom
   return waitForText(page, "#log", expected, timeout);
 }
 
+function logOccurrenceCount(value: string, needle: string): number {
+  if (!needle) return 0;
+  return value.split(needle).length - 1;
+}
+
+async function waitForLogOrFailure(input: {
+  page: Page;
+  expected: string;
+  failurePrefix: string;
+  previousFailureCount: number;
+  timeout?: number;
+}): Promise<void> {
+  const timeout = input.timeout ?? 300_000;
+  await input.page.locator("#log").waitFor({ state: "visible", timeout });
+  await input.page.waitForFunction(
+    ({ expected, failurePrefix, previousFailureCount }) => {
+      const log = document.getElementById("log")?.textContent || "";
+      return log.includes(expected) ||
+        log.split(failurePrefix).length - 1 > previousFailureCount;
+    },
+    {
+      expected: input.expected,
+      failurePrefix: input.failurePrefix,
+      previousFailureCount: input.previousFailureCount,
+    },
+    { timeout },
+  );
+  const log = (await input.page.locator("#log").textContent()) || "";
+  if (logOccurrenceCount(log, input.failurePrefix) > input.previousFailureCount) {
+    const notice = (await input.page.locator("#ppNotice").textContent().catch(() => "")) || "";
+    throw new Error(
+      `actual Gnocchi Studio ${input.failurePrefix.slice(0, -1)}; ` +
+      `log=${log.slice(-1_500)}; notice=${notice.slice(-500)}`,
+    );
+  }
+}
+
 async function captureStage(input: {
   actor: ActorPage;
   outputRoot: string;
@@ -648,8 +974,15 @@ async function connectActor(page: Page, address: string): Promise<void> {
 }
 
 async function publishEdition(page: Page, expected: string): Promise<void> {
+  const previous = (await page.locator("#log").textContent()) || "";
+  const previousFailureCount = logOccurrenceCount(previous, "publish failed:");
   await page.click("#btnPublish");
-  await waitForLog(page, expected);
+  await waitForLogOrFailure({
+    page,
+    expected,
+    failurePrefix: "publish failed:",
+    previousFailureCount,
+  });
   await page.waitForFunction(() => !document.getElementById("btnPublish")?.hasAttribute("disabled"));
 }
 
@@ -746,6 +1079,108 @@ function assertReceiptIdentifiers(
     [["set_sale_active"], ["set_sale_active"]],
   );
   return hashes;
+}
+
+type GnocchiTzktOperationRow = {
+  type?: unknown;
+  status?: unknown;
+  hash?: unknown;
+  sender?: { address?: unknown };
+  target?: { address?: unknown };
+  originatedContract?: { address?: unknown };
+  parameter?: { entrypoint?: unknown };
+  level?: unknown;
+  timestamp?: unknown;
+};
+
+function gnocchiTzktOperationRows(value: unknown): GnocchiTzktOperationRow[] {
+  const rows = Array.isArray(value) ? value : [value];
+  assert.ok(
+    rows.length > 0 && rows.every((row) => row && typeof row === "object" && !Array.isArray(row)),
+    "TzKT operation response must contain operation objects",
+  );
+  return rows as GnocchiTzktOperationRow[];
+}
+
+export function assertGnocchiTzktOperationApplied(input: {
+  rows: unknown;
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): GnocchiTzktOperationRow {
+  assert.equal(validateOperation(input.assertion.operationHash), ValidationResult.VALID, "Gnocchi operation hash is invalid");
+  assert.equal(validateAddress(input.signerAddress), ValidationResult.VALID, "Gnocchi operation signer is invalid");
+  assert.notEqual(input.assertion.action, "batch", "Gnocchi UI-live does not permit batch finality assertions");
+  assert.equal(
+    validateContractAddress(input.assertion.contractAddress || ""),
+    ValidationResult.VALID,
+    "Gnocchi operation contract address is invalid",
+  );
+
+  const signerRows = gnocchiTzktOperationRows(input.rows).filter((row) =>
+    row.hash === input.assertion.operationHash &&
+    row.sender?.address === input.signerAddress
+  );
+  assert.equal(
+    signerRows.length,
+    1,
+    "TzKT must expose exactly one Gnocchi operation for the exact hash and signer",
+  );
+  const operation = signerRows[0];
+  assert.equal(operation.status, "applied", "Gnocchi operation is not applied");
+  assert.ok(
+    Number.isSafeInteger(Number(operation.level)) && Number(operation.level) > 0,
+    "Gnocchi operation level is invalid",
+  );
+  assert.ok(
+    typeof operation.timestamp === "string" &&
+      Number.isFinite(Date.parse(operation.timestamp)),
+    "Gnocchi operation timestamp is invalid",
+  );
+
+  if (input.assertion.action === "originate") {
+    assert.equal(operation.type, "origination", "Gnocchi origination action differs from TzKT");
+    assert.deepEqual(input.assertion.entrypoints, [], "Gnocchi origination cannot claim entrypoints");
+    assert.equal(
+      operation.originatedContract?.address,
+      input.assertion.contractAddress,
+      "Gnocchi originated address differs from TzKT",
+    );
+  } else {
+    assert.equal(operation.type, "transaction", "Gnocchi call action differs from TzKT");
+    assert.equal(input.assertion.entrypoints.length, 1, "Gnocchi call must claim exactly one entrypoint");
+    assert.equal(
+      operation.target?.address,
+      input.assertion.contractAddress,
+      "Gnocchi call target differs from TzKT",
+    );
+    assert.equal(
+      operation.parameter?.entrypoint,
+      input.assertion.entrypoints[0],
+      "Gnocchi call entrypoint differs from TzKT",
+    );
+  }
+  return operation;
+}
+
+export async function verifyGnocchiTzktOperationApplied(input: {
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): Promise<void> {
+  const endpoint = input.assertion.action === "originate" ? "originations" : "transactions";
+  const url = `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${endpoint}/${encodeURIComponent(input.assertion.operationHash)}`;
+  const rows = await pollJson(
+    `Gnocchi exact-hash ${input.assertion.action} finality`,
+    url,
+    (value) => {
+      try {
+        assertGnocchiTzktOperationApplied({ rows: value, ...input });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  assertGnocchiTzktOperationApplied({ rows, ...input });
 }
 
 async function writePinArtifacts(appRoot: string, pins: readonly PinRecord[]) {
@@ -939,6 +1374,13 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
   ]);
 
   const code = await readContractArtifact();
+  const contractCodeBytes = await readFile(CONTRACT_ARTIFACT_PATH);
+  const contractCodeArtifact = {
+    id: "gnocchi-current-contract-code",
+    kind: "contract-code",
+    path: CONTRACT_CODE_EVIDENCE_PATH,
+    sha256: sha256(contractCodeBytes),
+  };
   const placeholderUri = "ipfs://bafkreic26kagcnqlehjbf2nt6u5pqdl3os3wk3vpptabzhs4qkt2vmupba";
   let estimate;
   try {
@@ -988,9 +1430,11 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
   }
 
   await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
+  await writeFile(path.join(appRoot, CONTRACT_CODE_EVIDENCE_PATH), contractCodeBytes);
   const pins: PinRecord[] = [];
   const mirror = new GnocchiUiStateMirror();
   const codeHash = hashJsonForBridge(code);
+  const canonicalCodeHash = hashMichelsonScriptCode(code);
   let collectionMetadataUri = "";
   let freshContractAddress = "";
   let originationReceipt: PastaUiLivePublicReceipt | undefined;
@@ -1003,6 +1447,10 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
       await assertShadownet(creatorTezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => verifyGnocchiTzktOperationApplied({
+      assertion,
+      signerAddress: signerSet.creator.address,
+    }),
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
     validateOrigination: (input) => validateOrigination(input, codeHash, signerSet.creator.address),
@@ -1052,7 +1500,7 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
   try {
     creatorActor = await openActorPage(creatorBridge);
     const start = localDateTime(Date.now() - 60_000);
-    const end = localDateTime(Date.now() + 86_400_000);
+    const end = localDateTime(Date.parse(GNOCCHI_PROOF_MAXIMUM_FINITE_END_ISO));
     await configureBase(creatorActor.page, ipfs.apiUrl);
     await configureEdition(creatorActor.page, {
       tokenId: 0,
@@ -1089,8 +1537,15 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
         { selector: "#account", expectedText: signerSet.creator.address.slice(0, 7) },
       ],
     }));
+    const firstPublishLog = (await creatorActor.page.locator("#log").textContent()) || "";
+    const firstPublishFailureCount = logOccurrenceCount(firstPublishLog, "publish failed:");
     await creatorActor.page.click("#btnPublish");
-    await waitForLog(creatorActor.page, "originating multi-edition Gnocchi collection");
+    await waitForLogOrFailure({
+      page: creatorActor.page,
+      expected: "originating multi-edition Gnocchi collection",
+      failurePrefix: "publish failed:",
+      previousFailureCount: firstPublishFailureCount,
+    });
     screenshots.push(await captureStage({
       actor: creatorActor,
       outputRoot: runRoot,
@@ -1100,7 +1555,12 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
       focusSelector: "#log",
       evidence: [{ selector: "#log", expectedText: "originating multi-edition Gnocchi collection" }],
     }));
-    await waitForLog(creatorActor.page, "collection deployed:");
+    await waitForLogOrFailure({
+      page: creatorActor.page,
+      expected: "collection deployed:",
+      failurePrefix: "publish failed:",
+      previousFailureCount: firstPublishFailureCount,
+    });
     screenshots.push(await captureStage({
       actor: creatorActor,
       outputRoot: runRoot,
@@ -1110,7 +1570,12 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
       focusSelector: "#log",
       evidence: [{ selector: "#log", expectedText: "collection deployed:" }],
     }));
-    await waitForLog(creatorActor.page, "Timed OE live ✓ — token id 0");
+    await waitForLogOrFailure({
+      page: creatorActor.page,
+      expected: "Timed OE live ✓ — token id 0",
+      failurePrefix: "publish failed:",
+      previousFailureCount: firstPublishFailureCount,
+    });
     await creatorActor.page.waitForFunction(() => !document.getElementById("btnPublish")?.hasAttribute("disabled"));
     mirror.setArtifactUri(0, pins.find((pin) => pin.bytes)?.proof.uri || "");
     screenshots.push(await captureStage({
@@ -1199,9 +1664,13 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
         await assertShadownet(collectorOneTezos, stage);
         return SHADOWNET_CHAIN_ID;
       },
+      assertOperationApplied: (assertion) => verifyGnocchiTzktOperationApplied({
+        assertion,
+        signerAddress: signerSet.collector.address,
+      }),
       pinJson: async () => { throw new PastaUiLiveBridgeError("collector pinning is disabled", 403); },
       validateOrigination: async () => { throw new PastaUiLiveBridgeError("collector origination is disabled", 403); },
-      validateCall: (input) => validateCollectorCall(input),
+      validateCall: (input) => validateCollectorCall(input, undefined, mirror),
       projectStorage: projectGnocchiStorage,
     });
     collectorOneSession.authorizeAfterFundingPreflight(fundingAuthorization({
@@ -1226,9 +1695,13 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
         await assertShadownet(collectorTwoTezos, stage);
         return SHADOWNET_CHAIN_ID;
       },
+      assertOperationApplied: (assertion) => verifyGnocchiTzktOperationApplied({
+        assertion,
+        signerAddress: signerSet.collectorTwo.address,
+      }),
       pinJson: async () => { throw new PastaUiLiveBridgeError("collector pinning is disabled", 403); },
       validateOrigination: async () => { throw new PastaUiLiveBridgeError("collector origination is disabled", 403); },
-      validateCall: (input) => validateCollectorCall(input),
+      validateCall: (input) => validateCollectorCall(input, undefined, mirror),
       projectStorage: projectGnocchiStorage,
     });
     collectorTwoSession.authorizeAfterFundingPreflight(fundingAuthorization({
@@ -1342,7 +1815,8 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
         ],
       }));
     }
-    await loadMintPolicy(collectorOneActor.page, freshContractAddress, 2, "3 lifetime minted / 3 cap");
+    await loadMintPolicy(collectorOneActor.page, freshContractAddress, 2, "3 lifetime minted / 4 cap");
+    await collectorOneActor.page.fill("#mintAmount", "2");
     await collectorOneActor.page.click("#btnMint");
     await waitForLog(collectorOneActor.page, "mint failed: not enough supply left");
     screenshots.push(await captureStage({
@@ -1353,7 +1827,7 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
       stageName: "Limited edition cap enforced",
       focusSelector: "#mintInfo",
       evidence: [
-        { selector: "#mintInfo", expectedText: "3 lifetime minted / 3 cap" },
+        { selector: "#mintInfo", expectedText: "3 lifetime minted / 4 cap" },
         { selector: "#log", expectedText: "mint failed: not enough supply left" },
       ],
     }));
@@ -1408,6 +1882,16 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
     collectionMetadataUri,
     tokenMetadataUris,
   });
+  const ravioliDependency = await readGnocchiRavioliDependencyEvidence({
+    tezos: creatorTezos,
+    contractAddress: freshContractAddress,
+    administrator: signerSet.creator.address,
+    collectorOne: signerSet.collector.address,
+    collectorTwo: signerSet.collectorTwo.address,
+    mirror,
+    artifactSha256: contractCodeArtifact.sha256,
+    artifactCodeSha256: canonicalCodeHash,
+  });
   const completedAt = new Date().toISOString();
   const receipt = {
     schema: "pastaprotocol-gnocchi-ui-live-run@1",
@@ -1430,10 +1914,12 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
     contract: {
       address: freshContractAddress,
       explorerUrl: `https://shadownet.tzkt.io/${freshContractAddress}`,
+      scriptSha256: contractCodeArtifact.sha256,
     },
     receipts: sessions.flatMap((session) => session.getReceipts()),
     pins: pinArtifacts.records,
     indexed,
+    ravioliDependency,
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
     screenshotSidecars: screenshots.map((capture) => capture.manifestSidecarArtifact),
   };
@@ -1448,7 +1934,7 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
     sha256: sha256(receiptBytes),
   };
   const sidecarArtifacts = screenshots.map((capture) => capture.manifestSidecarArtifact);
-  const artifacts = [...pinArtifacts.records, receiptArtifact, ...sidecarArtifacts];
+  const artifacts = [...pinArtifacts.records, contractCodeArtifact, receiptArtifact, ...sidecarArtifacts];
   const operations = writeReceipts.map(operationRecord);
   const tokens = [0, 1, 2].map((tokenId) => ({
     id: `gnocchi-token-${tokenId}`,
@@ -1478,7 +1964,7 @@ export async function runGnocchiUiLive(): Promise<GnocchiUiLiveResult> {
     },
     capabilities: [{
       id: "three-policy-collector-and-lifecycle-proof",
-      description: "Originate one Gnocchi collection, publish timed OE, forever OE, and timed capped LE tokens, mint each from two independent collectors, enforce the LE cap, and vault then reopen forever issuance through the real app UI.",
+      description: "Originate one Gnocchi collection, publish timed OE, forever OE, and a maximum-horizon timed capped LE, mint each from two independent collectors, reject an LE request for two when exactly one allocation remains, bind the exact current contract script, and vault then reopen forever issuance through the real app UI.",
       evidence: {
         screenshots: screenshots.map((capture) => capture.manifestScreenshot.stage),
         artifacts: artifacts.map((artifact) => artifact.id),

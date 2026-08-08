@@ -210,6 +210,34 @@ button:disabled {
   color: #cfe8c0;
 }
 
+.pp-recovery {
+  margin: 0.8rem 0 1rem;
+  padding: 0.9rem;
+  border: 1px solid #9f7133;
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  background: #21180f;
+}
+
+.pp-recovery h3 {
+  margin: 0 0 0.35rem;
+  color: var(--warn);
+  font-size: 0.95rem;
+}
+
+.pp-recovery-details {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+
+.pp-recovery a {
+  color: var(--accent);
+}
+
 @media (max-width: 720px) {
   .pp-grid {
     grid-template-columns: 1fr;

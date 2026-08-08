@@ -96,10 +96,14 @@ export function normalizeIpfsUri(uri: string): string {
   return normalizeIpfsUriShared(uri, base);
 }
 
+function validateMediaFetchTarget(uri: string): string | null {
+  return normalizePublicHttpUrl(uri, TV_CACHE_ALLOWED_HOSTS);
+}
+
 export function normalizeMediaUri(uri: string): string | null {
   const normalized = normalizeIpfsUri(uri || "");
   if (!normalized) return null;
-  return normalizePublicHttpUrl(normalized, TV_CACHE_ALLOWED_HOSTS);
+  return validateMediaFetchTarget(normalized);
 }
 
 /**
@@ -149,7 +153,7 @@ export function buildMediaFetchCandidates(uri: string): string[] {
   if (!normalized) return [];
   const candidates: string[] = [normalized];
   for (const gatewayUrl of buildIpfsGatewayCandidates(normalized, TV_IPFS_GATEWAYS)) {
-    const candidate = normalizeMediaUri(gatewayUrl);
+    const candidate = validateMediaFetchTarget(gatewayUrl);
     if (!candidate) continue;
     if (!candidates.includes(candidate)) candidates.push(candidate);
   }
@@ -196,7 +200,7 @@ export async function fetchWithRedirectGuard(
     const location = response.headers.get("location");
     if (!location) throw new Error("Redirect location missing");
 
-    const redirected = normalizeMediaUri(new URL(location, currentUrl).toString());
+    const redirected = validateMediaFetchTarget(new URL(location, currentUrl).toString());
     if (!redirected) throw new Error("Redirect target is not allowed");
     currentUrl = redirected;
   }

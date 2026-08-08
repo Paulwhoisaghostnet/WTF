@@ -55,7 +55,7 @@ type ArtifactSpec = { app: string; slug: string; label: string };
 type OriginationPlan = ArtifactSpec & {
   code: unknown[];
   storage: Record<string, unknown>;
-  scriptBytes: number;
+  forgedOperationBytes: number;
   estimatedMutez: number;
 };
 type OperationRecord = { label: string; hash: string };
@@ -328,6 +328,7 @@ function packConfig(
   maxSupply: number,
   blind: boolean,
   initialContentsUri: string | null,
+  manifestUri: string,
 ) {
   return {
     mode,
@@ -338,6 +339,9 @@ function packConfig(
     finalized: false,
     cancelled: false,
     contents_uri: initialContentsUri ? utf8ToHex(initialContentsUri) : null,
+    manifest_uri: utf8ToHex(manifestUri),
+    child_expiry: null,
+    wrapper_sale_end: null,
   };
 }
 
@@ -587,6 +591,7 @@ export function buildRavioliModePayloads(
         spec.maxSupply,
         spec.blind,
         spec.blind ? null : recipeMetadataUri,
+        recipeMetadataUri,
       ),
       recipes,
     };
@@ -865,15 +870,31 @@ function pinnedProofLines(evidence: RavioliPinnedEvidence): string[] {
   ];
 }
 
-function scriptBytes(code: unknown[], storage: Record<string, unknown>): number {
+function forgedOriginationOperationBytes(
+  code: unknown[],
+  storage: Record<string, unknown>,
+): number {
   const storageSection = (code as any[]).find((section) => section?.prim === "storage");
   assert.ok(storageSection?.args?.[0], "compiled artifact has no storage type");
   const encodedStorage = new Schema(storageSection.args[0]).Encode(storage);
-  const encoded = getCodec(CODEC.SCRIPT, ProtocolsHash.PsUshuai9).encoder({
-    code,
-    storage: encodedStorage,
+  const encodedContents = getCodec(
+    CODEC.OP_ORIGINATION,
+    ProtocolsHash.PsUshuai9,
+  ).encoder({
+    kind: "origination",
+    source: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+    fee: "10000",
+    counter: "1",
+    gas_limit: "1040000",
+    storage_limit: "60000",
+    balance: "0",
+    delegate: null,
+    script: { code, storage: encodedStorage },
   } as any);
-  return encoded.length / 2;
+  // OP_ORIGINATION encodes the manager-operation contents. A submitted
+  // single-operation group also contains the 32-byte branch and 64-byte
+  // signature, both of which count toward max_operation_data_length.
+  return encodedContents.length / 2 + 32 + 64;
 }
 
 async function send(
@@ -914,15 +935,18 @@ async function buildPlan(
   storage: Record<string, unknown>,
 ): Promise<OriginationPlan> {
   const code = await readArtifact(spec);
-  const bytes = scriptBytes(code, storage);
-  assert.ok(bytes < MAX_ORIGINATION_BYTES, `${spec.label} script is ${bytes} bytes`);
+  const bytes = forgedOriginationOperationBytes(code, storage);
+  assert.ok(
+    bytes < MAX_ORIGINATION_BYTES,
+    `${spec.label} signed origination operation is ${bytes} bytes`,
+  );
   const estimate = await tezos.estimate.originate({ code, storage } as any);
   const estimatedMutez =
     Number(estimate.suggestedFeeMutez) + Number(estimate.burnFeeMutez) + 100_000;
   ok(
-    `${spec.label} preflight: ${bytes} forged script bytes, fee=${estimate.suggestedFeeMutez}, burn=${estimate.burnFeeMutez}`,
+    `${spec.label} preflight: ${bytes} forged signed-operation bytes, fee=${estimate.suggestedFeeMutez}, burn=${estimate.burnFeeMutez}`,
   );
-  return { ...spec, code, storage, scriptBytes: bytes, estimatedMutez };
+  return { ...spec, code, storage, forgedOperationBytes: bytes, estimatedMutez };
 }
 
 async function transactionTree(hash: string): Promise<any[]> {
@@ -1070,6 +1094,11 @@ async function assertRotiniGeneratedUris(
 }
 
 async function main(): Promise<void> {
+  block("legacy direct Ravioli proof runner is security-superseded", [
+    "This runner targets the pre-controller Ravioli v2 lifecycle and must never submit another operation.",
+    "Use `scripts/pasta-protocol/shadownet-ravioli-ui-live.ts`; it binds the confirmed blind controller into a fresh v3 router, exercises the real Studio/buyer surfaces, and journals the semantic operation plan.",
+    "The 20260722b package remains immutable historical evidence only and is not reusable as an active Ravioli dependency or current security proof.",
+  ]);
   if (process.env.PASTA_SHADOWNET_E2E_EXECUTE !== "1") {
     block("explicit execute flag is required", [
       "`PASTA_SHADOWNET_E2E_EXECUTE=1` is required because this proof originates five contracts and spends Shadownet test tez.",
@@ -1312,6 +1341,7 @@ async function main(): Promise<void> {
   const createPackCalls = modePayloads.map((mode) =>
     router.methodsObject
       .create_pack({
+        expected_token_id: mode.tokenId,
         token_info: tokenInfo(mode.tokenMetadataUri, mode.name, mode.symbol, {
           mode: String(mode.mode),
           blindSecurity: mode.blind ? "commit-reveal-ui-hidden-chain-public" : "public",
@@ -1707,7 +1737,7 @@ async function main(): Promise<void> {
     "",
     "- Router, Gnocchi, and Rotini expose canonical TZIP-12 transfer/operator/balance layouts and TZIP-16 metadata storage.",
     "- Wrapper and generated tokens use TZIP-21 token metadata maps; TzKT indexing is recorded below.",
-    `- Forged origination script sizes: ${plans.map((plan) => `${plan.label}=\`${plan.scriptBytes}\``).join(", ")} bytes; each is below \`${MAX_ORIGINATION_BYTES}\` bytes.`,
+    `- Forged signed-origination operation sizes: ${plans.map((plan) => `${plan.label}=\`${plan.forgedOperationBytes}\``).join(", ")} bytes; each includes branch and signature and is below \`${MAX_ORIGINATION_BYTES}\` bytes.`,
     `- TzKT indexed \`${indexedPackTokens.length}\` Ravioli wrappers, \`${indexedGnocchiTokens.length}\` Gnocchi assets, and \`${indexedRotiniTokens.length}\` Rotini generated tokens.`,
     "- Blind means nonce-backed commit/reveal plus ordinary UI concealment. Tezos funding/reservation operations remain public and are not represented as cryptographically private.",
     "",

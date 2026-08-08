@@ -1,6 +1,6 @@
 # Macaroni Desktop Packaging
 
-Macaroni Desktop wraps the static Macaroni Studio bundle in Electron so users can install it without Python, npm, Node, or a local web server. The native app starts a private `127.0.0.1` server, loads `studio.html`, and keeps the same Tezos wallet/RPC and self-managed Pinata/IPFS-node workflow as the wtfOS version.
+Macaroni Desktop wraps the static Macaroni Studio bundle in Electron so users can install it without Python, npm, Node, or a local web server. The native app starts its private stable origin at `http://127.0.0.1:30771`, loads `studio.html`, and keeps the same Tezos wallet/RPC and self-managed Pinata/IPFS-node workflow as the wtfOS version. The fixed origin keeps browser-saved drafts available after quit/relaunch; a second launch focuses the existing window, and an occupied origin fails explicitly instead of silently switching storage namespaces.
 
 The desktop build intentionally does not include wtfOS hosted resources:
 
@@ -17,18 +17,19 @@ Packaging contributors should use Node 22+ for these commands. End users do not 
 npm run macaroni:desktop:check
 npm run macaroni:desktop:prepare
 npm run pack --prefix apps/macaroni-desktop
-npm run dist:mac --prefix apps/macaroni-desktop
+npm run dist:alpha:mac --prefix apps/macaroni-desktop
 ```
 
 `npm run pack --prefix apps/macaroni-desktop` creates an unpacked local app for inspection. Installer builds write to `apps/macaroni-desktop/release/`.
+Use `dist:alpha:mac` only for a controlled, explicitly dirty-preflight human-alpha artifact. The normal `dist:mac` publication command continues to require clean exact-commit provenance.
 
 ## CI Release Flow
 
 Run the **Macaroni Desktop Installers** workflow manually or push a tag like:
 
 ```bash
-git tag macaroni-desktop-v1.0.0
-git push origin macaroni-desktop-v1.0.0
+git tag macaroni-desktop-v1.0.1-alpha.1
+git push origin macaroni-desktop-v1.0.1-alpha.1
 ```
 
 The workflow builds:
@@ -39,7 +40,11 @@ The workflow builds:
 
 The Raspberry Pi `.deb` build requires package metadata that Linux package tools can expose to users and package managers. Keep `homepage`, `author.email`, `build.linux.maintainer`, and `build.deb.packageName` populated in `apps/macaroni-desktop/package.json`; `npm run macaroni:desktop:check` guards those fields because electron-builder rejects or weakens the `.deb` without them.
 
-When the workflow publishes a GitHub release, set the production app env values to the release asset URLs:
+The alpha workflow requires the release tag to match the package version, publishes a hyphenated alpha tag as a GitHub prerelease, embeds exact clean source provenance, and runs the packaged macOS/Windows app through boot plus stable-origin relaunch smoke before release publication.
+
+### Historical stable 1.0.0 metadata
+
+The following production values describe the already-published stable `1.0.0` release. They are retained as historical deployment data; they are not valid checksums or filenames for `1.0.1-alpha.1`.
 
 ```bash
 MACARONI_INSTALLER_MACOS_URL=https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-mac-universal.dmg
@@ -51,11 +56,13 @@ MACARONI_INSTALLER_RASPBERRY_PI_SHA256=6ed21c165f5b2c5f476b0c8ab23c78397de59a299
 MACARONI_INSTALLER_VERSION=1.0.0
 ```
 
-The wtfOS Studio page only enables installer download buttons when those URLs are configured. It also exposes configured SHA-256 values in the authenticated installer manifest so release operators can verify the download handoff with:
+The wtfOS Studio page only enables installer download buttons when those URLs are configured. It also exposes configured SHA-256 values in the authenticated installer manifest. After publishing the version named by `apps/macaroni-desktop/package.json`, configure that release's URLs and GitHub SHA-256 digests, then verify the download handoff with:
 
 ```bash
-WTFOS_INSTALLER_COOKIE='connect.sid=...' npm run macaroni:installers:live-check
+MACARONI_INSTALLER_COOKIE='connect.sid=...' npm run macaroni:installers:live-check
 ```
+
+The verifier derives its default version and tag from the current Macaroni package and reads asset digests from the matching GitHub release; it does not treat the historical `1.0.0` checksums as alpha evidence.
 
 ## macOS Signing And Notarization
 

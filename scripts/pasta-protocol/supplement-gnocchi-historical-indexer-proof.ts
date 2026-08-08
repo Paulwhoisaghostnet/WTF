@@ -309,6 +309,15 @@ function validateManifestInput(manifest: GnocchiManifest): void {
   if (manifest.network?.name !== "shadownet" || manifest.network?.chainId !== SHADOWNET_CHAIN_ID) {
     throw new Error(`Gnocchi manifest must target Shadownet ${SHADOWNET_CHAIN_ID}`);
   }
+  let manifestRpcUrl: URL;
+  try {
+    manifestRpcUrl = new URL(manifest.network.rpcUrl);
+  } catch {
+    throw new Error("Gnocchi manifest must retain a valid HTTP(S) Shadownet RPC URL");
+  }
+  if (!/^https?:$/.test(manifestRpcUrl.protocol)) {
+    throw new Error("Gnocchi manifest must retain a valid HTTP(S) Shadownet RPC URL");
+  }
   if (!Array.isArray(manifest.operations) || manifest.operations.length === 0) {
     throw new Error("Gnocchi manifest must contain accepted operations");
   }

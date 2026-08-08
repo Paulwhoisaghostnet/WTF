@@ -113,7 +113,8 @@ export function useAdminMutations({
   });
 
   const refreshAllDesktopAppsMutation = useMutation({
-    mutationFn: () => api.post<{ refreshed: number }>("/api/admin/apps/desktop/refresh-all", {}),
+    mutationFn: () =>
+      api.post<{ refreshed: number }>("/api/admin/apps/desktop/refresh-all", {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "desktop-apps"] });
       qc.invalidateQueries({ queryKey: ["desktop", "apps"] });

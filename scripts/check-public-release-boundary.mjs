@@ -1,16 +1,25 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { hasJwtShapedCredential } from "./public-release-secret-patterns.mjs";
 
 const policy = JSON.parse(readFileSync("config/public-release-boundary.json", "utf8"));
 const allowedAgentFiles = new Set(policy.publicAgentGovernance);
-const tracked = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+const releaseTextExtensions = new Set([
+  ".cjs", ".css", ".env", ".html", ".js", ".json", ".jsx", ".md",
+  ".mjs", ".toml", ".ts", ".tsx", ".txt", ".yaml", ".yml",
+]);
+const releaseFiles = execFileSync(
+  "git",
+  ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+  { encoding: "utf8" },
+)
   .split("\0")
-  .filter(Boolean)
+  .filter((file) => file && existsSync(file))
   .sort();
 const violations = [];
 
-for (const file of tracked) {
+for (const file of releaseFiles) {
   if (file.startsWith(".agents/") && !allowedAgentFiles.has(file)) {
     violations.push(`${file}: internal agent evidence is tracked`);
   }
@@ -29,13 +38,18 @@ for (const file of tracked) {
   } catch {
     continue;
   }
-  if (!stat.isFile() || stat.size > 2_000_000) continue;
+  if (!stat.isFile()) continue;
+  const isReleaseText = releaseTextExtensions.has(path.extname(file).toLowerCase());
+  if (!isReleaseText && stat.size > 2_000_000) continue;
   const source = readFileSync(file, "utf8");
   if (/^\s*-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/m.test(source)) {
     violations.push(`${file}: private key block detected`);
   }
   if (/\bAKIA[0-9A-Z]{16}\b/.test(source) || /\bgh[pousr]_[A-Za-z0-9_]{30,}\b/.test(source)) {
     violations.push(`${file}: high-confidence credential token detected`);
+  }
+  if (hasJwtShapedCredential(source)) {
+    violations.push(`${file}: JWT-shaped credential token detected`);
   }
 }
 
@@ -45,4 +59,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`Public release boundary passed for ${tracked.length} tracked files.`);
+console.log(`Public release boundary passed for ${releaseFiles.length} current release inputs.`);

@@ -68,6 +68,35 @@ test("beta catalog covers every creation tool route", () => {
   for (const tool of CREATION_TOOLS) assert.equal(routes.has(tool.routePath), true, `${tool.routePath} missing from beta catalog`);
 });
 
+test("beta catalog keeps Dashboard first-class after Hoard retirement", () => {
+  const ids = BETA_APP_CATALOG.map((entry) => entry.id);
+  assert.equal(new Set(ids).size, ids.length, "beta catalog ids must remain unique");
+
+  const dashboardEntries = BETA_APP_CATALOG.filter((entry) => entry.route === "/dashboard");
+  assert.equal(dashboardEntries.length, 1, "Dashboard must have one exact catalog owner");
+  assert.deepEqual(
+    {
+      id: dashboardEntries[0]?.id,
+      title: dashboardEntries[0]?.title,
+      access: dashboardEntries[0]?.access,
+      stage: dashboardEntries[0]?.stage,
+      personas: [...(dashboardEntries[0]?.personas ?? [])].sort(),
+    },
+    {
+      id: "dashboard",
+      title: "Dashboard",
+      access: "session",
+      stage: "collect",
+      personas: ["collector", "creator", "curator"],
+    },
+  );
+  assert.equal(
+    BETA_APP_CATALOG.some((entry) => entry.id === "hoard" || entry.route === "/hoard" || entry.related.includes("/hoard")),
+    false,
+    "retired Hoard ownership must not return through the beta catalog",
+  );
+});
+
 test("beta app atlas can filter existing apps by tier stage and persona", () => {
   for (const tier of [1, 2, 3, 4, 5] as const) {
     const apps = appsForTier(tier);

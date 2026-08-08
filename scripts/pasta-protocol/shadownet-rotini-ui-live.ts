@@ -8,8 +8,13 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { deflateSync } from "node:zlib";
 
-import { MichelsonMap, type TezosToolkit } from "@taquito/taquito";
-import { validateContractAddress, validateOperation, ValidationResult } from "@taquito/utils";
+import { MichelsonMap, TezosToolkit } from "@taquito/taquito";
+import {
+  validateAddress,
+  validateContractAddress,
+  validateOperation,
+  ValidationResult,
+} from "@taquito/utils";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 
 import {
@@ -17,6 +22,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
   type PastaUiLivePublicReceipt,
 } from "./pasta-ui-live-bridge-kit";
@@ -26,6 +32,12 @@ import {
   PASTA_PROOF_VIEWPORT,
   type CapturePastaProofStageResult,
 } from "./pasta-proof-screenshot-kit";
+import { hashMichelsonScriptCode } from "./pasta-michelson-script-identity";
+import { declareReadOnlyReader, readWithBoundedRetry } from "./pasta-readonly-retry";
+import {
+  createRotiniUiLiveCheckpoint,
+  type RotiniUiLiveCheckpointFinalization,
+} from "./shadownet-rotini-ui-live-checkpoint";
 import {
   assertShadownet,
   block,
@@ -42,6 +54,8 @@ import {
   resolveIpfsProofConfig,
   root,
   SHADOWNET_CHAIN_ID,
+  SHADOWNET_RPC_FALLBACK,
+  SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
@@ -52,8 +66,9 @@ const EXECUTE_FLAG = "PASTA_SHADOWNET_ROTINI_UI_LIVE_EXECUTE";
 const OUTPUT_ENV = "PASTA_PROOF_RUN_DIR";
 const CREATOR_OPERATION_RESERVE_MUTEZ = 1_000_000;
 const COLLECTOR_OPERATION_RESERVE_MUTEZ = 500_000;
-const MAX_SUPPLY = 3;
+const MAX_SUPPLY = 4;
 const RESERVATION_TTL_SECONDS = 3_600;
+const CONTRACT_CODE_EVIDENCE_PATH = "artifacts/rotini-current-contract-code.json";
 const STATIC_ROOT = path.join(root, "public");
 const CONTRACT_ARTIFACT_PATH = path.join(
   root,
@@ -298,12 +313,172 @@ function validateBrowserOrigination(
 }
 
 function safeNumber(value: unknown): number {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    if ("Some" in value) value = (value as { Some: unknown }).Some;
+    else if ("some" in value) value = (value as { some: unknown }).some;
+  }
   if (typeof value === "number") return value;
   if (typeof value === "bigint") return Number(value);
   const candidate = value as { toNumber?: () => number; toString?: () => string } | null;
   if (candidate && typeof candidate.toNumber === "function") return candidate.toNumber();
   const parsed = Number(candidate && typeof candidate.toString === "function" ? candidate.toString() : value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function buildRotiniRavioliDependencyEvidence(input: {
+  contractAddress: string;
+  administrator: string;
+  projectId: number;
+  active: boolean;
+  outputMode: string;
+  priceMutez: number;
+  maxSupply: number;
+  maxPerWallet: number;
+  reservationTtlSeconds: number;
+  minted: number;
+  reserved: number;
+  treasury: string;
+  generatorUri: string;
+  displayUri: string;
+  nextTokenId: number;
+  artifactSha256: string;
+  artifactCodeSha256: string;
+  onChainCodeSha256: string;
+}): Record<string, unknown> {
+  assert.equal(validateContractAddress(input.contractAddress), ValidationResult.VALID);
+  assert.ok(input.administrator.startsWith("tz"), "Rotini administrator must be an implicit Tezos account");
+  assert.equal(input.projectId, 0);
+  assert.equal(input.active, true);
+  assert.equal(input.outputMode, "png");
+  assert.equal(input.priceMutez, 0);
+  assert.equal(input.maxSupply, MAX_SUPPLY);
+  assert.equal(input.maxPerWallet, MAX_SUPPLY);
+  assert.equal(input.reservationTtlSeconds, RESERVATION_TTL_SECONDS);
+  assert.equal(input.minted, 1, "Rotini project-zero minted baseline drift");
+  assert.equal(input.reserved, 0, "Rotini project-zero reserved baseline drift");
+  assert.equal(input.treasury, input.administrator);
+  assert.match(input.generatorUri, /^ipfs:\/\//);
+  assert.match(input.displayUri, /^ipfs:\/\//);
+  assert.equal(input.nextTokenId, OUTPUTS.length, "Rotini baseline must include exactly its three proof tokens");
+  const remainingReservable = input.maxSupply - input.minted - input.reserved;
+  assert.equal(remainingReservable, 3, "Rotini project zero must leave three generated-at-open iterations");
+  for (const [label, digest] of [
+    ["artifact", input.artifactSha256],
+    ["artifact code", input.artifactCodeSha256],
+    ["on-chain code", input.onChainCodeSha256],
+  ] as const) assert.match(digest, /^[0-9a-f]{64}$/, `${label} digest is invalid`);
+  assert.equal(input.onChainCodeSha256, input.artifactCodeSha256, "originated Rotini script differs from the current artifact");
+  return {
+    schema: "pastaprotocol-rotini-ravioli-dependency@1",
+    contractAddress: input.contractAddress,
+    administrator: input.administrator,
+    script: {
+      artifactPath: CONTRACT_CODE_EVIDENCE_PATH,
+      artifactSha256: input.artifactSha256,
+      artifactCodeSha256: input.artifactCodeSha256,
+      onChainCodeSha256: input.onChainCodeSha256,
+      exactMatch: true,
+    },
+    project: {
+      projectId: 0,
+      active: true,
+      outputMode: "png",
+      priceMutez: 0,
+      maxSupply: MAX_SUPPLY,
+      maxPerWallet: MAX_SUPPLY,
+      reservationTtlSeconds: RESERVATION_TTL_SECONDS,
+      treasury: input.administrator,
+      generatorUri: input.generatorUri,
+      displayUri: input.displayUri,
+    },
+    baseline: {
+      minted: input.minted,
+      reserved: input.reserved,
+      remainingReservable,
+      nextTokenId: input.nextTokenId,
+      existingTokenIds: Array.from({ length: input.nextTokenId }, (_, tokenId) => tokenId),
+    },
+    generatedAtOpen: {
+      availableActions: remainingReservable,
+      reserveEntrypoint: "reserve_pack_capacity",
+      fulfillEntrypoint: "mint_pack_iteration",
+      releaseEntrypoint: "release_pack_capacity",
+      requiresActionIndex: true,
+    },
+  };
+}
+
+async function readRotiniRavioliDependencyEvidence(input: {
+  tezos: TezosToolkit;
+  contractAddress: string;
+  administrator: string;
+  artifactSha256: string;
+  artifactCodeSha256: string;
+}): Promise<Record<string, unknown>> {
+  const contract = await input.tezos.contract.at(input.contractAddress);
+  const storage = await contract.storage() as Record<string, unknown>;
+  const project = await mapGet(storage.projects, 0) as Record<string, unknown> | undefined;
+  assert.ok(project, "Rotini dependency evidence requires project zero");
+  const script = await input.tezos.rpc.getScript(input.contractAddress);
+  const scriptCode = (script as { code?: unknown }).code;
+  assert.ok(Array.isArray(scriptCode), "originated Rotini script code is missing");
+  return buildRotiniRavioliDependencyEvidence({
+    contractAddress: input.contractAddress,
+    administrator: input.administrator,
+    projectId: 0,
+    active: project.active === true,
+    outputMode: hexToUtf8(String(project.output_mode || "")),
+    priceMutez: safeNumber(project.price),
+    maxSupply: safeNumber(project.max_supply),
+    maxPerWallet: safeNumber(project.max_per_wallet),
+    reservationTtlSeconds: safeNumber(project.reservation_ttl),
+    minted: safeNumber(project.minted),
+    reserved: safeNumber(project.reserved),
+    treasury: String(project.treasury || ""),
+    generatorUri: hexToUtf8(String(project.generator_uri || "")),
+    displayUri: hexToUtf8(String(project.display_uri || "")),
+    nextTokenId: safeNumber(storage.next_token_id),
+    artifactSha256: input.artifactSha256,
+    artifactCodeSha256: input.artifactCodeSha256,
+    onChainCodeSha256: hashMichelsonScriptCode(scriptCode),
+  });
+}
+
+async function readRotiniRavioliDependencyEvidenceWithRetry(input: {
+  primary: TezosToolkit;
+  fallback: TezosToolkit;
+  contractAddress: string;
+  administrator: string;
+  artifactSha256: string;
+  artifactCodeSha256: string;
+}): Promise<Record<string, unknown>> {
+  const read = async (tezos: TezosToolkit, lane: "primary" | "fallback") => {
+    await assertShadownet(tezos, `Rotini ${lane} Ravioli dependency read`);
+    return readRotiniRavioliDependencyEvidence({
+      tezos,
+      contractAddress: input.contractAddress,
+      administrator: input.administrator,
+      artifactSha256: input.artifactSha256,
+      artifactCodeSha256: input.artifactCodeSha256,
+    });
+  };
+  return readWithBoundedRetry({
+    primary: declareReadOnlyReader(
+      `Rotini ${input.contractAddress} primary Ravioli dependency projection`,
+      () => read(input.primary, "primary"),
+    ),
+    fallback: declareReadOnlyReader(
+      `Rotini ${input.contractAddress} fallback Ravioli dependency projection`,
+      () => read(input.fallback, "fallback"),
+    ),
+  }, {
+    maxAttempts: 6,
+    deadlineMs: 60_000,
+    baseDelayMs: 250,
+    maxDelayMs: 4_000,
+    maxRetryAfterMs: 5_000,
+    jitterRatio: 0.1,
+  });
 }
 
 function jsonSafeValue(value: unknown, depth = 0): unknown {
@@ -365,6 +540,56 @@ export async function readRotiniBrowserProjection(
     reservations,
     latest_reservation: latestReservation,
   };
+}
+
+async function readRotiniBrowserProjectionWithRetry(input: {
+  primary: TezosToolkit;
+  fallback: TezosToolkit;
+  contractAddress: string;
+  ownerAddress: string;
+  expected: {
+    nextProjectId: number;
+    nextReservationId: number;
+    nextTokenId: number;
+  };
+}): Promise<RotiniBrowserProjection> {
+  const read = async (tezos: TezosToolkit, lane: "primary" | "fallback") => {
+    await assertShadownet(tezos, `Rotini ${lane} browser projection read`);
+    const projection = await readRotiniBrowserProjection(tezos, input.contractAddress, input.ownerAddress);
+    assert.equal(
+      projection.next_project_id,
+      input.expected.nextProjectId,
+      `${lane} Rotini projection next project id is stale or divergent`,
+    );
+    assert.equal(
+      projection.next_reservation_id,
+      input.expected.nextReservationId,
+      `${lane} Rotini projection next reservation id is stale or divergent`,
+    );
+    assert.equal(
+      projection.next_token_id,
+      input.expected.nextTokenId,
+      `${lane} Rotini projection next token id is stale or divergent`,
+    );
+    return projection;
+  };
+  return readWithBoundedRetry({
+    primary: declareReadOnlyReader(
+      `Rotini ${input.contractAddress} primary projection`,
+      () => read(input.primary, "primary"),
+    ),
+    fallback: declareReadOnlyReader(
+      `Rotini ${input.contractAddress} fallback projection`,
+      () => read(input.fallback, "fallback"),
+    ),
+  }, {
+    maxAttempts: 6,
+    deadlineMs: 60_000,
+    baseDelayMs: 250,
+    maxDelayMs: 4_000,
+    maxRetryAfterMs: 5_000,
+    jitterRatio: 0.1,
+  });
 }
 
 export async function installRotiniBrowserAdapters(page: Page, publicGatewayBaseUrl: string): Promise<void> {
@@ -436,7 +661,7 @@ export async function configureRotiniStudio(page: Page, kuboApiUrl: string): Pro
   await page.waitForFunction(() => document.querySelectorAll("#layers .pp-variant-thumb").length === 2);
   await page.selectOption("#outputMode", "png");
   await page.click("#btnGenerate");
-  await page.waitForFunction(() => document.getElementById("genStatus")?.textContent?.includes("generated 3 edition(s)"));
+  await page.waitForFunction(() => document.getElementById("genStatus")?.textContent?.includes("generated 4 edition(s)"));
 }
 
 async function waitForLogOccurrence(page: Page, text: string, count: number, timeout = 300_000): Promise<void> {
@@ -659,6 +884,200 @@ function assertOperationReceipts(
   return { contractAddress, operationReceipts };
 }
 
+type RotiniTzktOperationRecord = Record<string, any>;
+
+export type RotiniAppliedOperationEvidence = {
+  operationHash: string;
+  status: "applied";
+  action: "originate" | "call";
+  signerAddress: string;
+  contractAddress: string;
+  entrypoints: string[];
+  level: number;
+  timestamp: string;
+};
+
+function rotiniTzktOperationRows(value: unknown): RotiniTzktOperationRecord[] {
+  const candidates = Array.isArray(value) ? value : [value];
+  assert.ok(candidates.length > 0, "TzKT did not return a Rotini operation");
+  return candidates.map((candidate, index) => {
+    assert.ok(
+      candidate && typeof candidate === "object" && !Array.isArray(candidate),
+      `TzKT Rotini operation row ${index} must be an object`,
+    );
+    return candidate as RotiniTzktOperationRecord;
+  });
+}
+
+export function assertRotiniTzktOperationApplied(input: {
+  rows: unknown;
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): RotiniAppliedOperationEvidence {
+  assert.equal(
+    validateOperation(input.assertion.operationHash),
+    ValidationResult.VALID,
+    "Rotini applied-operation hash is invalid",
+  );
+  assert.equal(
+    validateAddress(input.signerAddress),
+    ValidationResult.VALID,
+    "Rotini applied-operation signer is invalid",
+  );
+  assert.notEqual(input.assertion.action, "batch", "Rotini UI-live never permits batch operations");
+  const action = input.assertion.action as "originate" | "call";
+  const contractAddress = input.assertion.contractAddress || "";
+  assert.equal(
+    validateContractAddress(contractAddress),
+    ValidationResult.VALID,
+    "Rotini applied-operation contract is invalid",
+  );
+  if (action === "originate") {
+    assert.deepEqual(input.assertion.entrypoints, [], "Rotini origination cannot declare entrypoints");
+  } else {
+    assert.equal(input.assertion.entrypoints.length, 1, "Rotini call must declare exactly one entrypoint");
+    assert.match(
+      input.assertion.entrypoints[0],
+      /^(?:create_project|reserve_iteration|finalize_iteration)$/,
+      "Rotini call declared an unsupported entrypoint",
+    );
+  }
+
+  const rows = rotiniTzktOperationRows(input.rows);
+  for (const [index, row] of rows.entries()) {
+    assert.equal(
+      row.hash,
+      input.assertion.operationHash,
+      `TzKT Rotini operation row ${index} differs from the exact submitted hash`,
+    );
+    assert.equal(
+      row.status,
+      "applied",
+      `TzKT Rotini operation ${input.assertion.operationHash} is not wholly applied`,
+    );
+  }
+  const matches = rows.filter((row) => {
+    if (row.sender?.address !== input.signerAddress) return false;
+    if (action === "originate") {
+      return row.originatedContract?.address === contractAddress;
+    }
+    return row.target?.address === contractAddress &&
+      row.parameter?.entrypoint === input.assertion.entrypoints[0];
+  });
+  assert.equal(
+    matches.length,
+    1,
+    `TzKT does not expose exactly one Rotini ${action} at the expected signer, contract, and entrypoint`,
+  );
+  const operation = matches[0];
+  if (operation.type !== undefined) {
+    assert.equal(
+      operation.type,
+      action === "originate" ? "origination" : "transaction",
+      "TzKT Rotini operation type drift",
+    );
+  }
+  const level = Number(operation.level);
+  assert.ok(Number.isSafeInteger(level) && level > 0, "TzKT Rotini operation level is invalid");
+  const timestamp = String(operation.timestamp || "");
+  assert.ok(
+    /^\d{4}-\d{2}-\d{2}T/.test(timestamp) && Number.isFinite(Date.parse(timestamp)),
+    "TzKT Rotini operation timestamp is invalid",
+  );
+  return {
+    operationHash: input.assertion.operationHash,
+    status: "applied",
+    action,
+    signerAddress: input.signerAddress,
+    contractAddress,
+    entrypoints: [...input.assertion.entrypoints],
+    level,
+    timestamp,
+  };
+}
+
+async function verifyRotiniTzktOperationApplied(input: {
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): Promise<RotiniAppliedOperationEvidence> {
+  const action = input.assertion.action;
+  assert.notEqual(action, "batch", "Rotini UI-live never permits batch operations");
+  const family = action === "originate" ? "originations" : "transactions";
+  const url = `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${family}/${encodeURIComponent(input.assertion.operationHash)}`;
+  const rows = await pollJson(
+    `Rotini exact applied ${action} ${input.assertion.operationHash}`,
+    url,
+    (value) => {
+      try {
+        assertRotiniTzktOperationApplied({ rows: value, ...input });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { attempts: 30, delayMs: 1_000, userAgent: "wtfos-pasta-rotini-ui-live-applied-verifier" },
+  );
+  return assertRotiniTzktOperationApplied({ rows, ...input });
+}
+
+export function createRotiniAppliedOperationBinding(input: {
+  signerAddress: string;
+  verifyApplied?: (input: {
+    assertion: PastaUiLiveAppliedOperationAssertion;
+    signerAddress: string;
+  }) => Promise<RotiniAppliedOperationEvidence>;
+}) {
+  assert.equal(validateAddress(input.signerAddress), ValidationResult.VALID);
+  const verified = new Map<string, {
+    assertion: PastaUiLiveAppliedOperationAssertion;
+    evidence: RotiniAppliedOperationEvidence;
+  }>();
+  const verifyApplied = input.verifyApplied || verifyRotiniTzktOperationApplied;
+  return {
+    assertOperationApplied: async (assertion: PastaUiLiveAppliedOperationAssertion): Promise<void> => {
+      assert.equal(verified.has(assertion.operationHash), false, "Rotini operation hash was verified more than once");
+      const evidence = await verifyApplied({ assertion, signerAddress: input.signerAddress });
+      assert.equal(evidence.operationHash, assertion.operationHash);
+      assert.equal(evidence.status, "applied");
+      assert.equal(evidence.action, assertion.action, "Rotini verifier evidence action drift");
+      assert.equal(evidence.signerAddress, input.signerAddress, "Rotini verifier evidence signer drift");
+      assert.equal(evidence.contractAddress, assertion.contractAddress, "Rotini verifier evidence contract drift");
+      assert.deepEqual(evidence.entrypoints, assertion.entrypoints, "Rotini verifier evidence entrypoint drift");
+      verified.set(assertion.operationHash, {
+        assertion: {
+          ...assertion,
+          entrypoints: [...assertion.entrypoints],
+        },
+        evidence,
+      });
+    },
+    bindReceipt: async (
+      receipt: PastaUiLivePublicReceipt,
+      persist: () => void | Promise<void>,
+    ): Promise<void> => {
+      if (!receipt.operationHash) {
+        await persist();
+        return;
+      }
+      const applied = verified.get(receipt.operationHash);
+      assert.ok(applied, `Rotini checkpoint receipt ${receipt.operationHash} lacks exact applied-operation evidence`);
+      assert.equal(receipt.action, applied.assertion.action, "Rotini applied receipt action drift");
+      assert.equal(receipt.signerAddress, input.signerAddress, "Rotini applied receipt signer drift");
+      assert.equal(receipt.contractAddress, applied.assertion.contractAddress, "Rotini applied receipt contract drift");
+      assert.deepEqual(receipt.entrypoints || [], applied.assertion.entrypoints, "Rotini applied receipt entrypoint drift");
+      await persist();
+      verified.delete(receipt.operationHash);
+    },
+    assertSettled(): void {
+      assert.equal(
+        verified.size,
+        0,
+        `Rotini has ${verified.size} applied operation(s) without a checkpoint receipt`,
+      );
+    },
+  };
+}
+
 async function verifyTzktEvidence(
   contractAddress: string,
   collectorAddress: string,
@@ -741,30 +1160,42 @@ async function verifyTzktEvidence(
   const indexedOperations = [];
   for (const receipt of operationReceipts) {
     const family = receipt.action === "originate" ? "originations" : "transactions";
+    const assertion: PastaUiLiveAppliedOperationAssertion = {
+      action: receipt.action as "originate" | "call",
+      operationHash: receipt.operationHash,
+      contractAddress,
+      entrypoints: [...(receipt.entrypoints || [])],
+    };
     const operation = await pollJson(
       `Rotini UI-live ${family} ${receipt.operationHash}`,
       `${base}/operations/${family}/${encodeURIComponent(receipt.operationHash)}`,
-      (json) => json?.status === "applied" || (Array.isArray(json) && json.some((entry) => entry?.status === "applied")),
+      (json) => {
+        try {
+          assertRotiniTzktOperationApplied({
+            rows: json,
+            assertion,
+            signerAddress: receipt.signerAddress || "",
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
     );
-    const record = Array.isArray(operation) ? operation.find((entry) => entry?.status === "applied") : operation;
-    const target = record?.target?.address || record?.originatedContract?.address;
-    assert.equal(record?.sender?.address, receipt.signerAddress, `TzKT sender differs for ${receipt.operationHash}`);
-    assert.equal(target, contractAddress, `TzKT target differs for ${receipt.operationHash}`);
-    if (receipt.action !== "originate") {
-      assert.equal(
-        record?.parameter?.entrypoint,
-        receipt.entrypoints?.[0],
-        `TzKT entrypoint differs for ${receipt.operationHash}`,
-      );
-    }
+    const applied = assertRotiniTzktOperationApplied({
+      rows: operation,
+      assertion,
+      signerAddress: receipt.signerAddress || "",
+    });
     indexedOperations.push({
-      hash: receipt.operationHash,
-      status: record?.status,
-      type: record?.type,
-      sender: record?.sender?.address,
-      target,
-      entrypoint: record?.parameter?.entrypoint || null,
-      level: record?.level,
+      hash: applied.operationHash,
+      status: applied.status,
+      type: applied.action === "originate" ? "origination" : "transaction",
+      sender: applied.signerAddress,
+      target: applied.contractAddress,
+      entrypoint: applied.entrypoints[0] || null,
+      level: applied.level,
+      timestamp: applied.timestamp,
     });
   }
   return {
@@ -823,6 +1254,45 @@ function artifactIdForPin(written: WrittenPinArtifact[], pin: PinnedRecord): str
   return match.id;
 }
 
+async function validateRotiniCheckpointArtifacts(
+  appRoot: string,
+  finalization: RotiniUiLiveCheckpointFinalization,
+): Promise<Array<{ id: string; kind: string; path: string; sha256: string }>> {
+  assert.equal(finalization.status, "FINALIZED");
+  assert.deepEqual(finalization.counts.actors, { creator: 4, collector: 6 });
+  assert.equal(finalization.counts.operations, 10);
+  assert.equal(finalization.counts.pins, 20);
+  const ids = new Set<string>();
+  const output = [];
+  for (const artifact of finalization.artifacts) {
+    assert.match(artifact.path, /^(?:intent\.json|final\.json|events\/[0-9]{6}-(?:prepared|submitted|confirmed|pin_prepared|pin_confirmed|receipt)-(?:creator|collector)\.json|pins\/[0-9]{6}\.(?:bin|proof\.json))$/);
+    const relativePath = `artifacts/rotini-ui-live-checkpoint/${artifact.path}`;
+    const absolutePath = path.resolve(appRoot, ...relativePath.split("/"));
+    assert.ok(absolutePath.startsWith(`${path.resolve(appRoot)}${path.sep}`), "Rotini checkpoint artifact escapes app root");
+    const bytes = await readFile(absolutePath);
+    assert.equal(bytes.byteLength, artifact.byteLength, `${artifact.path} checkpoint byte length drift`);
+    assert.equal(sha256(bytes), artifact.sha256, `${artifact.path} checkpoint hash drift`);
+    const id = `rotini-checkpoint-${artifact.path.replace(/[^A-Za-z0-9._-]+/g, "-")}`.slice(0, 128);
+    assert.ok(!ids.has(id), `duplicate Rotini checkpoint artifact id ${id}`);
+    ids.add(id);
+    output.push({
+      id,
+      kind: artifact.path === "intent.json"
+        ? "durable-checkpoint-intent"
+        : artifact.path === "final.json"
+          ? "durable-checkpoint-finalization"
+          : artifact.path.startsWith("events/")
+            ? "durable-checkpoint-event"
+            : artifact.path.endsWith(".proof.json")
+              ? "durable-checkpoint-pin-proof"
+              : "durable-checkpoint-pin-bytes",
+      path: relativePath,
+      sha256: artifact.sha256,
+    });
+  }
+  return output;
+}
+
 export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   assertRotiniUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV] || "");
@@ -835,12 +1305,23 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   assert.notEqual(creator.address, collector.address, "Rotini UI-live creator and collector must be independent wallets");
   const creatorTezos = buildToolkit(creatorSigner, rpc.rpcUrl);
   const collectorTezos = buildToolkit(collectorSigner, rpc.rpcUrl);
+  const alternateReadRpc = normalizeBase(rpc.rpcUrl) === normalizeBase(SHADOWNET_RPC_FALLBACK)
+    ? SHADOWNET_RPC_PRIMARY
+    : SHADOWNET_RPC_FALLBACK;
+  const fallbackReadTezos = new TezosToolkit(alternateReadRpc);
   await Promise.all([
     assertShadownet(creatorTezos, "Rotini creator UI-live startup"),
     assertShadownet(collectorTezos, "Rotini collector UI-live startup"),
   ]);
 
   const code = await readContractArtifact();
+  const contractCodeBytes = await readFile(CONTRACT_ARTIFACT_PATH);
+  const contractCodeArtifact = {
+    id: "rotini-current-contract-code",
+    kind: "contract-code",
+    path: CONTRACT_CODE_EVIDENCE_PATH,
+    sha256: sha256(contractCodeBytes),
+  };
   const placeholderMetadataUri = "ipfs://bafkreic26kagcnqlehjbf2nt6u5pqdl3os3wk3vpptabzhs4qkt2vmupba";
   const [creatorBalanceValue, collectorBalanceValue] = await Promise.all([
     creatorTezos.tz.getBalance(creator.address),
@@ -887,6 +1368,21 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   const pins: PinnedRecord[] = [];
   const screenshots: CapturePastaProofStageResult[] = [];
   const expectedCodeHash = hashJsonForBridge(code);
+  const canonicalCodeHash = hashMichelsonScriptCode(code);
+  const startedAt = new Date().toISOString();
+  const checkpoint = await createRotiniUiLiveCheckpoint({
+    checkpointRoot: path.join(appRoot, "artifacts", "rotini-ui-live-checkpoint"),
+    runId,
+    createdAt: startedAt,
+    chainId: SHADOWNET_CHAIN_ID,
+    actors: { creator: creator.address, collector: collector.address },
+    contractIdentity: {
+      artifactPath: path.relative(root, CONTRACT_ARTIFACT_PATH).split(path.sep).join("/"),
+      rawArtifactSha256: contractCodeArtifact.sha256,
+      canonicalMichelsonCodeSha256: canonicalCodeHash,
+    },
+  });
+  await writeFile(path.join(appRoot, CONTRACT_CODE_EVIDENCE_PATH), contractCodeBytes);
   const creatorValidator = createCreatorCallValidator(creator.address);
   let creatorProjection: RotiniBrowserProjection = {
     next_project_id: 0,
@@ -897,6 +1393,9 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     latest_reservation: {},
   };
   let creatorContractAddress = "";
+  const creatorAppliedOperations = createRotiniAppliedOperationBinding({
+    signerAddress: creator.address,
+  });
   const creatorSession = new TaquitoPastaUiLiveSession({
     tezos: creatorTezos,
     signerAddress: creator.address,
@@ -911,14 +1410,32 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     validateOrigination: (input) => validateBrowserOrigination(input, expectedCodeHash, creator.address),
     validateCall: (input) => creatorValidator.validate(input),
     projectStorage: () => creatorProjection,
-    onPin: ({ value, bytes, proof }) => {
+    beforeOperationSubmit: (operation) => checkpoint.beforeOperationSubmit("creator", operation),
+    onOperationSubmitted: (operation) => checkpoint.onOperationSubmitted("creator", operation),
+    assertOperationApplied: creatorAppliedOperations.assertOperationApplied,
+    beforePin: (input) => checkpoint.beforePin("creator", input),
+    onPin: async ({ value, bytes, proof }) => {
+      await checkpoint.onPin("creator", { proof });
       pins.push({ actor: "creator", value, bytes: bytes ? Uint8Array.from(bytes) : undefined, proof });
     },
     onReceipt: async (receipt) => {
-      if (receipt.contractAddress) creatorContractAddress = receipt.contractAddress;
-      if (receipt.operationHash && creatorContractAddress) {
-        creatorProjection = await readRotiniBrowserProjection(creatorTezos, creatorContractAddress, creator.address);
-      }
+      await creatorAppliedOperations.bindReceipt(receipt, async () => {
+        await checkpoint.onReceipt("creator", receipt);
+        if (receipt.contractAddress) creatorContractAddress = receipt.contractAddress;
+        if (receipt.operationHash && creatorContractAddress) {
+          creatorProjection = await readRotiniBrowserProjectionWithRetry({
+            primary: creatorTezos,
+            fallback: fallbackReadTezos,
+            contractAddress: creatorContractAddress,
+            ownerAddress: creator.address,
+            expected: {
+              nextProjectId: creatorValidator.createdModes.length,
+              nextReservationId: 0,
+              nextTokenId: 0,
+            },
+          });
+        }
+      });
     },
   });
   creatorSession.authorizeAfterFundingPreflight({
@@ -934,7 +1451,6 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   });
   let creatorBrowser: Browser | null = null;
   let creatorMonitor: ReturnType<typeof monitorPastaProofPage> | null = null;
-  const startedAt = new Date().toISOString();
   try {
     const opened = await openBrowser();
     creatorBrowser = opened.browser;
@@ -947,12 +1463,12 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     await installPastaUiLiveBrowserProxy(opened.page, creatorBridge, "UI-LIVE");
     await installRotiniBrowserAdapters(opened.page, ipfs.publicGatewayUrl);
     await configureRotiniStudio(opened.page, ipfs.apiUrl);
-    await waitForLogOccurrence(opened.page, "generated 3 edition(s)", 1, 30_000);
+    await waitForLogOccurrence(opened.page, "generated 4 edition(s)", 1, 30_000);
     screenshots.push(await captureStage(
       opened.page, creatorMonitor, runRoot, 1,
       "configure deterministic generator", "PNG GIF and ZIP generator configured", "#genStatus",
-      "generated 3 edition(s)",
-      [{ selector: "#genStatus", name: "preview status", expectedText: "generated 3 edition(s)" }],
+      "generated 4 edition(s)",
+      [{ selector: "#genStatus", name: "preview status", expectedText: "generated 4 edition(s)" }],
     ));
 
     await opened.page.click("#btnConnect");
@@ -995,13 +1511,23 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   }
 
   const creatorReceipts = creatorSession.getReceipts();
+  creatorAppliedOperations.assertSettled();
   const originationReceipt = creatorReceipts.find((receipt) => receipt.action === "originate");
   const contractAddress = originationReceipt?.contractAddress || "";
   assert.equal(validateContractAddress(contractAddress), ValidationResult.VALID);
   assert.equal(contractAddress, creatorContractAddress);
 
-  let collectorProjection = await readRotiniBrowserProjection(collectorTezos, contractAddress, collector.address);
+  let collectorProjection = await readRotiniBrowserProjectionWithRetry({
+    primary: collectorTezos,
+    fallback: fallbackReadTezos,
+    contractAddress,
+    ownerAddress: collector.address,
+    expected: { nextProjectId: 3, nextReservationId: 0, nextTokenId: 0 },
+  });
   const collectorValidator = createCollectorCallValidator();
+  const collectorAppliedOperations = createRotiniAppliedOperationBinding({
+    signerAddress: collector.address,
+  });
   const collectorSession = new TaquitoPastaUiLiveSession({
     tezos: collectorTezos,
     signerAddress: collector.address,
@@ -1016,13 +1542,33 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
     validateCall: (input) => collectorValidator.validate(input),
     projectStorage: () => collectorProjection,
-    onPin: ({ value, bytes, proof }) => {
+    beforeOperationSubmit: (operation) => checkpoint.beforeOperationSubmit("collector", operation),
+    onOperationSubmitted: (operation) => checkpoint.onOperationSubmitted("collector", operation),
+    assertOperationApplied: collectorAppliedOperations.assertOperationApplied,
+    beforePin: (input) => checkpoint.beforePin("collector", input),
+    onPin: async ({ value, bytes, proof }) => {
+      await checkpoint.onPin("collector", { proof });
       pins.push({ actor: "collector", value, bytes: bytes ? Uint8Array.from(bytes) : undefined, proof });
     },
     onReceipt: async (receipt) => {
-      if (receipt.operationHash) {
-        collectorProjection = await readRotiniBrowserProjection(collectorTezos, contractAddress, collector.address);
-      }
+      await collectorAppliedOperations.bindReceipt(receipt, async () => {
+        await checkpoint.onReceipt("collector", receipt);
+        if (receipt.operationHash) {
+          collectorProjection = await readRotiniBrowserProjectionWithRetry({
+            primary: collectorTezos,
+            fallback: fallbackReadTezos,
+            contractAddress,
+            ownerAddress: collector.address,
+            expected: {
+              nextProjectId: 3,
+              nextReservationId: collectorValidator.reservedProjects.length,
+              // Rotini allocates the eventual token id when a reservation is
+              // created, before finalize_iteration writes the token metadata.
+              nextTokenId: collectorValidator.reservedProjects.length,
+            },
+          });
+        }
+      });
     },
   });
   collectorSession.authorizeAfterFundingPreflight({
@@ -1058,7 +1604,7 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     await opened.page.fill("#mintProjectId", "0");
     await opened.page.click("#btnLoadProject");
     await waitForText(opened.page, "#mintInfo", "PNG");
-    assert.match(await opened.page.locator("#mintInfo").innerText(), /\/ 3 · PNG/);
+    assert.match(await opened.page.locator("#mintInfo").innerText(), /\/ 4 · PNG/);
     assert.doesNotMatch(await opened.page.locator("#mintInfo").innerText(), /\[object Object\]/);
     screenshots.push(await captureStage(
       opened.page, collectorMonitor, runRoot, 6,
@@ -1075,7 +1621,7 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
       await opened.page.fill("#mintProjectId", String(index));
       await opened.page.click("#btnLoadProject");
       await waitForText(opened.page, "#mintInfo", output.mode.toUpperCase());
-      assert.match(await opened.page.locator("#mintInfo").innerText(), new RegExp(`/ 3 · ${output.mode.toUpperCase()}`));
+      assert.match(await opened.page.locator("#mintInfo").innerText(), new RegExp(`/ 4 · ${output.mode.toUpperCase()}`));
       assert.doesNotMatch(await opened.page.locator("#mintInfo").innerText(), /\[object Object\]/);
       await opened.page.click("#btnMintIteration");
       await waitForLogOccurrenceOrFailure(
@@ -1105,6 +1651,7 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
   }
 
   const collectorReceipts = collectorSession.getReceipts();
+  collectorAppliedOperations.assertSettled();
   const identifiers = assertOperationReceipts(
     creatorReceipts,
     collectorReceipts,
@@ -1135,6 +1682,13 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     };
   });
 
+  // The checkpoint becomes terminal before any read-only RPC/indexer work that
+  // may be rate-limited. A failure below this line must be signer-free
+  // finalizable from the already confirmed ten operations and twenty pins.
+  const checkpointCompletedAt = new Date().toISOString();
+  const checkpointFinalization = await checkpoint.finalize(checkpointCompletedAt);
+  const checkpointArtifacts = await validateRotiniCheckpointArtifacts(appRoot, checkpointFinalization);
+
   const tzktEvidence = await verifyTzktEvidence(
     contractAddress,
     collector.address,
@@ -1143,6 +1697,15 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     })),
     identifiers.operationReceipts,
   );
+  const ravioliDependency = await readRotiniRavioliDependencyEvidenceWithRetry({
+    primary: creatorTezos,
+    fallback: fallbackReadTezos,
+    contractAddress,
+    administrator: creator.address,
+    artifactSha256: contractCodeArtifact.sha256,
+    artifactCodeSha256: canonicalCodeHash,
+  });
+  const completedAt = new Date().toISOString();
   const writtenPins = await writePinnedArtifacts(appRoot, pins);
   const tzktBytes = deterministicJsonBytes(tzktEvidence);
   const tzktRelativePath = "artifacts/rotini-ui-live-tzkt-index.json";
@@ -1176,7 +1739,6 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     metadataUri: token.metadataUri,
     artifactUri: token.artifactUri,
   }));
-  const completedAt = new Date().toISOString();
   const receipt = {
     schema: "pastaprotocol-rotini-ui-live-run@1",
     classification: "UI-LIVE",
@@ -1195,6 +1757,7 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     contract: {
       address: contractAddress,
       explorerUrl: `https://shadownet.tzkt.io/${contractAddress}`,
+      scriptSha256: contractCodeArtifact.sha256,
     },
     projects: OUTPUTS.map((output, projectId) => ({
       projectId,
@@ -1214,17 +1777,27 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
     screenshotSidecars: screenshots.map((capture) => capture.manifestSidecarArtifact),
     tzktEvidence: { path: tzktRelativePath, sha256: sha256(tzktBytes) },
+    ravioliDependency,
+    checkpoint: {
+      status: checkpointFinalization.status,
+      checkpointId: checkpointFinalization.checkpointId,
+      intentSha256: checkpointFinalization.intentSha256,
+      finalSha256: checkpointFinalization.finalSha256,
+      counts: checkpointFinalization.counts,
+    },
   };
   const receiptBytes = deterministicJsonBytes(receipt);
   const receiptRelativePath = "artifacts/rotini-ui-live-run.json";
   const receiptPath = path.join(appRoot, receiptRelativePath);
   await writeFile(receiptPath, receiptBytes);
 
-  const localArtifacts = [
+  const baseLocalArtifacts = [
+    contractCodeArtifact,
     ...screenshots.map((capture) => capture.manifestSidecarArtifact),
     { id: "rotini-ui-live-run", kind: "proof-receipt", path: receiptRelativePath, sha256: sha256(receiptBytes) },
     { id: "rotini-ui-live-tzkt-index", kind: "indexer-evidence", path: tzktRelativePath, sha256: sha256(tzktBytes) },
   ];
+  const localArtifacts = [...baseLocalArtifacts, ...checkpointArtifacts];
   const allArtifacts = [...writtenPins.map(({ fileName: _fileName, actor: _actor, ...artifact }) => artifact), ...localArtifacts];
   const allScreenshotIds = screenshots.map((capture) => capture.manifestScreenshot.stage);
   const allArtifactIds = allArtifacts.map((artifact) => artifact.id);
@@ -1250,10 +1823,13 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
     capabilities: [
       {
         id: "publish-png-gif-zip-generators",
-        description: "Use the actual Rotini studio to pin generator inputs, originate one fresh collection, and publish PNG, animated GIF, and offline interactive ZIP projects; PNG project 0 remains free with two unreserved iterations for Ravioli generated-at-open packs.",
+        description: "Use the actual Rotini studio to pin generator inputs, originate one fresh collection from the exact current contract script, and publish PNG, animated GIF, and offline interactive ZIP projects; PNG project 0 remains free with three unreserved iterations for Ravioli generated-at-open packs.",
         evidence: {
           screenshots: allScreenshotIds.slice(0, 5),
-          artifacts: allArtifactIds.filter((id) => writtenPins.some((artifact) => artifact.id === id && artifact.actor === "creator")),
+          artifacts: [
+            contractCodeArtifact.id,
+            ...allArtifactIds.filter((id) => writtenPins.some((artifact) => artifact.id === id && artifact.actor === "creator")),
+          ],
           contracts: [contractAddress],
           operations: allOperationHashes.slice(0, 4),
           tokens: [],
@@ -1271,7 +1847,7 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
           screenshots: allScreenshotIds.slice(5),
           artifacts: [
             ...allArtifactIds.filter((id) => writtenPins.some((artifact) => artifact.id === id && artifact.actor === "collector")),
-            ...localArtifacts.map((artifact) => artifact.id),
+            ...baseLocalArtifacts.filter((artifact) => artifact.id !== contractCodeArtifact.id).map((artifact) => artifact.id),
           ],
           contracts: [contractAddress],
           operations: allOperationHashes.slice(4),
@@ -1280,6 +1856,22 @@ export async function runRotiniUiLive(): Promise<RotiniUiLiveResult> {
           urls: [
             ...tokens.map((token) => token.explorerUrl),
             ...writtenPins.filter((artifact) => artifact.actor === "collector").map((artifact) => artifact.gatewayUrl),
+          ],
+        },
+      },
+      {
+        id: "durable-ui-live-checkpoint",
+        description: "Bind Rotini's raw and canonical contract identity, exact twenty pin byte/proof pairs, non-operation bridge receipts, and ten-operation creator/collector choreography to an fsynced append-only PREPARED, SUBMITTED, and CONFIRMED hash chain.",
+        evidence: {
+          screenshots: [allScreenshotIds[1], allScreenshotIds.at(-1)].filter(Boolean),
+          artifacts: checkpointArtifacts.map((artifact) => artifact.id),
+          contracts: [contractAddress],
+          operations: allOperationHashes,
+          tokens: allTokenIds,
+          roleEvidence: [],
+          urls: [
+            `https://shadownet.tzkt.io/${contractAddress}`,
+            ...operations.map((operation) => operation.explorerUrl),
           ],
         },
       },

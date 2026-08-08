@@ -6,7 +6,11 @@ import test from "node:test";
 
 import { validateOperation, ValidationResult } from "@taquito/utils";
 
-import { deterministicJsonBytes } from "./shadownet-proof-kit";
+import {
+  deterministicJsonBytes,
+  SHADOWNET_RPC_FALLBACK,
+  SHADOWNET_RPC_PRIMARY,
+} from "./shadownet-proof-kit";
 import {
   RAVIOLI_NATIVE_RECOVERY_CREATOR,
   RAVIOLI_NATIVE_RECOVERY_EXECUTE_FLAG,
@@ -36,9 +40,11 @@ import {
   runRavioliNativeRecoveryReconciliation,
   validateRavioliNativeOperationRows,
   validateRavioliNativeRecoveryReceipt,
+  verifyRavioliNativeRecoveryLive,
   type RavioliNativeEstimate,
   type RavioliNativeEvidence,
   type RavioliNativeGeneratedOutput,
+  type RavioliNativeHandoffReadIo,
   type RavioliNativeOperation,
   type RavioliNativeReconciliationIo,
   type RavioliNativeState,
@@ -205,6 +211,157 @@ function salesClosedState(): RavioliNativeState {
 
 function internalEntrypoints(index: number): string[] {
   return [[], [], [], [], [], ["transfer"], ["fulfill", "mint_reserved"], ["fulfill", "mint_pack_iteration"], ["fulfill", "fulfill", "mint_pack_iteration", "mint_reserved", "transfer"], []][index];
+}
+
+function liveInternalOperations(call: any, generated: any[]): any[] {
+  if (call.entrypoint !== "open_pack") return [];
+  const tokenId = Number(call.payload.token_id);
+  const serial = tokenId === 1 ? 1 : 0;
+  const transfer = (assetTokenId: number) => ({
+    sender: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+    target: RAVIOLI_NATIVE_RECOVERY_GNOCCHI,
+    entrypoint: "transfer",
+    payload: [{
+      from_: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+      txs: [{ to_: RAVIOLI_NATIVE_RECOVERY_CREATOR, token_id: assetTokenId, amount: 1 }],
+    }],
+  });
+  const allocated = (resourceId: number) => [
+    {
+      sender: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+      target: RAVIOLI_NATIVE_RECOVERY_GNOCCHI_ADAPTER,
+      entrypoint: "fulfill",
+      payload: {
+        recipient: RAVIOLI_NATIVE_RECOVERY_CREATOR,
+        pack_contract: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+        pack_token_id: tokenId,
+        open_serial: serial,
+        resource_id: resourceId,
+        payload: "",
+      },
+    },
+    {
+      sender: RAVIOLI_NATIVE_RECOVERY_GNOCCHI_ADAPTER,
+      target: RAVIOLI_NATIVE_RECOVERY_GNOCCHI,
+      entrypoint: "mint_reserved",
+      payload: { to_: RAVIOLI_NATIVE_RECOVERY_CREATOR, token_id: 0, amount: 1 },
+    },
+  ];
+  const generative = (resourceId: number, output: any) => [
+    {
+      sender: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+      target: RAVIOLI_NATIVE_RECOVERY_ROTINI_ADAPTER,
+      entrypoint: "fulfill",
+      payload: {
+        recipient: RAVIOLI_NATIVE_RECOVERY_CREATOR,
+        pack_contract: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+        pack_token_id: tokenId,
+        open_serial: serial,
+        resource_id: resourceId,
+        payload: output.payload,
+      },
+    },
+    {
+      sender: RAVIOLI_NATIVE_RECOVERY_ROTINI_ADAPTER,
+      target: RAVIOLI_NATIVE_RECOVERY_ROTINI,
+      entrypoint: "mint_pack_iteration",
+      payload: {
+        recipient: RAVIOLI_NATIVE_RECOVERY_CREATOR,
+        pack_contract: RAVIOLI_NATIVE_RECOVERY_ROUTER,
+        pack_token_id: tokenId,
+        open_serial: serial,
+        project_id: 0,
+        metadata_uri: Buffer.from(output.metadataPin.uri).toString("hex"),
+        artifact_uri: Buffer.from(output.artifact.uri).toString("hex"),
+        display_uri: Buffer.from(output.artifact.uri).toString("hex"),
+        thumbnail_uri: Buffer.from(output.artifact.uri).toString("hex"),
+        mime_type: Buffer.from("image/png").toString("hex"),
+        artifact_hash: output.artifact.sha256,
+      },
+    },
+  ];
+  if (tokenId === 1) return [transfer(1)];
+  if (tokenId === 2) return allocated(0);
+  if (tokenId === 3) return generative(0, generated[0]);
+  return [transfer(1), ...allocated(1), ...generative(1, generated[1])];
+}
+
+function liveOperationRows(receipt: any, index: number): any[] {
+  const operation = receipt.operations[index];
+  const top = {
+    hash: operation.hash,
+    status: "applied",
+    nonce: null,
+    counter: operation.counter,
+    level: operation.level,
+    timestamp: operation.timestamp,
+    amount: 0,
+    sender: { address: RAVIOLI_NATIVE_RECOVERY_CREATOR },
+    target: { address: operation.call.contractAddress },
+    parameter: { entrypoint: operation.call.entrypoint, value: operation.call.payload },
+  };
+  const internals = liveInternalOperations(operation.call, receipt.generatedOutputs).map((expected, nonce) => ({
+    hash: operation.hash,
+    status: "applied",
+    nonce,
+    amount: 0,
+    initiator: { address: RAVIOLI_NATIVE_RECOVERY_CREATOR },
+    sender: { address: expected.sender },
+    target: { address: expected.target },
+    parameter: { entrypoint: expected.entrypoint, value: expected.payload },
+  }));
+  return [top, ...internals];
+}
+
+async function liveVerifierFixture(): Promise<{
+  receipt: any;
+  receiptBytes: Uint8Array;
+  publicBytes: Map<string, Uint8Array>;
+  observed: { operations: string[]; lanes: string[]; publicUrls: string[]; stateReads: number };
+  io: RavioliNativeHandoffReadIo;
+}> {
+  const recoveryRoot = path.join(runRoot, "ravioli-native-recovery");
+  const receiptPath = path.join(recoveryRoot, "artifacts", "ravioli-native-recovery.json");
+  const receiptBytes = await readFile(receiptPath);
+  const receipt = JSON.parse(receiptBytes.toString("utf8"));
+  const publicBytes = new Map<string, Uint8Array>();
+  for (const output of receipt.generatedOutputs) {
+    publicBytes.set(
+      output.artifact.publicGatewayUrl,
+      await readFile(path.join(recoveryRoot, "artifacts", "generated", output.artifactFileName)),
+    );
+    publicBytes.set(
+      output.metadataPin.publicGatewayUrl,
+      await readFile(path.join(recoveryRoot, "artifacts", "generated", `ravioli-generated-${output.tokenId}-metadata.json`)),
+    );
+  }
+  const observed = { operations: [] as string[], lanes: [] as string[], publicUrls: [] as string[], stateReads: 0 };
+  const terminalCounter = Number(receipt.operations.at(-1).counter);
+  const io: RavioliNativeHandoffReadIo = {
+    loadEvidence: loadRavioliNativeRecoveryEvidence,
+    readReceiptBytes: async () => Uint8Array.from(receiptBytes),
+    readOperationRows: async (operationHash) => {
+      observed.operations.push(operationHash);
+      const index = receipt.operations.findIndex((operation: any) => operation.hash === operationHash);
+      assert.ok(index >= 0);
+      return structuredClone(liveOperationRows(receipt, index));
+    },
+    readState: async () => {
+      observed.stateReads += 1;
+      return structuredClone(receipt.after);
+    },
+    readLane: async (rpcUrl) => {
+      observed.lanes.push(rpcUrl);
+      return { counter: terminalCounter + 2, balanceMutez: 26_000_000, activeOperationCount: 0 };
+    },
+    readPublicBytes: async (url) => {
+      observed.publicUrls.push(url);
+      const bytes = publicBytes.get(url);
+      assert.ok(bytes, `unexpected public IPFS URL ${url}`);
+      return Uint8Array.from(bytes);
+    },
+  };
+  return { receipt, receiptBytes, publicBytes, observed, io };
 }
 
 async function fixture(): Promise<{
@@ -542,6 +699,123 @@ test("TzKT operation validator proves exact native transfer tree and rejects ext
     call,
     generated,
   }), /internal operation count drift/);
+});
+
+test("live recovery verifier replays all ten exact trees, both RPC lanes, terminal state, and four public pins", async () => {
+  const fixture = await liveVerifierFixture();
+  const verification = await verifyRavioliNativeRecoveryLive(runRoot, {
+    io: fixture.io,
+    now: () => "2026-07-22T20:00:00.000Z",
+  });
+  assert.equal(verification.schema, "pastaprotocol-ravioli-native-recovery-live-verification@1");
+  assert.equal(verification.verifiedAt, "2026-07-22T20:00:00.000Z");
+  assert.equal(verification.operations.length, 10);
+  assert.deepEqual(verification.operations.map((operation) => operation.hash), fixture.receipt.operations.map((operation: any) => operation.hash));
+  assert.equal(new Set(fixture.observed.operations).size, 10);
+  assert.deepEqual(fixture.observed.operations, fixture.receipt.operations.map((operation: any) => operation.hash));
+  assert.deepEqual(fixture.observed.lanes.sort(), [SHADOWNET_RPC_FALLBACK, SHADOWNET_RPC_PRIMARY].sort());
+  assert.equal(fixture.observed.stateReads, 1);
+  assert.equal(verification.publicIpfs.length, 4);
+  assert.equal(new Set(fixture.observed.publicUrls).size, 4);
+  assert.deepEqual(new Set(fixture.observed.publicUrls), new Set(fixture.publicBytes.keys()));
+  assert.deepEqual(verification.terminalState, fixture.receipt.after);
+  assert.equal(verification.lanes.primary.counter, verification.lanes.fallback.counter);
+  assert.equal(verification.lanes.minimumRecoveryCounter, fixture.receipt.operations.at(-1).counter);
+});
+
+test("live recovery verifier rejects receipt, operation-tree, RPC, terminal-state, and public-byte drift", async () => {
+  {
+    const fixture = await liveVerifierFixture();
+    const changed = Buffer.concat([Buffer.from(fixture.receiptBytes), Buffer.from("\n")]);
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, { io: { ...fixture.io, readReceiptBytes: async () => changed } }),
+      /receipt SHA-256 drift/,
+    );
+    assert.deepEqual(fixture.observed, { operations: [], lanes: [], publicUrls: [], stateReads: 0 });
+  }
+  {
+    const fixture = await liveVerifierFixture();
+    const targetHash = fixture.receipt.operations[8].hash;
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, {
+        io: {
+          ...fixture.io,
+          readOperationRows: async (operationHash) => {
+            const index = fixture.receipt.operations.findIndex((operation: any) => operation.hash === operationHash);
+            const rows = structuredClone(liveOperationRows(fixture.receipt, index));
+            if (operationHash === targetHash) rows.push({ ...rows.at(-1), nonce: 99 });
+            return rows;
+          },
+        },
+      }),
+      /internal operation count drift/,
+    );
+  }
+  {
+    const fixture = await liveVerifierFixture();
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, {
+        io: {
+          ...fixture.io,
+          readLane: async (rpcUrl) => ({
+            counter: rpcUrl === SHADOWNET_RPC_PRIMARY ? 23_831_477 : 23_831_478,
+            balanceMutez: 26_000_000,
+            activeOperationCount: 0,
+          }),
+        },
+      }),
+      /RPC counters disagree/,
+    );
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, {
+        io: {
+          ...fixture.io,
+          readLane: async () => ({ counter: 23_831_477, balanceMutez: 26_000_000, activeOperationCount: 1 } as any),
+        },
+      }),
+      /active creator operation/,
+    );
+  }
+  {
+    const fixture = await liveVerifierFixture();
+    const state = structuredClone(fixture.receipt.after);
+    state.adapters.rotiniReservations["4:1"] = 1;
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, { io: { ...fixture.io, readState: async () => state } }),
+      /deep-equal|Expected values/,
+    );
+  }
+  {
+    const fixture = await liveVerifierFixture();
+    const firstUrl = fixture.receipt.generatedOutputs[0].artifact.publicGatewayUrl;
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, {
+        io: {
+          ...fixture.io,
+          readPublicBytes: async (url) => {
+            const bytes = fixture.publicBytes.get(url)!;
+            if (url !== firstUrl) return Uint8Array.from(bytes);
+            const changed = Uint8Array.from(bytes);
+            changed[0] ^= 0xff;
+            return changed;
+          },
+        },
+      }),
+      /public IPFS SHA-256 drift/,
+    );
+    await assert.rejects(
+      () => verifyRavioliNativeRecoveryLive(runRoot, {
+        io: {
+          ...fixture.io,
+          readPublicBytes: async (url) => {
+            const bytes = fixture.publicBytes.get(url)!;
+            return url === firstUrl ? bytes.slice(0, -1) : Uint8Array.from(bytes);
+          },
+        },
+      }),
+      /public IPFS byte length drift/,
+    );
+  }
 });
 
 test("source policy keeps recovery native, strict, public-IPFS-verified, and non-executing by default", async () => {

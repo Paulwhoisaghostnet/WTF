@@ -1072,6 +1072,7 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/admin/stats" },
       { method: "GET", path: "/api/admin/apps/desktop" },
+      { method: "POST", path: "/api/admin/apps/desktop/refresh-all", body: {}, expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/admin/users" },
       { method: "GET", path: "/api/admin/users/1/passport", expectedStatuses: [200, 401, 403, 404] },
       { method: "GET", path: "/api/admin/help-index?q=temporary%20login" },
@@ -1221,6 +1222,8 @@ export const DOMAIN_WORKFLOWS = [
       "ravioli.wrapper_transferred",
       "ravioli.refund_credited",
       "ravioli.refund_withdrawn",
+      "ravioli.unrevealed_pack_cancelled",
+      "ravioli.adapter_capacity_recovered",
       "ravioli.site_exported",
       "rotini.collection_deployed",
       "rotini.generated",

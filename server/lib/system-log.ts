@@ -61,6 +61,7 @@ export interface SystemLogEntry {
 
 const REDACTED = "[redacted]";
 const CIRCULAR = "[circular]";
+const REDACTED_PARAMETER_PAYLOAD = "[redacted parameter payload]";
 const MAX_STRING_LENGTH = 1_999;
 const MAX_ARRAY_LENGTH = 50;
 const MAX_DEPTH = 8;
@@ -120,6 +121,15 @@ function truncateString(value: string, limit = MAX_STRING_LENGTH): string {
   return `${value.slice(0, limit)}[truncated ${remaining} chars]`;
 }
 
+function sanitizeSystemLogText(value: string, limit = MAX_STRING_LENGTH): string {
+  const withoutDrizzleParams = value.replace(
+    /(^|[\r\n])([ \t]*params[ \t]*:)[^\r\n]*/gi,
+    (_match, lineStart: string, label: string) =>
+      `${lineStart}${label} ${REDACTED_PARAMETER_PAYLOAD}`
+  );
+  return truncateString(withoutDrizzleParams, limit);
+}
+
 export function sanitizeForSystemLog(
   value: unknown,
   opts: {
@@ -134,7 +144,7 @@ export function sanitizeForSystemLog(
   if (key && SECRET_KEY_PATTERN.test(key)) return REDACTED;
   if (value == null) return value;
 
-  if (typeof value === "string") return truncateString(value);
+  if (typeof value === "string") return sanitizeSystemLogText(value);
   if (typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "bigint") return value.toString();
   if (typeof value === "function") return `[function ${value.name || "anonymous"}]`;
@@ -178,15 +188,49 @@ export function sanitizeForSystemLog(
   return String(value);
 }
 
+function consoleArgumentText(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return value.stack || value.message;
+  return null;
+}
+
+export function sanitizeConsoleArguments(args: unknown[]): unknown[] {
+  let redactRemaining = false;
+
+  return args.map((arg) => {
+    if (redactRemaining) return REDACTED_PARAMETER_PAYLOAD;
+
+    const text = consoleArgumentText(arg);
+    const sanitized = sanitizeForSystemLog(arg);
+    if (text && /(^|[\r\n])[ \t]*params[ \t]*:[ \t]*$/i.test(text)) {
+      redactRemaining = true;
+    }
+    return sanitized;
+  });
+}
+
+export function selectConsoleErrorForSystemLog(
+  args: unknown[]
+): Error | undefined {
+  for (const arg of args) {
+    if (arg instanceof Error) return arg;
+    const text = consoleArgumentText(arg);
+    if (text && /(^|[\r\n])[ \t]*params[ \t]*:[ \t]*$/i.test(text)) {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export function serializeErrorForSystemLog(
   error: unknown
 ): SerializedSystemLogError {
   if (error instanceof Error) {
     const cause = (error as Error & { cause?: unknown }).cause;
     return {
-      name: error.name || "Error",
-      message: truncateString(error.message || String(error)),
-      stack: error.stack,
+      name: sanitizeSystemLogText(error.name || "Error"),
+      message: sanitizeSystemLogText(error.message || String(error)),
+      stack: error.stack ? sanitizeSystemLogText(error.stack, 8_000) : undefined,
       ...(cause !== undefined
         ? { cause: serializeErrorForSystemLog(cause) }
         : {}),
@@ -195,7 +239,7 @@ export function serializeErrorForSystemLog(
 
   return {
     name: typeof error,
-    message: truncateString(String(error)),
+    message: sanitizeSystemLogText(String(error)),
   };
 }
 
@@ -206,7 +250,7 @@ export function getSeverityForStatus(statusCode: number): SystemLogSeverity {
 }
 
 function normalizeMessage(input: SystemLogInput, serializedError: SerializedSystemLogError | null) {
-  if (input.message) return truncateString(input.message);
+  if (input.message) return sanitizeSystemLogText(input.message);
   if (serializedError?.message) return serializedError.message;
   return null;
 }
@@ -216,7 +260,17 @@ function normalizeUserId(userId: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function buildSystemLogEntry(input: SystemLogInput): SystemLogEntry {
+function normalizeMetadata(input: SystemLogInput): Record<string, unknown> {
+  const metadata = isRecord(input.metadata)
+    ? input.metadata
+    : { value: input.metadata };
+  if (input.source !== "console" || !Array.isArray(metadata.args)) {
+    return metadata;
+  }
+  return { ...metadata, args: sanitizeConsoleArguments(metadata.args) };
+}
+
+export function buildSystemLogEntry(input: SystemLogInput): SystemLogEntry {
   const context = getSystemLogContext();
   const serializedError = input.error
     ? serializeErrorForSystemLog(input.error)
@@ -241,7 +295,7 @@ function buildSystemLogEntry(input: SystemLogInput): SystemLogEntry {
     ip: input.ip ? truncateString(input.ip, 120) : null,
     userAgent: input.userAgent ? truncateString(input.userAgent, 1_000) : null,
     metadata: sanitizeForSystemLog({
-      ...(isRecord(input.metadata) ? input.metadata : { value: input.metadata }),
+      ...normalizeMetadata(input),
       process: {
         pid,
         hostname,
@@ -256,15 +310,25 @@ function buildSystemLogEntry(input: SystemLogInput): SystemLogEntry {
   };
 }
 
-async function appendEntryToFile(entry: SystemLogEntry): Promise<void> {
-  await mkdir(path.dirname(logFilePath), { recursive: true });
-  await appendFile(logFilePath, `${JSON.stringify(entry)}\n`, "utf8");
+export function serializeSystemLogEntryForFile(entry: SystemLogEntry): string {
+  return `${JSON.stringify(entry)}\n`;
 }
 
-function shouldWriteEntryToDatabase(entry: SystemLogEntry): boolean {
+async function appendEntryToFile(entry: SystemLogEntry): Promise<void> {
+  await mkdir(path.dirname(logFilePath), { recursive: true });
+  await appendFile(logFilePath, serializeSystemLogEntryForFile(entry), "utf8");
+}
+
+export function shouldWriteEntryToDatabase(entry: SystemLogEntry): boolean {
   if (entry.severity === "debug") return false;
   if (entry.source === "db" && entry.eventType === "query_success") return false;
   if (entry.source === "http" && (entry.statusCode ?? 0) < 500) return false;
+  if (
+    entry.source === "scheduler" &&
+    (entry.eventType === "job_started" || entry.eventType === "job_succeeded")
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -487,20 +551,28 @@ function consoleSeverity(method: string): SystemLogSeverity {
   return "info";
 }
 
-function consoleMessage(args: unknown[]): string {
-  return truncateString(
-    args
-      .map((arg) => {
-        if (typeof arg === "string") return arg;
-        if (arg instanceof Error) return arg.stack || arg.message;
+export function serializeConsoleMessage(args: unknown[]): string {
+  let redactNextArgument = false;
+  const parts = args.map((arg) => {
+        if (redactNextArgument) {
+          redactNextArgument = false;
+          return REDACTED_PARAMETER_PAYLOAD;
+        }
+        if (typeof arg === "string") {
+          redactNextArgument = /(^|[\r\n])[ \t]*params[ \t]*:[ \t]*$/i.test(arg);
+          return sanitizeSystemLogText(arg);
+        }
+        if (arg instanceof Error) {
+          const serialized = serializeErrorForSystemLog(arg);
+          return serialized.stack || serialized.message;
+        }
         try {
           return JSON.stringify(sanitizeForSystemLog(arg));
         } catch {
           return String(arg);
         }
-      })
-      .join(" ")
-  );
+      });
+  return truncateString(parts.join(" "));
 }
 
 export function installConsoleSystemLogBridge(): void {
@@ -514,9 +586,9 @@ export function installConsoleSystemLogBridge(): void {
         source: "console",
         eventType: `console_${method}`,
         severity: consoleSeverity(method),
-        message: consoleMessage(args),
+        message: serializeConsoleMessage(args),
         metadata: { args },
-        error: args.find((arg) => arg instanceof Error),
+        error: selectConsoleErrorForSystemLog(args),
       });
     };
   }

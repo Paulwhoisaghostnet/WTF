@@ -6,14 +6,23 @@ import path from "node:path";
 
 const root = process.cwd();
 const appRoot = path.join(root, "apps", "pasta-suite-desktop");
-const releaseRoot = path.join(appRoot, "release");
+const releaseRoot = path.resolve(
+  process.env.PASTA_SUITE_RELEASE_DIR || path.join(appRoot, "release"),
+);
 const packageJson = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"));
 const version = packageJson.version;
 const names = [
   `Pasta-Suite-${version}-mac-universal.dmg`,
   `Pasta-Suite-${version}-mac-universal.zip`,
   `Pasta-Suite-${version}-win-x64.exe`,
+  `Pasta-Suite-${version}-linux-arm64.deb`,
 ];
+
+function platformFor(name) {
+  if (name.includes("-mac-")) return "macOS 11+ (Intel and Apple silicon)";
+  if (name.includes("-linux-arm64.")) return "64-bit ARM Linux (Raspberry Pi)";
+  return "Windows 10/11 x64";
+}
 
 async function digest(filePath) {
   const bytes = await readFile(filePath);
@@ -26,7 +35,7 @@ for (const name of names) {
   const details = await stat(filePath);
   artifacts.push({
     name,
-    platform: name.includes("-mac-") ? "macOS 11+ (Intel and Apple silicon)" : "Windows 10/11 x64",
+    platform: platformFor(name),
     bytes: details.size,
     sha256: await digest(filePath),
     signed: false,

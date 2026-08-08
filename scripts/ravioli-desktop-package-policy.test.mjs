@@ -21,7 +21,7 @@ const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs",
 
 test("Ravioli desktop package bundles the atomic pack publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/ravioli-desktop");
-  assert.equal(desktopPackage.version, "1.0.0");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.1");
   assert.equal(desktopPackage.main, "src/main.cjs");
   assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
@@ -33,7 +33,12 @@ test("Ravioli desktop package bundles the atomic pack publisher in an Electron s
   assert.match(desktopPackage.scripts["dist:mac"], /--mac dmg zip --universal/);
   assert.match(desktopPackage.scripts["dist:windows"], /--win nsis --x64/);
   assert.match(desktopPackage.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
-  assert.deepEqual(desktopPackage.build.files, ["package.json", "src/**/*", "ravioli/**/*"]);
+  assert.deepEqual(desktopPackage.build.files, [
+    "package.json",
+    "src/**/*",
+    "ravioli/**/*",
+    "provenance/**/*",
+  ]);
   assert.equal(desktopPackage.build.artifactName, "Ravioli-Studio-${version}-${os}-${arch}.${ext}");
   assert.equal(desktopPackage.build.executableName, "ravioli-studio");
   assert.equal(desktopPackage.build.linux.maintainer, "wtfOS <support@wtfos.app>");
@@ -48,20 +53,32 @@ test("Ravioli desktop package bundles the atomic pack publisher in an Electron s
 test("Ravioli desktop asset preparation preserves the router and typed helper contracts", () => {
   assert.match(prepareSource, /public\/creation-tools\/ravioli/);
   assert.match(prepareSource, /contract\/pasta-bundle\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-blind-pack-controller\.contract\.json/);
+  assert.match(prepareSource, /contract\/pasta-blind-pack-controller\.template\.json/);
+  assert.match(prepareSource, /contract\/pasta-ravioli-deployment-certificate\.json/);
   assert.match(prepareSource, /contract\/pasta-gnocchi-pack-adapter\.contract\.json/);
   assert.match(prepareSource, /contract\/pasta-rotini-pack-adapter\.contract\.json/);
   assert.match(prepareSource, /js\/pasta-foundation\.js/);
+  assert.match(prepareSource, /js\/rotini-artifact\.js/);
+  assert.match(prepareSource, /js\/rotini-mint\.js/);
   assert.match(prepareSource, /vendor\/tezos\.js/);
   assert.match(prepareSource, /vendor\/octez-connect\.js/);
   assert.ok(existsSync("public/creation-tools/ravioli/index.html"), "Ravioli source page should exist");
   assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-bundle.contract.json"), "Ravioli contract artifact should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-blind-pack-controller.contract.json"), "Ravioli blind-controller artifact should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-blind-pack-controller.template.json"), "Ravioli blind-controller template should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-ravioli-deployment-certificate.json"), "Ravioli deployment certificate should exist");
   assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-gnocchi-pack-adapter.contract.json"), "Gnocchi pack adapter artifact should exist");
   assert.ok(existsSync("public/creation-tools/ravioli/contract/pasta-rotini-pack-adapter.contract.json"), "Rotini pack adapter artifact should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/js/rotini-artifact.js"), "Ravioli Rotini artifact runtime should exist");
+  assert.ok(existsSync("public/creation-tools/ravioli/js/rotini-mint.js"), "Ravioli Rotini mint runtime should exist");
   assert.match(studioSource, /atomic pack publisher/i);
   assert.match(studioSource, /methodsObject\.commit_recipe/);
   assert.match(studioSource, /methodsObject\.finalize_pack/);
   assert.match(studioSource, /methodsObject\.open_pack/);
+  assert.match(studioSource, /methodsObject\.recover_adapter/);
   assert.match(studioSource, /ravioli\.bundle_published/);
+  assert.match(studioSource, /ravioli\.adapter_capacity_recovered/);
   assert.match(commonSource, /window\.MD/);
 });
 
@@ -77,7 +94,7 @@ test("Ravioli v3 makes adapter payload commitment policy explicit end to end", (
 
 test("Ravioli desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
   assert.match(mainSource, /http\.createServer/);
-  assert.match(mainSource, /baseUrl = `http:\/\/127\.0\.0\.1:\$\{address\.port\}`/);
+  assert.match(mainSource, /listenOnStableOrigin\(nextServer, PRODUCT_NAME\)/);
   assert.match(mainSource, /mainWindow\.loadURL\(`\$\{baseUrl\}\/`\)/);
   assert.match(mainSource, /path\.join\(appRoot\(\), "ravioli"\)/);
   assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/user"/);

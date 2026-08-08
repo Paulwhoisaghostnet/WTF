@@ -104,37 +104,25 @@ router.post(
       const registrationByKey = new Map(list.map((row) => [row.key, row]));
       const refreshedApps = DESKTOP_APPS.map((appKey) => {
         const current = registrationByKey.get(appKey);
+        const registrationNeverExpires = current?.registrationNeverExpires ?? false;
         return {
           appKey,
           enabled: current?.enabled ?? true,
-          registrationNeverExpires: current?.registrationNeverExpires ?? false,
+          registrationNeverExpires,
           installKey: createInstallKeyMaterial(appKey),
         };
       });
 
       await db.transaction(async (tx) => {
         for (const refreshed of refreshedApps) {
-          const expiresAt = registrationExpiryFor(now, refreshed.registrationNeverExpires);
-          await tx.insert(desktopAppSettings).values({
-            appKey: refreshed.appKey,
-            enabled: refreshed.enabled,
-            docStatus: "registered",
-            docRegistryVersion: "1",
-            docsUpdatedAt: now,
-            docsExpiresAt: expiresAt,
-            registrationNeverExpires: refreshed.registrationNeverExpires,
-            installKeyHash: refreshed.installKey.hash,
-            installKeyPrefix: refreshed.installKey.prefix,
-            installKeyIssuedAt: now,
-            installKeyExpiresAt: expiresAt,
-            installKeyRevokedAt: null,
-            registeredBy: user.id,
-            registeredAt: now,
-            updatedBy: user.id,
-            updatedAt: now,
-          }).onConflictDoUpdate({
-            target: desktopAppSettings.appKey,
-            set: {
+          const expiresAt = registrationExpiryFor(
+            now,
+            refreshed.registrationNeverExpires,
+          );
+          await tx
+            .insert(desktopAppSettings)
+            .values({
+              appKey: refreshed.appKey,
               enabled: refreshed.enabled,
               docStatus: "registered",
               docRegistryVersion: "1",
@@ -146,10 +134,29 @@ router.post(
               installKeyIssuedAt: now,
               installKeyExpiresAt: expiresAt,
               installKeyRevokedAt: null,
+              registeredBy: user.id,
+              registeredAt: now,
               updatedBy: user.id,
               updatedAt: now,
-            },
-          });
+            })
+            .onConflictDoUpdate({
+              target: desktopAppSettings.appKey,
+              set: {
+                enabled: refreshed.enabled,
+                docStatus: "registered",
+                docRegistryVersion: "1",
+                docsUpdatedAt: now,
+                docsExpiresAt: expiresAt,
+                registrationNeverExpires: refreshed.registrationNeverExpires,
+                installKeyHash: refreshed.installKey.hash,
+                installKeyPrefix: refreshed.installKey.prefix,
+                installKeyIssuedAt: now,
+                installKeyExpiresAt: expiresAt,
+                installKeyRevokedAt: null,
+                updatedBy: user.id,
+                updatedAt: now,
+              },
+            });
         }
       });
 
@@ -159,7 +166,9 @@ router.post(
         refreshed: refreshedApps.length,
         apps,
         list: refreshedList,
-        installKeys: Object.fromEntries(refreshedApps.map(({ appKey, installKey }) => [appKey, installKey.key])),
+        installKeys: Object.fromEntries(
+          refreshedApps.map(({ appKey, installKey }) => [appKey, installKey.key]),
+        ),
       });
     } catch (err) {
       console.error("[desktop-apps] failed to refresh all registrations:", err);
@@ -188,7 +197,10 @@ router.put(
       if (typeof enabled !== "boolean") {
         return res.status(400).json({ error: "enabled must be a boolean" });
       }
-      if (registrationNeverExpiresInput !== undefined && typeof registrationNeverExpiresInput !== "boolean") {
+      if (
+        registrationNeverExpiresInput !== undefined &&
+        typeof registrationNeverExpiresInput !== "boolean"
+      ) {
         return res.status(400).json({ error: "registrationNeverExpires must be a boolean" });
       }
       if (
@@ -216,7 +228,9 @@ router.put(
           ? registrationExpiryFor(normalizedDocsUpdatedAt, registrationNeverExpires)
           : null;
       const installKeyMaterial = issueInstallKey ? createInstallKeyMaterial(appKey) : null;
-      const installKeyExpiresAt = installKeyMaterial ? registrationExpiryFor(now, registrationNeverExpires) : null;
+      const installKeyExpiresAt = installKeyMaterial
+        ? registrationExpiryFor(now, registrationNeverExpires)
+        : null;
 
       await db
         .insert(desktopAppSettings)
@@ -246,7 +260,10 @@ router.put(
             docRegistryVersion: "1",
             docsUpdatedAt: normalizedDocsUpdatedAt,
             docsExpiresAt,
-            registrationNeverExpires: registrationNeverExpiresInput === undefined ? undefined : registrationNeverExpires,
+            registrationNeverExpires:
+              registrationNeverExpiresInput === undefined
+                ? undefined
+                : registrationNeverExpires,
             installKeyHash: installKeyMaterial?.hash ?? undefined,
             installKeyPrefix: installKeyMaterial?.prefix ?? undefined,
             installKeyIssuedAt: installKeyMaterial ? now : undefined,

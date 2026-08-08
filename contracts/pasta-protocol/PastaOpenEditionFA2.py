@@ -75,7 +75,13 @@ def pasta_open_edition_main():
     SetSaleType: type = sp.record(token_id=sp.nat, sale=SaleConfigType)
     SetSaleActiveType: type = sp.record(token_id=sp.nat, active=sp.bool)
     OpenMintType: type = sp.record(token_id=sp.nat, amount=sp.nat)
-    ReserveMintCapacityType: type = sp.record(token_id=sp.nat, amount=sp.nat)
+    ReserveMintCapacityType: type = sp.record(
+        token_id=sp.nat,
+        amount=sp.nat,
+        declared_child_expiry=sp.option[sp.timestamp],
+        wrapper_sale_end=sp.option[sp.timestamp],
+    )
+    ReleaseMintCapacityType: type = sp.record(token_id=sp.nat, amount=sp.nat)
     MintReservedType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
 
     class PastaOpenEditionFA2(sp.Contract):
@@ -279,7 +285,11 @@ def pasta_open_edition_main():
                 params.token_id, default=sp.nat(0)
             ) + params.amount
             self.data.total_minted[params.token_id] = minted + params.amount
-            sp.send(sale.treasury, sp.amount)
+            # Tezos rejects zero-mutez internal transfers. Free OEs are a
+            # supported first-class product, so only emit a treasury transfer
+            # when the purchase actually carries tez.
+            if sp.amount > sp.mutez(0):
+                sp.send(sale.treasury, sp.amount)
 
         @sp.entrypoint
         def mint(self, params):
@@ -311,14 +321,46 @@ def pasta_open_edition_main():
             assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
             assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
             assert params.amount > 0, "BAD_AMOUNT"
+            assert params.token_id in self.data.sales, "NO_SALE"
+            assert self.data.policy_locked.get(params.token_id, default=False), "POLICY_NOT_LOCKED"
+            sale = self.data.sales[params.token_id]
+            self._assert_issuance_open(sale)
+
+            # The declaration is pack-global: a mixed pack forwards the same
+            # inherited bounds to every allocation.  Require a complete,
+            # internally valid pair here even when this particular child is
+            # not the LE that caused the wrapper to become finite.
+            if params.declared_child_expiry.is_some():
+                assert params.wrapper_sale_end.is_some(), "LE_WRAPPER_REQUIRES_END"
+                declared_child_expiry = params.declared_child_expiry.unwrap_some()
+                wrapper_sale_end = params.wrapper_sale_end.unwrap_some()
+                assert wrapper_sale_end > sp.now, "LE_SALE_ENDED"
+                assert wrapper_sale_end <= declared_child_expiry, "PACK_END_AFTER_DECLARED_CHILD"
+            else:
+                assert params.wrapper_sale_end.is_none(), "LE_CHILD_EXPIRY_REQUIRED"
+
+            # Classify only from the actual locked child policy.  Gnocchi has
+            # four legitimate shapes; capped+timed alone is LE.  Timed OE,
+            # capped-untimed, and forever OE may reserve with no wrapper bounds
+            # or with the inherited pair belonging to another LE child.
+            if sale.max_supply.is_some():
+                if sale.end.is_some():
+                    actual_child_expiry = sale.end.unwrap_some()
+                    assert params.declared_child_expiry.is_some(), "LE_CHILD_EXPIRY_REQUIRED"
+                    assert params.wrapper_sale_end.is_some(), "LE_WRAPPER_REQUIRES_END"
+                    declared_child_expiry = params.declared_child_expiry.unwrap_some()
+                    wrapper_sale_end = params.wrapper_sale_end.unwrap_some()
+                    # A pack with several LE children carries the earliest
+                    # child expiry as its single immutable upper bound.  A
+                    # later-expiring child must accept that conservative
+                    # declaration, while a declaration later than this
+                    # child's real deadline would let the wrapper outlive it.
+                    assert declared_child_expiry <= actual_child_expiry, "DECLARED_CHILD_EXPIRY_AFTER_CHILD"
+                    assert wrapper_sale_end <= actual_child_expiry, "PACK_END_AFTER_CHILD"
             issued = self.data.total_minted.get(params.token_id, default=sp.nat(0))
             reserved = self.data.total_reserved.get(params.token_id, default=sp.nat(0))
-            if params.token_id in self.data.sales:
-                sale = self.data.sales[params.token_id]
-                if self.data.policy_locked.get(params.token_id, default=False):
-                    self._assert_issuance_open(sale)
-                if sale.max_supply.is_some():
-                    assert issued + reserved + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
+            if sale.max_supply.is_some():
+                assert issued + reserved + params.amount <= sale.max_supply.unwrap_some(), "SOLD_OUT"
             key = sp.record(owner=sp.sender, token_id=params.token_id)
             self.data.reserved_mints[key] = self.data.reserved_mints.get(
                 key, default=sp.nat(0)
@@ -329,9 +371,10 @@ def pasta_open_edition_main():
         def mint_reserved(self, params):
             # Reserved pack capacity remains fulfillable after the public window closes; reserving it
             # was the policy-bound issuance decision, while this call delivers the already committed unit.
+            # The sender-owned reservation key remains valid if the administrator later revokes the
+            # adapter's minter role; revocation only blocks new reserve_mint_capacity calls.
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, MintReservedType)
-            assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
             assert params.token_id in self.data.token_metadata, "TOKEN_UNDEFINED"
             assert params.amount > 0, "BAD_AMOUNT"
             reserve_key = sp.record(owner=sp.sender, token_id=params.token_id)
@@ -356,8 +399,7 @@ def pasta_open_edition_main():
         @sp.entrypoint
         def release_mint_capacity(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
-            sp.cast(params, ReserveMintCapacityType)
-            assert sp.sender == self.data.administrator or sp.sender in self.data.minters, "NOT_MINTER"
+            sp.cast(params, ReleaseMintCapacityType)
             assert params.amount > 0, "BAD_AMOUNT"
             reserve_key = sp.record(owner=sp.sender, token_id=params.token_id)
             available = self.data.reserved_mints.get(reserve_key, default=sp.nat(0))
@@ -785,6 +827,35 @@ def test():
     )
     scenario.verify(c.data.policy_locked[3])
     scenario.verify(c.data.next_token_id == 4)
+
+    scenario.h2("A free Forever OE mints without a zero-mutez internal transfer")
+    c.create_open_edition(
+        sp.record(
+            token_info={"": bytes_of_string("ipfs://QmFreeForever")},
+            sale=sp.record(
+                active=True,
+                start=sp.none,
+                end=sp.none,
+                base_price=sp.mutez(0),
+                increment=sp.mutez(0),
+                step_size=sp.nat(1),
+                min_price=sp.none,
+                max_price=sp.none,
+                max_supply=sp.none,
+                treasury=treasury.address,
+            ),
+            creator_reserve=sp.nat(0),
+            lock_policy=True,
+        ),
+        _sender=admin,
+    )
+    c.open_mint(
+        sp.record(token_id=4, amount=1),
+        _sender=alice,
+        _amount=sp.mutez(0),
+    )
+    scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=4)] == 1)
+    scenario.verify(c.data.total_minted[4] == 1)
 
     scenario.h2("Two-step admin handoff")
     c.transfer_administration(bob.address, _sender=admin)

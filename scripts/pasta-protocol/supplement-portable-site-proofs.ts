@@ -237,7 +237,9 @@ function isPortableSiteApp(value: string): value is PortableSiteApp {
 function requiredSiteFiles(app: PortableSiteApp): string[] {
   return [
     ...BASE_SITE_FILES,
-    ...(app === "rotini" ? ["js/rotini-artifact.js", "js/rotini-mint.js"] : []),
+    ...(app === "ravioli" || app === "rotini"
+      ? ["js/rotini-artifact.js", "js/rotini-mint.js"]
+      : []),
   ].sort();
 }
 
@@ -300,7 +302,7 @@ export function validatePortableSiteArchive(
     assert.match(indexText, new RegExp(asset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `index.html does not load ${asset}`);
   }
   const siteScript = Buffer.from(files["js/site.js"]).toString("utf8");
-  if (subject.app === "rotini") {
+  if (subject.app === "ravioli" || subject.app === "rotini") {
     assert.match(siteScript, /js\/rotini-artifact\.js/);
     assert.match(siteScript, /js\/rotini-mint\.js/);
   }

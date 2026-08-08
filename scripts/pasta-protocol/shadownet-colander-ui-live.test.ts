@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -311,4 +311,20 @@ test("missing sibling proofs block before Colander creates its output directory"
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
+});
+
+test("production Colander runner journals before send and uses dual-RPC plus exact-hash finality", async () => {
+  const source = await readFile(path.join(root, "scripts/pasta-protocol/shadownet-colander-ui-live.ts"), "utf8");
+  assert.match(source, /PastaProofRestartJournal\.(?:create|open)/);
+  assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_PRIMARY/);
+  assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_FALLBACK/);
+  const prepared = source.indexOf('restartJournal.beforeOperationSubmit("creator", prepared)');
+  const sent = source.indexOf("methodsObject.set_current_revision(0).send()");
+  const submitted = source.indexOf('restartJournal.onOperationSubmitted("creator", submitted)');
+  const exactHash = source.indexOf("Colander exact-hash finality");
+  const applied = source.indexOf('restartJournal.onReceipt("creator", receipt)');
+  assert.ok(prepared >= 0 && prepared < sent, "Colander must durably PREPARE before send");
+  assert.ok(sent < submitted && submitted < exactHash, "Colander must durably retain the submitted hash before finality");
+  assert.ok(exactHash < applied, "Colander must prove exact-hash application before APPLIED");
+  assert.doesNotMatch(source, /operation\.confirmation\(/);
 });

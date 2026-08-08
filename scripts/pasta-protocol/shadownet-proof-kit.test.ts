@@ -5,6 +5,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import test from "node:test";
 
 import {
+  buildToolkit,
   deterministicJsonBytes,
   pinIpfsProofBytes,
   pinIpfsProofJson,
@@ -70,6 +71,34 @@ test("deterministicJsonBytes sorts nested object keys without changing array ord
 
   assert.equal(Buffer.from(firstBytes).toString("utf8"), '{"a":1,"list":[{"x":1,"y":2},"tail"],"nested":{"alpha":"one","beta":true},"z":2}');
   assert.deepEqual(firstBytes, secondBytes);
+});
+
+test("buildToolkit packs Michelson data locally without calling RPC pack_data", async () => {
+  let requests = 0;
+  const rpc = await listen((_request, response) => {
+    requests += 1;
+    response.statusCode = 500;
+    response.end("RPC must not be used for local packing");
+  });
+  try {
+    const toolkit = buildToolkit({} as never, rpc.origin);
+    const context = (toolkit as unknown as {
+      _context: {
+        packer: {
+          constructor: { name: string };
+          packData(input: unknown): Promise<{ packed: string }>;
+        };
+      };
+    })._context;
+    assert.equal(context.packer.constructor.name, "MichelCodecPacker");
+    assert.deepEqual(
+      await context.packer.packData({ data: { string: "" }, type: { prim: "string" } }),
+      { packed: "050100000000" },
+    );
+    assert.equal(requests, 0, "local Michelson packing must not call the configured RPC");
+  } finally {
+    await close(rpc.server);
+  }
 });
 
 test("pinIpfsProofBytes pins to Kubo and verifies exact bytes through an independent gateway", async () => {

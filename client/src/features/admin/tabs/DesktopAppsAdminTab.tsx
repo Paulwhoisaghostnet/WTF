@@ -89,10 +89,16 @@ export function DesktopAppsAdminTab({
       </Intro>
       <BulkToolbar aria-label="Desktop app registration actions">
         <UiButton
-          disabled={!desktopApps || updateDesktopAppMutation.isPending || refreshAllDesktopAppsMutation.isPending}
+          disabled={
+            !desktopApps ||
+            updateDesktopAppMutation.isPending ||
+            refreshAllDesktopAppsMutation.isPending
+          }
           onClick={() => refreshAllDesktopAppsMutation.mutate()}
         >
-          {refreshAllDesktopAppsMutation.isPending ? "Refreshing all app registrations…" : "Refresh all app registrations"}
+          {refreshAllDesktopAppsMutation.isPending
+            ? "Refreshing all app registrations…"
+            : "Refresh all app registrations"}
         </UiButton>
         <StatusMessage role="status" aria-live="polite">
           {refreshAllDesktopAppsMutation.isSuccess
@@ -131,7 +137,9 @@ export function DesktopAppsAdminTab({
                   <TableDataCell>
                     <div>{row.installKeyPrefix ?? "No key"}</div>
                     <MetaLine>
-                      {row.registrationNeverExpires ? "Does not expire" : `Expires ${formatStamp(row.installKeyExpiresAt)}`}
+                      {row.registrationNeverExpires
+                        ? "Does not expire"
+                        : `Expires ${formatStamp(row.installKeyExpiresAt)}`}
                     </MetaLine>
                   </TableDataCell>
                   <TableDataCell style={{ color: row.enabled ? "#0a6f0a" : "#8a1f1f" }}>
@@ -144,16 +152,21 @@ export function DesktopAppsAdminTab({
                     <ActionRow>
                       <Checkbox
                         checked={row.registrationNeverExpires}
-                        disabled={updateDesktopAppMutation.isPending || refreshAllDesktopAppsMutation.isPending}
+                        disabled={
+                          updateDesktopAppMutation.isPending ||
+                          refreshAllDesktopAppsMutation.isPending
+                        }
                         label="License, docs, and install key do not expire"
                         aria-label={`${getDesktopAppLabel(row)} license, docs, and install key do not expire`}
-                        onChange={() => updateDesktopAppMutation.mutate({
-                          appKey: row.key,
-                          enabled: row.enabled,
-                          docStatus: "registered",
-                          docsUpdatedAt: new Date().toISOString(),
-                          registrationNeverExpires: !row.registrationNeverExpires,
-                        })}
+                        onChange={() =>
+                          updateDesktopAppMutation.mutate({
+                            appKey: row.key,
+                            enabled: row.enabled,
+                            docStatus: "registered",
+                            docsUpdatedAt: new Date().toISOString(),
+                            registrationNeverExpires: !row.registrationNeverExpires,
+                          })
+                        }
                       />
                       <UiButton
                         compact

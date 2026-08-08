@@ -25,9 +25,18 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
   type PastaUiLivePublicReceipt,
 } from "./pasta-ui-live-bridge-kit";
+import {
+  PastaProofRestartJournal,
+  readPastaProofRestartRpcSnapshot,
+  type PastaProofRestartActor,
+  type PastaProofRestartResolution,
+  type PastaProofRestartRpcSnapshot,
+  type PastaProofRestartStep,
+} from "./pasta-proof-restart-journal";
 import {
   capturePastaProofStage,
   monitorPastaProofPage,
@@ -50,6 +59,8 @@ import {
   resolveIpfsProofConfig,
   root,
   SHADOWNET_CHAIN_ID,
+  SHADOWNET_RPC_FALLBACK,
+  SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
   utf8ToHex,
@@ -77,7 +88,19 @@ const PUBLIC_SITE_SCRIPT_PATH = path.join(
   "js",
   "site.js",
 );
-const REFERENCE_APPS = ["spaghetti", "gnocchi", "ravioli", "rotini", "penne"] as const;
+const RESTART_CHECKPOINT_PATH = "artifacts/lasagna-restart-checkpoint.json";
+const REFERENCE_APPS = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne"] as const;
+const LASAGNA_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.freeze([
+  { id: "registry-metadata-pin", actor: "creator", kind: "pin", fileName: "exhibition.json" },
+  { id: "originate-registry", actor: "creator", kind: "operation", action: "originate" },
+  { id: "add-curator", actor: "creator", kind: "operation", action: "call", entrypoint: "add_curator" },
+  { id: "revision-zero-pin", actor: "curator", kind: "pin", fileName: "revision.json" },
+  { id: "publish-revision-zero", actor: "curator", kind: "operation", action: "call", entrypoint: "publish_revision" },
+  { id: "revision-one-pin", actor: "creator", kind: "pin", fileName: "revision.json" },
+  { id: "publish-revision-one", actor: "creator", kind: "operation", action: "call", entrypoint: "publish_revision" },
+  { id: "set-current-zero", actor: "curator", kind: "operation", action: "call", entrypoint: "set_current_revision" },
+  { id: "remove-curator", actor: "creator", kind: "operation", action: "call", entrypoint: "remove_curator" },
+]);
 
 type ReferenceApp = (typeof REFERENCE_APPS)[number];
 
@@ -108,7 +131,12 @@ type WrittenArtifact = {
   retrievedSha256?: string;
 };
 
-type OperationReceipt = PastaUiLivePublicReceipt & { operationHash: string };
+type OperationReceipt = PastaUiLivePublicReceipt & {
+  action: "originate" | "call" | "batch";
+  operationHash: string;
+  signerAddress: string;
+  contractAddress: string;
+};
 
 type RevisionState = {
   id: number;
@@ -183,9 +211,125 @@ function errorText(error: unknown): string {
   }
 }
 
+function projectLasagnaTzktValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(projectLasagnaTzktValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, projectLasagnaTzktValue(item)]),
+    );
+  }
+  if (typeof value === "string" && /^(?:0|[1-9][0-9]*)$/.test(value)) return Number(value);
+  return value;
+}
+
+function lasagnaRestartActorAddress(
+  addresses: Readonly<Record<Actor, string>>,
+  actor: PastaProofRestartActor,
+): string {
+  if (actor === "creator" || actor === "curator") return addresses[actor];
+  throw new Error(`Lasagna restart plan contains unsupported actor ${actor}`);
+}
+
+async function readLasagnaRestartRpcPair(
+  addresses: Readonly<Record<Actor, string>>,
+): Promise<readonly [PastaProofRestartRpcSnapshot, PastaProofRestartRpcSnapshot]> {
+  const actors = { creator: addresses.creator, curator: addresses.curator };
+  const snapshots = await Promise.all([
+    readPastaProofRestartRpcSnapshot(SHADOWNET_RPC_PRIMARY, actors),
+    readPastaProofRestartRpcSnapshot(SHADOWNET_RPC_FALLBACK, actors),
+  ]) as [PastaProofRestartRpcSnapshot, PastaProofRestartRpcSnapshot];
+  for (const actor of ["creator", "curator"] as const) {
+    assert.equal(
+      snapshots[0].counters[actor],
+      snapshots[1].counters[actor],
+      `Lasagna ${actor} counter differs across approved Shadownet RPCs`,
+    );
+  }
+  return snapshots;
+}
+
+async function assertLasagnaRestartCounterBoundary(
+  restartJournal: PastaProofRestartJournal,
+  addresses: Readonly<Record<Actor, string>>,
+  actor: Actor,
+): Promise<void> {
+  const snapshots = await readLasagnaRestartRpcPair(addresses);
+  assert.equal(
+    snapshots[0].counters[actor],
+    restartJournal.expectedCurrentCounter(actor),
+    `Lasagna ${actor} manager counter changed outside the authenticated restart journal`,
+  );
+  assert.equal(
+    snapshots.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
+      operation.source === addresses[actor]).length,
+    0,
+    `Lasagna ${actor} has an active manager operation before PREPARED`,
+  );
+}
+
+export function lasagnaRawSha256Cid(bytes: Uint8Array): string {
+  const cidBytes = Buffer.concat([
+    Buffer.from([0x01, 0x55, 0x12, 0x20]),
+    createHash("sha256").update(bytes).digest(),
+  ]);
+  const alphabet = "abcdefghijklmnopqrstuvwxyz234567";
+  let bits = 0;
+  let accumulator = 0;
+  let encoded = "";
+  for (const byte of cidBytes) {
+    accumulator = (accumulator << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      encoded += alphabet[(accumulator >>> bits) & 31];
+    }
+    accumulator &= (1 << bits) - 1;
+  }
+  if (bits > 0) encoded += alphabet[(accumulator << (5 - bits)) & 31];
+  return `b${encoded}`;
+}
+
+async function reconcileLasagnaPendingPin(
+  restartJournal: PastaProofRestartJournal,
+  ipfs: IpfsProofConfig,
+): Promise<void> {
+  await restartJournal.reconcilePin(async (pending) => {
+    const cid = lasagnaRawSha256Cid(pending.bytes);
+    const publicGatewayUrl = `${normalizeBase(ipfs.publicGatewayUrl)}/${cid}`;
+    const localGatewayUrl = `${normalizeBase(ipfs.localGatewayUrl)}/${cid}`;
+    const response = await fetch(publicGatewayUrl, {
+      cache: "no-store",
+      headers: { accept: pending.mimeType, "user-agent": "wtfos-pasta-lasagna-restart" },
+      signal: AbortSignal.timeout(ipfs.requestTimeoutMs),
+    });
+    if (response.status === 404 || response.status === 410) return { status: "absent" as const };
+    if (!response.ok) throw new Error(`Lasagna restart IPFS lookup returned HTTP ${response.status}`);
+    const received = new Uint8Array(await response.arrayBuffer());
+    assert.equal(received.byteLength, pending.bytes.byteLength, "Lasagna restart IPFS byte length differs");
+    assert.equal(sha256(received), pending.sha256, "Lasagna restart IPFS bytes differ");
+    return {
+      status: "present" as const,
+      proof: {
+        cid,
+        uri: `ipfs://${cid}`,
+        fileName: pending.fileName,
+        mimeType: pending.mimeType,
+        byteLength: pending.bytes.byteLength,
+        sha256: pending.sha256,
+        localGatewayUrl,
+        publicGatewayUrl,
+        publicGatewayVerified: true as const,
+        verificationAttempts: 1,
+      },
+    };
+  });
+}
+
 async function requireFreshAppOutputDirectory(
   runRoot: string,
-): Promise<{ appRoot: string; runId: string }> {
+): Promise<{ appRoot: string; runId: string; existing: boolean }> {
   const runId = path.basename(path.resolve(runRoot));
   if (!SAFE_RUN_ID.test(runId)) {
     block("Lasagna proof run directory must end in a safe run id", [
@@ -194,14 +338,13 @@ async function requireFreshAppOutputDirectory(
   }
   const appRoot = path.join(path.resolve(runRoot), "lasagna");
   try {
-    await stat(appRoot);
-    block("Lasagna proof output directory already exists", [
-      `Refusing to overwrite \`${appRoot}\`; use a fresh proof-run directory.`,
-    ]);
+    const info = await stat(appRoot);
+    if (!info.isDirectory()) throw new Error(`Lasagna output is not a directory: ${appRoot}`);
+    return { appRoot, runId, existing: true };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { appRoot, runId };
+  return { appRoot, runId, existing: false };
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
@@ -223,7 +366,7 @@ export async function loadLasagnaReferenceTokens(
     } catch (error) {
       block("Lasagna needs the fresh publisher proofs before it can curate them", [
         `Missing or invalid \`${manifestPath}\`: ${error instanceof Error ? error.message : String(error)}.`,
-        "Run the five token-publisher UI-live lanes in this proof directory before Lasagna.",
+        "Run the six token-publisher UI-live lanes in this proof directory before Lasagna.",
       ]);
     }
     assert.equal(manifest?.schema, "pastaprotocol-app-proof@1", `${app} proof schema differs`);
@@ -234,6 +377,11 @@ export async function loadLasagnaReferenceTokens(
     assert.ok(Array.isArray(manifest?.tokens) && manifest.tokens.length > 0, `${app} proof has no token`);
     const token = manifest.tokens[0];
     assert.equal(validateContractAddress(token?.contractAddress), ValidationResult.VALID);
+    assert.ok(
+      Array.isArray(manifest?.contracts)
+        && manifest.contracts.some((contract: { address?: unknown }) => contract?.address === token.contractAddress),
+      `${app} token contract is not evidenced by its accepted manifest`,
+    );
     const tokenId = Number(token?.tokenId);
     assert.ok(Number.isSafeInteger(tokenId) && tokenId >= 0, `${app} token id is invalid`);
     assert.equal(typeof token?.id, "string", `${app} token record id is missing`);
@@ -473,12 +621,13 @@ function validateReceiptIdentifiers(
   const origination = creatorReceipts.find((receipt) => receipt.action === "originate");
   assert.ok(origination?.contractAddress, "Lasagna origination receipt is missing its KT1");
   assert.equal(validateContractAddress(origination.contractAddress), ValidationResult.VALID);
-  const creatorOperations = creatorReceipts.filter(
-    (receipt): receipt is OperationReceipt => typeof receipt.operationHash === "string",
-  );
-  const curatorOperations = curatorReceipts.filter(
-    (receipt): receipt is OperationReceipt => typeof receipt.operationHash === "string",
-  );
+  const isOperationReceipt = (receipt: PastaUiLivePublicReceipt): receipt is OperationReceipt =>
+    (receipt.action === "originate" || receipt.action === "call" || receipt.action === "batch")
+    && typeof receipt.operationHash === "string"
+    && typeof receipt.signerAddress === "string"
+    && typeof receipt.contractAddress === "string";
+  const creatorOperations = creatorReceipts.filter(isOperationReceipt);
+  const curatorOperations = curatorReceipts.filter(isOperationReceipt);
   assert.deepEqual(
     creatorOperations.map((receipt) => receipt.entrypoints?.[0] || receipt.action),
     ["originate", "add_curator", "publish_revision", "remove_curator"],
@@ -561,13 +710,30 @@ async function writePinnedMetadataArtifacts(
   return artifacts;
 }
 
+const LASAGNA_UI_FAILURE_PREFIXES = [
+  "connect failed:",
+  "deploy failed:",
+  "publish failed:",
+  "curator op failed:",
+  "set current failed:",
+] as const;
+
 async function waitForLog(page: Page, expected: string, timeout = 300_000): Promise<void> {
   await page.locator("#log").waitFor({ state: "visible", timeout });
   await page.waitForFunction(
-    (text) => document.getElementById("log")?.textContent?.includes(text),
-    expected,
+    ({ text, failurePrefixes }) => {
+      const log = document.getElementById("log")?.textContent || "";
+      return log.includes(text) || failurePrefixes.some((prefix) => log.includes(prefix));
+    },
+    { text: expected, failurePrefixes: LASAGNA_UI_FAILURE_PREFIXES },
     { timeout },
   );
+  const log = await page.locator("#log").innerText();
+  if (!log.includes(expected)) {
+    throw new Error(
+      `Lasagna Studio failed while waiting for ${JSON.stringify(expected)}; log=${log.slice(-1_500)}`,
+    );
+  }
 }
 
 async function captureStudioStage(
@@ -643,6 +809,120 @@ async function createProofContext(browser: Browser): Promise<BrowserContext> {
   });
 }
 
+type LasagnaTzktOperationRow = {
+  type?: unknown;
+  status?: unknown;
+  hash?: unknown;
+  sender?: { address?: unknown };
+  target?: { address?: unknown };
+  originatedContract?: { address?: unknown };
+  parameter?: { entrypoint?: unknown };
+  level?: unknown;
+  timestamp?: unknown;
+};
+
+function lasagnaTzktOperationRows(value: unknown): LasagnaTzktOperationRow[] {
+  const rows = Array.isArray(value) ? value : [value];
+  assert.ok(
+    rows.length > 0 && rows.every((row) => row && typeof row === "object" && !Array.isArray(row)),
+    "TzKT operation response must contain operation objects",
+  );
+  return rows as LasagnaTzktOperationRow[];
+}
+
+export function assertLasagnaTzktOperationApplied(input: {
+  rows: unknown;
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): LasagnaTzktOperationRow {
+  assert.equal(
+    validateOperation(input.assertion.operationHash),
+    ValidationResult.VALID,
+    "Lasagna operation hash is invalid",
+  );
+  assert.equal(
+    validateAddress(input.signerAddress),
+    ValidationResult.VALID,
+    "Lasagna operation signer is invalid",
+  );
+  assert.notEqual(
+    input.assertion.action,
+    "batch",
+    "Lasagna UI-live does not permit batch finality assertions",
+  );
+  assert.equal(
+    validateContractAddress(input.assertion.contractAddress || ""),
+    ValidationResult.VALID,
+    "Lasagna operation contract address is invalid",
+  );
+
+  const signerRows = lasagnaTzktOperationRows(input.rows).filter((row) =>
+    row.hash === input.assertion.operationHash &&
+    row.sender?.address === input.signerAddress
+  );
+  assert.equal(
+    signerRows.length,
+    1,
+    "TzKT must expose exactly one Lasagna operation for the exact hash and signer",
+  );
+  const operation = signerRows[0];
+  assert.equal(operation.status, "applied", "Lasagna operation is not applied");
+  assert.ok(
+    Number.isSafeInteger(Number(operation.level)) && Number(operation.level) > 0,
+    "Lasagna operation level is invalid",
+  );
+  assert.ok(
+    typeof operation.timestamp === "string" &&
+      Number.isFinite(Date.parse(operation.timestamp)),
+    "Lasagna operation timestamp is invalid",
+  );
+
+  if (input.assertion.action === "originate") {
+    assert.equal(operation.type, "origination", "Lasagna origination action differs from TzKT");
+    assert.deepEqual(input.assertion.entrypoints, [], "Lasagna origination cannot claim entrypoints");
+    assert.equal(
+      operation.originatedContract?.address,
+      input.assertion.contractAddress,
+      "Lasagna originated address differs from TzKT",
+    );
+  } else {
+    assert.equal(operation.type, "transaction", "Lasagna call action differs from TzKT");
+    assert.equal(input.assertion.entrypoints.length, 1, "Lasagna call must claim exactly one entrypoint");
+    assert.equal(
+      operation.target?.address,
+      input.assertion.contractAddress,
+      "Lasagna call target differs from TzKT",
+    );
+    assert.equal(
+      operation.parameter?.entrypoint,
+      input.assertion.entrypoints[0],
+      "Lasagna call entrypoint differs from TzKT",
+    );
+  }
+  return operation;
+}
+
+async function verifyLasagnaTzktOperationApplied(input: {
+  assertion: PastaUiLiveAppliedOperationAssertion;
+  signerAddress: string;
+}): Promise<void> {
+  const endpoint = input.assertion.action === "originate" ? "originations" : "transactions";
+  const url = `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${endpoint}/${encodeURIComponent(input.assertion.operationHash)}`;
+  const rows = await pollJson(
+    `Lasagna exact-hash ${input.assertion.action} finality`,
+    url,
+    (value) => {
+      try {
+        assertLasagnaTzktOperationApplied({ rows: value, ...input });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+  assertLasagnaTzktOperationApplied({ rows, ...input });
+}
+
 export async function verifyLasagnaTzktEvidence(input: {
   contractAddress: string;
   creatorAddress: string;
@@ -706,26 +986,34 @@ export async function verifyLasagnaTzktEvidence(input: {
   const operations = [];
   for (const receipt of input.operationReceipts) {
     const family = receipt.action === "originate" ? "originations" : "transactions";
+    const assertion: PastaUiLiveAppliedOperationAssertion = {
+      action: receipt.action,
+      operationHash: receipt.operationHash,
+      contractAddress: receipt.contractAddress,
+      entrypoints: receipt.entrypoints || [],
+    };
     const indexed = await poll(
       `Lasagna UI-live ${family} ${receipt.operationHash}`,
       `${base}/operations/${family}/${encodeURIComponent(receipt.operationHash)}`,
-      (json) =>
-        json?.status === "applied" ||
-        (Array.isArray(json) && json.some((entry) => entry?.status === "applied")),
+      (json) => {
+        try {
+          assertLasagnaTzktOperationApplied({
+            rows: json,
+            assertion,
+            signerAddress: receipt.signerAddress,
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
     );
-    const record = Array.isArray(indexed)
-      ? indexed.find((entry) => entry?.status === "applied")
-      : indexed;
+    const record = assertLasagnaTzktOperationApplied({
+      rows: indexed,
+      assertion,
+      signerAddress: receipt.signerAddress,
+    });
     const targetAddress = record?.target?.address || record?.originatedContract?.address;
-    assert.equal(targetAddress, input.contractAddress, `TzKT target differs for ${receipt.operationHash}`);
-    assert.equal(record?.sender?.address, receipt.signerAddress, `TzKT sender differs for ${receipt.operationHash}`);
-    if (receipt.action !== "originate") {
-      assert.equal(
-        record?.parameter?.entrypoint,
-        receipt.entrypoints?.[0],
-        `TzKT entrypoint differs for ${receipt.operationHash}`,
-      );
-    }
     operations.push({
       hash: receipt.operationHash,
       status: record?.status,
@@ -769,7 +1057,7 @@ export async function verifyLasagnaTzktEvidence(input: {
 export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
   assertLasagnaUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV] || "");
-  const { appRoot, runId } = await requireFreshAppOutputDirectory(runRoot);
+  const { appRoot, runId, existing } = await requireFreshAppOutputDirectory(runRoot);
   const references = await loadLasagnaReferenceTokens(runRoot, runId);
   const handoffPackage = buildReferencePackage(references, runId);
   const revisionZeroItems = references.slice(0, 2).map(({ contract, token_id }) => ({ contract, token_id }));
@@ -829,8 +1117,189 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     ]);
   }
 
-  await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
   const handoffBytes = deterministicJsonBytes(handoffPackage);
+  const restartIntent = {
+    contractArtifactSha256: sha256(await readFile(CONTRACT_ARTIFACT_PATH)),
+    contractCodeSha256: hashJsonForBridge(code),
+    referencePackageSha256: sha256(handoffBytes),
+  };
+  await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
+  const checkpointPath = path.join(appRoot, RESTART_CHECKPOINT_PATH);
+  const actorAddresses: Record<Actor, string> = { creator: creator.address, curator: curator.address };
+  const initialRpcPair = await readLasagnaRestartRpcPair(actorAddresses);
+  const authenticateInitialCounters = (counters: Readonly<Record<string, number>>): void => {
+    for (const actor of ["creator", "curator"] as const) {
+      const current = initialRpcPair[0].counters[actor];
+      assert.ok(Number.isSafeInteger(counters[actor]), `Lasagna ${actor} persisted counter is invalid`);
+      assert.ok(current >= counters[actor], `Lasagna ${actor} persisted counter is ahead of both approved RPCs`);
+    }
+  };
+  const restartJournal = existing
+    ? await PastaProofRestartJournal.open(checkpointPath, {
+        app: "lasagna",
+        runId,
+        actors: actorAddresses,
+        plan: LASAGNA_RESTART_PLAN,
+        intent: restartIntent,
+        authenticateInitialCounters,
+      })
+    : await PastaProofRestartJournal.create({
+        filePath: checkpointPath,
+        app: "lasagna",
+        runId,
+        actors: actorAddresses,
+        initialCounters: {
+          creator: initialRpcPair[0].counters.creator,
+          curator: initialRpcPair[0].counters.curator,
+        },
+        plan: LASAGNA_RESTART_PLAN,
+        intent: restartIntent,
+      });
+
+  const expectedCodeHash = hashJsonForBridge(code);
+  await reconcileLasagnaPendingPin(restartJournal, ipfs);
+
+  for (const applied of restartJournal.appliedOperations()) {
+    const signerAddress = lasagnaRestartActorAddress(actorAddresses, applied.step.actor);
+    const family = applied.step.action === "originate" ? "originations" : "transactions";
+    const rows = await pollJson(
+      `Lasagna restart applied prefix ${applied.receipt.operationHash}`,
+      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${family}/${encodeURIComponent(applied.receipt.operationHash!)}`,
+      (value) => {
+        try {
+          const row = assertLasagnaTzktOperationApplied({
+            rows: value,
+            assertion: {
+              action: applied.step.action!,
+              operationHash: applied.receipt.operationHash!,
+              contractAddress: applied.receipt.contractAddress,
+              entrypoints: applied.receipt.entrypoints ?? [],
+            },
+            signerAddress,
+          }) as any;
+          return Number(row?.counter) === applied.expectedCounter;
+        } catch {
+          return false;
+        }
+      },
+    );
+    const row = assertLasagnaTzktOperationApplied({
+      rows,
+      assertion: {
+        action: applied.step.action!,
+        operationHash: applied.receipt.operationHash!,
+        contractAddress: applied.receipt.contractAddress,
+        entrypoints: applied.receipt.entrypoints ?? [],
+      },
+      signerAddress,
+    }) as any;
+    assert.equal(Number(row?.counter), applied.expectedCounter, "Lasagna restart applied counter differs");
+    if (applied.step.action === "call") {
+      const call = (applied.descriptor as any)?.call;
+      assert.deepEqual(
+        projectLasagnaTzktValue(row?.parameter?.value),
+        projectLasagnaTzktValue(call?.payload),
+        "Lasagna restart applied payload differs",
+      );
+    } else {
+      const script = await creatorTezos.rpc.getScript(applied.receipt.contractAddress!);
+      assert.equal(hashJsonForBridge(script.code), expectedCodeHash, "Lasagna restart applied origination code differs");
+    }
+  }
+
+  await restartJournal.reconcile(async (pending): Promise<PastaProofRestartResolution> => {
+    const signerAddress = lasagnaRestartActorAddress(actorAddresses, pending.step.actor);
+    const rpcPair = await readLasagnaRestartRpcPair(actorAddresses);
+    const active = rpcPair.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
+      operation.source === signerAddress && operation.counter === pending.expectedCounter);
+    if (active.length > 0) {
+      throw new Error(`Lasagna restart operation at ${signerAddress} counter ${pending.expectedCounter} is still active in an approved RPC mempool`);
+    }
+    const family = pending.step.action === "originate" ? "originations" : "transactions";
+    const counterConsumed = rpcPair[0].counters[pending.step.actor] >= pending.expectedCounter;
+    const rows = await pollJson(
+      `Lasagna restart manager counter ${pending.expectedCounter}`,
+      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/${family}?sender=${encodeURIComponent(signerAddress)}&counter=${pending.expectedCounter}&limit=10`,
+      (value) => Array.isArray(value) && (!counterConsumed || value.length > 0),
+      { attempts: 6, delayMs: 2_000 },
+    ) as any[];
+    const exact = rows.filter((row) =>
+      row?.status === "applied"
+      && row?.sender?.address === signerAddress
+      && Number(row?.counter) === pending.expectedCounter
+      && (!pending.operationHash || row?.hash === pending.operationHash));
+    if (exact.length === 0) {
+      const terminal = pending.operationHash
+        ? rows.find((row) => row?.hash === pending.operationHash && row?.status && row.status !== "applied")
+        : undefined;
+      if (terminal) {
+        return {
+          status: "rejected",
+          operationHash: pending.operationHash!,
+          reason: `TzKT terminal status ${String(terminal.status)}`,
+          counterConsumed: true,
+        };
+      }
+      if (counterConsumed) {
+        throw new Error(`Lasagna restart counter ${pending.expectedCounter} is consumed without exact indexed evidence`);
+      }
+      if (pending.operationHash) {
+        const terminalByRpc = rpcPair.every((snapshot) => snapshot.terminalManagerOperations.some((operation) =>
+          operation.hash === pending.operationHash
+          && operation.source === signerAddress
+          && operation.counter === pending.expectedCounter));
+        if (terminalByRpc) {
+          return {
+            status: "rejected",
+            operationHash: pending.operationHash,
+            reason: "both approved RPCs report a terminal mempool rejection",
+            counterConsumed: false,
+          };
+        }
+        throw new Error(`Lasagna SUBMITTED operation ${pending.operationHash} has no exact terminal evidence; rerun after it is indexed or rejected`);
+      }
+      return { status: "absent" };
+    }
+    assert.equal(exact.length, 1, "Lasagna restart manager counter is ambiguous");
+    const row = exact[0];
+    const entrypoints = pending.step.entrypoint ? [pending.step.entrypoint] : [];
+    if (pending.step.action === "call") {
+      assert.equal(row?.target?.address, restartJournal.contractAddress(), "Lasagna restart call target differs");
+      assert.equal(row?.parameter?.entrypoint, pending.step.entrypoint, "Lasagna restart entrypoint differs");
+      const call = (pending.descriptor as any)?.call;
+      assert.deepEqual(projectLasagnaTzktValue(row?.parameter?.value), projectLasagnaTzktValue(call?.payload), "Lasagna restart payload differs");
+    }
+    const contractAddress = pending.step.action === "originate"
+      ? String(row?.originatedContract?.address || "")
+      : String(row?.target?.address || "");
+    if (pending.step.action === "originate") {
+      assert.equal(validateContractAddress(contractAddress), ValidationResult.VALID, "Lasagna restart origination has no KT1");
+      const script = await creatorTezos.rpc.getScript(contractAddress);
+      assert.equal(hashJsonForBridge(script.code), expectedCodeHash, "Lasagna restart originated code differs");
+    }
+    return {
+      status: "applied",
+      operationHash: String(row.hash),
+      contractAddress,
+      timestampUtc: String(row.timestamp),
+      entrypoints,
+    };
+  });
+  const reconciledRpcPair = await readLasagnaRestartRpcPair(actorAddresses);
+  for (const actor of ["creator", "curator"] as const) {
+    assert.equal(
+      reconciledRpcPair[0].counters[actor],
+      restartJournal.expectedCurrentCounter(actor),
+      `Lasagna ${actor} counter boundary differs after restart reconciliation`,
+    );
+    assert.equal(
+      reconciledRpcPair.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
+        operation.source === actorAddresses[actor]).length,
+      0,
+      `Lasagna ${actor} still has an active manager operation after restart reconciliation`,
+    );
+  }
+
   const handoffRelativePath = "artifacts/lasagna-reference-handoff.json";
   await writeFile(path.join(appRoot, handoffRelativePath), handoffBytes);
   const handoffArtifact: WrittenArtifact = {
@@ -840,8 +1309,13 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     sha256: sha256(handoffBytes),
   };
 
-  const pinnedMetadata: PinnedMetadataRecord[] = [];
-  const expectedCodeHash = hashJsonForBridge(code);
+  const pinnedMetadata: PinnedMetadataRecord[] = restartJournal.pinRecords().map((record) => ({
+    actor: record.actor === "creator" || record.actor === "curator"
+      ? record.actor
+      : (() => { throw new Error("Lasagna restart pin actor differs"); })(),
+    value: record.value,
+    proof: record.proof,
+  }));
   let requestedRegistryMetadataUri = "";
   let requestedRevisionZeroUri = "";
   let requestedRevisionOneUri = "";
@@ -858,11 +1332,25 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     tezos: creatorTezos,
     signerAddress: creator.address,
     expectedChainId: SHADOWNET_CHAIN_ID,
+    ...(restartJournal.contractAddress()
+      ? { allowedContractAddresses: new Set([restartJournal.contractAddress()!]) }
+      : {}),
     allowedEntrypoints: new Set(["add_curator", "publish_revision", "remove_curator"]),
+    initialOperationSequence: restartJournal.completedOperationCount("creator"),
     assertExpectedChain: async (stage) => {
       await assertShadownet(creatorTezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
+    assertOperationApplied: (assertion) => verifyLasagnaTzktOperationApplied({
+      assertion,
+      signerAddress: creator.address,
+    }),
+    beforeOperationSubmit: async (operation) => {
+      await assertLasagnaRestartCounterBoundary(restartJournal, actorAddresses, "creator");
+      await restartJournal.beforeOperationSubmit("creator", operation);
+    },
+    onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("creator", operation),
+    beforePin: (input) => restartJournal.beforePin("creator", input),
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     validateOrigination: (input) => {
       requestedRegistryMetadataUri = validateBrowserOrigination(
@@ -872,9 +1360,11 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       );
     },
     validateCall: creatorCallValidator.validate,
-    onPin: ({ value, proof }) => {
+    onPin: async ({ value, proof }) => {
+      await restartJournal.onPin("creator", { proof });
       if (value !== undefined) pinnedMetadata.push({ actor: "creator", value, proof });
     },
+    onReceipt: (receipt) => restartJournal.onReceipt("creator", receipt),
   });
   creatorSession.authorizeAfterFundingPreflight({
     balanceMutez: creatorBalanceMutez,
@@ -885,7 +1375,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
 
   const creatorBridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: (request) => creatorSession.handle(request),
+    handleAction: (request) => restartJournal.replayOrHandle("creator", request, () => creatorSession.handle(request)),
   });
   let curatorBridge: Awaited<ReturnType<typeof startPastaUiLiveLoopbackServer>> | null = null;
   let curatorSession: TaquitoPastaUiLiveSession | null = null;
@@ -914,7 +1404,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     await creatorPage.fill("#pinNode", ipfs.apiUrl);
     await creatorPage.fill("#exStatement", "Initial cross-Pasta exhibition assembled through the actual Lasagna studio.");
     await waitForLog(creatorPage, "from CH-EASE handoff", 30_000);
-    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "5");
+    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "6");
     screenshots.push(await captureStudioStage(
       creatorPage,
       creatorMonitor,
@@ -924,7 +1414,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       "handoff configured",
       "from CH-EASE handoff",
       "#refs",
-      [{ selector: "#sumCount", name: "reference count", expectedText: "5" }],
+      [{ selector: "#sumCount", name: "reference count", expectedText: "6" }],
     ));
 
     await creatorPage.click("[data-draft-save]");
@@ -968,7 +1458,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       "originating exhibition contract",
     ));
     await waitForLog(creatorPage, "exhibition deployed:");
-    const origination = creatorSession.getReceipts().find((receipt) => receipt.action === "originate");
+    const origination = restartJournal.operationReceipts().find((receipt) => receipt.action === "originate");
     assert.ok(origination?.contractAddress && origination.operationHash);
     const contractAddress = origination.contractAddress;
     assert.equal(await creatorPage.locator("#contractKt").inputValue(), contractAddress);
@@ -1023,18 +1513,31 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       expectedChainId: SHADOWNET_CHAIN_ID,
       allowedContractAddresses: new Set([contractAddress]),
       allowedEntrypoints: new Set(["publish_revision", "set_current_revision"]),
+      initialOperationSequence: restartJournal.completedOperationCount("curator"),
       assertExpectedChain: async (stage) => {
         await assertShadownet(curatorTezos, stage);
         return SHADOWNET_CHAIN_ID;
       },
+      assertOperationApplied: (assertion) => verifyLasagnaTzktOperationApplied({
+        assertion,
+        signerAddress: curator.address,
+      }),
+      beforeOperationSubmit: async (operation) => {
+        await assertLasagnaRestartCounterBoundary(restartJournal, actorAddresses, "curator");
+        await restartJournal.beforeOperationSubmit("curator", operation);
+      },
+      onOperationSubmitted: (operation) => restartJournal.onOperationSubmitted("curator", operation),
+      beforePin: (input) => restartJournal.beforePin("curator", input),
       pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
       validateOrigination: () => {
         throw new Error("Lasagna curator session cannot originate contracts");
       },
       validateCall: curatorCallValidator.validate,
-      onPin: ({ value, proof }) => {
+      onPin: async ({ value, proof }) => {
+        await restartJournal.onPin("curator", { proof });
         if (value !== undefined) pinnedMetadata.push({ actor: "curator", value, proof });
       },
+      onReceipt: (receipt) => restartJournal.onReceipt("curator", receipt),
     });
     curatorSession.authorizeAfterFundingPreflight({
       balanceMutez: curatorBalanceMutez,
@@ -1044,7 +1547,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     });
     curatorBridge = await startPastaUiLiveLoopbackServer({
       staticRoot: STATIC_ROOT,
-      handleAction: (request) => curatorSession!.handle(request),
+      handleAction: (request) => restartJournal.replayOrHandle("curator", request, () => curatorSession!.handle(request)),
     });
     const curatorContext = await createProofContext(browser);
     const curatorPage = await curatorContext.newPage();
@@ -1116,8 +1619,8 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       mimeType: "text/csv",
       buffer: revisionOneCsv,
     });
-    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "3");
-    await creatorPage.fill("#exStatement", "Administrator publication of the remaining three fresh Pasta proof tokens.");
+    await creatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "4");
+    await creatorPage.fill("#exStatement", "Administrator publication of the remaining four fresh Pasta proof tokens.");
     screenshots.push(await captureStudioStage(
       creatorPage,
       creatorMonitor,
@@ -1127,7 +1630,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
       "revision one imported",
       "curator added ✓",
       "#refs",
-      [{ selector: "#sumCount", name: "revision one references", expectedText: "3" }],
+      [{ selector: "#sumCount", name: "revision one references", expectedText: "4" }],
     ));
 
     await creatorPage.click("#btnPublish");
@@ -1261,8 +1764,9 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
   assert.ok(curatorSession, "curator session was not created");
   assert.ok(finalState, "final Lasagna registry state was not verified");
   assert.ok(siteZipArtifact, "Lasagna self-hosted site export was not captured");
-  const creatorReceipts = creatorSession.getReceipts();
-  const curatorReceipts = curatorSession.getReceipts();
+  const journalOperationReceipts = restartJournal.operationReceipts();
+  const creatorReceipts = journalOperationReceipts.filter((receipt) => receipt.signerAddress === creator.address);
+  const curatorReceipts = journalOperationReceipts.filter((receipt) => receipt.signerAddress === curator.address);
   const identifiers = validateReceiptIdentifiers(
     creatorReceipts,
     curatorReceipts,
@@ -1379,7 +1883,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
   const capabilities = [
     {
       id: "prepare-ordered-cross-pasta-exhibition",
-      description: "Use the actual Lasagna studio to consume a CH-EASE handoff containing five fresh publisher tokens, validate ordered references, and save a recoverable local draft.",
+      description: "Use the actual Lasagna studio to consume a CH-EASE handoff containing six fresh publisher tokens, validate ordered references, and save a recoverable local draft.",
       evidence: {
         screenshots: screenshotStages.slice(0, 2),
         artifacts: [handoffArtifact.id, ...sidecarIds.slice(0, 2)],
@@ -1453,6 +1957,7 @@ export async function runLasagnaUiLive(): Promise<LasagnaUiLiveResult> {
     runId,
     capturedAt: completedAt,
     network: { name: "shadownet", chainId: SHADOWNET_CHAIN_ID, rpcUrl: rpc.rpcUrl },
+    references,
     capabilities,
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
     artifacts: allArtifacts,

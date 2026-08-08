@@ -35,6 +35,7 @@ test("core apps and private role-gated apps keep their intended wtfOS placement"
     "w",
     "gallery",
     "mail",
+    "admin-inbox",
   ]);
 
   for (const key of DESKTOP_APPS) {

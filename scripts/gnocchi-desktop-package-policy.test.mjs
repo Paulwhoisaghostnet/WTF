@@ -21,7 +21,7 @@ const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs",
 
 test("Gnocchi desktop package bundles the open-edition publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/gnocchi-desktop");
-  assert.equal(desktopPackage.version, "1.0.0");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.1");
   assert.equal(desktopPackage.main, "src/main.cjs");
   assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
@@ -33,7 +33,12 @@ test("Gnocchi desktop package bundles the open-edition publisher in an Electron 
   assert.match(desktopPackage.scripts["dist:mac"], /--mac dmg zip --universal/);
   assert.match(desktopPackage.scripts["dist:windows"], /--win nsis --x64/);
   assert.match(desktopPackage.scripts["dist:raspberry-pi"], /--linux deb --arm64/);
-  assert.deepEqual(desktopPackage.build.files, ["package.json", "src/**/*", "gnocchi/**/*"]);
+  assert.deepEqual(desktopPackage.build.files, [
+    "package.json",
+    "src/**/*",
+    "gnocchi/**/*",
+    "provenance/**/*",
+  ]);
   assert.equal(desktopPackage.build.artifactName, "Gnocchi-Studio-${version}-${os}-${arch}.${ext}");
   assert.equal(desktopPackage.build.executableName, "gnocchi-studio");
   assert.equal(desktopPackage.build.linux.maintainer, "wtfOS <support@wtfos.app>");
@@ -74,7 +79,7 @@ test("Gnocchi desktop asset preparation preserves the static publisher contract"
 
 test("Gnocchi desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
   assert.match(mainSource, /http\.createServer/);
-  assert.match(mainSource, /baseUrl = `http:\/\/127\.0\.0\.1:\$\{address\.port\}`/);
+  assert.match(mainSource, /listenOnStableOrigin\(nextServer, PRODUCT_NAME\)/);
   assert.match(mainSource, /mainWindow\.loadURL\(`\$\{baseUrl\}\/`\)/);
   assert.match(mainSource, /path\.join\(appRoot\(\), "gnocchi"\)/);
   assert.match(mainSource, /parsed\.pathname === "\/api\/auth\/user"/);

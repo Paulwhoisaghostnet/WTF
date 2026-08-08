@@ -250,6 +250,29 @@ test("adds one pinned snapshot reference to every Gnocchi token without mutating
   );
 });
 
+test("rejects missing RPC provenance before applying a historical supplement", async () => {
+  const manifest = manifestFixture();
+  (manifest.network as { rpcUrl: string | null }).rpcUrl = null;
+  const artifact = await buildGnocchiHistoricalIndexerArtifact({
+    manifest: manifestFixture(),
+    sourceManifestSha256: "a".repeat(64),
+    tzktApiBase: "https://api.shadownet.tzkt.io/v1",
+    fetcher: fixtureFetcher().fetcher,
+  });
+  assert.throws(
+    () => applyHistoricalSnapshotToManifest(manifest as any, artifact, {
+      id: GNOCCHI_HISTORICAL_ARTIFACT_ID,
+      kind: "historical-indexer-snapshot",
+      path: "artifacts/gnocchi-proof-time-indexer-snapshot.json",
+      sha256: "b".repeat(64),
+      ipfsUri: "ipfs://bafkreihistoricalproofsnapshot00000000000000000000000000000000",
+      gatewayUrl: "https://ipfs.io/ipfs/bafkreihistoricalproofsnapshot00000000000000000000000000000000",
+      retrievedSha256: "b".repeat(64),
+    }),
+    /valid HTTP\(S\) Shadownet RPC URL/,
+  );
+});
+
 test("fails closed when an accepted operation is not applied at the expected target/entrypoint", async () => {
   const fixture = fixtureFetcher({ failTerminalOperation: true });
   await assert.rejects(

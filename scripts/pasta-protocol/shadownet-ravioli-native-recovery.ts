@@ -52,6 +52,8 @@ export const RAVIOLI_NATIVE_RECOVERY_ROTINI = "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1
 export const RAVIOLI_NATIVE_RECOVERY_GNOCCHI_ADAPTER = "KT1DY8Y9U6L5i2HC8WSYqyo6iT4VcNjMpNDT";
 export const RAVIOLI_NATIVE_RECOVERY_ROTINI_ADAPTER = "KT1BTBC7C3Gj6ZL7n6NYF29RXKR2TYQeptoQ";
 export const RAVIOLI_NATIVE_RECOVERY_CREATOR = "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM";
+export const RAVIOLI_NATIVE_RECOVERY_RECEIPT_SHA256 =
+  "1f29ff515e5c0a17f2a9dfee23d1aa24cba0c34666830881daa418ad5c62fe3d";
 
 const EXPECTED_REJECTION_SHA256 = "f89cb04b5f62d1132ee835ae2492402130841c2dbaecde451e5c6f322128db87";
 const EXPECTED_QUARANTINE_INVENTORY_SHA256 = "bedb986a20c1aba8045043cc9d1a3759ae93171725762b6e3137ec48c58e7759";
@@ -300,6 +302,7 @@ export type RavioliNativeHandoffReadIo = {
   readReceiptBytes(receiptPath: string): Promise<Uint8Array>;
   readOperationRows(operationHash: string): Promise<unknown>;
   readState(): Promise<RavioliNativeState>;
+  readLane(rpcUrl: string): Promise<RavioliNativeLaneSnapshot>;
   readPublicBytes(url: string): Promise<Uint8Array>;
 };
 
@@ -328,6 +331,30 @@ export type RavioliNativeRecoveryHandoff = {
     allWrapperSupplyBurned: true;
     allSalesInactive: true;
   };
+};
+
+export type RavioliNativeRecoveryLiveVerification = {
+  schema: "pastaprotocol-ravioli-native-recovery-live-verification@1";
+  verifiedAt: string;
+  receiptSha256: string;
+  handoff: RavioliNativeRecoveryHandoff;
+  operations: RavioliNativeOperation[];
+  lanes: {
+    primaryRpcUrl: string;
+    fallbackRpcUrl: string;
+    minimumRecoveryCounter: number;
+    primary: RavioliNativeLaneSnapshot;
+    fallback: RavioliNativeLaneSnapshot;
+  };
+  terminalState: RavioliNativeState;
+  publicIpfs: Array<{
+    tokenId: 3 | 4;
+    kind: "artifact" | "metadata";
+    cid: string;
+    url: string;
+    byteLength: number;
+    sha256: string;
+  }>;
 };
 
 function sha256(bytes: Uint8Array): string {
@@ -781,7 +808,11 @@ async function fetchJson(url: string): Promise<any> {
 }
 
 async function fetchPublicBytes(url: string): Promise<Uint8Array> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: { "user-agent": "wtfos-pasta-ravioli-native-recovery-live-proof" },
+    signal: AbortSignal.timeout(30_000),
+  });
   assert.ok(response.ok, `${url} returned HTTP ${response.status}`);
   return new Uint8Array(await response.arrayBuffer());
 }
@@ -1495,18 +1526,188 @@ export function buildRavioliNativeRecoveryReceipt(input: {
   return receipt;
 }
 
+const DEFAULT_NATIVE_HANDOFF_READ_IO: RavioliNativeHandoffReadIo = {
+  loadEvidence: loadRavioliNativeRecoveryEvidence,
+  readReceiptBytes: async (receiptPath) => readFile(receiptPath),
+  readOperationRows: async (operationHash) => fetchJson(
+    `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions/${encodeURIComponent(operationHash)}`,
+  ),
+  readState: readRavioliNativeRecoveryState,
+  readLane: (rpcUrl) => assertRavioliNativeSignerLaneClear(rpcUrl),
+  readPublicBytes: fetchPublicBytes,
+};
+
+async function loadRavioliNativeRecoveryHandoffWithIo(
+  runRoot: string,
+  io: RavioliNativeHandoffReadIo,
+): Promise<{
+  receiptSha256: string;
+  receipt: JsonObject;
+  handoff: RavioliNativeRecoveryHandoff;
+  evidence: RavioliNativeEvidence;
+}> {
+  const resolvedRunRoot = path.resolve(runRoot);
+  const evidence = await io.loadEvidence(resolvedRunRoot);
+  const receiptPath = path.join(resolvedRunRoot, RAVIOLI_NATIVE_RECOVERY_DIRECTORY, "artifacts", "ravioli-native-recovery.json");
+  const bytes = await io.readReceiptBytes(receiptPath);
+  assert.ok(bytes instanceof Uint8Array, "native recovery receipt reader must return bytes");
+  const digest = sha256(bytes);
+  assert.equal(digest, RAVIOLI_NATIVE_RECOVERY_RECEIPT_SHA256, "native recovery receipt SHA-256 drift");
+  const receipt = JSON.parse(Buffer.from(bytes).toString("utf8")) as JsonObject;
+  return {
+    receiptSha256: digest,
+    receipt,
+    handoff: validateRavioliNativeRecoveryReceipt(receipt, evidence),
+    evidence,
+  };
+}
+
 export async function loadRavioliNativeRecoveryHandoff(runRoot: string): Promise<{
   receiptSha256: string;
   receipt: JsonObject;
   handoff: RavioliNativeRecoveryHandoff;
 }> {
-  const evidence = await loadRavioliNativeRecoveryEvidence(path.resolve(runRoot));
-  const receiptPath = path.join(path.resolve(runRoot), RAVIOLI_NATIVE_RECOVERY_DIRECTORY, "artifacts", "ravioli-native-recovery.json");
-  const loaded = await readExactJson(receiptPath);
+  const { evidence: _evidence, ...loaded } = await loadRavioliNativeRecoveryHandoffWithIo(
+    runRoot,
+    DEFAULT_NATIVE_HANDOFF_READ_IO,
+  );
+  return loaded;
+}
+
+function expectedRavioliNativePublicPins(
+  generated: readonly [RavioliNativeGeneratedOutput, RavioliNativeGeneratedOutput],
+): Array<{
+  tokenId: 3 | 4;
+  kind: "artifact" | "metadata";
+  proof: IpfsPinnedProof;
+  bytes: Uint8Array;
+}> {
+  return generated.flatMap((output) => {
+    const artifactBytes = Buffer.concat([
+      PNG_BYTES,
+      Buffer.from(`ravioli-generated-${output.tokenId}`, "utf8"),
+    ]);
+    const metadataBytes = deterministicJsonBytes(output.metadata);
+    return [
+      { tokenId: output.tokenId, kind: "artifact" as const, proof: output.artifact, bytes: artifactBytes },
+      { tokenId: output.tokenId, kind: "metadata" as const, proof: output.metadataPin, bytes: metadataBytes },
+    ];
+  });
+}
+
+function assertRavioliNativePublicPinDescriptor(input: {
+  tokenId: 3 | 4;
+  kind: "artifact" | "metadata";
+  proof: IpfsPinnedProof;
+  bytes: Uint8Array;
+}): void {
+  const label = `native recovery token ${input.tokenId} ${input.kind}`;
+  assert.match(input.proof.cid, /^b[a-z2-7]{20,}$/, `${label} CID is invalid`);
+  assert.equal(input.proof.uri, `ipfs://${input.proof.cid}`, `${label} IPFS URI differs from its CID`);
+  const publicUrl = new URL(input.proof.publicGatewayUrl);
+  assert.equal(publicUrl.protocol, "https:", `${label} public gateway must use HTTPS`);
+  assert.equal(publicUrl.search, "", `${label} public gateway URL may not contain a query`);
+  assert.equal(publicUrl.hash, "", `${label} public gateway URL may not contain a fragment`);
+  assert.equal(publicUrl.pathname, `/ipfs/${input.proof.cid}`, `${label} public gateway path differs from its CID`);
+  assert.equal(input.proof.publicGatewayVerified, true, `${label} was not public-gateway verified during recovery`);
+  assert.equal(input.proof.byteLength, input.bytes.byteLength, `${label} receipt byte length drift`);
+  assert.equal(input.proof.sha256, sha256(input.bytes), `${label} receipt SHA-256 drift`);
+}
+
+export async function verifyRavioliNativeRecoveryLive(
+  runRoot: string,
+  options: {
+    io?: RavioliNativeHandoffReadIo;
+    now?: () => string;
+  } = {},
+): Promise<RavioliNativeRecoveryLiveVerification> {
+  const io = options.io ?? DEFAULT_NATIVE_HANDOFF_READ_IO;
+  const loaded = await loadRavioliNativeRecoveryHandoffWithIo(runRoot, io);
+  const generated = receiptGeneratedOutputs(loaded.receipt);
+  const calls = ravioliNativeRecoveryCalls(loaded.evidence, generated);
+  assert.equal(calls.length, 10, "live native recovery verification requires all ten exact calls");
+  const receiptOperations = loaded.receipt.operations as JsonObject[];
+  assert.equal(receiptOperations.length, calls.length, "live native recovery verification requires all ten receipt operations");
+  const publicPins = expectedRavioliNativePublicPins(generated);
+  assert.equal(publicPins.length, 4, "live native recovery verification requires four public IPFS objects");
+  publicPins.forEach(assertRavioliNativePublicPinDescriptor);
+
+  const [operationTrees, terminalState, primaryLane, fallbackLane, publicBytes] = await Promise.all([
+    Promise.all(receiptOperations.map((operation) => io.readOperationRows(String(operation.hash)))),
+    io.readState(),
+    io.readLane(SHADOWNET_RPC_PRIMARY),
+    io.readLane(SHADOWNET_RPC_FALLBACK),
+    Promise.all(publicPins.map((pin) => io.readPublicBytes(pin.proof.publicGatewayUrl))),
+  ]);
+
+  const operations = operationTrees.map((rows, index) => validateRavioliNativeOperationRows(rows, {
+    operationHash: String(receiptOperations[index].hash),
+    expectedCounter: safeInteger(receiptOperations[index].counter, `native recovery live operation ${index} counter`),
+    call: calls[index],
+    generated,
+  }));
+  assert.deepEqual(operations, receiptOperations, "live TzKT recovery operation trees differ from the immutable receipt");
+
+  assertRavioliNativeRecoveryAfterState(terminalState, generated);
+  assert.ok(
+    terminalState.level >= Math.max(...operations.map((operation) => operation.level)),
+    "live native recovery terminal state predates its operations",
+  );
+  const minimumRecoveryCounter = operations.at(-1)!.counter;
+  assert.equal(primaryLane.counter, fallbackLane.counter, "native recovery live RPC counters disagree");
+  assert.equal(primaryLane.balanceMutez, fallbackLane.balanceMutez, "native recovery live RPC balances disagree");
+  assert.equal(primaryLane.activeOperationCount, 0, "native recovery primary RPC has an active creator operation");
+  assert.equal(fallbackLane.activeOperationCount, 0, "native recovery fallback RPC has an active creator operation");
+  assert.ok(
+    primaryLane.counter >= minimumRecoveryCounter,
+    "native recovery live RPC counter predates the terminal recovery operation",
+  );
+
+  const publicIpfs = publicPins.map((pin, index) => {
+    const received = publicBytes[index];
+    assert.ok(received instanceof Uint8Array, `native recovery token ${pin.tokenId} ${pin.kind} public reader must return bytes`);
+    assert.equal(
+      received.byteLength,
+      pin.proof.byteLength,
+      `native recovery token ${pin.tokenId} ${pin.kind} public IPFS byte length drift`,
+    );
+    assert.equal(
+      sha256(received),
+      pin.proof.sha256,
+      `native recovery token ${pin.tokenId} ${pin.kind} public IPFS SHA-256 drift`,
+    );
+    assert.deepEqual(
+      Buffer.from(received),
+      Buffer.from(pin.bytes),
+      `native recovery token ${pin.tokenId} ${pin.kind} public IPFS bytes differ from recovery output`,
+    );
+    return {
+      tokenId: pin.tokenId,
+      kind: pin.kind,
+      cid: pin.proof.cid,
+      url: pin.proof.publicGatewayUrl,
+      byteLength: received.byteLength,
+      sha256: sha256(received),
+    };
+  });
+
+  const verifiedAt = (options.now ?? (() => new Date().toISOString()))();
+  assert.ok(Number.isFinite(Date.parse(verifiedAt)), "native recovery live verification timestamp is invalid");
   return {
-    receiptSha256: loaded.digest,
-    receipt: loaded.value,
-    handoff: validateRavioliNativeRecoveryReceipt(loaded.value, evidence),
+    schema: "pastaprotocol-ravioli-native-recovery-live-verification@1",
+    verifiedAt,
+    receiptSha256: loaded.receiptSha256,
+    handoff: loaded.handoff,
+    operations,
+    lanes: {
+      primaryRpcUrl: normalizeBase(SHADOWNET_RPC_PRIMARY),
+      fallbackRpcUrl: normalizeBase(SHADOWNET_RPC_FALLBACK),
+      minimumRecoveryCounter,
+      primary: primaryLane,
+      fallback: fallbackLane,
+    },
+    terminalState,
+    publicIpfs,
   };
 }
 

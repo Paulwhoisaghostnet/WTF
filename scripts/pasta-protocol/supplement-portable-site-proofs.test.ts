@@ -63,7 +63,14 @@ const FAKE_TEZOS_RUNTIME = String.raw`
       token_metadata: map({}), total_supply: map({ 0: 1 }), total_minted: map({ 0: 1 }),
     };
     if (app === "ravioli") return {
-      packs: map({ 0: { item_count: 1, max_supply: 1, finalized: true, cancelled: false } }),
+      packs: map({ 0: {
+        mode: 0,
+        item_count: 1,
+        max_supply: 1,
+        finalized: true,
+        cancelled: false,
+        contents_uri: null,
+      } }),
       sales: map({ 0: { active: false, remaining: 0, price: 0, start: null, end: null } }),
       opened: map({ 0: 0 }), total_supply: map({ 0: 1 }), token_metadata: map({}),
     };
@@ -232,9 +239,17 @@ test("all six actual Studios export exact dependency-complete archives whose ext
       }));
       const site = await siteContext.newPage();
       const requests: string[] = [];
+      const browserErrors: string[] = [];
       site.on("request", (request) => requests.push(request.url()));
+      site.on("pageerror", (error) => browserErrors.push(error.message));
       await site.goto(`${siteServer.origin}/index.html`, { waitUntil: "domcontentloaded" });
-      await site.waitForFunction(() => document.getElementById("status")?.textContent === "On-chain state loaded.");
+      try {
+        await site.waitForFunction(() => document.getElementById("status")?.textContent === "On-chain state loaded.");
+      } catch (error) {
+        assert.fail(
+          `${app} independent page did not load on-chain state: status=${await site.textContent("#status")} browserErrors=${browserErrors.join(" | ") || "none"} cause=${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       assert.equal(await site.textContent("#contract"), CONTRACT);
       assert.match(String(await site.textContent("#appLabel")), new RegExp(definition.label));
       assert.equal(await site.textContent("#itemId"), "0");

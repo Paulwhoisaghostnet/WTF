@@ -179,17 +179,107 @@ test("every Pasta publisher exports the shared self-hosted collector site vertic
 
   assert.match(canonicalHtml, /pasta\.config\.js/);
   assert.match(canonicalHtml, /vendor\/octez-connect\.js/);
+  assert.match(canonicalHtml, /id="pastaFavicon"[^>]+rel="icon"/);
+  assert.match(canonicalRuntime, /PASTA_SUGO_FAVICONS\[config\.app\]/);
+  assert.match(canonicalRuntime, /data:image\/svg\+xml/);
   assert.match(canonicalRuntime, /MD\.assertOperationSafety\(\)/);
   assert.match(canonicalRuntime, /open_mint/);
   assert.match(canonicalRuntime, /total_minted \|\| state\.storage\.total_supply/);
   assert.match(canonicalRuntime, /methodsObject\.claim/);
   assert.match(canonicalRuntime, /methodsObject\.open_pack/);
+  assert.match(canonicalRuntime, /blind_controller/);
+  assert.match(canonicalRuntime, /get_claim_count/);
+  assert.match(canonicalRuntime, /get_pack_status/);
+  assert.match(canonicalRuntime, /get_last_claim/);
+  assert.match(canonicalRuntime, /get_claim_serial/);
+  assert.match(canonicalRuntime, /get_reserved/);
+  assert.match(canonicalRuntime, /get_render_context/);
+  assert.match(canonicalRuntime, /eventual owner remains provenance and authorization, never seed entropy/);
+  assert.doesNotMatch(canonicalRuntime, /action_index:\s*actionIndex,\s*recipient:\s*opener,\s*resource_id/);
+  assert.match(canonicalRuntime, /PastaRotiniMint\.renderProject/);
+  assert.match(canonicalRuntime, /expected_claim_id/);
+  assert.match(canonicalRuntime, /const opener = state\.account/);
+  assert.match(canonicalRuntime, /state\.account !== opener/);
   assert.match(canonicalRuntime, /methodsObject\.buy/);
+  assert.match(canonicalRuntime, /methodsObject\.refund_blind_claims/);
+  assert.match(canonicalRuntime, /methodsObject\.withdraw_refund/);
+  assert.match(canonicalRuntime, /get_refund_credit/);
+  assert.match(canonicalRuntime, /credits the connected current holder/);
+  assert.match(canonicalRuntime, /credit always belongs to that holder—not the caller/);
+  assert.match(canonicalRuntime, /rejected withdrawal leaves the credit intact/);
+  assert.match(canonicalRuntime, /authenticated encrypted on-chain reveal/);
+  assert.match(canonicalRuntime, /AES-GCM/);
+  assert.match(canonicalRuntime, /refund-only/);
   assert.match(canonicalRuntime, /Primary sale open · fully reserved/);
   assert.match(canonicalRuntime, /\$\{supply\} wrappers live · fully reserved/);
   assert.match(canonicalRuntime, /Number\.isSafeInteger\(amount\)/);
   assert.match(canonicalRuntime, /Only \$\{state\.maxAmount\} editions remain/);
   assert.match(canonicalBundle, /recordColanderSite/);
+  assert.match(canonicalBundle, /config\.app === "rotini" \|\| config\.app === "ravioli"/);
+  assert.doesNotMatch(canonicalHtml, /id="openArtifact"/);
+  assert.doesNotMatch(canonicalHtml, /id="openPreview"/);
+  assert.match(canonicalHtml, /No artwork upload is accepted/);
+  assert.equal(
+    readRepoFile("public/creation-tools/ravioli/js/rotini-artifact.js"),
+    readRepoFile("public/creation-tools/rotini/js/rotini-artifact.js"),
+    "Ravioli artifact runtime must match Rotini",
+  );
+  const ravioliStudio = readRepoFile("public/creation-tools/ravioli/js/studio.js");
+  const ravioliIndex = readRepoFile("public/creation-tools/ravioli/index.html");
+  assert.match(ravioliStudio, /pasta-blind-pack-controller\.contract\.json/);
+  assert.match(ravioliStudio, /pasta-ravioli-deployment-certificate\.json/);
+  assert.match(ravioliStudio, /pasta-ravioli-deployment-certificate@2/);
+  assert.match(
+    ravioliStudio,
+    /\["router", "blindController", "gnocchiAdapter", "rotiniAdapter"\]/,
+  );
+  assert.match(ravioliStudio, /canonicalMichelsonCodeSha256/);
+  assert.match(
+    ravioliStudio,
+    /const freshDeployment = await requireFreshDeploymentCertificate\(\)/,
+  );
+  assert.match(ravioliStudio, /deploymentPreflight\[artifactName\]/);
+  assert.match(ravioliStudio, /MIN_ROUTER_ORIGINATION_HEADROOM_BYTES = 1_024/);
+  assert.match(ravioliStudio, /requireFreshDeploymentCertificate/);
+  assert.match(ravioliStudio, /requireCertifiedActiveProtocol/);
+  assert.match(ravioliStudio, /rpc\.getBlock\(\{ block: "head" \}\)/);
+  assert.match(ravioliStudio, /connected RPC is running/);
+  assert.match(ravioliStudio, /requireCertifiedDeploymentUris/);
+  assert.match(ravioliStudio, /no origination was attempted/);
+  assert.match(ravioliStudio, /ORIGINATE_RAVIOLI_BLIND_CONTROLLER/);
+  assert.match(ravioliStudio, /ORIGINATE_RAVIOLI_ROUTER/);
+  assert.ok(
+    ravioliStudio.indexOf("ORIGINATE_RAVIOLI_BLIND_CONTROLLER") < ravioliStudio.indexOf("ORIGINATE_RAVIOLI_ROUTER"),
+    "Ravioli must originate and bind its blind controller before the router",
+  );
+  assert.match(ravioliStudio, /SEALED_REVEAL_CIPHER = "AES-256-GCM"/);
+  assert.match(ravioliStudio, /0x00 \|\| reveal-salt/);
+  assert.match(ravioliStudio, /finalize_blind_pack/);
+  assert.match(ravioliStudio, /withdraw_refund/);
+  assert.match(ravioliStudio, /get_refund_credit/);
+  assert.match(ravioliStudio, /ravioli\.wrapper_transferred/);
+  assert.match(ravioliStudio, /ravioli\.refund_credited/);
+  assert.match(ravioliStudio, /ravioli\.refund_withdrawn/);
+  assert.match(ravioliStudio, /ravioli\.unrevealed_pack_cancelled/);
+  assert.match(ravioliStudio, /members: blind \? \[\] : publicMembers/);
+  assert.match(ravioliStudio, /recipes: blind \? undefined : recipes\.map/);
+  assert.match(ravioliStudio, /sealedContentsUri: blind \? sealedContentsUri : undefined/);
+  assert.match(ravioliStudio, /precommitted-salted-cyclic-rotation/);
+  assert.match(ravioliStudio, /primary sale must end before its earliest LE child public mint expiry/);
+  assert.doesNotMatch(ravioliStudio, /!resource \|\| resource\.active !== true/);
+  assert.doesNotMatch(ravioliStudio, /!project \|\| project\.active !== true/);
+  assert.doesNotMatch(ravioliStudio, /finalize_le_pack/);
+  assert.doesNotMatch(ravioliStudio, /finalizeBlindPayload = \{[\s\S]{0,500}open_deadline:/);
+  assert.match(ravioliIndex, /about 11\.3 tez/);
+  assert.match(ravioliIndex, /normal repeat drop/);
+  assert.match(ravioliIndex, /Primary sale ends/);
+  assert.match(ravioliIndex, /Reveal deadline/);
+  assert.match(ravioliIndex, /Delivery \/ refund cutoff/);
+  assert.equal(
+    readRepoFile("public/creation-tools/ravioli/js/rotini-mint.js"),
+    readRepoFile("public/creation-tools/rotini/js/rotini-mint.js"),
+    "Ravioli render runtime must match Rotini",
+  );
 
   for (const appId of PASTA_APPS) {
     const index = readRepoFile(`public/creation-tools/${appId}/index.html`);
@@ -239,6 +329,7 @@ test("Rotini reserves seeds and finalizes self-contained artifacts instead of pr
   assert.match(artifact, /application\/zip/);
   assert.match(artifact, /interactive ZIP requires top-level index\.html/);
   assert.match(mint, /pasta:artifactSha256/);
+  assert.match(mint, /renderProject/);
   assert.doesNotMatch(studio, /methodsObject\.create_token/);
   assert(manifest.entrypoints.includes("create_project"));
   assert(manifest.entrypoints.includes("reserve_iteration"));

@@ -13,12 +13,13 @@ fi
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-echo "[1/2] Running the five Ravioli fulfillment modes and atomic-failure checks..."
-python3 "$TEST_SOURCE"
+echo "[1/4] Running Ravioli fulfillment, fairness, liveness, and atomic-failure checks..."
+smartpy test "$TEST_SOURCE" "$BUILD_DIR/scenarios"
 
-echo "[2/2] Compiling router, adapters, and underlying Pasta FA2 contracts..."
+echo "[2/4] Compiling router, blind controller, adapters, and underlying Pasta FA2 contracts..."
 for source in \
   PastaPackRouterFA2.py \
+  PastaBlindPackController.py \
   PastaGnocchiPackAdapter.py \
   PastaRotiniPackAdapter.py \
   PastaOpenEditionFA2.py \
@@ -27,4 +28,30 @@ for source in \
   smartpy compile "$ROOT_DIR/contracts/pasta-protocol/$source" "$BUILD_DIR/$slug"
 done
 
-echo "Ravioli contract integration tests and compiles completed."
+echo "[3/4] Checking signed Tezos origination envelopes for split Ravioli contracts..."
+node "$ROOT_DIR/scripts/pasta-protocol/check-smartpy-origination-size.mjs" \
+  "$BUILD_DIR/PastaPackRouterFA2" \
+  "$BUILD_DIR/PastaBlindPackController" \
+  "$BUILD_DIR/PastaGnocchiPackAdapter" \
+  "$BUILD_DIR/PastaRotiniPackAdapter"
+
+echo "[4/4] Rebuilding public Ravioli artifacts and their source-bound deployment certificate..."
+node "$ROOT_DIR/scripts/pasta-protocol/compile-fa2-template.mjs" \
+  contracts/pasta-protocol/PastaPackRouterFA2.py \
+  pasta-bundle \
+  ravioli
+node "$ROOT_DIR/scripts/pasta-protocol/compile-fa2-template.mjs" \
+  contracts/pasta-protocol/PastaBlindPackController.py \
+  pasta-blind-pack-controller \
+  ravioli
+node "$ROOT_DIR/scripts/pasta-protocol/compile-fa2-template.mjs" \
+  contracts/pasta-protocol/PastaGnocchiPackAdapter.py \
+  pasta-gnocchi-pack-adapter \
+  ravioli
+node "$ROOT_DIR/scripts/pasta-protocol/compile-fa2-template.mjs" \
+  contracts/pasta-protocol/PastaRotiniPackAdapter.py \
+  pasta-rotini-pack-adapter \
+  ravioli
+node "$ROOT_DIR/scripts/pasta-protocol/generate-ravioli-deployment-certificate.mjs"
+
+echo "Ravioli contract integration tests, compiles, and deployment certification completed."

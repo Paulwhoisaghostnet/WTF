@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const routeSource = readFileSync("server/routes/desktop-apps.ts", "utf8");
-const migrationSource = readFileSync("drizzle/0116_desktop_app_registration_resilience.sql", "utf8");
+const migrationSource = readFileSync(
+  "drizzle/0116_desktop_app_registration_resilience.sql",
+  "utf8",
+);
 
 test("desktop app admin exposes an all-app registration refresh", () => {
   assert.match(routeSource, /\/api\/admin\/apps\/desktop\/refresh-all/);

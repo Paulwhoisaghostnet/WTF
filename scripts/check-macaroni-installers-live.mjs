@@ -1,39 +1,36 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
+
 const DEFAULT_BASE_URL = "https://wtfos.app";
-const EXPECTED_VERSION = process.env.MACARONI_EXPECTED_INSTALLER_VERSION || "1.0.0";
-const RELEASES = {
-  "1.0.0": {
-    tag: "macaroni-desktop-v1.0.0",
-    assets: {
-      macos: {
-        label: "macOS",
-        manifestFileName: "Macaroni-Studio.dmg",
-        url: "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-mac-universal.dmg",
-        sha256: "9c91ad656bd249d7d921084d429ba23f00692d68819937505aa3deec8e50f600",
-        bytes: 214729643,
-      },
-      windows: {
-        label: "Windows",
-        manifestFileName: "Macaroni-Studio.exe",
-        url: "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-win-x64.exe",
-        sha256: "6b40525d524dd916ba3a46ab28bb36c3238c7cbffd993f2c1803f61f5063e1d4",
-        bytes: 102952651,
-      },
-      "raspberry-pi": {
-        label: "Raspberry Pi",
-        manifestFileName: "macaroni-studio-arm64.deb",
-        url: "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.0/Macaroni-Studio-1.0.0-linux-arm64.deb",
-        sha256: "6ed21c165f5b2c5f476b0c8ab23c78397de59a2990d3f4f21dfb741b5e7e6216",
-        bytes: 92499620,
-      },
-    },
+const DEFAULT_REPOSITORY = "Paulwhoisaghostnet/WTF";
+
+const desktopPackage = JSON.parse(readFileSync("apps/macaroni-desktop/package.json", "utf8"));
+const EXPECTED_VERSION = process.env.MACARONI_EXPECTED_INSTALLER_VERSION || desktopPackage.version;
+const EXPECTED_RELEASE_TAG = process.env.MACARONI_EXPECTED_RELEASE_TAG || `macaroni-desktop-v${EXPECTED_VERSION}`;
+const REPOSITORY = process.env.MACARONI_INSTALLER_REPOSITORY || DEFAULT_REPOSITORY;
+
+const EXPECTED_ASSETS = {
+  macos: {
+    label: "macOS",
+    manifestFileName: "Macaroni-Studio.dmg",
+    assetName: `Macaroni-Studio-${EXPECTED_VERSION}-mac-universal.dmg`,
+  },
+  windows: {
+    label: "Windows",
+    manifestFileName: "Macaroni-Studio.exe",
+    assetName: `Macaroni-Studio-${EXPECTED_VERSION}-win-x64.exe`,
+  },
+  "raspberry-pi": {
+    label: "Raspberry Pi",
+    manifestFileName: "macaroni-studio-arm64.deb",
+    assetName: `Macaroni-Studio-${EXPECTED_VERSION}-linux-arm64.deb`,
   },
 };
 
 const failures = [];
 const cookieJar = new Map();
-const suppliedCookie = String(process.env.WTFOS_INSTALLER_COOKIE || "").trim();
+const suppliedCookie = String(process.env.MACARONI_INSTALLER_COOKIE || process.env.WTFOS_INSTALLER_COOKIE || "").trim();
 
 function flag(name, defaultValue) {
   const value = process.env[name];
@@ -41,10 +38,10 @@ function flag(name, defaultValue) {
   return /^(1|true|yes|on)$/i.test(value);
 }
 
-const checkAssets = flag("WTFOS_INSTALLER_CHECK_ASSETS", true);
-const requireAuth = flag("WTFOS_INSTALLER_REQUIRE_AUTH", false);
-const username = String(process.env.WTFOS_INSTALLER_USERNAME || "").trim();
-const password = String(process.env.WTFOS_INSTALLER_PASSWORD || "");
+const checkAssets = flag("MACARONI_INSTALLER_CHECK_ASSETS", flag("WTFOS_INSTALLER_CHECK_ASSETS", true));
+const requireAuth = flag("MACARONI_INSTALLER_REQUIRE_AUTH", flag("WTFOS_INSTALLER_REQUIRE_AUTH", false));
+const username = String(process.env.MACARONI_INSTALLER_USERNAME || process.env.WTFOS_INSTALLER_USERNAME || "").trim();
+const password = String(process.env.MACARONI_INSTALLER_PASSWORD || process.env.WTFOS_INSTALLER_PASSWORD || "");
 
 function fail(message) {
   failures.push(message);
@@ -55,7 +52,9 @@ function ok(message) {
 }
 
 function baseUrl() {
-  const raw = String(process.env.WTFOS_INSTALLER_BASE_URL || process.env.WTFOS_BASE_URL || DEFAULT_BASE_URL).trim();
+  const raw = String(
+    process.env.MACARONI_INSTALLER_BASE_URL || process.env.WTFOS_INSTALLER_BASE_URL || process.env.WTFOS_BASE_URL || DEFAULT_BASE_URL
+  ).trim();
   const url = new URL(raw);
   url.pathname = "/";
   url.search = "";
@@ -107,11 +106,13 @@ async function loginIfConfigured() {
     return true;
   }
   if (!username && !password) {
-    if (requireAuth) fail("WTFOS_INSTALLER_REQUIRE_AUTH=1 but no WTFOS_INSTALLER_COOKIE or username/password was provided");
+    if (requireAuth) {
+      fail("MACARONI_INSTALLER_REQUIRE_AUTH=1 but no cookie or username/password was provided");
+    }
     return false;
   }
   if (!username || !password) {
-    fail("both WTFOS_INSTALLER_USERNAME and WTFOS_INSTALLER_PASSWORD are required for password login");
+    fail("both MACARONI_INSTALLER_USERNAME and MACARONI_INSTALLER_PASSWORD are required for password login");
     return false;
   }
   const response = await fetchWithCookies("/api/auth/login", {
@@ -132,10 +133,59 @@ async function loginIfConfigured() {
   return true;
 }
 
-function validateManifest(manifest, release) {
+async function fetchReleaseMetadata() {
+  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/releases/tags/${EXPECTED_RELEASE_TAG}`);
+  const headers = {
+    accept: "application/vnd.github+json",
+    "user-agent": "wtfos-macaroni-installer-check",
+  };
+  const token = String(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "").trim();
+  if (token) headers.authorization = `Bearer ${token}`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    fail(`GitHub release ${EXPECTED_RELEASE_TAG} lookup returned HTTP ${response.status}`);
+    return null;
+  }
+  const release = await readJson(response);
+  if (!Array.isArray(release.assets)) {
+    fail(`GitHub release ${EXPECTED_RELEASE_TAG} did not include assets[]`);
+    return null;
+  }
+
+  const byName = new Map(release.assets.map((asset) => [asset.name, asset]));
+  const assets = {};
+  for (const [key, expected] of Object.entries(EXPECTED_ASSETS)) {
+    const asset = byName.get(expected.assetName);
+    if (!asset) {
+      fail(`${key} release asset missing: ${expected.assetName}`);
+      continue;
+    }
+    const digest = String(asset.digest || "").toLowerCase();
+    const sha256 = digest.startsWith("sha256:") ? digest.slice("sha256:".length) : digest;
+    if (!/^[0-9a-f]{64}$/.test(sha256)) {
+      fail(`${key} release asset is missing a sha256 digest`);
+      continue;
+    }
+    assets[key] = {
+      ...expected,
+      url: asset.browser_download_url,
+      sha256,
+      bytes: Number(asset.size || 0),
+    };
+  }
+  if (Object.keys(assets).length === Object.keys(EXPECTED_ASSETS).length) {
+    ok(`GitHub release ${EXPECTED_RELEASE_TAG} exposes expected Macaroni assets`);
+  }
+  return assets;
+}
+
+function validateManifest(manifest, releaseAssets) {
   if (!manifest || manifest.ok !== true) {
     fail("installer manifest did not return ok: true");
     return;
+  }
+  if (manifest.product !== "macaroni") {
+    fail(`installer manifest product mismatch: expected macaroni, got ${manifest.product}`);
   }
   if (manifest.version !== EXPECTED_VERSION) {
     fail(`installer manifest version mismatch: expected ${EXPECTED_VERSION}, got ${manifest.version}`);
@@ -146,7 +196,7 @@ function validateManifest(manifest, release) {
   }
 
   const byKey = new Map(manifest.installers.map((item) => [item.key, item]));
-  for (const [key, expected] of Object.entries(release.assets)) {
+  for (const [key, expected] of Object.entries(releaseAssets)) {
     const item = byKey.get(key);
     if (!item) {
       fail(`installer manifest is missing ${key}`);
@@ -195,37 +245,33 @@ async function assertReleaseAssetReachable(key, expected) {
   }
   const contentRange = response.headers.get("content-range") || "";
   const match = contentRange.match(/^bytes 0-0\/(\d+)$/);
-  if (match && Number(match[1]) !== expected.bytes) {
+  if (match && expected.bytes > 0 && Number(match[1]) !== expected.bytes) {
     fail(`${key} release asset size mismatch: expected ${expected.bytes}, got ${match[1]}`);
   }
   ok(`${key} release asset accepts byte-range download`);
 }
 
 async function main() {
-  const release = RELEASES[EXPECTED_VERSION];
-  if (!release) {
-    throw new Error(`No expected Macaroni installer release metadata for version ${EXPECTED_VERSION}`);
-  }
-
-  console.log(`[macaroni-installers] checking ${baseUrl().origin} against ${release.tag}`);
+  console.log(`[macaroni-installers] checking ${baseUrl().origin} against ${EXPECTED_RELEASE_TAG}`);
   await assertUnauthenticatedManifestIsProtected();
 
-  if (checkAssets) {
-    for (const [key, expected] of Object.entries(release.assets)) {
+  const releaseAssets = await fetchReleaseMetadata();
+  if (releaseAssets && checkAssets) {
+    for (const [key, expected] of Object.entries(releaseAssets)) {
       await assertReleaseAssetReachable(key, expected);
     }
   }
 
   const authenticated = await loginIfConfigured();
-  if (authenticated) {
+  if (authenticated && releaseAssets) {
     const response = await fetchWithCookies("/api/macaroni/installers");
     if (!response.ok) {
       fail(`authenticated installer manifest returned HTTP ${response.status}`);
     } else {
-      validateManifest(await readJson(response), release);
+      validateManifest(await readJson(response), releaseAssets);
     }
-  } else if (!requireAuth) {
-    console.log("[macaroni-installers] skipped authenticated manifest check; set WTFOS_INSTALLER_COOKIE or WTFOS_INSTALLER_USERNAME/PASSWORD to enable it");
+  } else if (!authenticated && !requireAuth) {
+    console.log("[macaroni-installers] skipped authenticated manifest check; set MACARONI_INSTALLER_COOKIE or username/password to enable it");
   }
 
   if (failures.length) {

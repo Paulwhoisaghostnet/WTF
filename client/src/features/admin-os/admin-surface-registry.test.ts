@@ -155,6 +155,8 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.sandbox-safe-feedback"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.chease-handoff"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.studio-draft-recovery"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.ravioli-limited-edition-expiry-deconfliction"));
+  assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.ravioli-rotini-generated-at-open"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.contract-resume-ledger"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.native-colander-lifecycle"));
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.portable-chease-preparation"));

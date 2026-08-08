@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { MichelsonMap } from "@taquito/taquito";
+import { validateOperation, ValidationResult } from "@taquito/utils";
 import BigNumber from "bignumber.js";
 import { unzipSync } from "fflate";
 import { chromium, type BrowserContext, type Page } from "playwright";
@@ -15,6 +16,7 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
 } from "./pasta-ui-live-bridge-kit";
 import {
@@ -37,11 +39,13 @@ import {
   findMacaroniMempoolRefusal,
   installMacaroniBrowserAdapters,
   isMacaroniTzktFa2Asset,
+  macaroniCollectorStageStartUtc,
   macaroniTzktBigMapNatKeyIsInactive,
   macaroniManagerOperationFitsBlock,
   macaroniReplacementByFeeEligible,
   readMacaroniBrowserProjection,
   readMacaroniV1BrowserProjection,
+  simulateMacaroniMintRejection,
   validateMacaroniSiteArchive,
   waitForMacaroniSyncOutcome,
 } from "./shadownet-macaroni-ui-live";
@@ -60,12 +64,188 @@ const OPERATION_HASHES = [
 ];
 const V1_OPERATION_HASHES = OPERATION_HASHES.slice(0, 4);
 
+test("Macaroni projection never converts a failed big-map read into zero ownership", async () => {
+  const missingMap = { async get() { return undefined; } };
+  let ledgerReads = 0;
+  const rateLimit = Object.assign(
+    new Error('Http error response: (429) {"error_msg":"Rate limit exceeded"}'),
+    { response: { status: 429 } },
+  );
+  const failingLedger = { async get() { ledgerReads += 1; throw rateLimit; } };
+  const storage = {
+    administrator: CREATOR,
+    treasury: CREATOR,
+    supply: 2,
+    minted: 1,
+    token_count: 1,
+    locked: false,
+    paused: false,
+    delayed_reveal: true,
+    placeholder_count: 1,
+    reveal_cursor: 0,
+    reveal_tail: 1,
+    reveal_delay: 0,
+    unrevealed_since: "2026-07-24T20:15:39Z",
+    revealed: 0,
+    minter_royalty_config: null,
+    metadata: missingMap,
+    stages: missingMap,
+    pending_tokens: missingMap,
+    token_metadata: missingMap,
+    token_supply: missingMap,
+    token_minted: missingMap,
+    placeholder_pool: missingMap,
+    token_placeholder: missingMap,
+    reveal_queue: missingMap,
+    ledger: failingLedger,
+    stage_minted: missingMap,
+  };
+  const tezos = {
+    contract: {
+      async at() {
+        return { async storage() { return storage; } };
+      },
+    },
+  };
+
+  await assert.rejects(
+    readMacaroniBrowserProjection(tezos as any, CONTRACT, COLLECTOR),
+    (error: any) => {
+      assert.equal(error?.name, "ReadOnlyRetryExhaustedError");
+      assert.equal(error?.cause, rateLimit);
+      return true;
+    },
+  );
+  assert.equal(ledgerReads, 8, "four bounded attempts must try both equivalent ledger key encodings");
+});
+
+test("Macaroni projection serializes big-map reads and resumes the failed field after a transient 429", async () => {
+  let activeReads = 0;
+  let maximumActiveReads = 0;
+  let ledgerReads = 0;
+  const valueMap = (label: string, transientLedger = false) => ({
+    async get() {
+      activeReads += 1;
+      maximumActiveReads = Math.max(maximumActiveReads, activeReads);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      activeReads -= 1;
+      if (transientLedger) {
+        ledgerReads += 1;
+        if (ledgerReads <= 2) {
+          throw Object.assign(new Error(`${label} rate limited`), { status: 429 });
+        }
+      }
+      return { label };
+    },
+  });
+  const storage = {
+    administrator: CREATOR,
+    treasury: CREATOR,
+    supply: 2,
+    minted: 1,
+    token_count: 1,
+    locked: false,
+    paused: false,
+    delayed_reveal: true,
+    placeholder_count: 1,
+    reveal_cursor: 0,
+    reveal_tail: 1,
+    reveal_delay: 0,
+    unrevealed_since: null,
+    revealed: 0,
+    minter_royalty_config: null,
+    metadata: valueMap("metadata"),
+    stages: valueMap("stage"),
+    pending_tokens: valueMap("pending"),
+    token_metadata: valueMap("token metadata"),
+    token_supply: valueMap("supply"),
+    token_minted: valueMap("minted"),
+    placeholder_pool: valueMap("placeholder"),
+    token_placeholder: valueMap("token placeholder"),
+    reveal_queue: valueMap("reveal queue"),
+    ledger: valueMap("ledger", true),
+    stage_minted: valueMap("stage minted"),
+  };
+  const tezos = {
+    contract: {
+      async at() {
+        return { async storage() { return storage; } };
+      },
+    },
+  };
+
+  const projection = await readMacaroniBrowserProjection(tezos as any, CONTRACT, COLLECTOR);
+  assert.equal(maximumActiveReads, 1);
+  assert.equal(ledgerReads, 3, "the retry must resume at the failed ledger field");
+  assert.equal(projection.minted, 1);
+  assert.deepEqual(projection.ledger, { [`${COLLECTOR}:0`]: { label: "ledger" } });
+});
+
 type FakeCall = {
   signer: string;
   entrypoint: string;
   payload: unknown;
   sendOptions: unknown;
 };
+
+type FakeMacaroniOperationRecord = {
+  hash: string;
+  signerAddress: string;
+  action: PastaUiLiveAppliedOperationAssertion["action"];
+  contractAddress: string;
+  entrypoints: string[];
+  status: "applied" | "rejected";
+};
+
+class FakeMacaroniFinality {
+  readonly operations = new Map<string, FakeMacaroniOperationRecord>();
+  private operationIndex = 0;
+
+  constructor(private readonly hashes: readonly string[]) {}
+
+  recordApplied(input: {
+    signerAddress: string;
+    action: PastaUiLiveAppliedOperationAssertion["action"];
+    contractAddress: string;
+    entrypoints: string[];
+    apply: () => void;
+  }): string {
+    const hash = this.hashes[this.operationIndex];
+    assert.ok(hash, "fake Macaroni operation hash fixture is exhausted");
+    assert.equal(validateOperation(hash), ValidationResult.VALID, "fake Macaroni operation hash is invalid");
+    assert.equal(this.operations.has(hash), false, "fake Macaroni operation hash must be unique");
+    input.apply();
+    this.operationIndex += 1;
+    this.operations.set(hash, {
+      hash,
+      signerAddress: input.signerAddress,
+      action: input.action,
+      contractAddress: input.contractAddress,
+      entrypoints: [...input.entrypoints],
+      status: "applied",
+    });
+    return hash;
+  }
+
+  assertOperationApplied(
+    assertion: PastaUiLiveAppliedOperationAssertion,
+    signerAddress: string,
+  ): void {
+    assert.equal(validateOperation(assertion.operationHash), ValidationResult.VALID);
+    assert.notEqual(assertion.action, "batch", "fake Macaroni chains do not apply batches");
+    const operation = this.operations.get(assertion.operationHash);
+    assert.ok(operation, `fake Macaroni operation ${assertion.operationHash} is unknown`);
+    assert.equal(
+      operation.status,
+      "applied",
+      `fake Macaroni operation ${assertion.operationHash} is ${operation.status}`,
+    );
+    assert.equal(operation.signerAddress, signerAddress, "fake Macaroni operation signer drift");
+    assert.equal(operation.action, assertion.action, "fake Macaroni operation action drift");
+    assert.equal(operation.contractAddress, assertion.contractAddress, "fake Macaroni operation contract drift");
+    assert.deepEqual(operation.entrypoints, assertion.entrypoints, "fake Macaroni operation entrypoint drift");
+  }
+}
 
 type FakeState = {
   originated: boolean;
@@ -199,7 +379,7 @@ function createFakeChain() {
     calls: [],
     estimates: [],
   };
-  let operationIndex = 0;
+  const finality = new FakeMacaroniFinality(OPERATION_HASHES);
 
   function storage() {
     return {
@@ -289,8 +469,13 @@ function createFakeChain() {
             };
           },
           async send(sendOptions: unknown = {}) {
-            applyCall(signer, entrypoint, payload, sendOptions);
-            const hash = OPERATION_HASHES[operationIndex++];
+            const hash = finality.recordApplied({
+              signerAddress: signer,
+              action: "call",
+              contractAddress: CONTRACT,
+              entrypoints: [entrypoint],
+              apply: () => applyCall(signer, entrypoint, payload, sendOptions),
+            });
             return { hash, opHash: hash, async confirmation() { return 1; } };
           },
         });
@@ -312,31 +497,41 @@ function createFakeChain() {
         async transfer(params: Record<string, any>) {
           const entrypoint = String(params?.parameter?.entrypoint || "");
           state.estimates.push(entrypoint);
+          if (entrypoint === "mint" && numeric(state.maps.stage_minted[`0:${signer}`]) >= 1) {
+            throw new Error("WALLET_LIMIT");
+          }
           return fakeEstimateForEntrypoint(entrypoint);
         },
       },
       contract: {
         async originate(input: { storage: Record<string, unknown> }) {
-          assert.equal(signer, CREATOR);
-          assert.equal(state.originated, false);
-          state.originated = true;
-          state.administrator = String(input.storage.administrator);
-          state.treasury = String(input.storage.treasury);
-          state.supply = numeric(input.storage.supply);
-          state.minted = numeric(input.storage.minted);
-          state.tokenCount = numeric(input.storage.token_count);
-          state.locked = Boolean(input.storage.locked);
-          state.paused = Boolean(input.storage.paused);
-          state.delayedReveal = Boolean(input.storage.delayed_reveal);
-          state.placeholderCount = numeric(input.storage.placeholder_count);
-          state.revealCursor = numeric(input.storage.reveal_cursor);
-          state.revealTail = numeric(input.storage.reveal_tail);
-          state.revealDelay = numeric(input.storage.reveal_delay);
-          state.unrevealedSince = input.storage.unrevealed_since as null;
-          state.revealed = numeric(input.storage.revealed);
-          state.minterRoyaltyConfig = input.storage.minter_royalty_config;
-          for (const name of mapNames) state.maps[name] = recordFromMap(input.storage[name]);
-          const hash = OPERATION_HASHES[operationIndex++];
+          const hash = finality.recordApplied({
+            signerAddress: signer,
+            action: "originate",
+            contractAddress: CONTRACT,
+            entrypoints: [],
+            apply: () => {
+              assert.equal(signer, CREATOR);
+              assert.equal(state.originated, false);
+              state.originated = true;
+              state.administrator = String(input.storage.administrator);
+              state.treasury = String(input.storage.treasury);
+              state.supply = numeric(input.storage.supply);
+              state.minted = numeric(input.storage.minted);
+              state.tokenCount = numeric(input.storage.token_count);
+              state.locked = Boolean(input.storage.locked);
+              state.paused = Boolean(input.storage.paused);
+              state.delayedReveal = Boolean(input.storage.delayed_reveal);
+              state.placeholderCount = numeric(input.storage.placeholder_count);
+              state.revealCursor = numeric(input.storage.reveal_cursor);
+              state.revealTail = numeric(input.storage.reveal_tail);
+              state.revealDelay = numeric(input.storage.reveal_delay);
+              state.unrevealedSince = input.storage.unrevealed_since as null;
+              state.revealed = numeric(input.storage.revealed);
+              state.minterRoyaltyConfig = input.storage.minter_royalty_config;
+              for (const name of mapNames) state.maps[name] = recordFromMap(input.storage[name]);
+            },
+          });
           return {
             hash,
             async confirmation() { return 1; },
@@ -351,7 +546,7 @@ function createFakeChain() {
     } as any;
   }
 
-  return { state, creatorTezos: toolkit(CREATOR), collectorTezos: toolkit(COLLECTOR) };
+  return { state, finality, creatorTezos: toolkit(CREATOR), collectorTezos: toolkit(COLLECTOR) };
 }
 
 function createFakeV1Chain() {
@@ -377,7 +572,7 @@ function createFakeV1Chain() {
     calls: [] as FakeCall[],
     estimates: [] as string[],
   };
-  let operationIndex = 0;
+  const finality = new FakeMacaroniFinality(V1_OPERATION_HASHES);
 
   function storage() {
     return {
@@ -448,8 +643,13 @@ function createFakeV1Chain() {
             };
           },
           async send(sendOptions: unknown = {}) {
-            applyCall(signer, entrypoint, payload, sendOptions);
-            const hash = V1_OPERATION_HASHES[operationIndex++];
+            const hash = finality.recordApplied({
+              signerAddress: signer,
+              action: "call",
+              contractAddress: V1_CONTRACT,
+              entrypoints: [entrypoint],
+              apply: () => applyCall(signer, entrypoint, payload, sendOptions),
+            });
             return { hash, opHash: hash, async confirmation() { return 1; } };
           },
         });
@@ -471,28 +671,38 @@ function createFakeV1Chain() {
         async transfer(params: Record<string, any>) {
           const entrypoint = String(params?.parameter?.entrypoint || "");
           state.estimates.push(entrypoint);
+          if (entrypoint === "mint" && state.minted >= state.supply) {
+            throw new Error("SOLD_OUT");
+          }
           return fakeEstimateForEntrypoint(entrypoint);
         },
       },
       contract: {
         async originate(input: { storage: Record<string, unknown> }) {
-          assert.equal(signer, CREATOR);
-          assert.equal(state.originated, false);
-          state.originated = true;
-          state.administrator = String(input.storage.administrator);
-          state.treasury = String(input.storage.treasury);
-          state.supply = numeric(input.storage.supply);
-          state.minted = numeric(input.storage.minted);
-          state.locked = Boolean(input.storage.locked);
-          state.paused = Boolean(input.storage.paused);
-          state.delayedReveal = Boolean(input.storage.delayed_reveal);
-          state.revealDelay = numeric(input.storage.reveal_delay);
-          state.unrevealedSince = input.storage.unrevealed_since as null;
-          state.revealed = numeric(input.storage.revealed);
-          state.seedSalt = String(input.storage.seed_salt);
-          state.entropy = String(input.storage.entropy);
-          for (const name of mapNames) state.maps[name] = recordFromMap(input.storage[name]);
-          const hash = V1_OPERATION_HASHES[operationIndex++];
+          const hash = finality.recordApplied({
+            signerAddress: signer,
+            action: "originate",
+            contractAddress: V1_CONTRACT,
+            entrypoints: [],
+            apply: () => {
+              assert.equal(signer, CREATOR);
+              assert.equal(state.originated, false);
+              state.originated = true;
+              state.administrator = String(input.storage.administrator);
+              state.treasury = String(input.storage.treasury);
+              state.supply = numeric(input.storage.supply);
+              state.minted = numeric(input.storage.minted);
+              state.locked = Boolean(input.storage.locked);
+              state.paused = Boolean(input.storage.paused);
+              state.delayedReveal = Boolean(input.storage.delayed_reveal);
+              state.revealDelay = numeric(input.storage.reveal_delay);
+              state.unrevealedSince = input.storage.unrevealed_since as null;
+              state.revealed = numeric(input.storage.revealed);
+              state.seedSalt = String(input.storage.seed_salt);
+              state.entropy = String(input.storage.entropy);
+              for (const name of mapNames) state.maps[name] = recordFromMap(input.storage[name]);
+            },
+          });
           return {
             hash,
             async confirmation() { return 1; },
@@ -507,7 +717,7 @@ function createFakeV1Chain() {
     } as any;
   }
 
-  return { state, creatorTezos: toolkit(CREATOR), collectorTezos: toolkit(COLLECTOR) };
+  return { state, finality, creatorTezos: toolkit(CREATOR), collectorTezos: toolkit(COLLECTOR) };
 }
 
 function createPinService() {
@@ -613,6 +823,13 @@ async function extractArchive(files: Record<string, Uint8Array>, destination: st
   }
 }
 
+test("Macaroni collector stage start is expressed in the proof browser's UTC wall clock", () => {
+  assert.equal(
+    macaroniCollectorStageStartUtc(Date.parse("2026-08-08T13:40:00.000Z")),
+    "2026-08-08T13:38",
+  );
+});
+
 test("Macaroni actual Studio exports an actual collector page that mints sealed, enforces wallet policy, and reveals", async (t) => {
   const outputRoot = await mkdtemp(path.join(tmpdir(), "macaroni-ui-live-test-"));
   const chain = createFakeChain();
@@ -632,6 +849,7 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
     expectedChainId: CHAIN_ID,
     allowedEntrypoints: new Set<string>(),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, CREATOR),
     pinJson: pins.pinJson,
     pinBlob: pins.pinBlob,
     projectStorage: () => creatorProjection,
@@ -659,6 +877,12 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
       const operation = await chain.creatorTezos.contract.originate({ code, storage });
       await operation.confirmation(1);
       await operation.contract();
+      chain.finality.assertOperationApplied({
+        action: "originate",
+        operationHash: operation.hash,
+        contractAddress: CONTRACT,
+        entrypoints: [],
+      }, CREATOR);
       originationReceipt = {
         schema: "pastaprotocol-ui-live-receipt@1",
         sequence: creatorBootstrapSession.getReceipts().length + 1,
@@ -677,6 +901,7 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
         allowedContractAddresses: new Set([CONTRACT]),
         allowedEntrypoints: new Set(["add_tokens_v2", "set_stages"]),
         assertExpectedChain: async () => CHAIN_ID,
+        assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, CREATOR),
         pinJson: pins.pinJson,
         validateCall: ({ entrypoint, payload }) => {
           if (entrypoint === "add_tokens_v2") {
@@ -844,6 +1069,7 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
     allowedContractAddresses: new Set([CONTRACT]),
     allowedEntrypoints: new Set(["mint", "reveal"]),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, COLLECTOR),
     pinJson: pins.pinJson,
     validateCall: ({ entrypoint, payload }) => {
       assert.ok(["mint", "reveal"].includes(entrypoint));
@@ -1064,6 +1290,7 @@ test("Macaroni V1 actual Studio exports an actual collector page that instant-mi
     expectedChainId: CHAIN_ID,
     allowedEntrypoints: new Set<string>(),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, CREATOR),
     pinJson: pins.pinJson,
     pinBlob: pins.pinBlob,
     projectStorage: () => creatorProjection,
@@ -1090,6 +1317,12 @@ test("Macaroni V1 actual Studio exports an actual collector page that instant-mi
       const operation = await chain.creatorTezos.contract.originate({ code, storage: decodedStorage });
       await operation.confirmation(1);
       await operation.contract();
+      chain.finality.assertOperationApplied({
+        action: "originate",
+        operationHash: operation.hash,
+        contractAddress: V1_CONTRACT,
+        entrypoints: [],
+      }, CREATOR);
       originationReceipt = {
         schema: "pastaprotocol-ui-live-receipt@1",
         sequence: creatorBootstrapSession.getReceipts().length + 1,
@@ -1108,6 +1341,7 @@ test("Macaroni V1 actual Studio exports an actual collector page that instant-mi
         allowedContractAddresses: new Set([V1_CONTRACT]),
         allowedEntrypoints: new Set(["add_tokens", "set_stages"]),
         assertExpectedChain: async () => CHAIN_ID,
+        assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, CREATOR),
         pinJson: pins.pinJson,
         validateCall: ({ entrypoint, payload }) => {
           if (entrypoint === "add_tokens") {
@@ -1268,6 +1502,7 @@ test("Macaroni V1 actual Studio exports an actual collector page that instant-mi
     allowedContractAddresses: new Set([V1_CONTRACT]),
     allowedEntrypoints: new Set(["mint"]),
     assertExpectedChain: async () => CHAIN_ID,
+    assertOperationApplied: (assertion) => chain.finality.assertOperationApplied(assertion, COLLECTOR),
     pinJson: pins.pinJson,
     validateCall: ({ entrypoint, payload }) => {
       assert.equal(entrypoint, "mint");
@@ -1440,6 +1675,15 @@ test("Macaroni production runner is explicit, fresh, Shadownet-only, funded-befo
   assert.match(source, /Invalid Date/);
   assert.match(source, /\\\[object Object\\\]/);
   assert.match(source, /waitForMacaroniSyncOutcome/);
+  assert.equal(
+    (source.match(/assertOperationApplied:/g) || []).length,
+    6,
+    "both Macaroni generations must bind creator, bootstrap, and collector sessions to exact-hash finality",
+  );
+  assert.match(source, /signerAddress: creatorAddress/);
+  assert.match(source, /signerAddress: collectorAddress/);
+  assert.match(source, /signerAddress: creator\.address/);
+  assert.match(source, /signerAddress: collector\.address/);
   assert.doesNotMatch(source, /fee:\s*2500/);
   assert.doesNotMatch(source, /UI-MOCK/);
   assert.doesNotMatch(source, /recordVideo|recordHar|tracing\.start|launchPersistentContext/);
@@ -1500,6 +1744,45 @@ test("Macaroni sync outcome fails immediately on UI or Shadownet refusal evidenc
   }
 });
 
+test("Macaroni fake finality rejects unknown, foreign, mismatched, and rejected operations", () => {
+  const finality = new FakeMacaroniFinality([OPERATION_HASHES[0]]);
+  const operationHash = finality.recordApplied({
+    signerAddress: CREATOR,
+    action: "call",
+    contractAddress: CONTRACT,
+    entrypoints: ["set_stages"],
+    apply: () => undefined,
+  });
+  const exact: PastaUiLiveAppliedOperationAssertion = {
+    action: "call",
+    operationHash,
+    contractAddress: CONTRACT,
+    entrypoints: ["set_stages"],
+  };
+  assert.doesNotThrow(() => finality.assertOperationApplied(exact, CREATOR));
+  assert.throws(
+    () => finality.assertOperationApplied({ ...exact, operationHash: OPERATION_HASHES[1] }, CREATOR),
+    /is unknown/,
+  );
+  assert.throws(() => finality.assertOperationApplied(exact, COLLECTOR), /signer drift/);
+  assert.throws(
+    () => finality.assertOperationApplied({ ...exact, action: "originate" }, CREATOR),
+    /action drift/,
+  );
+  assert.throws(
+    () => finality.assertOperationApplied({ ...exact, contractAddress: V1_CONTRACT }, CREATOR),
+    /contract drift/,
+  );
+  assert.throws(
+    () => finality.assertOperationApplied({ ...exact, entrypoints: ["mint"] }, CREATOR),
+    /entrypoint drift/,
+  );
+  const record = finality.operations.get(operationHash);
+  assert.ok(record);
+  record.status = "rejected";
+  assert.throws(() => finality.assertOperationApplied(exact, CREATOR), /is rejected/);
+});
+
 test("Macaroni TzKT evidence rejects generic contracts and requires FA2 asset identity", () => {
   assert.equal(isMacaroniTzktFa2Asset({ address: CONTRACT, kind: "asset", tzips: ["fa2"] }, CONTRACT), true);
   assert.equal(isMacaroniTzktFa2Asset({ address: CONTRACT, kind: "smart_contract", tzips: ["fa2"] }, CONTRACT), false);
@@ -1511,14 +1794,23 @@ test("Macaroni TzKT evidence rejects generic contracts and requires FA2 asset id
     operationHash: OPERATION_HASHES[1],
     contractAddress: CONTRACT,
     entrypoints: ["add_tokens_v2"],
+    signerAddress: CREATOR,
   };
   const applied = {
     hash: OPERATION_HASHES[1],
+    sender: { address: CREATOR },
     target: { address: CONTRACT },
     parameter: { entrypoint: "add_tokens_v2" },
     status: "applied",
   };
   assert.equal(assertMacaroniTzktOperationApplied([applied], expected), applied);
+  assert.throws(
+    () => assertMacaroniTzktOperationApplied([{
+      ...applied,
+      sender: { address: COLLECTOR },
+    }], expected),
+    /expected target\/entrypoint/,
+  );
   assert.throws(
     () => assertMacaroniTzktOperationApplied([{
       ...applied,
@@ -1622,4 +1914,53 @@ test("Macaroni manager-operation profiles prove saturated-block fit and exact 21
     newFeeMutez: 63_924,
     newGasLimit: 480_001,
   }), false, "absolute fee alone must not bypass the exact fee/gas threshold");
+});
+
+test("Macaroni red-light simulation rejects an estimate that incorrectly succeeds", async () => {
+  let estimateCalls = 0;
+  const unexpectedlyPermissiveToolkit = {
+    contract: {
+      async at() {
+        return {
+          methodsObject: {
+            mint() {
+              return {
+                toTransferParams() {
+                  return { to: CONTRACT, parameter: { entrypoint: "mint", value: "1" } };
+                },
+              };
+            },
+          },
+        };
+      },
+    },
+    estimate: {
+      async transfer() {
+        estimateCalls += 1;
+        return fakeEstimateForEntrypoint("mint");
+      },
+    },
+  } as any;
+  await assert.rejects(
+    () => simulateMacaroniMintRejection(
+      unexpectedlyPermissiveToolkit,
+      CONTRACT,
+      "WALLET_LIMIT",
+    ),
+    /unexpectedly bypassed WALLET_LIMIT/,
+  );
+  assert.equal(estimateCalls, 1);
+
+  const rejectingToolkit = {
+    ...unexpectedlyPermissiveToolkit,
+    estimate: {
+      async transfer() {
+        throw new Error("proto.alpha.contract_error: WALLET_LIMIT");
+      },
+    },
+  } as any;
+  assert.match(
+    await simulateMacaroniMintRejection(rejectingToolkit, CONTRACT, "WALLET_LIMIT"),
+    /WALLET_LIMIT/,
+  );
 });

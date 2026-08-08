@@ -21,6 +21,7 @@ def pasta_rotini_pack_adapter_main():
         pack_contract=sp.address,
         pack_token_id=sp.nat,
         open_serial=sp.nat,
+        action_index=sp.nat,
         resource_id=sp.nat,
         payload=sp.bytes,
     )
@@ -28,6 +29,13 @@ def pasta_rotini_pack_adapter_main():
     SetResourceActiveType: type = sp.record(resource_id=sp.nat, active=sp.bool)
     ReservationKeyType: type = sp.record(
         pack_contract=sp.address, pack_token_id=sp.nat, resource_id=sp.nat
+    )
+    PackRenderContextParamType: type = sp.record(
+        pack_contract=sp.address,
+        pack_token_id=sp.nat,
+        open_serial=sp.nat,
+        action_index=sp.nat,
+        resource_id=sp.nat,
     )
     CapacityParamType: type = sp.record(project_id=sp.nat, amount=sp.nat)
     ArtifactPayloadType: type = sp.record(
@@ -43,6 +51,7 @@ def pasta_rotini_pack_adapter_main():
         pack_contract=sp.address,
         pack_token_id=sp.nat,
         open_serial=sp.nat,
+        action_index=sp.nat,
         project_id=sp.nat,
         metadata_uri=sp.bytes,
         artifact_uri=sp.bytes,
@@ -71,6 +80,13 @@ def pasta_rotini_pack_adapter_main():
             sp.cast(pack_contract, sp.address)
             assert sp.sender == pack_contract, "ROUTER_MISMATCH"
             assert sp.sender in self.data.routers, "NOT_ROUTER"
+
+        @sp.private(with_storage="read-only")
+        def _only_reservation_owner(self, pack_contract):
+            # The exact reservation key survives router-role revocation; only
+            # creating additional reservations still needs live membership.
+            sp.cast(pack_contract, sp.address)
+            assert sp.sender == pack_contract, "ROUTER_MISMATCH"
 
         @sp.entrypoint
         def create_resource(self, params):
@@ -137,7 +153,7 @@ def pasta_rotini_pack_adapter_main():
         def fulfill(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, FulfillParamType)
-            self._only_router(params.pack_contract)
+            self._only_reservation_owner(params.pack_contract)
             assert params.resource_id in self.data.resources, "NO_RESOURCE"
             resource = self.data.resources[params.resource_id]
             key = sp.record(
@@ -163,6 +179,7 @@ def pasta_rotini_pack_adapter_main():
                     pack_contract=params.pack_contract,
                     pack_token_id=params.pack_token_id,
                     open_serial=params.open_serial,
+                    action_index=params.action_index,
                     project_id=resource.project_id,
                     metadata_uri=artifact.metadata_uri,
                     artifact_uri=artifact.artifact_uri,
@@ -179,7 +196,7 @@ def pasta_rotini_pack_adapter_main():
         def release(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, ReserveParamType)
-            self._only_router(params.pack_contract)
+            self._only_reservation_owner(params.pack_contract)
             assert params.kind == 2, "BAD_ADAPTER_KIND"
             assert params.resource_id in self.data.resources, "NO_RESOURCE"
             assert params.capacity > 0, "BAD_CAPACITY"
@@ -226,6 +243,38 @@ def pasta_rotini_pack_adapter_main():
             sp.cast(key, ReservationKeyType)
             return self.data.reservations.get(key, default=sp.nat(0))
 
+        @sp.onchain_view()
+        def get_render_context(self, params):
+            """Return the exact public inputs a holder must render before opening.
+
+            The target Rotini collection derives its token seed from this same
+            packed record in ``mint_pack_iteration``.  Publishing the context
+            here lets a self-hosted Ravioli page render the immutable project
+            automatically after reveal instead of accepting an unrelated file
+            upload.  The view intentionally does not require the resource to
+            remain active: capacity reserved by a finalized pack stays
+            fulfillable after later resource deactivation.
+            """
+            sp.cast(params, PackRenderContextParamType)
+            assert params.resource_id in self.data.resources, "NO_RESOURCE"
+            resource = self.data.resources[params.resource_id]
+            seed = sp.blake2b(
+                sp.pack(
+                    sp.record(
+                        pack_contract=params.pack_contract,
+                        pack_token_id=params.pack_token_id,
+                        open_serial=params.open_serial,
+                        action_index=params.action_index,
+                        project_id=resource.project_id,
+                    )
+                )
+            )
+            return sp.record(
+                target=resource.target,
+                project_id=resource.project_id,
+                seed=seed,
+            )
+
 
 main = pasta_rotini_pack_adapter_main
 
@@ -261,6 +310,31 @@ def generative_adapter_guards():
         sp.record(target=admin.address, project_id=0, active=True), _sender=admin
     )
     adapter.add_router(router.address, _sender=admin)
+    context = adapter.get_render_context(
+        sp.record(
+            pack_contract=router.address,
+            pack_token_id=3,
+            open_serial=5,
+            action_index=2,
+            resource_id=0,
+        )
+    )
+    scenario.verify(context.target == admin.address)
+    scenario.verify(context.project_id == 0)
+    scenario.verify(
+        context.seed
+        == sp.blake2b(
+            sp.pack(
+                sp.record(
+                    pack_contract=router.address,
+                    pack_token_id=3,
+                    open_serial=5,
+                    action_index=2,
+                    project_id=0,
+                )
+            )
+        )
+    )
     adapter.reserve(
         sp.record(
             pack_contract=router.address,

@@ -1,0 +1,27 @@
+{
+  "templateName": "PastaBlindPackController",
+  "artifactSlug": "pasta-blind-pack-controller",
+  "source": "contracts/pasta-protocol/PastaBlindPackController.py",
+  "compileScript": "scripts/pasta-protocol/compile-fa2-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/ravioli/contract/pasta-blind-pack-controller.contract.json",
+  "storage": {
+    "note": "Origination storage uses an administrator address, TZIP-16 metadata map, app-specific counters, and empty app-specific big_maps."
+  },
+  "entrypoints": [
+    "register_pack",
+    "assign_claims",
+    "move_claim_batch",
+    "reveal",
+    "consume_claim",
+    "refund_claims",
+    "withdraw_refund",
+    "cancel_unrevealed",
+    "get_pack_status",
+    "get_refund_credit",
+    "get_claim_count",
+    "get_last_claim",
+    "get_claim_serial",
+    "quote_refund"
+  ]
+}

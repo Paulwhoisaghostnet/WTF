@@ -142,26 +142,37 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
     const duesRow = page.getByRole("row").filter({ hasText: "dues-manager" });
     await expect(duesRow).toContainText("Hidden");
 
-    const permanentCheckbox = page.getByRole("checkbox", {
-      name: /license, docs, and install key do not expire/i,
-    }).first();
+    const permanentCheckbox = page
+      .getByRole("checkbox", {
+        name: /license, docs, and install key do not expire/i,
+      })
+      .first();
     await expect(permanentCheckbox).not.toBeChecked();
     const permanenceResponse = page.waitForResponse(
-      (response) => response.url().includes("/api/admin/apps/desktop/") &&
+      (response) =>
+        response.url().includes("/api/admin/apps/desktop/") &&
         !response.url().endsWith("/refresh-all") &&
         response.request().method() === "PUT",
     );
-    await page.getByText("License, docs, and install key do not expire", { exact: true }).first().click();
+    await page
+      .getByText("License, docs, and install key do not expire", { exact: true })
+      .first()
+      .click();
     await expect((await permanenceResponse).ok()).toBeTruthy();
     await expect(permanentCheckbox).toBeChecked();
 
     const bulkResponse = page.waitForResponse(
-      (response) => response.url().endsWith("/api/admin/apps/desktop/refresh-all") &&
+      (response) =>
+        response.url().endsWith("/api/admin/apps/desktop/refresh-all") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Refresh all app registrations" }).click();
+    await page
+      .getByRole("button", { name: "Refresh all app registrations" })
+      .click();
     await expect((await bulkResponse).ok()).toBeTruthy();
-    await expect(page.getByRole("status")).toContainText("app registrations refreshed");
+    await expect(page.getByRole("status")).toContainText(
+      "app registrations refreshed",
+    );
     await expect(duesRow).toContainText("Hidden");
   });
 

@@ -7,6 +7,9 @@ const http = require("node:http");
 const path = require("node:path");
 const { installStoredSite, listStoredSites, removeStoredSite, resolveHostedSitePath } = require("./site-archive.cjs");
 const { resolveStaticPath } = require("./static-path.cjs");
+const { listenOnStableOrigin } = require("./loopback-origin.cjs");
+
+const PRODUCT_NAME = "Pasta Suite";
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -279,19 +282,13 @@ async function handleRequest(req, res) {
   return sendFile(req, res, filePath);
 }
 
-function startLocalServer() {
-  return new Promise((resolve, reject) => {
-    const nextServer = http.createServer((req, res) => {
-      handleRequest(req, res).catch((err) => sendJson(res, 500, { error: err.message || "Server error" }));
-    });
-    nextServer.once("error", reject);
-    nextServer.listen(0, "127.0.0.1", () => {
-      server = nextServer;
-      const address = nextServer.address();
-      baseUrl = `http://127.0.0.1:${address.port}`;
-      resolve(baseUrl);
-    });
+async function startLocalServer() {
+  const nextServer = http.createServer((req, res) => {
+    handleRequest(req, res).catch((err) => sendJson(res, 500, { error: err.message || "Server error" }));
   });
+  baseUrl = await listenOnStableOrigin(nextServer, PRODUCT_NAME);
+  server = nextServer;
+  return baseUrl;
 }
 
 function isSafeExternalUrl(value) {
@@ -348,6 +345,7 @@ function createWindow() {
           height: url.startsWith(baseUrl) ? 850 : 760,
           title: url.startsWith(baseUrl) ? "Pasta tool" : "Pasta wallet",
           webPreferences: {
+            preload: path.join(__dirname, "preload.cjs"),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
@@ -368,19 +366,32 @@ function createWindow() {
   mainWindow.loadURL(`${baseUrl}/`);
 }
 
-app.whenReady().then(async () => {
-  try {
-    await startLocalServer();
-    createWindow();
-  } catch (err) {
-    dialog.showErrorBox("Pasta Suite failed to start", err.message || String(err));
-    app.quit();
-  }
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", focusMainWindow);
+  app.whenReady().then(async () => {
+    try {
+      await startLocalServer();
+      createWindow();
+    } catch (err) {
+      dialog.showErrorBox("Pasta Suite failed to start", err.message || String(err));
+      app.quit();
+    }
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-});
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 const apps = [
   "pasta-suite",
@@ -20,29 +21,49 @@ const staticPages = [
   ["macaroni", "public/creation-tools/macaroni/studio.html"],
   ["macaroni", "public/creation-tools/macaroni/drop.html"],
   ["spaghetti", "public/creation-tools/spaghetti/index.html"],
-  ["spaghetti", "public/creation-tools/spaghetti/site.html"],
   ["gnocchi", "public/creation-tools/gnocchi/index.html"],
-  ["gnocchi", "public/creation-tools/gnocchi/site.html"],
   ["ravioli", "public/creation-tools/ravioli/index.html"],
-  ["ravioli", "public/creation-tools/ravioli/site.html"],
   ["rotini", "public/creation-tools/rotini/index.html"],
-  ["rotini", "public/creation-tools/rotini/site.html"],
   ["penne", "public/creation-tools/penne/index.html"],
-  ["penne", "public/creation-tools/penne/site.html"],
   ["lasagna", "public/creation-tools/lasagna/index.html"],
-  ["lasagna", "public/creation-tools/lasagna/site.html"],
 ];
-const nativeRoots = {
-  "pasta-suite": "apps/pasta-suite-desktop/pasta",
-  "ch-ease": "apps/ch-ease-desktop/pasta",
-  macaroni: "apps/macaroni-desktop/macaroni",
-  spaghetti: "apps/spaghetti-desktop/spaghetti",
-  gnocchi: "apps/gnocchi-desktop/gnocchi",
-  ravioli: "apps/ravioli-desktop/ravioli",
-  rotini: "apps/rotini-desktop/rotini",
-  penne: "apps/penne-desktop/penne",
-  lasagna: "apps/lasagna-desktop/lasagna",
-};
+const portablePublisherApps = ["spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
+function runPortableFavicon(runtime, app) {
+  const nodes = new Map();
+  const node = (id) => {
+    if (!nodes.has(id)) {
+      nodes.set(id, {
+        addEventListener() {},
+        dataset: {},
+        disabled: false,
+        hidden: false,
+        href: "",
+        textContent: "",
+        value: "",
+      });
+    }
+    return nodes.get(id);
+  };
+  const document = { getElementById: node, title: "" };
+
+  runInNewContext(runtime, {
+    document,
+    MD: { isAddress: () => false },
+    URL,
+    window: {
+      PASTA_SITE_CONFIG: {
+        app,
+        contract: "",
+        label: app,
+        network: "mainnet",
+        title: `${app} collector`,
+        tokenId: 0,
+      },
+    },
+  });
+
+  return node("pastaFavicon").href;
+}
 
 test("Pasta icon manifest contains the active set and review palettes", () => {
   const manifest = JSON.parse(readFileSync("public/pasta-icons/manifest.json", "utf8"));
@@ -72,6 +93,37 @@ test("Static Pasta pages point at their matching Sugo favicon", () => {
   }
 });
 
+test("Portable Pasta collectors derive the Sugo favicon from app config", () => {
+  const canonicalHtml = readFileSync("scripts/pasta-protocol/site-kit/site.html", "utf8");
+  const canonicalRuntime = readFileSync("scripts/pasta-protocol/site-kit/site.js", "utf8");
+
+  assert.match(canonicalHtml, /id="pastaFavicon"[^>]+rel="icon"/);
+  assert.match(canonicalRuntime, /PASTA_SUGO_FAVICONS\[config\.app\]/);
+  assert.match(canonicalRuntime, /data:image\/svg\+xml/);
+
+  for (const id of portablePublisherApps) {
+    const sugoIcon = readFileSync(`public/pasta-icons/sugo/${id}.svg`, "utf8").trim();
+    const vectorElements = sugoIcon.match(/<(?:rect|path|circle|ellipse)\b[^>]*\/>/g) || [];
+    assert.ok(vectorElements.length > 2, `${id} Sugo icon should contain a distinctive vector drawing`);
+    const faviconHref = runPortableFavicon(canonicalRuntime, id);
+    assert.match(faviconHref, /^data:image\/svg\+xml,/);
+    const renderedIcon = decodeURIComponent(faviconHref.slice("data:image/svg+xml,".length));
+    for (const element of vectorElements) {
+      assert.ok(renderedIcon.includes(element), `portable runtime should render ${id} Sugo vector ${element}`);
+    }
+    assert.equal(
+      readFileSync(`public/creation-tools/${id}/site.html`, "utf8"),
+      canonicalHtml,
+      `${id} portable HTML should come from the canonical site kit`,
+    );
+    assert.equal(
+      readFileSync(`public/creation-tools/${id}/js/site.js`, "utf8"),
+      canonicalRuntime,
+      `${id} portable runtime should come from the canonical site kit`,
+    );
+  }
+});
+
 test("Electron packages use the canonical Sugo PNG and ICO assets", () => {
   for (const id of apps) {
     const packageJson = JSON.parse(readFileSync(`apps/${id}-desktop/package.json`, "utf8"));
@@ -85,7 +137,21 @@ test("Electron packages use the canonical Sugo PNG and ICO assets", () => {
       assert.ok(existsSync(asset), `${asset} should exist`);
       assert.ok(statSync(asset).size > 0, `${asset} should not be empty`);
     }
-    const preparedFavicon = `${nativeRoots[id]}/pasta-icons/sugo/${id}.svg`;
-    assert.ok(existsSync(preparedFavicon), `${preparedFavicon} should be copied into the native bundle`);
+    assert.equal(
+      readFileSync(`apps/${id}-desktop/build/icon.svg`, "utf8"),
+      readFileSync(`public/pasta-icons/sugo/${id}.svg`, "utf8"),
+      `${id} build icon should be the canonical Sugo source`,
+    );
+    const prepareSource = readFileSync(`apps/${id}-desktop/scripts/prepare-assets.mjs`, "utf8");
+    assert.match(
+      prepareSource,
+      /const iconSourceRoot = path\.join\(repoRoot, "public\/pasta-icons"\);/,
+      `${id} asset preparation should own the canonical icon source`,
+    );
+    assert.match(
+      prepareSource,
+      /cpSync\(iconSourceRoot, path\.join\(outDir, "pasta-icons"\), \{ recursive: true \}\);/,
+      `${id} asset preparation should copy the canonical source tree into the native bundle`,
+    );
   }
 });

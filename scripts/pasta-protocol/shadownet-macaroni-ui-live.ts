@@ -19,10 +19,21 @@ import {
   installPastaUiLiveBrowserProxy,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
+  type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLiveBridgeRequest,
   type PastaUiLivePinProof,
+  type PastaUiLivePreparedOperation,
   type PastaUiLivePublicReceipt,
+  type PastaUiLiveSubmittedOperation,
 } from "./pasta-ui-live-bridge-kit";
+import {
+  assertMichelsonSemanticScriptCodeIdentity,
+  hashMichelsonScriptCode,
+} from "./pasta-michelson-script-identity";
+import {
+  declareReadOnlyReader,
+  readWithBoundedRetry,
+} from "./pasta-readonly-retry";
 import {
   capturePastaProofStage,
   monitorPastaProofPage,
@@ -120,14 +131,14 @@ export type MacaroniBrowserProjection = {
   reveal_queue: BrowserMapRecord;
 };
 
-type PinnedRecord = {
+export type PinnedRecord = {
   actor: "creator";
   value?: unknown;
   bytes?: Uint8Array;
   proof: PastaUiLivePinProof;
 };
 
-type WrittenPinArtifact = {
+export type WrittenPinArtifact = {
   id: string;
   kind: string;
   path: string;
@@ -493,6 +504,30 @@ function errorText(error: unknown): string {
   return parts.filter(Boolean).join(" | ");
 }
 
+export async function simulateMacaroniMintRejection(
+  tezos: TezosToolkit,
+  contractAddress: string,
+  expectedMarker: "WALLET_LIMIT" | "SOLD_OUT",
+): Promise<string> {
+  try {
+    const contract = await tezos.contract.at(contractAddress);
+    const transferParams = contract.methodsObject.mint(1).toTransferParams({
+      amount: MINT_PRICE_MUTEZ,
+      mutez: true,
+    });
+    await tezos.estimate.transfer(transferParams);
+  } catch (error) {
+    const rejection = errorText(error);
+    assert.match(
+      rejection,
+      new RegExp(expectedMarker),
+      `read-only Macaroni simulation did not reject at ${expectedMarker}`,
+    );
+    return rejection;
+  }
+  assert.fail(`read-only Macaroni simulation unexpectedly bypassed ${expectedMarker}`);
+}
+
 function jsonSafeValue(value: unknown, depth = 0): unknown {
   if (depth > 24) return "[depth-limited]";
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
@@ -529,15 +564,34 @@ function unwrapMichelsonOption(value: unknown): unknown {
 async function mapGet(map: unknown, ...keys: unknown[]): Promise<unknown> {
   const candidate = map as { get?: (value: unknown) => Promise<unknown> | unknown } | null;
   if (!candidate || typeof candidate.get !== "function") return undefined;
+  let lastError: unknown;
   for (const key of keys) {
     try {
       const value = await candidate.get(key);
       if (value !== undefined && value !== null) return value;
-    } catch {
+    } catch (error) {
+      lastError = error;
       // Try the next equivalent key representation.
     }
   }
+  // Absence is a valid big-map result, but a failed representation is not
+  // evidence of absence. Propagate it so the capability-checked outer read
+  // lane can retry the whole projection instead of mixing partial snapshots.
+  if (lastError !== undefined) throw lastError;
   return undefined;
+}
+
+async function readMacaroniMapValue(
+  label: string,
+  map: unknown,
+  ...keys: unknown[]
+): Promise<unknown> {
+  return readWithBoundedRetry({
+    primary: declareReadOnlyReader(
+      `Macaroni ${label} big-map value`,
+      () => mapGet(map, ...keys),
+    ),
+  });
 }
 
 function mapRecord(key: string, value: unknown): BrowserMapRecord {
@@ -551,31 +605,29 @@ export async function readMacaroniBrowserProjection(
 ): Promise<MacaroniBrowserProjection> {
   const contract = await tezos.contract.at(contractAddress);
   const storage = await contract.storage() as Record<string, unknown>;
-  const [
-    metadata,
-    stage,
-    pendingToken,
-    tokenMetadata,
-    tokenSupply,
-    tokenMinted,
-    placeholder,
-    tokenPlaceholder,
-    revealQueue,
-    ledger,
-    stageMinted,
-  ] = await Promise.all([
-    mapGet(storage.metadata, ""),
-    mapGet(storage.stages, 0, "0"),
-    mapGet(storage.pending_tokens, 0, "0"),
-    mapGet(storage.token_metadata, 0, "0"),
-    mapGet(storage.token_supply, 0, "0"),
-    mapGet(storage.token_minted, 0, "0"),
-    mapGet(storage.placeholder_pool, 0, "0"),
-    mapGet(storage.token_placeholder, 0, "0"),
-    mapGet(storage.reveal_queue, 0, "0"),
-    mapGet(storage.ledger, { owner: holderAddress, token_id: 0 }, { owner: holderAddress, token_id: "0" }),
-    mapGet(storage.stage_minted, { stage: 0, holder: holderAddress }, { stage: "0", holder: holderAddress }),
-  ]);
+  // Keep proof RPC reads serial. A concurrent burst across every big map can
+  // exceed a public endpoint's request window even when each read is valid.
+  const metadata = await readMacaroniMapValue("metadata", storage.metadata, "");
+  const stage = await readMacaroniMapValue("stage", storage.stages, 0, "0");
+  const pendingToken = await readMacaroniMapValue("pending token", storage.pending_tokens, 0, "0");
+  const tokenMetadata = await readMacaroniMapValue("token metadata", storage.token_metadata, 0, "0");
+  const tokenSupply = await readMacaroniMapValue("token supply", storage.token_supply, 0, "0");
+  const tokenMinted = await readMacaroniMapValue("token minted", storage.token_minted, 0, "0");
+  const placeholder = await readMacaroniMapValue("placeholder pool", storage.placeholder_pool, 0, "0");
+  const tokenPlaceholder = await readMacaroniMapValue("token placeholder", storage.token_placeholder, 0, "0");
+  const revealQueue = await readMacaroniMapValue("reveal queue", storage.reveal_queue, 0, "0");
+  const ledger = await readMacaroniMapValue(
+    "ledger",
+    storage.ledger,
+    { owner: holderAddress, token_id: 0 },
+    { owner: holderAddress, token_id: "0" },
+  );
+  const stageMinted = await readMacaroniMapValue(
+    "stage minted",
+    storage.stage_minted,
+    { stage: 0, holder: holderAddress },
+    { stage: "0", holder: holderAddress },
+  );
   return {
     administrator: String(storage.administrator || ""),
     treasury: String(storage.treasury || ""),
@@ -616,15 +668,18 @@ export async function readMacaroniV1BrowserProjection(
 ): Promise<Record<string, unknown>> {
   const contract = await tezos.contract.at(contractAddress);
   const storage = await contract.storage() as Record<string, unknown>;
-  const [metadata, stage, pendingToken, tokenMetadata, placeholder, ledger, stageMinted] = await Promise.all([
-    mapGet(storage.metadata, ""),
-    mapGet(storage.stages, 0, "0"),
-    mapGet(storage.pending_tokens, 0, "0"),
-    mapGet(storage.token_metadata, 0, "0"),
-    mapGet(storage.placeholder, ""),
-    mapGet(storage.ledger, 0, "0"),
-    mapGet(storage.stage_minted, { stage: 0, holder: holderAddress }, { stage: "0", holder: holderAddress }),
-  ]);
+  const metadata = await readMacaroniMapValue("V1 metadata", storage.metadata, "");
+  const stage = await readMacaroniMapValue("V1 stage", storage.stages, 0, "0");
+  const pendingToken = await readMacaroniMapValue("V1 pending token", storage.pending_tokens, 0, "0");
+  const tokenMetadata = await readMacaroniMapValue("V1 token metadata", storage.token_metadata, 0, "0");
+  const placeholder = await readMacaroniMapValue("V1 placeholder", storage.placeholder, "");
+  const ledger = await readMacaroniMapValue("V1 ledger", storage.ledger, 0, "0");
+  const stageMinted = await readMacaroniMapValue(
+    "V1 stage minted",
+    storage.stage_minted,
+    { stage: 0, holder: holderAddress },
+    { stage: "0", holder: holderAddress },
+  );
   return {
     administrator: String(storage.administrator || ""),
     treasury: String(storage.treasury || ""),
@@ -760,10 +815,10 @@ export async function installMacaroniBrowserAdapters(
   await script.evaluate((element) => element.parentNode?.removeChild(element));
 }
 
-function dateTimeLocalPast(): string {
-  const date = new Date(Date.now() - 120_000);
+export function macaroniCollectorStageStartUtc(nowMs = Date.now()): string {
+  const date = new Date(nowMs - 120_000);
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
 export async function configureMacaroniStudio(
@@ -805,7 +860,7 @@ export async function configureMacaroniStudio(
   });
   await page.waitForFunction(() => document.getElementById("tokenSummary")?.textContent?.includes("2 editions"));
   await page.click("#btnAddStage");
-  await page.fill('[data-i="0"][data-f="start"]', dateTimeLocalPast());
+  await page.fill('[data-i="0"][data-f="start"]', macaroniCollectorStageStartUtc());
   await page.fill('[data-i="0"][data-f="price"]', String(MINT_PRICE_MUTEZ / 1_000_000));
   await page.fill('[data-i="0"][data-f="maxPerWallet"]', "1");
   await page.click('[data-stage-save="0"]');
@@ -845,7 +900,7 @@ export async function configureMacaroniV1Studio(
   });
   await page.waitForFunction(() => document.getElementById("tokenSummary")?.textContent?.includes("1 edition"));
   await page.click("#btnAddStage");
-  await page.fill('[data-i="0"][data-f="start"]', dateTimeLocalPast());
+  await page.fill('[data-i="0"][data-f="start"]', macaroniCollectorStageStartUtc());
   await page.fill('[data-i="0"][data-f="price"]', String(MINT_PRICE_MUTEZ / 1_000_000));
   await page.fill('[data-i="0"][data-f="maxPerWallet"]', "1");
   await page.click('[data-stage-save="0"]');
@@ -1357,6 +1412,7 @@ type MacaroniAppliedOperationInput = {
   operationHash: string;
   contractAddress?: string;
   entrypoints: string[];
+  signerAddress?: string;
 };
 
 export function assertMacaroniTzktOperationApplied(
@@ -1368,6 +1424,11 @@ export function assertMacaroniTzktOperationApplied(
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
     const row = candidate as Record<string, unknown>;
     if (row.hash !== expected.operationHash) return false;
+    if (expected.signerAddress) {
+      const sender = row.sender as Record<string, unknown> | string | null | undefined;
+      const senderAddress = typeof sender === "string" ? sender : sender?.address;
+      if (senderAddress !== expected.signerAddress) return false;
+    }
     if (expected.contractAddress) {
       const target = row.target as Record<string, unknown> | string | null | undefined;
       const originated = row.originatedContract as Record<string, unknown> | string | null | undefined;
@@ -1400,6 +1461,48 @@ async function verifyMacaroniBridgeOperationApplied(input: MacaroniAppliedOperat
     { attempts: 30, delayMs: 1_000 },
   );
   assertMacaroniTzktOperationApplied(rows, input);
+}
+
+async function resolveAppliedMacaroniOrigination(input: {
+  tezos: TezosToolkit;
+  operationHash: string;
+  signerAddress: string;
+  expectedCode: unknown[];
+}): Promise<string> {
+  const base = normalizeBase(SHADOWNET_TZKT_API);
+  const rows = await pollJson(
+    `Macaroni origination ${input.operationHash}`,
+    `${base}/operations/${encodeURIComponent(input.operationHash)}`,
+    (json) => Array.isArray(json) && json.some((row) =>
+      row?.type === "origination" &&
+      row?.hash === input.operationHash &&
+      row?.status === "applied" &&
+      (typeof row?.sender === "string" ? row.sender : row?.sender?.address) === input.signerAddress &&
+      /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(
+        typeof row?.originatedContract === "string"
+          ? row.originatedContract
+          : String(row?.originatedContract?.address || ""),
+      )),
+    { attempts: 40, delayMs: 1_000 },
+  );
+  const matching = (rows as Array<Record<string, any>>).filter((row) =>
+    row.type === "origination" &&
+    row.hash === input.operationHash &&
+    row.status === "applied" &&
+    (typeof row.sender === "string" ? row.sender : row.sender?.address) === input.signerAddress);
+  assert.equal((rows as unknown[]).length, 1, `Macaroni ${input.operationHash} must contain exactly one operation`);
+  assert.equal(matching.length, 1, `Macaroni ${input.operationHash} did not resolve to one exact applied origination`);
+  const originated = typeof matching[0].originatedContract === "string"
+    ? matching[0].originatedContract
+    : String(matching[0].originatedContract?.address || "");
+  assert.equal(validateContractAddress(originated), ValidationResult.VALID);
+  const script = await input.tezos.rpc.getScript(originated);
+  assertMichelsonSemanticScriptCodeIdentity(
+    script.code,
+    input.expectedCode,
+    `Macaroni originated contract ${originated} code differs from the authenticated artifact`,
+  );
+  return originated;
 }
 
 async function verifyTzktEvidence(input: {
@@ -1622,7 +1725,7 @@ function pinArtifactId(artifacts: WrittenPinArtifact[], fileName: string): strin
   return matches[0].id;
 }
 
-type MacaroniV1LaneResult = {
+export type MacaroniV1LaneResult = {
   contractAddress: string;
   operations: Array<Record<string, unknown> & { hash: string }>;
   token: Record<string, unknown> & {
@@ -1645,7 +1748,33 @@ type MacaroniV1LaneResult = {
   finalMediaPin: PinnedRecord;
 };
 
-async function runMacaroniV1UiLane(input: {
+export type MacaroniV1LaneEvent = {
+  phase:
+    | "PIN_PREPARED"
+    | "PIN_CONFIRMED"
+    | "PREPARED"
+    | "SUBMITTED"
+    | "APPLIED";
+  actor: "creator" | "collector";
+  session: "creator-bootstrap" | "creator-contract" | "collector";
+  timestampUtc: string;
+  operation?: PastaUiLivePreparedOperation | PastaUiLiveSubmittedOperation | PastaUiLiveAppliedOperationAssertion;
+  operationSequence?: number;
+  operationHash?: string;
+  contractAddress?: string;
+  entrypoints?: string[];
+  fileName?: string;
+  mimeType?: string;
+  byteLength?: number;
+  sha256?: string;
+  ipfsUri?: string;
+};
+
+export type MacaroniV1LaneObserver = {
+  onEvent(event: MacaroniV1LaneEvent): void | Promise<void>;
+};
+
+export async function runMacaroniV1UiLane(input: {
   appRoot: string;
   runRoot: string;
   runId: string;
@@ -1661,6 +1790,11 @@ async function runMacaroniV1UiLane(input: {
   requiredCollectorBalanceMutez: number;
   estimatedOriginationMutez: number;
   code: unknown[];
+  resumeOrigination?: {
+    operationHash: string;
+    contractAddress: string;
+  };
+  observer?: MacaroniV1LaneObserver;
 }): Promise<MacaroniV1LaneResult> {
   const {
     appRoot,
@@ -1678,7 +1812,12 @@ async function runMacaroniV1UiLane(input: {
     requiredCollectorBalanceMutez,
     estimatedOriginationMutez,
     code,
+    resumeOrigination,
+    observer,
   } = input;
+  const emit = async (event: Omit<MacaroniV1LaneEvent, "timestampUtc">): Promise<void> => {
+    await observer?.onEvent({ ...event, timestampUtc: new Date().toISOString() });
+  };
   const pins: PinnedRecord[] = [];
   const captures: CapturePastaProofStageResult[] = [];
   const expectedCodeHash = hashJsonForBridge(code);
@@ -1696,14 +1835,38 @@ async function runMacaroniV1UiLane(input: {
     },
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
-    assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+    assertOperationApplied: (operation) => verifyMacaroniBridgeOperationApplied({
+      ...operation,
+      signerAddress: creatorAddress,
+    }),
     projectStorage: () => creatorProjection,
-    onPin: ({ value, bytes, proof }) => {
+    beforePin: async ({ bytes, fileName, mimeType }) => {
+      await emit({
+        phase: "PIN_PREPARED",
+        actor: "creator",
+        session: "creator-bootstrap",
+        fileName,
+        mimeType,
+        byteLength: bytes.byteLength,
+        sha256: sha256(bytes),
+      });
+    },
+    onPin: async ({ value, bytes, proof }) => {
       pins.push({
         actor: "creator",
         value,
         bytes: bytes ? Uint8Array.from(bytes) : undefined,
         proof,
+      });
+      await emit({
+        phase: "PIN_CONFIRMED",
+        actor: "creator",
+        session: "creator-bootstrap",
+        fileName: proof.fileName,
+        mimeType: proof.mimeType,
+        byteLength: proof.byteLength,
+        sha256: proof.sha256,
+        ipfsUri: proof.uri,
       });
     },
   });
@@ -1727,13 +1890,60 @@ async function runMacaroniV1UiLane(input: {
       await assertShadownet(creatorTezos, "before canonical Macaroni V1 UI-live origination");
       const liveBalance = Number((await creatorTezos.tz.getBalance(creatorAddress)).toString());
       assert.ok(Number.isSafeInteger(liveBalance) && liveBalance >= 50_000, "V1 creator balance fell below the per-action safety floor");
-      const operation = await creatorTezos.contract.originate({ code, storage } as never);
-      await operation.confirmation(1);
-      const originated = await operation.contract();
-      creatorContractAddress = originated.address;
+      let operationHash: string;
+      if (resumeOrigination) {
+        assert.equal(validateOperation(resumeOrigination.operationHash), ValidationResult.VALID);
+        assert.equal(validateContractAddress(resumeOrigination.contractAddress), ValidationResult.VALID);
+        operationHash = resumeOrigination.operationHash;
+      } else {
+        await emit({
+          phase: "PREPARED",
+          actor: "creator",
+          session: "creator-bootstrap",
+          operationSequence: 1,
+          entrypoints: [],
+          sha256: expectedCodeHash,
+        });
+        const operation = await creatorTezos.contract.originate({ code, storage } as never);
+        operationHash = operation.hash;
+        await emit({
+          phase: "SUBMITTED",
+          actor: "creator",
+          session: "creator-bootstrap",
+          operationSequence: 1,
+          operationHash,
+          entrypoints: [],
+        });
+      }
+      // Taquito's head-only confirmation stream can miss the inclusion block
+      // after a transient poll failure. Resolve this exact submitted hash from
+      // indexed history and verify the originated code instead.
+      creatorContractAddress = await resolveAppliedMacaroniOrigination({
+        tezos: creatorTezos,
+        operationHash,
+        signerAddress: creatorAddress,
+        expectedCode: code,
+      });
+      if (resumeOrigination) {
+        assert.equal(
+          creatorContractAddress,
+          resumeOrigination.contractAddress,
+          "recovered Macaroni V1 origination contract drift",
+        );
+      }
       await verifyMacaroniBridgeOperationApplied({
         action: "originate",
-        operationHash: operation.hash,
+        operationHash,
+        contractAddress: creatorContractAddress,
+        entrypoints: [],
+        signerAddress: creatorAddress,
+      });
+      await emit({
+        phase: "APPLIED",
+        actor: "creator",
+        session: "creator-bootstrap",
+        operationSequence: 1,
+        operationHash,
         contractAddress: creatorContractAddress,
         entrypoints: [],
       });
@@ -1745,7 +1955,7 @@ async function runMacaroniV1UiLane(input: {
         chainId: SHADOWNET_CHAIN_ID,
         signerAddress: creatorAddress,
         contractAddress: creatorContractAddress,
-        operationHash: operation.hash,
+        operationHash,
       };
       creatorProjection = await readMacaroniV1BrowserProjection(creatorTezos, creatorContractAddress, creatorAddress);
       creatorContractSession = new TaquitoPastaUiLiveSession({
@@ -1760,7 +1970,36 @@ async function runMacaroniV1UiLane(input: {
         },
         pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
         validateCall: (call) => creatorValidator.validate(call),
-        assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+        beforeOperationSubmit: async (operation) => {
+          await emit({
+            phase: "PREPARED",
+            actor: "creator",
+            session: "creator-contract",
+            operation,
+          });
+        },
+        onOperationSubmitted: async (operation) => {
+          await emit({
+            phase: "SUBMITTED",
+            actor: "creator",
+            session: "creator-contract",
+            operation,
+            operationHash: operation.operationHash,
+          });
+        },
+        assertOperationApplied: async (operation) => {
+          await verifyMacaroniBridgeOperationApplied({
+            ...operation,
+            signerAddress: creatorAddress,
+          });
+          await emit({
+            phase: "APPLIED",
+            actor: "creator",
+            session: "creator-contract",
+            operation,
+            operationHash: operation.operationHash,
+          });
+        },
         projectStorage: async () => {
           creatorProjection = await readMacaroniV1BrowserProjection(
             creatorTezos,
@@ -1783,7 +2022,7 @@ async function runMacaroniV1UiLane(input: {
       });
       return {
         contractAddress: creatorContractAddress,
-        operationHash: operation.hash,
+        operationHash,
         confirmationLevel: 1,
         receipt: manualOriginationReceipt,
       };
@@ -1945,7 +2184,36 @@ async function runMacaroniV1UiLane(input: {
       assert.equal(entrypoint, "mint");
       assert.equal(safeNumber(payload), 1);
     },
-    assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+    beforeOperationSubmit: async (operation) => {
+      await emit({
+        phase: "PREPARED",
+        actor: "collector",
+        session: "collector",
+        operation,
+      });
+    },
+    onOperationSubmitted: async (operation) => {
+      await emit({
+        phase: "SUBMITTED",
+        actor: "collector",
+        session: "collector",
+        operation,
+        operationHash: operation.operationHash,
+      });
+    },
+    assertOperationApplied: async (operation) => {
+      await verifyMacaroniBridgeOperationApplied({
+        ...operation,
+        signerAddress: collectorAddress,
+      });
+      await emit({
+        phase: "APPLIED",
+        actor: "collector",
+        session: "collector",
+        operation,
+        operationHash: operation.operationHash,
+      });
+    },
     projectStorage: async () => {
       collectorProjection = await readMacaroniV1BrowserProjection(
         collectorTezos,
@@ -2038,15 +2306,12 @@ async function runMacaroniV1UiLane(input: {
       ],
     ));
 
-    await assertShadownet(collectorTezos, "before Macaroni V1 wallet-limit boundary");
-    try {
-      const contract = await collectorTezos.contract.at(creatorContractAddress);
-      await contract.methodsObject.mint(1).send({ amount: MINT_PRICE_MUTEZ, mutez: true });
-      assert.fail("collector unexpectedly minted past Macaroni V1 sold-out supply");
-    } catch (error) {
-      soldOutChainRejection = errorText(error);
-      assert.match(soldOutChainRejection, /SOLD_OUT/, "V1 chain boundary did not reject at SOLD_OUT");
-    }
+    await assertShadownet(collectorTezos, "before Macaroni V1 sold-out simulation");
+    soldOutChainRejection = await simulateMacaroniMintRejection(
+      collectorTezos,
+      creatorContractAddress,
+      "SOLD_OUT",
+    );
   } finally {
     collectorMonitor?.dispose();
     await collectorBrowser?.close();
@@ -2162,7 +2427,8 @@ async function runMacaroniV1UiLane(input: {
       priceMutez: MINT_PRICE_MUTEZ,
       maxPerWallet: 1,
       soldOutUiSubmissionPrevented: true,
-      soldOutChainRejected: true,
+      soldOutChainRejected: false,
+      soldOutReadOnlySimulationRejected: true,
       soldOutFailureMarker: "SOLD_OUT",
       soldOutErrorSha256: sha256(Buffer.from(soldOutChainRejection, "utf8")),
     },
@@ -2273,7 +2539,10 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
     },
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
-    assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+    assertOperationApplied: (operation) => verifyMacaroniBridgeOperationApplied({
+      ...operation,
+      signerAddress: creator.address,
+    }),
     projectStorage: () => creatorProjection,
     onPin: ({ value, bytes, proof }) => {
       pins.push({ actor: "creator", value, bytes: bytes ? Uint8Array.from(bytes) : undefined, proof });
@@ -2300,14 +2569,23 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
       const liveBalance = Number((await creatorTezos.tz.getBalance(creator.address)).toString());
       assert.ok(Number.isSafeInteger(liveBalance) && liveBalance >= 50_000, "creator balance fell below the per-action safety floor");
       const operation = await creatorTezos.contract.originate({ code, storage } as never);
-      await operation.confirmation(1);
-      const originated = await operation.contract();
-      creatorContractAddress = originated.address;
+      try {
+        await operation.confirmation(1);
+      } catch {
+        // Exact TzKT scope plus on-chain code identity below is the recovery path.
+      }
+      creatorContractAddress = await resolveAppliedMacaroniOrigination({
+        tezos: creatorTezos,
+        operationHash: operation.hash,
+        signerAddress: creator.address,
+        expectedCode: code,
+      });
       await verifyMacaroniBridgeOperationApplied({
         action: "originate",
         operationHash: operation.hash,
         contractAddress: creatorContractAddress,
         entrypoints: [],
+        signerAddress: creator.address,
       });
       manualOriginationReceipt = {
         schema: "pastaprotocol-ui-live-receipt@1",
@@ -2332,7 +2610,10 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
         },
         pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
         validateCall: (input) => creatorValidator.validate(input),
-        assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+        assertOperationApplied: (operation) => verifyMacaroniBridgeOperationApplied({
+          ...operation,
+          signerAddress: creator.address,
+        }),
         projectStorage: async () => {
           creatorProjection = await readMacaroniBrowserProjection(
             creatorTezos,
@@ -2487,7 +2768,10 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
     },
     pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
     validateCall: (input) => collectorValidator.validate(input),
-    assertOperationApplied: verifyMacaroniBridgeOperationApplied,
+    assertOperationApplied: (operation) => verifyMacaroniBridgeOperationApplied({
+      ...operation,
+      signerAddress: collector.address,
+    }),
     projectStorage: async () => {
       collectorProjection = await readMacaroniBrowserProjection(
         collectorTezos,
@@ -2576,15 +2860,12 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
       ],
     ));
 
-    await assertShadownet(collectorTezos, "before Macaroni UI-live wallet-limit boundary");
-    try {
-      const boundaryContract = await collectorTezos.contract.at(creatorContractAddress);
-      await boundaryContract.methodsObject.mint(1).send({ amount: MINT_PRICE_MUTEZ, mutez: true });
-      assert.fail("collector unexpectedly bypassed Macaroni max_per_wallet=1");
-    } catch (error) {
-      walletLimitChainRejection = errorText(error);
-      assert.match(walletLimitChainRejection, /WALLET_LIMIT/, "chain boundary did not reject at WALLET_LIMIT");
-    }
+    await assertShadownet(collectorTezos, "before Macaroni UI-live wallet-limit simulation");
+    walletLimitChainRejection = await simulateMacaroniMintRejection(
+      collectorTezos,
+      creatorContractAddress,
+      "WALLET_LIMIT",
+    );
 
     await opened.page.waitForSelector("#btnReveal", { state: "visible" });
     await opened.page.click("#btnReveal");
@@ -2734,7 +3015,8 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
       priceMutez: MINT_PRICE_MUTEZ,
       maxPerWallet: 1,
       walletLimitUiSubmissionPrevented: true,
-      walletLimitChainRejected: true,
+      walletLimitChainRejected: false,
+      walletLimitReadOnlySimulationRejected: true,
       walletLimitFailureMarker: "WALLET_LIMIT",
       walletLimitErrorSha256: sha256(Buffer.from(walletLimitChainRejection, "utf8")),
     },
@@ -2748,7 +3030,8 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
       priceMutez: MINT_PRICE_MUTEZ,
       maxPerWallet: 1,
       walletLimitUiSubmissionPrevented: true,
-      walletLimitChainRejected: true,
+      walletLimitChainRejected: false,
+      walletLimitReadOnlySimulationRejected: true,
       walletLimitFailureMarker: "WALLET_LIMIT",
       walletLimitErrorSha256: sha256(Buffer.from(walletLimitChainRejection, "utf8")),
     } },
@@ -2889,7 +3172,7 @@ export async function runMacaroniUiLive(): Promise<MacaroniUiLiveResult> {
       },
       {
         id: "v1-exported-page-instant-mint-policy",
-        description: "Use an independent collector through the actual exported V1 website to mint the 1/1 with final metadata immediately and prove sold-out enforcement in both UI and contract execution.",
+        description: "Use an independent collector through the actual exported V1 website to mint the 1/1 with final metadata immediately and prove sold-out enforcement in the UI and a signer-free chain simulation.",
         evidence: {
           screenshots: v1Lane.captures.slice(5).map((capture) => capture.manifestScreenshot.stage),
           artifacts: [

@@ -8,6 +8,10 @@
   "publicDocumentationRoots": [
     "docs/"
   ],
+  "publicReleaseEvidence": [
+    "docs/reference/wtf-marketplace-v2-mainnet-release-20260724.md",
+    "docs/reference/wtfos-contract-registry.md"
+  ],
   "privateLocalPatterns": [
     ".agents/docs/archive/**",
     ".agents/docs/live/**"

@@ -15,12 +15,22 @@ def pasta_gnocchi_pack_adapter_main():
         kind=sp.nat,
         resource_id=sp.nat,
         capacity=sp.nat,
+        declared_child_expiry=sp.option[sp.timestamp],
+        wrapper_sale_end=sp.option[sp.timestamp],
+    )
+    ReleaseParamType: type = sp.record(
+        pack_contract=sp.address,
+        pack_token_id=sp.nat,
+        kind=sp.nat,
+        resource_id=sp.nat,
+        capacity=sp.nat,
     )
     FulfillParamType: type = sp.record(
         recipient=sp.address,
         pack_contract=sp.address,
         pack_token_id=sp.nat,
         open_serial=sp.nat,
+        action_index=sp.nat,
         resource_id=sp.nat,
         payload=sp.bytes,
     )
@@ -32,7 +42,13 @@ def pasta_gnocchi_pack_adapter_main():
     ReservationKeyType: type = sp.record(
         pack_contract=sp.address, pack_token_id=sp.nat, resource_id=sp.nat
     )
-    CapacityParamType: type = sp.record(token_id=sp.nat, amount=sp.nat)
+    CapacityParamType: type = sp.record(
+        token_id=sp.nat,
+        amount=sp.nat,
+        declared_child_expiry=sp.option[sp.timestamp],
+        wrapper_sale_end=sp.option[sp.timestamp],
+    )
+    ReleaseCapacityParamType: type = sp.record(token_id=sp.nat, amount=sp.nat)
     MintReservedParamType: type = sp.record(to_=sp.address, token_id=sp.nat, amount=sp.nat)
 
     class PastaGnocchiPackAdapter(sp.Contract):
@@ -54,6 +70,14 @@ def pasta_gnocchi_pack_adapter_main():
             sp.cast(pack_contract, sp.address)
             assert sp.sender == pack_contract, "ROUTER_MISMATCH"
             assert sp.sender in self.data.routers, "NOT_ROUTER"
+
+        @sp.private(with_storage="read-only")
+        def _only_reservation_owner(self, pack_contract):
+            # Router membership authorizes new reservations.  Once capacity is
+            # reserved, the exact (router, pack, resource) key is the durable
+            # authority to fulfill or release it even after role revocation.
+            sp.cast(pack_contract, sp.address)
+            assert sp.sender == pack_contract, "ROUTER_MISMATCH"
 
         @sp.entrypoint
         def create_allocation(self, params):
@@ -101,6 +125,16 @@ def pasta_gnocchi_pack_adapter_main():
             assert params.kind == 1, "BAD_ADAPTER_KIND"
             assert params.resource_id in self.data.allocations, "NO_ALLOCATION"
             assert params.capacity > 0, "BAD_CAPACITY"
+            # Preserve the router's immutable declaration and let Gnocchi
+            # classify the actual locked four-shape edition policy.
+            if params.declared_child_expiry.is_some():
+                assert params.wrapper_sale_end.is_some(), "LE_WRAPPER_REQUIRES_END"
+                declared_child_expiry = params.declared_child_expiry.unwrap_some()
+                wrapper_sale_end = params.wrapper_sale_end.unwrap_some()
+                assert wrapper_sale_end > sp.now, "LE_SALE_ENDED"
+                assert wrapper_sale_end < declared_child_expiry, "PACK_END_AFTER_CHILD"
+            else:
+                assert params.wrapper_sale_end.is_none(), "LE_CHILD_EXPIRY_REQUIRED"
             allocation = self.data.allocations[params.resource_id]
             assert allocation.active, "ALLOCATION_INACTIVE"
             key = sp.record(
@@ -118,6 +152,8 @@ def pasta_gnocchi_pack_adapter_main():
                 sp.record(
                     token_id=allocation.token_id,
                     amount=allocation.amount_per_open * params.capacity,
+                    declared_child_expiry=params.declared_child_expiry,
+                    wrapper_sale_end=params.wrapper_sale_end,
                 ),
                 sp.mutez(0),
                 reserve_handle,
@@ -127,7 +163,7 @@ def pasta_gnocchi_pack_adapter_main():
         def fulfill(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(params, FulfillParamType)
-            self._only_router(params.pack_contract)
+            self._only_reservation_owner(params.pack_contract)
             assert params.resource_id in self.data.allocations, "NO_ALLOCATION"
             assert sp.len(params.payload) == 0, "BAD_ALLOCATION_PAYLOAD"
             allocation = self.data.allocations[params.resource_id]
@@ -158,8 +194,8 @@ def pasta_gnocchi_pack_adapter_main():
         @sp.entrypoint
         def release(self, params):
             assert sp.amount == sp.mutez(0), "NO_TEZ"
-            sp.cast(params, ReserveParamType)
-            self._only_router(params.pack_contract)
+            sp.cast(params, ReleaseParamType)
+            self._only_reservation_owner(params.pack_contract)
             assert params.kind == 1, "BAD_ADAPTER_KIND"
             assert params.resource_id in self.data.allocations, "NO_ALLOCATION"
             assert params.capacity > 0, "BAD_CAPACITY"
@@ -177,7 +213,7 @@ def pasta_gnocchi_pack_adapter_main():
             else:
                 self.data.reservations[key] = next_available
             release_handle = sp.contract(
-                CapacityParamType, allocation.target, "release_mint_capacity"
+                ReleaseCapacityParamType, allocation.target, "release_mint_capacity"
             ).unwrap_some(error="BAD_GNOCCHI")
             sp.transfer(
                 sp.record(
@@ -253,6 +289,8 @@ def allocation_adapter_guards():
             kind=1,
             resource_id=0,
             capacity=1,
+            declared_child_expiry=sp.Some(sp.timestamp(1_000)),
+            wrapper_sale_end=sp.Some(sp.timestamp(900)),
         ),
         _sender=stranger,
         _valid=False,

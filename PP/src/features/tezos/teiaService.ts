@@ -18,6 +18,8 @@ export interface MintParams {
   fileName: string;
   mimeType: string;
   royalties: number; // 0-250 scale matching HEN minter contract (100 = 10%, 250 = 25%)
+  /** User-owned credential kept only in the open mint dialog. */
+  pinataJWT: string;
 }
 
 export interface IPFSUploadResponse {
@@ -30,20 +32,23 @@ export interface MintResult {
   explorerUrl: string;
 }
 
-class TeiaService {
+export class TeiaService {
   /**
    * Upload file to IPFS via Pinata
-   * Uses Pinata's pinning service with JWT authentication
+   * Uses a credential supplied explicitly by the current user. A browser build
+   * must never contain an operator or shared Pinata credential.
    */
-  async uploadToIPFS(file: Blob, fileName: string): Promise<IPFSUploadResponse> {
+  async uploadToIPFS(
+    file: Blob,
+    fileName: string,
+    pinataJWT: string
+  ): Promise<IPFSUploadResponse> {
     try {
-      // Get Pinata JWT from environment variables
-      const pinataJWT = import.meta.env.VITE_PINATA_JWT;
-      
-      if (!pinataJWT) {
+      const userCredential = pinataJWT.trim();
+
+      if (!userCredential) {
         throw new Error(
-          "Pinata API key not configured. Please add VITE_PINATA_JWT to your .env.local file. " +
-          "Get your API key from https://app.pinata.cloud/developers/api-keys"
+          "Enter your own Pinata JWT for this mint. Particle Painter keeps it only in the open dialog and never saves it."
         );
       }
 
@@ -64,14 +69,15 @@ class TeiaService {
       const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${pinataJWT}`
+          'Authorization': `Bearer ${userCredential}`
         },
         body: formData
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Pinata upload failed: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Pinata upload failed (HTTP ${response.status}). Check that your credential permits pinFileToIPFS and try again.`
+        );
       }
 
       const data = await response.json();
@@ -137,7 +143,11 @@ class TeiaService {
     
     let ipfsUri: string;
     try {
-      const uploadResult = await this.uploadToIPFS(params.fileBlob, params.fileName);
+      const uploadResult = await this.uploadToIPFS(
+        params.fileBlob,
+        params.fileName,
+        params.pinataJWT
+      );
       ipfsUri = uploadResult.ipfsUri;
       
       if (!uploadResult.ipfsHash) {
@@ -165,7 +175,11 @@ class TeiaService {
         type: "application/json",
       });
       
-      const metadataUploadResult = await this.uploadToIPFS(metadataBlob, "metadata.json");
+      const metadataUploadResult = await this.uploadToIPFS(
+        metadataBlob,
+        "metadata.json",
+        params.pinataJWT
+      );
       metadataUri = metadataUploadResult.ipfsUri;
       
       if (!metadataUploadResult.ipfsHash) {

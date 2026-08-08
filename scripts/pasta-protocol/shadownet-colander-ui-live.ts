@@ -26,6 +26,19 @@ import {
   type RequiredDomEvidence,
 } from "./pasta-proof-screenshot-kit";
 import {
+  PASTA_UI_LIVE_RECEIPT_SCHEMA,
+  type PastaUiLivePreparedOperation,
+  type PastaUiLivePublicReceipt,
+  type PastaUiLiveSubmittedOperation,
+} from "./pasta-ui-live-bridge-kit";
+import {
+  PastaProofRestartJournal,
+  readPastaProofRestartRpcSnapshot,
+  type PastaProofRestartResolution,
+  type PastaProofRestartRpcSnapshot,
+  type PastaProofRestartStep,
+} from "./pasta-proof-restart-journal";
+import {
   assertShadownet,
   block,
   buildToolkit,
@@ -38,6 +51,8 @@ import {
   ProofBlocked,
   root,
   SHADOWNET_CHAIN_ID,
+  SHADOWNET_RPC_FALLBACK,
+  SHADOWNET_RPC_PRIMARY,
   SHADOWNET_TZKT_API,
   signerEnv,
 } from "./shadownet-proof-kit";
@@ -46,6 +61,10 @@ const EXECUTE_FLAG = "PASTA_SHADOWNET_COLANDER_UI_LIVE_EXECUTE";
 const OUTPUT_ENV = "PASTA_PROOF_RUN_DIR";
 const SAFE_RUN_ID = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const MANAGEMENT_RESERVE_MUTEZ = 300_000;
+const RESTART_CHECKPOINT_PATH = "artifacts/colander-restart-checkpoint.json";
+const COLANDER_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.freeze([
+  { id: "set-lasagna-current-zero", actor: "creator", kind: "operation", action: "call", entrypoint: "set_current_revision" },
+]);
 const SIBLING_APPS = [
   "ch-ease",
   "macaroni",
@@ -57,6 +76,40 @@ const SIBLING_APPS = [
   "lasagna",
 ] as const;
 const CONTRACT_APPS = SIBLING_APPS.filter((app) => app !== "ch-ease") as ContractApp[];
+
+async function readColanderRestartRpcPair(
+  address: string,
+): Promise<readonly [PastaProofRestartRpcSnapshot, PastaProofRestartRpcSnapshot]> {
+  const actors = { creator: address, curator: address };
+  const snapshots = await Promise.all([
+    readPastaProofRestartRpcSnapshot(SHADOWNET_RPC_PRIMARY, actors),
+    readPastaProofRestartRpcSnapshot(SHADOWNET_RPC_FALLBACK, actors),
+  ]) as [PastaProofRestartRpcSnapshot, PastaProofRestartRpcSnapshot];
+  assert.equal(
+    snapshots[0].counters.creator,
+    snapshots[1].counters.creator,
+    "Colander creator counter differs across approved Shadownet RPCs",
+  );
+  return snapshots;
+}
+
+async function assertColanderRestartCounterBoundary(
+  restartJournal: PastaProofRestartJournal,
+  address: string,
+): Promise<void> {
+  const snapshots = await readColanderRestartRpcPair(address);
+  assert.equal(
+    snapshots[0].counters.creator,
+    restartJournal.expectedCurrentCounter("creator"),
+    "Colander creator manager counter changed outside the authenticated restart journal",
+  );
+  assert.equal(
+    snapshots.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
+      operation.source === address).length,
+    0,
+    "Colander creator has an active manager operation before PREPARED",
+  );
+}
 
 export type ContractApp = Exclude<(typeof SIBLING_APPS)[number], "ch-ease">;
 
@@ -207,7 +260,7 @@ export function assertColanderUiLiveExecutionAllowed(
   }
 }
 
-async function requireFreshAppDirectory(runRoot: string): Promise<{ appRoot: string; runId: string }> {
+async function requireFreshAppDirectory(runRoot: string): Promise<{ appRoot: string; runId: string; existing: boolean }> {
   const resolvedRunRoot = path.resolve(runRoot);
   const runId = path.basename(resolvedRunRoot);
   if (!SAFE_RUN_ID.test(runId)) {
@@ -217,14 +270,13 @@ async function requireFreshAppDirectory(runRoot: string): Promise<{ appRoot: str
   }
   const appRoot = path.join(resolvedRunRoot, "colander");
   try {
-    await stat(appRoot);
-    block("Colander proof output directory already exists", [
-      `Refusing to overwrite \`${appRoot}\`; use a fresh aggregate proof run.`,
-    ]);
+    const info = await stat(appRoot);
+    if (!info.isDirectory()) throw new Error(`Colander output is not a directory: ${appRoot}`);
+    return { appRoot, runId, existing: true };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { appRoot, runId };
+  return { appRoot, runId, existing: false };
 }
 
 async function loadSiblingManifests(
@@ -635,7 +687,7 @@ export async function runColanderUiLive(): Promise<{
 }> {
   assertColanderUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV]!);
-  const { appRoot, runId } = await requireFreshAppDirectory(runRoot);
+  const { appRoot, runId, existing } = await requireFreshAppDirectory(runRoot);
   const manifests = await loadSiblingManifests(runRoot, runId);
   const rpc = await probeRpcChainId();
   assert.equal(rpc.chainId, SHADOWNET_CHAIN_ID);
@@ -660,13 +712,144 @@ export async function runColanderUiLive(): Promise<{
     ]);
   }
 
+  await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
+  const restartActors = { creator: signers.creator.address, curator: signers.creator.address } as const;
+  const restartIntent = {
+    targetSnapshotSha256: sha256(deterministicJsonBytes(snapshots.map((snapshot) => ({
+      app: snapshot.app,
+      address: snapshot.address,
+      adapterKind: snapshot.adapterKind,
+      metadataSha256: snapshot.metadataSha256,
+    })))),
+    lasagnaAddress: lasagna.address,
+    entrypoint: "set_current_revision",
+    payload: 0,
+  };
+  const initialRpcPair = await readColanderRestartRpcPair(signers.creator.address);
+  const authenticateInitialCounters = (counters: Readonly<Record<string, number>>): void => {
+    for (const actor of ["creator", "curator"] as const) {
+      assert.ok(Number.isSafeInteger(counters[actor]), `Colander ${actor} persisted counter is invalid`);
+      assert.ok(
+        initialRpcPair[0].counters[actor] >= counters[actor],
+        `Colander ${actor} persisted counter is ahead of both approved RPCs`,
+      );
+    }
+  };
+  const restartJournal = existing
+    ? await PastaProofRestartJournal.open(path.join(appRoot, RESTART_CHECKPOINT_PATH), {
+        app: "colander",
+        runId,
+        actors: restartActors,
+        plan: COLANDER_RESTART_PLAN,
+        intent: restartIntent,
+        authenticateInitialCounters,
+      })
+    : await PastaProofRestartJournal.create({
+        filePath: path.join(appRoot, RESTART_CHECKPOINT_PATH),
+        app: "colander",
+        runId,
+        actors: restartActors,
+        initialCounters: {
+          creator: initialRpcPair[0].counters.creator,
+          curator: initialRpcPair[0].counters.curator,
+        },
+        plan: COLANDER_RESTART_PLAN,
+        intent: restartIntent,
+      });
+  for (const applied of restartJournal.appliedOperations()) {
+    const indexed = await pollJson(
+      `Colander restart applied prefix ${applied.receipt.operationHash}`,
+      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions/${encodeURIComponent(applied.receipt.operationHash!)}`,
+      (value) => {
+        const rows = Array.isArray(value) ? value : [value];
+        return rows.some((row) =>
+          row?.status === "applied"
+          && row?.hash === applied.receipt.operationHash
+          && row?.sender?.address === signers.creator.address
+          && Number(row?.counter) === applied.expectedCounter
+          && row?.target?.address === lasagna.address
+          && row?.parameter?.entrypoint === "set_current_revision"
+          && Number(row?.parameter?.value) === 0);
+      },
+    );
+    const rows = Array.isArray(indexed) ? indexed : [indexed];
+    assert.equal(
+      rows.filter((row) => row?.hash === applied.receipt.operationHash && row?.status === "applied").length,
+      1,
+      "Colander restart applied operation is ambiguous",
+    );
+  }
+  await restartJournal.reconcile(async (pending): Promise<PastaProofRestartResolution> => {
+    const rpcPair = await readColanderRestartRpcPair(signers.creator.address);
+    const active = rpcPair.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
+      operation.source === signers.creator.address && operation.counter === pending.expectedCounter);
+    if (active.length > 0) {
+      throw new Error(`Colander restart counter ${pending.expectedCounter} is still active in an approved RPC mempool`);
+    }
+    const counterConsumed = rpcPair[0].counters.creator >= pending.expectedCounter;
+    const rows = await pollJson(
+      `Colander restart manager counter ${pending.expectedCounter}`,
+      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions?sender=${encodeURIComponent(signers.creator.address)}&counter=${pending.expectedCounter}&limit=10`,
+      (value) => Array.isArray(value) && (!counterConsumed || value.length > 0),
+      { attempts: 6, delayMs: 2_000 },
+    ) as any[];
+    const exact = rows.filter((row) =>
+      row?.status === "applied"
+      && row?.sender?.address === signers.creator.address
+      && Number(row?.counter) === pending.expectedCounter
+      && row?.target?.address === lasagna.address
+      && row?.parameter?.entrypoint === "set_current_revision"
+      && Number(row?.parameter?.value) === 0
+      && (!pending.operationHash || row?.hash === pending.operationHash));
+    if (exact.length === 0) {
+      const terminal = pending.operationHash
+        ? rows.find((row) => row?.hash === pending.operationHash && row?.status && row.status !== "applied")
+        : undefined;
+      if (terminal) {
+        return {
+          status: "rejected",
+          operationHash: pending.operationHash!,
+          reason: `TzKT terminal status ${String(terminal.status)}`,
+          counterConsumed: true,
+        };
+      }
+      if (counterConsumed) {
+        throw new Error(`Colander restart counter ${pending.expectedCounter} is consumed without exact indexed evidence`);
+      }
+      if (pending.operationHash) {
+        const terminalByRpc = rpcPair.every((snapshot) => snapshot.terminalManagerOperations.some((operation) =>
+          operation.hash === pending.operationHash
+          && operation.source === signers.creator.address
+          && operation.counter === pending.expectedCounter));
+        if (terminalByRpc) {
+          return {
+            status: "rejected",
+            operationHash: pending.operationHash,
+            reason: "both approved RPCs report a terminal mempool rejection",
+            counterConsumed: false,
+          };
+        }
+        throw new Error(`Colander SUBMITTED operation ${pending.operationHash} has no exact terminal evidence; rerun after it is indexed or rejected`);
+      }
+      return { status: "absent" };
+    }
+    assert.equal(exact.length, 1, "Colander restart manager counter is ambiguous");
+    return {
+      status: "applied",
+      operationHash: String(exact[0].hash),
+      contractAddress: lasagna.address,
+      timestampUtc: String(exact[0].timestamp),
+      entrypoints: ["set_current_revision"],
+    };
+  });
+  await assertColanderRestartCounterBoundary(restartJournal, signers.creator.address);
+
   await runCommand(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "build"]);
   await mkdir(path.join(appRoot, "screenshots"), { recursive: true });
-  await mkdir(path.join(appRoot, "artifacts"), { recursive: true });
 
   const snapshotByAddress = new Map(snapshots.map((snapshot) => [snapshot.address, snapshot]));
   const bridgeLog: Array<Record<string, unknown>> = [];
-  let managementOperationHash = "";
+  let managementOperationHash = restartJournal.operationReceipts()[0]?.operationHash ?? "";
   const bridge = async (requestValue: unknown): Promise<unknown> => {
     assert.ok(requestValue && typeof requestValue === "object" && !Array.isArray(requestValue), "browser bridge request must be an object");
     const request = requestValue as BrowserBridgeRequest;
@@ -682,12 +865,77 @@ export async function runColanderUiLive(): Promise<{
       return snapshot;
     }
     assertColanderManagementRequest(request, lasagna.address);
-    if (managementOperationHash) throw new Error("Colander proof permits exactly one management operation");
+    if (managementOperationHash) {
+      const receipt = restartJournal.operationReceipts()[0];
+      assert.ok(receipt, "Colander restart receipt disappeared");
+      bridgeLog.push({
+        action: request.action,
+        contractAddress: lasagna.address,
+        entrypoint: request.entrypoint,
+        payload: request.payload,
+        operationHash: managementOperationHash,
+        replayed: true,
+      });
+      return { operationHash: managementOperationHash, confirmationLevel: 1, receipt };
+    }
     await assertShadownet(tezos, "immediately before Colander management send");
     const liveAdmin = asAddress((await lasagnaContract.storage() as any).administrator);
     assert.equal(liveAdmin, signers.creator.address, "Lasagna administrator changed before signing");
+    const operationSequence = restartJournal.completedOperationCount("creator") + 1;
+    const prepared: PastaUiLivePreparedOperation = {
+      status: "PREPARED",
+      operationSequence,
+      timestampUtc: new Date().toISOString(),
+      action: "call",
+      chainId: SHADOWNET_CHAIN_ID,
+      signerAddress: signers.creator.address,
+      contractAddress: lasagna.address,
+      entrypoints: ["set_current_revision"],
+      descriptor: {
+        kind: "call",
+        call: { contractAddress: lasagna.address, entrypoint: "set_current_revision", payload: 0 },
+        sendOptions: {},
+      },
+    };
+    await assertColanderRestartCounterBoundary(restartJournal, signers.creator.address);
+    await restartJournal.beforeOperationSubmit("creator", prepared);
     const operation = await lasagnaContract.methodsObject.set_current_revision(0).send();
-    await operation.confirmation(1);
+    const submitted: PastaUiLiveSubmittedOperation = {
+      ...prepared,
+      status: "SUBMITTED",
+      timestampUtc: new Date().toISOString(),
+      operationHash: operation.hash,
+    };
+    await restartJournal.onOperationSubmitted("creator", submitted);
+    const indexed = await pollJson(
+      `Colander exact-hash finality ${operation.hash}`,
+      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions/${encodeURIComponent(operation.hash)}`,
+      (value) => {
+        const rows = Array.isArray(value) ? value : [value];
+        return rows.some((row) =>
+          row?.status === "applied"
+          && row?.hash === operation.hash
+          && row?.sender?.address === signers.creator.address
+          && row?.target?.address === lasagna.address
+          && row?.parameter?.entrypoint === "set_current_revision"
+          && Number(row?.parameter?.value) === 0);
+      },
+    );
+    const indexedRows = Array.isArray(indexed) ? indexed : [indexed];
+    const appliedRow = indexedRows.find((row) => row?.hash === operation.hash && row?.status === "applied");
+    assert.ok(appliedRow, "Colander exact-hash applied operation disappeared");
+    const receipt: PastaUiLivePublicReceipt = {
+      schema: PASTA_UI_LIVE_RECEIPT_SCHEMA,
+      sequence: operationSequence,
+      timestampUtc: String(appliedRow.timestamp),
+      action: "call",
+      chainId: SHADOWNET_CHAIN_ID,
+      signerAddress: signers.creator.address,
+      contractAddress: lasagna.address,
+      operationHash: operation.hash,
+      entrypoints: ["set_current_revision"],
+    };
+    await restartJournal.onReceipt("creator", receipt);
     managementOperationHash = operation.hash;
     bridgeLog.push({
       action: request.action,
@@ -696,7 +944,7 @@ export async function runColanderUiLive(): Promise<{
       payload: request.payload,
       operationHash: operation.hash,
     });
-    return { operationHash: operation.hash, confirmationLevel: 1 };
+    return { operationHash: operation.hash, confirmationLevel: 1, receipt };
   };
 
   let browser: Browser | null = null;
