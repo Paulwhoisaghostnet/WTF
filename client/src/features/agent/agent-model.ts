@@ -795,6 +795,20 @@ const DEFAULT_FILES: AgentWorkspaceFile[] = [
 
 export const AGENT_MCP_RESOURCE_POLICIES: AgentMcpResourcePolicy[] = [
   {
+    id: "platform-api",
+    label: "Versioned wtfOS API",
+    description: "Read the bearer-authenticated /api/v1 contract through MCP.",
+    scope: "api:read",
+    accessLevel: "read",
+  },
+  {
+    id: "platform-api-write",
+    label: "Versioned wtfOS API mutations",
+    description: "Call /api/v1 mutations as the paired user; normal ownership and permission checks remain active.",
+    scope: "api:write",
+    accessLevel: "write",
+  },
+  {
     id: "desktop",
     label: "Desktop appearance and app gates",
     description: "Read or update the paired user's desktop shell appearance through MCP.",
@@ -909,6 +923,14 @@ export const AGENT_MCP_RESOURCE_POLICIES: AgentMcpResourcePolicy[] = [
 ];
 
 export const AGENT_MCP_TOOL_POLICIES: AgentMcpToolPolicy[] = [
+  {
+    name: "wtf_api_request",
+    label: "Call the wtfOS API",
+    description: "Call an OpenAPI-listed /api/v1 operation; mutations additionally require api:write.",
+    scope: "api:read",
+    accessLevel: "read",
+    requiredPermissions: ["read"],
+  },
   {
     name: "wtf_get_capabilities",
     label: "Get capabilities",
@@ -1856,6 +1878,7 @@ export function agentMcpScopesForPermissions(
   );
   const scopes = new Set<string>();
   if (enabled.has("read")) {
+    scopes.add("api:read");
     scopes.add("desktop:read");
     scopes.add("pet:read");
     scopes.add("public-data:read");
@@ -1865,6 +1888,7 @@ export function agentMcpScopesForPermissions(
     scopes.add("crp-nominations:read");
   }
   if (enabled.has("write")) {
+    scopes.add("api:write");
     scopes.add("desktop:write");
     scopes.add("pet:write");
     scopes.add("game-studio:write");

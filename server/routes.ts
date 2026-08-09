@@ -106,6 +106,13 @@ import { isAuthenticated, requirePermission } from "./auth/passport";
 import { timingSafeEqual } from "crypto";
 import type { NextFunction, Request, Response } from "express";
 import { WTF_IN_APP_MARKET_CONTRACT } from "@shared/types";
+import { originForRequest } from "./routes/access";
+import {
+  buildWtfOsOpenApiDocument,
+  isPublicApiRequest,
+  publicApiSummary,
+  renderWtfOsApiDocs,
+} from "./lib/public-api";
 
 const SHADOWNET_IN_APP_MARKET_CONTRACT = "KT1MdvE9hYFpQP7boybqSJ9XNfXjLUG6QZrC";
 
@@ -203,6 +210,21 @@ function readinessPayload(snapshot: HealthSnapshot) {
 }
 
 export function registerRoutes(app: Express) {
+  app.get(["/api/public", "/api/public/capabilities"], (req, res) => {
+    if (!isPublicApiRequest(req)) return res.status(404).json({ error: "Not found" });
+    res.json(publicApiSummary(originForRequest(req)));
+  });
+
+  app.get("/api/public/openapi.json", (req, res) => {
+    if (!isPublicApiRequest(req)) return res.status(404).json({ error: "Not found" });
+    res.json(buildWtfOsOpenApiDocument(originForRequest(req)));
+  });
+
+  app.get("/api/public/docs", (req, res) => {
+    if (!isPublicApiRequest(req)) return res.status(404).json({ error: "Not found" });
+    res.type("html").send(renderWtfOsApiDocs(originForRequest(req)));
+  });
+
   // Liveness answers only whether the HTTP process can respond. It never
   // touches dependencies or exposes operational internals.
   app.get("/api/health", (_req, res) => {

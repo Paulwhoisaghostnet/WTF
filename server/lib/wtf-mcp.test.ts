@@ -62,6 +62,11 @@ test("MCP token scopes are capped to the paired user's account role", async () =
   ]);
   assert.deepEqual(normalizeMcpScopes(["arcade:admin"], "witness"), []);
   assert.ok(normalizeMcpScopes(undefined, "witness").includes("desktop:read"));
+  assert.ok(normalizeMcpScopes(undefined, "witness").includes("api:read"));
+  assert.equal(normalizeMcpScopes(undefined, "witness").includes("api:write"), false);
+  assert.deepEqual(normalizeMcpScopes(["api:read", "api:write"], "witness"), ["api:read", "api:write"]);
+  assert.deepEqual(normalizeMcpScopes(["api:admin"], "witness"), []);
+  assert.deepEqual(normalizeMcpScopes(["api:admin"], "admin"), ["api:admin"]);
 });
 
 test("capability tool catalog stays in sync with registered MCP tools", async () => {
@@ -94,6 +99,7 @@ test("capability tool catalog stays in sync with registered MCP tools", async ()
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_arcade_play_status"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_access_manifest"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_registered_inventory"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_api_request"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_create_map_lab_document"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_run_arcade_source_import"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_game_studio_project_to_arcade"));
@@ -134,6 +140,14 @@ test("standard access manifest exposes browser, API, and MCP without cookie/bear
 
   assert.equal(manifest.origin, "https://wtfos.app");
   assert.equal(manifest.mcp.endpoint, "https://wtfos.app/mcp");
+  assert.equal(manifest.publicApi.baseUrl, "https://wtfos.app/api/v1");
+  assert.equal(manifest.publicApi.openapi, "https://wtfos.app/api/v1/openapi.json");
+  assert.equal(manifest.publicApi.documentation, "https://wtfos.app/api/v1/docs");
+  assert.equal(manifest.publicApi.tokenManagementApi, "/api/v1/tokens");
+  assert.ok(manifest.mcp.scopes.some((entry) => entry.scope === "api:read"));
+  assert.ok(manifest.mcp.scopes.some((entry) => entry.scope === "api:write"));
+  assert.ok(manifest.mcp.scopes.some((entry) => entry.scope === "api:admin"));
+  assert.ok(manifest.guarantees.some((entry) => entry.includes("legacy /api/*")));
   assert.ok(manifest.apiRoutes.some((route) => route.path === "/api/access"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/command-palette"));
   assert.ok(manifest.browserRoutes.some((route) => route.path === "/notification-center"));

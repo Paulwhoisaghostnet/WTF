@@ -52,6 +52,12 @@ function accessOriginForRequest(req: Request): string {
   return `${proto}://${host}`;
 }
 
+function requestOrigin(req: Request): string {
+  const proto = req.protocol || "https";
+  const host = req.get("host") || defaultPublicSiteHost();
+  return `${proto}://${host}`;
+}
+
 function mcpRequestSummary(body: unknown): {
   method: string | null;
   toolName: string | null;
@@ -121,6 +127,7 @@ function mcpInventoryEventsForTool(toolName: string | null): string[] {
         : "mcp.crp.read"
     );
   }
+  if (toolName === "wtf_api_request") events.push("mcp.api.called");
   return [...new Set(events)];
 }
 
@@ -328,9 +335,35 @@ router.all("/mcp", mcpAgentRateLimit, async (req: Request, res: Response) => {
     }
 
     const accessOrigin = accessOriginForRequest(req);
+    const apiOrigin = requestOrigin(req);
+    const authorization = String(req.headers.authorization || "");
     const mcpServer = createWtfMcpServer(auth, {
       accessOrigin,
       mcpEndpoint: mcpEndpointForRequest(req),
+      apiRequest: async ({ method, path, query, body }) => {
+        const url = new URL(path, apiOrigin);
+        if (url.origin !== new URL(apiOrigin).origin) {
+          throw new Error("API path must remain on the current wtfOS origin");
+        }
+        for (const [key, value] of Object.entries(query || {})) {
+          url.searchParams.set(key, String(value));
+        }
+        const response = await fetch(url, {
+          method,
+          redirect: "manual",
+          headers: {
+            Accept: "application/json",
+            Authorization: authorization,
+            ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+          },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        });
+        const contentType = String(response.headers.get("content-type") || "");
+        const responseBody = contentType.includes("application/json")
+          ? await response.json().catch(() => null)
+          : await response.text();
+        return { status: response.status, contentType, body: responseBody };
+      },
     });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

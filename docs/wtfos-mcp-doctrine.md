@@ -1,6 +1,6 @@
 # WTFOS MCP Doctrine
 
-Last reviewed: 2026-05-29
+Last reviewed: 2026-08-09
 
 This document defines the doctrine for the WTFOS MCP surface.
 
@@ -19,6 +19,8 @@ WTFOS already exposes a real MCP endpoint and real paired-agent tooling.
   standard MCP-facing inventory document.
 - `server/lib/wtf-access.ts` publishes the standard access manifest and scope
   groups.
+- `server/lib/public-api.ts` publishes the `/api/v1` facade, OpenAPI 3.1
+  contract, and human-readable API reference used by generic MCP access.
 - `shared/wtfos-interface.ts` defines the shared inventory schema and pathway
   classification helpers.
 - `docs/public-access.md` documents the public boundary and the MCP bearer
@@ -43,6 +45,9 @@ The MCP surface must obey these rules:
    they can reach it.
 8. The canonical discovery tools are `wtf_get_capabilities`,
    `wtf_get_access_manifest`, and `wtf_get_registered_inventory`.
+9. Every operation in the versioned API must appear in the generated OpenAPI
+   contract and be callable through `wtf_api_request` when the token has the
+   required scope.
 
 ## What Counts As A Pathway
 
@@ -136,7 +141,8 @@ across all WTFOS surfaces:
 1. Ask for the access manifest.
 2. Ask for the artifact inventory.
 3. Filter by access mode, app gate, and agent scope.
-4. Call the relevant MCP tool.
+4. Call the relevant domain tool, or use `wtf_api_request` with a path from
+   `/api/v1/openapi.json`.
 5. Verify the response against the same interface contract.
 
 The agent should not need a custom lookup path for each app.
@@ -159,6 +165,7 @@ Tool names are scoped, explicit, and domain-oriented:
 - `wtf_get_access_manifest`
 - `wtf_get_capabilities`
 - `wtf_get_registered_inventory`
+- `wtf_api_request`
 - `wtf_list_game_studio_projects`
 - `wtf_create_game_studio_project`
 - `wtf_submit_game_studio_project_to_arcade`

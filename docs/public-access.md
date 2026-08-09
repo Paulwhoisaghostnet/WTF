@@ -1,6 +1,6 @@
 # Public API, MCP, and Access Routes
 
-Last reviewed: 2026-05-09
+Last reviewed: 2026-08-09
 
 This page is the public-facing index for the wtfOS access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
@@ -18,7 +18,8 @@ supported. For local development, use `http://localhost:3000`.
 | --- | --- | --- |
 | Anonymous public | No credential | Public pages, published content, public Tezos/IPFS/Objkt/TzKT-derived rows, public TV playback, embeds, health checks. |
 | Browser session | `connect.sid` cookie from normal login | User account actions, profile settings, wallet-linked actions, messages, media library, Studio, personal TV controls. |
-| Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user after the user creates a token in settings. |
+| Versioned API client | `Authorization: Bearer wtf_mcp_...` on `/api/v1/*` | Public integrations call the complete versioned API as the token owner. Reads require `api:read`; writes require `api:write`; admin routes also require an admin account and `api:admin`. |
+| Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user through domain tools or the generic `wtf_api_request` bridge. |
 | Role-gated session | Browser session plus permissions | Admin panel, control board, content management, TV management, app enable/disable controls. |
 | Trusted creator session | Browser session with `trusted_creator` role or matching trusted creator permissions | Narrow creator lanes that bypass manual review where explicitly supported: `trusted_arcade_creator`, `trusted_console_creator`, `trusted_tv_creator`, and `trusted_market_creator`. |
 | Discord bot | Server-to-server bot credentials/HMAC where configured | Dicksword proof/activity and Discord role automation. |
@@ -61,11 +62,43 @@ and again when it is used, so hand-posted scopes such as `*`, `arcade:*`, or
 `arcade:admin` are not effective for non-admin users. Admin MCP tools still
 require both an admin account and the matching admin scope.
 
+## Versioned Platform API
+
+External clients should use the stable `/api/v1` facade. It dispatches to the
+same domain handlers as the application, so ownership, role, permission, and
+feature-gate checks remain authoritative. Existing `/api/*` browser and
+internal routes are unchanged.
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/v1` | Discovery document with links, authentication, scopes, and operation counts. |
+| `GET /api/v1/capabilities` | Machine-readable API capability summary. |
+| `GET /api/v1/openapi.json` | Canonical OpenAPI 3.1 contract for clients and code generators. |
+| `GET /api/v1/docs` | Human-friendly, grouped endpoint reference with a quick-start example. |
+| `GET /api/v1/me` | Friendly alias for the bearer-token owner. |
+| `GET/POST /api/v1/tokens` | List or create scoped access tokens. |
+| `DELETE /api/v1/tokens/:id` | Revoke one owned access token. |
+| `/api/v1/<existing path>` | Versioned form of the corresponding `/api/<existing path>` operation. |
+
+Discovery and documentation routes are anonymous. All domain operations use a
+paired bearer token, do not set browser cookies, and are rate-limited by a
+one-way token hash. Disabled app capabilities fail closed on `/api/v1`; public
+status projections omit internal service topology.
+
+```bash
+curl -H 'Authorization: Bearer wtf_mcp_…' \
+  https://wtfos.app/api/v1/me
+```
+
+The generated route inventory and integration notes live in
+[`docs/reference/wtfos-api.md`](reference/wtfos-api.md). Regenerate them with
+`npm run docs:api` after adding or changing a server route.
+
 ## Rate Limits and CORS
 
 | Surface | Default limit |
 | --- | --- |
-| Generic `/api/*` JSON routes | 200 requests per minute per key/IP, except narrow read-only playback routes. |
+| Generic `/api/*` JSON routes | 200 requests per minute per key/IP, except narrow read-only playback routes. `/api/v1` keys authenticated traffic by token hash. |
 | `/api/cli/can-open`, `/api/cli/routes` | 60 requests per minute per key/IP (route probe budget). |
 | `/api/auth/login`, `/api/auth/register` | 20 attempts per 15 minutes. |
 | Wallet auth routes | 30 attempts per 15 minutes. |
