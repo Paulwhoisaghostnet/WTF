@@ -1655,6 +1655,19 @@ test.describe("live E2E puppet orchestration", () => {
       });
       expect(unauthenticatedMcp.status()).toBe(401);
 
+      const apiDiscovery = await expectOkJson(
+        await publicRequest.get("/api/v1"),
+        "versioned API discovery"
+      );
+      expect(apiDiscovery.openapi).toContain("/api/v1/openapi.json");
+      const openapi = await expectOkJson(
+        await publicRequest.get("/api/v1/openapi.json"),
+        "OpenAPI contract"
+      );
+      expect(openapi.openapi).toBe("3.1.0");
+      expect(openapi.paths?.["/api/v1/health"]?.get).toBeTruthy();
+      expect((await publicRequest.get("/api/v1/health")).status()).toBe(401);
+
       const headers = await csrfHeaders(userRequest);
       const beforeTokens = await expectOkJson(
         await userRequest.get("/api/mcp/tokens"),
@@ -1668,7 +1681,7 @@ test.describe("live E2E puppet orchestration", () => {
           headers,
           data: {
             name: `Live puppet MCP ${testRunId}`,
-            scopes: ["public.read", "arcade.read", "game_studio.read"],
+            scopes: ["public-data:read", "arcade:read", "game-studio:read", "api:read", "api:write"],
           },
         }),
         "create MCP token"
@@ -1689,6 +1702,33 @@ test.describe("live E2E puppet orchestration", () => {
         true
       );
       expect(tools.headers()["set-cookie"], "MCP should not set browser cookies").toBeFalsy();
+      const toolsBody = await tools.text();
+      expect(toolsBody).toContain("wtf_api_request");
+
+      const apiHealth = await publicRequest.get("/api/v1/health", {
+        headers: { Authorization: `Bearer ${created.token}` },
+      });
+      expect(apiHealth.ok(), `versioned API health HTTP ${apiHealth.status()}`).toBe(true);
+      expect(apiHealth.headers()["set-cookie"], "versioned API should not set browser cookies").toBeFalsy();
+      expect(apiHealth.headers()["x-wtfos-api-version"]).toBe("v1");
+
+      const apiViaMcp = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "wtf_api_request",
+            arguments: { method: "GET", path: "/api/v1", response_format: "json" },
+          },
+        },
+      });
+      expect(apiViaMcp.ok(), `MCP API bridge HTTP ${apiViaMcp.status()}`).toBe(true);
+      expect(await apiViaMcp.text()).toContain("wtfos-platform-api");
 
       const revoked = await expectOkJson(
         await userRequest.delete(`/api/mcp/tokens/${tokenId}`, { headers }),

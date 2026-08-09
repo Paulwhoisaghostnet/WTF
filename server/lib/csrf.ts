@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
+import { isPublicApiRequest } from "./public-api";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -55,6 +56,9 @@ export function ensureSessionCsrfToken(req: Request): string {
 
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   const path = req.path || req.originalUrl || "";
+  // Public API mutations use a bearer token rather than ambient browser
+  // cookies, so they are not vulnerable to cross-site request forgery.
+  if (isPublicApiRequest(req)) return next();
   if (!path.startsWith("/api/")) return next();
   if (isCsrfExemptRequest(req.method, path)) return next();
   if (typeof req.isAuthenticated === "function" && !req.isAuthenticated()) {

@@ -9,6 +9,7 @@ This folder is the public documentation surface for wtfOS.
 - [WTFOS App Creation SDK](wtfos-sdk.md)
 - [WTFOS MCP Doctrine](wtfos-mcp-doctrine.md)
 - [Public Access Surface](public-access.md)
+- [wtfOS API Reference](reference/wtfos-api.md)
 
 ## App Manuals
 

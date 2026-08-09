@@ -17,6 +17,7 @@ export const DEFAULT_MCP_SCOPES = [
   "crp-nominations:write",
   "market:write",
   "trade-board:write",
+  "api:read",
 ] as const;
 
 export const ADMIN_MCP_SCOPES = [
@@ -24,7 +25,10 @@ export const ADMIN_MCP_SCOPES = [
   "console:admin",
 ] as const;
 
-const USER_ALLOWED_SCOPES = new Set<string>(DEFAULT_MCP_SCOPES);
+const USER_ALLOWED_SCOPES = new Set<string>([
+  ...DEFAULT_MCP_SCOPES,
+  "api:write",
+]);
 const ADMIN_ALLOWED_SCOPES = new Set<string>([
   ...DEFAULT_MCP_SCOPES,
   ...ADMIN_MCP_SCOPES,
@@ -39,6 +43,10 @@ const ADMIN_ALLOWED_SCOPES = new Set<string>([
   "market:*",
   "trade-board:*",
   "public-data:*",
+  "api:*",
+  "api:read",
+  "api:write",
+  "api:admin",
 ]);
 
 function rawScopes(value: unknown): { scopes: string[]; explicit: boolean } {

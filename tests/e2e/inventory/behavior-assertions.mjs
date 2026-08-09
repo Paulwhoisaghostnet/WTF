@@ -22,6 +22,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The route regression sets legacy PUBLIC_SITE_URL and MCP_PUBLIC_ENDPOINT values, asserts the access manifest helpers canonicalize both to https://wtfos.app, and keeps non-WTF preview host fallback behavior intact.",
   },
   {
+    id: "public.versioned-api-openapi-mcp-parity",
+    domain: "Public Data, Embeds, APIs, Agents, and Automation",
+    platformOwner: "public-platform-api",
+    ownerSpec: "server/lib/public-api.test.ts; server/lib/wtf-mcp.test.ts; client/src/features/agent/agent-model.test.ts",
+    verificationCommand:
+      "npx tsx --test client/src/features/agent/agent-model.test.ts server/lib/public-api.test.ts server/lib/wtf-mcp.test.ts",
+    userVisibleAssertion:
+      "API developers can discover `/api/v1`, download a valid OpenAPI 3.1 contract, browse grouped human documentation, authenticate with a paired bearer token, and use friendly current-user/token aliases while existing `/api/*` browser and internal calls remain unchanged.",
+    durableSideEffectAssertion:
+      "Source-derived route generation proves every existing API method/path is represented in OpenAPI; bearer middleware enforces read/write/admin scopes, account role, ownership, and app gates before dispatching to the established handlers; `wtf_api_request` exposes the same versioned surface to MCP without removing any existing workflow tool.",
+  },
+  {
     id: "auth.password-session-linked-wallet",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",

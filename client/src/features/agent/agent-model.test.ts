@@ -185,6 +185,8 @@ test("Agent permission categories normalize and derive scoped MCP grants", () =>
   const workspace = createDefaultAgentWorkspace("2026-06-29T00:00:00.000Z");
   const scopes = agentMcpScopesForPermissions(workspace.permissions);
   assert.ok(scopes.includes("desktop:read"));
+  assert.ok(scopes.includes("api:read"));
+  assert.ok(scopes.includes("api:write"));
   assert.ok(scopes.includes("desktop:write"));
   assert.ok(scopes.includes("pet:read"));
   assert.ok(scopes.includes("pet:write"));

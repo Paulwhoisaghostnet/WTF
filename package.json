@@ -206,6 +206,7 @@
     "pasta:wtfme:live-publish": "tsx scripts/pasta-protocol/wtfme-live-publish.ts",
     "pasta:wtfme:live-publish:check": "node --test scripts/pasta-protocol/wtfme-live-publish-policy.test.mjs",
     "check": "tsc --noEmit",
+    "docs:api": "node scripts/generate-wtfos-api-reference.mjs",
     "test:unit": "node scripts/run-unit-tests.mjs",
     "wtfos:cli:build": "npm run build --prefix packages/wtfos-cli",
     "wtfos:cli:test": "npm run test --prefix packages/wtfos-cli",

@@ -122,6 +122,7 @@ export const WTF_MCP_TOOL_NAMES = [
   "wtf_get_capabilities",
   "wtf_get_access_manifest",
   "wtf_get_registered_inventory",
+  "wtf_api_request",
   "wtf_create_map_lab_document",
   "wtf_get_desktop_appearance",
   "wtf_set_desktop_appearance",
@@ -674,7 +675,20 @@ function featureMarkdown(apps: DesktopAppConfig, tokenName: string): string {
 
 export function createWtfMcpServer(
   auth: McpAgentAuthContext,
-  options: { accessOrigin?: string; mcpEndpoint?: string } = {}
+  options: {
+    accessOrigin?: string;
+    mcpEndpoint?: string;
+    apiRequest?: (input: {
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      path: string;
+      query?: Record<string, string | number | boolean>;
+      body?: unknown;
+    }) => Promise<{
+      status: number;
+      contentType: string;
+      body: unknown;
+    }>;
+  } = {}
 ): McpServer {
   const server = new McpServer({
     name: "wtf-mcp-server",
@@ -799,6 +813,78 @@ export function createWtfMcpServer(
         ].join("\n")
       );
     }
+  );
+
+  server.registerTool(
+    "wtf_api_request",
+    {
+      title: "Call the wtfOS Platform API",
+      description:
+        "Call any operation exposed by the versioned wtfOS Platform API at /api/v1 using the paired token. Existing route ownership, role, app-gate, and token-scope checks remain authoritative. Read calls require api:read; mutations require api:write; admin paths additionally require an admin account and api:admin.",
+      inputSchema: z.object({
+        method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+        path: z.string().trim().refine(
+          (value) => value === "/api/v1" || value.startsWith("/api/v1/"),
+          "Path must start with /api/v1",
+        ),
+        query: z.record(
+          z.string(),
+          z.union([z.string(), z.number(), z.boolean()]),
+        ).optional(),
+        body: z.unknown().optional(),
+        response_format: ResponseFormatSchema,
+      }).strict(),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ method, path, query, body, response_format }) => {
+      const requiredScope = method === "GET" ? "api:read" : "api:write";
+      const scopeError = requireMcpScopes(
+        auth,
+        [requiredScope],
+        "wtf_api_request",
+        response_format,
+      );
+      if (scopeError) return scopeError;
+      if (!options.apiRequest) {
+        return toolError(
+          "The versioned API transport is unavailable in this MCP runtime.",
+          response_format,
+        );
+      }
+      try {
+        const response = await options.apiRequest({ method, path, query, body });
+        const output = {
+          ok: response.status >= 200 && response.status < 300,
+          method,
+          path,
+          status: response.status,
+          contentType: response.contentType,
+          body: response.body,
+        };
+        if (!output.ok) {
+          return toolError(
+            `wtfOS API request failed with HTTP ${response.status}. Check the path, token scopes, app gate, ownership, and request payload.`,
+            response_format,
+            output,
+          );
+        }
+        return toolResult(
+          output,
+          response_format,
+          `${method} ${path} succeeded with HTTP ${response.status}.`,
+        );
+      } catch (error) {
+        return toolError(
+          `wtfOS API request could not be completed: ${error instanceof Error ? error.message : String(error)}`,
+          response_format,
+        );
+      }
+    },
   );
 
   server.registerTool(

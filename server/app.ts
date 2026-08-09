@@ -19,6 +19,11 @@ import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
 import { canonicalDomainRedirectMiddleware } from "./lib/canonical-domain";
 import { userSiteHostRouter } from "./features/wtf-sites/host-router";
 import { routeTimingMiddleware } from "./lib/runtime-metrics";
+import {
+  authenticatePublicApi,
+  publicApiRateLimitKey,
+  rewritePublicApiVersion,
+} from "./lib/public-api";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -176,6 +181,10 @@ export async function createApp() {
     app.set("trust proxy", 1);
   }
   app.use(canonicalDomainRedirectMiddleware);
+  // Additive public versioning: rewrite `/api/v1/*` to the established
+  // `/api/*` handlers before any route or limiter observes the request.
+  // Existing browser/internal callers keep their original paths unchanged.
+  app.use(rewritePublicApiVersion);
   // Per-request latency + in-flight accounting for the runtime metrics
   // endpoint. Registered early so it brackets the full middleware chain
   // (rate limiters, auth, handlers) and reports true end-to-end timing.
@@ -388,6 +397,7 @@ export async function createApp() {
       name: "api-generic",
       windowMs: 60 * 1000,
       max: 200,
+      keyGenerator: (req) => publicApiRateLimitKey(req) || req.ip || "anonymous",
       message: { error: "Too many requests, please try again later" },
       skip: shouldSkipApiRateLimit,
     })
@@ -432,6 +442,7 @@ export async function createApp() {
   );
 
   await setupAuth(app);
+  app.use(authenticatePublicApi);
   app.use(csrfProtection);
   app.use(
     "/api/apphost/",

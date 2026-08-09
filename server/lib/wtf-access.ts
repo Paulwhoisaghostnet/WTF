@@ -16,7 +16,7 @@ export interface WtfBrowserAccessRoute {
 }
 
 export interface WtfApiAccessRoute {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   access: AccessMode;
   purpose: string;
@@ -176,6 +176,9 @@ export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
 ];
 
 export const WTF_MCP_SCOPE_GROUPS = [
+  { scope: "api:read", purpose: "Read the complete versioned wtfOS API through `/api/v1` and the generic MCP API tool." },
+  { scope: "api:write", purpose: "Call non-admin versioned wtfOS API mutations as the paired user; normal ownership and permission checks still apply." },
+  { scope: "api:admin", purpose: "Call versioned admin API operations; issued only to admin accounts and still subject to normal permissions." },
   { scope: "desktop:read", purpose: "Read the paired user's desktop appearance." },
   { scope: "desktop:write", purpose: "Update the paired user's desktop appearance." },
   { scope: "pet:read", purpose: "Read the paired user's desktop pet state." },
@@ -217,7 +220,7 @@ export function buildWtfAccessManifest(input: {
     origin: input.origin,
     guarantees: [
       "Browser access continues to use the normal connect.sid session cookie.",
-      "MCP access uses Authorization: Bearer wtf_mcp_... only on /mcp.",
+      "Versioned public API and MCP access use Authorization: Bearer wtf_mcp_...; legacy /api/* browser routes retain cookie sessions.",
       "/mcp never accepts browser cookies as MCP auth and never sends Set-Cookie.",
       "MCP requests are rate limited separately from standard browser/API traffic.",
       "Public JSON routes expose public or public-derived rows only.",
@@ -225,6 +228,15 @@ export function buildWtfAccessManifest(input: {
     ],
     browserRoutes: withGateState(WTF_STANDARD_BROWSER_ROUTES, input.apps),
     apiRoutes: withGateState(WTF_STANDARD_API_ROUTES, input.apps),
+    publicApi: {
+      version: "v1",
+      baseUrl: `${input.origin}/api/v1`,
+      openapi: `${input.origin}/api/v1/openapi.json`,
+      documentation: `${input.origin}/api/v1/docs`,
+      capabilities: `${input.origin}/api/v1/capabilities`,
+      authentication: "Authorization: Bearer wtf_mcp_...",
+      tokenManagementApi: "/api/v1/tokens",
+    },
     mcp: {
       endpoint: input.mcpEndpoint,
       tokenManagementApi: "/api/mcp/tokens",
