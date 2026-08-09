@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 13 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 13 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
 | WTF-BB-591 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release tests / private proof boundary | P1 | 13 | 6 | 3 | 4 | 2 | Pasta recovery/provenance tests use deterministic tracked fixtures while exact production identities remain frozen; aggregate unit passes 2,455/2,455 with twelve explicit skips |
 | WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 15 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
@@ -12298,3 +12299,23 @@ Copy this when adding a new issue:
   - Replaced the dirty-residue existence assertion with byte equality for all tracked build SVGs plus exact preparation-script ownership of the recursive `public/pasta-icons` copy.
 - Local verification:
   - Icon policy passes 5/5 and Pasta Suite package policy passes 6/6. Real preparation produced a byte-identical Pasta Suite SVG with SHA-256 `a10842aec3ff62efbebfe27f92164827702470cd3f27f2f1ca94e4cc5d20f361`; the ignored output was removed from the candidate afterward.
+
+### WTF-BB-593 - Public API reference tooling was absent from the generated environment inventory
+
+- Category: Release governance / environment inventory
+- Status: Verified
+- Owner/Session: Codex public API full-send
+- Score: C1 + F3 + S0 + P1(4) = 8
+- Evidence:
+  - Main Quality Gates run `31334141325` stopped at `npm run env:inventory:check` after the public API commit.
+  - The generator detected one new variable and four additional scanned source files; `WTFOS_ACCESS_TOKEN` is used by `scripts/generate-wtfos-api-reference.mjs` for authenticated reference generation.
+- Why it matters:
+  - The production deployment passed, but the canonical release workflow remained red because its deterministic governance artifact did not describe the deployed source tree.
+- Correction direction:
+  - Regenerate the tracked inventory from the exact clean `main` candidate without reading or publishing any environment values.
+- Verification idea:
+  - Run `npm run env:inventory` followed by `npm run env:inventory:check`, confirm the worktree is stable, and rerun main Quality Gates.
+- Correction:
+  - Regenerated `docs/reference/environment-variables.md`; it now records 1,169 variable names across 2,187 scanned source files and classifies `WTFOS_ACCESS_TOKEN` as a secret-valued operations reference without exposing a value.
+- Local verification:
+  - `npm run env:inventory:check` passes on the clean release candidate. Main Quality Gates verification follows the corrective push.
