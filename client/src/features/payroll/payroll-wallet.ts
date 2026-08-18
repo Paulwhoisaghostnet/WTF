@@ -85,6 +85,14 @@ function sameAddress(a: string, b: string): boolean {
   return a.trim() === b.trim();
 }
 
+export function assertPayrollWalletNetwork(network: unknown): void {
+  if (network !== PAYROLL_NETWORK) {
+    throw new Error(
+      `Payroll requires a Tezos mainnet wallet; the active wallet reported ${String(network || "no network")}.`,
+    );
+  }
+}
+
 export class PayrollWalletSession implements PayrollWalletController {
   private client: any = null;
   private tezos: any = null;
@@ -101,7 +109,7 @@ export class PayrollWalletSession implements PayrollWalletController {
       name: "wtfOS Payroll",
       description: "Isolated strict-admin funding wallet for WTF and XTZ transfers.",
       storage: new LocalStorage(PAYROLL_STORAGE_PREFIX),
-      network: { type: PAYROLL_NETWORK },
+      network: { type: PAYROLL_NETWORK, rpcUrl: PAYROLL_RPC_URL },
       preferredNetwork: PAYROLL_NETWORK,
       enableMetrics: false,
       featuredWallets: FEATURED_WALLETS,
@@ -124,8 +132,11 @@ export class PayrollWalletSession implements PayrollWalletController {
         if (typeof this.client.removeAllAccounts === "function") {
           await this.client.removeAllAccounts();
         }
-        const permissions = await this.client.requestPermissions();
+        const permissions = await this.client.requestPermissions({
+          network: { type: PAYROLL_NETWORK, rpcUrl: PAYROLL_RPC_URL },
+        });
         const active = await this.client.getActiveAccount();
+        assertPayrollWalletNetwork(active?.network?.type);
         const address = permissions?.address || active?.address || "";
         if (!address) throw new Error("Wallet permissions completed without an active address.");
         const chainId = await this.tezos.rpc.getChainId();
@@ -168,7 +179,9 @@ export class PayrollWalletSession implements PayrollWalletController {
     if (!this.client || !this.tezos || !this.connectedAddress) {
       throw new Error("Connect a Payroll funding wallet before preparing a transfer.");
     }
-    const activeAddress = await this.getActiveAddress();
+    const active = await this.client.getActiveAccount();
+    const activeAddress = active?.address || null;
+    assertPayrollWalletNetwork(active?.network?.type);
     if (!activeAddress || !sameAddress(activeAddress, expectedAddress) || !sameAddress(activeAddress, this.connectedAddress)) {
       throw new Error(
         `Payroll prepared this transfer for ${expectedAddress}, but the active signing wallet is ${activeAddress || "not connected"}. Reconnect the intended funding wallet.`,

@@ -41,6 +41,12 @@ test.beforeEach(async ({ page, request }) => {
 });
 
 test("admin connects an isolated funding wallet and reviews exact XTZ and WTF transfers", async ({ page }) => {
+  const payrollEvents = [];
+  await page.route("**/api/system/logs/client", async (route) => {
+    const payload = route.request().postDataJSON();
+    if (payload?.eventType?.startsWith("payroll.")) payrollEvents.push(payload.eventType);
+    await route.fulfill({ status: 204 });
+  });
   await page.goto("/payroll");
 
   await expect(page.locator("[data-payroll-surface='payroll']")).toBeVisible();
@@ -91,6 +97,11 @@ test("admin connects an isolated funding wallet and reviews exact XTZ and WTF tr
       recipient: profileWallet,
       atomicAmount: "200000001",
     },
+  ]);
+  await expect.poll(() => [...new Set(payrollEvents)]).toEqual([
+    "payroll.wallet_connected",
+    "payroll.transfer_reviewed",
+    "payroll.transfer_confirmed",
   ]);
 });
 

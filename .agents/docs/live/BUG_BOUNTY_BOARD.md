@@ -50,6 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 12 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
+| WTF-BB-614 | Verified | Codex Payroll full-send | 2026-08-18 | Client wallet / release integration | P1 | 12 | 7 | 2 | 4 | 2 | Payroll must explicitly bind permissions and the active signer to mainnet, emit its registered audit handles, and use the canonical safe new-tab boundary |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 13 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 13 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
 | WTF-BB-591 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release tests / private proof boundary | P1 | 13 | 6 | 3 | 4 | 2 | Pasta recovery/provenance tests use deterministic tracked fixtures while exact production identities remain frozen; aggregate unit passes 2,455/2,455 with twelve explicit skips |
@@ -9783,7 +9785,7 @@ Priority labels:
 ### WTF-BB-466 - Ravioli download-only wait concealed partial applied state
 
 - Category: Pasta Protocol / live publish recovery
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli live proof
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
@@ -12319,3 +12321,52 @@ Copy this when adding a new issue:
   - Regenerated `docs/reference/environment-variables.md`; it now records 1,169 variable names across 2,187 scanned source files and classifies `WTFOS_ACCESS_TOKEN` as a secret-valued operations reference without exposing a value.
 - Local verification:
   - `npm run env:inventory:check` passes on the clean release candidate. Main Quality Gates verification follows the corrective push.
+
+### WTF-BB-614 - Payroll replay does not fully bind its wallet network or registered audit surface
+
+- Category: Client wallet / release integration
+- Status: Claimed
+- Owner/Session: Codex Payroll full-send
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - The isolated Payroll branch constructed an Octez Connect client for mainnet but called `requestPermissions()` without an explicit network target.
+  - Its pre-send check verified the chain id returned by the fixed mainnet Taquito RPC, but did not verify that the active wallet account itself still reported the mainnet network.
+  - The interaction inventory and admin surface registered `payroll.wallet_connected`, `payroll.transfer_reviewed`, and `payroll.transfer_confirmed`, while the Payroll page emitted none of those handles.
+  - The confirmed-operation TzKT link used `rel="noreferrer"` instead of the repository's canonical `rel="noopener noreferrer"` new-tab boundary.
+- Why it matters:
+  - A wallet connected on a different network can reach a confusing or provider-dependent signing failure instead of being blocked by Payroll's own preflight.
+  - Operator-facing registries would advertise audit events that never occur, and the terminal external-link policy would reject the release candidate.
+- Correction direction:
+  - Request permissions for the explicit primary Tezos mainnet RPC, require the active account network to remain mainnet at connect and immediately before every send, and retain the independent chain-id check.
+  - Emit the three registered client audit handles without logging recipient details, and use the canonical safe external-link relationship.
+- Verification idea:
+  - Extend the focused wallet policy test for explicit permission targeting and active-account network checks; exercise the real Payroll review/send UI with its isolated wallet harness; then run external-link safety, TypeScript, build, inventory coverage, and the full inventory browser suite.
+- Correction:
+  - Permission requests now name the primary Tezos mainnet RPC, and both connect and pre-send paths fail closed unless the active Octez account reports `mainnet`; the independent `NetXdQprcVkpaWU` RPC check remains in place.
+  - Payroll emits all three registered audit handles without recipient data and uses `rel="noopener noreferrer"` for its TzKT receipt link.
+- Local verification:
+  - Focused wallet policy passes 6/6; Payroll Playwright passes 2/2 with exact XTZ/WTF payloads, event handles, wallet isolation, overspend rejection, and narrow-width usability.
+  - `npm run check -- --pretty false`, `npm run build`, `npm run check:external-links`, `npm run env:inventory:check`, `npm run security:public-release-boundary`, and `npm run test:e2e:inventory:coverage` pass.
+  - Complete inventory Playwright passes 683/683; aggregate unit passes 2,455 with twelve explicit fixture skips.
+  - `npm run test:e2e:live:puppets` was attempted and stopped before server boot because this clean worktree has no `DATABASE_URL`; no production database credential was injected into the local release worktree.
+
+### WTF-BB-615 - Payroll replay crosses the desktop shell modularity boundary
+
+- Category: Client architecture / release integration
+- Status: Verified
+- Owner/Session: Codex Payroll full-send
+- Score: C1 + F2 + S0 + P1(4) = 7
+- Evidence:
+  - The current `main` desktop shell was already close to its enforced delegation boundary; the Payroll replay added a second role-normalization memo and raised `Desktop.tsx` to 1,501 lines.
+  - `client/src/features/desktop/desktop-shell-modularity-policy.test.ts` requires the shell to remain below 1,500 lines and the aggregate unit suite rejected the candidate.
+- Why it matters:
+  - The replay is not releaseable while the canonical aggregate suite is red, and duplicating role normalization makes future role-gated icon behavior easier to drift.
+- Correction direction:
+  - Normalize the desktop user's roles once and derive both trusted-creator bypass and strict-admin Payroll availability from that shared value without weakening the architecture policy.
+- Verification idea:
+  - Run the focused desktop modularity and icon-gate tests, then rerun the aggregate unit suite on the clean candidate.
+- Correction:
+  - Desktop now normalizes the signed-in user's roles once and derives both trusted-creator bypass and strict-admin Payroll availability from that shared value; the architecture limit was not weakened.
+- Local verification:
+  - Focused desktop shell and icon-gate tests pass 9/9, including the strict-admin Payroll launcher assertion.
+  - Aggregate unit passes 2,455 with twelve explicit fixture skips, and complete inventory Playwright passes 683/683.

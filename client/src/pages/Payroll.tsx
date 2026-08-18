@@ -5,6 +5,7 @@ import { WTF_TOKEN, normalizeUserRoles } from "@shared/types";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiNotice, UiPanel } from "../components/wtfos-ui";
 import { useAuth } from "../lib/auth-context";
+import { logClientSystemEvent } from "../lib/system-log";
 import {
   PAYROLL_CHAIN_ID,
   PAYROLL_NETWORK,
@@ -234,6 +235,10 @@ export function Payroll() {
       const address = await controller().connect();
       setWalletAddress(address);
       setStatus(`Payroll funding wallet connected: ${address}`);
+      logClientSystemEvent({
+        eventType: "payroll.wallet_connected",
+        metadata: { network: PAYROLL_NETWORK, chainId: PAYROLL_CHAIN_ID },
+      });
       await refreshBalances(address);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -282,6 +287,10 @@ export function Payroll() {
         recipient: normalizedRecipient,
         atomicAmount,
       });
+      logClientSystemEvent({
+        eventType: "payroll.transfer_reviewed",
+        metadata: { asset, network: PAYROLL_NETWORK, chainId: PAYROLL_CHAIN_ID },
+      });
       setStatus("Review the exact asset, amount, source, recipient, and network before opening the wallet prompt.");
     } catch (err) {
       setReview(null);
@@ -297,6 +306,15 @@ export function Payroll() {
     try {
       const hash = await controller().transfer(review);
       setOperationHash(hash);
+      logClientSystemEvent({
+        eventType: "payroll.transfer_confirmed",
+        metadata: {
+          asset: review.asset,
+          network: PAYROLL_NETWORK,
+          chainId: PAYROLL_CHAIN_ID,
+          operationHash: hash,
+        },
+      });
       setStatus(`${review.asset} transfer confirmed on Tezos mainnet.`);
       setReview(null);
       setAmount("");
@@ -464,7 +482,7 @@ export function Payroll() {
         <Status role="status" aria-live="polite">{status}</Status>
         {operationHash ? (
           <UiNotice tone="success" title="Transfer confirmed">
-            <a href={`https://tzkt.io/${operationHash}`} target="_blank" rel="noreferrer">
+            <a href={`https://tzkt.io/${operationHash}`} target="_blank" rel="noopener noreferrer">
               View {operationHash} on TzKT <ExternalLink size={14} aria-hidden />
             </a>
           </UiNotice>

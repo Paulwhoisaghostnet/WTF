@@ -4,8 +4,11 @@ import test from "node:test";
 import { WTF_TOKEN } from "@shared/types";
 import {
   PAYROLL_CHAIN_ID,
+  PAYROLL_NETWORK,
+  PAYROLL_RPC_URL,
   PAYROLL_STORAGE_PREFIX,
   assertPayrollRecipient,
+  assertPayrollWalletNetwork,
   formatAtomic,
   parseDecimalToAtomic,
 } from "./payroll-wallet";
@@ -38,14 +41,22 @@ test("Payroll accepts Tezos implicit and originated destinations only", () => {
   assert.throws(() => assertPayrollRecipient("0x1234"), /valid Tezos wallet or contract address/);
 });
 
+test("Payroll fails closed unless the active signer reports mainnet", () => {
+  assert.doesNotThrow(() => assertPayrollWalletNetwork(PAYROLL_NETWORK));
+  assert.throws(() => assertPayrollWalletNetwork("shadownet"), /requires a Tezos mainnet wallet/);
+  assert.throws(() => assertPayrollWalletNetwork(undefined), /requires a Tezos mainnet wallet/);
+});
+
 test("Payroll keeps its connector isolated and rechecks signer, chain, and confirmation", () => {
   const source = readFileSync(new URL("./payroll-wallet.ts", import.meta.url), "utf8");
 
   assert.equal(PAYROLL_STORAGE_PREFIX, "wtf-payroll");
   assert.equal(PAYROLL_CHAIN_ID, "NetXdQprcVkpaWU");
+  assert.equal(PAYROLL_RPC_URL, "https://tezos-mainnet.octez.io/");
   assert.match(source, /storage:\s*new LocalStorage\(PAYROLL_STORAGE_PREFIX\)/);
   assert.doesNotMatch(source, /wtf:wallet-session|WALLET_SESSION_KEY|useWallet/);
-  assert.match(source, /getActiveAddress\(\)/);
+  assert.match(source, /requestPermissions\(\{[\s\S]*?network:\s*\{\s*type:\s*PAYROLL_NETWORK,\s*rpcUrl:\s*PAYROLL_RPC_URL\s*\}/);
+  assert.match(source, /assertPayrollWalletNetwork\(active\?\.network\?\.type\)/);
   assert.match(source, /getChainId\(\)/);
   assert.match(source, /confirmation\(1\)/);
 });

@@ -552,14 +552,9 @@ export function Desktop({
   }, [appAccessBlocked, wm]);
 
   const sourceApps = data?.apps ?? DISABLED_DESKTOP_APPS;
-  const appGateBypass = useMemo(() => {
-    const roles = normalizeUserRoles(user?.roles ?? user?.role ?? null);
-    return roles.includes("admin") || roles.includes("trusted_creator");
-  }, [user?.role, user?.roles]);
-  const payrollAvailable = useMemo(
-    () => normalizeUserRoles(user?.roles ?? user?.role ?? null).includes("admin"),
-    [user?.role, user?.roles],
-  );
+  const desktopRoles = useMemo(() => normalizeUserRoles(user?.roles ?? user?.role ?? null), [user?.role, user?.roles]);
+  const appGateBypass = desktopRoles.includes("admin") || desktopRoles.includes("trusted_creator");
+  const payrollAvailable = desktopRoles.includes("admin");
   const apps = {
     wtfiam: sourceApps.wtfiam,
     wim: sourceApps.wim,

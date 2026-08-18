@@ -10680,3 +10680,23 @@
 **Rule**: Transaction E2E tests must assert the exact operation hash/receipt affordance and submitted transfer payload. Treat notice headings as secondary copy unless their visibility is itself part of the interaction contract.
 
 ---
+
+## 2026-08-18 — Replayed value-transfer apps must re-prove wallet and platform contracts
+
+**What happened**: Payroll's old feature branch fixed its Taquito client to mainnet but relied on an implicit permission request and only checked the chain id from its own RPC before sending. The replay also declared three audit handles without emitting them and carried an outdated new-tab relationship. After the events were added, the focused browser test initially expected two rapid identical review and confirmation event types even though the shared client logger intentionally deduplicates them for five seconds.
+
+**Why it mattered**: A fixed application RPC does not prove the active wallet account's network, and a stale feature branch can satisfy its local behavior while violating current registry, logging, or safety policies. Tests that ignore shared telemetry deduplication can then misreport correct emission as missing behavior.
+
+**Rule**: When replaying a value-transfer app, explicitly bind permission requests to the authoritative network and RPC, fail closed on the active account network at connect and immediately before every send, retain an independent chain-id check, emit every registered handle without sensitive recipient data, and rerun terminal platform policies. Event E2E must prove each canonical handle occurs while respecting the logger's documented deduplication contract.
+
+---
+
+## 2026-08-18 — Role-gated desktop additions must reuse one normalized role decision
+
+**What happened**: The Payroll replay added a second role-normalization memo to the desktop shell for its strict-admin icon gate. That duplication raised the shell to the exact line count rejected by its modularity policy even though the focused Payroll and icon tests passed.
+
+**Why it mattered**: A feature can be behaviorally correct while making a central shell harder to maintain and leaving two nearby role decisions free to drift. Raising or bypassing the architecture boundary would have hidden the duplication instead of correcting it.
+
+**Rule**: Normalize desktop roles once and derive every adjacent role-gated launcher decision from the shared value. Run the focused shell-modularity policy and aggregate unit suite whenever a desktop app adds authentication or role wiring; never relax the enforced boundary to admit duplicated shell logic.
+
+---
