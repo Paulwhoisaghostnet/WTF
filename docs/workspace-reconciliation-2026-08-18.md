@@ -12,11 +12,11 @@ This file records the ownership and release status of work that was present in t
 
 - PixAlerce alpha integration: isolated from the shared checkout as commit `7638db59` on `codex/pixalerce-alpha-integration`, based directly on `origin/main`.
 - Distribution boundary: authenticated alpha testers only. Public release remains blocked by WTF-BB-612 until Niko's redistribution grant and complete included-asset rights record are committed.
-- Verification at classification time: clean production build, TypeScript, all creation-tool asset checks, inventory coverage, and the focused save/reload/reopen browser proof passed. The full inventory browser run was in progress on the clean release worktree.
+- Verification at classification time: clean production build, TypeScript, all creation-tool asset checks, inventory coverage, and the focused save/reload/reopen browser proof passed. The full inventory browser run was started on the clean release worktree.
 
 ## Unfinished worktree: Pasta proof and alpha handoff
 
-The shared checkout remains on `codex/full-send-dirty-snapshot-20260808`. After extracting PixAlerce, it contains a mixed Pasta proof/recovery set: 39 tracked modifications, three untracked source/test files, and roughly 990 untracked live-proof artifact files. These paths are intentionally not staged, committed, deleted, or deployed by the cleanup pass.
+The shared checkout remains on `codex/full-send-dirty-snapshot-20260808`. After extracting PixAlerce, the mixed Pasta proof/recovery set comprised 39 tracked modifications, three untracked source/test files, 989 initially visible untracked live-proof artifact files, and a separately discovered 900-file V2 proof directory. The source state is now retained in local WIP commits. All 1,889 artifact files are retained in checksum-indexed archives outside the repository and have been removed from the working tree.
 
 The work maps to active claimed bounty items WTF-BB-586 through WTF-BB-592, WTF-BB-600 through WTF-BB-608, and WTF-BB-611. Verified corrections for WTF-BB-594 through WTF-BB-599 and WTF-BB-609 through WTF-BB-610 are intermixed with those active lanes. The combined tree therefore cannot be promoted as one release without incorrectly certifying unfinished live-proof state.
 
@@ -39,5 +39,7 @@ All other named local feature branches reviewed in this pass are already represe
 ## Cleanup actions completed
 
 - Removed eleven stale/prunable Git worktree registrations whose directories no longer exist.
-- Preserved the original dirty checkout and every unrelated user change.
+- Preserved every source change in the local `WIP: label Pasta proof recovery state` commit and retained the exact branch history in a verified Git bundle.
+- Archived and re-extracted/checksummed all 1,889 untracked Pasta proof files under the sibling `WTF-workspace-archive-20260818-pasta-proof` directory before removing them from the checkout.
 - Extracted the verified PixAlerce change set into a current-main release branch without carrying Pasta code, artifacts, or the unrelated `package.json` edit.
+- Verified the shared checkout has an empty `git status` after labeling and archival.
