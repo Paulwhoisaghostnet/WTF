@@ -1,0 +1,52 @@
+
+# --- added by sourcing run 2026-07-20 ---
+vintage_car.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:The_American_florist_-_a_weekly_journal_for_the_trade_(1911)_(17521628753).jpg
+model_t.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6288196/png-sticker-vintage
+model_t_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6288162/image-vintage-public-domain-black
+penny_farthing.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Cover_-_The_Modern_Bicycle_(1877),_cover_-_BL.jpg
+penny_farthing_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Going_to_the_bicycle_tournament_(LOC)_(14886467059).jpg
+vintage_bicycle.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7688245/image-art-vintage-public-domain
+vintage_bicycle_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6271721/png-sticker-vintage
+tricycle.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6314484/png-vintage-public-domain
+tricycle_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6314787/image-vintage-public-domain-black
+steam_locomotive.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/572556/vintage-steam-train
+railway_carriage.webp | CC0 1.0 | Openverse/rijksmuseum | https://www.rijksmuseum.nl/en/collection/RP-P-1911-3436
+railway_carriage_2.webp | CC0 1.0 | Openverse/clevelandmuseum | https://clevelandart.org/art/1980.63
+biplane.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6559929/png-sticker-vintage
+biplane_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6260504/png-vintage-public-domain
+vintage_airplane.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Anthony-Eden-and-his-wife-arrive-in-London-after-a-visit-to-the-United-States-352109141951.jpg
+vintage_airplane_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:First_Qantas_flight_1922_SLNSW_FL8579187.jpg
+zeppelin.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/11688919/image-people-art-vintage
+sailing_ship.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_View_of_the_East_India_Docks._(13889384460).jpg
+sailing_ship_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_View_of_the_London_Dock._(14076352484).jpg
+steamboat.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:The_Rhine_and_northern_Germany-_handbook_for_travellers_(1870)_(14785923173).jpg
+steamboat_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7690623/image-art-vintage-public-domain
+paddle_steamer.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Cronstadt_-_George_Dodd._Pictorial_history_of_the_Russian_war_1854-5-6.jpg
+rowboat.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6727696/png-sticker-vintage
+rowboat_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/11727624/png-person-art
+carriage.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:England_Grange_Borrowdale_Bowder_Stone,_Horse_Carriage_(50581535716).jpg
+carriage_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/573151/horse-carriage-vintage-drawing
+stagecoach.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6870743/png-sticker-vintage
+stagecoach_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6864969/vector-sticker-vintage-public-domain
+horse_cart.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:The_art_of_the_Louvre,_containing_a_brief_history_of_the_palace_and_of_its_collection_of_paintings,_as_well_as_descriptions_and_criticism_of_many_of_the_principal_pictures_and_their_artists_(1905)_(14766276835).jpg
+horse_cart_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10084970/toy-fire-engine-c-1939-mina-lowry
+balloon.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Matchbox_label_-_Red_Hot_Air_Balloon_-_Sweden_(circa_1920s)_-_MBP1135264325.jpg
+balloon_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6260794/psd-vintage-public-domain-art
+omnibus.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/11612956/wiener-omnibus-becsi-omnibus-1875-1880-stockinger-and-morsack-wien
+chariot.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:(12)_Flaxman_Ilias_1795,_Zeichnung_1793,_186_x_402_mm.jpg
+chariot_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:De_precipuis,_totius_universi_urbibus,_Liber_Secundus,_Civitates_Orbis_Terraum,_Volume_2.jpg
+sleigh.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3369984/free-illustration-image-antique-art-artwork
+sleigh_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6659896/png-sticker-public-domain
+canoe.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6677352/vector-vintage-public-domain-black
+canoe_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6676667/png-sticker-vintage
+tugboat.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Coast_watch_(1979)_(20473761549).jpg
+tugboat_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6304636/png-sticker-vintage
+ocean_liner.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7687940/image-antique-prints-ocean-liner-vintage-poster
+ocean_liner_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3071019/free-illustration-image-black-white-drawing-fauvism-art-boat
+fishing_boat.webp | CC0 1.0 | Openverse/clevelandmuseum | https://clevelandart.org/art/1920.697
+fishing_boat_2.webp | CC0 1.0 | Openverse/clevelandmuseum | https://clevelandart.org/art/1992.347
+covered_wagon.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3076039/free-illustration-image-art-vintage
+covered_wagon_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7651549/image-clouds-vintage-art
+roadster.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6556979/vector-sticker-vintage-public-domain
+early_aeroplane.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Military_aeroplanes;_an_explanatory_consideration_of_their_characteristics,_performances,_construction,_maintenance,_and_operation,_for_the_use_of_aviators_(1918)_(14780727175).jpg
+early_aeroplane_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Nieuport_IV.G_from_The_aeroplane_in_war_(1912).jpg

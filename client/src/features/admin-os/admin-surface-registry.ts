@@ -1277,6 +1277,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     routePatterns: [
       "/tools/broot",
       "/tools/particle-painter",
+      "/tools/pixalerce",
       "/tools/industrializer",
       "/tools/pauls-particles-v1",
       "/tools/nikshumika-paint",
@@ -1293,6 +1294,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "broot.project-file-vanity-extension",
       "broot.ffmpeg-glfx-layer-ops",
       "broot.wallet-hen-mint",
+      "pixalerce.local-project-persistence",
       "ipfs-pinning.pds-backed-wallet-backup",
       "account.cobwebsaints-domain-advanced-readiness",
       "skullzarmy.fafolab-integration-contracts",

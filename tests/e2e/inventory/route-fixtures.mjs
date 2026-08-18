@@ -59,6 +59,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/game-studio", path: "/game-studio", title: "Game Studio", domain: "media", subdomain: "Game Studio projects", auth: true },
   { pattern: "/tools/broot", path: "/tools/broot", title: "Broot", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/particle-painter", path: "/tools/particle-painter", title: "PArticle Painter", domain: "media", subdomain: "Creation tools", auth: true },
+  { pattern: "/tools/pixalerce", path: "/tools/pixalerce", title: "PixAlerce", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/industrializer", path: "/tools/industrializer", title: "INDUSTR1ALIZER", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/pauls-particles-v1", path: "/tools/pauls-particles-v1", title: "Paul's Particles V1.0", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/nikshumika-paint", path: "/tools/nikshumika-paint", title: "Nikshumika Paint", domain: "media", subdomain: "Creation tools", auth: true },

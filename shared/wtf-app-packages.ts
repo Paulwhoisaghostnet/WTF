@@ -589,6 +589,40 @@ export const WTF_CREATION_TOOL_PACKAGE_ACCEPTANCE = [
     },
   },
   {
+    id: "creation-tool:pixalerce",
+    key: "pixalerce",
+    label: "PixAlerce",
+    kind: "creation-tool",
+    state: "active",
+    domain: domainGuides.mediaTvStudio,
+    toolId: "pixalerce",
+    routeEvidence: ["/tools/pixalerce", "/creation-tools/pixalerce/index.html"],
+    provenance: {
+      owner: "Niko Alerce",
+      source: "NikoAlerce/3dpixelstudio at 99e243a34a509477e203a6dd7a5a1d18ed83f9fa; alpha-test distribution pending creator license and complete included-asset provenance",
+      evidence: [
+        "client/src/features/creation-tools/tool-registry.ts",
+        "public/creation-tools/pixalerce/provenance.json",
+        "docs/domains/pixalerce-intake.md",
+      ],
+    },
+    permissionSummary: {
+      userAccess: "Authenticated wtfOS route; sandboxed same-origin static iframe with camera, microphone, clipboard, download, fullscreen, and local browser-project capabilities.",
+      adminAccess: "Creation Tools admin surface observes route/package availability; public release remains gated on the recorded creator license and complete stamp provenance.",
+      dataTouched: ["PixAlerce IndexedDB/localForage projects", "session autosave", "browser download/export artifacts"],
+      externalSystems: ["Device camera and microphone when the user explicitly invokes them"],
+    },
+    rollback: {
+      method: "Restore the previous tool registry and static package from the deployed commit; no server-owned project data is mutated.",
+      evidence: ["scripts/check-creation-tool-assets.ts", "public/creation-tools/pixalerce/provenance.json"],
+    },
+    uninstall: {
+      method: "Remove the route and static package only after warning testers to export browser-local PixAlerce projects.",
+      preservesUserData: true,
+      evidence: ["client/src/features/creation-tools/tool-registry.ts", "docs/domains/pixalerce-intake.md"],
+    },
+  },
+  {
     id: "creation-tool:macaroni",
     key: "macaroni",
     label: "Macaroni",

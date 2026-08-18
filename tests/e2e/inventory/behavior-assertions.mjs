@@ -411,6 +411,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness derives WTF Domains and IPFS Pinning identity from the signed-in username, mutates the mocked wtfOS site claim state for cobwebsaints, verifies the pinning policy queue success against the same host, and asserts Macaroni's iframe enables hosted pin/publish access for the cobwebsaints_full_user role.",
   },
   {
+    id: "pixalerce.local-project-persistence",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/pixalerce.spec.mjs",
+    verificationCommand:
+      "npx playwright test tests/playwright/inventory/pixalerce.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "PixAlerce opens from `/tools/pixalerce` inside the wtfOS creation-tool shell, creates a blank 3D pixel canvas, exposes the editor, and saves a named project without blocked sandbox-native dialogs.",
+    durableSideEffectAssertion:
+      "The focused browser proof saves a PixAlerce project through localForage/IndexedDB, reloads the wtfOS route, reopens My projects, and verifies the saved project name survives the reload while all PixAlerce assets remain under `/creation-tools/pixalerce/`.",
+  },
+  {
     id: "broot.media-open-import",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],

@@ -1,0 +1,21 @@
+{
+  "app": "PixAlerce",
+  "version": "0.2.0",
+  "creator": "Niko Alerce",
+  "sourceRepository": "https://github.com/NikoAlerce/3dpixelstudio",
+  "sourceCommit": "99e243a34a509477e203a6dd7a5a1d18ed83f9fa",
+  "integrationDate": "2026-08-18",
+  "sourcePatchSha256": "39f01a17f9689dc7cf24ba09cd78cb905cba4865648870e74557017485a88225",
+  "packageLockSha256": "4264398a1562666611265e4a43588445a5e778d9c083bdd58c85b753ad1b1149",
+  "buildCommand": "VITE_PIXALERCE_PWA=false PIXALERCE_BASE_PATH=/creation-tools/pixalerce/ npm run build",
+  "distributionStatus": "alpha-test-only-pending-creator-license-and-complete-asset-provenance",
+  "publicLaunchGate": "Record the creator's redistribution license and remove or document every disputed stamp before public launch.",
+  "wtfOsHardening": [
+    "subpath-safe application and asset URLs",
+    "embedded PWA and service-worker behavior disabled",
+    "native browser modals replaced with sandbox-safe in-page dialogs",
+    "unconfigured Google Drive UI and code removed from the embedded bundle",
+    "remote default sprite dependency replaced with self-contained SVG data",
+    "unused vulnerable dependency removed and dependency audit resolved"
+  ]
+}

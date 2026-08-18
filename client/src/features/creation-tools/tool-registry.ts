@@ -13,6 +13,7 @@ export type CreationToolProvenance = {
   tezosIdentity?: string;
   xHandle?: string;
   xUrl?: string;
+  sourceUrl?: string;
   tokenUrl?: string;
   explorerUrl?: string;
 };
@@ -78,6 +79,30 @@ export const CREATION_TOOLS = [
       "/creation-tools/particle-painter/assets/index-U0XZkEWM.js",
       "/creation-tools/particle-painter/ffmpeg-core/ffmpeg-core.wasm",
     ],
+  },
+  {
+    id: "pixalerce",
+    title: "PixAlerce",
+    subtitle: "Niko Alerce's animated 3D pixel-art editor with local projects, stamps, camera input, and browser exports.",
+    domain: "visual-art",
+    routePath: "/tools/pixalerce",
+    src: "/creation-tools/pixalerce/index.html",
+    requiredAssets: [
+      "/creation-tools/pixalerce/index.html",
+      "/creation-tools/pixalerce/provenance.json",
+      "/creation-tools/pixalerce/logo.png",
+      "/creation-tools/pixalerce/assets/index-BExmxIpz.js",
+      "/creation-tools/pixalerce/assets/index-DeGmzAaT.css",
+      "/creation-tools/pixalerce/assets/vendor-three-DPlVFi_Q.js",
+      "/creation-tools/pixalerce/assets/vendor-r3f-DUUt0QTy.js",
+      "/creation-tools/pixalerce/assets/vendor-encoders-tvjoZ3OG.js",
+      "/creation-tools/pixalerce/assets/gifExport.worker-DWdcZTy6.js",
+    ],
+    provenance: {
+      creatorName: "Niko Alerce",
+      sourceUrl: "https://github.com/NikoAlerce/3dpixelstudio",
+      tokenUrl: "https://www.nikoalerce.xyz/support",
+    },
   },
   {
     id: "industrializer",

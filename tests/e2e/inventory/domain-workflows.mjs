@@ -880,7 +880,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "media creation to arcade publishing loop",
     domain: "Media, Creation, Gallery, and Preservation",
-    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/wim", "/tools/broot", "/ipfs-pinning", "/tools/colander", "/mint-portal", "/live", "/tools/ch-ease", "/tools/macaroni-packager", "/tools/macaroni", "/arcade"],
+    routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/wim", "/tools/broot", "/tools/pixalerce", "/ipfs-pinning", "/tools/colander", "/mint-portal", "/live", "/tools/ch-ease", "/tools/macaroni-packager", "/tools/macaroni", "/arcade"],
     eventHandles: [
       "media.uploaded",
       "studio.project.created",

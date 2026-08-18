@@ -37,6 +37,11 @@ export function CreationToolFrame({ tool }: CreationToolFrameProps) {
                 {xLabel}
               </a>
             )}
+            {provenance.sourceUrl && (
+              <a href={provenance.sourceUrl} target="_blank" rel="noopener noreferrer">
+                Source
+              </a>
+            )}
             {provenance.tokenUrl && (
               <a href={provenance.tokenUrl} target="_blank" rel="noopener noreferrer">
                 Support
@@ -50,7 +55,11 @@ export function CreationToolFrame({ tool }: CreationToolFrameProps) {
         title={tool.title}
         src={frameSrc}
         sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
-        allow="clipboard-read; clipboard-write"
+        allow={
+          tool.id === "pixalerce"
+            ? "camera; microphone; fullscreen; clipboard-read; clipboard-write"
+            : "clipboard-read; clipboard-write"
+        }
       />
     </Shell>
   );
