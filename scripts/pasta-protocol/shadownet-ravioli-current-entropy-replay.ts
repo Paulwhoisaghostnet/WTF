@@ -10,6 +10,10 @@ import { deterministicJsonBytes } from "./shadownet-proof-kit";
 import type {
   RavioliCurrentResumePin,
   RavioliCurrentResumePlan,
+  RavioliPreparedSealedPinRecoveryBridge,
+} from "./shadownet-ravioli-current-resume";
+import {
+  assertAuthenticatedRavioliPreparedSealedPinRecovery,
 } from "./shadownet-ravioli-current-resume";
 
 const HASH_RE = /^[0-9a-f]{64}$/;
@@ -37,6 +41,7 @@ const RAVIOLI_REVEAL_PACK_TYPE = {
 type JsonRecord = Record<string, any>;
 
 export type RavioliCurrentEntropyReplayMode = 0 | 1;
+type RavioliBrowserEntropyReplayMode = RavioliCurrentEntropyReplayMode | 2;
 
 export type RavioliCurrentEntropyReplay = Readonly<{
   schema: "pastaprotocol-ravioli-current-entropy-replay@1";
@@ -685,7 +690,7 @@ type BrowserDraw =
 // attached to anonymous inline callbacks are not present in the browser realm.
 function ravioliBrowserInstallEntropyReplay(input: Readonly<{
   stateKey: string;
-  exactMode: RavioliCurrentEntropyReplayMode;
+  exactMode: RavioliBrowserEntropyReplayMode;
   planSha256: string;
   exactDraws: readonly BrowserDraw[];
 }>): void {
@@ -798,7 +803,7 @@ function ravioliBrowserInstallEntropyReplay(input: Readonly<{
 
 function ravioliBrowserInspectAndRestoreEntropyReplay(input: Readonly<{
   stateKey: string;
-  exactMode: RavioliCurrentEntropyReplayMode;
+  exactMode: RavioliBrowserEntropyReplayMode;
 }>): Readonly<{
   snapshot: null | Readonly<Record<string, any>>;
   restored: boolean;
@@ -876,7 +881,7 @@ export async function installRavioliCurrentEntropyReplay(
 /** Verifies exact consumption and restores the browser's native entropy method. */
 export async function assertRavioliCurrentEntropyReplayConsumed(
   page: Pick<Page, "evaluate">,
-  mode: RavioliCurrentEntropyReplayMode,
+  mode: RavioliBrowserEntropyReplayMode,
 ): Promise<void> {
   const status = await page.evaluate(
     ravioliBrowserInspectAndRestoreEntropyReplay,
@@ -904,4 +909,48 @@ export async function assertRavioliCurrentEntropyReplayConsumed(
   ) {
     fail(`mode ${mode} browser replay did not restore its private override`);
   }
+}
+
+/** Installs the exact four private draws for the authenticated op20 sealed-pin replay. */
+export async function installRavioliPreparedSealedPinEntropyReplay(
+  page: Pick<Page, "evaluate">,
+  bridge: RavioliPreparedSealedPinRecoveryBridge,
+): Promise<void> {
+  assertAuthenticatedRavioliPreparedSealedPinRecovery(bridge);
+  const planSha256 = sha256(deterministicJsonBytes(bridge.evidence));
+  await page.evaluate(ravioliBrowserInstallEntropyReplay, {
+    stateKey: BROWSER_STATE_KEY,
+    exactMode: 2 as const,
+    planSha256,
+    exactDraws: [
+      {
+        kind: "bytes" as const,
+        role: "recipe-nonce",
+        hex: bridge.entropy.nonceHex,
+      },
+      {
+        kind: "bytes" as const,
+        role: "reveal-salt",
+        hex: bridge.entropy.saltHex,
+      },
+      {
+        kind: "bounded-offset" as const,
+        role: "reveal-offset",
+        value: bridge.entropy.offset,
+        bound: 1,
+      },
+      {
+        kind: "bytes" as const,
+        role: "aes-gcm-iv",
+        hex: Buffer.from(bridge.entropy.iv).toString("hex"),
+      },
+    ],
+  });
+}
+
+/** Verifies op20's native draft draw plus four exact target draws, then restores crypto. */
+export async function assertRavioliPreparedSealedPinEntropyReplayConsumed(
+  page: Pick<Page, "evaluate">,
+): Promise<void> {
+  await assertRavioliCurrentEntropyReplayConsumed(page, 2);
 }

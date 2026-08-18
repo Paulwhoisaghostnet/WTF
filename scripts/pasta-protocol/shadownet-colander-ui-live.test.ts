@@ -318,6 +318,12 @@ test("production Colander runner journals before send and uses dual-RPC plus exa
   assert.match(source, /PastaProofRestartJournal\.(?:create|open)/);
   assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_PRIMARY/);
   assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_FALLBACK/);
+  assert.match(source, /reconcilePastaProofRestartOperation\(\{/);
+  assert.equal(
+    source.includes("/operations/transactions?sender="),
+    false,
+    "Colander restart must not query a counter-filtered TzKT collection",
+  );
   const prepared = source.indexOf('restartJournal.beforeOperationSubmit("creator", prepared)');
   const sent = source.indexOf("methodsObject.set_current_revision(0).send()");
   const submitted = source.indexOf('restartJournal.onOperationSubmitted("creator", submitted)');

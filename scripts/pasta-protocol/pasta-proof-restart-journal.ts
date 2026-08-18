@@ -12,6 +12,12 @@ import type {
   PastaUiLiveSubmittedOperation,
 } from "./pasta-ui-live-bridge-kit";
 import { decodePastaUiLiveValue, PASTA_UI_LIVE_RECEIPT_SCHEMA } from "./pasta-ui-live-bridge-kit";
+import {
+  createHttpGetReader,
+  readWithBoundedRetry,
+  type ReadOnlyFetch,
+  type ReadOnlyRetryOptions,
+} from "./pasta-readonly-retry";
 import { deterministicJsonBytes, SHADOWNET_CHAIN_ID } from "./shadownet-proof-kit";
 
 export const PASTA_PROOF_RESTART_SCHEMA = "pastaprotocol-proof-restart-journal@1";
@@ -94,7 +100,15 @@ type Pending = {
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]{0,127}$/;
-const RESTART_RPC_TIMEOUT_MS = Math.max(1_000, Number(process.env.PASTA_SHADOWNET_HTTP_TIMEOUT_MS || "15000"));
+const RESTART_MEMPOOL_BUCKETS = Object.freeze([
+  "applied",
+  "validated",
+  "branch_delayed",
+  "unprocessed",
+  "refused",
+  "branch_refused",
+  "outdated",
+] as const);
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -186,6 +200,10 @@ function equalProjected(left: unknown, right: unknown): boolean {
   return JSON.stringify(project(left)) === JSON.stringify(project(right));
 }
 
+export function hashPastaProofRestartProjectedValue(value: unknown): string {
+  return sha256(Buffer.from(JSON.stringify(project(value)), "utf8"));
+}
+
 function requestOperationDescriptor(request: PastaUiLiveBridgeRequest): Projected | undefined {
   if (!request.payload || typeof request.payload !== "object" || Array.isArray(request.payload)) return undefined;
   const payload = request.payload as Record<string, unknown>;
@@ -247,32 +265,74 @@ function activeMempoolEntries(value: unknown): Array<Record<string, unknown>> {
   });
 }
 
-async function fetchRestartJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: { accept: "application/json", "user-agent": "wtfos-pasta-proof-restart" },
-    signal: AbortSignal.timeout(RESTART_RPC_TIMEOUT_MS),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`restart RPC ${url} returned HTTP ${response.status}: ${text.slice(0, 300)}`);
-  try { return JSON.parse(text); } catch { throw new Error(`restart RPC ${url} returned invalid JSON`); }
+export function assertPastaProofRestartMempoolRecord(
+  value: unknown,
+  label = "restart RPC mempool",
+): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  const record = value as Record<string, unknown>;
+  const hasOwn = (key: string): boolean => Object.prototype.hasOwnProperty.call(record, key);
+  if (!hasOwn("applied") && !hasOwn("validated")) {
+    throw new Error(`${label} must contain an applied or validated bucket`);
+  }
+  for (const bucket of RESTART_MEMPOOL_BUCKETS) {
+    if (hasOwn(bucket) && !Array.isArray(record[bucket])) {
+      throw new Error(`${label} ${bucket} bucket must be an array`);
+    }
+  }
+  return record;
+}
+
+export type PastaProofRestartRpcSnapshotReadOptions = Readonly<{
+  fetchImpl?: ReadOnlyFetch;
+  retryOptions?: ReadOnlyRetryOptions;
+}>;
+
+async function fetchRestartJson(
+  url: string,
+  options: PastaProofRestartRpcSnapshotReadOptions,
+): Promise<unknown> {
+  return readWithBoundedRetry({
+    primary: createHttpGetReader({
+      label: `restart RPC ${url}`,
+      url,
+      fetchImpl: options.fetchImpl,
+      headers: {
+        accept: "application/json",
+        "cache-control": "no-store",
+        "user-agent": "wtfos-pasta-proof-restart",
+      },
+      parse: async (response) => {
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { throw new Error(`restart RPC ${url} returned invalid JSON`); }
+      },
+    }),
+  }, options.retryOptions);
 }
 
 export async function readPastaProofRestartRpcSnapshot(
   rpcUrl: string,
   actors: Readonly<Record<string, string>>,
+  options: PastaProofRestartRpcSnapshotReadOptions = {},
 ): Promise<PastaProofRestartRpcSnapshot> {
   const base = rpcUrl.replace(/\/+$/, "");
   const actorEntries = Object.entries(actors);
-  const uniqueAddresses = [...new Set(actorEntries.map(([, address]) => address))];
-  const [chainId, mempool, ...counterValues] = await Promise.all([
-    fetchRestartJson(`${base}/chains/main/chain_id`),
-    fetchRestartJson(`${base}/chains/main/mempool/pending_operations`),
-    ...uniqueAddresses.map((address) => fetchRestartJson(
-      `${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(address)}/counter`,
-    )),
-  ]);
+  const uniqueAddresses = [...new Set(actorEntries.map(([, address]) => address))].sort();
+  const chainId = await fetchRestartJson(`${base}/chains/main/chain_id`, options);
   if (chainId !== SHADOWNET_CHAIN_ID) throw new Error(`${rpcUrl} is not Shadownet`);
+  const mempool = assertPastaProofRestartMempoolRecord(
+    await fetchRestartJson(`${base}/chains/main/mempool/pending_operations`, options),
+    `${rpcUrl} restart mempool`,
+  );
+  const counterValues: unknown[] = [];
+  for (const address of uniqueAddresses) {
+    counterValues.push(await fetchRestartJson(
+      `${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(address)}/counter`,
+      options,
+    ));
+  }
   const counterByAddress = new Map(uniqueAddresses.map((address, index) => {
     const counter = Number(counterValues[index]);
     if (!Number.isSafeInteger(counter) || counter < 0) throw new Error(`${rpcUrl} returned an invalid counter for ${address}`);
@@ -282,11 +342,8 @@ export async function readPastaProofRestartRpcSnapshot(
   const relevantAddresses = new Set(uniqueAddresses);
   const activeManagerOperations: PastaProofRestartActiveManagerOperation[] = [];
   const terminalManagerOperations: PastaProofRestartActiveManagerOperation[] = [];
-  const mempoolRecord = mempool && typeof mempool === "object" && !Array.isArray(mempool)
-    ? mempool as Record<string, unknown>
-    : {};
-  for (const bucket of ["applied", "validated", "branch_delayed", "unprocessed", "refused", "branch_refused", "outdated"] as const) {
-    for (const operation of activeMempoolEntries(mempoolRecord[bucket])) {
+  for (const bucket of RESTART_MEMPOOL_BUCKETS) {
+    for (const operation of activeMempoolEntries(mempool[bucket])) {
       const hash = String(operation.hash ?? "");
       const contents = Array.isArray(operation.contents) ? operation.contents : [];
       for (const content of contents) {
@@ -308,6 +365,7 @@ export async function readPastaProofRestartRpcSnapshot(
 export class PastaProofRestartJournal {
   private queue: Promise<void> = Promise.resolve();
   private replayCursor = new Map<PastaProofRestartActor, number>();
+  private replayPrefix = new Map<PastaProofRestartActor, readonly PastaProofRestartStep[]>();
 
   private constructor(readonly filePath: string, private state: JournalFile) {}
 
@@ -450,6 +508,10 @@ export class PastaProofRestartJournal {
   private nextIncomplete(): PastaProofRestartStep | undefined {
     const effects = this.effectState();
     return this.state.plan.find((step) => !effects.get(step.id)?.applied);
+  }
+
+  isComplete(): boolean {
+    return this.nextIncomplete() === undefined;
   }
 
   consumedManagerOperationCount(actor: PastaProofRestartActor): number {
@@ -721,7 +783,8 @@ export class PastaProofRestartJournal {
       const expectedEntrypoints = pending.step.entrypoints ?? (pending.step.entrypoint ? [pending.step.entrypoint] : []);
       if (
         receipt.schema !== PASTA_UI_LIVE_RECEIPT_SCHEMA
-        || receipt.sequence !== pending.operationSequence
+        || !Number.isSafeInteger(receipt.sequence)
+        || receipt.sequence < 1
         || receipt.action !== pending.step.action
         || receipt.chainId !== SHADOWNET_CHAIN_ID
         || receipt.signerAddress !== this.state.actors[actor]
@@ -791,10 +854,15 @@ export class PastaProofRestartJournal {
 
   async replayOrHandle(actor: PastaProofRestartActor, request: PastaUiLiveBridgeRequest, handle: () => Promise<unknown>): Promise<unknown> {
     if (request.action !== "pin_json" && request.action !== "pin_blob" && request.action !== "originate" && request.action !== "call" && request.action !== "batch") return handle();
-    const completed = this.state.plan.filter((step) =>
-      step.actor === actor
-      && step.transport !== "direct"
-      && this.effectState().get(step.id)?.applied);
+    let completed = this.replayPrefix.get(actor);
+    if (!completed) {
+      const effectsAtBridgeStart = this.effectState();
+      completed = Object.freeze(this.state.plan.filter((step) =>
+        step.actor === actor
+        && step.transport !== "direct"
+        && effectsAtBridgeStart.get(step.id)?.applied));
+      this.replayPrefix.set(actor, completed);
+    }
     const cursor = this.replayCursor.get(actor) ?? 0;
     const step = completed[cursor];
     if (!step) return handle();

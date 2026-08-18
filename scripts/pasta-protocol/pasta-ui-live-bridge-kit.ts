@@ -30,6 +30,7 @@ const BRIDGE_ACTIONS = new Set([
   "active_protocol",
   "balance",
   "batch",
+  "block_header",
   "call",
   "chain_check",
   "connect",
@@ -65,6 +66,7 @@ export type PastaUiLiveAction =
   | "active_protocol"
   | "balance"
   | "batch"
+  | "block_header"
   | "call"
   | "chain_check"
   | "connect"
@@ -1170,6 +1172,24 @@ export class TaquitoPastaUiLiveSession {
       }
       return { block: "head", chainId, protocol: head.protocol };
     }
+    if (request.action === "block_header") {
+      requireExactKeys(payload, "block header payload", ["block"]);
+      if (payload.block !== "head") fail("UI-live block-header reads are restricted to head");
+      const chainId = await this.assertChain("UI-live block-header read");
+      const header = requireRecord(
+        await this.readOnly(
+          "UI-live head block header",
+          () => this.options.tezos.rpc.getBlockHeader({ block: "head" }),
+        ),
+        "Tezos head block header",
+      );
+      const timestamp = String(header.timestamp || "");
+      const level = Number(header.level);
+      if (!Number.isFinite(Date.parse(timestamp)) || !Number.isSafeInteger(level) || level < 0) {
+        fail("Tezos head returned an invalid block-header timestamp or level");
+      }
+      return { block: "head", chainId, timestamp, level };
+    }
     if (request.action === "balance") {
       const chainId = await this.assertChain("UI-live balance read");
       const address = requireAddress(payload.address ?? this.options.signerAddress, "balance address");
@@ -1674,6 +1694,32 @@ export function buildPastaUiLiveProxyInstallerSource(
           throw new Error("UI-live bridge returned an invalid active protocol identity");
         }
         return { protocol: result.protocol };
+      },
+      async getBlockHeader(options) {
+        if (
+          options !== undefined
+          && (
+            !options
+            || typeof options !== "object"
+            || Array.isArray(options)
+            || Object.keys(options).length !== 1
+            || options.block !== "head"
+          )
+        ) {
+          throw new Error("UI-live bridge permits only the active head block-header read");
+        }
+        const result = await request("block_header", { block: "head" });
+        if (
+          !result
+          || result.block !== "head"
+          || typeof result.timestamp !== "string"
+          || !Number.isFinite(Date.parse(result.timestamp))
+          || !Number.isSafeInteger(result.level)
+          || result.level < 0
+        ) {
+          throw new Error("UI-live bridge returned an invalid head block header");
+        }
+        return { timestamp: result.timestamp, level: result.level };
       },
       async getScriptCodeHash(contractAddress) {
         const result = await request("script_code_hash", { contractAddress });

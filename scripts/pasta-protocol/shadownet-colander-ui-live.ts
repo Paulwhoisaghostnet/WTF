@@ -34,10 +34,13 @@ import {
 import {
   PastaProofRestartJournal,
   readPastaProofRestartRpcSnapshot,
-  type PastaProofRestartResolution,
   type PastaProofRestartRpcSnapshot,
   type PastaProofRestartStep,
 } from "./pasta-proof-restart-journal";
+import {
+  assertPastaProofRestartTransaction,
+  reconcilePastaProofRestartOperation,
+} from "./pasta-proof-restart-chain";
 import {
   assertShadownet,
   block,
@@ -779,69 +782,16 @@ export async function runColanderUiLive(): Promise<{
       "Colander restart applied operation is ambiguous",
     );
   }
-  await restartJournal.reconcile(async (pending): Promise<PastaProofRestartResolution> => {
-    const rpcPair = await readColanderRestartRpcPair(signers.creator.address);
-    const active = rpcPair.flatMap((snapshot) => snapshot.activeManagerOperations).filter((operation) =>
-      operation.source === signers.creator.address && operation.counter === pending.expectedCounter);
-    if (active.length > 0) {
-      throw new Error(`Colander restart counter ${pending.expectedCounter} is still active in an approved RPC mempool`);
-    }
-    const counterConsumed = rpcPair[0].counters.creator >= pending.expectedCounter;
-    const rows = await pollJson(
-      `Colander restart manager counter ${pending.expectedCounter}`,
-      `${normalizeBase(SHADOWNET_TZKT_API)}/operations/transactions?sender=${encodeURIComponent(signers.creator.address)}&counter=${pending.expectedCounter}&limit=10`,
-      (value) => Array.isArray(value) && (!counterConsumed || value.length > 0),
-      { attempts: 6, delayMs: 2_000 },
-    ) as any[];
-    const exact = rows.filter((row) =>
-      row?.status === "applied"
-      && row?.sender?.address === signers.creator.address
-      && Number(row?.counter) === pending.expectedCounter
-      && row?.target?.address === lasagna.address
-      && row?.parameter?.entrypoint === "set_current_revision"
-      && Number(row?.parameter?.value) === 0
-      && (!pending.operationHash || row?.hash === pending.operationHash));
-    if (exact.length === 0) {
-      const terminal = pending.operationHash
-        ? rows.find((row) => row?.hash === pending.operationHash && row?.status && row.status !== "applied")
-        : undefined;
-      if (terminal) {
-        return {
-          status: "rejected",
-          operationHash: pending.operationHash!,
-          reason: `TzKT terminal status ${String(terminal.status)}`,
-          counterConsumed: true,
-        };
-      }
-      if (counterConsumed) {
-        throw new Error(`Colander restart counter ${pending.expectedCounter} is consumed without exact indexed evidence`);
-      }
-      if (pending.operationHash) {
-        const terminalByRpc = rpcPair.every((snapshot) => snapshot.terminalManagerOperations.some((operation) =>
-          operation.hash === pending.operationHash
-          && operation.source === signers.creator.address
-          && operation.counter === pending.expectedCounter));
-        if (terminalByRpc) {
-          return {
-            status: "rejected",
-            operationHash: pending.operationHash,
-            reason: "both approved RPCs report a terminal mempool rejection",
-            counterConsumed: false,
-          };
-        }
-        throw new Error(`Colander SUBMITTED operation ${pending.operationHash} has no exact terminal evidence; rerun after it is indexed or rejected`);
-      }
-      return { status: "absent" };
-    }
-    assert.equal(exact.length, 1, "Colander restart manager counter is ambiguous");
-    return {
-      status: "applied",
-      operationHash: String(exact[0].hash),
-      contractAddress: lasagna.address,
-      timestampUtc: String(exact[0].timestamp),
-      entrypoints: ["set_current_revision"],
-    };
-  });
+  await restartJournal.reconcile((pending) => reconcilePastaProofRestartOperation({
+    label: `Colander restart ${pending.step.id}`,
+    pending,
+    signerAddress: signers.creator.address,
+    validateApplied: async (row) => assertPastaProofRestartTransaction({
+      row,
+      pending,
+      signerAddress: signers.creator.address,
+    }),
+  }));
   await assertColanderRestartCounterBoundary(restartJournal, signers.creator.address);
 
   await runCommand(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "build"]);
@@ -1214,6 +1164,14 @@ export async function runColanderUiLive(): Promise<{
     path: tzktRelativePath,
     sha256: sha256(tzktBytes),
   };
+  assert.equal(restartJournal.isComplete(), true, "Colander restart journal is not terminal");
+  const restartCheckpointBytes = await readFile(path.join(appRoot, RESTART_CHECKPOINT_PATH));
+  const restartCheckpointArtifact: WrittenArtifact = {
+    id: "colander-restart-checkpoint",
+    kind: "restart-checkpoint",
+    path: RESTART_CHECKPOINT_PATH,
+    sha256: sha256(restartCheckpointBytes),
+  };
   const completedAt = new Date().toISOString();
   const runArtifact = await writeJsonArtifact(appRoot, "colander-ui-live-run", "proof-receipt", "colander-ui-live-run.json", {
     schema: "pastaprotocol-colander-ui-live@1",
@@ -1228,6 +1186,11 @@ export async function runColanderUiLive(): Promise<{
     managementOperation: managementOperationHash,
     browserBridgeLog: bridgeLog,
     screenshots: screenshots.map((capture) => capture.manifestScreenshot),
+    restartSafety: {
+      checkpoint: restartCheckpointArtifact,
+      exactSemanticReplay: true,
+      terminalCountersAuthenticated: true,
+    },
   });
 
   const sidecarArtifacts = screenshots.map((capture) => capture.manifestSidecarArtifact);
@@ -1237,6 +1200,7 @@ export async function runColanderUiLive(): Promise<{
     discoveryArtifact,
     managementArtifact,
     tzktArtifact,
+    restartCheckpointArtifact,
     runArtifact,
     ...sidecarArtifacts,
   ];
@@ -1304,7 +1268,7 @@ export async function runColanderUiLive(): Promise<{
         description: "Use Colander's rendered Lasagna adapter form, creator wallet preflight, and actual browser send path to apply one idempotent set_current_revision(0) operation, preserve the visible confirmation after refresh, and independently verify the applied transaction through TzKT.",
         evidence: {
           screenshots: managementStages,
-          artifacts: [managementArtifact.id, ...managementSidecars],
+          artifacts: [managementArtifact.id, restartCheckpointArtifact.id, ...managementSidecars],
           contracts: [],
           operations: [managementOperationHash],
           tokens: [],

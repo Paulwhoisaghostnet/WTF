@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
+  createMacArtifactIdentity,
   isExpectedDesktopStubResponse,
+  parseMacArtifactIdentityArguments,
   PRODUCT_KEYS,
   PRODUCTS,
   validateBuildProvenance,
@@ -11,6 +16,10 @@ import {
 
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const artifactSmokeSource = readFileSync("scripts/pasta-desktop-artifact-smoke.mjs", "utf8");
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 
 test("artifact smoke registry covers the suite and every standalone on a unique stable origin", () => {
   assert.deepEqual(PRODUCT_KEYS, [
@@ -139,6 +148,75 @@ test("artifact smoke validates exact alpha build provenance", () => {
   );
 });
 
+test("macOS artifact identity binds the exact archive and executable bytes plus architectures", async () => {
+  const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "pasta-mac-artifact-identity-"));
+  try {
+    const artifactPath = path.join(fixtureRoot, "candidate.zip");
+    const executablePath = path.join(fixtureRoot, "candidate-executable");
+    const artifactBytes = Buffer.from("exact archive bytes");
+    const executableBytes = Buffer.from("exact executable bytes");
+    writeFileSync(artifactPath, artifactBytes);
+    writeFileSync(executablePath, executableBytes);
+
+    const identity = await createMacArtifactIdentity(
+      { artifactPath, distribution: "zip", executablePath },
+      { readArchitectures: async () => ["x86_64", "arm64"] },
+    );
+
+    assert.deepEqual(identity, {
+      distribution: "zip",
+      path: artifactPath,
+      sha256: sha256(artifactBytes),
+      executableSha256: sha256(executableBytes),
+      architectures: ["arm64", "x86_64"],
+    });
+
+    await assert.rejects(
+      () =>
+        createMacArtifactIdentity(
+          { artifactPath, distribution: "tar", executablePath },
+          { readArchitectures: async () => ["arm64", "x86_64"] },
+        ),
+      /distribution must be dmg or zip/,
+    );
+    await assert.rejects(
+      () =>
+        createMacArtifactIdentity(
+          { artifactPath, distribution: "dmg", executablePath },
+          { readArchitectures: async () => ["arm64"] },
+        ),
+      /dmg executable should contain arm64 and x86_64/,
+    );
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("macOS artifact identity CLI requires explicit paired arguments", () => {
+  assert.deepEqual(
+    parseMacArtifactIdentityArguments([
+      "--artifact-path=/tmp/Pasta Suite.zip",
+      "--distribution=zip",
+    ]),
+    {
+      artifactPath: "/tmp/Pasta Suite.zip",
+      distribution: "zip",
+    },
+  );
+  assert.deepEqual(parseMacArtifactIdentityArguments([]), {
+    artifactPath: undefined,
+    distribution: "",
+  });
+  assert.throws(
+    () => parseMacArtifactIdentityArguments(["--artifact-path=/tmp/a.zip", "--artifact-path=/tmp/b.zip"]),
+    /Duplicate artifact smoke argument/,
+  );
+  assert.throws(
+    () => parseMacArtifactIdentityArguments(["--unknown=value"]),
+    /Unsupported artifact smoke argument/,
+  );
+});
+
 test("every installer workflow proves macOS DMG/ZIP, Windows NSIS, and native arm64 Debian packages", () => {
   for (const key of PRODUCT_KEYS) {
     const workflow = readFileSync(`.github/workflows/${key}-desktop-installers.yml`, "utf8");
@@ -195,6 +273,14 @@ test("every installer workflow proves macOS DMG/ZIP, Windows NSIS, and native ar
   assert.match(
     readFileSync("scripts/pasta-desktop-macos-artifact-smoke.sh", "utf8"),
     /PASTA_DESKTOP_SMOKE_EVIDENCE_DIR/,
+  );
+  assert.match(
+    readFileSync("scripts/pasta-desktop-macos-artifact-smoke.sh", "utf8"),
+    /"--artifact-path=\$artifact_path"/,
+  );
+  assert.match(
+    readFileSync("scripts/pasta-desktop-macos-artifact-smoke.sh", "utf8"),
+    /"--distribution=\$format"/,
   );
   assert.match(
     readFileSync("scripts/pasta-desktop-macos-artifact-smoke.sh", "utf8"),

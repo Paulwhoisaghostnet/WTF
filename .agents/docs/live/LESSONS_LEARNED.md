@@ -10592,3 +10592,133 @@
 **Why it mattered**: The strict live validator correctly rejected the earlier level, but the caller supplied a semantically adjacent journal event instead of the event that mutated the target big map. Relaxing the validator would have hidden incorrect provenance for reserved child capacity.
 
 **Rule**: Derive a downstream state row's level from the exact operation tree that mutates that row, not from configuration that merely makes the later mutation possible. For adapter-backed reservations, bind target `reserved_mints` provenance to the outer `commit_recipe` operation and assert its entrypoint, internal reserve path, and exact TzKT first/last level while keeping allocation creation as separate resource evidence.
+
+---
+
+## 2026-08-08 — Authenticated journal descriptors retain portable container encodings
+
+**What happened**: Ravioli's private pre-continuation verifier read a hash-authenticated journal descriptor and required its `token_info` field to be a live Taquito `MichelsonMap`. The journal deliberately stores maps as canonical `{ "$map": [...] }` JSON, so the verifier rejected valid retained metadata before any continuation write.
+
+**Why it mattered**: Reconstructing a runtime object inside the authenticated descriptor would change its representation and risk obscuring which bytes were actually hashed. Conversely, accepting only the runtime class made a correct portable restart boundary unusable.
+
+**Rule**: Keep authenticated descriptors in their canonical persisted representation. At read boundaries, use one fail-closed accessor that supports the live runtime container and each approved portable encoding, requires exactly one requested key, and returns only the needed value. Test both representations and duplicate-key rejection; never rewrite the journal object merely to satisfy a runtime-class assertion.
+
+---
+
+## 2026-08-08 — Resume admission must distinguish semantic repetition from side-effect replay
+
+**What happened**: Ravioli's authenticated-state coordinator treated every recovered descriptor fingerprint as a forbidden replay. The current event-112 boundary retained one exact browser pin after operation 30, while the valid next operation 31 intentionally reused operation 18's resolved Gnocchi `add_minter` call bytes. Priming every retained step hid the pin, and applying the fingerprint ban before the semantic gate rejected the correct continuation.
+
+**Why it mattered**: Re-pinning the retained wrapper artwork would duplicate an external effect, but reusing an idempotent permission descriptor at a later matrix position is an intentional protocol operation. A raw byte fingerprint cannot decide between those cases, and bypassing the journal's semantic sequence hook prevents a valid hybrid pack from continuing.
+
+**Rule**: At an authenticated interruption whose browser has already emitted post-operation pins, expose those exact trailing pins for receipt replay without delegation. Before the first new signer mutation, require the next matrix operation's actor, action, entrypoint, and recovered target role; allow a historical descriptor only when that semantic identity matches. After continuation starts, delegate signer calls to the authoritative journal hook for full payload and sequence validation, while continuing to reject repeated historical pin side effects.
+
+---
+
+## 2026-08-08 — Dependency rechecks must authenticate the resumed semantic prefix, not the original fresh state
+
+**What happened**: Ravioli's operation-30 journal, products, adapters, and private recovery authenticated correctly, but the pre-write dependency gate still required Rotini project 0 to have zero reservations and no pack minter. Operation 25 had already authorized the recovered Rotini adapter and operation 29 had atomically reserved two project-0 outputs for the issued mode-3 pack, so the correct live state was rejected before operation 31.
+
+**Why it mattered**: Releasing the two reservations would undercut the already-issued generative pack, while generically accepting nonzero capacity would permit unrelated reservations or overbooking. The dependency was neither fresh nor invalid; it was exactly mutated by the authenticated prefix.
+
+**Rule**: A restart dependency profile must be derived from the exact completed semantic operations. Preserve the fresh profile for earlier prefixes, and for each later prefix require the precise authorized actor, resource key, amount, first/last level, update count, and empty unrelated maps caused by the journaled operations. Never restore a dependency to pre-product state when its reservation backs an issued product.
+
+---
+
+## 2026-08-08 — Estimate-only proofs still need serialized, bounded RPC reads
+
+**What happened**: Ravioli's short-expiry red proof correctly used a zero-injection batch estimate, but it loaded three contracts and three scripts concurrently before the estimate. Shadownet rate-limited one `contract.at` read, stopping an otherwise authenticated operation-30 continuation while leaving the journal unchanged.
+
+**Why it mattered**: The policy proof was safe to repeat, but restarting the complete live runner magnified RPC load and repeatedly paid the cost of dependency, journal, IPFS, private-recovery, and screenshot authentication. A read-only proof can be operationally blocking even when it cannot mutate state.
+
+**Rule**: Serialize contract, script, storage, big-map, head, and estimate reads in proof-only fixtures, and wrap each call in the established bounded read-only retry capability. Parallelize only local immutable file reads. Never place signing, injection, pinning, journal append, or proof writes inside a retry boundary.
+
+---
+
+## 2026-08-08 — A rejected browser signer intent needs proof of where delegation stopped
+
+**What happened**: Ravioli durably recorded the exact operation-31 Gnocchi permission intent, but the former resume coordinator rejected the browser request before delegating it to the journal or signer. Studio correctly treated any signer-intent recovery as potentially submitted and refused its generic no-chain discard path, even though the authenticated journal still had no PREPARED or SUBMITTED operation 31.
+
+**Why it mattered**: Blindly deleting the recovery would erase the very evidence needed to distinguish a coordinator rejection from an ambiguous Tezos submission. Leaving it unfinished permanently blocked the verified continuation, while weakening Studio's general rule would endanger unrelated recoveries.
+
+**Rule**: Reconcile a pre-delegation rejection only in a harness-specific bridge bound to the exact live-reconciled plan object, full recovery history, signer/target/entrypoint/payload, retained pin, rejection message, and complete absence of an operation hash or journal intent. Preserve the source snapshot, append an explicit terminal no-submission checkpoint only to an in-memory copy, and let the next normal recovery capture make that transformed state durable.
+
+---
+
+## 2026-08-08 — Generic grid tracks can erase a successful transaction receipt
+
+**What happened**: Ravioli's portable atomic-delivery receipt inherited the shared `.storage` grid with one flexible track followed by three content-sized tracks. A realistic hybrid receipt made the delivered-items list and operation link consume the grid width, collapsing the heading and summary track to zero at the 1440×900 proof viewport.
+
+**Why it mattered**: The Tezos operation and child delivery could succeed while the page hid the collector's decisive confirmation. DOM text and transaction evidence were present, but neither the collector nor a fixed-viewport proof screenshot could see what the wrapper produced.
+
+**Rule**: Result panels with variable-length receipt content need their own layout contract instead of inheriting a multi-control form grid. Constrain every result child to the container, allow identifiers and links to wrap, and browser-test non-zero in-viewport geometry with realistic maximum-content rows at both the proof viewport and a responsive width.
+
+---
+
+## 2026-08-08 — Recover terminal proof evidence from live state, never by replaying an applied mutation
+
+**What happened**: A fresh Gnocchi proof process exited after its final collector token-2 mint was already applied but before stages 018 and 019 were packaged. The first read-only recovery implementation also matched only screenshot ordinals 010-017, so its prefix gate rejected a valid 001-017 inventory; a later UI timeout had already restored authenticated content bytes and therefore required safe local resumption.
+
+**Why it mattered**: Rerunning the ordinary signer workflow could mint again and change the required 4/4/3 supply. Weakening the prefix gate or deleting restored content would discard provenance, while inventing screenshots would not prove the actual app behavior.
+
+**Rule**: When a terminal chain mutation is already applied, freeze the exact operation graph and recover only by loading live state through an allowlisted read-only bridge with no signer or writable contract. Prove before/after operation graph, storage, script, counters, and mempool invariants; capture the real product-level rejection; and require zero submitted and injected operations. Express canonical ordinal ranges so their endpoints are directly regression-tested, and permit interrupted local recovery only when every pre-existing file is an exact hash-bound member of the approved prefix or content inventory.
+
+---
+
+## 2026-08-08 — Restart recovery has separate replay, identity, and visual-timing domains
+
+**What happened**: Spaghetti's first fresh restart session consumed a pin it had just created as though it belonged to the historical replay prefix. Its already-applied origination then failed reconciliation because a global UI receipt sequence was compared with a signer-operation sequence, an unsupported TzKT collection filter hid the exact submitted hash, and JSON insertion order was treated as Michelson identity. Once those state problems were corrected, authenticated replay completed several UI milestones so quickly that different screenshots captured identical pixels; a later completed-proof recapture also tried to recreate a pre-buy collector state after the sale was already sold out.
+
+**Why it mattered**: Each failure sat at a different trust boundary. Weakening any one boundary generically could duplicate chain effects, admit the wrong contract, or fabricate visual history even though the original five-operation lifecycle was correct.
+
+**Rule**: Freeze the historical replay prefix when an actor begins a session; never add current-session effects to that cursor. Compare public receipt and signer-operation sequences only within their own domains, reconcile SUBMITTED operations by exact hash, and use canonical Michelson identity instead of JSON serialization order for on-chain scripts. During visual replay, gate each authoritative effect phase until its screenshot is retained. If an irreversible later state prevents honest recapture, reuse only the original same-run evidence after exact receipt/manifest equality and PNG/sidecar authentication; never recreate or relabel a state that no longer exists.
+
+---
+
+## 2026-08-09 — API completeness needs source-derived proof, not an arbitrary route-count threshold
+
+**What happened**: The first OpenAPI regression treated a guessed minimum number of paths as evidence that the contract was complete. That assertion failed when the generated contract was valid but the estimate did not match the route inventory, and it could also have passed while omitting a real endpoint.
+
+**Why it mattered**: A large numeric threshold says nothing about which operations are absent. For a public API, callers need every production-reachable method/path to be represented, with stable versioning and unique operation identifiers.
+
+**Rule**: Generate API inventory from the production import graph, then verify every discovered method/path maps to an OpenAPI operation. Use counts only as reported evidence; never as a substitute for source-to-contract parity. When a schema library changes a generic signature, let the type checker settle the exact contract before final verification.
+
+---
+
+## 2026-08-13 — Installed-artifact receipts must bind the bytes they launched
+
+**What happened**: Pasta's macOS smoke retained runtime provenance, an extracted executable path, and a screenshot, while the alpha finalizer later hashed the DMG and ZIP under their expected filenames. The receipt did not contain either archive or executable SHA-256, and the finalizer measured only the ZIP executable's architectures before reporting that result for both formats.
+
+**Why it mattered**: Replacing an archive after smoke could pair an old passing receipt with new unchecked bytes, and a structurally valid non-universal DMG could inherit the ZIP's universal architecture claim. A checksum generated only at finalization identifies the handoff file but does not prove it is the file whose installed runtime passed.
+
+**Rule**: At installed-package smoke time, bind the source distribution, archive path and SHA-256, launched executable SHA-256, and executable architectures into the receipt. At handoff time, independently extract or mount every distribution, recompute those identities, and reject any path, format, archive, executable, or architecture mismatch before writing inventory output. Never reuse one distribution's structural evidence for another.
+
+---
+
+## 2026-08-13 — Shared restart fixes must be adopted by every runner
+
+**What happened**: Exact-hash TzKT reconciliation, canonical Michelson script identity, and bounded read-only retry had been corrected in shared or sibling Pasta proof paths, but Lasagna and Colander retained copied pre-fix reconciliation logic. Their shared snapshot reader also issued concurrent raw RPC reads and converted malformed mempool payloads into an empty state.
+
+**Why it mattered**: The final exhibition and management lanes could strand an authenticated `SUBMITTED` operation because an ignored TzKT counter filter returned no evidence. Raw JSON order could reject the correct originated contract, while a malformed or rate-limited RPC response could be mistaken for a clean signer boundary.
+
+**Rule**: Every restartable runner must delegate operation recovery to the shared exact-hash reconciler and use the shared canonical script-identity domain. Serialize bounded GET-only chain, mempool, and counter reads within each approved RPC lane, and fail closed unless the mempool is a recognized bucket object. Add production-consumer assertions so correcting a shared primitive without adopting it cannot pass unnoticed.
+
+---
+
+## 2026-08-18 — Third-party PWA intake must prove ownership and subpath isolation before vendoring
+
+**What happened**: PixAlerce's standalone Vite build passed TypeScript and rendered correctly, but it emitted root-relative app/stamp/logo URLs and registered a service worker with `/` scope. The source repository was private with no license metadata, and part of its built-in stamp library contained recognizable franchise assets without the source ledgers used by the newer public-domain packs.
+
+**Why it mattered**: Copying a successful standalone build into a shared-origin iframe could let its service worker control unrelated wtfOS pages and make its assets collide or 404. A technically working integration would also redistribute private code and bundled art without recorded authority.
+
+**Rule**: Before vendoring a third-party PWA, record the exact source commit, redistribution terms, and included-asset provenance; build it for the intended host subpath; scan generated assets, manifest, and service-worker registration/scope for root escape; then run the real same-origin iframe flow. Keep optional external-service CSP allowances path-scoped, and do not register the app in wtfOS until both the ownership and isolation contracts are proven.
+
+---
+
+## 2026-08-18 — Disabling an embedded PWA also means disabling its updater
+
+**What happened**: PixAlerce's embedded build stopped generating its own manifest and service worker, but its application entry point still installed a generic auto-update watcher. On a shared origin, `navigator.serviceWorker.getRegistration()` could discover and update the wtfOS host worker even though the embedded app no longer emitted one.
+
+**Why it mattered**: PWA isolation is not proven by the absence of `sw.js` alone. Application-side registration, readiness, controller, or update code can still reach a host-owned worker and couple an embedded tool to unrelated shell lifecycle behavior.
+
+**Rule**: An embedded PWA build must disable both generated worker artifacts and every application-side registration/update watcher. Scan the compiled bundle for registration, controller, readiness, and update paths, then verify the host shell flow with failed-request and page-error capture.

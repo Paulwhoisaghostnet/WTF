@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { _electron as electron } from "playwright";
 
@@ -13,6 +17,8 @@ const ALPHA_VERSION = "1.0.1-alpha.1";
 const PROVENANCE_SCHEMA = "wtfos.pasta.desktop-build-provenance.v1";
 const PERSISTENCE_KEY = "pasta.desktop.packaged-artifact-smoke.v1";
 const PERSISTENCE_VALUE = "stable-origin-relaunch-confirmed";
+const UNIVERSAL_MAC_ARCHITECTURES = Object.freeze(["arm64", "x86_64"]);
+const execFileAsync = promisify(execFile);
 const EXPECTED_DESKTOP_STUB_RESPONSES = Object.freeze([
   { method: "GET", pathname: "/api/auth/user", status: 401 },
   { method: "GET", pathname: "/api/profile/social", status: 404 },
@@ -209,6 +215,83 @@ function flag(value) {
 
 function expectedTargetString(target) {
   return `${target.platform}/${target.arch}/${target.format}`;
+}
+
+export function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(filePath);
+    stream.on("error", reject);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+async function readMacExecutableArchitectures(executablePath) {
+  const { stdout } = await execFileAsync("lipo", ["-archs", executablePath], {
+    encoding: "utf8",
+  });
+  return stdout.trim().split(/\s+/).filter(Boolean);
+}
+
+export async function createMacArtifactIdentity(
+  { artifactPath, distribution, executablePath },
+  dependencies = {},
+) {
+  assert.ok(artifactPath, "macOS artifact identity requires an archive path");
+  assert.ok(executablePath, "macOS artifact identity requires an executable path");
+  assert.ok(
+    distribution === "dmg" || distribution === "zip",
+    "macOS artifact distribution must be dmg or zip",
+  );
+
+  const absoluteArtifactPath = path.resolve(artifactPath);
+  const absoluteExecutablePath = path.resolve(executablePath);
+  await access(absoluteArtifactPath);
+  await access(absoluteExecutablePath);
+  const hashFile = dependencies.hashFile || sha256File;
+  const readArchitectures = dependencies.readArchitectures || readMacExecutableArchitectures;
+  const architectures = [...new Set((await readArchitectures(absoluteExecutablePath)).map(String))]
+    .filter(Boolean)
+    .sort();
+  assert.deepEqual(
+    architectures,
+    UNIVERSAL_MAC_ARCHITECTURES,
+    `${distribution} executable should contain arm64 and x86_64`,
+  );
+
+  const [archiveSha256, executableSha256] = await Promise.all([
+    hashFile(absoluteArtifactPath),
+    hashFile(absoluteExecutablePath),
+  ]);
+  assert.match(archiveSha256, /^[0-9a-f]{64}$/i, "macOS archive SHA-256 should be exact");
+  assert.match(
+    executableSha256,
+    /^[0-9a-f]{64}$/i,
+    "macOS executable SHA-256 should be exact",
+  );
+
+  return {
+    distribution,
+    path: absoluteArtifactPath,
+    sha256: archiveSha256.toLowerCase(),
+    executableSha256: executableSha256.toLowerCase(),
+    architectures,
+  };
+}
+
+export function parseMacArtifactIdentityArguments(argv) {
+  const values = new Map();
+  for (const argument of argv) {
+    const match = /^--(artifact-path|distribution)=(.+)$/.exec(argument);
+    assert.ok(match, `Unsupported artifact smoke argument: ${argument}`);
+    assert.equal(values.has(match[1]), false, `Duplicate artifact smoke argument: --${match[1]}`);
+    values.set(match[1], match[2]);
+  }
+  return {
+    artifactPath: values.get("artifact-path"),
+    distribution: values.get("distribution") || "",
+  };
 }
 
 export function validateBuildProvenance(manifest, product, options = {}) {
@@ -408,6 +491,8 @@ async function launchArtifact(executablePath, profilePath) {
 
 export async function runArtifactSmoke({
   appKey,
+  artifactPath,
+  distribution,
   executablePath,
   screenshotPath,
   resultPath,
@@ -419,6 +504,14 @@ export async function runArtifactSmoke({
   assert.ok(product, `Unknown Pasta desktop app "${appKey}". Expected one of: ${PRODUCT_KEYS.join(", ")}`);
   assert.ok(executablePath, "Set PASTA_DESKTOP_EXECUTABLE to the packaged Pasta executable");
   await access(executablePath);
+  assert.equal(
+    Boolean(artifactPath),
+    Boolean(distribution),
+    "macOS artifact smoke requires both artifactPath and distribution when either is supplied",
+  );
+  const artifact = artifactPath
+    ? await createMacArtifactIdentity({ artifactPath, distribution, executablePath })
+    : null;
 
   const profilePath = path.join(os.tmpdir(), `pasta-${appKey}-artifact-smoke-${process.pid}`);
   await rm(profilePath, { recursive: true, force: true });
@@ -485,6 +578,7 @@ export async function runArtifactSmoke({
       stableOriginRelaunch: true,
       bundledToolsOpened: product.bundledTools?.length || 0,
       provenance,
+      ...(artifact ? { artifact } : {}),
       screenshotPath: screenshotPath || null,
     };
     if (resultPath) {
@@ -501,8 +595,11 @@ export async function runArtifactSmoke({
 }
 
 async function main() {
+  const artifactArguments = parseMacArtifactIdentityArguments(process.argv.slice(2));
   await runArtifactSmoke({
     appKey: String(process.env.PASTA_DESKTOP_APP || "").trim(),
+    artifactPath: artifactArguments.artifactPath,
+    distribution: artifactArguments.distribution,
     executablePath: process.env.PASTA_DESKTOP_EXECUTABLE,
     screenshotPath: process.env.PASTA_DESKTOP_SCREENSHOT,
     resultPath: process.env.PASTA_DESKTOP_RESULT_PATH,

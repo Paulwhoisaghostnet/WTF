@@ -152,6 +152,8 @@
     "pasta:shadownet:gnocchi:ui-live": "tsx scripts/pasta-protocol/shadownet-gnocchi-ui-live.ts",
     "pasta:shadownet:gnocchi:ui-live:check": "tsx --test scripts/pasta-protocol/shadownet-gnocchi-ui-live.test.ts",
     "pasta:shadownet:gnocchi:current-recovery:check": "tsx --test scripts/pasta-protocol/shadownet-gnocchi-current-recovery.test.ts",
+    "pasta:shadownet:gnocchi:terminal-readonly-recovery": "tsx scripts/pasta-protocol/shadownet-gnocchi-terminal-readonly-recovery.ts",
+    "pasta:shadownet:gnocchi:terminal-readonly-recovery:check": "tsx --test scripts/pasta-protocol/shadownet-gnocchi-terminal-readonly-recovery.test.ts",
     "pasta:shadownet:gnocchi:readonly-finalize": "tsx scripts/pasta-protocol/shadownet-gnocchi-readonly-finalizer.ts",
     "pasta:shadownet:gnocchi:readonly-finalize:check": "tsx --test scripts/pasta-protocol/shadownet-gnocchi-readonly-finalizer.test.ts",
     "pasta:shadownet:macaroni:current-recovery": "tsx scripts/pasta-protocol/shadownet-macaroni-current-recovery.ts",

@@ -848,7 +848,9 @@ function validateRavioliLimitedEditionPolicyArtifact(bytes, label) {
   for (const [name, timestamp] of [["wrapper.saleEnd", wrapperSaleEnd], ["wrapper.childExpiryCommittedOnChain", childExpiryCommittedOnChain], ["child.expiry", childExpiry]]) {
     if (!Number.isFinite(Date.parse(timestamp))) fail(`${label}.policy.${name} must be an ISO timestamp`);
   }
-  if (childExpiryCommittedOnChain !== childExpiry) fail(`${label}.policy committed child expiry differs from the child`);
+  if (Date.parse(childExpiryCommittedOnChain) !== Date.parse(childExpiry)) {
+    fail(`${label}.policy committed child expiry differs from the child`);
+  }
   if (Date.parse(wrapperSaleEnd) >= Date.parse(childExpiry)) {
     fail(`${label}.policy wrapper must end strictly before its child`);
   }
@@ -917,7 +919,8 @@ function validateRavioliModeOutcomeArtifact(bytes, label) {
   for (const [index, entry] of opens.entries()) {
     const open = expectObject(entry, `${label}.outcome.openOutcomes[${index}]`);
     if (expectSafeInteger(open.tokenId, `${label}.outcome.openOutcomes[${index}].tokenId`) !== tokenId) fail(`${label}.outcome open token drift`);
-    serials.push(expectSafeInteger(open.serial, `${label}.outcome.openOutcomes[${index}].serial`));
+    const openSerial = expectSafeInteger(open.serial, `${label}.outcome.openOutcomes[${index}].serial`);
+    serials.push(openSerial);
     const collector = expectString(open.collector, `${label}.outcome.openOutcomes[${index}].collector`);
     if (validateAddress(collector) !== ValidationResult.VALID || !collector.startsWith("tz")) fail(`${label}.outcome collector is not a valid implicit Tezos address`);
     const hash = validateOperationHash(open.operationHash, `${label}.outcome.openOutcomes[${index}].operationHash`);
@@ -948,7 +951,9 @@ function validateRavioliModeOutcomeArtifact(bytes, label) {
     if (entrypointCount("mint_pack_iteration") !== openShape.rotiniMint) fail(`${label}.outcome open tree generative-mint call count drift`);
     const rootRow = operationRows.find((row) => row.entrypoint === "open_pack");
     const rootValue = expectObject(rootRow.value, `${label}.outcome open_pack value`);
-    if (expectSafeInteger(rootValue.token_id, `${label}.outcome open_pack token_id`) !== tokenId) fail(`${label}.outcome open_pack token drift`);
+    if (expectCanonicalNat(rootValue.token_id, `${label}.outcome open_pack token_id`) !== String(tokenId)) {
+      fail(`${label}.outcome open_pack token drift`);
+    }
     if (expectArray(rootValue.actions, `${label}.outcome open_pack actions`).length !== openShape.actions) fail(`${label}.outcome open_pack action count drift`);
     const deltas = expectArray(open.balanceDeltas, `${label}.outcome.openOutcomes[${index}].balanceDeltas`);
     if (deltas.length !== openShape.deltaKinds.length) fail(`${label}.outcome child balance-delta count drift`);
@@ -963,7 +968,20 @@ function validateRavioliModeOutcomeArtifact(bytes, label) {
       validateContractAddress(delta.contract, `${label}.outcome child contract`);
       expectSafeInteger(delta.tokenId, `${label}.outcome child tokenId`);
     }
-    if (JSON.stringify(deltaKinds.sort()) !== JSON.stringify([...openShape.deltaKinds].sort())) {
+    if (tokenId === 1) {
+      const expectedEscrowProvenance = openSerial === 0
+        ? "escrow-returned-claim"
+        : "escrow-transferred-claim";
+      if (deltaKinds.length !== 1 || deltaKinds[0] !== expectedEscrowProvenance) {
+        fail(`${label}.outcome blind funded-pool claim provenance drift`);
+      }
+    }
+    const normalizedDeltaKinds = deltaKinds.map((kind) =>
+      kind === "escrow-returned-claim" || kind === "escrow-transferred-claim"
+        ? "escrow"
+        : kind
+    );
+    if (JSON.stringify(normalizedDeltaKinds.sort()) !== JSON.stringify([...openShape.deltaKinds].sort())) {
       fail(`${label}.outcome child delivery kinds drift`);
     }
   }
@@ -1560,10 +1578,13 @@ function classifyRavioliJournalPin(fileName) {
   if (/^ravioli-sealed-reveal-[1-5]\.json$/.test(fileName)) {
     return "sealedReveal";
   }
-  if (/^ravioli-generated-token-.+\.json$/.test(fileName)) {
+  if (/^ravioli-generated-token(?:-.+)?\.json$/.test(fileName)) {
     return "generatedMetadata";
   }
-  if (/^ravioli-generated-(?!token-).+\.(?:png|gif|zip)$/.test(fileName)) {
+  if (
+    /^ravioli-generated-(?!token-).+\.(?:png|gif|zip)$/.test(fileName) ||
+    /^ravioli-[0-5]-\d+-\d+\.(?:png|gif|zip)$/.test(fileName)
+  ) {
     return "generatedMedia";
   }
   if (

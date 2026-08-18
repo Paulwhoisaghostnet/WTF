@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
@@ -13,16 +14,31 @@ import {
   FRESH_RAVIOLI_DEPENDENCY_SCHEMA,
   FRESH_ROTINI_CONTRACT_ARTIFACT_PATH,
   FRESH_ROTINI_RECEIPT_PATH,
+  GNOCCHI_PORTABLE_SUPPLEMENT_STAGES,
+  GNOCCHI_TERMINAL_LIFECYCLE_STAGES,
+  RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL,
+  RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL,
+  RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+  RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+  RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
   loadFreshRavioliDependencies,
   recheckFreshRavioliDependencies,
   recheckRavioliDependenciesForCurrentV2Resume,
   recheckRavioliDependenciesForCurrentV3Restart,
+  recheckRavioliDependenciesForCurrentOp14Resume,
+  recheckRavioliDependenciesForCurrentOp20Resume,
+  recheckRavioliDependenciesForCurrentOp55Resume,
+  recheckRavioliDependenciesForCurrentOp63Resume,
   recheckRavioliDependenciesForCurrentV6Resume,
   recheckRavioliDependenciesForMode0Replay,
   type FreshGnocchiLiveSnapshot,
   type FreshRavioliDependencies,
   type FreshRotiniLiveSnapshot,
 } from "./shadownet-ravioli-fresh-dependencies";
+import {
+  GNOCCHI_TERMINAL_RECOVERY_CREATOR,
+  GNOCCHI_TERMINAL_RECOVERY_RUN_ID,
+} from "./shadownet-gnocchi-terminal-readonly-recovery";
 import { deterministicJsonBytes } from "./shadownet-proof-kit";
 
 type JsonObject = Record<string, any>;
@@ -33,11 +49,21 @@ const GNOCCHI = "KT1NJJ55w4TLkRVfuweeRfvT9jvWFf4viaup";
 const ROTINI = "KT1LUc15yfskvtWfKvYt9oFgXt24TnWx1P8T";
 const RAVIOLI_ROUTER = "KT1TuPCh4gR19w7kdrYVv5jVF9VrKJU6z5rj";
 const GNOCCHI_ADAPTER = "KT1SanxZmBUoQP4Td3JTLVnhoWV43zq9tUqN";
+const ROTINI_ADAPTER = "KT1E5mXCQNj9gsaw3ZYNg5fC8TLk4XHKeU6i";
 const OTHER_CREATOR = "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej";
 const RAVIOLI_OPERATOR_APPLIED_LEVEL = 4_311_759;
 const RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL = 4_312_347;
 const RAVIOLI_MINTER_APPLIED_LEVEL = 4_312_400;
 const RAVIOLI_RESERVATION_APPLIED_LEVEL = 4_312_450;
+const RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL = 4_312_500;
+const RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL = 4_312_550;
+const RAVIOLI_OP55_MODE0_APPLIED_LEVEL = 4_535_185;
+const RAVIOLI_OP55_MODE1_APPLIED_LEVEL = 4_535_199;
+const RAVIOLI_OP55_MINTER_APPLIED_LEVEL = 4_549_843;
+const RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL = 4_550_611;
+const RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL = 4_550_625;
+const RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL = 4_550_631;
+const RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL = 4_550_637;
 const GNOCCHI_ORIGIN = "ooqQerwmFGorWABitNHN2fHYiTszK9VYB7UJhaRSciFp1pBEXKD";
 const ROTINI_ORIGIN = "ooKJG9hGCG2hyVmANRqww5Jq3U4jE91xduirtwK61Biov5CQrWd";
 const RECOVERED_GNOCCHI_HASHES = [
@@ -55,6 +81,11 @@ const RECOVERED_GNOCCHI_HASHES = [
   "ooqfSTLWt17kcE5bBQbZB34sbqTqLByQWdfPdYPjNTbUPykSvQ4",
 ] as const;
 
+const CURRENT_V2_SOURCE_ROOT = path.resolve(
+  "artifacts/pasta-protocol-proof-runs",
+  GNOCCHI_TERMINAL_RECOVERY_RUN_ID,
+);
+
 type Fixture = {
   tempRoot: string;
   runRoot: string;
@@ -63,6 +94,14 @@ type Fixture = {
   rotiniManifestPath: string;
   rotiniReceiptPath: string;
   gnocchiMediaPath: string;
+};
+
+type CurrentV2Fixture = {
+  tempRoot: string;
+  runRoot: string;
+  gnocchiRoot: string;
+  gnocchiManifestPath: string;
+  gnocchiReceiptPath: string;
 };
 
 function sha256(bytes: Uint8Array): string {
@@ -78,6 +117,103 @@ async function writeJson(filePath: string, value: unknown): Promise<string> {
   const bytes = jsonBytes(value);
   await writeFile(filePath, bytes);
   return sha256(bytes);
+}
+
+async function copyCurrentV2Fixture(t: TestContext): Promise<CurrentV2Fixture> {
+  const sourceManifest = path.join(CURRENT_V2_SOURCE_ROOT, "gnocchi", "manifest.json");
+  await assert.doesNotReject(readFile(sourceManifest), `current v2 proof fixture is missing at ${sourceManifest}`);
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "pasta-ravioli-current-v2-loader-"));
+  t.after(async () => {
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+  const runRoot = path.join(tempRoot, GNOCCHI_TERMINAL_RECOVERY_RUN_ID);
+  await mkdir(runRoot, { recursive: true });
+  await Promise.all(["gnocchi", "rotini"].map((app) =>
+    cp(path.join(CURRENT_V2_SOURCE_ROOT, app), path.join(runRoot, app), {
+      recursive: true,
+      mode: fsConstants.COPYFILE_FICLONE,
+    })
+  ));
+  const gnocchiRoot = path.join(runRoot, "gnocchi");
+  return {
+    tempRoot,
+    runRoot,
+    gnocchiRoot,
+    gnocchiManifestPath: path.join(gnocchiRoot, "manifest.json"),
+    gnocchiReceiptPath: path.join(gnocchiRoot, FRESH_GNOCCHI_RECOVERED_RECEIPT_PATH),
+  };
+}
+
+async function loadCurrentV2Fixture(fixture: CurrentV2Fixture): Promise<FreshRavioliDependencies> {
+  return loadFreshRavioliDependencies({
+    runRoot: fixture.runRoot,
+    expectedRunId: GNOCCHI_TERMINAL_RECOVERY_RUN_ID,
+    expectedCreator: GNOCCHI_TERMINAL_RECOVERY_CREATOR,
+  });
+}
+
+function terminalSummary(terminalReceipt: JsonObject, receiptSha256: string): JsonObject {
+  return {
+    receiptSha256,
+    prefix: terminalReceipt.prefix,
+    operationGraph: terminalReceipt.operationGraph,
+    terminalState: terminalReceipt.terminalState,
+    bridge: terminalReceipt.bridge,
+    unchanged: terminalReceipt.unchanged,
+    recoveredScreenshotOrdinals: [18, 19],
+    replayedAppliedOperations: 0,
+  };
+}
+
+async function mutateCurrentV2TerminalReceipt(
+  fixture: CurrentV2Fixture,
+  mutate: (terminalReceipt: JsonObject) => void,
+): Promise<void> {
+  const manifest = await readJson(fixture.gnocchiManifestPath);
+  const finalReceipt = await readJson(fixture.gnocchiReceiptPath);
+  const terminalPath = path.join(fixture.gnocchiRoot, "artifacts/gnocchi-terminal-readonly-recovery.json");
+  const reconciliationPath = path.join(fixture.gnocchiRoot, "artifacts/gnocchi-chain-reconciliation-snapshot.json");
+  const terminalReceipt = await readJson(terminalPath);
+  const reconciliation = await readJson(reconciliationPath);
+  mutate(terminalReceipt);
+  const terminalSha256 = await writeJson(terminalPath, terminalReceipt);
+  const summary = terminalSummary(terminalReceipt, terminalSha256);
+  finalReceipt.terminalRecovery = summary;
+  reconciliation.terminalRecovery = summary;
+  const reconciliationSha256 = await writeJson(reconciliationPath, reconciliation);
+  finalReceipt.chainReconciliation.sha256 = reconciliationSha256;
+  const finalReceiptSha256 = await writeJson(fixture.gnocchiReceiptPath, finalReceipt);
+  const terminalBinding = manifest.artifacts.find((artifact: JsonObject) =>
+    artifact.path === "artifacts/gnocchi-terminal-readonly-recovery.json"
+  );
+  const reconciliationBinding = manifest.artifacts.find((artifact: JsonObject) =>
+    artifact.path === "artifacts/gnocchi-chain-reconciliation-snapshot.json"
+  );
+  const finalReceiptBinding = manifest.artifacts.find((artifact: JsonObject) =>
+    artifact.path === FRESH_GNOCCHI_RECOVERED_RECEIPT_PATH
+  );
+  assert.ok(terminalBinding && reconciliationBinding && finalReceiptBinding);
+  terminalBinding.sha256 = terminalSha256;
+  reconciliationBinding.sha256 = reconciliationSha256;
+  finalReceiptBinding.sha256 = finalReceiptSha256;
+  await writeJson(fixture.gnocchiManifestPath, manifest);
+}
+
+async function mutateCurrentV2BoundArtifact(input: {
+  fixture: CurrentV2Fixture;
+  relativePath: string;
+  mutate: (value: JsonObject) => void;
+}): Promise<void> {
+  const artifactPath = path.join(input.fixture.gnocchiRoot, input.relativePath);
+  const value = await readJson(artifactPath);
+  input.mutate(value);
+  const digest = await writeJson(artifactPath, value);
+  await mutateManifest(input.fixture.gnocchiManifestPath, (manifest) => {
+    const binding = manifest.artifacts.find((artifact: JsonObject) => artifact.path === input.relativePath);
+    assert.ok(binding);
+    binding.sha256 = digest;
+    if ("retrievedSha256" in binding) binding.retrievedSha256 = digest;
+  });
 }
 
 function ipfs(label: string): string {
@@ -1089,6 +1225,96 @@ function currentV6ReservationRow(overrides: JsonObject = {}): JsonObject {
   };
 }
 
+function currentRotiniPackMinterRow(overrides: JsonObject = {}): JsonObject {
+  return {
+    id: 300_739,
+    active: true,
+    hash: "expru5C4UJ16tkud9qEnqC9oH1F82RecdCSkzssAyNdaMH6tXVAY5H",
+    key: ROTINI_ADAPTER,
+    value: {},
+    firstLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    lastLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    updates: 1,
+    ...overrides,
+  };
+}
+
+function currentRotiniPackReservationRow(overrides: JsonObject = {}): JsonObject {
+  return {
+    id: 300_740,
+    active: true,
+    hash: "expru5C4UJ16tkud9qEnqC9oH1F82RecdCSkzssAyNdaMH6tXVAY6H",
+    key: { owner: ROTINI_ADAPTER, token_id: "0" },
+    value: "2",
+    firstLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL,
+    lastLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL,
+    updates: 2,
+    ...overrides,
+  };
+}
+
+function currentOp55OperatorRows(): JsonObject[] {
+  return [
+    mode0RecoveryOperatorRow({
+      firstLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+      lastLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+      updates: 2,
+    }),
+    mode0RecoveryOperatorRow({
+      id: 300_741,
+      hash: "expru5C4UJ16tkud9qEnqC9oH1F82RecdCSkzssAyNdaMH6tXVAY7H",
+      key: {
+        owner: CREATOR,
+        operator: RAVIOLI_ROUTER,
+        token_id: "1",
+      },
+      firstLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+      lastLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+      updates: 2,
+    }),
+  ];
+}
+
+function currentOp55MinterRow(overrides: JsonObject = {}): JsonObject {
+  return currentV6MinterRow({
+    firstLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    lastLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    updates: 2,
+    ...overrides,
+  });
+}
+
+function currentOp63MinterRow(overrides: JsonObject = {}): JsonObject {
+  return currentOp55MinterRow({
+    lastLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+    updates: 3,
+    ...overrides,
+  });
+}
+
+function currentOp63ReservedMintRow(overrides: JsonObject = {}): JsonObject {
+  return {
+    id: 324_410,
+    active: true,
+    hash: "expruzyVX1ax9X3q8g36JTaYzYajziuSK37iX55aDsnPUUtjkjU27k",
+    key: { owner: GNOCCHI_ADAPTER, token_id: "1" },
+    value: "2",
+    firstLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
+    lastLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+    updates: 4,
+    ...overrides,
+  };
+}
+
+function currentOp55RotiniPackMinterRow(overrides: JsonObject = {}): JsonObject {
+  return currentRotiniPackMinterRow({
+    firstLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    lastLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    updates: 2,
+    ...overrides,
+  });
+}
+
 test("loads only exact same-run Gnocchi and Rotini UI-live evidence", async (t) => {
   const fixture = await createFixture(t);
   const loaded = await loadFixture(fixture);
@@ -1133,6 +1359,135 @@ test("loads a strict read-only-finalized Gnocchi proof without synthesizing nati
   assert.equal(loaded.gnocchi.receiptPath, await realpath(fixture.gnocchiReceiptPath));
   assert.equal(loaded.gnocchi.originationOperationHash, RECOVERED_GNOCCHI_HASHES[0]);
   assert.equal(loaded.gnocchi.token2LimitedEdition.remainingMintable, 1);
+});
+
+test("loads the exact current v2 terminal-recovered Gnocchi proof with canonical lifecycle and portable evidence", async () => {
+  const loaded = await loadFreshRavioliDependencies({
+    runRoot: CURRENT_V2_SOURCE_ROOT,
+    expectedRunId: GNOCCHI_TERMINAL_RECOVERY_RUN_ID,
+    expectedCreator: GNOCCHI_TERMINAL_RECOVERY_CREATOR,
+  });
+  assert.equal(loaded.runId, GNOCCHI_TERMINAL_RECOVERY_RUN_ID);
+  assert.equal(loaded.gnocchi.contractAddress, "KT1Pr5GJoiQY8EZeQjmZ4bBy6NDHCLwvFGhv");
+  assert.equal(loaded.gnocchi.originationOperationHash, "oouBPx7EvSx68gAxRa8qjQCAyDwSHc2rMBSesJKBDFBUuDAB6ak");
+  assert.equal(loaded.gnocchi.token2LimitedEdition.remainingMintable, 1);
+});
+
+test("current v2 terminal and portable dependency evidence fails closed on mutation or inventory expansion", async (t) => {
+  const cases: Array<{
+    name: string;
+    expected: RegExp;
+    mutate: (fixture: CurrentV2Fixture) => Promise<void>;
+  }> = [
+    {
+      name: "terminal bridge injection",
+      expected: /injectedOperations|injected operations/,
+      mutate: async (fixture) => mutateCurrentV2TerminalReceipt(
+        fixture,
+        (receipt) => { receipt.bridge.injectedOperations = 1; },
+      ),
+    },
+    {
+      name: "before/after actor-counter drift",
+      expected: /actor counters changed/,
+      mutate: async (fixture) => mutateCurrentV2TerminalReceipt(
+        fixture,
+        (receipt) => { receipt.after.actorCounters.collectorTwo += 1; },
+      ),
+    },
+    {
+      name: "replayed terminal operation",
+      expected: /replayed operations must be 0/,
+      mutate: async (fixture) => mutateCurrentV2TerminalReceipt(
+        fixture,
+        (receipt) => { receipt.operationGraph.replayedOperations = 1; },
+      ),
+    },
+    {
+      name: "portable stage copied into canonical lifecycle receipt",
+      expected: /lifecycle receipt must bind exactly 19/,
+      mutate: async (fixture) => {
+        const manifest = await readJson(fixture.gnocchiManifestPath);
+        await mutateReceipt(fixture.gnocchiManifestPath, fixture.gnocchiReceiptPath, (receipt) => {
+          receipt.screenshots.push(manifest.screenshots[19]);
+        });
+      },
+    },
+    {
+      name: "portable stages reordered",
+      expected: /portable screenshot stages/,
+      mutate: async (fixture) => mutateManifest(fixture.gnocchiManifestPath, (manifest) => {
+        [manifest.screenshots[19], manifest.screenshots[20]] = [manifest.screenshots[20], manifest.screenshots[19]];
+      }),
+    },
+    {
+      name: "unexpected stage 903",
+      expected: /must bind exactly 21 screenshots/,
+      mutate: async (fixture) => mutateManifest(fixture.gnocchiManifestPath, (manifest) => {
+        manifest.screenshots.push({
+          caption: "unexpected",
+          path: "screenshots/903-unexpected.png",
+          sha256: "f".repeat(64),
+          stage: "903-unexpected",
+        });
+      }),
+    },
+    {
+      name: "portable report signer action",
+      expected: /signer bridge actions must be 0/,
+      mutate: async (fixture) => mutateCurrentV2BoundArtifact({
+        fixture,
+        relativePath: "artifacts/gnocchi-portable-self-hosted-site-proof.json",
+        mutate: (report) => { report.independentRuntime.signerBridgeActions = 1; },
+      }),
+    },
+    {
+      name: "portable sidecar ordinal drift",
+      expected: /sidecar 901 ordinal must be 901/,
+      mutate: async (fixture) => mutateCurrentV2BoundArtifact({
+        fixture,
+        relativePath: `artifacts/screenshot-${GNOCCHI_PORTABLE_SUPPLEMENT_STAGES[0]}.json`,
+        mutate: (sidecar) => { sidecar.stageOrdinal = 903; },
+      }),
+    },
+    {
+      name: "unexpected manifest artifact",
+      expected: /manifest artifact inventory/,
+      mutate: async (fixture) => {
+        const relativePath = "artifacts/unexpected-terminal-addition.json";
+        const digest = await writeJson(path.join(fixture.gnocchiRoot, relativePath), { unexpected: true });
+        await mutateManifest(fixture.gnocchiManifestPath, (manifest) => {
+          manifest.artifacts.push({
+            id: "unexpected-terminal-addition",
+            kind: "unexpected",
+            path: relativePath,
+            sha256: digest,
+          });
+        });
+      },
+    },
+    {
+      name: "portable ZIP corruption",
+      expected: /portable ZIP validation failed|unexpectedly small|not a ZIP/,
+      mutate: async (fixture) => {
+        const relativePath = "artifacts/gnocchi-portable-self-hosted-site.zip";
+        const bytes = Buffer.from("PK-corrupt-portable-site");
+        await writeFile(path.join(fixture.gnocchiRoot, relativePath), bytes);
+        await mutateManifest(fixture.gnocchiManifestPath, (manifest) => {
+          const binding = manifest.artifacts.find((artifact: JsonObject) => artifact.path === relativePath);
+          assert.ok(binding);
+          binding.sha256 = sha256(bytes);
+        });
+      },
+    },
+  ];
+  for (const current of cases) {
+    await t.test(current.name, async (subtest) => {
+      const fixture = await copyCurrentV2Fixture(subtest);
+      await current.mutate(fixture);
+      await assert.rejects(loadCurrentV2Fixture(fixture), current.expected);
+    });
+  }
 });
 
 test("loads only an exact checkpointed Gnocchi recovery with a 46-event zero-replay continuation", async (t) => {
@@ -1609,6 +1964,173 @@ test("current-v3 restart accepts the exact two-operator history, token-0 escrow,
   );
 });
 
+test("operation-14 resume accepts only the current two-pool funding state without later LE reservations", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const exactSnapshots = () => {
+    const snapshots = liveSnapshots(evidence);
+    snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 1 };
+    snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 2, "1": 1 };
+    snapshots.gnocchi.activeOperators = currentV3RecoveryOperatorRows();
+    return snapshots;
+  };
+  const recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    mode0AppliedLevel: RAVIOLI_OPERATOR_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL,
+  };
+  const snapshots = exactSnapshots();
+  const checked = await recheckRavioliDependenciesForCurrentOp14Resume(
+    evidence,
+    {
+      readGnocchi: async () => snapshots.gnocchi,
+      readRotini: async () => snapshots.rotini,
+    },
+    recovery,
+    { now: "2026-07-22T12:00:00.000Z" },
+  );
+  assert.equal(checked.classification, "RAVIOLI-CURRENT-OP14-RESUME");
+  assert.deepEqual(checked.acceptedMutation, {
+    kind: "gnocchi-fa2-operators-and-current-funded-pools",
+    owner: CREATOR,
+    operator: RAVIOLI_ROUTER,
+    tokenIds: [0, 1],
+    creatorBalances: { "0": 0, "1": 1 },
+    routerEscrowBalances: { "0": 2, "1": 1 },
+    mode0AppliedLevel: RAVIOLI_OPERATOR_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL,
+  });
+
+  for (const mutation of [
+    (value: ReturnType<typeof exactSnapshots>) => {
+      (value.gnocchi.creatorEscrowBalances as JsonObject)["1"] = 0;
+    },
+    (value: ReturnType<typeof exactSnapshots>) => {
+      (value.gnocchi.recoveryRouterEscrowBalances as JsonObject)["1"] = 2;
+    },
+    (value: ReturnType<typeof exactSnapshots>) => {
+      value.gnocchi.token2.totalReserved = 1;
+    },
+    (value: ReturnType<typeof exactSnapshots>) => {
+      value.gnocchi.authorizedMinters = [currentV6MinterRow()];
+    },
+  ]) {
+    const drifted = exactSnapshots();
+    mutation(drifted);
+    await assert.rejects(
+      recheckRavioliDependenciesForCurrentOp14Resume(
+        evidence,
+        {
+          readGnocchi: async () => drifted.gnocchi,
+          readRotini: async () => drifted.rotini,
+        },
+        recovery,
+        { now: "2026-07-22T12:00:00.000Z" },
+      ),
+    );
+  }
+});
+
+test("operation-20 resume accepts only the authorized Gnocchi adapter before any LE capacity is reserved", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    mode0AppliedLevel: RAVIOLI_OPERATOR_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_MINTER_APPLIED_LEVEL,
+  };
+  const exactSnapshots = () => {
+    const snapshots = liveSnapshots(evidence);
+    snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 1 };
+    snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 2, "1": 1 };
+    snapshots.gnocchi.activeOperators = currentV3RecoveryOperatorRows();
+    snapshots.gnocchi.authorizedMinters = [currentV6MinterRow()];
+    return snapshots;
+  };
+
+  const snapshots = exactSnapshots();
+  const checked = await recheckRavioliDependenciesForCurrentOp20Resume(
+    evidence,
+    {
+      readGnocchi: async () => snapshots.gnocchi,
+      readRotini: async () => snapshots.rotini,
+    },
+    recovery,
+    { now: "2026-07-22T12:00:00.000Z" },
+  );
+  assert.equal(checked.classification, "RAVIOLI-CURRENT-OP20-RESUME");
+  assert.deepEqual(checked.acceptedMutation, {
+    kind: "gnocchi-fa2-operators-funded-pools-and-authorized-adapter",
+    owner: CREATOR,
+    operator: RAVIOLI_ROUTER,
+    gnocchiAdapter: GNOCCHI_ADAPTER,
+    tokenIds: [0, 1],
+    creatorBalances: { "0": 0, "1": 1 },
+    routerEscrowBalances: { "0": 2, "1": 1 },
+    mode0AppliedLevel: RAVIOLI_OPERATOR_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_MINTER_APPLIED_LEVEL,
+  });
+
+  const drifts: Array<{
+    label: string;
+    error: RegExp;
+    mutate(value: ReturnType<typeof exactSnapshots>): void;
+  }> = [
+    {
+      label: "missing adapter authorization",
+      error: /authorized minters must contain only the journal-bound adapter/,
+      mutate: ({ gnocchi }) => { gnocchi.authorizedMinters = []; },
+    },
+    {
+      label: "wrong authorized adapter",
+      error: /current minter key/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.authorizedMinters = [currentV6MinterRow({ key: ROTINI_ADAPTER })];
+      },
+    },
+    {
+      label: "additional adapter authorization",
+      error: /authorized minters must contain only the journal-bound adapter/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.authorizedMinters = [
+          currentV6MinterRow(),
+          currentV6MinterRow({ id: 300_741, key: ROTINI_ADAPTER }),
+        ];
+      },
+    },
+    {
+      label: "reservation row already exists",
+      error: /reserved mints must be empty/,
+      mutate: ({ gnocchi }) => { gnocchi.reservedMints = [currentV6ReservationRow()]; },
+    },
+    {
+      label: "token-2 capacity already reserved",
+      error: /token 2 total reserved must be 0/,
+      mutate: ({ gnocchi }) => { gnocchi.token2.totalReserved = 1; },
+    },
+  ];
+  for (const drift of drifts) {
+    const value = exactSnapshots();
+    drift.mutate(value);
+    await assert.rejects(
+      recheckRavioliDependenciesForCurrentOp20Resume(
+        evidence,
+        {
+          readGnocchi: async () => value.gnocchi,
+          readRotini: async () => value.rotini,
+        },
+        recovery,
+        { now: "2026-07-22T12:00:00.000Z" },
+      ),
+      drift.error,
+      drift.label,
+    );
+  }
+});
+
 test("current-v6 resume accepts only the exact funded-pool balances and journal-bound LE reservation", async (t) => {
   const fixture = await createFixture(t);
   const evidence = await loadFixture(fixture);
@@ -1707,6 +2229,717 @@ test("current-v6 resume accepts only the exact funded-pool balances and journal-
       drift.label,
     );
   }
+});
+
+test("current authenticated resume binds Rotini reservations to the exact semantic prefix", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const op23Recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    mode0AppliedLevel: RAVIOLI_OPERATOR_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_MODE1_OPERATOR_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_MINTER_APPLIED_LEVEL,
+    reservedMintAppliedLevel: RAVIOLI_RESERVATION_APPLIED_LEVEL,
+  };
+  const op30Recovery = {
+    ...op23Recovery,
+    rotiniReservation: {
+      adapterAddress: ROTINI_ADAPTER,
+      packMinterAppliedLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+      reservationAppliedLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL,
+    },
+  };
+  const snapshotsAt = (profile: "op23" | "op30") => {
+    const snapshots = liveSnapshots(evidence);
+    snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 1 };
+    snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 2, "1": 1 };
+    snapshots.gnocchi.token2.totalReserved = 1;
+    snapshots.gnocchi.activeOperators = currentV3RecoveryOperatorRows();
+    snapshots.gnocchi.authorizedMinters = [currentV6MinterRow()];
+    snapshots.gnocchi.reservedMints = [currentV6ReservationRow()];
+    if (profile === "op30") {
+      snapshots.rotini.project0.reserved = 2;
+      snapshots.rotini.authorizedPackMinters = [currentRotiniPackMinterRow()];
+      snapshots.rotini.openReservations = [];
+      snapshots.rotini.packReservations = [currentRotiniPackReservationRow()];
+    }
+    return snapshots;
+  };
+  const recheck = async (
+    recovery: typeof op23Recovery | typeof op30Recovery,
+    snapshots: ReturnType<typeof snapshotsAt>,
+  ) => {
+    return recheckRavioliDependenciesForCurrentV6Resume(
+      evidence,
+      {
+        readGnocchi: async () => snapshots.gnocchi,
+        readRotini: async () => snapshots.rotini,
+      },
+      recovery,
+      { now: "2026-07-22T12:00:00.000Z" },
+    );
+  };
+
+  const op23 = await recheck(op23Recovery, snapshotsAt("op23"));
+  assert.equal(op23.rotini.project0.reserved, 0);
+  await assert.rejects(
+    recheck(op23Recovery, snapshotsAt("op30")),
+    /live Rotini project 0 reserved must be 0/,
+    "operation 23 accepted the operation-30 Rotini reservation state",
+  );
+
+  const op30 = await recheck(op30Recovery, snapshotsAt("op30"));
+  assert.equal(op30.rotini.project0.reserved, 2);
+  assert.deepEqual(op30.acceptedMutation.rotiniReservation, {
+    adapter: ROTINI_ADAPTER,
+    projectId: 0,
+    reservedAmount: 2,
+    packMinterAppliedLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    reservationAppliedLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL,
+  });
+  await assert.rejects(
+    recheck(op30Recovery, snapshotsAt("op23")),
+    /live Rotini project 0 reserved must be 2/,
+    "operation 30 accepted the operation-23 Rotini reservation state",
+  );
+
+  const drifts: Array<{
+    label: string;
+    error: RegExp;
+    mutate: (snapshots: ReturnType<typeof snapshotsAt>) => void;
+  }> = [
+    {
+      label: "adjacent project reservation below",
+      error: /live Rotini project 0 reserved must be 2/,
+      mutate: ({ rotini }) => { rotini.project0.reserved = 1; },
+    },
+    {
+      label: "adjacent project reservation above",
+      error: /live Rotini project 0 reserved must be 2/,
+      mutate: ({ rotini }) => { rotini.project0.reserved = 3; },
+    },
+    {
+      label: "missing pack minter",
+      error: /authorized pack minters must contain only the journal-bound adapter/,
+      mutate: ({ rotini }) => { rotini.authorizedPackMinters = []; },
+    },
+    {
+      label: "wrong pack minter",
+      error: /current pack minter key/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({ key: GNOCCHI_ADAPTER })];
+      },
+    },
+    {
+      label: "inactive pack minter",
+      error: /current pack minter active marker/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({ active: false })];
+      },
+    },
+    {
+      label: "non-unit pack minter value",
+      error: /current pack minter value must expose exactly keys/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({ value: { extra: true } })];
+      },
+    },
+    {
+      label: "pack minter first-level history",
+      error: /current pack minter first level/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({
+          firstLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "pack minter last-level history",
+      error: /current pack minter last level/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({
+          lastLevel: RAVIOLI_ROTINI_PACK_MINTER_APPLIED_LEVEL + 1,
+        })];
+      },
+    },
+    {
+      label: "pack minter update history",
+      error: /current pack minter updates/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentRotiniPackMinterRow({ updates: 2 })];
+      },
+    },
+    {
+      label: "direct reservation still open",
+      error: /live Rotini open reservations must be empty/,
+      mutate: ({ rotini }) => { rotini.openReservations = [{ id: 300_741, active: true }]; },
+    },
+    {
+      label: "missing pack reservation",
+      error: /pack reservations must contain only the journal-bound project reservation/,
+      mutate: ({ rotini }) => { rotini.packReservations = []; },
+    },
+    {
+      label: "inactive pack reservation",
+      error: /current pack reservation active marker/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({ active: false })];
+      },
+    },
+    {
+      label: "wrong pack reservation owner",
+      error: /current pack reservation owner/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({
+          key: { owner: RAVIOLI_ROUTER, token_id: "0" },
+        })];
+      },
+    },
+    {
+      label: "wrong pack reservation project",
+      error: /current pack reservation project must be 0/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({
+          key: { owner: ROTINI_ADAPTER, token_id: "1" },
+        })];
+      },
+    },
+    {
+      label: "adjacent pack reservation amount below",
+      error: /current pack reservation amount must be 2/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({ value: "1" })];
+      },
+    },
+    {
+      label: "adjacent pack reservation amount above",
+      error: /current pack reservation amount must be 2/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({ value: "3" })];
+      },
+    },
+    {
+      label: "pack reservation first-level history",
+      error: /current pack reservation first level/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({
+          firstLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "pack reservation last-level history",
+      error: /current pack reservation last level/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({
+          lastLevel: RAVIOLI_ROTINI_RESERVATION_APPLIED_LEVEL + 1,
+        })];
+      },
+    },
+    {
+      label: "pack reservation update history below",
+      error: /current pack reservation updates/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({ updates: 1 })];
+      },
+    },
+    {
+      label: "pack reservation update history above",
+      error: /current pack reservation updates/,
+      mutate: ({ rotini }) => {
+        rotini.packReservations = [currentRotiniPackReservationRow({ updates: 3 })];
+      },
+    },
+  ];
+  for (const drift of drifts) {
+    const snapshots = snapshotsAt("op30");
+    drift.mutate(snapshots);
+    await assert.rejects(
+      recheck(op30Recovery, snapshots),
+      drift.error,
+      drift.label,
+    );
+  }
+});
+
+test("operation-55 resume accepts only the exact five-mode terminal dependency state and update history", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    rotiniAdapterAddress: ROTINI_ADAPTER,
+    mode0AppliedLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    rotiniPackMinterAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    minterSecondAppliedLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    rotiniPackMinterSecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    mode1SecondAppliedLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+  };
+  const terminalSnapshots = () => {
+    const snapshots = liveSnapshots(evidence);
+    snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 0 };
+    snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 0, "1": 0 };
+    snapshots.gnocchi.token2.totalMinted = 4;
+    snapshots.gnocchi.token2.totalReserved = 0;
+    snapshots.gnocchi.activeOperators = currentOp55OperatorRows();
+    snapshots.gnocchi.authorizedMinters = [currentOp55MinterRow()];
+    snapshots.gnocchi.reservedMints = [];
+    snapshots.rotini.nextTokenId = 6;
+    snapshots.rotini.project0.minted = 4;
+    snapshots.rotini.project0.reserved = 0;
+    snapshots.rotini.authorizedPackMinters = [currentOp55RotiniPackMinterRow()];
+    snapshots.rotini.openReservations = [];
+    snapshots.rotini.packReservations = [];
+    return snapshots;
+  };
+  const recheck = (snapshots: ReturnType<typeof terminalSnapshots>, currentRecovery = recovery) =>
+    recheckRavioliDependenciesForCurrentOp55Resume(
+      evidence,
+      {
+        readGnocchi: async () => snapshots.gnocchi,
+        readRotini: async () => snapshots.rotini,
+      },
+      currentRecovery,
+      { now: "2026-07-22T12:00:00.000Z" },
+    );
+
+  const checked = await recheck(terminalSnapshots());
+  assert.equal(checked.classification, "RAVIOLI-CURRENT-OP55-RESUME");
+  assert.deepEqual(checked.acceptedMutation, {
+    kind: "five-mode-terminal-dependency-state",
+    owner: CREATOR,
+    operator: RAVIOLI_ROUTER,
+    gnocchiAdapter: GNOCCHI_ADAPTER,
+    rotiniAdapter: ROTINI_ADAPTER,
+    creatorBalances: { "0": 0, "1": 0 },
+    routerEscrowBalances: { "0": 0, "1": 0 },
+    token2: { totalMinted: 4, totalReserved: 0 },
+    rotini: { nextTokenId: 6, projectId: 0, minted: 4, reserved: 0 },
+    mode0AppliedLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    rotiniPackMinterAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    minterSecondAppliedLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    rotiniPackMinterSecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    mode1SecondAppliedLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+  });
+
+  const drifts: Array<{
+    label: string;
+    error: RegExp;
+    mutate(snapshots: ReturnType<typeof terminalSnapshots>): void;
+  }> = [
+    {
+      label: "creator token-1 balance adjacent above",
+      error: /token 1 escrow balance must be 0/,
+      mutate: ({ gnocchi }) => { (gnocchi.creatorEscrowBalances as JsonObject)["1"] = 1; },
+    },
+    {
+      label: "router token-0 balance adjacent above",
+      error: /router token 0 escrow balance must be 0/,
+      mutate: ({ gnocchi }) => { (gnocchi.recoveryRouterEscrowBalances as JsonObject)["0"] = 1; },
+    },
+    {
+      label: "token-2 mint not consumed",
+      error: /token 2 total minted must be 4/,
+      mutate: ({ gnocchi }) => { gnocchi.token2.totalMinted = 3; },
+    },
+    {
+      label: "token-2 reservation remains",
+      error: /token 2 total reserved must be 0/,
+      mutate: ({ gnocchi }) => { gnocchi.token2.totalReserved = 1; },
+    },
+    {
+      label: "token-0 operator first-level drift",
+      error: /operator token 0 first level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.activeOperators = currentOp55OperatorRows();
+        (gnocchi.activeOperators[0] as JsonObject).firstLevel = RAVIOLI_OP55_MODE0_APPLIED_LEVEL - 1;
+      },
+    },
+    {
+      label: "token-1 operator terminal update drift",
+      error: /operator token 1 last level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.activeOperators = currentOp55OperatorRows();
+        (gnocchi.activeOperators[1] as JsonObject).lastLevel = RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL - 1;
+      },
+    },
+    {
+      label: "Gnocchi minter terminal update drift",
+      error: /operation-55 minter last level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.authorizedMinters = [currentOp55MinterRow({
+          lastLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "Gnocchi minter update-count drift",
+      error: /operation-55 minter updates/,
+      mutate: ({ gnocchi }) => { gnocchi.authorizedMinters = [currentOp55MinterRow({ updates: 1 })]; },
+    },
+    {
+      label: "Gnocchi reserved mint remains",
+      error: /reserved mints must be empty/,
+      mutate: ({ gnocchi }) => { gnocchi.reservedMints = [currentV6ReservationRow()]; },
+    },
+    {
+      label: "Rotini next token adjacent below",
+      error: /next token id must be 6/,
+      mutate: ({ rotini }) => { rotini.nextTokenId = 5; },
+    },
+    {
+      label: "Rotini project mint adjacent below",
+      error: /project 0 minted must be 4/,
+      mutate: ({ rotini }) => { rotini.project0.minted = 3; },
+    },
+    {
+      label: "Rotini project reservation remains",
+      error: /project 0 reserved must be 0/,
+      mutate: ({ rotini }) => { rotini.project0.reserved = 1; },
+    },
+    {
+      label: "Rotini pack-minter terminal update drift",
+      error: /operation-55 pack minter last level/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentOp55RotiniPackMinterRow({
+          lastLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "Rotini pack-minter update-count drift",
+      error: /operation-55 pack minter updates/,
+      mutate: ({ rotini }) => {
+        rotini.authorizedPackMinters = [currentOp55RotiniPackMinterRow({ updates: 1 })];
+      },
+    },
+    {
+      label: "Rotini pack reservation remains",
+      error: /pack reservations must be empty/,
+      mutate: ({ rotini }) => { rotini.packReservations = [currentRotiniPackReservationRow()]; },
+    },
+  ];
+  for (const drift of drifts) {
+    const snapshots = terminalSnapshots();
+    drift.mutate(snapshots);
+    await assert.rejects(recheck(snapshots), drift.error, drift.label);
+  }
+
+  await assert.rejects(
+    recheck(terminalSnapshots(), {
+      ...recovery,
+      mode1SecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    }),
+    /update levels must match the strictly ordered journal history/,
+    "operation-55 accepted an adjacent out-of-order recovery boundary",
+  );
+});
+
+test("operation-63 resume accepts only the exact withheld-reveal allocation dependency state", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    rotiniAdapterAddress: ROTINI_ADAPTER,
+    mode0AppliedLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    rotiniPackMinterAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    minterSecondAppliedLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    rotiniPackMinterSecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    mode1SecondAppliedLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+    minterThirdAppliedLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+    allocationAppliedLevel: RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL,
+    adapterRouterAppliedLevel: RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL,
+    reservedMintFirstAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
+    reservedMintAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+  };
+  const operation63Snapshots = () => {
+    const snapshots = liveSnapshots(evidence);
+    snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 0 };
+    snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 0, "1": 0 };
+    snapshots.gnocchi.token2.totalMinted = 4;
+    snapshots.gnocchi.token2.totalReserved = 0;
+    snapshots.gnocchi.activeOperators = currentOp55OperatorRows();
+    snapshots.gnocchi.authorizedMinters = [currentOp63MinterRow()];
+    snapshots.gnocchi.reservedMints = [currentOp63ReservedMintRow()];
+    snapshots.rotini.nextTokenId = 6;
+    snapshots.rotini.project0.minted = 4;
+    snapshots.rotini.project0.reserved = 0;
+    snapshots.rotini.authorizedPackMinters = [currentOp55RotiniPackMinterRow()];
+    snapshots.rotini.openReservations = [];
+    snapshots.rotini.packReservations = [];
+    return snapshots;
+  };
+  const recheck = (
+    snapshots: ReturnType<typeof operation63Snapshots>,
+    currentRecovery = recovery,
+  ) => recheckRavioliDependenciesForCurrentOp63Resume(
+    evidence,
+    {
+      readGnocchi: async () => snapshots.gnocchi,
+      readRotini: async () => snapshots.rotini,
+    },
+    currentRecovery,
+    { now: "2026-07-22T12:00:00.000Z" },
+  );
+
+  const checked = await recheck(operation63Snapshots());
+  assert.equal(checked.classification, "RAVIOLI-CURRENT-OP63-RESUME");
+  assert.deepEqual(checked.acceptedMutation, {
+    kind: "withheld-reveal-allocation-dependency-state",
+    owner: CREATOR,
+    operator: RAVIOLI_ROUTER,
+    gnocchiAdapter: GNOCCHI_ADAPTER,
+    rotiniAdapter: ROTINI_ADAPTER,
+    creatorBalances: { "0": 0, "1": 0 },
+    routerEscrowBalances: { "0": 0, "1": 0 },
+    token2: { totalMinted: 4, totalReserved: 0 },
+    reservedMint: { tokenId: 1, amount: 2 },
+    rotini: { nextTokenId: 6, projectId: 0, minted: 4, reserved: 0 },
+    mode0AppliedLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    rotiniPackMinterAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    minterSecondAppliedLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    rotiniPackMinterSecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    mode1SecondAppliedLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+    minterThirdAppliedLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+    allocationAppliedLevel: RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL,
+    adapterRouterAppliedLevel: RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL,
+    reservedMintFirstAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
+    reservedMintAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+  });
+
+  const drifts: Array<{
+    label: string;
+    error: RegExp;
+    mutate(snapshots: ReturnType<typeof operation63Snapshots>): void;
+  }> = [
+    {
+      label: "operation-55 operator history changed",
+      error: /operation-63 operator token 1 updates/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.activeOperators = currentOp55OperatorRows();
+        (gnocchi.activeOperators[1] as JsonObject).updates = 3;
+      },
+    },
+    {
+      label: "additional active minter",
+      error: /operation-63 authorized minters must contain only/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.authorizedMinters = [currentOp63MinterRow(), currentOp63MinterRow({ id: 324_411 })];
+      },
+    },
+    {
+      label: "minter role inactive",
+      error: /operation-63 minter active marker/,
+      mutate: ({ gnocchi }) => { gnocchi.authorizedMinters = [currentOp63MinterRow({ active: false })]; },
+    },
+    {
+      label: "minter last level before operation 56",
+      error: /operation-63 minter last level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.authorizedMinters = [currentOp63MinterRow({
+          lastLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "minter update count remains at operation 55",
+      error: /operation-63 minter updates/,
+      mutate: ({ gnocchi }) => { gnocchi.authorizedMinters = [currentOp63MinterRow({ updates: 2 })]; },
+    },
+    {
+      label: "additional reserved mint",
+      error: /operation-63 reserved mints must contain only/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.reservedMints = [currentOp63ReservedMintRow(), currentOp63ReservedMintRow({ id: 324_412 })];
+      },
+    },
+    {
+      label: "reserved mint inactive",
+      error: /operation-63 reservation active marker/,
+      mutate: ({ gnocchi }) => { gnocchi.reservedMints = [currentOp63ReservedMintRow({ active: false })]; },
+    },
+    {
+      label: "reserved mint wrong owner",
+      error: /operation-63 reservation owner/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.reservedMints = [currentOp63ReservedMintRow({ key: { owner: ROTINI_ADAPTER, token_id: "1" } })];
+      },
+    },
+    {
+      label: "reserved mint wrong token",
+      error: /operation-63 reservation token/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.reservedMints = [currentOp63ReservedMintRow({ key: { owner: GNOCCHI_ADAPTER, token_id: "2" } })];
+      },
+    },
+    {
+      label: "reserved mint amount below two recipes",
+      error: /operation-63 reservation amount/,
+      mutate: ({ gnocchi }) => { gnocchi.reservedMints = [currentOp63ReservedMintRow({ value: "1" })]; },
+    },
+    {
+      label: "reserved mint historical first level changed",
+      error: /operation-63 reservation first level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.reservedMints = [currentOp63ReservedMintRow({
+          firstLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL + 1,
+        })];
+      },
+    },
+    {
+      label: "reserved mint terminal level is not operation 61",
+      error: /operation-63 reservation last level/,
+      mutate: ({ gnocchi }) => {
+        gnocchi.reservedMints = [currentOp63ReservedMintRow({
+          lastLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL - 1,
+        })];
+      },
+    },
+    {
+      label: "reserved mint update history changed",
+      error: /operation-63 reservation updates/,
+      mutate: ({ gnocchi }) => { gnocchi.reservedMints = [currentOp63ReservedMintRow({ updates: 3 })]; },
+    },
+    {
+      label: "token-2 terminal state changed",
+      error: /token 2 total reserved must be 0/,
+      mutate: ({ gnocchi }) => { gnocchi.token2.totalReserved = 1; },
+    },
+    {
+      label: "Rotini terminal state changed",
+      error: /project 0 reserved must be 0/,
+      mutate: ({ rotini }) => { rotini.project0.reserved = 1; },
+    },
+  ];
+  for (const drift of drifts) {
+    const snapshots = operation63Snapshots();
+    drift.mutate(snapshots);
+    await assert.rejects(recheck(snapshots), drift.error, drift.label);
+  }
+
+  const recoveryDrifts: Array<{
+    label: string;
+    error: RegExp;
+    mutation: Partial<typeof recovery>;
+  }> = [
+    {
+      label: "operation-56 minter level drift",
+      error: /minter third applied level must be 4579174/,
+      mutation: { minterThirdAppliedLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL + 1 },
+    },
+    {
+      label: "operation-57 allocation level drift",
+      error: /adapter allocation applied level must be 4579176/,
+      mutation: { allocationAppliedLevel: RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL + 1 },
+    },
+    {
+      label: "operation-58 router level drift",
+      error: /adapter router applied level must be 4579178/,
+      mutation: { adapterRouterAppliedLevel: RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL + 1 },
+    },
+    {
+      label: "operation-61 reservation level drift",
+      error: /reserved mint terminal applied level must be 4579185/,
+      mutation: { reservedMintAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL + 1 },
+    },
+  ];
+  for (const drift of recoveryDrifts) {
+    await assert.rejects(
+      recheck(operation63Snapshots(), { ...recovery, ...drift.mutation }),
+      drift.error,
+      drift.label,
+    );
+  }
+});
+
+test("operation-67 terminal resume requires the released withheld Gnocchi reservation", async (t) => {
+  const fixture = await createFixture(t);
+  const evidence = await loadFixture(fixture);
+  const snapshots = liveSnapshots(evidence);
+  snapshots.gnocchi.creatorEscrowBalances = { "0": 0, "1": 0 };
+  snapshots.gnocchi.recoveryRouterEscrowBalances = { "0": 0, "1": 0 };
+  snapshots.gnocchi.token2.totalMinted = 4;
+  snapshots.gnocchi.token2.totalReserved = 0;
+  snapshots.gnocchi.activeOperators = currentOp55OperatorRows();
+  snapshots.gnocchi.authorizedMinters = [currentOp63MinterRow()];
+  snapshots.gnocchi.reservedMints = [];
+  snapshots.rotini.nextTokenId = 6;
+  snapshots.rotini.project0.minted = 4;
+  snapshots.rotini.project0.reserved = 0;
+  snapshots.rotini.authorizedPackMinters = [currentOp55RotiniPackMinterRow()];
+  snapshots.rotini.openReservations = [];
+  snapshots.rotini.packReservations = [];
+  const adapterRecoveryAppliedLevel = RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL + 1;
+  const recovery = {
+    routerAddress: RAVIOLI_ROUTER,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    rotiniAdapterAddress: ROTINI_ADAPTER,
+    mode0AppliedLevel: RAVIOLI_OP55_MODE0_APPLIED_LEVEL,
+    mode1AppliedLevel: RAVIOLI_OP55_MODE1_APPLIED_LEVEL,
+    minterAppliedLevel: RAVIOLI_OP55_MINTER_APPLIED_LEVEL,
+    rotiniPackMinterAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_APPLIED_LEVEL,
+    minterSecondAppliedLevel: RAVIOLI_OP55_MINTER_SECOND_APPLIED_LEVEL,
+    rotiniPackMinterSecondAppliedLevel: RAVIOLI_OP55_ROTINI_PACK_MINTER_SECOND_APPLIED_LEVEL,
+    mode1SecondAppliedLevel: RAVIOLI_OP55_MODE1_SECOND_APPLIED_LEVEL,
+    minterThirdAppliedLevel: RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+    allocationAppliedLevel: RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL,
+    adapterRouterAppliedLevel: RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL,
+    reservedMintFirstAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
+    reservedMintAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+    adapterRecoveryAppliedLevel,
+  };
+  const recheck = () => recheckRavioliDependenciesForCurrentOp63Resume(
+    evidence,
+    {
+      readGnocchi: async () => snapshots.gnocchi,
+      readRotini: async () => snapshots.rotini,
+    },
+    recovery,
+    { now: "2026-07-22T12:00:00.000Z" },
+  );
+  const checked = await recheck();
+  assert.equal(checked.classification, "RAVIOLI-CURRENT-OP67-RESUME");
+  assert.deepEqual(checked.acceptedMutation.reservedMint, { tokenId: 1, amount: 0 });
+  assert.equal(checked.acceptedMutation.adapterRecoveryAppliedLevel, adapterRecoveryAppliedLevel);
+
+  snapshots.gnocchi.reservedMints = [currentOp63ReservedMintRow()];
+  await assert.rejects(recheck(), /operation-67 reserved mints must be empty/);
+  snapshots.gnocchi.reservedMints = [];
+  const { adapterRecoveryAppliedLevel: _releasedAt, ...preRecovery } = recovery;
+  await assert.rejects(
+    recheckRavioliDependenciesForCurrentOp63Resume(
+      evidence,
+      {
+        readGnocchi: async () => snapshots.gnocchi,
+        readRotini: async () => snapshots.rotini,
+      },
+      preRecovery,
+      { now: "2026-07-22T12:00:00.000Z" },
+    ),
+    /operation-63 reserved mints must contain only/,
+  );
+  await assert.rejects(
+    recheckRavioliDependenciesForCurrentOp63Resume(
+      evidence,
+      {
+        readGnocchi: async () => snapshots.gnocchi,
+        readRotini: async () => snapshots.rotini,
+      },
+      { ...recovery, adapterRecoveryAppliedLevel: RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL },
+      { now: "2026-07-22T12:00:00.000Z" },
+    ),
+    /dependency update levels must match the strictly ordered journal history/,
+  );
 });
 
 test("mode-0 replay recheck rejects missing, additional, malformed, or historically changed operator evidence", async (t) => {

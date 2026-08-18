@@ -17,10 +17,11 @@ import {
   SHADOWNET_TZKT_API,
   type IpfsProofConfig,
 } from "./shadownet-proof-kit";
-import type {
-  PastaProofRestartActor,
-  PastaProofRestartResolution,
-  PastaProofRestartStep,
+import {
+  assertPastaProofRestartMempoolRecord,
+  type PastaProofRestartActor,
+  type PastaProofRestartResolution,
+  type PastaProofRestartStep,
 } from "./pasta-proof-restart-journal";
 
 type JsonObject = Record<string, any>;
@@ -116,16 +117,17 @@ export async function readPastaProofRestartActorLane(input: {
   assert.equal(validateAddress(input.signerAddress), ValidationResult.VALID, "restart signer address is invalid");
   const fetchImpl = input.fetchImpl ?? fetch;
   const base = normalizeBase(input.rpcUrl);
-  const [chainId, counterValue, mempool] = await Promise.all([
-    readJson(`${base} restart chain id`, `${base}/chains/main/chain_id`, fetchImpl),
-    readJson(
-      `${base} restart signer counter`,
-      `${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(input.signerAddress)}/counter`,
-      fetchImpl,
-    ),
-    readJson(`${base} restart mempool`, `${base}/chains/main/mempool/pending_operations`, fetchImpl),
-  ]);
+  const chainId = await readJson(`${base} restart chain id`, `${base}/chains/main/chain_id`, fetchImpl);
   assert.equal(chainId, SHADOWNET_CHAIN_ID, `${base} is not Shadownet`);
+  const mempool = assertPastaProofRestartMempoolRecord(
+    await readJson(`${base} restart mempool`, `${base}/chains/main/mempool/pending_operations`, fetchImpl),
+    `${base} restart mempool`,
+  );
+  const counterValue = await readJson(
+    `${base} restart signer counter`,
+    `${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(input.signerAddress)}/counter`,
+    fetchImpl,
+  );
   const counter = Number(counterValue);
   assert.ok(Number.isSafeInteger(counter) && counter >= 0, `${base} returned an invalid signer counter`);
   return {
@@ -322,8 +324,12 @@ export async function reconcilePastaProofRestartOperation(input: {
 }): Promise<PastaProofRestartResolution> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const family = input.pending.step.action === "originate" ? "originations" : "transactions";
-  const url = `${normalizeBase(input.tzktApiUrl ?? SHADOWNET_TZKT_API)}/operations/${family}` +
-    `?sender=${encodeURIComponent(input.signerAddress)}&counter=${input.pending.expectedCounter}&limit=10`;
+  const operationType = input.pending.step.action === "originate" ? "origination" : "transaction";
+  const tzktBase = normalizeBase(input.tzktApiUrl ?? SHADOWNET_TZKT_API);
+  const url = input.pending.operationHash
+    ? `${tzktBase}/operations/${encodeURIComponent(input.pending.operationHash)}`
+    : `${tzktBase}/operations/${family}` +
+      `?sender=${encodeURIComponent(input.signerAddress)}&counter=${input.pending.expectedCounter}&limit=10`;
   const [rowsValue, state] = await Promise.all([
     readJson(`${input.label} indexed manager operation`, url, fetchImpl),
     input.actorState
@@ -334,7 +340,9 @@ export async function reconcilePastaProofRestartOperation(input: {
   assert.ok(Array.isArray(rowsValue), `${input.label} TzKT counter response must be an array`);
   const rows = rowsValue as JsonObject[];
   const atCounter = rows.filter((row) =>
-    row?.sender?.address === input.signerAddress && Number(row?.counter) === input.pending.expectedCounter);
+    row?.type === operationType
+    && row?.sender?.address === input.signerAddress
+    && Number(row?.counter) === input.pending.expectedCounter);
   const exactHash = input.pending.operationHash
     ? atCounter.filter((row) => row?.hash === input.pending.operationHash)
     : atCounter;

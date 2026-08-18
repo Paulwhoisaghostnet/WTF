@@ -10,6 +10,7 @@ import {
   authenticatePastaProofRestartInitialCounters,
   capturePastaProofRestartInitialCounters,
   projectPastaProofRestartValue,
+  readPastaProofRestartActorLane,
   readPastaProofRestartActorState,
   reconcilePastaProofRestartOperation,
   reconcilePastaProofRestartPin,
@@ -54,15 +55,20 @@ function chainFetch(input: {
   rows?: unknown[];
   active?: boolean;
   rejected?: boolean;
+  requests?: string[];
 }): ReadOnlyFetch {
   return async (raw) => {
     const url = new URL(String(raw));
+    input.requests?.push(url.toString());
     if (url.pathname.endsWith("/chains/main/chain_id")) return json(SHADOWNET_CHAIN_ID);
     if (url.pathname.endsWith(`/context/contracts/${CREATOR}/counter`)) return json(String(input.counter));
     if (url.pathname.endsWith("/mempool/pending_operations")) {
       return json(mempool({ active: input.active, rejected: input.rejected }));
     }
-    if (url.origin === new URL(SHADOWNET_TZKT_API).origin && /\/operations\/(?:transactions|originations)$/.test(url.pathname)) {
+    if (
+      url.origin === new URL(SHADOWNET_TZKT_API).origin
+      && (/\/operations\/(?:transactions|originations)$/.test(url.pathname) || url.pathname.endsWith(`/operations/${OPERATION_HASH}`))
+    ) {
       return json(input.rows ?? []);
     }
     throw new Error(`unexpected read ${url}`);
@@ -155,6 +161,33 @@ test("dual-RPC restart counters and mempools bind journal creation, open, and pr
   );
 });
 
+test("one restart actor RPC lane serializes reads and rejects a malformed mempool", async () => {
+  let activeRequests = 0;
+  let maximumActiveRequests = 0;
+  const fetchImpl: ReadOnlyFetch = async (input, init) => {
+    assert.equal(init?.method, "GET", "restart actor-state reads must remain GET-only");
+    activeRequests += 1;
+    maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    activeRequests -= 1;
+    const url = String(input);
+    if (url.endsWith("/chains/main/chain_id")) return json(SHADOWNET_CHAIN_ID);
+    if (url.includes(`/contracts/${CREATOR}/counter`)) return json("100");
+    if (url.endsWith("/chains/main/mempool/pending_operations")) return json(null);
+    return new Response("not found", { status: 404 });
+  };
+
+  await assert.rejects(
+    readPastaProofRestartActorLane({
+      rpcUrl: SHADOWNET_RPC_PRIMARY,
+      signerAddress: CREATOR,
+      fetchImpl,
+    }),
+    /mempool/i,
+  );
+  assert.equal(maximumActiveRequests, 1, "one RPC lane must not burst chain, counter, and mempool reads");
+});
+
 test("restart payload comparison normalizes projected maps and nat representations but rejects drift", () => {
   assert.deepEqual(
     projectPastaProofRestartValue({ __map: [["", "69706673"], ["supply", 2]] }),
@@ -218,11 +251,12 @@ test("restart origination binds exact hash, signer, manager counter, and origina
 });
 
 test("operation reconciliation distinguishes exact applied, terminal rejection, absent, active, and consumed-unknown states", async () => {
+  const appliedRequests: string[] = [];
   const applied = await reconcilePastaProofRestartOperation({
     label: "exact call",
     pending: pending(),
     signerAddress: CREATOR,
-    fetchImpl: chainFetch({ counter: 101, rows: [appliedTransaction()] }),
+    fetchImpl: chainFetch({ counter: 101, rows: [appliedTransaction()], requests: appliedRequests }),
     validateApplied: async (row) => assertPastaProofRestartTransaction({ row, pending: pending(), signerAddress: CREATOR }),
   });
   assert.deepEqual(applied, {
@@ -232,6 +266,15 @@ test("operation reconciliation distinguishes exact applied, terminal rejection, 
     timestampUtc: "2026-08-08T12:00:00Z",
     entrypoints: ["buy"],
   });
+  assert.ok(
+    appliedRequests.some((url) => url.endsWith(`/operations/${OPERATION_HASH}`)),
+    "SUBMITTED reconciliation must use TzKT's exact-hash route",
+  );
+  assert.equal(
+    appliedRequests.some((url) => /\/operations\/(?:transactions|originations)\?/.test(url)),
+    false,
+    "SUBMITTED reconciliation must not depend on a collection counter filter",
+  );
 
   assert.deepEqual(
     await reconcilePastaProofRestartOperation({

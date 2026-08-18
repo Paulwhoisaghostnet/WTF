@@ -2,7 +2,8 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { link, lstat, mkdir, open, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, open, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { isIP } from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -28,6 +29,7 @@ import {
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
   type PastaUiLiveBridgeRequest,
+  type PastaUiLiveBridgeHandler,
   type PastaUiLiveFundingAuthorization,
   type PastaUiLiveAppliedOperationAssertion,
   type PastaUiLivePinProof,
@@ -54,7 +56,13 @@ import {
   pastaDeadlineBeforeCeiling,
   pastaRoundUpToDatetimeLocalMinute,
 } from "./pasta-proof-deadline-policy";
-import { createHttpGetReader, declareReadOnlyReader, readWithBoundedRetry } from "./pasta-readonly-retry";
+import {
+  createHttpGetReader,
+  declareReadOnlyReader,
+  readWithBoundedRetry,
+  type ReadOnlyFetch,
+  type ReadOnlyRetryOptions,
+} from "./pasta-readonly-retry";
 import {
   assertShadownet,
   block,
@@ -164,10 +172,15 @@ import {
 } from "./shadownet-ravioli-current-v7-resume";
 import {
   FRESH_GNOCCHI_CONTRACT_ARTIFACT_PATH,
+  FRESH_ROTINI_CONTRACT_ARTIFACT_PATH,
   loadFreshRavioliDependencies,
   recheckFreshRavioliDependencies,
   recheckRavioliDependenciesForCurrentV2Resume,
   recheckRavioliDependenciesForCurrentV3Restart,
+  recheckRavioliDependenciesForCurrentOp14Resume,
+  recheckRavioliDependenciesForCurrentOp20Resume,
+  recheckRavioliDependenciesForCurrentOp55Resume,
+  recheckRavioliDependenciesForCurrentOp63Resume,
   recheckRavioliDependenciesForCurrentV5Resume,
   recheckRavioliDependenciesForCurrentV6Resume,
   recheckRavioliDependenciesForMode0Replay,
@@ -177,6 +190,10 @@ import {
   type FreshRavioliDependencyLiveCheck,
   type FreshRotiniLiveSnapshot,
   type RavioliCurrentV3RestartRecovery,
+  type RavioliCurrentOp14ResumeRecovery,
+  type RavioliCurrentOp20ResumeRecovery,
+  type RavioliCurrentOp55ResumeRecovery,
+  type RavioliCurrentOp63ResumeRecovery,
   type RavioliCurrentV5ResumeRecovery,
   type RavioliCurrentV6ResumeRecovery,
   type RavioliMode0ReplayDependencyLiveCheck,
@@ -196,10 +213,14 @@ import {
   createRavioliCurrentResumeCoordinator,
   inspectRavioliCurrentResume,
   installRavioliPrivateRecoveryRestoration,
+  reconcileRavioliOp66RejectedPreDelegationRecovery,
+  reconcileRavioliPreparedSealedPinRecovery,
+  reconcileRavioliRejectedPreDelegationRecovery,
   reconcileRavioliCurrentResume,
   type RavioliCurrentResumeCoordinator,
   type RavioliCurrentResumeExpectedIdentity,
   type RavioliCurrentResumePlan,
+  type RavioliPreparedSealedPinRecoveryBridge,
   type RavioliPrivateRecoveryRestoration,
 } from "./shadownet-ravioli-current-resume";
 import {
@@ -208,7 +229,9 @@ import {
 } from "./shadownet-ravioli-current-live-verifier";
 import {
   assertRavioliCurrentEntropyReplayConsumed,
+  assertRavioliPreparedSealedPinEntropyReplayConsumed,
   installRavioliCurrentEntropyReplay,
+  installRavioliPreparedSealedPinEntropyReplay,
   loadRavioliCurrentEntropyReplay,
 } from "./shadownet-ravioli-current-entropy-replay";
 
@@ -230,6 +253,11 @@ const CURRENT_V8_PLAN_EXTENSION_ACTIVATE_FLAG =
 const PACKAGE_RESUME_FLAG = "PASTA_SHADOWNET_RAVIOLI_UI_LIVE_PACKAGE_RESUME_EXECUTE";
 const OUTPUT_ENV = "PASTA_PROOF_RUN_DIR";
 const PRIVATE_RECOVERY_OUTPUT_ENV = "PASTA_RAVIOLI_PRIVATE_RECOVERY_DIR";
+const RAVIOLI_BROWSER_IPFS_GATEWAY_ENV =
+  "PASTA_SHADOWNET_RAVIOLI_BROWSER_IPFS_GATEWAY";
+const RAVIOLI_PREPARED_PIN_CID_ENV =
+  "PASTA_SHADOWNET_RAVIOLI_PREPARED_PIN_CID";
+const DEFAULT_RAVIOLI_BROWSER_IPFS_GATEWAY = "https://ipfs.io/ipfs";
 const RAVIOLI_PACKAGE_CHECKPOINT_RELATIVE_PATH = "artifacts/package-resume/checkpoint.json";
 const RAVIOLI_PACKAGE_CHECKPOINT_SCHEMA = "pastaprotocol-ravioli-package-resume-checkpoint@1";
 const STATIC_ROOT = path.join(root, "public");
@@ -498,6 +526,174 @@ export function assertRavioliPreBuyWindow(input: {
   return remainingMs;
 }
 
+export function resolveRavioliBrowserIpfsGateway(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const raw = env[RAVIOLI_BROWSER_IPFS_GATEWAY_ENV]?.trim()
+    || DEFAULT_RAVIOLI_BROWSER_IPFS_GATEWAY;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must be an absolute HTTPS URL`);
+  }
+  assert.equal(
+    url.protocol,
+    "https:",
+    `${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must use HTTPS`,
+  );
+  assert.equal(
+    url.username || url.password,
+    "",
+    `${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must not contain credentials`,
+  );
+  assert.equal(
+    url.search || url.hash,
+    "",
+    `${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must not contain a query or fragment`,
+  );
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const privateIpLiteral = isIP(hostname) === 4
+    ? /^(?:10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(hostname)
+    : isIP(hostname) === 6
+      ? hostname === "::1" || /^f[cd]/.test(hostname) || /^fe[89ab]/.test(hostname)
+      : false;
+  assert.ok(
+    hostname.includes(".")
+      && hostname !== "localhost"
+      && !hostname.endsWith(".local")
+      && !privateIpLiteral,
+    `${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must identify a public gateway host`,
+  );
+  const normalizedPath = url.pathname.replace(/\/+$/g, "");
+  assert.ok(
+    normalizedPath.endsWith("/ipfs"),
+    `${RAVIOLI_BROWSER_IPFS_GATEWAY_ENV} must end with /ipfs`,
+  );
+  url.pathname = normalizedPath;
+  return url.toString().replace(/\/$/, "");
+}
+
+async function verifyRavioliPreparedPinGateway(input: {
+  label: string;
+  url: string;
+  expectedBytes: Uint8Array;
+  attempts: number;
+  timeoutMs: number;
+  retryDelayMs: number;
+}): Promise<number> {
+  let lastFailure = "no response";
+  for (let attempt = 1; attempt <= input.attempts; attempt += 1) {
+    try {
+      const response = await fetch(input.url, {
+        cache: "no-store",
+        headers: { "user-agent": "wtfos-pasta-ravioli-prepared-pin-recovery" },
+        signal: AbortSignal.timeout(input.timeoutMs),
+      });
+      if (!response.ok) {
+        lastFailure = `HTTP ${response.status}`;
+      } else {
+        const received = new Uint8Array(await response.arrayBuffer());
+        if (
+          received.byteLength !== input.expectedBytes.byteLength
+          || sha256(received) !== sha256(input.expectedBytes)
+          || !Buffer.from(received).equals(Buffer.from(input.expectedBytes))
+        ) {
+          throw new Error(`${input.label} returned bytes that differ from the authenticated prepared pin`);
+        }
+        return attempt;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("bytes that differ")) throw error;
+      lastFailure = message;
+    }
+    if (attempt < input.attempts && input.retryDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, input.retryDelayMs));
+    }
+  }
+  throw new Error(
+    `${input.label} did not return the authenticated prepared pin after ${input.attempts} attempt(s): ${lastFailure}`,
+  );
+}
+
+export async function verifyRavioliPreparedPinAdoption(input: {
+  bridge: RavioliPreparedSealedPinRecoveryBridge;
+  ipfs: IpfsProofConfig;
+}): Promise<PastaUiLivePinProof> {
+  const localGatewayUrl = ipfsGatewayUrl(
+    input.ipfs.localGatewayUrl,
+    input.bridge.envelope.cid,
+  );
+  const publicGatewayUrl = ipfsGatewayUrl(
+    input.ipfs.publicGatewayUrl,
+    input.bridge.envelope.cid,
+  );
+  await verifyRavioliPreparedPinGateway({
+    label: "Ravioli prepared pin local Kubo gateway",
+    url: localGatewayUrl,
+    expectedBytes: input.bridge.envelope.bytes,
+    attempts: 1,
+    timeoutMs: input.ipfs.requestTimeoutMs,
+    retryDelayMs: 0,
+  });
+  const verificationAttempts = await verifyRavioliPreparedPinGateway({
+    label: "Ravioli prepared pin public gateway",
+    url: publicGatewayUrl,
+    expectedBytes: input.bridge.envelope.bytes,
+    attempts: input.ipfs.verifyAttempts,
+    timeoutMs: input.ipfs.requestTimeoutMs,
+    retryDelayMs: input.ipfs.verifyDelayMs,
+  });
+  return Object.freeze({
+    cid: input.bridge.envelope.cid,
+    uri: `ipfs://${input.bridge.envelope.cid}`,
+    fileName: input.bridge.envelope.fileName,
+    mimeType: input.bridge.envelope.mimeType,
+    byteLength: input.bridge.envelope.byteLength,
+    sha256: input.bridge.envelope.sha256,
+    localGatewayUrl,
+    publicGatewayUrl,
+    publicGatewayVerified: true as const,
+    verificationAttempts,
+  });
+}
+
+export function createRavioliPreparedPinAdopter(input: {
+  bridge: RavioliPreparedSealedPinRecoveryBridge;
+  proof: PastaUiLivePinProof;
+  fallback: (input: { value: unknown; fileName: string }) => Promise<PastaUiLivePinProof>;
+}): Readonly<{
+  pinJson(input: { value: unknown; fileName: string }): Promise<PastaUiLivePinProof>;
+  didAdopt(): boolean;
+}> {
+  let adopted = false;
+  return Object.freeze({
+    pinJson: async ({ value, fileName }) => {
+      if (fileName !== input.bridge.envelope.fileName) {
+        return input.fallback({ value, fileName });
+      }
+      assert.equal(adopted, false, "Ravioli prepared sealed pin was adopted more than once");
+      const bytes = deterministicJsonBytes(value);
+      assert.equal(
+        sha256(bytes),
+        input.bridge.envelope.sha256,
+        "Ravioli prepared sealed pin request digest drifted",
+      );
+      assert.deepEqual(
+        Buffer.from(bytes),
+        Buffer.from(input.bridge.envelope.bytes),
+        "Ravioli prepared sealed pin request bytes drifted",
+      );
+      assert.equal(input.proof.cid, input.bridge.envelope.cid);
+      assert.equal(input.proof.publicGatewayVerified, true);
+      adopted = true;
+      return input.proof;
+    },
+    didAdopt: () => adopted,
+  });
+}
+
 export function assertRavioliSameInstantOrNull(
   actual: string | null | undefined,
   expected: string | null | undefined,
@@ -604,6 +800,7 @@ export const RAVIOLI_UI_LIVE_ALLOWED_CREATOR_ENTRYPOINTS = new Set([
   "mint",
   "set_sale",
   "set_pack_contents",
+  "recover_adapter",
 ]);
 export const RAVIOLI_UI_LIVE_ALLOWED_COLLECTOR_ENTRYPOINTS = new Set([
   "buy",
@@ -3539,16 +3736,46 @@ export function dependencyOriginationReceipt(
   const manifestOrigins = (manifest.operations as JsonObject[]).filter((operation) => operation.kind === "origination");
   assert.equal(manifestOrigins.length, 1, `${manifest.app} manifest must contain exactly one origination`);
   const manifestOrigin = manifestOrigins[0];
+  assert.equal(manifestOrigin.status, "applied", `${manifest.app} manifest origination must be applied`);
   assert.equal(manifestOrigin.contractAddress, address, `${manifest.app} manifest origination address drift`);
   assert.equal(validateOperation(manifestOrigin.hash), ValidationResult.VALID);
-  const receipts = Array.isArray(receipt.receipts)
-    ? receipt.receipts
-    : Array.isArray(receipt.bridgeReceipts?.creator)
-      ? receipt.bridgeReceipts.creator
-      : [];
+  const app = String(manifest.app || "");
+  assert.ok(app === "gnocchi" || app === "rotini", `unsupported Ravioli dependency app ${app}`);
+  const isFinalized = receipt.schema === `pastaprotocol-${app}-ui-live-finalized@1`;
+  const isNative = receipt.schema === `pastaprotocol-${app}-ui-live-run@1`;
+  assert.ok(isFinalized || isNative, `${app} UI-live receipt schema is unsupported`);
+  const nativeGnocchiReceipts = receipt.receipts;
+  const nativeRotiniReceipts = receipt.bridgeReceipts?.creator;
+  const indexedReceipts = receipt.indexedOperationReceipts;
+  let receipts: JsonObject[];
+  if (isFinalized) {
+    assert.equal(Array.isArray(nativeGnocchiReceipts), false, `${app} finalized receipt must not mix native receipts`);
+    assert.equal(Array.isArray(nativeRotiniReceipts), false, `${app} finalized receipt must not mix native receipts`);
+    assert.ok(Array.isArray(indexedReceipts), `${app} finalized receipt must contain indexed operation receipts`);
+    receipts = indexedReceipts as JsonObject[];
+  } else if (app === "gnocchi") {
+    assert.equal(Array.isArray(indexedReceipts), false, "gnocchi native receipt must not mix indexed receipts");
+    assert.equal(Array.isArray(nativeRotiniReceipts), false, "gnocchi native receipt must not mix Rotini receipts");
+    assert.ok(Array.isArray(nativeGnocchiReceipts), "gnocchi native receipt must contain receipts");
+    receipts = nativeGnocchiReceipts as JsonObject[];
+  } else {
+    assert.equal(Array.isArray(indexedReceipts), false, "rotini native receipt must not mix indexed receipts");
+    assert.equal(Array.isArray(nativeGnocchiReceipts), false, "rotini native receipt must not mix Gnocchi receipts");
+    assert.ok(Array.isArray(nativeRotiniReceipts), "rotini native receipt must contain creator bridge receipts");
+    receipts = nativeRotiniReceipts as JsonObject[];
+  }
   const origins = receipts.filter((candidate: JsonObject) => candidate.action === "originate");
   assert.equal(origins.length, 1, `${manifest.app} UI-live receipt must contain exactly one origination`);
-  const origin = origins[0] as PastaUiLivePublicReceipt & { operationHash: string };
+  const originRecord = origins[0] as JsonObject;
+  if (isFinalized) {
+    assert.equal(originRecord.schema, "pastaprotocol-indexed-operation-receipt@1", `${app} indexed origination schema drift`);
+    assert.equal(originRecord.source, "tzkt", `${app} indexed origination source drift`);
+    assert.equal(originRecord.status, "applied", `${manifest.app} indexed origination must be applied`);
+  } else {
+    assert.equal(originRecord.schema, PASTA_UI_LIVE_RECEIPT_SCHEMA, `${app} native origination schema drift`);
+  }
+  const origin = originRecord as PastaUiLivePublicReceipt & { operationHash: string };
+  assert.equal(origin.chainId, SHADOWNET_CHAIN_ID, `${manifest.app} UI-live origination chain drift`);
   assert.equal(origin.contractAddress, address, `${manifest.app} UI-live origination address drift`);
   assert.equal(origin.signerAddress, creator, `${manifest.app} UI-live origination signer drift`);
   assert.equal(origin.operationHash, manifestOrigin.hash, `${manifest.app} origination hash differs between manifest and receipt`);
@@ -3564,24 +3791,53 @@ function appliedOperationRows(value: unknown): JsonObject[] {
 
 type RavioliJournalActorIntents = Record<RavioliUiLiveJournalActor, RavioliUiLiveActorIntent>;
 
-async function readRavioliJournalCounterLane(
+type RavioliJournalReadRetryOptions = Pick<
+  ReadOnlyRetryOptions,
+  "maxAttempts" | "deadlineMs" | "baseDelayMs" | "maxDelayMs" | "maxRetryAfterMs" | "jitterRatio"
+>;
+
+export type RavioliJournalReadOptions = Readonly<{
+  fetchImpl?: ReadOnlyFetch;
+  retryOptions?: RavioliJournalReadRetryOptions;
+}>;
+
+async function readRavioliJournalJson(
+  base: string,
+  path: string,
+  label: string,
+  options: RavioliJournalReadOptions,
+): Promise<unknown> {
+  return readWithBoundedRetry({
+    primary: createHttpGetReader({
+      label: `${base} ${label}`,
+      url: `${base}${path}`,
+      fetchImpl: options.fetchImpl,
+      parse: (response) => response.json(),
+    }),
+  }, options.retryOptions);
+}
+
+export async function readRavioliJournalCounterLane(
   rpcUrl: string,
   actors: Record<RavioliUiLiveJournalActor, string>,
+  options: RavioliJournalReadOptions = {},
 ): Promise<Record<RavioliUiLiveJournalActor, { rpcUrl: string; counter: number }>> {
   const base = normalizeBase(rpcUrl);
-  const actorEntries = Object.entries(actors) as Array<[RavioliUiLiveJournalActor, string]>;
-  const [chainResponse, mempoolResponse, ...counterResponses] = await Promise.all([
-    fetch(`${base}/chains/main/chain_id`, { signal: AbortSignal.timeout(30_000) }),
-    fetch(`${base}/chains/main/mempool/pending_operations`, { signal: AbortSignal.timeout(30_000) }),
-    ...actorEntries.map(([, address]) => fetch(
-      `${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(address)}/counter`,
-      { signal: AbortSignal.timeout(30_000) },
-    )),
-  ]);
-  assert.ok(chainResponse.ok, `${base} journal chain-id read failed with HTTP ${chainResponse.status}`);
-  assert.ok(mempoolResponse.ok, `${base} journal mempool read failed with HTTP ${mempoolResponse.status}`);
-  assert.equal(JSON.parse(await chainResponse.text()), SHADOWNET_CHAIN_ID, `${base} journal chain id drift`);
-  const mempool = JSON.parse(await mempoolResponse.text()) as JsonObject;
+  const actorEntries = (["creator", "collector1", "collector2"] as const)
+    .map((actor) => [actor, actors[actor]] as const);
+  const chainId = await readRavioliJournalJson(
+    base,
+    "/chains/main/chain_id",
+    "journal chain-id",
+    options,
+  );
+  assert.equal(chainId, SHADOWNET_CHAIN_ID, `${base} journal chain id drift`);
+  const mempool = await readRavioliJournalJson(
+    base,
+    "/chains/main/mempool/pending_operations",
+    "journal mempool",
+    options,
+  ) as JsonObject;
   const actorAddresses = new Set(Object.values(actors));
   const activeBuckets = ["applied", "validated", "branch_delayed", "unprocessed"];
   const active = activeBuckets.flatMap((bucket) => Array.isArray(mempool?.[bucket]) ? mempool[bucket] : [])
@@ -3592,21 +3848,27 @@ async function readRavioliJournalCounterLane(
   assert.equal(active.length, 0, `${base} has an active Ravioli actor operation in its mempool`);
   const output = {} as Record<RavioliUiLiveJournalActor, { rpcUrl: string; counter: number }>;
   for (let index = 0; index < actorEntries.length; index += 1) {
-    const response = counterResponses[index];
-    assert.ok(response.ok, `${base} ${actorEntries[index][0]} counter read failed with HTTP ${response.status}`);
-    const counter = Number(JSON.parse(await response.text()));
-    assert.ok(Number.isSafeInteger(counter) && counter >= 0, `${base} ${actorEntries[index][0]} counter is invalid`);
-    output[actorEntries[index][0]] = { rpcUrl: base, counter };
+    const [actor, address] = actorEntries[index];
+    const counterValue = await readRavioliJournalJson(
+      base,
+      `/chains/main/blocks/head/context/contracts/${encodeURIComponent(address)}/counter`,
+      `${actor} journal counter`,
+      options,
+    );
+    const counter = Number(counterValue);
+    assert.ok(Number.isSafeInteger(counter) && counter >= 0, `${base} ${actor} counter is invalid`);
+    output[actor] = { rpcUrl: base, counter };
   }
   return output;
 }
 
-async function readRavioliJournalActorIntents(
+export async function readRavioliJournalActorIntents(
   actors: Record<RavioliUiLiveJournalActor, string>,
+  options: RavioliJournalReadOptions = {},
 ): Promise<RavioliJournalActorIntents> {
   const [primary, fallback] = await Promise.all([
-    readRavioliJournalCounterLane(SHADOWNET_RPC_PRIMARY, actors),
-    readRavioliJournalCounterLane(SHADOWNET_RPC_FALLBACK, actors),
+    readRavioliJournalCounterLane(SHADOWNET_RPC_PRIMARY, actors, options),
+    readRavioliJournalCounterLane(SHADOWNET_RPC_FALLBACK, actors, options),
   ]);
   const intents = {} as RavioliJournalActorIntents;
   for (const actor of ["creator", "collector1", "collector2"] as const) {
@@ -3619,22 +3881,26 @@ async function readRavioliJournalActorIntents(
   return intents;
 }
 
-async function readRavioliJournalCurrentActorState(
+export async function readRavioliJournalCurrentActorState(
   rpcUrl: string,
   signerAddress: string,
+  options: RavioliJournalReadOptions = {},
 ): Promise<{ counter: number; activeOperationCount: number }> {
   const base = normalizeBase(rpcUrl);
-  const [counterResponse, mempoolResponse] = await Promise.all([
-    fetch(`${base}/chains/main/blocks/head/context/contracts/${encodeURIComponent(signerAddress)}/counter`, {
-      signal: AbortSignal.timeout(30_000),
-    }),
-    fetch(`${base}/chains/main/mempool/pending_operations`, { signal: AbortSignal.timeout(30_000) }),
-  ]);
-  assert.ok(counterResponse.ok, `${base} journal pre-submit counter read failed with HTTP ${counterResponse.status}`);
-  assert.ok(mempoolResponse.ok, `${base} journal pre-submit mempool read failed with HTTP ${mempoolResponse.status}`);
-  const counter = Number(JSON.parse(await counterResponse.text()));
+  const counterValue = await readRavioliJournalJson(
+    base,
+    `/chains/main/blocks/head/context/contracts/${encodeURIComponent(signerAddress)}/counter`,
+    "journal pre-submit counter",
+    options,
+  );
+  const counter = Number(counterValue);
   assert.ok(Number.isSafeInteger(counter) && counter >= 0, `${base} journal pre-submit counter is invalid`);
-  const mempool = JSON.parse(await mempoolResponse.text()) as JsonObject;
+  const mempool = await readRavioliJournalJson(
+    base,
+    "/chains/main/mempool/pending_operations",
+    "journal pre-submit mempool",
+    options,
+  ) as JsonObject;
   const activeBuckets = ["applied", "validated", "branch_delayed", "unprocessed"];
   const activeOperationCount = activeBuckets.flatMap((bucket) => Array.isArray(mempool?.[bucket]) ? mempool[bucket] : [])
     .map((entry: JsonObject | [string, JsonObject]) => Array.isArray(entry) ? entry[1] : entry)
@@ -4308,6 +4574,7 @@ async function readFreshRotiniDependency(input: {
   tezos: TezosToolkit;
   request: FreshDependencyReadRequest;
   evidence: FreshRavioliDependencies;
+  expectedNextTokenId?: number;
 }): Promise<{ snapshot: FreshRotiniLiveSnapshot; rows: JsonObject }> {
   const scriptCodeSha256 = await assertFreshDependencyScript({
     tezos: input.tezos,
@@ -4319,7 +4586,9 @@ async function readFreshRotiniDependency(input: {
   const storage = await pollJson(
     "fresh Rotini dependency storage",
     `${base}/contracts/${input.request.contractAddress}/storage`,
-    (value) => Number(value?.next_project_id) === 3 && Number(value?.next_token_id) === 3 && Number(value?.projects) > 0,
+    (value) => Number(value?.next_project_id) === 3
+      && Number(value?.next_token_id) === (input.expectedNextTokenId ?? 3)
+      && Number(value?.projects) > 0,
   );
   const [operators, packMinters, reservations, packReserved, projects] = await Promise.all([
     readBigMap(storage.operators, "fresh Rotini active operators"),
@@ -4363,8 +4632,12 @@ export async function validateRavioliDependencies(
     mode0Replay?: RavioliMode0ReplayRecovery;
     currentV2Resume?: RavioliMode0ReplayRecovery;
     currentV3Restart?: RavioliCurrentV3RestartRecovery;
+    currentOp14Resume?: RavioliCurrentOp14ResumeRecovery;
+    currentOp20Resume?: RavioliCurrentOp20ResumeRecovery;
     currentV5Resume?: RavioliCurrentV5ResumeRecovery;
     currentV6Resume?: RavioliCurrentV6ResumeRecovery;
+    currentOp55Resume?: RavioliCurrentOp55ResumeRecovery;
+    currentOp63Resume?: RavioliCurrentOp63ResumeRecovery;
   } = {},
 ): Promise<DependencyEvidence> {
   const fresh = await loadFreshRavioliDependencies({ runRoot, expectedRunId: runId, expectedCreator: creatorAddress });
@@ -4377,27 +4650,50 @@ export async function validateRavioliDependencies(
         request,
         evidence: fresh,
         recoveryRouterAddress:
-          options.currentV6Resume?.routerAddress
+          options.currentOp63Resume?.routerAddress
+          || options.currentOp55Resume?.routerAddress
+          || options.currentV6Resume?.routerAddress
           || options.currentV5Resume?.routerAddress
+          || options.currentOp20Resume?.routerAddress
+          || options.currentOp14Resume?.routerAddress
           || options.currentV3Restart?.routerAddress
           || options.currentV2Resume?.routerAddress,
         includeRecoveryRouterTokenOne: Boolean(
-          options.currentV6Resume || options.currentV5Resume || options.currentV3Restart,
+          options.currentOp63Resume
+            || options.currentOp55Resume
+            || options.currentV6Resume
+            || options.currentV5Resume
+            || options.currentOp20Resume
+            || options.currentOp14Resume
+            || options.currentV3Restart,
         ),
       });
       gnocchiRows = result.rows;
       return result.snapshot;
     },
     readRotini: async (request) => {
-      const result = await readFreshRotiniDependency({ tezos, request, evidence: fresh });
+      const result = await readFreshRotiniDependency({
+        tezos,
+        request,
+        evidence: fresh,
+        ...((options.currentOp55Resume || options.currentOp63Resume) ? { expectedNextTokenId: 6 } : {}),
+      });
       rotiniRows = result.rows;
       return result.snapshot;
     },
   };
-  const liveCheck = options.currentV6Resume
+  const liveCheck = options.currentOp63Resume
+    ? await recheckRavioliDependenciesForCurrentOp63Resume(fresh, readers, options.currentOp63Resume)
+    : options.currentOp55Resume
+    ? await recheckRavioliDependenciesForCurrentOp55Resume(fresh, readers, options.currentOp55Resume)
+    : options.currentV6Resume
     ? await recheckRavioliDependenciesForCurrentV6Resume(fresh, readers, options.currentV6Resume)
     : options.currentV5Resume
     ? await recheckRavioliDependenciesForCurrentV5Resume(fresh, readers, options.currentV5Resume)
+    : options.currentOp20Resume
+    ? await recheckRavioliDependenciesForCurrentOp20Resume(fresh, readers, options.currentOp20Resume)
+    : options.currentOp14Resume
+    ? await recheckRavioliDependenciesForCurrentOp14Resume(fresh, readers, options.currentOp14Resume)
     : options.currentV3Restart
     ? await recheckRavioliDependenciesForCurrentV3Restart(fresh, readers, options.currentV3Restart)
     : options.currentV2Resume
@@ -4794,6 +5090,11 @@ function ravioliProofPackageCheckpointPayload(input: {
 }): JsonObject {
   const dependencies = structuredClone(input.checkpointInput.dependencies) as DependencyEvidence;
   dependencies.fresh.runRoot = ".";
+  dependencies.fresh.gnocchi.scriptArtifactPath = portableRavioliRunPath(
+    root,
+    dependencies.fresh.gnocchi.scriptArtifactPath,
+    "Ravioli checkpoint Gnocchi script artifact path",
+  );
   dependencies.fresh.gnocchi.manifestPath = portableRavioliRunPath(
     input.runRoot,
     dependencies.fresh.gnocchi.manifestPath,
@@ -4813,6 +5114,11 @@ function ravioliProofPackageCheckpointPayload(input: {
     input.runRoot,
     dependencies.fresh.rotini.receiptPath,
     "Ravioli checkpoint Rotini receipt path",
+  );
+  dependencies.fresh.rotini.scriptArtifactPath = portableRavioliRunPath(
+    root,
+    dependencies.fresh.rotini.scriptArtifactPath,
+    "Ravioli checkpoint Rotini script artifact path",
   );
   const mutationRecoveryEvidence = input.checkpointInput.mutationRecoveryEvidence
     ? {
@@ -4876,6 +5182,298 @@ function ravioliProofPackageCheckpointPayload(input: {
   return payload;
 }
 
+export type RavioliCurrentResumePackageBoundaryProfile = Readonly<{
+  eventCount: number;
+  pinCount: number;
+  operationCount: number;
+  nextGlobalOperation: number | null;
+  replaySteps: number;
+}>;
+
+const RAVIOLI_CURRENT_RESUME_PACKAGE_BOUNDARY_PROFILES: Readonly<
+  Record<number, RavioliCurrentResumePackageBoundaryProfile>
+> = Object.freeze({
+  9: Object.freeze({
+    eventCount: 38,
+    pinCount: 10,
+    operationCount: 9,
+    nextGlobalOperation: 10,
+    replaySteps: 19,
+  }),
+  14: Object.freeze({
+    eventCount: 53,
+    pinCount: 10,
+    operationCount: 14,
+    nextGlobalOperation: 15,
+    replaySteps: 0,
+  }),
+  20: Object.freeze({
+    eventCount: 74,
+    pinCount: 13,
+    operationCount: 20,
+    nextGlobalOperation: 21,
+    // Restored Studio re-pins wrapper 2, revalidates operations 18-20, and
+    // re-pins manifest 13. It deliberately skips adapter pin 12 and
+    // origination 17 because the authenticated adapter address is prefilled.
+    replaySteps: 5,
+  }),
+  23: Object.freeze({
+    eventCount: 85,
+    pinCount: 15,
+    operationCount: 23,
+    nextGlobalOperation: 24,
+    replaySteps: 0,
+  }),
+  30: Object.freeze({
+    eventCount: 112,
+    pinCount: 21,
+    operationCount: 30,
+    nextGlobalOperation: 31,
+    // Pin 21 trails operation 30 and must be replayed as an authenticated
+    // browser response once, without delegating another IPFS side effect.
+    replaySteps: 1,
+  }),
+  55: Object.freeze({
+    eventCount: 196,
+    pinCount: 30,
+    operationCount: 55,
+    nextGlobalOperation: 56,
+    replaySteps: 0,
+  }),
+  63: Object.freeze({
+    eventCount: 224,
+    pinCount: 34,
+    operationCount: 63,
+    nextGlobalOperation: 64,
+    replaySteps: 0,
+  }),
+  64: Object.freeze({
+    eventCount: 227,
+    pinCount: 34,
+    operationCount: 64,
+    nextGlobalOperation: 65,
+    replaySteps: 0,
+  }),
+  66: Object.freeze({
+    eventCount: 233,
+    pinCount: 34,
+    operationCount: 66,
+    nextGlobalOperation: 67,
+    replaySteps: 0,
+  }),
+  67: Object.freeze({
+    eventCount: 236,
+    pinCount: 34,
+    operationCount: 67,
+    nextGlobalOperation: null,
+    replaySteps: 0,
+  }),
+});
+
+export function ravioliCurrentResumeRetainsMode2PreOp24Recovery(
+  completedOperationCount: number,
+): boolean {
+  assert.ok(
+    Number.isSafeInteger(completedOperationCount) && completedOperationCount >= 0,
+    "Ravioli current-resume operation count is invalid",
+  );
+  return completedOperationCount === 23 || completedOperationCount === 30;
+}
+
+export function assertRavioliCurrentResumePackageEvidence(
+  evidenceValue: unknown,
+): RavioliCurrentResumePackageBoundaryProfile {
+  const evidence = ravioliCheckpointRecord(
+    evidenceValue,
+    "Ravioli package checkpoint current authenticated resume evidence",
+  );
+  assert.equal(
+    evidence.classification,
+    "RAVIOLI-CURRENT-AUTHENTICATED-RESUME",
+    "Ravioli package checkpoint current authenticated resume classification drift",
+  );
+  const boundary = ravioliCheckpointRecord(
+    evidence.boundary,
+    "Ravioli package checkpoint current boundary",
+  );
+  const operationCount = Number(boundary.operationCount);
+  const expected = RAVIOLI_CURRENT_RESUME_PACKAGE_BOUNDARY_PROFILES[operationCount];
+  assert.ok(
+    expected,
+    "Ravioli package checkpoint current boundary operation count is unsupported",
+  );
+  assert.equal(evidence.zeroSideEffectReplaySteps, expected.replaySteps);
+  assert.equal(boundary.eventCount, expected.eventCount);
+  assert.equal(boundary.pinCount, expected.pinCount);
+  assert.equal(boundary.operationCount, expected.operationCount);
+  assert.equal(boundary.nextGlobalOperation, expected.nextGlobalOperation);
+  assert.ok(Array.isArray(evidence.activePins), "Ravioli package checkpoint active pin inventory is invalid");
+  assert.equal(evidence.activePins.length, expected.pinCount);
+  assert.ok(
+    Array.isArray(evidence.supersededPrivatePrecommitPins),
+    "Ravioli package checkpoint superseded private precommit inventory is invalid",
+  );
+  assert.equal(evidence.supersededPrivatePrecommitPins.length, 0);
+  assert.ok(
+    Array.isArray(evidence.recoveredOperations),
+    "Ravioli package checkpoint recovered operation inventory is invalid",
+  );
+  assert.equal(evidence.recoveredOperations.length, expected.operationCount);
+  assert.equal(evidence.recoveredSideEffectsReplayed, false);
+  assert.equal(evidence.firstNewOperation, expected.nextGlobalOperation);
+  return expected;
+}
+
+function ravioliCheckpointOrigination(input: {
+  receiptValue: unknown;
+  ordinal: number;
+  role: string;
+  creator: string;
+}): { address: string; operationHash: string } {
+  const receipt = ravioliCheckpointRecord(
+    input.receiptValue,
+    `Ravioli package checkpoint ${input.role} origination`,
+  );
+  assert.equal(receipt.schema, PASTA_UI_LIVE_RECEIPT_SCHEMA);
+  assert.equal(receipt.sequence, input.ordinal);
+  assert.equal(receipt.action, "originate");
+  assert.equal(receipt.chainId, SHADOWNET_CHAIN_ID);
+  assert.equal(receipt.signerAddress, input.creator);
+  assert.deepEqual(receipt.entrypoints, []);
+  const address = String(receipt.contractAddress || "");
+  const operationHash = String(receipt.operationHash || "");
+  assert.equal(
+    validateContractAddress(address),
+    ValidationResult.VALID,
+    `Ravioli package checkpoint ${input.role} origination address is invalid`,
+  );
+  assert.ok(address.startsWith("KT1"), `Ravioli package checkpoint ${input.role} origination is not a KT1 contract`);
+  assert.equal(
+    validateOperation(operationHash),
+    ValidationResult.VALID,
+    `Ravioli package checkpoint ${input.role} origination operation hash is invalid`,
+  );
+  return { address, operationHash };
+}
+
+export function deriveRavioliCheckpointBlindController(payloadValue: unknown): string {
+  const payload = ravioliCheckpointRecord(payloadValue, "Ravioli package checkpoint payload");
+  const actors = ravioliCheckpointRecord(payload.actors, "Ravioli package checkpoint actors");
+  const creator = String(actors.creator || "");
+  assert.equal(validateAddress(creator), ValidationResult.VALID, "Ravioli package checkpoint creator is invalid");
+  const writeReceipts = payload.writeReceipts;
+  assert.ok(
+    Array.isArray(writeReceipts) && writeReceipts.length === RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total,
+    "Ravioli package checkpoint must contain the complete write receipt plan before deriving its controller",
+  );
+  const originationPlan = RAVIOLI_UI_LIVE_EXPECTED_OPERATION_MATRIX
+    .map((operation, index) => ({ operation, ordinal: index + 1 }))
+    .filter(({ operation }) => operation.action === "originate");
+  assert.deepEqual(
+    originationPlan.map(({ operation }) => operation.originRole),
+    ["blindController", "router", "gnocchiAdapter", "rotiniAdapter"],
+    "Ravioli package checkpoint origination plan drift",
+  );
+  const origins = new Map<string, { address: string; operationHash: string; ordinal: number }>();
+  for (const { operation, ordinal } of originationPlan) {
+    const role = String(operation.originRole || "");
+    origins.set(role, {
+      ...ravioliCheckpointOrigination({
+        receiptValue: writeReceipts[ordinal - 1],
+        ordinal,
+        role,
+        creator,
+      }),
+      ordinal,
+    });
+  }
+  assert.equal(
+    writeReceipts.filter((receipt: JsonObject) => receipt?.action === "originate").length,
+    originationPlan.length,
+    "Ravioli package checkpoint contains an unexpected origination",
+  );
+  const uniqueOriginAddresses = new Set([...origins.values()].map(({ address }) => address));
+  const uniqueOriginHashes = new Set([...origins.values()].map(({ operationHash }) => operationHash));
+  assert.equal(uniqueOriginAddresses.size, originationPlan.length, "Ravioli package checkpoint originations reuse a contract address");
+  assert.equal(uniqueOriginHashes.size, originationPlan.length, "Ravioli package checkpoint originations reuse an operation hash");
+
+  const mirror = ravioliCheckpointRecord(payload.mirror, "Ravioli package checkpoint mirror");
+  for (const role of ["router", "gnocchiAdapter", "rotiniAdapter"] as const) {
+    assert.equal(
+      mirror[`${role}Address`],
+      origins.get(role)?.address,
+      `Ravioli package checkpoint ${role} differs from its authenticated origination`,
+    );
+  }
+  const controller = origins.get("blindController")!;
+  if (Object.prototype.hasOwnProperty.call(mirror, "blindControllerAddress")) {
+    assert.equal(
+      mirror.blindControllerAddress,
+      controller.address,
+      "Ravioli package checkpoint explicit blind controller differs from its authenticated origination",
+    );
+  }
+  const dependencies = ravioliCheckpointRecord(payload.dependencies, "Ravioli package checkpoint dependencies");
+  for (const dependencyAddress of [dependencies.gnocchi?.address, dependencies.rotini?.address]) {
+    assert.notEqual(controller.address, dependencyAddress, "Ravioli package checkpoint blind controller aliases a dependency");
+  }
+
+  if (payload.currentV3RestartEvidence != null) {
+    const resume = ravioliCheckpointRecord(
+      payload.currentV3RestartEvidence,
+      "Ravioli package checkpoint authenticated resume evidence",
+    );
+    assert.ok(Array.isArray(resume.recoveredOperations), "Ravioli package checkpoint recovered operation inventory is missing");
+    for (const [role, origin] of origins) {
+      const recovered = resume.recoveredOperations.filter(
+        (operation: JsonObject) => Number(operation?.globalOrdinal) === origin.ordinal,
+      );
+      assert.equal(recovered.length, 1, `Ravioli package checkpoint recovered ${role} origination is not unique`);
+      assert.equal(recovered[0].actor, "creator", `Ravioli package checkpoint recovered ${role} actor drift`);
+      assert.equal(recovered[0].action, "originate", `Ravioli package checkpoint recovered ${role} action drift`);
+      assert.equal(recovered[0].entrypoint, null, `Ravioli package checkpoint recovered ${role} entrypoint drift`);
+      assert.equal(recovered[0].contractAddress, origin.address, `Ravioli package checkpoint recovered ${role} address drift`);
+      assert.equal(recovered[0].operationHash, origin.operationHash, `Ravioli package checkpoint recovered ${role} hash drift`);
+    }
+    const boundary = ravioliCheckpointRecord(resume.boundary, "Ravioli package checkpoint authenticated resume boundary");
+    if (Number(boundary.operationCount) === RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total) {
+      const refundOrdinal = RAVIOLI_UI_LIVE_EXPECTED_OPERATION_MATRIX.findIndex(
+        (operation) => operation.entrypoint === "withdraw_refund",
+      ) + 1;
+      assert.equal(refundOrdinal, 66, "Ravioli terminal refund operation ordinal drift");
+      const refundReceipt = ravioliCheckpointRecord(
+        writeReceipts[refundOrdinal - 1],
+        "Ravioli package checkpoint terminal refund receipt",
+      );
+      assert.equal(refundReceipt.action, "call");
+      assert.equal(refundReceipt.chainId, SHADOWNET_CHAIN_ID);
+      assert.equal(refundReceipt.signerAddress, actors.collectorOne);
+      assert.equal(refundReceipt.contractAddress, controller.address);
+      assert.deepEqual(refundReceipt.entrypoints, ["withdraw_refund"]);
+      const recoveredRefunds = resume.recoveredOperations.filter(
+        (operation: JsonObject) => Number(operation?.globalOrdinal) === refundOrdinal,
+      );
+      assert.equal(recoveredRefunds.length, 1, "Ravioli package checkpoint recovered terminal refund is not unique");
+      assert.equal(recoveredRefunds[0].actor, "collector1");
+      assert.equal(recoveredRefunds[0].action, "call");
+      assert.equal(recoveredRefunds[0].entrypoint, "withdraw_refund");
+      assert.equal(recoveredRefunds[0].contractAddress, controller.address);
+      assert.equal(recoveredRefunds[0].operationHash, refundReceipt.operationHash);
+      const indexedInputs = ravioliCheckpointRecord(payload.indexedInputs, "Ravioli package checkpoint indexed inputs");
+      const refundOutcome = ravioliCheckpointRecord(
+        indexedInputs.withheldRefundOutcome,
+        "Ravioli package checkpoint withheld-refund outcome",
+      );
+      assert.equal(
+        refundOutcome.controllerAddress,
+        controller.address,
+        "Ravioli package checkpoint withheld-refund controller drift",
+      );
+    }
+  }
+  return controller.address;
+}
+
 function ravioliProofPackageInputFromCheckpoint(input: {
   payloadValue: unknown;
   runRoot: string;
@@ -4913,7 +5511,9 @@ function ravioliProofPackageInputFromCheckpoint(input: {
     "Ravioli package checkpoint write/hash order drift",
   );
   const mirrorValue = ravioliCheckpointRecord(payload.mirror, "Ravioli package checkpoint mirror");
+  const blindControllerAddress = deriveRavioliCheckpointBlindController(payload);
   const mirror = new RavioliUiStateMirror();
+  mirror.bindOrigination("blindController", blindControllerAddress);
   mirror.bindOrigination("router", String(mirrorValue.routerAddress || ""));
   mirror.bindOrigination("gnocchiAdapter", String(mirrorValue.gnocchiAdapterAddress || ""));
   mirror.bindOrigination("rotiniAdapter", String(mirrorValue.rotiniAdapterAddress || ""));
@@ -4963,6 +5563,18 @@ function ravioliProofPackageInputFromCheckpoint(input: {
   const dependencies = ravioliCheckpointRecord(payload.dependencies, "Ravioli package checkpoint dependencies") as DependencyEvidence;
   assert.equal(dependencies.fresh.runRoot, ".", "Ravioli package checkpoint dependency root is not portable");
   dependencies.fresh.runRoot = path.resolve(input.runRoot);
+  dependencies.fresh.gnocchi.scriptArtifactPath = path.resolve(
+    root,
+    ...safeRelativePath(
+      dependencies.fresh.gnocchi.scriptArtifactPath,
+      "Ravioli checkpoint Gnocchi script artifact path",
+    ).split("/"),
+  );
+  assert.equal(
+    dependencies.fresh.gnocchi.scriptArtifactPath,
+    FRESH_GNOCCHI_CONTRACT_ARTIFACT_PATH,
+    "Ravioli checkpoint Gnocchi script artifact identity drifted",
+  );
   dependencies.fresh.gnocchi.manifestPath = path.resolve(
     input.runRoot,
     ...safeRelativePath(dependencies.fresh.gnocchi.manifestPath, "Ravioli checkpoint Gnocchi manifest path").split("/"),
@@ -4978,6 +5590,18 @@ function ravioliProofPackageInputFromCheckpoint(input: {
   dependencies.fresh.rotini.receiptPath = path.resolve(
     input.runRoot,
     ...safeRelativePath(dependencies.fresh.rotini.receiptPath, "Ravioli checkpoint Rotini receipt path").split("/"),
+  );
+  dependencies.fresh.rotini.scriptArtifactPath = path.resolve(
+    root,
+    ...safeRelativePath(
+      dependencies.fresh.rotini.scriptArtifactPath,
+      "Ravioli checkpoint Rotini script artifact path",
+    ).split("/"),
+  );
+  assert.equal(
+    dependencies.fresh.rotini.scriptArtifactPath,
+    FRESH_ROTINI_CONTRACT_ARTIFACT_PATH,
+    "Ravioli checkpoint Rotini script artifact identity drifted",
   );
   const screenshots = payload.screenshots.map((captureValue: unknown) => {
     const capture = ravioliCheckpointRecord(captureValue, "Ravioli package checkpoint screenshot");
@@ -5049,29 +5673,7 @@ function ravioliProofPackageInputFromCheckpoint(input: {
       "Ravioli package checkpoint authenticated resume classification is invalid",
     );
     if (isCurrent) {
-      const boundary = ravioliCheckpointRecord(
-        currentV3RestartEvidence.boundary,
-        "Ravioli package checkpoint current boundary",
-      );
-      const operationCount = Number(boundary.operationCount);
-      assert.ok(
-        operationCount === 9 || operationCount === 23,
-        "Ravioli package checkpoint current boundary operation count is unsupported",
-      );
-      const authenticatedStateBoundary = operationCount === 23;
-      const expected = authenticatedStateBoundary
-        ? { eventCount: 85, pinCount: 15, operationCount: 23, nextGlobalOperation: 24, replaySteps: 0 }
-        : { eventCount: 38, pinCount: 10, operationCount: 9, nextGlobalOperation: 10, replaySteps: 19 };
-      assert.equal(currentV3RestartEvidence.zeroSideEffectReplaySteps, expected.replaySteps);
-      assert.equal(boundary.eventCount, expected.eventCount);
-      assert.equal(boundary.pinCount, expected.pinCount);
-      assert.equal(boundary.operationCount, expected.operationCount);
-      assert.equal(boundary.nextGlobalOperation, expected.nextGlobalOperation);
-      assert.equal((currentV3RestartEvidence.activePins as unknown[]).length, expected.pinCount);
-      assert.equal((currentV3RestartEvidence.supersededPrivatePrecommitPins as unknown[]).length, 0);
-      assert.equal((currentV3RestartEvidence.recoveredOperations as unknown[]).length, expected.operationCount);
-      assert.equal(currentV3RestartEvidence.recoveredSideEffectsReplayed, false);
-      assert.equal(currentV3RestartEvidence.firstNewOperation, expected.nextGlobalOperation);
+      assertRavioliCurrentResumePackageEvidence(currentV3RestartEvidence);
     } else {
       assert.equal(
         currentV3RestartEvidence.zeroSideEffectReplaySteps,
@@ -5395,6 +5997,85 @@ const RAVIOLI_CURRENT_RESUME_OP23_SCREENSHOT_STEMS = [
   "011-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
 ] as const;
 
+const RAVIOLI_CURRENT_RESUME_OP30_SCREENSHOT_STEMS = [
+  ...RAVIOLI_CURRENT_RESUME_OP23_SCREENSHOT_STEMS,
+  "012-compose-five-atomic-pack-modes-blind-allocated-mint-recovered-funded-and-issued-from-authenticated-chain-state",
+  "013-compose-five-atomic-pack-modes-blind-generative-mint-configured",
+  "014-compose-five-atomic-pack-modes-blind-generative-mint-funded-and-issued",
+  "015-compose-five-atomic-pack-modes-hybrid-atomic-pack-configured",
+] as const;
+
+const RAVIOLI_CURRENT_RESUME_OP55_SCREENSHOT_STEMS = [
+  "001-compose-five-atomic-pack-modes-same-run-dependencies-entered",
+  "002-compose-five-atomic-pack-modes-creator-connected-on-shadownet",
+  "003-limited-edition-expiry-deconfliction-le-wrapper-outliving-child-rejected-before-pins-or-writes",
+  "004-compose-five-atomic-pack-modes-deterministic-vault-configured",
+  "005-compose-five-atomic-pack-modes-deterministic-vault-funded-and-issued",
+  "006-compose-five-atomic-pack-modes-blind-funded-pool-configured",
+  "007-compose-five-atomic-pack-modes-blind-funded-pool-funded-and-issued",
+  "008-buy-and-atomically-open-five-pack-modes-collector-one-bought-blind-funded-pool",
+  "009-buy-and-atomically-open-five-pack-modes-collector-two-bought-blind-funded-pool",
+  "010-blind-claim-preserving-wrapper-transfer-collector-one-transferred-an-unopened-blind-claim",
+  "011-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "012-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "013-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "014-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "015-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "016-compose-five-atomic-pack-modes-blind-allocated-mint-configured",
+  "017-compose-five-atomic-pack-modes-blind-allocated-mint-funded-and-issued",
+  "018-compose-five-atomic-pack-modes-blind-generative-mint-configured",
+  "019-compose-five-atomic-pack-modes-blind-generative-mint-funded-and-issued",
+  "020-compose-five-atomic-pack-modes-hybrid-atomic-pack-configured",
+  "021-compose-five-atomic-pack-modes-hybrid-atomic-pack-funded-and-issued",
+  "022-buy-and-atomically-open-five-pack-modes-collector-one-bought-deterministic-vault",
+  "023-buy-and-atomically-open-five-pack-modes-collector-one-opened-deterministic-vault",
+  "024-buy-and-atomically-open-five-pack-modes-collector-two-transferred-claim-holder-opened-blind-funded-pool",
+  "025-blind-claim-preserving-wrapper-transfer-collector-two-returned-the-remaining-unopened-blind-claim",
+  "026-buy-and-atomically-open-five-pack-modes-collector-one-returned-claim-holder-opened-blind-funded-pool",
+  "027-buy-and-atomically-open-five-pack-modes-collector-one-bought-blind-allocated-mint",
+  "028-buy-and-atomically-open-five-pack-modes-collector-one-opened-blind-allocated-mint",
+  "029-buy-and-atomically-open-five-pack-modes-collector-two-bought-blind-generative-mint",
+  "030-buy-and-atomically-open-five-pack-modes-collector-two-opened-blind-generative-mint",
+  "031-buy-and-atomically-open-five-pack-modes-collector-one-bought-hybrid-atomic-pack",
+  "032-buy-and-atomically-open-five-pack-modes-collector-one-opened-hybrid-atomic-pack",
+] as const;
+
+const RAVIOLI_CURRENT_RESUME_OP63_SCREENSHOT_STEMS = [
+  ...RAVIOLI_CURRENT_RESUME_OP55_SCREENSHOT_STEMS,
+  "033-decrypt-exact-pre-sale-authenticated-envelopes-after-key-publication-blind-reveal-keys-published-for-pre-sale-encrypted-envelopes-te-209cb4c99c7d77d2",
+  "034-withheld-reveal-refund-and-permissionless-closure-withheld-reveal-blind-allocation-configured",
+  "035-withheld-reveal-refund-and-permissionless-closure-collector-one-withheld-reveal-probe-bought-blind-allocated-mint",
+] as const;
+
+const RAVIOLI_CURRENT_RESUME_OP64_SCREENSHOT_STEMS = [
+  ...RAVIOLI_CURRENT_RESUME_OP63_SCREENSHOT_STEMS,
+  "036-withheld-reveal-refund-and-permissionless-closure-collector-two-permissionlessly-credited-collector-one-refund",
+] as const;
+
+const RAVIOLI_CURRENT_RESUME_OP66_SCREENSHOT_STEMS = [
+  ...RAVIOLI_CURRENT_RESUME_OP64_SCREENSHOT_STEMS,
+  "037-withheld-reveal-refund-and-permissionless-closure-collector-two-closed-fully-refunded-unrevealed-pack",
+  "038-withheld-reveal-refund-and-permissionless-closure-collector-one-withdrew-preserved-pull-based-refund",
+] as const;
+
+const RAVIOLI_CURRENT_RESUME_OP67_SCREENSHOT_STEMS = [
+  ...RAVIOLI_CURRENT_RESUME_OP66_SCREENSHOT_STEMS,
+  "039-withheld-reveal-refund-and-permissionless-closure-creator-released-cancelled-pack-child-capacity",
+] as const;
+
+function assertRavioliCurrentResumeOpenKitProgress(progress: JsonObject): number {
+  assert.equal(progress.schema, "pastaprotocol-ravioli-open-kit-capture-progress@1");
+  assert.ok(Array.isArray(progress.openKits) && progress.openKits.length >= 1);
+  const count = progress.openKits.length;
+  assert.ok(count <= PACK_SPECS.length, "current resume open-kit inventory exceeds the five principal modes");
+  assert.equal(
+    progress.status,
+    count === PACK_SPECS.length ? "CAPTURED" : "PARTIAL",
+    "current resume open-kit progress status differs from its exact inventory",
+  );
+  return count;
+}
+
 function boundedRavioliEvidenceId(value: string, maximumLength = 128): string {
   if (value.length <= maximumLength) return value;
   const digest = sha256(Buffer.from(value, "utf8")).slice(0, 16);
@@ -5542,6 +6223,7 @@ export async function loadExactRavioliUiLiveControllerResumeScreenshots(
 
 export async function loadExactRavioliUiLiveCurrentResumeScreenshots(
   appRoot: string,
+  completedOperationCount: number,
 ): Promise<CapturePastaProofStageResult[]> {
   const resolved = path.resolve(appRoot);
   const artifactsRoot = path.join(resolved, "artifacts");
@@ -5579,10 +6261,47 @@ export async function loadExactRavioliUiLiveCurrentResumeScreenshots(
     Buffer.from(deterministicJsonBytes(progress)),
     "Ravioli current resume open-kit progress is not canonical JSON",
   );
-  assert.equal(progress.schema, "pastaprotocol-ravioli-open-kit-capture-progress@1");
-  assert.equal(progress.status, "PARTIAL");
-  assert.ok(Array.isArray(progress.openKits) && progress.openKits.length >= 2);
-  if (progress.openKits.length >= 3) {
+  const openKitCount = assertRavioliCurrentResumeOpenKitProgress(progress);
+  assert.ok(openKitCount >= 2);
+  if (openKitCount === PACK_SPECS.length) {
+    if (completedOperationCount === 67) {
+      assert.deepEqual(
+        stems,
+        [...RAVIOLI_CURRENT_RESUME_OP67_SCREENSHOT_STEMS],
+        "Ravioli operation-67 canonical screenshot boundary drifted",
+      );
+    } else if (completedOperationCount === 66) {
+      assert.deepEqual(
+        stems,
+        [...RAVIOLI_CURRENT_RESUME_OP66_SCREENSHOT_STEMS],
+        "Ravioli operation-66 canonical screenshot boundary drifted",
+      );
+    } else if (completedOperationCount === 64) {
+      assert.deepEqual(
+        stems,
+        [...RAVIOLI_CURRENT_RESUME_OP64_SCREENSHOT_STEMS],
+        "Ravioli operation-64 canonical screenshot boundary drifted",
+      );
+    } else if (completedOperationCount === 63) {
+      assert.deepEqual(
+        stems,
+        [...RAVIOLI_CURRENT_RESUME_OP63_SCREENSHOT_STEMS],
+        "Ravioli operation-63 canonical screenshot boundary drifted",
+      );
+    } else {
+      assert.equal(completedOperationCount, 55, "five-kit current resume boundary is neither operation 55 nor 63");
+      assert.equal(
+        stems.length,
+        RAVIOLI_CURRENT_RESUME_OP55_SCREENSHOT_STEMS.length,
+        "Ravioli operation-55 resume screenshot inventory drifted",
+      );
+      assert.deepEqual(
+        stems,
+        [...RAVIOLI_CURRENT_RESUME_OP55_SCREENSHOT_STEMS],
+        "Ravioli operation-55 canonical screenshot boundary drifted",
+      );
+    }
+  } else if (openKitCount >= 3) {
     assert.ok(
       stems.length >= RAVIOLI_CURRENT_RESUME_OP23_SCREENSHOT_STEMS.length,
       "Ravioli operation-23 resume is missing its authenticated screenshot prefix",
@@ -5591,6 +6310,17 @@ export async function loadExactRavioliUiLiveCurrentResumeScreenshots(
       stems.slice(0, RAVIOLI_CURRENT_RESUME_OP23_SCREENSHOT_STEMS.length),
       [...RAVIOLI_CURRENT_RESUME_OP23_SCREENSHOT_STEMS],
       "Ravioli operation-23 canonical screenshot prefix drifted",
+    );
+  }
+  if (openKitCount === 4) {
+    assert.ok(
+      stems.length >= RAVIOLI_CURRENT_RESUME_OP30_SCREENSHOT_STEMS.length,
+      "Ravioli operation-30 resume is missing its authenticated screenshot prefix",
+    );
+    assert.deepEqual(
+      stems.slice(0, RAVIOLI_CURRENT_RESUME_OP30_SCREENSHOT_STEMS.length),
+      [...RAVIOLI_CURRENT_RESUME_OP30_SCREENSHOT_STEMS],
+      "Ravioli operation-30 canonical screenshot prefix drifted",
     );
   }
   const openKitNames = progress.openKits.map((entry, index) => {
@@ -5605,6 +6335,11 @@ export async function loadExactRavioliUiLiveCurrentResumeScreenshots(
     assert.match(String(record.sha256 || ""), /^[0-9a-f]{64}$/);
     return fileName;
   });
+  const hasWithheldOpenKit = completedOperationCount === 63
+    || completedOperationCount === 64
+    || completedOperationCount === 66
+    || completedOperationCount === 67;
+  if (hasWithheldOpenKit) openKitNames.push(`ravioli-open-kit-${PACK_SPECS.length}.json`);
   await requireExactRavioliPrewriteDirectory(
     resolved,
     ["artifacts", "screenshots"],
@@ -5646,9 +6381,7 @@ async function loadRavioliCurrentResumeOpenKitIdentity(appRoot: string): Promise
     Buffer.from(deterministicJsonBytes(progress)),
     "current resume open-kit progress is not canonical JSON",
   );
-  assert.equal(progress.schema, "pastaprotocol-ravioli-open-kit-capture-progress@1");
-  assert.equal(progress.status, "PARTIAL");
-  assert.ok(Array.isArray(progress.openKits) && progress.openKits.length >= 1);
+  assertRavioliCurrentResumeOpenKitProgress(progress);
   const openKits = [];
   for (const [tokenId, entry] of progress.openKits.entries()) {
     assert.ok(entry && typeof entry === "object" && !Array.isArray(entry));
@@ -5670,10 +6403,25 @@ async function loadRavioliCurrentResumeOpenKitIdentity(appRoot: string): Promise
       byteLength: bytes.byteLength,
     });
   }
+  const withheldPath = path.join(openKitsRoot, `ravioli-open-kit-${PACK_SPECS.length}.json`);
+  let withheldOpenKit: JsonObject | null = null;
+  try {
+    const bytes = await readFile(withheldPath);
+    withheldOpenKit = {
+      tokenId: PACK_SPECS.length,
+      mode: MODE_NAMES[WITHHELD_REFUND_PACK_SPEC.mode],
+      fileName: path.basename(withheldPath),
+      sha256: sha256(bytes),
+      byteLength: bytes.byteLength,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
   return {
     schema: "pastaprotocol-ravioli-current-resume-open-kit-identity@1",
     progressSha256: sha256(progressBytes),
     openKits,
+    withheldOpenKit,
   };
 }
 
@@ -5713,9 +6461,7 @@ async function loadRavioliCurrentResumeRetainedCaptures(
     Buffer.from(deterministicJsonBytes(progress)),
     "current resume retained open-kit progress is not canonical JSON",
   );
-  assert.equal(progress.schema, "pastaprotocol-ravioli-open-kit-capture-progress@1");
-  assert.equal(progress.status, "PARTIAL");
-  assert.ok(Array.isArray(progress.openKits) && progress.openKits.length >= 1);
+  assertRavioliCurrentResumeOpenKitProgress(progress);
   const captures: RavioliOpenKitDownloadCapture[] = [];
   for (const [tokenId, entry] of progress.openKits.entries()) {
     assert.ok(entry && typeof entry === "object" && !Array.isArray(entry));
@@ -5747,6 +6493,25 @@ async function loadRavioliCurrentResumeRetainedCaptures(
     }));
   }
   return captures;
+}
+
+async function loadRavioliCurrentResumeWithheldCapture(
+  appRoot: string,
+  routerAddress: string,
+): Promise<RavioliOpenKitDownloadCapture> {
+  const tokenId = PACK_SPECS.length;
+  const fileName = `ravioli-open-kit-${tokenId}.json`;
+  const bytes = await readFile(path.join(appRoot, "artifacts", "open-kits", fileName));
+  const text = bytes.toString("utf8");
+  assert.ok(text.endsWith("\n"), "current resume withheld open kit is not the exact Studio download");
+  return validateRavioliOpenKitDownload({
+    mode: WITHHELD_REFUND_PACK_SPEC.mode,
+    expectedTokenId: tokenId,
+    routerAddress,
+    suggestedFilename: fileName,
+    inPageJson: text.slice(0, -1),
+    downloadedBytes: bytes,
+  });
 }
 
 export function parseRavioliCurrentV2OpenKitEvidence(
@@ -7996,6 +8761,849 @@ async function verifyRavioliOpenDeliveryOutcome(input: {
   };
 }
 
+type RavioliHistoricalTransfer = Readonly<{
+  contract: string;
+  tokenId: number;
+  from: string | null;
+  to: string | null;
+  amount: number;
+  transactionId: number;
+  row: JsonObject;
+}>;
+
+type RavioliHistoricalChildDependency = Readonly<{
+  gnocchiAddress: string;
+  gnocchiAdapterAddress: string;
+  gnocchiAllocationTokenId: number;
+  gnocchiLimitedAllocationTokenId: number;
+  rotiniAddress: string;
+  rotiniAdapterAddress: string;
+  rotiniProjectId: number;
+  generatedTokenIds: readonly [number, number, number];
+}>;
+
+function ravioliHistoricalInteger(value: unknown, label: string): number {
+  const parsed = Number(value);
+  assert.ok(Number.isSafeInteger(parsed) && parsed >= 0, `${label} must be a non-negative safe integer`);
+  return parsed;
+}
+
+function ravioliHistoricalAddress(value: unknown): string | null {
+  return typeof value === "string" && value ? value : null;
+}
+
+function ravioliHistoricalDiffs(row: JsonObject, pathName: string): JsonObject[] {
+  assert.ok(Array.isArray(row.diffs), `historical transaction ${row.id} has no big-map diffs`);
+  return row.diffs.filter((diff: JsonObject) => diff?.path === pathName);
+}
+
+function ravioliHistoricalLedgerDiff(
+  row: JsonObject,
+  owner: string,
+  tokenId: number,
+): JsonObject {
+  const matches = ravioliHistoricalDiffs(row, "ledger").filter((diff) =>
+    diff?.content?.key?.owner === owner
+    && Number(diff?.content?.key?.token_id) === tokenId
+  );
+  assert.equal(
+    matches.length,
+    1,
+    `historical transaction ${row.id} needs one ${owner} token ${tokenId} ledger diff`,
+  );
+  return matches[0]!;
+}
+
+function ravioliHistoricalTransfers(value: unknown): RavioliHistoricalTransfer[] {
+  assert.ok(Array.isArray(value), "historical TzKT token transfers must be an array");
+  return value.map((row: JsonObject) => {
+    const contract = String(row?.token?.contract?.address || "");
+    assert.equal(String(row?.token?.standard || "").toLowerCase(), "fa2", "historical token transfer is not FA2");
+    assert.ok(contract, "historical token transfer has no contract");
+    return {
+      contract,
+      tokenId: ravioliHistoricalInteger(row?.token?.tokenId, "historical transfer token id"),
+      from: ravioliHistoricalAddress(row?.from?.address),
+      to: ravioliHistoricalAddress(row?.to?.address),
+      amount: ravioliHistoricalInteger(row?.amount, "historical transfer amount"),
+      transactionId: ravioliHistoricalInteger(row?.transactionId, "historical transfer transaction id"),
+      row,
+    };
+  });
+}
+
+function ravioliHistoricalOperationRoot(input: {
+  rows: unknown;
+  operationHash: string;
+  expectedCounter: number;
+  actor: string;
+  routerAddress: string;
+  entrypoint: "buy" | "open_pack";
+}): { rows: JsonObject[]; root: JsonObject } {
+  assert.ok(Array.isArray(input.rows) && input.rows.length > 0, `${input.entrypoint} history must contain TzKT rows`);
+  const rows = input.rows as JsonObject[];
+  assert.equal(validateOperation(input.operationHash), ValidationResult.VALID, "historical Ravioli operation hash is invalid");
+  const rootMatches = rows.filter((row) =>
+    row?.hash === input.operationHash
+    && row?.status === "applied"
+    && row?.sender?.address === input.actor
+    && row?.target?.address === input.routerAddress
+    && row?.parameter?.entrypoint === input.entrypoint
+    && Number(row?.counter) === input.expectedCounter
+  );
+  assert.equal(rootMatches.length, 1, `historical Ravioli ${input.entrypoint} needs one exact root call`);
+  const root = rootMatches[0]!;
+  const rootLevel = ravioliHistoricalInteger(root.level, `historical ${input.entrypoint} level`);
+  const rootId = ravioliHistoricalInteger(root.id, `historical ${input.entrypoint} transaction id`);
+  let previousId = -1;
+  for (const row of rows) {
+    assert.equal(row.hash, input.operationHash, "historical operation tree hash drift");
+    assert.equal(row.status, "applied", "historical operation tree contains a non-applied row");
+    assert.equal(Number(row.level), rootLevel, "historical operation tree level drift");
+    assert.equal(Number(row.counter), input.expectedCounter, "historical operation tree counter drift");
+    const id = ravioliHistoricalInteger(row.id, "historical operation-tree transaction id");
+    assert.ok(id > previousId, "historical operation-tree rows are not in exact execution order");
+    previousId = id;
+  }
+  assert.equal(rows[0]?.id, rootId, "historical operation-tree root is not the first row");
+  return { rows, root };
+}
+
+function ravioliHistoricalTransferFor(input: {
+  transfers: readonly RavioliHistoricalTransfer[];
+  transactionId: number;
+  contract: string;
+  tokenId: number;
+  from: string | null;
+  to: string | null;
+  amount: number;
+  label: string;
+}): RavioliHistoricalTransfer {
+  const matches = input.transfers.filter((transfer) =>
+    transfer.transactionId === input.transactionId
+    && transfer.contract === input.contract
+    && transfer.tokenId === input.tokenId
+    && transfer.from === input.from
+    && transfer.to === input.to
+    && transfer.amount === input.amount
+  );
+  assert.equal(matches.length, 1, `${input.label} needs one exact TzKT token transfer`);
+  return matches[0]!;
+}
+
+function ravioliHistoricalReceivedBalanceStep(input: {
+  row: JsonObject;
+  transfer: RavioliHistoricalTransfer;
+  recipient: string;
+}): JsonObject {
+  assert.equal(input.transfer.to, input.recipient);
+  const diff = ravioliHistoricalLedgerDiff(
+    input.row,
+    input.recipient,
+    input.transfer.tokenId,
+  );
+  assert.ok(
+    diff.action === "add_key" || diff.action === "update_key",
+    "historical recipient ledger diff must add or update the balance",
+  );
+  const after = ravioliHistoricalInteger(diff?.content?.value, "historical recipient post-transfer balance");
+  const before = after - input.transfer.amount;
+  assert.ok(before >= 0, "historical recipient balance delta would be negative");
+  return {
+    before,
+    after,
+    delta: input.transfer.amount,
+    transactionId: input.transfer.transactionId,
+    transfer: input.transfer.row,
+    ledgerDiff: diff,
+  };
+}
+
+function ravioliHistoricalSelectedTree(rows: readonly JsonObject[]): JsonObject[] {
+  return rows.map((row) => ({
+    id: row.id,
+    hash: row.hash,
+    level: row.level,
+    timestamp: row.timestamp,
+    counter: row.counter,
+    sender: row.sender?.address,
+    target: row.target?.address,
+    initiator: row.initiator?.address || null,
+    amount: row.amount,
+    entrypoint: row.parameter?.entrypoint || "default",
+    value: row.parameter?.value ?? null,
+    status: row.status,
+    diffs: row.diffs || [],
+  }));
+}
+
+function ravioliHistoricalSelectedTransfers(transfers: readonly RavioliHistoricalTransfer[]): JsonObject[] {
+  return transfers.map((transfer) => ({
+    id: transfer.row.id,
+    level: transfer.row.level,
+    timestamp: transfer.row.timestamp,
+    token: transfer.row.token,
+    from: transfer.row.from || null,
+    to: transfer.row.to || null,
+    amount: transfer.row.amount,
+    transactionId: transfer.transactionId,
+  }));
+}
+
+export function verifyRavioliHistoricalPurchaseEvidence(input: {
+  operationOrdinal: 14 | 15 | 41 | 47 | 50 | 53;
+  operationHash: string;
+  expectedCounter: number;
+  routerAddress: string;
+  blindControllerAddress: string;
+  creator: string;
+  collector: string;
+  tokenId: number;
+  rows: unknown;
+  tokenTransfers: unknown;
+}): JsonObject {
+  const expectedProfile = {
+    14: { tokenId: 1, remaining: 1 },
+    15: { tokenId: 1, remaining: 0 },
+    41: { tokenId: 0, remaining: 0 },
+    47: { tokenId: 2, remaining: 0 },
+    50: { tokenId: 3, remaining: 0 },
+    53: { tokenId: 4, remaining: 0 },
+  }[input.operationOrdinal];
+  assert.equal(input.tokenId, expectedProfile.tokenId, `historical purchase operation ${input.operationOrdinal} token drift`);
+  const spec = proofPackSpec(input.tokenId);
+  assert.ok(spec, `historical purchase operation ${input.operationOrdinal} has no proof pack specification`);
+  const { rows, root } = ravioliHistoricalOperationRoot({
+    rows: input.rows,
+    operationHash: input.operationHash,
+    expectedCounter: input.expectedCounter,
+    actor: input.collector,
+    routerAddress: input.routerAddress,
+    entrypoint: "buy",
+  });
+  assert.equal(Number(root.amount), spec.priceMutez, `historical purchase operation ${input.operationOrdinal} payment drift`);
+  assert.deepEqual(
+    { amount: Number(root?.parameter?.value?.amount), tokenId: Number(root?.parameter?.value?.token_id) },
+    { amount: 1, tokenId: input.tokenId },
+    `historical purchase operation ${input.operationOrdinal} payload drift`,
+  );
+  const blind = input.tokenId > 0;
+  assert.equal(rows.length, blind ? 2 : 1, `historical purchase operation ${input.operationOrdinal} internal call count drift`);
+  if (blind) {
+    const assign = rows[1]!;
+    assert.deepEqual(
+      {
+        sender: assign?.sender?.address,
+        target: assign?.target?.address,
+        initiator: assign?.initiator?.address,
+        entrypoint: assign?.parameter?.entrypoint,
+        amount: Number(assign?.amount),
+        buyer: assign?.parameter?.value?.buyer,
+        quantity: Number(assign?.parameter?.value?.amount),
+        tokenId: Number(assign?.parameter?.value?.pack_token_id),
+      },
+      {
+        sender: input.routerAddress,
+        target: input.blindControllerAddress,
+        initiator: input.collector,
+        entrypoint: "assign_claims",
+        amount: spec.priceMutez,
+        buyer: input.collector,
+        quantity: 1,
+        tokenId: input.tokenId,
+      },
+      `historical purchase operation ${input.operationOrdinal} claim assignment drift`,
+    );
+  }
+  const sales = ravioliHistoricalDiffs(root, "sales").filter((diff) => Number(diff?.content?.key) === input.tokenId);
+  assert.equal(sales.length, 1, `historical purchase operation ${input.operationOrdinal} needs one sale diff`);
+  assert.deepEqual(
+    {
+      price: Number(sales[0]?.content?.value?.price),
+      remaining: Number(sales[0]?.content?.value?.remaining),
+      seller: sales[0]?.content?.value?.seller,
+      treasury: sales[0]?.content?.value?.treasury,
+    },
+    {
+      price: spec.priceMutez,
+      remaining: expectedProfile.remaining,
+      seller: input.creator,
+      treasury: input.creator,
+    },
+    `historical purchase operation ${input.operationOrdinal} sale diff drift`,
+  );
+  const buyerDiff = ravioliHistoricalLedgerDiff(root, input.collector, input.tokenId);
+  assert.ok(buyerDiff.action === "add_key" || buyerDiff.action === "update_key");
+  const balance = ravioliHistoricalInteger(buyerDiff?.content?.value, "historical purchased wrapper balance");
+  assert.equal(balance, 1, `historical purchase operation ${input.operationOrdinal} buyer balance drift`);
+  ravioliHistoricalLedgerDiff(root, input.creator, input.tokenId);
+  const transfers = ravioliHistoricalTransfers(input.tokenTransfers);
+  assert.equal(transfers.length, 1, `historical purchase operation ${input.operationOrdinal} token-transfer count drift`);
+  const transfer = ravioliHistoricalTransferFor({
+    transfers,
+    transactionId: Number(root.id),
+    contract: input.routerAddress,
+    tokenId: input.tokenId,
+    from: input.creator,
+    to: input.collector,
+    amount: 1,
+    label: `historical purchase operation ${input.operationOrdinal}`,
+  });
+  const selectedTree = ravioliHistoricalSelectedTree(rows);
+  const selectedTransfers = ravioliHistoricalSelectedTransfers(transfers);
+  return {
+    tokenId: input.tokenId,
+    collector: input.collector,
+    balance,
+    purchasedQuantity: 1,
+    balanceContext: "historical-operation-ledger-diff",
+    totalSupplyBeforeOpen: spec.editions,
+    operationHash: input.operationHash,
+    amountMutez: Number(root.amount),
+    operationLevel: root.level,
+    operationOrdinal: input.operationOrdinal,
+    contract: { address: input.routerAddress, source: "historical-operation" },
+    token: { contract: { address: input.routerAddress }, tokenId: String(input.tokenId), totalSupply: String(spec.editions) },
+    indexedBalance: { account: { address: input.collector }, balance: String(balance), transactionId: root.id },
+    wrapperTransfer: transfer.row,
+    operationTreeSha256: sha256(deterministicJsonBytes(selectedTree)),
+    tokenTransfersSha256: sha256(deterministicJsonBytes(selectedTransfers)),
+    operationTree: selectedTree,
+    tokenTransfers: selectedTransfers,
+    explorerUrl: `https://shadownet.tzkt.io/${input.operationHash}`,
+  };
+}
+
+function assertRavioliHistoricalKitAction(
+  rootAction: JsonObject,
+  kitAction: JsonObject,
+  actionIndex: number,
+): "escrow" | "allocated" | "generative" {
+  if (kitAction.kind === "escrow") {
+    assert.deepEqual(Object.keys(rootAction), ["escrow"], `historical escrow action ${actionIndex} kind drift`);
+    assert.deepEqual(
+      {
+        fa2: rootAction.escrow?.fa2,
+        tokenId: Number(rootAction.escrow?.token_id),
+        amount: Number(rootAction.escrow?.amount),
+      },
+      { fa2: kitAction.fa2, tokenId: Number(kitAction.tokenId), amount: Number(kitAction.amount) },
+      `historical escrow action ${actionIndex} payload drift`,
+    );
+    return "escrow";
+  }
+  if (kitAction.kind === "allocated") {
+    assert.deepEqual(Object.keys(rootAction), ["allocated_mint"], `historical allocated action ${actionIndex} kind drift`);
+    assert.deepEqual(
+      {
+        adapter: rootAction.allocated_mint?.adapter,
+        resourceId: Number(rootAction.allocated_mint?.resource_id),
+        payload: String(rootAction.allocated_mint?.payload || ""),
+        payloadCommitment: rootAction.allocated_mint?.payload_commitment,
+      },
+      {
+        adapter: kitAction.adapter,
+        resourceId: Number(kitAction.resourceId),
+        payload: "",
+        payloadCommitment: kitAction.payloadCommitment,
+      },
+      `historical allocated action ${actionIndex} payload drift`,
+    );
+    return "allocated";
+  }
+  assert.equal(kitAction.kind, "generative", `historical action ${actionIndex} has an unsupported kit kind`);
+  assert.deepEqual(Object.keys(rootAction), ["generative_mint"], `historical generative action ${actionIndex} kind drift`);
+  assert.equal(rootAction.generative_mint?.adapter, kitAction.adapter);
+  assert.equal(Number(rootAction.generative_mint?.resource_id), Number(kitAction.resourceId));
+  assert.equal(rootAction.generative_mint?.payload_commitment, kitAction.payloadCommitment);
+  assert.match(String(rootAction.generative_mint?.payload || ""), /^[0-9a-f]+$/i, `historical generative action ${actionIndex} payload is missing`);
+  return "generative";
+}
+
+export function verifyRavioliHistoricalOpenEvidence(input: {
+  operationOrdinal: 42 | 44 | 46 | 49 | 52 | 55;
+  operationHash: string;
+  expectedCounter: number;
+  routerAddress: string;
+  blindControllerAddress: string;
+  creator: string;
+  collector: string;
+  tokenId: number;
+  kit: PackKit;
+  dependencies: RavioliHistoricalChildDependency;
+  rows: unknown;
+  tokenTransfers: unknown;
+}): JsonObject {
+  const profile = {
+    42: { tokenId: 0, serial: 0, claimId: null, supplyAfter: 0, openedAfter: 1, wrapperAfter: 0 },
+    44: { tokenId: 1, serial: 1, claimId: 0, supplyAfter: 1, openedAfter: 1, wrapperAfter: 1 },
+    46: { tokenId: 1, serial: 0, claimId: 1, supplyAfter: 0, openedAfter: 2, wrapperAfter: 0 },
+    49: { tokenId: 2, serial: 0, claimId: 0, supplyAfter: 0, openedAfter: 1, wrapperAfter: 0 },
+    52: { tokenId: 3, serial: 0, claimId: 0, supplyAfter: 0, openedAfter: 1, wrapperAfter: 0 },
+    55: { tokenId: 4, serial: 0, claimId: 0, supplyAfter: 0, openedAfter: 1, wrapperAfter: 0 },
+  }[input.operationOrdinal];
+  assert.equal(input.tokenId, profile.tokenId, `historical open operation ${input.operationOrdinal} token drift`);
+  assert.equal(input.kit.contract, input.routerAddress, "historical open kit router drift");
+  assert.equal(input.kit.tokenId, input.tokenId, "historical open kit token drift");
+  const { rows, root } = ravioliHistoricalOperationRoot({
+    rows: input.rows,
+    operationHash: input.operationHash,
+    expectedCounter: input.expectedCounter,
+    actor: input.collector,
+    routerAddress: input.routerAddress,
+    entrypoint: "open_pack",
+  });
+  assert.equal(Number(root.amount), 0, `historical open operation ${input.operationOrdinal} unexpectedly transferred tez at root`);
+  const rootValue = root.parameter?.value as JsonObject;
+  assert.equal(Number(rootValue?.token_id), input.tokenId);
+  assert.equal(rootValue?.expected_claim_id === null ? null : Number(rootValue?.expected_claim_id), profile.claimId);
+  const matchingRecipes = input.kit.recipes.filter((recipe) => recipe.nonce === rootValue?.nonce);
+  assert.equal(matchingRecipes.length, 1, `historical open operation ${input.operationOrdinal} nonce is not in its authenticated kit`);
+  const recipe = matchingRecipes[0]!;
+  assert.equal(recipe.serial, profile.serial, `historical open operation ${input.operationOrdinal} serial drift`);
+  assert.ok(Array.isArray(rootValue.actions));
+  assert.equal(rootValue.actions.length, recipe.actions.length, `historical open operation ${input.operationOrdinal} action count drift`);
+  const actionKinds = rootValue.actions.map((action: JsonObject, index: number) =>
+    assertRavioliHistoricalKitAction(action, recipe.actions[index]!, index)
+  );
+  const signatures: Array<{ sender: string; target: string; entrypoint: string }> = [{
+    sender: input.collector,
+    target: input.routerAddress,
+    entrypoint: "open_pack",
+  }];
+  const transfers = ravioliHistoricalTransfers(input.tokenTransfers);
+  const usedTransfers = new Set<RavioliHistoricalTransfer>();
+  const deliverySteps: Array<{ contract: string; tokenId: number; amount: number; step: JsonObject }> = [];
+  const childRowFor = (sender: string, target: string, entrypoint: string, actionIndex?: number): JsonObject => {
+    const matches = rows.filter((row) =>
+      row?.sender?.address === sender
+      && row?.target?.address === target
+      && (row?.parameter?.entrypoint || "default") === entrypoint
+      && (actionIndex === undefined || Number(row?.parameter?.value?.action_index) === actionIndex)
+    );
+    assert.equal(matches.length, 1, `historical open operation ${input.operationOrdinal} ${target}%${entrypoint} call-count drift`);
+    return matches[0]!;
+  };
+  for (let actionIndex = 0; actionIndex < actionKinds.length; actionIndex += 1) {
+    const kind = actionKinds[actionIndex]!;
+    const rootAction = rootValue.actions[actionIndex] as JsonObject;
+    if (kind === "escrow") {
+      const escrow = rootAction.escrow as JsonObject;
+      const row = childRowFor(input.routerAddress, String(escrow.fa2), "transfer");
+      signatures.push({ sender: input.routerAddress, target: String(escrow.fa2), entrypoint: "transfer" });
+      assertRavioliFa2TransferPayload(row.parameter?.value, {
+        from: input.routerAddress,
+        to: input.collector,
+        tokenId: Number(escrow.token_id),
+        amount: Number(escrow.amount),
+      });
+      const transfer = ravioliHistoricalTransferFor({
+        transfers,
+        transactionId: Number(row.id),
+        contract: String(escrow.fa2),
+        tokenId: Number(escrow.token_id),
+        from: input.routerAddress,
+        to: input.collector,
+        amount: Number(escrow.amount),
+        label: `historical open operation ${input.operationOrdinal} escrow action ${actionIndex}`,
+      });
+      usedTransfers.add(transfer);
+      deliverySteps.push({
+        contract: transfer.contract,
+        tokenId: transfer.tokenId,
+        amount: transfer.amount,
+        step: ravioliHistoricalReceivedBalanceStep({ row, transfer, recipient: input.collector }),
+      });
+      continue;
+    }
+    const adapter = kind === "allocated"
+      ? input.dependencies.gnocchiAdapterAddress
+      : input.dependencies.rotiniAdapterAddress;
+    const fulfill = childRowFor(input.routerAddress, adapter, "fulfill", actionIndex);
+    signatures.push({ sender: input.routerAddress, target: adapter, entrypoint: "fulfill" });
+    const rootPrimitive = kind === "allocated" ? rootAction.allocated_mint : rootAction.generative_mint;
+    assert.deepEqual(
+      {
+        payload: String(fulfill?.parameter?.value?.payload || ""),
+        recipient: fulfill?.parameter?.value?.recipient,
+        serial: Number(fulfill?.parameter?.value?.open_serial),
+        resourceId: Number(fulfill?.parameter?.value?.resource_id),
+        actionIndex: Number(fulfill?.parameter?.value?.action_index),
+        packContract: fulfill?.parameter?.value?.pack_contract,
+        packTokenId: Number(fulfill?.parameter?.value?.pack_token_id),
+      },
+      {
+        payload: String(rootPrimitive?.payload || ""),
+        recipient: input.collector,
+        serial: recipe.serial,
+        resourceId: Number(rootPrimitive?.resource_id),
+        actionIndex,
+        packContract: input.routerAddress,
+        packTokenId: input.tokenId,
+      },
+      `historical open operation ${input.operationOrdinal} ${kind} fulfill payload drift`,
+    );
+    if (kind === "allocated") {
+      const tokenId = input.tokenId === 2
+        ? input.dependencies.gnocchiLimitedAllocationTokenId
+        : input.dependencies.gnocchiAllocationTokenId;
+      const mint = childRowFor(adapter, input.dependencies.gnocchiAddress, "mint_reserved");
+      signatures.push({ sender: adapter, target: input.dependencies.gnocchiAddress, entrypoint: "mint_reserved" });
+      assert.deepEqual(
+        {
+          recipient: mint?.parameter?.value?.to_,
+          tokenId: Number(mint?.parameter?.value?.token_id),
+          amount: Number(mint?.parameter?.value?.amount),
+        },
+        { recipient: input.collector, tokenId, amount: 1 },
+        `historical open operation ${input.operationOrdinal} allocated mint payload drift`,
+      );
+      const transfer = ravioliHistoricalTransferFor({
+        transfers,
+        transactionId: Number(mint.id),
+        contract: input.dependencies.gnocchiAddress,
+        tokenId,
+        from: null,
+        to: input.collector,
+        amount: 1,
+        label: `historical open operation ${input.operationOrdinal} allocated mint`,
+      });
+      usedTransfers.add(transfer);
+      deliverySteps.push({
+        contract: transfer.contract,
+        tokenId: transfer.tokenId,
+        amount: transfer.amount,
+        step: ravioliHistoricalReceivedBalanceStep({ row: mint, transfer, recipient: input.collector }),
+      });
+      continue;
+    }
+    const generatedIndex = input.tokenId === 3 ? actionIndex : 2;
+    const generatedTokenId = input.dependencies.generatedTokenIds[generatedIndex];
+    assert.ok(generatedTokenId !== undefined, `historical open operation ${input.operationOrdinal} generated-token mapping drift`);
+    const mint = childRowFor(adapter, input.dependencies.rotiniAddress, "mint_pack_iteration", actionIndex);
+    signatures.push({ sender: adapter, target: input.dependencies.rotiniAddress, entrypoint: "mint_pack_iteration" });
+    assert.deepEqual(
+      {
+        recipient: mint?.parameter?.value?.recipient,
+        projectId: Number(mint?.parameter?.value?.project_id),
+        serial: Number(mint?.parameter?.value?.open_serial),
+        actionIndex: Number(mint?.parameter?.value?.action_index),
+        packContract: mint?.parameter?.value?.pack_contract,
+        packTokenId: Number(mint?.parameter?.value?.pack_token_id),
+      },
+      {
+        recipient: input.collector,
+        projectId: input.dependencies.rotiniProjectId,
+        serial: recipe.serial,
+        actionIndex,
+        packContract: input.routerAddress,
+        packTokenId: input.tokenId,
+      },
+      `historical open operation ${input.operationOrdinal} generative mint payload drift`,
+    );
+    for (const field of ["metadata_uri", "artifact_uri", "display_uri", "thumbnail_uri", "mime_type", "artifact_hash"]) {
+      assert.match(String(mint?.parameter?.value?.[field] || ""), /^[0-9a-f]+$/i, `historical generative ${field} is missing`);
+    }
+    const transfer = ravioliHistoricalTransferFor({
+      transfers,
+      transactionId: Number(mint.id),
+      contract: input.dependencies.rotiniAddress,
+      tokenId: generatedTokenId,
+      from: null,
+      to: input.collector,
+      amount: 1,
+      label: `historical open operation ${input.operationOrdinal} generative mint ${actionIndex}`,
+    });
+    usedTransfers.add(transfer);
+    deliverySteps.push({
+      contract: transfer.contract,
+      tokenId: transfer.tokenId,
+      amount: transfer.amount,
+      step: ravioliHistoricalReceivedBalanceStep({ row: mint, transfer, recipient: input.collector }),
+    });
+  }
+  if (input.tokenId > 0) {
+    const consume = childRowFor(input.routerAddress, input.blindControllerAddress, "consume_claim");
+    signatures.push({ sender: input.routerAddress, target: input.blindControllerAddress, entrypoint: "consume_claim" });
+    assert.deepEqual(
+      {
+        holder: consume?.parameter?.value?.holder,
+        serial: Number(consume?.parameter?.value?.serial),
+        tokenId: Number(consume?.parameter?.value?.pack_token_id),
+        claimId: Number(consume?.parameter?.value?.expected_claim_id),
+      },
+      { holder: input.collector, serial: recipe.serial, tokenId: input.tokenId, claimId: profile.claimId },
+      `historical open operation ${input.operationOrdinal} claim-consumption payload drift`,
+    );
+    const payout = childRowFor(input.blindControllerAddress, input.creator, "default");
+    signatures.push({ sender: input.blindControllerAddress, target: input.creator, entrypoint: "default" });
+    assert.equal(Number(payout.amount), proofPackSpec(input.tokenId)!.priceMutez, `historical open operation ${input.operationOrdinal} treasury payout drift`);
+    assert.equal(payout.parameter ?? null, null, `historical open operation ${input.operationOrdinal} default payout gained a parameter`);
+  }
+  assert.deepEqual(
+    rows.map((row) => ({
+      sender: row?.sender?.address,
+      target: row?.target?.address,
+      entrypoint: row?.parameter?.entrypoint || "default",
+    })),
+    signatures,
+    `historical open operation ${input.operationOrdinal} internal execution tree drift`,
+  );
+  for (const row of rows.slice(1)) {
+    assert.equal(row?.initiator?.address, input.collector, `historical open operation ${input.operationOrdinal} internal initiator drift`);
+  }
+  const supply = ravioliHistoricalDiffs(root, "total_supply").filter((diff) => Number(diff?.content?.key) === input.tokenId);
+  const opened = ravioliHistoricalDiffs(root, "opened").filter((diff) => Number(diff?.content?.key) === input.tokenId);
+  assert.equal(supply.length, 1);
+  assert.equal(opened.length, 1);
+  assert.equal(Number(supply[0]?.content?.value), profile.supplyAfter, `historical open operation ${input.operationOrdinal} wrapper supply diff drift`);
+  assert.equal(Number(opened[0]?.content?.value), profile.openedAfter, `historical open operation ${input.operationOrdinal} opened-count diff drift`);
+  const wrapperDiff = ravioliHistoricalLedgerDiff(root, input.collector, input.tokenId);
+  const wrapperAfter = wrapperDiff.action === "remove_key"
+    ? 0
+    : ravioliHistoricalInteger(wrapperDiff?.content?.value, "historical post-open wrapper balance");
+  const wrapperBefore = wrapperDiff.action === "remove_key"
+    ? ravioliHistoricalInteger(wrapperDiff?.content?.value, "historical removed wrapper balance")
+    : wrapperAfter + 1;
+  assert.equal(wrapperBefore - wrapperAfter, 1, `historical open operation ${input.operationOrdinal} wrapper burn delta drift`);
+  assert.equal(wrapperAfter, profile.wrapperAfter, `historical open operation ${input.operationOrdinal} wrapper post-burn balance drift`);
+  const wrapperBurn = ravioliHistoricalTransferFor({
+    transfers,
+    transactionId: Number(root.id),
+    contract: input.routerAddress,
+    tokenId: input.tokenId,
+    from: input.collector,
+    to: null,
+    amount: 1,
+    label: `historical open operation ${input.operationOrdinal} wrapper burn`,
+  });
+  usedTransfers.add(wrapperBurn);
+  assert.equal(usedTransfers.size, transfers.length, `historical open operation ${input.operationOrdinal} has unexplained token transfers`);
+  const deliveryProfiles = input.tokenId === 4
+    ? [
+        { contract: input.dependencies.gnocchiAddress, tokenId: input.dependencies.gnocchiAllocationTokenId, kind: "escrow-plus-allocated" },
+        { contract: input.dependencies.rotiniAddress, tokenId: input.dependencies.generatedTokenIds[2], kind: "generative" },
+      ]
+    : deliverySteps.map((delivery, index) => ({
+        contract: delivery.contract,
+        tokenId: delivery.tokenId,
+        kind: input.tokenId === 1
+          ? input.operationOrdinal === 44 ? "escrow-transferred-claim" : "escrow-returned-claim"
+          : input.tokenId === 2 ? "allocated"
+          : actionKinds[index] || "generative",
+      }));
+  const balanceDeltas = deliveryProfiles.map((delivery) => {
+    const steps = deliverySteps.filter((step) => step.contract === delivery.contract && step.tokenId === delivery.tokenId);
+    assert.ok(steps.length > 0, `historical open operation ${input.operationOrdinal} lacks ${delivery.contract} token ${delivery.tokenId} delivery`);
+    const ordered = [...steps].sort((left, right) => Number(left.step.transactionId) - Number(right.step.transactionId));
+    for (let index = 1; index < ordered.length; index += 1) {
+      assert.equal(ordered[index]!.step.before, ordered[index - 1]!.step.after, "historical delivery balance steps are not contiguous");
+    }
+    return {
+      contract: delivery.contract,
+      tokenId: delivery.tokenId,
+      amount: ordered.reduce((total, step) => total + step.amount, 0),
+      kind: delivery.kind,
+      before: ordered[0]!.step.before,
+      after: ordered[ordered.length - 1]!.step.after,
+      delta: ordered.reduce((total, step) => total + Number(step.step.delta), 0),
+      historicalSteps: ordered.map((step) => step.step),
+    };
+  });
+  const selectedTree = ravioliHistoricalSelectedTree(rows);
+  const selectedTransfers = ravioliHistoricalSelectedTransfers(transfers);
+  return {
+    tokenId: input.tokenId,
+    serial: recipe.serial,
+    collector: input.collector,
+    operationHash: input.operationHash,
+    operationOrdinal: input.operationOrdinal,
+    explorerUrl: `https://shadownet.tzkt.io/${input.operationHash}`,
+    operationTreeSha256: sha256(deterministicJsonBytes(selectedTree)),
+    tokenTransfersSha256: sha256(deterministicJsonBytes(selectedTransfers)),
+    operationTree: selectedTree,
+    tokenTransfers: selectedTransfers,
+    exactCallCounts: {
+      rows: rows.length,
+      actions: recipe.actions.length,
+      escrow: actionKinds.filter((kind) => kind === "escrow").length,
+      gnocchiFulfill: actionKinds.filter((kind) => kind === "allocated").length,
+      gnocchiMint: actionKinds.filter((kind) => kind === "allocated").length,
+      rotiniFulfill: actionKinds.filter((kind) => kind === "generative").length,
+      rotiniMint: actionKinds.filter((kind) => kind === "generative").length,
+      claimConsume: input.tokenId > 0 ? 1 : 0,
+      treasuryPayout: input.tokenId > 0 ? 1 : 0,
+    },
+    wrapperBurn: wrapperBurn.row,
+    balanceDeltas,
+  };
+}
+
+async function readRavioliHistoricalOperationEvidence(
+  operationHash: string,
+  options: RavioliJournalReadOptions,
+): Promise<{ rows: JsonObject[]; transfers: JsonObject[] }> {
+  const base = normalizeBase(SHADOWNET_TZKT_API);
+  const rows = await readRavioliJournalJson(
+    base,
+    `/operations/transactions/${encodeURIComponent(operationHash)}`,
+    `Ravioli historical operation ${operationHash}`,
+    options,
+  );
+  assert.ok(Array.isArray(rows) && rows.length > 0, `Ravioli historical operation ${operationHash} is absent`);
+  const transfers: JsonObject[] = [];
+  for (const row of rows as JsonObject[]) {
+    const transactionId = ravioliHistoricalInteger(row.id, "Ravioli historical transaction id");
+    const value = await readRavioliJournalJson(
+      base,
+      `/tokens/transfers?transactionId=${transactionId}`,
+      `Ravioli historical transaction ${transactionId} token transfers`,
+      options,
+    );
+    assert.ok(Array.isArray(value), `Ravioli historical transaction ${transactionId} token transfers are malformed`);
+    transfers.push(...value as JsonObject[]);
+  }
+  return { rows: rows as JsonObject[], transfers };
+}
+
+export async function reconstructRavioliOp55HistoricalEvidence(input: {
+  plan: RavioliCurrentResumePlan;
+  routerAddress: string;
+  blindControllerAddress: string;
+  creator: string;
+  collectorOne: string;
+  collectorTwo: string;
+  gnocchiAddress: string;
+  gnocchiAdapterAddress: string;
+  gnocchiAllocationTokenId: number;
+  gnocchiLimitedAllocationTokenId: number;
+  rotiniAddress: string;
+  rotiniAdapterAddress: string;
+  rotiniProjectId: number;
+  generatedTokenIds: readonly [number, number, number];
+  kits: readonly PackKit[];
+  readOptions?: RavioliJournalReadOptions;
+}): Promise<{
+  wrapperPurchaseCheckpoints: JsonObject[];
+  openDeliveryOutcomes: JsonObject[];
+  generativeOpenHash: string;
+  hybridOpenHash: string;
+}> {
+  assert.ok(
+    input.plan.completedOperationCount === 55
+      || input.plan.completedOperationCount === 63
+      || input.plan.completedOperationCount === 64
+      || input.plan.completedOperationCount === 66
+      || input.plan.completedOperationCount === 67,
+    "historical Ravioli reconstruction requires the exact operation-55, operation-63, operation-64, operation-66, or operation-67 boundary",
+  );
+  assert.equal(
+    input.plan.operations.length,
+    input.plan.completedOperationCount,
+    "historical Ravioli reconstruction operation cardinality drift",
+  );
+  assert.equal(input.plan.targetBindings.router, input.routerAddress);
+  assert.equal(input.plan.targetBindings.blindController, input.blindControllerAddress);
+  assert.equal(input.plan.targetBindings.gnocchi, input.gnocchiAddress);
+  assert.equal(input.plan.targetBindings.gnocchiAdapter, input.gnocchiAdapterAddress);
+  assert.equal(input.plan.targetBindings.rotini, input.rotiniAddress);
+  assert.equal(input.plan.targetBindings.rotiniAdapter, input.rotiniAdapterAddress);
+  assert.deepEqual(input.kits.map((kit) => kit.tokenId), [0, 1, 2, 3, 4]);
+  const actors = { collector1: input.collectorOne, collector2: input.collectorTwo } as const;
+  const operationFor = (
+    ordinal: number,
+    actor: keyof typeof actors,
+    entrypoint: "buy" | "open_pack",
+    tokenId: number,
+  ): RavioliCurrentResumePlan["operations"][number] => {
+    const matches = input.plan.operations.filter((operation) => operation.expected.globalOrdinal === ordinal);
+    assert.equal(matches.length, 1, `historical Ravioli operation ${ordinal} is not unique`);
+    const operation = matches[0]!;
+    assert.equal(operation.actor, actor, `historical Ravioli operation ${ordinal} actor drift`);
+    assert.equal(operation.expected.entrypoint, entrypoint, `historical Ravioli operation ${ordinal} entrypoint drift`);
+    assert.equal(operation.expected.tokenId, tokenId, `historical Ravioli operation ${ordinal} token drift`);
+    assert.equal(operation.descriptor.kind, "call");
+    if (operation.descriptor.kind !== "call") assert.fail(`historical Ravioli operation ${ordinal} is not a call`);
+    assert.equal(operation.descriptor.call.contractAddress, input.routerAddress);
+    assert.equal(operation.descriptor.call.entrypoint, entrypoint);
+    assert.equal(Number(operation.descriptor.call.payload?.token_id), tokenId);
+    assert.equal(operation.evidence.signerAddress, actors[actor]);
+    assert.equal(operation.evidence.contractAddress, input.routerAddress);
+    assert.equal(operation.evidence.operationHash, operation.operationHash);
+    return operation;
+  };
+  const purchaseProfiles = [
+    [14, "collector1", 1],
+    [15, "collector2", 1],
+    [41, "collector1", 0],
+    [47, "collector1", 2],
+    [50, "collector2", 3],
+    [53, "collector1", 4],
+  ] as const;
+  const wrapperPurchaseCheckpoints: JsonObject[] = [];
+  for (const [ordinal, actor, tokenId] of purchaseProfiles) {
+    const operation = operationFor(ordinal, actor, "buy", tokenId);
+    const evidence = await readRavioliHistoricalOperationEvidence(operation.operationHash, input.readOptions || {});
+    wrapperPurchaseCheckpoints.push(verifyRavioliHistoricalPurchaseEvidence({
+      operationOrdinal: ordinal,
+      operationHash: operation.operationHash,
+      expectedCounter: Number(operation.evidence.counter),
+      routerAddress: input.routerAddress,
+      blindControllerAddress: input.blindControllerAddress,
+      creator: input.creator,
+      collector: actors[actor],
+      tokenId,
+      rows: evidence.rows,
+      tokenTransfers: evidence.transfers,
+    }));
+  }
+  const dependencies: RavioliHistoricalChildDependency = {
+    gnocchiAddress: input.gnocchiAddress,
+    gnocchiAdapterAddress: input.gnocchiAdapterAddress,
+    gnocchiAllocationTokenId: input.gnocchiAllocationTokenId,
+    gnocchiLimitedAllocationTokenId: input.gnocchiLimitedAllocationTokenId,
+    rotiniAddress: input.rotiniAddress,
+    rotiniAdapterAddress: input.rotiniAdapterAddress,
+    rotiniProjectId: input.rotiniProjectId,
+    generatedTokenIds: input.generatedTokenIds,
+  };
+  const openProfiles = [
+    [42, "collector1", 0],
+    [44, "collector2", 1],
+    [46, "collector1", 1],
+    [49, "collector1", 2],
+    [52, "collector2", 3],
+    [55, "collector1", 4],
+  ] as const;
+  const openDeliveryOutcomes: JsonObject[] = [];
+  for (const [ordinal, actor, tokenId] of openProfiles) {
+    const operation = operationFor(ordinal, actor, "open_pack", tokenId);
+    const evidence = await readRavioliHistoricalOperationEvidence(operation.operationHash, input.readOptions || {});
+    openDeliveryOutcomes.push(verifyRavioliHistoricalOpenEvidence({
+      operationOrdinal: ordinal,
+      operationHash: operation.operationHash,
+      expectedCounter: Number(operation.evidence.counter),
+      routerAddress: input.routerAddress,
+      blindControllerAddress: input.blindControllerAddress,
+      creator: input.creator,
+      collector: actors[actor],
+      tokenId,
+      kit: input.kits[tokenId]!,
+      dependencies,
+      rows: evidence.rows,
+      tokenTransfers: evidence.transfers,
+    }));
+  }
+  assert.deepEqual(wrapperPurchaseCheckpoints.map((checkpoint) => Number(checkpoint.tokenId)), [1, 1, 0, 2, 3, 4]);
+  assert.deepEqual(openDeliveryOutcomes.map((outcome) => Number(outcome.tokenId)), [0, 1, 1, 2, 3, 4]);
+  return {
+    wrapperPurchaseCheckpoints,
+    openDeliveryOutcomes,
+    generativeOpenHash: operationFor(52, "collector2", "open_pack", 3).operationHash,
+    hybridOpenHash: operationFor(55, "collector1", "open_pack", 4).operationHash,
+  };
+}
+
 async function clickBuyerCall(actor: ActorPage, selector: string, action: string): Promise<void> {
   const previousCallCount = await actor.page.evaluate(() => (
     ((window as any).__pastaUiLiveBridge?.receipts || []).filter((receipt: any) => receipt.action === "call").length
@@ -8022,6 +9630,7 @@ async function verifyIndexedWrapperPurchase(input: {
   operationHash: string;
   expectedPriceMutez: number;
   expectedIndexedBalance?: number;
+  expectedIndexedTotalSupply?: number;
   expectedOperationCounter?: number;
   balanceContext?: "immediate-post-purchase" | "terminal-after-recovered-transfer";
 }): Promise<JsonObject> {
@@ -8038,7 +9647,16 @@ async function verifyIndexedWrapperPurchase(input: {
     }],
   });
   const token = (fa2.tokens as JsonObject[]).find((candidate) => Number(candidate.tokenId) === input.tokenId);
-  assert.ok(token && Number(token.totalSupply) >= 1, `Ravioli wrapper ${input.tokenId} indexed supply must remain live before opening`);
+  assert.ok(token, `Ravioli wrapper ${input.tokenId} indexed token is absent`);
+  if (input.expectedIndexedTotalSupply === undefined) {
+    assert.ok(Number(token.totalSupply) >= 1, `Ravioli wrapper ${input.tokenId} indexed supply must remain live before opening`);
+  } else {
+    assert.equal(
+      Number(token.totalSupply),
+      input.expectedIndexedTotalSupply,
+      `Ravioli wrapper ${input.tokenId} indexed terminal supply drifted`,
+    );
+  }
   const balance = (fa2.balances as JsonObject[]).find((candidate) =>
     candidate?.account?.address === input.collector && Number(candidate?.token?.tokenId) === input.tokenId,
   );
@@ -8106,6 +9724,34 @@ type RavioliStudioTransferOutcome = {
   transferInfo: string;
 };
 
+type RavioliStudioRefundOutcome = {
+  ok: boolean;
+  notice: string;
+  log: string;
+  refundInfo: string;
+};
+
+type RavioliStudioCancellationOutcome = {
+  ok: boolean;
+  notice: string;
+  log: string;
+  closureInfo: string;
+};
+
+type RavioliStudioWithdrawalOutcome = {
+  ok: boolean;
+  notice: string;
+  log: string;
+  refundInfo: string;
+};
+
+type RavioliStudioAdapterRecoveryOutcome = {
+  ok: boolean;
+  notice: string;
+  log: string;
+  recoverAdapterInfo: string;
+};
+
 function boundedRavioliStudioDiagnostic(value: unknown): string {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 2_000);
 }
@@ -8141,6 +9787,138 @@ export async function waitForRavioliStudioTransferOutcome(
   );
 }
 
+export async function waitForRavioliStudioRefundOutcome(
+  page: Page,
+  timeout = 300_000,
+): Promise<void> {
+  const handle = await page.waitForFunction(() => {
+    const notice = document.getElementById("ppNotice")?.textContent || "";
+    const log = document.getElementById("log")?.textContent || "";
+    const refundInfo = document.getElementById("refundInfo")?.textContent || "";
+    if (notice.includes("Expired claim burned and its refund credited to the current holder.")) {
+      return { ok: true, notice, log, refundInfo };
+    }
+    if (notice.includes("Refund credit failed:") || log.includes("refund credit failed:")) {
+      return { ok: false, notice, log, refundInfo };
+    }
+    return null;
+  }, undefined, { timeout });
+  let outcome: RavioliStudioRefundOutcome;
+  try {
+    outcome = await handle.jsonValue() as RavioliStudioRefundOutcome;
+  } finally {
+    await handle.dispose();
+  }
+  if (outcome.ok) return;
+  throw new Error(
+    "Ravioli refund credit failed before confirmation: " +
+    `notice=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.notice))}; ` +
+    `log=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.log))}; ` +
+    `refundInfo=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.refundInfo))}`,
+  );
+}
+
+export async function waitForRavioliStudioCancellationOutcome(
+  page: Page,
+  timeout = 300_000,
+): Promise<void> {
+  const handle = await page.waitForFunction(() => {
+    const notice = document.getElementById("ppNotice")?.textContent || "";
+    const log = document.getElementById("log")?.textContent || "";
+    const closureInfo = document.getElementById("closureInfo")?.textContent || "";
+    if (notice.includes("Unrevealed Ravioli pack closed after complete refund settlement.")) {
+      return { ok: true, notice, log, closureInfo };
+    }
+    if (
+      notice.includes("Unrevealed-pack closure failed:")
+      || log.includes("unrevealed-pack closure failed:")
+    ) {
+      return { ok: false, notice, log, closureInfo };
+    }
+    return null;
+  }, undefined, { timeout });
+  let outcome: RavioliStudioCancellationOutcome;
+  try {
+    outcome = await handle.jsonValue() as RavioliStudioCancellationOutcome;
+  } finally {
+    await handle.dispose();
+  }
+  if (outcome.ok) return;
+  throw new Error(
+    "Ravioli unrevealed-pack closure failed before confirmation: " +
+    `notice=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.notice))}; ` +
+    `log=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.log))}; ` +
+    `closureInfo=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.closureInfo))}`,
+  );
+}
+
+export async function waitForRavioliStudioWithdrawalOutcome(
+  page: Page,
+  timeout = 300_000,
+): Promise<void> {
+  const handle = await page.waitForFunction(() => {
+    const notice = document.getElementById("ppNotice")?.textContent || "";
+    const log = document.getElementById("log")?.textContent || "";
+    const refundInfo = document.getElementById("refundInfo")?.textContent || "";
+    if (notice.includes("Refund credit withdrawn. A rejected destination would have preserved the credit.")) {
+      return { ok: true, notice, log, refundInfo };
+    }
+    if (notice.includes("Refund withdrawal failed:") || log.includes("refund withdrawal failed:")) {
+      return { ok: false, notice, log, refundInfo };
+    }
+    return null;
+  }, undefined, { timeout });
+  let outcome: RavioliStudioWithdrawalOutcome;
+  try {
+    outcome = await handle.jsonValue() as RavioliStudioWithdrawalOutcome;
+  } finally {
+    await handle.dispose();
+  }
+  if (outcome.ok) return;
+  throw new Error(
+    "Ravioli refund withdrawal failed before confirmation: " +
+    `notice=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.notice))}; ` +
+    `log=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.log))}; ` +
+    `refundInfo=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.refundInfo))}`,
+  );
+}
+
+export async function waitForRavioliStudioAdapterRecoveryOutcome(
+  page: Page,
+  capacity: number,
+  timeout = 300_000,
+): Promise<void> {
+  const expectedInfo = `Released ${capacity} units; router allowance and adapter reservation now 0/0.`;
+  const handle = await page.waitForFunction((expected) => {
+    const notice = document.getElementById("ppNotice")?.textContent || "";
+    const log = document.getElementById("log")?.textContent || "";
+    const recoverAdapterInfo = document.getElementById("recoverAdapterInfo")?.textContent || "";
+    if (
+      notice.includes("Unused Ravioli child capacity released through the official adapter.")
+      && recoverAdapterInfo.includes(expected)
+    ) {
+      return { ok: true, notice, log, recoverAdapterInfo };
+    }
+    if (notice.includes("Adapter recovery failed:") || log.includes("adapter recovery failed:")) {
+      return { ok: false, notice, log, recoverAdapterInfo };
+    }
+    return null;
+  }, expectedInfo, { timeout });
+  let outcome: RavioliStudioAdapterRecoveryOutcome;
+  try {
+    outcome = await handle.jsonValue() as RavioliStudioAdapterRecoveryOutcome;
+  } finally {
+    await handle.dispose();
+  }
+  if (outcome.ok) return;
+  throw new Error(
+    "Ravioli adapter recovery failed before confirmation: " +
+    `notice=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.notice))}; ` +
+    `log=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.log))}; ` +
+    `recoverAdapterInfo=${JSON.stringify(boundedRavioliStudioDiagnostic(outcome.recoverAdapterInfo))}`,
+  );
+}
+
 async function transferRavioliWrapperViaStudio(input: {
   actor: ActorPage;
   routerAddress: string;
@@ -8167,11 +9945,7 @@ async function creditExpiredRavioliRefundViaStudio(input: {
   await input.actor.page.fill("#opTokenId", String(input.tokenId));
   await input.actor.page.fill("#refundHolder", input.holder);
   await input.actor.page.click("#btnCreditRefund");
-  await waitForText(
-    input.actor.page,
-    "#ppNotice",
-    "Expired claim burned and its refund credited to the current holder.",
-  );
+  await waitForRavioliStudioRefundOutcome(input.actor.page);
   await input.actor.page.waitForFunction(() => !document.getElementById("btnCreditRefund")?.hasAttribute("disabled"));
 }
 
@@ -8184,11 +9958,7 @@ async function cancelUnrevealedRavioliPackViaStudio(input: {
   await input.actor.page.fill("#opKt", input.routerAddress);
   await input.actor.page.fill("#opTokenId", String(input.tokenId));
   await input.actor.page.click("#btnCancelUnrevealed");
-  await waitForText(
-    input.actor.page,
-    "#ppNotice",
-    "Unrevealed Ravioli pack closed after complete refund settlement.",
-  );
+  await waitForRavioliStudioCancellationOutcome(input.actor.page);
   await input.actor.page.waitForFunction(() => !document.getElementById("btnCancelUnrevealed")?.hasAttribute("disabled"));
 }
 
@@ -8203,11 +9973,7 @@ async function withdrawRavioliRefundViaStudio(input: {
   await input.actor.page.fill("#opTokenId", String(input.tokenId));
   await input.actor.page.fill("#refundDestination", input.destination);
   await input.actor.page.click("#btnWithdrawRefund");
-  await waitForText(
-    input.actor.page,
-    "#ppNotice",
-    "Refund credit withdrawn. A rejected destination would have preserved the credit.",
-  );
+  await waitForRavioliStudioWithdrawalOutcome(input.actor.page);
   await input.actor.page.waitForFunction(() => !document.getElementById("btnWithdrawRefund")?.hasAttribute("disabled"));
 }
 
@@ -8224,20 +9990,11 @@ async function recoverRavioliAdapterCapacityViaStudio(input: {
   await input.actor.page.fill("#opKt", input.routerAddress);
   await input.actor.page.fill("#opTokenId", String(input.tokenId));
   await input.actor.page.fill("#recoverAdapter", input.adapterAddress);
-  await input.actor.page.fill("#recoverAdapterKind", String(input.kind));
+  await input.actor.page.selectOption("#recoverAdapterKind", String(input.kind));
   await input.actor.page.fill("#recoverResourceId", String(input.resourceId));
   await input.actor.page.fill("#recoverCapacity", String(input.capacity));
   await input.actor.page.click("#btnRecoverAdapter");
-  await waitForText(
-    input.actor.page,
-    "#ppNotice",
-    "Unused Ravioli child capacity released through the official adapter.",
-  );
-  await waitForText(
-    input.actor.page,
-    "#recoverAdapterInfo",
-    `Released ${input.capacity} units; router allowance and adapter reservation now 0/0.`,
-  );
+  await waitForRavioliStudioAdapterRecoveryOutcome(input.actor.page, input.capacity);
   await input.actor.page.waitForFunction(
     () => !document.getElementById("btnRecoverAdapter")?.hasAttribute("disabled"),
   );
@@ -8296,22 +10053,34 @@ async function assertRejectingRavioliRefundDestinationPreservesCredit(input: {
     "Ravioli rejecting-destination probe must cover the holder's exact credit",
   );
   let rejection = "";
+  const transferParams = controller.methodsObject.withdraw_refund({
+    destination: input.rejectingDestination,
+    amount: input.amount,
+  }).toTransferParams();
+  assert.ok(
+    JSON.stringify(transferParams.parameter).includes(input.rejectingDestination),
+    "rejecting-destination simulation parameters are not tied to the exact Ravioli router",
+  );
   try {
-    await input.tezos.estimate.transfer(controller.methodsObject.withdraw_refund({
-      destination: input.rejectingDestination,
-      amount: input.amount,
-    }).toTransferParams());
+    await input.tezos.estimate.transfer(transferParams);
   } catch (error) {
-    rejection = error instanceof Error ? error.message : String(error);
+    const value = error as {
+      id?: unknown;
+      errors?: readonly { id?: unknown }[];
+      message?: unknown;
+    };
+    rejection = [
+      String(value?.message ?? error),
+      String(value?.id || ""),
+      ...(Array.isArray(value?.errors)
+        ? value.errors.map((entry) => String(entry?.id || ""))
+        : []),
+    ].filter(Boolean).join(" ");
   }
   assert.match(
     rejection,
     /(?:script rejected|transaction failed|michelson|entrypoint|default|FAILWITH)/i,
     "rejecting KT1 refund destination did not produce a narrow contract-call rejection",
-  );
-  assert.ok(
-    rejection.includes(input.rejectingDestination),
-    "rejecting-destination trace is not tied to the exact Ravioli router",
   );
   const creditAfter = await readCredit();
   assert.equal(
@@ -8430,6 +10199,7 @@ async function makeCollectorSession(input: {
   journalIntent: RavioliUiLiveActorIntent;
   initialOperationSequence?: number;
   initialReceiptSequence?: number;
+  bridgeHandler?: (delegate: PastaUiLiveBridgeHandler) => PastaUiLiveBridgeHandler;
 }): Promise<{
   session: TaquitoPastaUiLiveSession;
   bridge: Awaited<ReturnType<typeof startPastaUiLiveLoopbackServer>>;
@@ -8497,14 +10267,15 @@ async function makeCollectorSession(input: {
     requiredBalanceMutez: COLLECTOR_OPERATION_RESERVE_MUTEZ,
     operationReserveMutez: COLLECTOR_OPERATION_RESERVE_MUTEZ,
   }));
+  const delegate = createRavioliMirroredSessionHandler({
+    session,
+    mirror: input.mirror,
+    policy: input.policy,
+    signerAddress: input.wallet.address,
+  });
   const bridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: createRavioliMirroredSessionHandler({
-      session,
-      mirror: input.mirror,
-      policy: input.policy,
-      signerAddress: input.wallet.address,
-    }),
+    handleAction: input.bridgeHandler ? input.bridgeHandler(delegate) : delegate,
   });
   return { session, bridge };
 }
@@ -8620,21 +10391,24 @@ export async function assertOfficialLimitedEditionDependencyMismatchRejected(inp
 }): Promise<string> {
   const targetAddress = RAVIOLI_SHORT_EXPIRY_RED_FIXTURE.gnocchiTarget;
   const adapterAddress = RAVIOLI_SHORT_EXPIRY_RED_FIXTURE.gnocchiAdapter;
-  const [target, adapter, router, targetArtifactBytes, adapterArtifactBytes] = await Promise.all([
-    input.tezos.contract.at(targetAddress),
-    input.tezos.contract.at(adapterAddress),
-    input.tezos.contract.at(input.routerAddress),
+  const readFixture = <T>(label: string, read: () => Promise<T>): Promise<T> =>
+    readWithBoundedRetry({
+      primary: declareReadOnlyReader(`Ravioli short-expiry red fixture ${label}`, read),
+    });
+  const [targetArtifactBytes, adapterArtifactBytes, routerArtifactBytes] = await Promise.all([
     readFile(FRESH_GNOCCHI_CONTRACT_ARTIFACT_PATH),
     readFile(ARTIFACT_PATHS.gnocchiAdapter),
+    readFile(ARTIFACT_PATHS.router),
   ]);
-  const [targetScript, adapterScript, routerScript] = await Promise.all([
-    input.tezos.rpc.getScript(targetAddress),
-    input.tezos.rpc.getScript(adapterAddress),
-    input.tezos.rpc.getScript(input.routerAddress),
-  ]);
+  const target = await readFixture("target contract", () => input.tezos.contract.at(targetAddress));
+  const adapter = await readFixture("adapter contract", () => input.tezos.contract.at(adapterAddress));
+  const router = await readFixture("router contract", () => input.tezos.contract.at(input.routerAddress));
+  const targetScript = await readFixture("target script", () => input.tezos.rpc.getScript(targetAddress));
+  const adapterScript = await readFixture("adapter script", () => input.tezos.rpc.getScript(adapterAddress));
+  const routerScript = await readFixture("router script", () => input.tezos.rpc.getScript(input.routerAddress));
   const targetArtifact = JSON.parse(targetArtifactBytes.toString("utf8"));
   const adapterArtifact = JSON.parse(adapterArtifactBytes.toString("utf8"));
-  const routerArtifact = JSON.parse((await readFile(ARTIFACT_PATHS.router)).toString("utf8"));
+  const routerArtifact = JSON.parse(routerArtifactBytes.toString("utf8"));
   assert.ok(Array.isArray(targetArtifact) && Array.isArray(adapterArtifact) && Array.isArray(routerArtifact));
   const targetCodeSha256 = assertMichelsonScriptCodeIdentity(
     targetScript.code,
@@ -8656,17 +10430,30 @@ export async function assertOfficialLimitedEditionDependencyMismatchRejected(inp
   assert.equal(routerCodeSha256, RAVIOLI_FROZEN_DEPLOYMENT.router.canonicalMichelsonCodeSha256);
 
   const readBoundary = async () => {
-    const [targetStorage, adapterStorageValue, routerStorageValue] = await Promise.all([
-      target.storage() as Promise<JsonObject>,
-      adapter.storage() as Promise<JsonObject>,
-      router.storage() as Promise<JsonObject>,
-    ]);
+    const targetStorage = await readFixture(
+      "target storage",
+      () => target.storage() as Promise<JsonObject>,
+    );
+    const adapterStorageValue = await readFixture(
+      "adapter storage",
+      () => adapter.storage() as Promise<JsonObject>,
+    );
+    const routerStorageValue = await readFixture(
+      "router storage",
+      () => router.storage() as Promise<JsonObject>,
+    );
     const administrator = String(routerStorageValue.administrator || "");
     assert.equal(String(targetStorage.administrator || ""), administrator);
     assert.equal(String(adapterStorageValue.administrator || ""), administrator);
     assert.equal(await input.tezos.signer.publicKeyHash(), administrator);
-    const minter = await (targetStorage.minters as any).get(adapterAddress);
-    const routerAuthorization = await (adapterStorageValue.routers as any).get(input.routerAddress);
+    const minter = await readFixture(
+      "target minter authorization",
+      () => (targetStorage.minters as any).get(adapterAddress),
+    );
+    const routerAuthorization = await readFixture(
+      "adapter router authorization",
+      () => (adapterStorageValue.routers as any).get(input.routerAddress),
+    );
     assert.notEqual(minter, undefined, "short-expiry fixture adapter is not an authorized Gnocchi minter");
     assert.equal(routerAuthorization, undefined, "short-expiry fixture unexpectedly retained the current router");
     return {
@@ -8679,7 +10466,7 @@ export async function assertOfficialLimitedEditionDependencyMismatchRejected(inp
     };
   };
   const before = await readBoundary();
-  const head = await input.tezos.rpc.getBlockHeader();
+  const head = await readFixture("head", () => input.tezos.rpc.getBlockHeader());
   const headMs = Date.parse(String(head.timestamp || ""));
   assert.ok(Number.isFinite(headMs), "short-expiry red fixture head timestamp is invalid");
   const start = new Date(headMs - 60_000).toISOString();
@@ -8764,7 +10551,7 @@ export async function assertOfficialLimitedEditionDependencyMismatchRejected(inp
   }));
   let rejection = "";
   try {
-    await input.tezos.estimate.batch(batch);
+    await readFixture("five-operation estimate", () => input.tezos.estimate.batch(batch));
   } catch (error) {
     rejection = error instanceof Error ? error.message : String(error);
   }
@@ -8875,7 +10662,9 @@ export type RavioliRotiniCapacityDependencyEvidence = Readonly<{
 export function buildRavioliRotiniCapacityExpectation(
   dependencies: RavioliRotiniCapacityDependencyEvidence,
   expectedReserved: number,
+  options: { phase?: "prewrite" | "terminal-indexed" } = {},
 ): RavioliRotiniCapacityExpectation {
+  const phase = options.phase ?? "prewrite";
   const projectId = asSafeInteger(dependencies.rotini.projectId, "Ravioli Rotini project id");
   const maxSupply = asSafeInteger(
     dependencies.fresh.rotini.project0.maxSupply,
@@ -8890,9 +10679,17 @@ export function buildRavioliRotiniCapacityExpectation(
     dependencies.liveCheck.rotini.nextProjectId,
     "Ravioli Rotini authenticated next project id",
   );
-  const nextTokenId = asSafeInteger(
+  const authenticatedNextTokenId = asSafeInteger(
     dependencies.liveCheck.rotini.nextTokenId,
     "Ravioli Rotini authenticated next token id",
+  );
+  const nextTokenId = asSafeInteger(
+    dependencies.fresh.rotini.nextTokenId,
+    "Ravioli Rotini fresh next token id",
+  );
+  const authenticatedMinted = asSafeInteger(
+    dependencies.liveCheck.rotini.project0.minted,
+    "Ravioli Rotini authenticated minted",
   );
   const generatedTokenIds = dependencies.rotini.generatedTokenIds.map((tokenId, index) =>
     asSafeInteger(tokenId, `Ravioli Rotini generated token id ${index}`)
@@ -8918,14 +10715,9 @@ export function buildRavioliRotiniCapacityExpectation(
     "Ravioli Rotini authenticated next project id does not include the packaged project",
   );
   assert.equal(
-    dependencies.fresh.rotini.nextTokenId,
-    nextTokenId,
-    "Ravioli Rotini authenticated next token id differs from fresh dependency evidence",
-  );
-  assert.equal(
     dependencies.rotini.nextTokenId,
     nextTokenId,
-    "Ravioli Rotini package next token id differs from authenticated live state",
+    "Ravioli Rotini package next token id differs from fresh dependency evidence",
   );
   assert.notEqual(
     dependencies.liveCheck.rotini.project0.maxSupply,
@@ -8940,18 +10732,20 @@ export function buildRavioliRotiniCapacityExpectation(
     maxSupply,
     "Ravioli Rotini authenticated max supply differs from fresh dependency evidence",
   );
-  assert.equal(
-    asSafeInteger(
-      dependencies.liveCheck.rotini.project0.minted,
-      "Ravioli Rotini authenticated minted",
-    ),
-    minted,
-    "Ravioli Rotini authenticated minted count differs from fresh dependency evidence",
-  );
   assert.deepEqual(
     generatedTokenIds,
     generatedTokenIds.map((_, index) => nextTokenId + index),
     "Ravioli Rotini generated token ids do not continue from the authenticated next token id",
+  );
+  const authenticatedAtBaseline = authenticatedNextTokenId === nextTokenId
+    && authenticatedMinted === minted;
+  const authenticatedAtTerminal = authenticatedNextTokenId === nextTokenId + generatedTokenIds.length
+    && authenticatedMinted === minted + generatedTokenIds.length;
+  assert.ok(
+    authenticatedAtBaseline || (phase === "terminal-indexed" && authenticatedAtTerminal),
+    phase === "terminal-indexed"
+      ? "Ravioli Rotini authenticated token and mint counters are neither the exact pre-pack baseline nor the exact terminal generated state"
+      : "Ravioli Rotini prewrite token and mint counters differ from the exact fresh baseline",
   );
 
   return {
@@ -9203,6 +10997,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
   ]);
 
   const ipfs = resolveIpfsProofConfig();
+  const browserIpfsGateway = resolveRavioliBrowserIpfsGateway();
   const journalRoot = path.join(appRoot, "artifacts", "journal");
   let controllerJournal: RavioliUiLiveJournal | null = null;
   let mutationJournal: RavioliUiLiveJournal | null = null;
@@ -9287,7 +11082,27 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       : null;
   let currentResumePlan: RavioliCurrentResumePlan | null = null;
   let currentResumeBoundaryEventCount = 0;
+  let currentResumeCompletedOperationCount = 0;
   let currentResumeAuthenticatedStatePriming = false;
+  let currentResumeStatePriming = false;
+  let currentResumeOp14Boundary = false;
+  let currentResumeOp20Boundary = false;
+  let currentResumeOp30Boundary = false;
+  let currentResumeOp55Boundary = false;
+  let currentResumeOp63Boundary = false;
+  let currentResumeOp64Boundary = false;
+  let currentResumeOp66Boundary = false;
+  let currentResumeOp67Boundary = false;
+  let currentResumeHasWithheldFixture = false;
+  let currentResumeHasMainTerminalState = false;
+  let currentResumeHasTransferredMode1 = false;
+  let currentResumeHasGnocchiAdapter = false;
+  let currentResumeHasMode2TerminalState = false;
+  let currentResumeRejectedRecoveryBridge: ReturnType<
+    typeof reconcileRavioliRejectedPreDelegationRecovery
+  > | ReturnType<typeof reconcileRavioliOp66RejectedPreDelegationRecovery> | null = null;
+  let currentResumePreparedPinBridge: RavioliPreparedSealedPinRecoveryBridge | null = null;
+  let currentResumePreparedPinProof: PastaUiLivePinProof | null = null;
   if (currentResumeJournal) {
     assert.ok(currentResumeExpectedIdentity, "current resume expected identity is unavailable");
     currentResumePlan = await inspectRavioliCurrentResume({
@@ -9296,47 +11111,182 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       ipfs,
       privateRecoveryRoot: privateRecoveryOutputDirectory || undefined,
     });
-    assert.equal(currentResumePlan.classification, "CURRENT_SAFE_PREFIX");
-    assert.ok(
-      currentResumePlan.completedOperationCount === 9
-        || currentResumePlan.completedOperationCount === 23,
-      "current resume supports only the authenticated operation-9 or operation-23 boundaries",
+    currentResumeCompletedOperationCount = currentResumePlan.completedOperationCount;
+    assert.equal(
+      currentResumePlan.classification,
+      currentResumeCompletedOperationCount === 67 ? "CURRENT_TERMINAL" : "CURRENT_SAFE_PREFIX",
     );
-    currentResumeAuthenticatedStatePriming = currentResumePlan.completedOperationCount === 23;
-    const expectedNextGlobalOperation = currentResumeAuthenticatedStatePriming ? 24 : 10;
+    assert.ok(
+      currentResumeCompletedOperationCount === 9
+        || currentResumeCompletedOperationCount === 14
+        || currentResumeCompletedOperationCount === 20
+        || currentResumeCompletedOperationCount === 23
+        || currentResumeCompletedOperationCount === 30
+        || currentResumeCompletedOperationCount === 55
+        || currentResumeCompletedOperationCount === 63
+        || currentResumeCompletedOperationCount === 64
+        || currentResumeCompletedOperationCount === 66
+        || currentResumeCompletedOperationCount === 67,
+      "current resume supports only the authenticated operation-9, operation-14, operation-20, operation-23, operation-30, operation-55, operation-63, operation-64, operation-66, or operation-67 boundaries",
+    );
+    currentResumeOp14Boundary = currentResumeCompletedOperationCount === 14;
+    currentResumeOp20Boundary = currentResumeCompletedOperationCount === 20;
+    currentResumeAuthenticatedStatePriming = currentResumeCompletedOperationCount >= 23;
+    currentResumeHasTransferredMode1 = currentResumeCompletedOperationCount >= 16;
+    currentResumeHasGnocchiAdapter = currentResumeCompletedOperationCount >= 17;
+    currentResumeHasMode2TerminalState = currentResumeCompletedOperationCount >= 23;
+    currentResumeStatePriming = currentResumeOp14Boundary
+      || currentResumeOp20Boundary
+      || currentResumeAuthenticatedStatePriming;
+    currentResumeOp30Boundary = currentResumeCompletedOperationCount === 30;
+    currentResumeOp55Boundary = currentResumeCompletedOperationCount === 55;
+    currentResumeOp63Boundary = currentResumeCompletedOperationCount === 63;
+    currentResumeOp64Boundary = currentResumeCompletedOperationCount === 64;
+    currentResumeOp66Boundary = currentResumeCompletedOperationCount === 66;
+    currentResumeOp67Boundary = currentResumeCompletedOperationCount === 67;
+    currentResumeHasWithheldFixture = currentResumeOp63Boundary
+      || currentResumeOp64Boundary
+      || currentResumeOp66Boundary
+      || currentResumeOp67Boundary;
+    currentResumeHasMainTerminalState = currentResumeOp55Boundary || currentResumeHasWithheldFixture;
+    const expectedResumeProfile = currentResumeOp67Boundary
+      ? {
+          nextGlobalOperation: undefined,
+          actor: undefined,
+          action: undefined,
+          entrypoint: undefined,
+          originRole: undefined,
+          pinCount: 34,
+          eventCount: 236,
+        }
+      : currentResumeOp66Boundary
+      ? {
+          nextGlobalOperation: 67,
+          actor: "creator" as const,
+          action: "call" as const,
+          entrypoint: "recover_adapter",
+          originRole: undefined,
+          pinCount: 34,
+          eventCount: 233,
+        }
+      : currentResumeOp64Boundary
+      ? {
+          nextGlobalOperation: 65,
+          actor: "collector2" as const,
+          action: "call" as const,
+          entrypoint: "cancel_unrevealed_pack",
+          originRole: undefined,
+          pinCount: 34,
+          eventCount: 227,
+        }
+      : currentResumeOp63Boundary
+      ? {
+          nextGlobalOperation: 64,
+          actor: "collector2" as const,
+          action: "call" as const,
+          entrypoint: "refund_blind_claims",
+          originRole: undefined,
+          pinCount: 34,
+          eventCount: 224,
+        }
+      : currentResumeOp55Boundary
+      ? {
+          nextGlobalOperation: 56,
+          actor: "creator" as const,
+          action: "call" as const,
+          entrypoint: "add_minter",
+          originRole: undefined,
+          pinCount: 30,
+          eventCount: 196,
+        }
+      : currentResumeOp30Boundary
+      ? {
+          nextGlobalOperation: 31,
+          actor: "creator" as const,
+          action: "call" as const,
+          entrypoint: "add_minter",
+          originRole: undefined,
+          pinCount: 21,
+          eventCount: 112,
+        }
+      : currentResumeAuthenticatedStatePriming
+        ? {
+            nextGlobalOperation: 24,
+            actor: "creator" as const,
+            action: "originate" as const,
+            entrypoint: undefined,
+            originRole: "rotiniAdapter" as const,
+            pinCount: 15,
+            eventCount: 85,
+          }
+        : currentResumeOp20Boundary
+          ? {
+              nextGlobalOperation: 21,
+              actor: "creator" as const,
+              action: "call" as const,
+              entrypoint: "create_pack",
+              originRole: undefined,
+              pinCount: 13,
+              eventCount: 74,
+            }
+        : currentResumeOp14Boundary
+          ? {
+              nextGlobalOperation: 15,
+              actor: "collector2" as const,
+              action: "call" as const,
+              entrypoint: "buy",
+              originRole: undefined,
+              pinCount: 10,
+              eventCount: 53,
+            }
+          : {
+            nextGlobalOperation: 10,
+            actor: "creator" as const,
+            action: "call" as const,
+            entrypoint: "create_pack",
+            originRole: undefined,
+            pinCount: 10,
+            eventCount: 38,
+          };
     assert.equal(
       currentResumePlan.nextOperation?.globalOrdinal,
-      expectedNextGlobalOperation,
-      `current resume must continue with global operation ${expectedNextGlobalOperation}`,
+      expectedResumeProfile.nextGlobalOperation,
+      currentResumeOp67Boundary
+        ? "current resume terminal boundary must not expose another global operation"
+        : `current resume must continue with global operation ${expectedResumeProfile.nextGlobalOperation}`,
     );
-    assert.equal(currentResumePlan.nextOperation?.actor, "creator");
+    assert.equal(currentResumePlan.nextOperation?.actor, expectedResumeProfile.actor);
     assert.equal(
       currentResumePlan.nextOperation?.action,
-      currentResumeAuthenticatedStatePriming ? "originate" : "call",
+      expectedResumeProfile.action,
     );
     assert.equal(
       currentResumePlan.nextOperation?.entrypoint,
-      currentResumeAuthenticatedStatePriming ? undefined : "create_pack",
+      expectedResumeProfile.entrypoint,
     );
     assert.equal(
       currentResumePlan.nextOperation?.originRole,
-      currentResumeAuthenticatedStatePriming ? "rotiniAdapter" : undefined,
+      expectedResumeProfile.originRole,
     );
     assert.equal(
       currentResumePlan.pins.length,
-      currentResumeAuthenticatedStatePriming ? 15 : 10,
+      expectedResumeProfile.pinCount,
       "current resume pin boundary drifted",
     );
     currentResumeBoundaryEventCount = (await currentResumeJournal.restartState()).eventCount;
     assert.equal(
       currentResumeBoundaryEventCount,
-      currentResumeAuthenticatedStatePriming ? 85 : 38,
+      expectedResumeProfile.eventCount,
       "current resume journal event boundary drifted",
     );
   }
   const currentResumeRecovery: Readonly<
     | { kind: "v3"; value: RavioliCurrentV3RestartRecovery }
+    | { kind: "op14"; value: RavioliCurrentOp14ResumeRecovery }
+    | { kind: "op20"; value: RavioliCurrentOp20ResumeRecovery }
     | { kind: "v6"; value: RavioliCurrentV6ResumeRecovery }
+    | { kind: "op55"; value: RavioliCurrentOp55ResumeRecovery }
+    | { kind: "op63"; value: RavioliCurrentOp63ResumeRecovery }
   > | null = currentResumePlan
     ? (() => {
         const routerAddress = currentResumePlan.targetBindings.router;
@@ -9348,9 +11298,35 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         const mode1AppliedLevel = Number(mode1.evidence.level);
         assert.ok(Number.isSafeInteger(mode0AppliedLevel) && mode0AppliedLevel > 0);
         assert.ok(Number.isSafeInteger(mode1AppliedLevel) && mode1AppliedLevel > mode0AppliedLevel);
+        if (currentResumeOp20Boundary) {
+          const gnocchiAdapterAddress = currentResumePlan.targetBindings.gnocchiAdapter;
+          const minter = currentResumePlan.operations.find(
+            (operation) => operation.expected.globalOrdinal === 18,
+          );
+          assert.ok(
+            gnocchiAdapterAddress && minter,
+            "operation-20 resume is missing its authorized Gnocchi adapter",
+          );
+          assert.equal(minter.expected.entrypoint, "add_minter");
+          const minterAppliedLevel = Number(minter.evidence.level);
+          assert.ok(
+            Number.isSafeInteger(minterAppliedLevel)
+              && minterAppliedLevel > mode1AppliedLevel,
+          );
+          return {
+            kind: "op20" as const,
+            value: {
+              routerAddress,
+              gnocchiAdapterAddress,
+              mode0AppliedLevel,
+              mode1AppliedLevel,
+              minterAppliedLevel,
+            },
+          };
+        }
         if (!currentResumeAuthenticatedStatePriming) {
           return {
-            kind: "v3" as const,
+            kind: currentResumeOp14Boundary ? "op14" as const : "v3" as const,
             value: { routerAddress, mode0AppliedLevel, mode1AppliedLevel },
           };
         }
@@ -9368,6 +11344,146 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         const reservedMintAppliedLevel = Number(reservedMint.evidence.level);
         assert.ok(Number.isSafeInteger(minterAppliedLevel) && minterAppliedLevel > mode1AppliedLevel);
         assert.ok(Number.isSafeInteger(reservedMintAppliedLevel) && reservedMintAppliedLevel >= minterAppliedLevel);
+        if (currentResumeHasMainTerminalState) {
+          const rotiniAdapterAddress = currentResumePlan.targetBindings.rotiniAdapter;
+          const rotiniPackMinter = currentResumePlan.operations.find(
+            (operation) => operation.expected.globalOrdinal === 25,
+          );
+          const minterSecond = currentResumePlan.operations.find(
+            (operation) => operation.expected.globalOrdinal === 31,
+          );
+          const rotiniPackMinterSecond = currentResumePlan.operations.find(
+            (operation) => operation.expected.globalOrdinal === 34,
+          );
+          const mode1Second = currentResumePlan.operations.find(
+            (operation) => operation.expected.globalOrdinal === 37,
+          );
+          assert.ok(
+            rotiniAdapterAddress
+              && rotiniPackMinter
+              && minterSecond
+              && rotiniPackMinterSecond
+              && mode1Second,
+            "terminal main-product resume is missing its dependency update history",
+          );
+          assert.equal(rotiniPackMinter.expected.entrypoint, "add_pack_minter");
+          assert.equal(minterSecond.expected.entrypoint, "add_minter");
+          assert.equal(rotiniPackMinterSecond.expected.entrypoint, "add_pack_minter");
+          assert.equal(mode1Second.expected.entrypoint, "update_operators");
+          const rotiniPackMinterAppliedLevel = Number(rotiniPackMinter.evidence.level);
+          const minterSecondAppliedLevel = Number(minterSecond.evidence.level);
+          const rotiniPackMinterSecondAppliedLevel = Number(rotiniPackMinterSecond.evidence.level);
+          const mode1SecondAppliedLevel = Number(mode1Second.evidence.level);
+          assert.ok(
+            Number.isSafeInteger(rotiniPackMinterAppliedLevel)
+              && Number.isSafeInteger(minterSecondAppliedLevel)
+              && Number.isSafeInteger(rotiniPackMinterSecondAppliedLevel)
+              && Number.isSafeInteger(mode1SecondAppliedLevel)
+              && rotiniPackMinterAppliedLevel > reservedMintAppliedLevel
+              && minterSecondAppliedLevel > rotiniPackMinterAppliedLevel
+              && rotiniPackMinterSecondAppliedLevel > minterSecondAppliedLevel
+              && mode1SecondAppliedLevel > rotiniPackMinterSecondAppliedLevel,
+            "terminal main-product dependency update levels differ from the authenticated ordering",
+          );
+          const op55Value: RavioliCurrentOp55ResumeRecovery = {
+            routerAddress,
+            gnocchiAdapterAddress,
+            rotiniAdapterAddress,
+            mode0AppliedLevel,
+            mode1AppliedLevel,
+            minterAppliedLevel,
+            rotiniPackMinterAppliedLevel,
+            minterSecondAppliedLevel,
+            rotiniPackMinterSecondAppliedLevel,
+            mode1SecondAppliedLevel,
+          };
+          if (currentResumeHasWithheldFixture) {
+            const minterThird = currentResumePlan.operations.find(
+              (operation) => operation.expected.globalOrdinal === 56,
+            );
+            const allocation = currentResumePlan.operations.find(
+              (operation) => operation.expected.globalOrdinal === 57,
+            );
+            const adapterRouter = currentResumePlan.operations.find(
+              (operation) => operation.expected.globalOrdinal === 58,
+            );
+            const reservedMintFirst = currentResumePlan.operations.find(
+              (operation) => operation.expected.globalOrdinal === 39,
+            );
+            const reservedMint = currentResumePlan.operations.find(
+              (operation) => operation.expected.globalOrdinal === 61,
+            );
+            const adapterRecovery = currentResumeOp67Boundary
+              ? currentResumePlan.operations.find(
+                  (operation) => operation.expected.globalOrdinal === 67,
+                )
+              : null;
+            assert.ok(minterThird && allocation && adapterRouter && reservedMintFirst && reservedMint);
+            assert.equal(minterThird.expected.entrypoint, "add_minter");
+            assert.equal(allocation.expected.entrypoint, "create_allocation");
+            assert.equal(adapterRouter.expected.entrypoint, "add_router");
+            assert.equal(reservedMintFirst.expected.entrypoint, "commit_recipe");
+            assert.equal(reservedMint.expected.entrypoint, "commit_recipe");
+            if (currentResumeOp67Boundary) {
+              assert.ok(adapterRecovery, "operation-67 resume is missing its adapter recovery operation");
+              assert.equal(adapterRecovery.expected.entrypoint, "recover_adapter");
+              assert.ok(
+                Number(adapterRecovery.evidence.level) > Number(reservedMint.evidence.level),
+                "operation-67 adapter recovery must follow the withheld reservation",
+              );
+            }
+            return {
+              kind: "op63" as const,
+              value: {
+                ...op55Value,
+                minterThirdAppliedLevel: Number(minterThird.evidence.level),
+                allocationAppliedLevel: Number(allocation.evidence.level),
+                adapterRouterAppliedLevel: Number(adapterRouter.evidence.level),
+                reservedMintFirstAppliedLevel: Number(reservedMintFirst.evidence.level),
+                reservedMintAppliedLevel: Number(reservedMint.evidence.level),
+                ...(adapterRecovery
+                  ? { adapterRecoveryAppliedLevel: Number(adapterRecovery.evidence.level) }
+                  : {}),
+              },
+            };
+          }
+          return {
+            kind: "op55" as const,
+            value: op55Value,
+          };
+        }
+        const rotiniReservation = currentResumeOp30Boundary
+          ? (() => {
+              const rotiniAdapterAddress = currentResumePlan!.targetBindings.rotiniAdapter;
+              const packMinter = currentResumePlan!.operations.find(
+                (operation) => operation.expected.globalOrdinal === 25,
+              );
+              const reservation = currentResumePlan!.operations.find(
+                (operation) => operation.expected.globalOrdinal === 29,
+              );
+              assert.ok(
+                rotiniAdapterAddress && packMinter && reservation,
+                "operation-30 resume is missing its Rotini reservation operations",
+              );
+              assert.equal(packMinter.expected.entrypoint, "add_pack_minter");
+              assert.equal(reservation.expected.entrypoint, "commit_recipe");
+              const packMinterAppliedLevel = Number(packMinter.evidence.level);
+              const reservationAppliedLevel = Number(reservation.evidence.level);
+              assert.ok(
+                Number.isSafeInteger(packMinterAppliedLevel)
+                  && packMinterAppliedLevel > reservedMintAppliedLevel,
+              );
+              assert.ok(
+                Number.isSafeInteger(reservationAppliedLevel)
+                  && reservationAppliedLevel > packMinterAppliedLevel,
+              );
+              return {
+                adapterAddress: rotiniAdapterAddress,
+                packMinterAppliedLevel,
+                reservationAppliedLevel,
+              };
+            })()
+          : null;
         return {
           kind: "v6" as const,
           value: {
@@ -9377,6 +11493,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
             mode1AppliedLevel,
             minterAppliedLevel,
             reservedMintAppliedLevel,
+            ...(rotiniReservation ? { rotiniReservation } : {}),
           },
         };
       })()
@@ -9384,7 +11501,10 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
   let currentResumeInitialScreenshots: CapturePastaProofStageResult[] | null = null;
   let currentResumeFinalScreenshots: CapturePastaProofStageResult[] | null = null;
   if (currentResumePlan) {
-    currentResumeInitialScreenshots = await loadExactRavioliUiLiveCurrentResumeScreenshots(appRoot);
+    currentResumeInitialScreenshots = await loadExactRavioliUiLiveCurrentResumeScreenshots(
+      appRoot,
+      currentResumeCompletedOperationCount,
+    );
   }
 
   // This read-only gate precedes every new pin or signer operation. Ordinary runs require a
@@ -9395,8 +11515,16 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     runId,
     signerSet.creator.address,
     creatorTezos,
-    currentResumeRecovery?.kind === "v6" ? {
+    currentResumeRecovery?.kind === "op63" ? {
+      currentOp63Resume: currentResumeRecovery.value,
+    } : currentResumeRecovery?.kind === "op55" ? {
+      currentOp55Resume: currentResumeRecovery.value,
+    } : currentResumeRecovery?.kind === "v6" ? {
       currentV6Resume: currentResumeRecovery.value,
+    } : currentResumeRecovery?.kind === "op20" ? {
+      currentOp20Resume: currentResumeRecovery.value,
+    } : currentResumeRecovery?.kind === "op14" ? {
+      currentOp14Resume: currentResumeRecovery.value,
     } : currentResumeRecovery?.kind === "v3" ? {
       currentV3Restart: currentResumeRecovery.value,
     } : currentV7Resume ? {
@@ -9487,11 +11615,11 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     });
     assert.equal(
       currentResumePlan.completedOperationCount,
-      currentResumeAuthenticatedStatePriming ? 23 : 9,
+      currentResumeCompletedOperationCount,
     );
     assert.equal(
       currentResumePlan.nextOperation?.globalOrdinal,
-      currentResumeAuthenticatedStatePriming ? 24 : 10,
+      currentResumeOp67Boundary ? undefined : currentResumeCompletedOperationCount + 1,
     );
   }
   const currentResumeOpenKitIdentity = currentResumePlan
@@ -9910,10 +12038,41 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         currentResumeRecovery || currentV7Replay || currentV5Replay || currentV4Replay || currentV3Replay,
       ),
     })).snapshot,
-    readRotini: async (request) => (await readFreshRotiniDependency({ tezos: creatorTezos, request, evidence: dependencies.fresh })).snapshot,
+    readRotini: async (request) => (await readFreshRotiniDependency({
+      tezos: creatorTezos,
+      request,
+      evidence: dependencies.fresh,
+      ...((currentResumeRecovery?.kind === "op55" || currentResumeRecovery?.kind === "op63")
+        ? { expectedNextTokenId: 6 }
+        : {}),
+    })).snapshot,
   };
-  const finalDependencyLive = currentResumeRecovery?.kind === "v6"
+  const finalDependencyLive = currentResumeRecovery?.kind === "op63"
+    ? await recheckRavioliDependenciesForCurrentOp63Resume(
+        dependencies.fresh,
+        finalDependencyReaders,
+        currentResumeRecovery.value,
+      )
+    : currentResumeRecovery?.kind === "op55"
+    ? await recheckRavioliDependenciesForCurrentOp55Resume(
+        dependencies.fresh,
+        finalDependencyReaders,
+        currentResumeRecovery.value,
+      )
+    : currentResumeRecovery?.kind === "v6"
     ? await recheckRavioliDependenciesForCurrentV6Resume(
+        dependencies.fresh,
+        finalDependencyReaders,
+        currentResumeRecovery.value,
+      )
+    : currentResumeRecovery?.kind === "op20"
+    ? await recheckRavioliDependenciesForCurrentOp20Resume(
+        dependencies.fresh,
+        finalDependencyReaders,
+        currentResumeRecovery.value,
+      )
+    : currentResumeRecovery?.kind === "op14"
+    ? await recheckRavioliDependenciesForCurrentOp14Resume(
         dependencies.fresh,
         finalDependencyReaders,
         currentResumeRecovery.value,
@@ -10375,14 +12534,54 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     };
     assert.deepEqual(revalidatedSnapshot, currentResumeBoundarySnapshot, "current resume live boundary changed before continuation");
     currentResumePlan = revalidated;
-    currentResumeFinalScreenshots = await loadExactRavioliUiLiveCurrentResumeScreenshots(appRoot);
+    if (currentResumeOp20Boundary) {
+      const preparedCid = String(process.env[RAVIOLI_PREPARED_PIN_CID_ENV] || "").trim();
+      assert.match(
+        preparedCid,
+        /^b[a-z2-7]{20,}$/,
+        `operation-20 recovery requires ${RAVIOLI_PREPARED_PIN_CID_ENV}`,
+      );
+      const localPreparedUrl = ipfsGatewayUrl(ipfs.localGatewayUrl, preparedCid);
+      const response = await fetch(localPreparedUrl, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(ipfs.requestTimeoutMs),
+      });
+      assert.ok(
+        response.ok,
+        `operation-20 prepared pin is unavailable from local Kubo: HTTP ${response.status}`,
+      );
+      const envelopeBytes = new Uint8Array(await response.arrayBuffer());
+      currentResumePreparedPinBridge = reconcileRavioliPreparedSealedPinRecovery({
+        plan: currentResumePlan,
+        envelopeBytes,
+      });
+      assert.equal(
+        currentResumePreparedPinBridge.envelope.cid,
+        preparedCid,
+        `${RAVIOLI_PREPARED_PIN_CID_ENV} differs from the authenticated prepared-pin digest`,
+      );
+      currentResumePreparedPinProof = await verifyRavioliPreparedPinAdoption({
+        bridge: currentResumePreparedPinBridge,
+        ipfs,
+      });
+    } else if (currentResumeOp30Boundary) {
+      currentResumeRejectedRecoveryBridge =
+        reconcileRavioliRejectedPreDelegationRecovery(currentResumePlan);
+    } else if (currentResumeOp66Boundary) {
+      currentResumeRejectedRecoveryBridge =
+        reconcileRavioliOp66RejectedPreDelegationRecovery(currentResumePlan);
+    }
+    currentResumeFinalScreenshots = await loadExactRavioliUiLiveCurrentResumeScreenshots(
+      appRoot,
+      currentResumeCompletedOperationCount,
+    );
     assert.deepEqual(
       currentResumeFinalScreenshots,
       currentResumeInitialScreenshots,
       "current resume screenshot/open-kit inventory changed before continuation",
     );
   }
-  const currentEntropyReplay = currentResumePlan && !currentResumeAuthenticatedStatePriming
+  const currentEntropyReplay = currentResumePlan && !currentResumeStatePriming
     ? await loadRavioliCurrentEntropyReplay({ appRoot, plan: currentResumePlan })
     : null;
   const codeHashes = {
@@ -10421,7 +12620,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     assert.equal(journal.isFinalized(), false, "current resume refuses a finalized journal");
     assert.equal(
       journal.getCompletedOperationCount(),
-      currentResumeAuthenticatedStatePriming ? 23 : 9,
+      currentResumeCompletedOperationCount,
       "current resume applied-operation boundary drifted",
     );
     assert.deepEqual(journal.intent.dependencyAddresses, dependencyAddresses, "current resume dependency address drift");
@@ -10728,16 +12927,98 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       recoveredPackCount,
       "current resume mirror did not recover every applied pack creation",
     );
-    assert.equal(mirror.totalSupply.get(0), 1);
-    assert.equal(mirror.sales.get(0)?.remaining, 1);
-    if (currentResumeAuthenticatedStatePriming) {
-      assert.equal(recoveredPackCount, 3);
+    if (currentResumeHasMainTerminalState) {
+      assert.equal(
+        recoveredPackCount,
+        currentResumeHasWithheldFixture ? PACK_SPECS.length + 1 : PACK_SPECS.length,
+      );
+      assert.ok(mirror.gnocchiAdapterAddress, "terminal main-product resume has no recovered Gnocchi adapter");
+      assert.ok(mirror.rotiniAdapterAddress, "terminal main-product resume has no recovered Rotini adapter");
+      assert.equal(mirror.gnocchiNextResourceId, currentResumeHasWithheldFixture ? 3 : 2);
+      assert.equal(mirror.rotiniNextResourceId, 2);
+      for (const [tokenId, expectedOpened] of [1, 2, 1, 1, 1].entries()) {
+        assert.equal(mirror.totalSupply.get(tokenId), 0, `terminal main wrapper ${tokenId} supply drifted`);
+        assert.equal(mirror.opened.get(tokenId), expectedOpened, `terminal main wrapper ${tokenId} opened count drifted`);
+        assert.equal(mirror.sales.get(tokenId)?.remaining, 0, `terminal main wrapper ${tokenId} sale inventory drifted`);
+        assert.equal(mirror.packs.get(tokenId)?.finalized, true, `terminal main wrapper ${tokenId} finalization drifted`);
+        assert.equal(mirror.packs.get(tokenId)?.cancelled, false, `terminal main wrapper ${tokenId} cancellation drifted`);
+        assert.ok(mirror.packs.get(tokenId)?.contents_uri, `terminal main wrapper ${tokenId} contents are missing`);
+      }
+      if (currentResumeOp55Boundary) {
+        assert.equal(mirror.ledger.size, 0, "operation-55 wrapper ledger must be empty after every main opening");
+        assert.equal(mirror.blindClaims.size, 0, "operation-55 blind claims must all be consumed");
+      } else {
+        const withheldRefunded = currentResumeOp64Boundary || currentResumeOp66Boundary || currentResumeOp67Boundary;
+        const withheldSettled = currentResumeOp66Boundary || currentResumeOp67Boundary;
+        assert.equal(mirror.totalSupply.get(PACK_SPECS.length), withheldSettled ? 0 : withheldRefunded ? 1 : 2, "withheld wrapper supply drifted");
+        assert.equal(mirror.sales.get(PACK_SPECS.length)?.remaining, withheldSettled ? 0 : 1, "withheld sale inventory drifted");
+        assert.equal(mirror.packs.get(PACK_SPECS.length)?.finalized, !withheldSettled, "withheld pack finalization drifted");
+        assert.equal(mirror.packs.get(PACK_SPECS.length)?.cancelled, withheldSettled, "withheld pack cancellation drifted");
+        assert.equal(
+          mirror.ledger.get(`${signerSet.creator.address}:${PACK_SPECS.length}`) || 0,
+          withheldSettled ? 0 : 1,
+        );
+        assert.equal(
+          mirror.ledger.get(`${signerSet.collector.address}:${PACK_SPECS.length}`) || 0,
+          withheldRefunded ? 0 : 1,
+        );
+        assert.deepEqual(
+          mirror.blindClaims.get(`${signerSet.collector.address}:${PACK_SPECS.length}`) || [],
+          withheldRefunded ? [] : [0],
+        );
+        assert.equal(
+          mirror.refundCredits.get(signerSet.collector.address) || 0,
+          currentResumeOp64Boundary ? WITHHELD_REFUND_PACK_SPEC.priceMutez : 0,
+        );
+      }
+      assert.equal(mirror.assetAllowances.size, 0, "operation-55 escrow allowances must all be consumed");
+      assert.equal(mirror.adapterAllowances.size, currentResumeOp67Boundary ? 0 : currentResumeHasWithheldFixture ? 1 : 0, "terminal adapter allowance inventory drifted");
+      assert.equal(mirror.adapterReservations.size, currentResumeOp67Boundary ? 0 : currentResumeHasWithheldFixture ? 1 : 0, "terminal adapter reservation inventory drifted");
+      if (currentResumeHasWithheldFixture && !currentResumeOp67Boundary) {
+        assert.equal(
+          mirror.adapterAllowances.get(`${PACK_SPECS.length}:${mirror.gnocchiAdapterAddress}:1:2`),
+          2,
+          "operation-63 exact router adapter allowance drifted",
+        );
+        assert.equal(
+          mirror.adapterReservations.get(`${mirror.gnocchiAdapterAddress}:${PACK_SPECS.length}:2`),
+          2,
+          "operation-63 exact Gnocchi adapter reservation drifted",
+        );
+      }
+    } else {
+      assert.equal(mirror.totalSupply.get(0), 1);
+      assert.equal(mirror.sales.get(0)?.remaining, 1);
+    }
+    if (currentResumeHasMainTerminalState) {
+      // The exact terminal branch above owns all five-mode assertions.
+    } else if (currentResumeOp14Boundary) {
+      assert.equal(recoveredPackCount, 2);
+      assert.equal(mirror.totalSupply.get(1), 2);
+      assert.equal(mirror.sales.get(1)?.remaining, 1);
+      assert.equal(mirror.ledger.get(`${signerSet.collector.address}:1`), 1);
+    } else if (currentResumeOp20Boundary) {
+      assert.equal(recoveredPackCount, 2);
+      assert.equal(mirror.totalSupply.get(1), 2);
+      assert.equal(mirror.sales.get(1)?.remaining, 0);
+      assert.equal(mirror.ledger.get(`${signerSet.collectorTwo.address}:1`), 2);
+      assert.ok(mirror.gnocchiAdapterAddress, "operation-20 resume has no recovered Gnocchi adapter");
+      assert.equal(mirror.gnocchiNextResourceId, 1);
+      assert.equal(mirror.totalSupply.has(2), false);
+    } else if (currentResumeAuthenticatedStatePriming) {
+      assert.equal(recoveredPackCount, currentResumeOp30Boundary ? 4 : 3);
       assert.equal(mirror.totalSupply.get(1), 2);
       assert.equal(mirror.totalSupply.get(2), 1);
       assert.equal(mirror.sales.get(1)?.remaining, 0);
       assert.equal(mirror.sales.get(2)?.remaining, 1);
       assert.equal(mirror.ledger.get(`${signerSet.collectorTwo.address}:1`), 2);
       assert.equal(mirror.gnocchiNextResourceId, 1);
+      if (currentResumeOp30Boundary) {
+        assert.ok(mirror.rotiniAdapterAddress, "operation-30 resume has no recovered Rotini adapter");
+        assert.equal(mirror.totalSupply.get(3), 1);
+        assert.equal(mirror.sales.get(3)?.remaining, 1);
+        assert.equal(mirror.rotiniNextResourceId, 1);
+      }
     }
   } else if (currentV7Replay) {
     mirror.setAdministrator(signerSet.creator.address);
@@ -10885,7 +13166,10 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     capture: RavioliOpenKitDownloadCapture,
   ): JsonObject => {
     assert.ok(currentResumePlan, "current resume mode-2 proof has no authenticated plan");
-    assert.equal(currentResumePlan.completedOperationCount, 23);
+    assert.ok(
+      currentResumePlan.completedOperationCount >= 23,
+      "current resume mode-2 proof requires operation 23 or a later authenticated prefix",
+    );
     const routerAddress = currentResumePlan.targetBindings.router;
     const adapterAddress = currentResumePlan.targetBindings.gnocchiAdapter;
     assert.ok(routerAddress && adapterAddress, "current resume mode-2 proof is missing router/adapter bindings");
@@ -11073,6 +13357,133 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       })),
     };
   };
+  const verifyCurrentResumeWithheldPreOp64Proof = (
+    capture: RavioliOpenKitDownloadCapture,
+  ): JsonObject => {
+    assert.ok(currentResumePlan && currentResumeHasWithheldFixture);
+    const routerAddress = currentResumePlan.targetBindings.router;
+    const adapterAddress = currentResumePlan.targetBindings.gnocchiAdapter;
+    assert.ok(routerAddress && adapterAddress);
+    const kit = capture.kit;
+    assert.equal(kit.contract, routerAddress);
+    assert.equal(kit.tokenId, PACK_SPECS.length);
+    assert.equal(kit.mode, MODE_NAMES[WITHHELD_REFUND_PACK_SPEC.mode]);
+    assert.ok(kit.sealedReveal);
+    const call = (ordinal: number, contractAddress: string, entrypoint: string) => {
+      const operation = currentResumePlan!.operations.find(
+        (candidate) => candidate.expected.globalOrdinal === ordinal,
+      );
+      assert.ok(operation, `operation-63 proof is missing operation ${ordinal}`);
+      assert.equal(operation.descriptor.kind, "call");
+      if (operation.descriptor.kind !== "call") assert.fail(`operation ${ordinal} is not a call`);
+      assert.equal(operation.descriptor.call.contractAddress, contractAddress);
+      assert.equal(operation.descriptor.call.entrypoint, entrypoint);
+      return operation;
+    };
+    const allocationOperation = call(57, adapterAddress, "create_allocation");
+    assert.deepEqual(allocationOperation.descriptor.call.payload, {
+      active: true,
+      amount_per_open: 1,
+      target: dependencies.gnocchi.address,
+      token_id: dependencies.gnocchi.allocationTokenId,
+    });
+    const routerOperation = call(58, adapterAddress, "add_router");
+    assert.equal(routerOperation.descriptor.call.payload, routerAddress);
+    const creationOperation = call(59, routerAddress, "create_pack");
+    const creation = creationOperation.descriptor.call.payload as JsonObject;
+    assert.equal(Number(creation.expected_token_id), PACK_SPECS.length);
+    const config = normalizePack(creation.config as JsonObject);
+    assert.equal(config.mode, WITHHELD_REFUND_PACK_SPEC.mode);
+    assert.equal(config.blind, true);
+    assert.equal(config.item_count, WITHHELD_REFUND_PACK_SPEC.itemCount);
+    assert.equal(config.max_supply, WITHHELD_REFUND_PACK_SPEC.editions);
+    assert.equal(config.child_expiry, null);
+    assert.equal(config.contents_uri, null);
+    assert.equal(decodedUri(config.manifest_uri), kit.manifestUri);
+    assertRavioliSameInstantOrNull(config.wrapper_sale_end, null, "withheld create-pack sale field drift");
+    assertRavioliSameInstantOrNull(
+      config.reveal_deadline,
+      kit.editionPolicy.revealDeadline,
+      "withheld reveal deadline differs from its authenticated kit",
+    );
+    assertRavioliSameInstantOrNull(
+      config.open_deadline,
+      kit.editionPolicy.openDeadline,
+      "withheld open deadline differs from its authenticated kit",
+    );
+    const revealCommitment = ravioliRevealCommitment(
+      kit.sealedReveal.contentsUri,
+      kit.sealedReveal.salt,
+      kit.sealedReveal.offset,
+    );
+    assert.equal(config.reveal_commitment, revealCommitment);
+    for (const [index, ordinal] of [60, 61].entries()) {
+      const commitOperation = call(ordinal, routerAddress, "commit_recipe");
+      const commit = commitOperation.descriptor.call.payload as JsonObject;
+      const recipe = kit.recipes[index]!;
+      const action = recipe.actions[0] as JsonObject;
+      assert.equal(Number(commit.token_id), PACK_SPECS.length);
+      assert.equal(action.kind, "allocated");
+      assert.deepEqual(commit.reservations, [{
+        allocated_mint: {
+          adapter: adapterAddress,
+          payload_commitment: action.payloadCommitment,
+          resource_id: 2,
+        },
+      }]);
+      assert.equal(commit.nonce_commitment, ravioliUiLiveNonceCommitment(recipe.nonce));
+    }
+    const finalizeOperation = call(62, routerAddress, "finalize_blind_pack");
+    const finalize = finalizeOperation.descriptor.call.payload as JsonObject;
+    assert.equal(Number(finalize.token_id), PACK_SPECS.length);
+    const sale = finalize.sale as JsonObject;
+    assert.equal(sale.active, true);
+    assert.equal(Number(sale.remaining), WITHHELD_REFUND_PACK_SPEC.editions);
+    assert.equal(Number(sale.price), WITHHELD_REFUND_PACK_SPEC.priceMutez);
+    assert.equal(sale.seller, signerSet.creator.address);
+    assert.equal(sale.treasury, signerSet.creator.address);
+    assertRavioliSameInstantOrNull(
+      String(sale.end),
+      kit.editionPolicy.wrapperSaleEnd,
+      "withheld sale deadline differs from its authenticated kit",
+    );
+    const purchaseOperation = call(63, routerAddress, "buy");
+    assert.deepEqual(purchaseOperation.descriptor.call.payload, {
+      amount: 1,
+      token_id: PACK_SPECS.length,
+    });
+    assert.deepEqual(purchaseOperation.descriptor.sendOptions, { amount: 1, mutez: true });
+    const pinsBySequence = new Map(currentResumePlan.pins.map((pin) => [pin.pinSequence, pin]));
+    const wrapperPin = pinsBySequence.get(31)!;
+    const manifestPin = pinsBySequence.get(32)!;
+    const envelopePin = pinsBySequence.get(33)!;
+    const metadataPin = pinsBySequence.get(34)!;
+    assert.equal(wrapperPin.proof.fileName, `ravioli-wrapper-${PACK_SPECS.length}.png`);
+    assert.equal(manifestPin.proof.fileName, "ravioli-pack-manifest.json");
+    assert.equal(manifestPin.proof.uri, kit.manifestUri);
+    assert.equal(envelopePin.proof.fileName, `ravioli-sealed-reveal-${PACK_SPECS.length}.json`);
+    assert.equal(envelopePin.proof.uri, kit.sealedReveal.contentsUri);
+    assert.equal(envelopePin.proof.sha256, kit.sealedReveal.envelopeSha256);
+    assert.equal(metadataPin.proof.fileName, "token.json");
+    const metadataUri = decodedUri(ravioliTokenInfoValue(
+      creation.token_info,
+      "",
+      "operation-59 token_info",
+    ));
+    assert.equal(metadataPin.proof.uri, metadataUri);
+    ravioliContentsEvidencePin(pins, routerAddress, PACK_SPECS.length, kit);
+    return {
+      schema: "pastaprotocol-ravioli-withheld-pre-op64-proof@1",
+      status: "PASSED",
+      tokenId: PACK_SPECS.length,
+      openKitSha256: capture.sha256,
+      revealCommitment,
+      operationOrdinals: [57, 58, 59, 60, 61, 62, 63],
+      pinSequences: [31, 32, 33, 34],
+      revealDeadline: kit.editionPolicy.revealDeadline,
+    };
+  };
+  let withheldPreOp64Proof: JsonObject | null = null;
   let currentV4OperationTenContext: RavioliCurrentV4OperationTenContext | null = null;
   const privateRecoveryCaptures: RavioliPrivateRecoveryCapture[] = [];
   const capturedFreshBlindTokenIds = new Set<number>();
@@ -11126,6 +13537,44 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     actor: "creator",
     intent: journal.intent.actors.creator,
   });
+  const currentResumePreparedPinAdopter = currentResumePreparedPinBridge
+      && currentResumePreparedPinProof
+    ? createRavioliPreparedPinAdopter({
+        bridge: currentResumePreparedPinBridge,
+        proof: currentResumePreparedPinProof,
+        fallback: ({ value, fileName }) => pinIpfsProofJson({
+          value,
+          fileName,
+          options: ipfs,
+        }),
+      })
+    : null;
+  let currentResumePreparedAdapterHistoricalProjectionReads = 0;
+  const projectCreatorStorage = async (storage: unknown): Promise<unknown> => {
+    const projected = await projectRavioliUiLiveStorage(storage, mirror);
+    if (
+      currentResumePreparedPinBridge
+      && currentResumePreparedAdapterHistoricalProjectionReads === 0
+      && projected
+      && typeof projected === "object"
+      && !Array.isArray(projected)
+      && "allocations" in projected
+      && !("resources" in projected)
+    ) {
+      const adapterProjection = projected as JsonObject;
+      assert.equal(
+        Number(adapterProjection.next_resource_id),
+        1,
+        "operation-20 live Gnocchi adapter must retain exactly one allocation",
+      );
+      currentResumePreparedAdapterHistoricalProjectionReads += 1;
+      return {
+        ...adapterProjection,
+        next_resource_id: 0,
+      };
+    }
+    return projected;
+  };
   let currentV7FirstSemanticOperationPending = Boolean(currentV7Replay);
   const creatorSession = new TaquitoPastaUiLiveSession({
     tezos: creatorTezos,
@@ -11154,11 +13603,13 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       await assertShadownet(creatorTezos, stage);
       return SHADOWNET_CHAIN_ID;
     },
-    pinJson: ({ value, fileName }) => pinIpfsProofJson({ value, fileName, options: ipfs }),
+    pinJson: ({ value, fileName }) => currentResumePreparedPinAdopter
+      ? currentResumePreparedPinAdopter.pinJson({ value, fileName })
+      : pinIpfsProofJson({ value, fileName, options: ipfs }),
     pinBlob: ({ bytes, fileName, mimeType }) => pinIpfsProofBytes({ bytes, fileName, mimeType, options: ipfs }),
     validateOrigination: (input) => policy.validateOrigination(input),
     validateCall: (input) => policy.validateCall(input),
-    projectStorage: (storage) => projectRavioliUiLiveStorage(storage, mirror),
+    projectStorage: projectCreatorStorage,
     beforePin: async ({ value, bytes, fileName, mimeType }) => {
       policy.validatePin({ value, fileName, mimeType });
       await journal.beforePin({
@@ -11231,22 +13682,34 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     policy,
     signerAddress: signerSet.creator.address,
   });
-  const unavailableCurrentResumeCollectorDelegate = async () => {
-    throw new PastaUiLiveBridgeError(
-      "current Ravioli replay collector delegate is unavailable before creator continuation",
-      409,
-    );
+  const currentResumeCollectorDelegates: Partial<
+    Record<"collector1" | "collector2", PastaUiLiveBridgeHandler>
+  > = {};
+  const currentResumeCollectorDelegate = (
+    actor: "collector1" | "collector2",
+  ): PastaUiLiveBridgeHandler => async (request) => {
+    const delegate = currentResumeCollectorDelegates[actor];
+    if (!delegate) {
+      throw new PastaUiLiveBridgeError(
+        `current Ravioli ${actor} replay delegate is unavailable before collector initialization`,
+        409,
+      );
+    }
+    return delegate(request);
   };
   const currentResumeCoordinator: RavioliCurrentResumeCoordinator | null = currentResumePlan
       ? createRavioliCurrentResumeCoordinator({
           plan: currentResumePlan,
-          primingMode: currentResumeAuthenticatedStatePriming
+          primingMode: currentResumeStatePriming
             ? "authenticated-state"
             : "browser-exact",
+          ...(currentResumePreparedPinBridge
+            ? { preparedSealedPinRecovery: currentResumePreparedPinBridge }
+            : {}),
           delegates: {
           creator: creatorDelegateHandler,
-          collector1: unavailableCurrentResumeCollectorDelegate,
-          collector2: unavailableCurrentResumeCollectorDelegate,
+          collector1: currentResumeCollectorDelegate("collector1"),
+          collector2: currentResumeCollectorDelegate("collector2"),
         },
       })
     : null;
@@ -11355,12 +13818,18 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       })
     : null;
   const retainedCurrentResumeCaptures: RavioliOpenKitDownloadCapture[] =
-    currentResumePlan && currentResumeAuthenticatedStatePriming
+    currentResumePlan && currentResumeStatePriming
       ? await loadRavioliCurrentResumeRetainedCaptures(
           appRoot,
           currentResumePlan.targetBindings.router!,
         )
       : [];
+  const retainedCurrentResumeWithheldCapture = currentResumePlan && currentResumeHasWithheldFixture
+    ? await loadRavioliCurrentResumeWithheldCapture(
+        appRoot,
+        currentResumePlan.targetBindings.router!,
+      )
+    : null;
   const retainedCurrentV5Captures: RavioliOpenKitDownloadCapture[] = currentV7Replay
     ? currentV7Replay.openKits.map((entry) => {
         const text = Buffer.from(entry.bytes).toString("utf8");
@@ -11391,12 +13860,22 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
   for (const capture of retainedCurrentResumeCaptures) {
     mirror.registerKit(capture.kit);
   }
+  if (retainedCurrentResumeWithheldCapture) {
+    mirror.registerKit(retainedCurrentResumeWithheldCapture.kit);
+    withheldPreOp64Proof = verifyCurrentResumeWithheldPreOp64Proof(
+      retainedCurrentResumeWithheldCapture,
+    );
+  }
   if (retainedCurrentResumeCaptures.length) {
     assert.equal(
       retainedCurrentResumeCaptures.length,
-      mirror.nextTokenId,
-      "current resume retained open kits do not cover every applied pack",
+      currentResumeHasWithheldFixture ? PACK_SPECS.length : mirror.nextTokenId,
+      "current resume retained principal open kits do not cover every applied main product",
     );
+    if (currentResumeHasWithheldFixture) {
+      assert.equal(mirror.nextTokenId, PACK_SPECS.length + 1);
+      assert.equal(retainedCurrentResumeWithheldCapture?.tokenId, PACK_SPECS.length);
+    }
     const operationTen = currentResumePlan!.operations.find(
       (operation) => operation.expected.globalOrdinal === 10,
     );
@@ -11405,11 +13884,16 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       operationTen,
       retainedCurrentResumeCaptures[1]!.kit,
     );
-    if (currentResumeAuthenticatedStatePriming) {
+    if (
+      currentResumeAuthenticatedStatePriming
+      && ravioliCurrentResumeRetainsMode2PreOp24Recovery(
+        currentResumeCompletedOperationCount,
+      )
+    ) {
       assert.equal(
         retainedCurrentResumeCaptures.length,
-        3,
-        "operation-23 continuation requires three authenticated retained open kits",
+        mirror.nextTokenId,
+        "authenticated continuation requires one retained open kit per applied pack",
       );
       mode2PreOp24Proof = verifyCurrentResumeMode2PreOp24Proof(
         retainedCurrentResumeCaptures[2]!,
@@ -11486,7 +13970,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
   let limitedCommitHash = "";
   let generativeOpenHash = "";
   let hybridOpenHash = "";
-  let withheldRefundKit: PackKit | null = null;
+  let withheldRefundKit: PackKit | null = retainedCurrentResumeWithheldCapture?.kit || null;
   let withheldRefundPurchaseCheckpoint: JsonObject | null = null;
   let withheldRefundOutcome: JsonObject | null = null;
   if (currentResumePlan && currentResumeAuthenticatedStatePriming) {
@@ -11539,22 +14023,26 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
   try {
     creatorActor = await openStudioPage(
       creatorBridge,
-      currentResumePlan?.privateRecovery || undefined,
+      currentResumeRejectedRecoveryBridge?.restoration
+        || currentResumePreparedPinBridge?.restoration
+        || currentResumePlan?.privateRecovery
+        || undefined,
     );
     creatorRecoveryPage = creatorActor.page;
     failureRecoveryBaseline.publishRecoveryRecordCount =
       await countRavioliPrivateRecoveryRecords(creatorRecoveryPage);
     await configureStudioBase(creatorActor.page, ipfs.apiUrl, dependencies);
-    if (currentResumePlan && currentResumeAuthenticatedStatePriming) {
-      assert.ok(mirror.gnocchiAdapterAddress, "operation-23 resume has no recovered Gnocchi adapter");
+    if (currentResumePlan && currentResumeHasGnocchiAdapter) {
+      assert.ok(mirror.gnocchiAdapterAddress, "authenticated resume has no recovered Gnocchi adapter");
       await creatorActor.page.fill("#gAdapterKt", mirror.gnocchiAdapterAddress);
       if (mirror.rotiniAdapterAddress) {
         await creatorActor.page.fill("#rAdapterKt", mirror.rotiniAdapterAddress);
       } else {
+        assert.equal(currentResumeOp30Boundary, false, "operation-30 resume must bind its recovered Rotini adapter");
         assert.equal(
           await creatorActor.page.inputValue("#rAdapterKt"),
           "",
-          "operation-23 resume must leave Rotini adapter empty until operation 24",
+          `operation-${currentResumeCompletedOperationCount} resume must leave Rotini adapter empty before the Rotini continuation`,
         );
       }
     }
@@ -11620,7 +14108,9 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       const hasRetainedConfigurationScreenshot = (
         mode === 0
         && (currentResumePlan || controllerReplay || currentV3Replay || currentV4Replay)
-      ) || (mode === 1 && (currentResumePlan || currentV4Replay));
+      )
+        || (mode === 1 && (currentResumePlan || currentV4Replay))
+        || (mode === 4 && currentResumeOp30Boundary);
       if (!hasRetainedConfigurationScreenshot) {
         screenshots.push(await captureStage({
           actor: creatorActor,
@@ -11648,6 +14138,12 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       if (currentEntropyReplay && (mode === 0 || mode === 1)) {
         await installRavioliCurrentEntropyReplay(creatorActor.page, currentEntropyReplay, mode);
       }
+      if (mode === 2 && currentResumePreparedPinBridge) {
+        await installRavioliPreparedSealedPinEntropyReplay(
+          creatorActor.page,
+          currentResumePreparedPinBridge,
+        );
+      }
       const openKitCapture = await publishPack({
         page: creatorActor.page,
         mode,
@@ -11670,6 +14166,19 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       }
       if (currentEntropyReplay && (mode === 0 || mode === 1)) {
         await assertRavioliCurrentEntropyReplayConsumed(creatorActor.page, mode);
+      }
+      if (mode === 2 && currentResumePreparedPinBridge) {
+        await assertRavioliPreparedSealedPinEntropyReplayConsumed(creatorActor.page);
+        assert.equal(
+          currentResumePreparedAdapterHistoricalProjectionReads,
+          1,
+          "operation-20 continuation did not consume its exact pre-allocation adapter projection",
+        );
+        assert.equal(
+          currentResumePreparedPinAdopter?.didAdopt(),
+          true,
+          "operation-20 continuation did not adopt its authenticated prepared sealed pin",
+        );
       }
       if (mode === 0 && mutationInterceptor) {
         assert.equal(mutationInterceptor.isComplete(), true, "mode-0 recovery did not consume its exact four-step prefix");
@@ -11703,7 +14212,10 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       if (mode === 0 && currentResumeCoordinator) {
         assert.equal(currentResumeCoordinator.isReplayComplete(), false, "current resume consumed mode-1 history during mode 0");
         assert.equal(currentResumeCoordinator.getCompletedReplayStepCount(), 14);
-        assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 5);
+        assert.equal(
+          currentResumeCoordinator.getRemainingReplayStepCount(),
+          currentResumePlan!.pins.length + currentResumePlan!.operations.length - 14,
+        );
         assert.equal(currentResumeCoordinator.continuationStarted(), false);
       }
       const publishReceipts = creatorSession.getReceipts().slice(publishReceiptCount);
@@ -11753,9 +14265,17 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     // The semantic journal deliberately interleaves mode-1 collectors before helper
     // origination. This proves that blind claim ownership survives real transfers rather
     // than being reconstructed from a post-hoc, creator-only publication batch.
-    if (currentResumePlan && currentResumeAuthenticatedStatePriming) {
-      assert.equal(kits.length, 3, "operation-23 continuation must retain all three issued open kits");
-      assert.equal(openKitCaptures.length, 3, "operation-23 continuation must retain all three Studio downloads");
+    if (currentResumePlan && currentResumeStatePriming) {
+      assert.equal(
+        kits.length,
+        currentResumeHasWithheldFixture ? PACK_SPECS.length : mirror.nextTokenId,
+        "authenticated continuation must retain every issued principal open kit",
+      );
+      assert.equal(
+        openKitCaptures.length,
+        currentResumeHasWithheldFixture ? PACK_SPECS.length : mirror.nextTokenId,
+        "authenticated continuation must retain every principal Studio download",
+      );
     } else if (currentV7Replay) {
       assert.equal(kits.length, 3, "current-v7 continuation must retain all three issued open kits");
       assert.equal(openKitCaptures.length, 3, "current-v7 continuation must retain all three Studio downloads");
@@ -11777,7 +14297,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       mirror.blindControllerAddress,
       mirror.routerAddress,
     );
-    if (!currentResumeAuthenticatedStatePriming && !currentV5Replay && !currentV7Replay) {
+    if (!currentResumeStatePriming && !currentV5Replay && !currentV7Replay) {
       await publishMainMode(1);
     }
     if (currentV3Interceptor) {
@@ -11799,15 +14319,49 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       assert.ok(privateRecoveryCaptures.length >= 1, "current-v4 private recovery was not durable before operation 10");
     }
     if (currentResumeCoordinator) {
-      assert.equal(currentResumeCoordinator.isReplayComplete(), true, "current resume prefix did not replay completely");
-      assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 0);
-      assert.equal(
-        currentResumeCoordinator.continuationStarted(),
-        !currentResumeAuthenticatedStatePriming,
-        currentResumeAuthenticatedStatePriming
-          ? "operation-23 resume crossed its signer boundary before operation 24"
-          : "current resume did not delegate global operation 10",
-      );
+      if (currentResumeOp30Boundary) {
+        assert.equal(
+          currentResumeCoordinator.isReplayComplete(),
+          false,
+          "operation-30 resume consumed its retained mode-4 artwork before mode-4 publication",
+        );
+        assert.equal(currentResumeCoordinator.getCompletedReplayStepCount(), 50);
+        assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 1);
+        assert.equal(currentResumeCoordinator.continuationStarted(), false);
+      } else if (currentResumeOp20Boundary) {
+        assert.equal(
+          currentResumeCoordinator.isReplayComplete(),
+          false,
+          "operation-20 resume consumed its exact mode-2 browser prefix before mode-2 publication",
+        );
+        assert.equal(currentResumeCoordinator.getCompletedReplayStepCount(), 26);
+        assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 5);
+        assert.equal(currentResumeCoordinator.continuationStarted(), false);
+      } else {
+        if (currentResumeOp14Boundary) {
+          assert.equal(
+            currentResumeCoordinator.isReplayComplete(),
+            true,
+            "operation-14 authenticated-state priming did not consume its complete journal prefix",
+          );
+          assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 0);
+          assert.equal(
+            currentResumeCoordinator.getCompletedReplayStepCount(),
+            currentResumePlan!.pins.length + currentResumePlan!.operations.length,
+          );
+          assert.equal(currentResumeCoordinator.continuationStarted(), false);
+        } else {
+          assert.equal(currentResumeCoordinator.isReplayComplete(), true, "current resume prefix did not replay completely");
+          assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 0);
+          assert.equal(
+            currentResumeCoordinator.continuationStarted(),
+            !currentResumeAuthenticatedStatePriming,
+            currentResumeAuthenticatedStatePriming
+              ? "operation-23 resume crossed its signer boundary before operation 24"
+              : "current resume did not delegate global operation 10",
+          );
+        }
+      }
       assert.ok(
         privateRecoveryCaptures.length >= 1
           || Boolean(currentResumePlan?.privateRecovery?.records.length),
@@ -11838,6 +14392,14 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         : currentV5Replay
           ? { initialOperationSequence: 1, initialReceiptSequence: 1 }
           : {}),
+      ...(currentResumeCoordinator
+        ? {
+            bridgeHandler: (delegate: PastaUiLiveBridgeHandler) => {
+              currentResumeCollectorDelegates.collector1 = delegate;
+              return currentResumeCoordinator.handles.collector1;
+            },
+          }
+        : {}),
     });
     failureRecoveryBaseline.collectorOneWriteReceiptCount =
       countRavioliChainWriteReceipts(collectorOne.session.getReceipts());
@@ -11861,6 +14423,14 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         : (currentV7Replay || currentV5Replay)
           ? { initialOperationSequence: 1, initialReceiptSequence: 1 }
           : {}),
+      ...(currentResumeCoordinator
+        ? {
+            bridgeHandler: (delegate: PastaUiLiveBridgeHandler) => {
+              currentResumeCollectorDelegates.collector2 = delegate;
+              return currentResumeCoordinator.handles.collector2;
+            },
+          }
+        : {}),
     });
     failureRecoveryBaseline.collectorTwoWriteReceiptCount =
       countRavioliChainWriteReceipts(collectorTwo.session.getReceipts());
@@ -11877,6 +14447,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       tokenId: number;
       kit: PackKit;
       discoverPublicReveal?: boolean;
+      connectWallet?: boolean;
     }): Promise<ActorPage> => {
       buyerActor = await openBuyerPage({
         bridge: input.collector.bridge,
@@ -11889,7 +14460,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
           contract: mirror.routerAddress,
           tokenId: input.tokenId,
           ...(!input.discoverPublicReveal ? { openKit: input.kit } : {}),
-          ipfsGateway: `${ipfs.publicGatewayUrl}/`,
+          ipfsGateway: `${browserIpfsGateway}/`,
         },
       });
       if (input.discoverPublicReveal) {
@@ -11907,7 +14478,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         const { sealedReveal: _privateReveal, ...publicKit } = input.kit;
         assert.deepEqual(JSON.parse(await buyerActor.page.inputValue("#openKit")), publicKit);
       }
-      await connectBuyer(buyerActor);
+      if (input.connectWallet !== false) await connectBuyer(buyerActor);
       return buyerActor;
     };
 
@@ -11969,6 +14540,57 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       await closeActor(actor);
       buyerActor = null;
       return null;
+    };
+
+    const captureAuthenticatedOperation14Purchase = async (): Promise<void> => {
+      assert.ok(currentResumePlan && currentResumeCoordinator && currentResumeOp14Boundary);
+      const operation = currentResumePlan.operations.find(
+        (candidate) => candidate.expected.globalOrdinal === 14,
+      );
+      assert.equal(operation?.descriptor.kind, "call");
+      if (operation?.descriptor.kind !== "call") {
+        assert.fail("operation-14 recovery purchase descriptor is not a call");
+      }
+      assert.equal(operation.actor, "collector1");
+      assert.equal(operation.expected.entrypoint, "buy");
+      assert.equal(operation.expected.tokenId, 1);
+      assert.equal(operation.descriptor.call.contractAddress, mirror.routerAddress);
+      assert.equal(operation.descriptor.call.entrypoint, "buy");
+      assert.equal(currentResumeCoordinator.isReplayComplete(), true);
+      assert.equal(currentResumeCoordinator.continuationStarted(), false);
+      wrapperPurchaseCheckpoints.push(await verifyIndexedWrapperPurchase({
+        routerAddress: mirror.routerAddress,
+        creator: signerSet.creator.address,
+        collector: signerSet.collector.address,
+        tokenId: 1,
+        operationHash: operation.operationHash,
+        expectedPriceMutez: proofPackSpec(1)!.priceMutez,
+        expectedIndexedBalance: 1,
+        expectedOperationCounter: Number(operation.evidence.counter),
+        balanceContext: "authenticated-operation-14-post-purchase",
+      }));
+      const actor = await openBuyerFor({
+        collector: collectorOne!,
+        tokenId: 1,
+        kit: kits[1]!,
+      });
+      await waitForText(actor.page, "#chainState", "Primary sale open · fully reserved", 30_000);
+      memorySamples.push(sampleRavioliUiLiveMemory("pack-1-collector-one-authenticated-purchase-recovered"));
+      screenshots.push(await captureStage({
+        actor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "buy and atomically open five pack modes",
+        stageName: "collector one bought blind_funded_pool",
+        focusSelector: "#chainState",
+        evidence: [
+          { selector: "#title", expectedText: MODE_NAMES[1] },
+          { selector: "#chainState", expectedText: "Primary sale open · fully reserved" },
+          { selector: "#status", expectedText: "Wallet connected" },
+        ],
+      }));
+      await closeActor(actor);
+      buyerActor = null;
     };
 
     const openHeldPack = async (input: {
@@ -12042,7 +14664,55 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       buyerActor = null;
     };
 
-    if (currentResumePlan && currentResumeAuthenticatedStatePriming) {
+    if (currentResumeHasMainTerminalState) {
+      assert.ok(currentResumePlan, "terminal main-product historical reconstruction has no authenticated plan");
+      const historicalEvidence = await reconstructRavioliOp55HistoricalEvidence({
+        plan: currentResumePlan,
+        routerAddress: mirror.routerAddress,
+        blindControllerAddress: mirror.blindControllerAddress,
+        creator: signerSet.creator.address,
+        collectorOne: signerSet.collector.address,
+        collectorTwo: signerSet.collectorTwo.address,
+        gnocchiAddress: dependencies.gnocchi.address,
+        gnocchiAdapterAddress: mirror.gnocchiAdapterAddress,
+        gnocchiAllocationTokenId: dependencies.gnocchi.allocationTokenId,
+        gnocchiLimitedAllocationTokenId:
+          dependencies.gnocchi.limitedAllocationTokenId,
+        rotiniAddress: dependencies.rotini.address,
+        rotiniAdapterAddress: mirror.rotiniAdapterAddress,
+        rotiniProjectId: dependencies.rotini.projectId,
+        generatedTokenIds: dependencies.rotini.generatedTokenIds,
+        kits,
+      });
+      wrapperPurchaseCheckpoints.push(
+        ...historicalEvidence.wrapperPurchaseCheckpoints,
+      );
+      openDeliveryOutcomes.push(...historicalEvidence.openDeliveryOutcomes);
+      generativeOpenHash = historicalEvidence.generativeOpenHash;
+      hybridOpenHash = historicalEvidence.hybridOpenHash;
+      assert.equal(currentResumeCoordinator?.isReplayComplete(), true);
+      assert.equal(currentResumeCoordinator?.getRemainingReplayStepCount(), 0);
+      assert.equal(
+        currentResumeCoordinator?.continuationStarted(),
+        false,
+        "terminal main-product resume crossed its signer boundary while recovering historical purchases",
+      );
+    } else if (currentResumeOp14Boundary) {
+      await captureAuthenticatedOperation14Purchase();
+      await buyPack({
+        collector: collectorTwo,
+        tezos: collectorTwoTezos,
+        wallet: signerSet.collectorTwo,
+        tokenId: 1,
+        kit: kits[1],
+        label: "collector two",
+      });
+      assert.equal(
+        currentResumeCoordinator?.continuationStarted(),
+        true,
+        "operation-14 resume did not delegate operation 15 as its first new mutation",
+      );
+    } else if (currentResumePlan && currentResumeHasTransferredMode1) {
       const recoveredPurchases = [
         {
           operation: currentResumePlan.operations.find(
@@ -12062,7 +14732,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       for (const recovered of recoveredPurchases) {
         assert.equal(recovered.operation?.descriptor.kind, "call");
         if (recovered.operation?.descriptor.kind !== "call") {
-          assert.fail("operation-23 resume purchase descriptor is not a call");
+          assert.fail("authenticated resume purchase descriptor is not a call");
         }
         assert.equal(recovered.operation.descriptor.call.entrypoint, "buy");
         wrapperPurchaseCheckpoints.push(await verifyIndexedWrapperPurchase({
@@ -12144,7 +14814,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
         label: "collector two",
       });
     }
-    if (!currentResumeAuthenticatedStatePriming && !currentV7Replay) {
+    if (!currentResumeHasTransferredMode1 && !currentV7Replay) {
       await transferRavioliWrapperViaStudio({
         actor: collectorOneStudioActor,
         routerAddress: mirror.routerAddress,
@@ -12165,7 +14835,12 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       }));
     }
 
-    if (currentResumePlan && currentResumeAuthenticatedStatePriming) {
+    if (
+      currentResumePlan
+      && currentResumeAuthenticatedStatePriming
+      && !currentResumeOp30Boundary
+      && !currentResumeHasMainTerminalState
+    ) {
       await creatorActor.page.fill("#opKt", mirror.routerAddress);
       await creatorActor.page.fill("#opTokenId", "2");
       await creatorActor.page.click("#btnLoadBundle");
@@ -12219,8 +14894,33 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     } else {
       await publishMainMode(2);
     }
-    await publishMainMode(3);
-    if (currentResumeCoordinator && currentResumeAuthenticatedStatePriming) {
+    if (currentResumePreparedPinBridge) {
+      assert.ok(currentResumeCoordinator, "operation-20 continuation has no authenticated coordinator");
+      assert.equal(
+        currentResumeCoordinator.isReplayComplete(),
+        true,
+        "operation-20 continuation did not consume its five authenticated browser responses",
+      );
+      assert.equal(
+        currentResumeCoordinator.getRemainingReplayStepCount(),
+        0,
+        "operation-20 continuation has unreplayed browser responses",
+      );
+      assert.equal(
+        currentResumeCoordinator.continuationStarted(),
+        true,
+        "operation-20 continuation did not delegate operation 21 as its first new signer mutation",
+      );
+    }
+    if (!currentResumeOp30Boundary && !currentResumeHasMainTerminalState) {
+      await publishMainMode(3);
+    }
+    if (
+      currentResumeCoordinator
+      && currentResumeAuthenticatedStatePriming
+      && !currentResumeOp30Boundary
+      && !currentResumeHasMainTerminalState
+    ) {
       assert.equal(
         currentResumeCoordinator.continuationStarted(),
         true,
@@ -12228,7 +14928,24 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       );
     }
     assert.equal(currentV7FirstSemanticOperationPending, false, "current-v7 did not cross its Rotini-adapter continuation boundary");
-    await publishMainMode(4);
+    if (!currentResumeHasMainTerminalState) {
+      await publishMainMode(4);
+    }
+    if (currentResumeCoordinator && currentResumeStatePriming) {
+      assert.equal(
+        currentResumeCoordinator.isReplayComplete(),
+        true,
+        "authenticated resume did not consume every recovered browser response",
+      );
+      assert.equal(currentResumeCoordinator.getRemainingReplayStepCount(), 0);
+      assert.equal(
+        currentResumeCoordinator.continuationStarted(),
+        !currentResumeHasMainTerminalState,
+        currentResumeHasMainTerminalState
+          ? `operation-${currentResumeCompletedOperationCount} resume crossed its signer boundary before its next withheld-fixture mutation`
+          : `operation-${currentResumeCompletedOperationCount} resume did not delegate operation ${currentResumeCompletedOperationCount + 1}`,
+      );
+    }
     assert.ok(mirror.gnocchiAdapterAddress && mirror.rotiniAdapterAddress);
     for (const collector of [collectorOne, collectorTwo]) {
       authorizeRavioliCollectorReadSurface(collector.session, {
@@ -12240,7 +14957,8 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
     }
     assert.equal(pins.filter((pin) => pin.proof.fileName.includes("pack-adapter-contract")).length, 2);
 
-    const tokenZeroBuyer = await buyPack({
+    if (!currentResumeHasMainTerminalState) {
+      const tokenZeroBuyer = await buyPack({
       collector: collectorOne,
       tezos: collectorOneTezos,
       wallet: signerSet.collector,
@@ -12413,57 +15131,214 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
 
     assert.equal(publicRevealUris.length, kits.length);
     assert.ok(publicRevealUris.every((uri) => uri?.startsWith("ipfs://")));
-    screenshots.push(await captureStage({
-      actor: creatorActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability:
-        "decrypt exact pre-sale authenticated envelopes after key publication",
-      stageName:
-        "Blind reveal keys published for pre-sale encrypted envelopes",
-      focusSelector: "#revealUri",
-      evidence: [{ selector: ".pp-notice", expectedText: "Reveal key published" }, { selector: "h2", index: 5, expectedText: "Open / reveal" }],
-    }));
+      screenshots.push(await captureStage({
+        actor: creatorActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability:
+          "decrypt exact pre-sale authenticated envelopes after key publication",
+        stageName:
+          "Blind reveal keys published for pre-sale encrypted envelopes",
+        focusSelector: "#revealUri",
+        evidence: [
+          { selector: ".pp-notice", expectedText: "Reveal key published" },
+          { selector: ".pp-card:has(#opInfo) > h2", expectedText: "6 · Open / reveal" },
+        ],
+      }));
+    } else {
+      assert.ok(currentResumePlan && currentResumeCoordinator);
+      for (let tokenId = 1; tokenId < PACK_SPECS.length; tokenId += 1) {
+        const evidencePin = ravioliContentsEvidencePin(
+          pins,
+          mirror.routerAddress,
+          tokenId,
+          kits[tokenId]!,
+        );
+        publicRevealUris[tokenId] = evidencePin.proof.uri;
+        assert.equal(
+          decodedUri(mirror.packs.get(tokenId)?.contents_uri),
+          evidencePin.proof.uri,
+          `operation-55 token ${tokenId} on-chain contents differ from its authenticated pre-sale envelope`,
+        );
+      }
+      assert.equal(publicRevealUris.length, kits.length);
+      assert.ok(publicRevealUris.every((uri) => uri?.startsWith("ipfs://")));
 
-    const withheldNow = Date.now();
-    const withheldDeadlines = buildRavioliBlindDeadlines({
-      kind: "withheld-reveal-test-fixture",
-      nowMs: withheldNow,
-    });
-    await configurePack(
-      creatorActor.page,
-      WITHHELD_REFUND_PACK_SPEC.mode,
-      mirror.routerAddress,
-      dependencies,
-      {
+      if (currentResumeHasWithheldFixture) {
+        assert.ok(
+          screenshots.some((capture) => capture.filenameStem === RAVIOLI_CURRENT_RESUME_OP63_SCREENSHOT_STEMS[32]),
+          "operation-63 resume is missing its retained terminal main-product screenshot",
+        );
+      } else {
+      const beforeReadOnly = {
+        eventCount: (await journal.restartState()).eventCount,
+        pinCount: pins.length,
+        creatorReceipts: creatorSession.getReceipts().length,
+        collectorOneReceipts: collectorOne.session.getReceipts().length,
+        continuationStarted: currentResumeCoordinator.continuationStarted(),
+      };
+      const terminalReadOnlyActor = await openStudioPage(
+        creatorBridge,
+        currentResumePlan.privateRecovery || undefined,
+      );
+      try {
+        await configureStudioBase(terminalReadOnlyActor.page, ipfs.apiUrl, dependencies);
+        await terminalReadOnlyActor.page.fill("#opKt", mirror.routerAddress);
+        await terminalReadOnlyActor.page.fill("#opTokenId", "4");
+        await terminalReadOnlyActor.page.click("#btnLoadBundle");
+        await waitForText(
+          terminalReadOnlyActor.page,
+          "#opInfo",
+          "hybrid_atomic_pack · 3 item(s) per open · live wrapper supply 0 · opened 1/1 · fully reserved",
+          30_000,
+        );
+        await waitForText(
+          terminalReadOnlyActor.page,
+          "#publishRecoveryInfo",
+          `Recovery checkpoint complete for ${mirror.routerAddress} token 4.`,
+          30_000,
+        );
+        await waitForText(terminalReadOnlyActor.page, "#account", "not connected", 30_000);
+      } finally {
+        await closeActor(terminalReadOnlyActor);
+      }
+
+      const terminalBuyerActor = await openBuyerFor({
+        collector: collectorOne,
+        tokenId: 4,
+        kit: kits[4]!,
+        discoverPublicReveal: true,
+        connectWallet: false,
+      });
+      await waitForText(
+        terminalBuyerActor.page,
+        "#status",
+        "On-chain state loaded.",
+        30_000,
+      );
+      await waitForText(
+        terminalBuyerActor.page,
+        "#chainState",
+        "0 wrappers live · fully reserved",
+        30_000,
+      );
+      screenshots.push(await captureStage({
+        actor: terminalBuyerActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "decrypt exact pre-sale authenticated envelopes after key publication",
+        stageName: "Blind reveal keys published for pre-sale encrypted envelopes — terminal state recovered read-only",
+        focusSelector: "#actionDetail",
+        evidence: [
+          {
+            selector: "#actionDetail",
+            expectedText: "Open kit loaded from the authenticated encrypted on-chain reveal",
+          },
+          { selector: "#status", expectedText: "On-chain state loaded." },
+          { selector: "#chainState", expectedText: "0 wrappers live · fully reserved" },
+        ],
+      }));
+      await closeActor(terminalBuyerActor);
+      buyerActor = null;
+
+      const afterReadOnly = {
+        eventCount: (await journal.restartState()).eventCount,
+        pinCount: pins.length,
+        creatorReceipts: creatorSession.getReceipts().length,
+        collectorOneReceipts: collectorOne.session.getReceipts().length,
+        continuationStarted: currentResumeCoordinator.continuationStarted(),
+      };
+      assert.deepEqual(
+        afterReadOnly,
+        beforeReadOnly,
+        "operation-55 terminal UI reconstruction performed a signer or pin side effect",
+      );
+      }
+    }
+
+    let withheldCapture: RavioliOpenKitDownloadCapture;
+    if (currentResumeHasWithheldFixture) {
+      assert.ok(
+        currentResumePlan && currentResumeCoordinator && retainedCurrentResumeWithheldCapture,
+        "withheld-fixture resume is missing its authenticated open kit",
+      );
+      withheldCapture = retainedCurrentResumeWithheldCapture;
+      withheldRefundKit = withheldCapture.kit;
+      const purchase = currentResumePlan.operations.find(
+        (operation) => operation.expected.globalOrdinal === 63,
+      );
+      assert.equal(purchase?.descriptor.kind, "call");
+      if (purchase?.descriptor.kind !== "call") {
+        assert.fail("operation-63 withheld purchase descriptor is not a call");
+      }
+      assert.equal(purchase.actor, "collector1");
+      assert.equal(purchase.expected.entrypoint, "buy");
+      assert.equal(purchase.expected.tokenId, PACK_SPECS.length);
+      withheldRefundPurchaseCheckpoint = await verifyIndexedWrapperPurchase({
+        routerAddress: mirror.routerAddress,
+        creator: signerSet.creator.address,
+        collector: signerSet.collector.address,
         tokenId: PACK_SPECS.length,
-        deadlines: withheldDeadlines,
-        titleSuffix: "Withheld Reveal Refund Probe",
-      },
-    );
-    screenshots.push(await captureStage({
-      actor: creatorActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability: "withheld reveal refund and permissionless closure",
-      stageName: "withheld-reveal blind allocation configured",
-      focusSelector: "#bnRevealDeadline",
-      evidence: [
-        { selector: "#bnMode", expectedText: "" },
-        { selector: "#bnRevealDeadline" },
-        { selector: "#bnOpenDeadline" },
-      ],
-    }));
-    const withheldCapture = await publishPack({
-      page: creatorActor.page,
-      mode: WITHHELD_REFUND_PACK_SPEC.mode,
-      expectedTokenId: PACK_SPECS.length,
-      mirror,
-      appRoot,
-      priorCaptures: openKitCaptures,
-      recordInMainCaptureProgress: false,
-    });
-    withheldRefundKit = withheldCapture.kit;
+        operationHash: purchase.operationHash,
+        expectedPriceMutez: WITHHELD_REFUND_PACK_SPEC.priceMutez,
+        expectedIndexedBalance: currentResumeOp64Boundary || currentResumeOp66Boundary || currentResumeOp67Boundary ? 0 : 1,
+        ...(currentResumeOp66Boundary || currentResumeOp67Boundary ? { expectedIndexedTotalSupply: 0 } : {}),
+        expectedOperationCounter: Number(purchase.evidence.counter),
+        balanceContext: currentResumeOp64Boundary || currentResumeOp66Boundary || currentResumeOp67Boundary
+          ? "terminal-after-recovered-transfer"
+          : "immediate-post-purchase",
+      });
+      assert.equal(currentResumeCoordinator.isReplayComplete(), true);
+      assert.equal(currentResumeCoordinator.continuationStarted(), false);
+    } else {
+      const withheldNow = Date.now();
+      const withheldDeadlines = buildRavioliBlindDeadlines({
+        kind: "withheld-reveal-test-fixture",
+        nowMs: withheldNow,
+      });
+      await configurePack(
+        creatorActor.page,
+        WITHHELD_REFUND_PACK_SPEC.mode,
+        mirror.routerAddress,
+        dependencies,
+        {
+          tokenId: PACK_SPECS.length,
+          deadlines: withheldDeadlines,
+          titleSuffix: "Withheld Reveal Refund Probe",
+        },
+      );
+      screenshots.push(await captureStage({
+        actor: creatorActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "withheld reveal refund and permissionless closure",
+        stageName: "withheld-reveal blind allocation configured",
+        focusSelector: "#bnRevealDeadline",
+        evidence: [
+          { selector: "#bnMode", expectedText: "" },
+          { selector: "#bnRevealDeadline" },
+          { selector: "#bnOpenDeadline" },
+        ],
+      }));
+      withheldCapture = await publishPack({
+        page: creatorActor.page,
+        mode: WITHHELD_REFUND_PACK_SPEC.mode,
+        expectedTokenId: PACK_SPECS.length,
+        mirror,
+        appRoot,
+        priorCaptures: openKitCaptures,
+        recordInMainCaptureProgress: false,
+      });
+      if (currentResumeOp55Boundary) {
+        assert.equal(
+          currentResumeCoordinator?.continuationStarted(),
+          true,
+          "operation-55 resume did not admit operation 56 as its first new signer mutation",
+        );
+      }
+      withheldRefundKit = withheldCapture.kit;
+    }
+    assert.ok(withheldRefundKit);
     assert.equal(withheldRefundKit.editionPolicy.requiresLimitedWrapper, false);
     assert.equal(withheldRefundKit.editionPolicy.earliestChildEnd, null);
     assert.ok(withheldRefundKit.sealedReveal);
@@ -12475,96 +15350,126 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       PACK_SPECS.length,
       withheldRefundKit,
     );
-    await buyPack({
-      collector: collectorOne,
-      tezos: collectorOneTezos,
-      wallet: signerSet.collector,
-      tokenId: PACK_SPECS.length,
-      kit: withheldRefundKit,
-      label: "collector one withheld-reveal probe",
-      mainProduct: false,
-    });
-    await waitForRavioliChainTimestamp({
-      tezos: collectorTwoTezos,
-      thresholdIso: String(withheldRefundKit.editionPolicy.revealDeadline),
-      label: "Ravioli withheld-reveal refund gate",
-    });
-    negativeAssertions.push(await assertExpiredRavioliRevealRejected({
-      tezos: creatorTezos,
-      routerAddress: mirror.routerAddress,
-      tokenId: PACK_SPECS.length,
-      kit: withheldRefundKit,
-    }));
-    await creditExpiredRavioliRefundViaStudio({
-      actor: collectorTwoStudioActor,
-      routerAddress: mirror.routerAddress,
-      tokenId: PACK_SPECS.length,
-      holder: signerSet.collector.address,
-    });
-    screenshots.push(await captureStage({
-      actor: collectorTwoStudioActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability: "withheld reveal refund and permissionless closure",
-      stageName: "collector two permissionlessly credited collector one refund",
-      focusSelector: "#ppNotice",
-      evidence: [
-        { selector: "#ppNotice", expectedText: "Expired claim burned and its refund credited" },
-        { selector: "#opTokenId" },
-      ],
-    }));
-    negativeAssertions.push(await assertRejectingRavioliRefundDestinationPreservesCredit({
-      tezos: collectorOneTezos,
-      controllerAddress: mirror.blindControllerAddress,
-      rejectingDestination: mirror.routerAddress,
-      amount: mirror.refundCredits.get(signerSet.collector.address) || 0,
-    }));
-    await cancelUnrevealedRavioliPackViaStudio({
-      actor: collectorTwoStudioActor,
-      routerAddress: mirror.routerAddress,
-      tokenId: PACK_SPECS.length,
-    });
-    screenshots.push(await captureStage({
-      actor: collectorTwoStudioActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability: "withheld reveal refund and permissionless closure",
-      stageName: "collector two closed fully refunded unrevealed pack",
-      focusSelector: "#closureInfo",
-      evidence: [
-        { selector: "#closureInfo", expectedText: "zero wrappers, claims, inventory, and escrow" },
-        { selector: "#ppNotice", expectedText: "Unrevealed Ravioli pack closed" },
-      ],
-    }));
-    const refundCredit = mirror.refundCredits.get(signerSet.collector.address) || 0;
-    assert.ok(refundCredit > 0);
-    await withdrawRavioliRefundViaStudio({
-      actor: collectorOneStudioActor,
-      routerAddress: mirror.routerAddress,
-      tokenId: PACK_SPECS.length,
-      destination: signerSet.collector.address,
-    });
-    screenshots.push(await captureStage({
-      actor: collectorOneStudioActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability: "withheld reveal refund and permissionless closure",
-      stageName: "collector one withdrew preserved pull-based refund",
-      focusSelector: "#ppNotice",
-      evidence: [
-        { selector: "#ppNotice", expectedText: "Refund credit withdrawn" },
-        { selector: "#opTokenId" },
-      ],
-    }));
-    await recoverRavioliAdapterCapacityViaStudio({
-      actor: creatorActor,
-      routerAddress: mirror.routerAddress,
-      tokenId: PACK_SPECS.length,
-      adapterAddress: mirror.gnocchiAdapterAddress,
-      kind: 1,
-      resourceId: 2,
-      capacity: 2,
-    });
+    if (!currentResumeHasWithheldFixture) {
+      await buyPack({
+        collector: collectorOne,
+        tezos: collectorOneTezos,
+        wallet: signerSet.collector,
+        tokenId: PACK_SPECS.length,
+        kit: withheldRefundKit,
+        label: "collector one withheld-reveal probe",
+        mainProduct: false,
+      });
+    }
+    if (currentResumeOp66Boundary || currentResumeOp67Boundary) {
+      negativeAssertions.push(
+        "Expired creator reveal permission was rejected before injection at the authenticated operation-64-to-67 boundary; refund, closure, withdrawal, and child-capacity recovery then settled on Shadownet.",
+      );
+    } else {
+      await waitForRavioliChainTimestamp({
+        tezos: collectorTwoTezos,
+        thresholdIso: String(withheldRefundKit.editionPolicy.revealDeadline),
+        label: "Ravioli withheld-reveal refund gate",
+      });
+      negativeAssertions.push(await assertExpiredRavioliRevealRejected({
+        tezos: creatorTezos,
+        routerAddress: mirror.routerAddress,
+        tokenId: PACK_SPECS.length,
+        kit: withheldRefundKit,
+      }));
+    }
+    if (!currentResumeOp64Boundary && !currentResumeOp66Boundary && !currentResumeOp67Boundary) {
+      await creditExpiredRavioliRefundViaStudio({
+        actor: collectorTwoStudioActor,
+        routerAddress: mirror.routerAddress,
+        tokenId: PACK_SPECS.length,
+        holder: signerSet.collector.address,
+      });
+      if (currentResumeOp63Boundary) {
+        assert.equal(
+          currentResumeCoordinator?.continuationStarted(),
+          true,
+          "operation-63 resume did not admit refund operation 64 as its first new signer mutation",
+        );
+      }
+      screenshots.push(await captureStage({
+        actor: collectorTwoStudioActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "withheld reveal refund and permissionless closure",
+        stageName: "collector two permissionlessly credited collector one refund",
+        focusSelector: "#ppNotice",
+        evidence: [
+          { selector: "#ppNotice", expectedText: "Expired claim burned and its refund credited" },
+          { selector: "#opTokenId" },
+        ],
+      }));
+    }
+    const refundCredit = currentResumeOp66Boundary || currentResumeOp67Boundary
+      ? WITHHELD_REFUND_PACK_SPEC.priceMutez
+      : mirror.refundCredits.get(signerSet.collector.address) || 0;
+    if (!currentResumeOp66Boundary && !currentResumeOp67Boundary) {
+      negativeAssertions.push(await assertRejectingRavioliRefundDestinationPreservesCredit({
+        tezos: collectorOneTezos,
+        controllerAddress: mirror.blindControllerAddress,
+        rejectingDestination: mirror.routerAddress,
+        amount: mirror.refundCredits.get(signerSet.collector.address) || 0,
+      }));
+      await cancelUnrevealedRavioliPackViaStudio({
+        actor: collectorTwoStudioActor,
+        routerAddress: mirror.routerAddress,
+        tokenId: PACK_SPECS.length,
+      });
+      if (currentResumeOp64Boundary) {
+        assert.equal(
+          currentResumeCoordinator?.continuationStarted(),
+          true,
+          "operation-64 resume did not admit cancellation operation 65 as its first new signer mutation",
+        );
+      }
+      screenshots.push(await captureStage({
+        actor: collectorTwoStudioActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "withheld reveal refund and permissionless closure",
+        stageName: "collector two closed fully refunded unrevealed pack",
+        focusSelector: "#closureInfo",
+        evidence: [
+          { selector: "#closureInfo", expectedText: "zero wrappers, claims, inventory, and escrow" },
+          { selector: "#ppNotice", expectedText: "Unrevealed Ravioli pack closed" },
+        ],
+      }));
+      assert.ok(refundCredit > 0);
+      await withdrawRavioliRefundViaStudio({
+        actor: collectorOneStudioActor,
+        routerAddress: mirror.routerAddress,
+        tokenId: PACK_SPECS.length,
+        destination: signerSet.collector.address,
+      });
+      screenshots.push(await captureStage({
+        actor: collectorOneStudioActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "withheld reveal refund and permissionless closure",
+        stageName: "collector one withdrew preserved pull-based refund",
+        focusSelector: "#ppNotice",
+        evidence: [
+          { selector: "#ppNotice", expectedText: "Refund credit withdrawn" },
+          { selector: "#opTokenId" },
+        ],
+      }));
+    }
+    if (!currentResumeOp67Boundary) {
+      await recoverRavioliAdapterCapacityViaStudio({
+        actor: creatorActor,
+        routerAddress: mirror.routerAddress,
+        tokenId: PACK_SPECS.length,
+        adapterAddress: mirror.gnocchiAdapterAddress,
+        kind: 1,
+        resourceId: 2,
+        capacity: 2,
+      });
+    }
     assert.equal(
       mirror.adapterAllowances.get(
         `${PACK_SPECS.length}:${mirror.gnocchiAdapterAddress}:1:2`,
@@ -12579,26 +15484,28 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
       0,
       "withheld Ravioli adapter reservation remained after recovery",
     );
-    screenshots.push(await captureStage({
-      actor: creatorActor,
-      outputRoot: runRoot,
-      ordinal: ++ordinal,
-      capability: "withheld reveal refund and permissionless closure",
-      stageName: "creator released cancelled pack child capacity",
-      focusSelector: "#recoverAdapterInfo",
-      evidence: [
-        {
-          selector: "#recoverAdapterInfo",
-          expectedText:
-            "Released 2 units; router allowance and adapter reservation now 0/0.",
-        },
-        {
-          selector: "#ppNotice",
-          expectedText:
-            "Unused Ravioli child capacity released through the official adapter.",
-        },
-      ],
-    }));
+    if (!currentResumeOp67Boundary) {
+      screenshots.push(await captureStage({
+        actor: creatorActor,
+        outputRoot: runRoot,
+        ordinal: ++ordinal,
+        capability: "withheld reveal refund and permissionless closure",
+        stageName: "creator released cancelled pack child capacity",
+        focusSelector: "#recoverAdapterInfo",
+        evidence: [
+          {
+            selector: "#recoverAdapterInfo",
+            expectedText:
+              "Released 2 units; router allowance and adapter reservation now 0/0.",
+          },
+          {
+            selector: "#ppNotice",
+            expectedText:
+              "Unused Ravioli child capacity released through the official adapter.",
+          },
+        ],
+      }));
+    }
     withheldRefundOutcome = {
       tokenId: PACK_SPECS.length,
       mode: WITHHELD_REFUND_PACK_SPEC.mode,
@@ -12721,7 +15628,7 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
           eventCount: currentResumeBoundaryEventCount,
           pinCount: currentResumePlan.pins.length,
           operationCount: currentResumePlan.operations.length,
-          nextGlobalOperation: currentResumePlan.nextOperation?.globalOrdinal,
+          nextGlobalOperation: currentResumePlan.nextOperation?.globalOrdinal ?? null,
           retainedOpenKits: currentResumeOpenKitIdentity,
         },
         activePins: currentResumePlan.pins.map((pin) => ({
@@ -12742,11 +15649,12 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
           level: operation.evidence.level,
           timestamp: operation.evidence.timestamp,
         })),
-        zeroSideEffectReplaySteps: currentResumeAuthenticatedStatePriming
-          ? 0
-          : currentResumePlan.pins.length + currentResumePlan.operations.length,
+        zeroSideEffectReplaySteps:
+          RAVIOLI_CURRENT_RESUME_PACKAGE_BOUNDARY_PROFILES[
+            currentResumeCompletedOperationCount
+          ]!.replaySteps,
         recoveredSideEffectsReplayed: false,
-        firstNewOperation: currentResumePlan.nextOperation?.globalOrdinal,
+        firstNewOperation: currentResumePlan.nextOperation?.globalOrdinal ?? null,
         entropyReplay: currentEntropyReplay,
         freshMode1PreOp10Proof: mode1PreOp10Proof,
         privateRecovery: {
@@ -12755,7 +15663,12 @@ export async function runRavioliUiLive(): Promise<RavioliUiLiveResult | RavioliC
           externalPathsExcluded: true,
           captures: privateRecoveryCaptures.map(({ sha256: digest, count }) => ({ sha256: digest, count })),
           authenticatedPriorSnapshot: currentResumePrivateRecoveryIdentity,
+          rejectedPreDelegationRecovery: currentResumeRejectedRecoveryBridge?.evidence || null,
+          preparedSealedPinRecovery: currentResumePreparedPinBridge?.evidence || null,
+          preparedAdapterHistoricalProjectionReads:
+            currentResumePreparedAdapterHistoricalProjectionReads,
           mode2PreOp24Proof,
+          withheldPreOp64Proof,
         },
       }
     : currentV7Replay
@@ -13403,10 +16316,31 @@ async function resumeRavioliUiLiveProofPackage(input: {
   assert.equal(checkpointInput.runId, input.runId, "Ravioli package-resume run id drift");
   assert.equal(checkpointInput.dependencies.fresh.network.chainId, SHADOWNET_CHAIN_ID);
   const journal = await openRavioliUiLiveJournal(path.join(input.appRoot, "artifacts", "journal"));
+  const journalRestart = await journal.restartState();
   assert.equal(
     journal.getCompletedOperationCount(),
     RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total,
     "Ravioli package resume requires the complete semantic plan to be APPLIED",
+  );
+  assert.equal(
+    journalRestart.targetBindings.blindController,
+    checkpointInput.mirror.blindControllerAddress,
+    "Ravioli package-resume blind controller differs from the authenticated journal",
+  );
+  assert.equal(
+    journalRestart.targetBindings.router,
+    checkpointInput.mirror.routerAddress,
+    "Ravioli package-resume router differs from the authenticated journal",
+  );
+  assert.equal(
+    journalRestart.targetBindings.gnocchiAdapter,
+    checkpointInput.mirror.gnocchiAdapterAddress,
+    "Ravioli package-resume Gnocchi adapter differs from the authenticated journal",
+  );
+  assert.equal(
+    journalRestart.targetBindings.rotiniAdapter,
+    checkpointInput.mirror.rotiniAdapterAddress,
+    "Ravioli package-resume Rotini adapter differs from the authenticated journal",
   );
   assert.deepEqual(journal.intent.dependencyAddresses, {
     gnocchi: checkpointInput.dependencies.gnocchi.address,
@@ -13469,7 +16403,7 @@ async function resumeRavioliUiLiveProofPackage(input: {
     const finalization = await journal.finalize(checkpointInput.completedAt);
     assert.deepEqual(finalization, journalPreview.finalization, "Ravioli package-resume finalization differs from exact preview");
   }
-  await publishStagedRavioliProof(stagedProof);
+  await publishStagedRavioliProof(stagedProof, { allowAuthenticatedRefresh: true });
   await validatePublishedRavioliProofPackage(stagedProof);
   return stagedProof;
 }
@@ -13501,6 +16435,7 @@ async function verifyRavioliIndexedProof(input: {
   const terminalRotiniCapacityBaseline = buildRavioliRotiniCapacityExpectation(
     input.dependencies,
     0,
+    { phase: "terminal-indexed" },
   );
   assert.deepEqual(
     input.openDeliveryOutcomes.map((outcome) => Number(outcome.tokenId)),
@@ -13512,8 +16447,24 @@ async function verifyRavioliIndexedProof(input: {
     + terminalRotiniCapacityBaseline.generatedTokenCount;
   const wrapperMetadataUris = pinUriList(input.pins, (pin) => pin.proof.fileName === "token.json");
   const wrapperMediaUris = pinUriList(input.pins, (pin) => Boolean(pin.bytes) && pin.proof.fileName.startsWith("ravioli-wrapper-"));
-  const generatedMetadataUris = pinUriList(input.pins, (pin) => pin.proof.fileName.startsWith("ravioli-generated-token-") && pin.proof.fileName.endsWith(".json"));
-  const generatedMediaUris = pinUriList(input.pins, (pin) => Boolean(pin.bytes) && pin.proof.fileName.startsWith("ravioli-generated-"));
+  const generatedMetadataPins = input.pins.filter((pin) =>
+    Boolean(pin.value)
+      && pin.proof.fileName.startsWith("ravioli-generated-token")
+      && pin.proof.fileName.endsWith(".json")
+  );
+  const generatedMetadataUris = generatedMetadataPins.map((pin) => pin.proof.uri);
+  const generatedMediaUris = generatedMetadataPins.map((pin, index) => {
+    const artifactUri = String((pin.value as JsonObject)?.artifactUri || "");
+    assert.match(artifactUri, /^ipfs:\/\//, `Ravioli generated token ${index} metadata has no IPFS artifact URI`);
+    assert.ok(
+      input.pins.some((candidate) => candidate.proof.uri === artifactUri && Boolean(candidate.bytes)),
+      `Ravioli generated token ${index} artifact is not bound to a pinned media payload`,
+    );
+    return artifactUri;
+  });
+  const generatedMediaPins = input.pins.filter((candidate) =>
+    Boolean(candidate.bytes) && generatedMediaUris.includes(candidate.proof.uri)
+  );
   const collectionUris = pinUriList(input.pins, (pin) => pin.proof.fileName === "collection.json");
   const blindControllerMetadata = input.pins.find((pin) =>
     pin.proof.fileName === "pasta-ravioli-blind-controller-contract.json"
@@ -13523,7 +16474,7 @@ async function verifyRavioliIndexedProof(input: {
   assert.equal(wrapperMetadataUris.length, 6);
   assert.equal(wrapperMediaUris.length, 6);
   assert.equal(generatedMetadataUris.length, 3);
-  assert.equal(generatedMediaUris.length, 3);
+  assert.equal(generatedMediaPins.length, 3);
   assert.equal(
     collectionUris.length,
     1,
@@ -13698,7 +16649,9 @@ async function verifyRavioliIndexedProof(input: {
     );
     assertRavioliSameInstantOrNull(
       pack.wrapper_sale_end,
-      input.kits[tokenId].editionPolicy.wrapperSaleEnd,
+      input.kits[tokenId].editionPolicy.requiresLimitedWrapper
+        ? input.kits[tokenId].editionPolicy.wrapperSaleEnd
+        : null,
       `Ravioli wrapper ${tokenId} immutable sale-end policy drift`,
     );
     assertRavioliSameInstantOrNull(
@@ -13755,7 +16708,9 @@ async function verifyRavioliIndexedProof(input: {
   assert.equal(withheldPack.child_expiry, null);
   assertRavioliSameInstantOrNull(
     withheldPack.wrapper_sale_end,
-    input.withheldRefundOutcome.saleEnd,
+    input.withheldRefundKit.editionPolicy.requiresLimitedWrapper
+      ? input.withheldRefundOutcome.saleEnd
+      : null,
     "withheld Ravioli sale expiry drift",
   );
   assertRavioliSameInstantOrNull(
@@ -13900,15 +16855,32 @@ async function verifyRavioliIndexedProof(input: {
     }, 0);
   assert.equal(findBalance(gnocchiLedger, input.creator, 0), 0);
   assert.equal(findBalance(gnocchiLedger, input.creator, 1), 0);
-  for (const owner of [input.collectorOne, input.collectorTwo]) {
-    for (const tokenId of [0, 1, limitedTokenId]) {
-      assert.equal(
-        findBalance(gnocchiLedger, owner, tokenId),
-        findBalance(baselineLedger, owner, tokenId) + deliveredDelta(owner, tokenId),
-        `post-Ravioli Gnocchi balance drift for ${owner} token ${tokenId}`,
-      );
-    }
-  }
+  const balanceKeys = [input.collectorOne, input.collectorTwo].flatMap((owner) =>
+    [0, 1, limitedTokenId].map((tokenId) => ({ owner, tokenId }))
+  );
+  const actualBalances = balanceKeys.map(({ owner, tokenId }) =>
+    findBalance(gnocchiLedger, owner, tokenId)
+  );
+  const dependencyBalances = balanceKeys.map(({ owner, tokenId }) =>
+    findBalance(baselineLedger, owner, tokenId)
+  );
+  const projectedBalances = balanceKeys.map(({ owner, tokenId }, index) =>
+    dependencyBalances[index]! + deliveredDelta(owner, tokenId)
+  );
+  const dependencyClassification = String((input.dependencies.liveCheck as JsonObject).classification || "");
+  const dependencyMutationKind = String(
+    ((input.dependencies.liveCheck as JsonObject).acceptedMutation as JsonObject | undefined)?.kind || "",
+  );
+  const authenticatedTerminalDependency = dependencyClassification === "RAVIOLI-CURRENT-OP67-RESUME"
+    && dependencyMutationKind === "withheld-reveal-released-dependency-state";
+  assert.ok(
+    authenticatedTerminalDependency
+      ? actualBalances.every((balance, index) => balance === dependencyBalances[index])
+      : actualBalances.every((balance, index) => balance === projectedBalances[index]),
+    authenticatedTerminalDependency
+      ? "post-Ravioli Gnocchi balances differ from the exact authenticated operation-67 terminal dependency snapshot"
+      : "post-Ravioli Gnocchi balances differ from the exact prewrite snapshot plus indexed deliveries",
+  );
   assert.equal(Number(gnocchiReserved.find((entry) => Number(entry.key) === 0)?.value || 0), 0);
   assert.equal(findNat(gnocchiReserved, input.dependencies.gnocchi.allocationTokenId), 0);
   assert.equal(findNat(gnocchiReserved, limitedTokenId), 0);
@@ -14319,22 +17291,36 @@ function safeArtifactName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "artifact.bin";
 }
 
-function pinKind(pin: PinRecord): string {
-  if (pin.bytes) return pin.proof.fileName.startsWith("ravioli-generated-") ? "generated-token-media" : "wrapper-media";
+function pinKind(
+  pin: PinRecord,
+  generatedMetadataUris: ReadonlySet<string>,
+  generatedMediaUris: ReadonlySet<string>,
+): string {
+  if (generatedMediaUris.has(pin.proof.uri)) return "generated-token-media";
+  if (generatedMetadataUris.has(pin.proof.uri)) return "generated-token-metadata";
+  if (pin.bytes) return "wrapper-media";
   if (pin.proof.fileName === "token.json") return "token-metadata";
   if (pin.proof.fileName === "ravioli-pack-manifest.json") return "pack-manifest";
   if (pin.proof.fileName.startsWith("ravioli-public-reveal-")) return "public-open-kit-reveal";
   if (pin.proof.fileName.startsWith("ravioli-sealed-reveal-")) {
     return "authenticated-encrypted-reveal-envelope";
   }
-  if (pin.proof.fileName.startsWith("ravioli-generated-token-")) return "generated-token-metadata";
   if (pin.proof.fileName.includes("pack-adapter-contract")) return "contract-metadata";
   return "collection-metadata";
 }
 
-async function writePinArtifacts(appRoot: string, pins: readonly PinRecord[]) {
+async function writePinArtifacts(
+  appRoot: string,
+  pins: readonly PinRecord[],
+  generatedMetadataUris: readonly string[],
+  generatedMediaUris: readonly string[],
+) {
   const records: Array<JsonObject> = [];
   const byUri = new Map<string, JsonObject>();
+  const generatedMetadataUriSet = new Set(generatedMetadataUris);
+  const generatedMediaUriSet = new Set(generatedMediaUris);
+  assert.equal(generatedMetadataUriSet.size, 3, "Ravioli pin packaging needs three distinct generated metadata URIs");
+  assert.ok(generatedMediaUriSet.size >= 1, "Ravioli pin packaging needs generated media URI evidence");
   for (let index = 0; index < pins.length; index += 1) {
     const pin = pins[index];
     const bytes = pin.bytes ? Uint8Array.from(pin.bytes) : deterministicJsonBytes(pin.value);
@@ -14350,7 +17336,7 @@ async function writePinArtifacts(appRoot: string, pins: readonly PinRecord[]) {
     await writeFile(path.join(appRoot, relativePath), bytes);
     const record = {
       id: `pin-${String(index + 1).padStart(3, "0")}-${stem}`,
-      kind: pinKind(pin),
+      kind: pinKind(pin, generatedMetadataUriSet, generatedMediaUriSet),
       path: relativePath,
       sha256: pin.proof.sha256,
       ipfsUri: pin.proof.uri,
@@ -14375,7 +17361,54 @@ export async function copyRavioliLimitedEditionDependencyEvidence(input: {
   const supplementRoot = path.dirname(path.dirname(receiptSource));
   const receiptBytes = await readFile(receiptSource);
   assert.equal(sha256(receiptBytes), input.dependency.receiptSha256, "Gnocchi LE dependency receipt changed after preflight");
-  assert.deepEqual(JSON.parse(receiptBytes.toString("utf8")), input.dependency.receipt);
+  const sourceReceipt = JSON.parse(receiptBytes.toString("utf8")) as JsonObject;
+  const derivedReceipt = input.dependency.receipt as JsonObject;
+  const sourceIsDerivedReceipt = sourceReceipt.schema === derivedReceipt.schema;
+  if (sourceIsDerivedReceipt) {
+    assert.deepEqual(sourceReceipt, derivedReceipt);
+  } else {
+    assert.equal(sourceReceipt.schema, "pastaprotocol-gnocchi-ui-live-finalized@1");
+    assert.equal(sourceReceipt.status, "RECOVERED");
+    assert.deepEqual(sourceReceipt.sideEffects, {
+      chainWrites: 0,
+      httpMethods: ["GET"],
+      ipfsWrites: 0,
+      signerMaterialLoaded: false,
+    });
+    const sourceContract = sourceReceipt.contract as JsonObject;
+    const sourceDependency = sourceReceipt.ravioliDependency as JsonObject;
+    const sourceLimited = sourceDependency.limitedEdition as JsonObject;
+    const sourcePolicy = sourceLimited.policy as JsonObject;
+    const sourceAllocation = sourceLimited.allocation as JsonObject;
+    const sourceBaseline = sourceLimited.baseline as JsonObject;
+    const derivedContract = derivedReceipt.contract as JsonObject;
+    const derivedOperation = derivedReceipt.operation as JsonObject;
+    const derivedToken = derivedReceipt.token as JsonObject;
+    assert.equal(sourceContract.address, derivedContract.address);
+    assert.equal(sourceContract.scriptSha256, derivedContract.scriptSha256);
+    assert.equal(sourceDependency.contractAddress, derivedContract.address);
+    assert.equal(sourceLimited.tokenId, derivedToken.tokenId);
+    assert.equal(sourcePolicy.active, derivedToken.active);
+    assert.equal(sourcePolicy.policyLocked, derivedToken.policyLocked);
+    assert.equal(sourcePolicy.maxSupply, derivedToken.maxSupply);
+    assertRavioliSameInstantOrNull(sourcePolicy.start, derivedToken.start, "Gnocchi LE source start drift");
+    assertRavioliSameInstantOrNull(sourcePolicy.end, derivedToken.end, "Gnocchi LE source end drift");
+    assertRavioliSameInstantOrNull(
+      sourceAllocation.recommendedRavioliSaleEnd,
+      derivedToken.recommendedRavioliSaleEnd,
+      "Gnocchi LE recommended Ravioli sale end drift",
+    );
+    assert.equal(sourceLimited.metadataUri, derivedToken.metadataUri);
+    assert.equal(sourceBaseline.totalMinted, derivedToken.baselineMinted);
+    assert.equal(sourceBaseline.totalReserved, derivedToken.baselineReserved);
+    const sourceOperations = sourceReceipt.indexedOperationReceipts as JsonObject[];
+    assert.ok(Array.isArray(sourceOperations) && sourceOperations.length > 0);
+    assert.equal(sourceOperations[0]?.operationHash, derivedOperation.hash);
+    const sourceContent = sourceReceipt.contentArtifacts as JsonObject[];
+    assert.ok(Array.isArray(sourceContent));
+    const tokenMedia = sourceContent.find((artifact) => artifact.id === "token-2-media");
+    assert.equal(tokenMedia?.ipfsUri, derivedToken.artifactUri);
+  }
 
   const copied: JsonObject[] = [];
   const persist = async (sourcePath: string, relativePath: string, record: JsonObject): Promise<void> => {
@@ -14392,8 +17425,32 @@ export async function copyRavioliLimitedEditionDependencyEvidence(input: {
     kind: "limited-edition-dependency-receipt",
     sha256: input.dependency.receiptSha256,
   });
-  for (const artifact of input.dependency.receipt.artifacts) {
+  const dependencyArtifacts: JsonObject[] = sourceIsDerivedReceipt
+    ? (derivedReceipt.artifacts as JsonObject[])
+    : [
+        ...((sourceReceipt.contentArtifacts as JsonObject[]) || []),
+        ...((sourceReceipt.screenshotSidecars as JsonObject[]) || []),
+        ...((sourceReceipt.screenshots as JsonObject[]) || []).map((screenshot) => ({
+          ...screenshot,
+          id: `screenshot-${screenshot.stage}`,
+          kind: "screenshot",
+        })),
+        ...(sourceReceipt.chainReconciliation ? [sourceReceipt.chainReconciliation as JsonObject] : []),
+        ...((sourceReceipt.ravioliDependency as JsonObject)?.script
+          ? [{
+              id: "gnocchi-current-contract-code",
+              kind: "contract-code",
+              path: ((sourceReceipt.ravioliDependency as JsonObject).script as JsonObject).artifactPath,
+              sha256: ((sourceReceipt.ravioliDependency as JsonObject).script as JsonObject).artifactSha256,
+            }]
+          : []),
+      ];
+  assert.ok(Array.isArray(dependencyArtifacts) && dependencyArtifacts.length > 0);
+  const copiedSourcePaths = new Set<string>();
+  for (const artifact of dependencyArtifacts) {
     const sourceRelative = safeRelativePath(artifact.path, `${artifact.id} Gnocchi LE artifact path`);
+    if (copiedSourcePaths.has(sourceRelative)) continue;
+    copiedSourcePaths.add(sourceRelative);
     const sourcePath = path.resolve(supplementRoot, ...sourceRelative.split("/"));
     assert.ok(sourcePath.startsWith(`${supplementRoot}${path.sep}`), `${artifact.id} escapes the Gnocchi LE supplement`);
     await persist(sourcePath, `artifacts/gnocchi-le-dependency/${sourceRelative}`, {
@@ -14405,7 +17462,7 @@ export async function copyRavioliLimitedEditionDependencyEvidence(input: {
       ...(artifact.retrievedSha256 ? { retrievedSha256: artifact.retrievedSha256 } : {}),
     });
   }
-  for (const screenshot of input.dependency.receipt.screenshots) {
+  for (const screenshot of sourceIsDerivedReceipt ? (derivedReceipt.screenshots as JsonObject[]) : []) {
     const sourceRelative = safeRelativePath(screenshot.path, `${screenshot.stage} Gnocchi LE screenshot path`);
     const sourcePath = path.resolve(supplementRoot, ...sourceRelative.split("/"));
     assert.ok(sourcePath.startsWith(`${supplementRoot}${path.sep}`), `${screenshot.stage} escapes the Gnocchi LE supplement`);
@@ -14651,6 +17708,14 @@ async function writeRavioliProofPackage(
   };
   assert.equal(input.openKitCaptures.length, PACK_SPECS.length, "Ravioli proof requires all five real Studio open-kit downloads");
   assert.equal(input.publicRevealUris.length, PACK_SPECS.length + 1, "Ravioli proof requires one public and five sealed contents documents");
+  const generatedMetadataPins = input.pins.filter((pin) =>
+    Boolean(pin.value)
+      && pin.proof.fileName.startsWith("ravioli-generated-token")
+      && pin.proof.fileName.endsWith(".json")
+  );
+  const generatedArtifactUris = generatedMetadataPins.map((pin) =>
+    String((pin.value as JsonObject)?.artifactUri || "")
+  );
   const pinCallsByKind = {
     wrapperMedia: input.pins.filter((pin) =>
       Boolean(pin.bytes) && pin.proof.fileName.startsWith("ravioli-wrapper-")
@@ -14669,12 +17734,9 @@ async function writeRavioliProofPackage(
     ).length,
     generatedMedia: input.pins.filter((pin) =>
       Boolean(pin.bytes)
-      && pin.proof.fileName.startsWith("ravioli-generated-")
+      && generatedArtifactUris.includes(pin.proof.uri)
     ).length,
-    generatedMetadata: input.pins.filter((pin) =>
-      pin.proof.fileName.startsWith("ravioli-generated-token-")
-      && pin.proof.fileName.endsWith(".json")
-    ).length,
+    generatedMetadata: generatedMetadataPins.length,
     contractMetadata: input.pins.filter((pin) =>
       [
         "pasta-ravioli-blind-controller-contract.json",
@@ -14715,13 +17777,17 @@ async function writeRavioliProofPackage(
     assert.equal(capture.tokenId, tokenId, "Ravioli open-kit capture order drift");
     assert.deepEqual(capture.kit, input.kits[tokenId], `Ravioli open-kit ${tokenId} differs from the opened kit`);
     const bytes = await readFile(path.join(input.appRoot, capture.relativePath));
+    assert.deepEqual(Buffer.from(bytes), Buffer.from(capture.bytes), `Ravioli open-kit ${tokenId} differs from its retained Studio download`);
+    const downloadText = bytes.toString("utf8");
+    assert.ok(downloadText.endsWith("\n"), `Ravioli open-kit ${tokenId} is not the exact newline-terminated Studio download`);
     const validated = validateRavioliOpenKitDownload({
       mode: tokenId,
       routerAddress: input.mirror.routerAddress,
       suggestedFilename: capture.fileName,
-      inPageJson: JSON.stringify(input.kits[tokenId], null, 2),
+      inPageJson: downloadText.slice(0, -1),
       downloadedBytes: bytes,
     });
+    assert.deepEqual(validated.kit, input.kits[tokenId], `Ravioli open-kit ${tokenId} retained download content drift`);
     assert.equal(validated.sha256, capture.sha256, `Ravioli open-kit ${tokenId} digest drift`);
     openKitArtifacts.push({
       id: `ravioli-open-kit-${tokenId}`,
@@ -14762,7 +17828,12 @@ async function writeRavioliProofPackage(
         recovery: input.mutationRecoveryEvidence,
       })
     : [];
-  const pinArtifacts = await writePinArtifacts(input.appRoot, input.pins);
+  const pinArtifacts = await writePinArtifacts(
+    input.appRoot,
+    input.pins,
+    input.indexed.generatedMetadataUris as string[],
+    input.indexed.generatedMediaUris as string[],
+  );
   const dependencySnapshot = {
     schema: "pastaprotocol-ravioli-dependencies@3",
     validatedBeforeRavioliWrites: true,
@@ -14822,6 +17893,24 @@ async function writeRavioliProofPackage(
     : null;
   const isCurrentOp23ResumeEvidence =
     isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 23;
+  const isCurrentOp30ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 30;
+  const isCurrentOp55ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 55;
+  const isCurrentOp63ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 63;
+  const isCurrentOp64ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 64;
+  const isCurrentOp66ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 66;
+  const isCurrentOp67ResumeEvidence =
+    isCurrentResumeEvidence && Number(currentResumeBoundary?.operationCount) === 67;
+  const isCurrentTerminalResumeEvidence =
+    isCurrentOp55ResumeEvidence
+    || isCurrentOp63ResumeEvidence
+    || isCurrentOp64ResumeEvidence
+    || isCurrentOp66ResumeEvidence
+    || isCurrentOp67ResumeEvidence;
   const isCurrentV4ResumeEvidence =
     input.currentV3RestartEvidence?.classification === "RAVIOLI-CURRENT-V4-AUTHENTICATED-RESUME";
   const isCurrentV5ResumeEvidence =
@@ -15341,7 +18430,9 @@ async function writeRavioliProofPackage(
     const modeCaptures = input.screenshots
       .filter((capture) => {
         const caption = capture.manifestScreenshot.caption;
-        const belongsToMode = caption.includes(MODE_NAMES[tokenId]) || caption.toLowerCase().includes(displayMode);
+        const belongsToMode = caption.includes(MODE_NAMES[tokenId])
+          || caption.toLowerCase().includes(displayMode)
+          || (tokenId === 1 && /blind claim preserving wrapper transfer/i.test(caption));
         const supersededMode0Configuration = Boolean(
           input.mutationRecoveryEvidence &&
           tokenId === 0 &&
@@ -15614,9 +18705,21 @@ async function writeRavioliProofPackage(
         ? "current-v4-authenticated-resume-ui-live-proof"
         : "current-v3-authenticated-restart-ui-live-proof",
     description: isCurrentResumeEvidence
-      ? Number(currentResumeBoundary?.operationCount) === 23
-        ? "Authenticate the exact 85-event, 15-pin, 23-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct three issued products, the transferred blind claims, the Gnocchi adapter, and its locked LE reservation; restore authenticated private recovery; and permit only operation 24, the Rotini adapter origination, as the first new signer mutation."
-        : "Authenticate the exact 38-event, 10-pin, 9-operation current journal boundary; replay all 19 historical browser mutations without another IPFS pin or Tezos write; restore the exact retained blind-product entropy; durably capture private recovery; and permit only operation 10, the mode-1 create_pack call, as the first new signer action."
+      ? isCurrentOp67ResumeEvidence
+        ? "Authenticate the exact terminal 236-event, 34-pin, 67-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct all five main products and the fully settled isolated short-expiry fixture from authenticated chain history; and finalize the portable proof package without admitting another signer mutation."
+        : isCurrentOp66ResumeEvidence
+        ? "Authenticate the exact 233-event, 34-pin, 66-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct the cancelled and fully refunded isolated short-expiry fixture from authenticated chain history; and admit operation 67, exact token-5 child-capacity recovery through the official Gnocchi adapter, as the only new signer mutation."
+        : isCurrentOp64ResumeEvidence
+        ? "Authenticate the exact 227-event, 34-pin, 64-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct all five terminal main products, both helper adapters, and the refunded isolated short-expiry fixture from authenticated chain history; and admit operation 65, exact token-5 permissionless cancellation, as the first new signer mutation before withdrawal and adapter-capacity recovery."
+        : isCurrentOp63ResumeEvidence
+        ? "Authenticate the exact 224-event, 34-pin, 63-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct all five terminal main products, both helper adapters, and the purchased isolated short-expiry fixture from authenticated chain history; and admit operation 64, the exact permissionless token-5 refund call, as the first new signer mutation before cancellation, withdrawal, and adapter-capacity recovery."
+        : isCurrentOp55ResumeEvidence
+        ? "Authenticate the exact 196-event, 30-pin, 55-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct all five issued and opened wrapper products plus both helper adapters from authenticated chain history; recover terminal Studio and portable buyer evidence read-only; and admit operation 56, the plan-authorized Gnocchi add_minter permission for the isolated withheld-reveal fixture, as the first new signer mutation."
+        : isCurrentOp30ResumeEvidence
+        ? "Authenticate the exact 112-event, 21-pin, 30-operation current journal boundary; replay only the retained mode-4 artwork response without another IPFS pin; reconstruct four issued products plus both helper adapters; restore authenticated private recovery; and admit operation 31, the plan-authorized repeated Gnocchi add_minter permission, as the first new signer mutation."
+        : Number(currentResumeBoundary?.operationCount) === 23
+          ? "Authenticate the exact 85-event, 15-pin, 23-operation current journal boundary; replay zero historical pins or Tezos writes; reconstruct three issued products, the transferred blind claims, the Gnocchi adapter, and its locked LE reservation; restore authenticated private recovery; and permit only operation 24, the Rotini adapter origination, as the first new signer mutation."
+          : "Authenticate the exact 38-event, 10-pin, 9-operation current journal boundary; replay all 19 historical browser mutations without another IPFS pin or Tezos write; restore the exact retained blind-product entropy; durably capture private recovery; and permit only operation 10, the mode-1 create_pack call, as the first new signer action."
       : isCurrentV7ResumeEvidence
       ? "Authenticate the exact 86-event, 15-pin, 23-operation Ravioli boundary, including the durable counter-advance event and its private precommit snapshot; bind four independent Macaroni operations that advanced shared signer counters; replay zero pins and zero semantic writes; reconstruct three issued products plus the Gnocchi adapter and LE reservation; and continue with operation 24, the Rotini adapter origination."
       : isCurrentV6ResumeEvidence
@@ -15628,7 +18731,7 @@ async function writeRavioliProofPackage(
         : "Authenticate the exact 37-event, 9-pin, 9-operation, 61-file Ravioli boundary; replay 16 browser responses without repeating a pin or Tezos operation; exclude two unrecoverable private precommit pins from the product; durably capture fresh private recovery; independently decrypt and commitment-check the replacement blind product before operation 10.",
     evidence: {
       screenshots: input.screenshots
-        .filter((capture) => /superseded private precommit|blind_funded_pool funded and issued|blind_allocated_mint recovered funded and issued|transferred an unopened blind claim/i.test(
+        .filter((capture) => /superseded private precommit|blind_funded_pool funded and issued|blind_allocated_mint recovered funded and issued|blind_generative_mint funded and issued|hybrid_atomic_pack configured|transferred an unopened blind claim|terminal state recovered read-only|withheld-reveal/i.test(
           capture.manifestScreenshot.caption,
         ))
         .map((capture) => capture.manifestScreenshot.stage),
@@ -15643,30 +18746,76 @@ async function writeRavioliProofPackage(
         input.mirror.blindControllerAddress,
         input.mirror.routerAddress,
         input.dependencies.gnocchi.address,
-        ...(isCurrentOp23ResumeEvidence ? [input.mirror.gnocchiAdapterAddress] : []),
+        ...(isCurrentOp23ResumeEvidence || isCurrentOp30ResumeEvidence || isCurrentTerminalResumeEvidence
+          ? [input.mirror.gnocchiAdapterAddress]
+          : []),
+        ...(isCurrentOp30ResumeEvidence || isCurrentTerminalResumeEvidence
+          ? [input.mirror.rotiniAdapterAddress]
+          : []),
       ],
       operations: input.writeReceipts
         .slice(
           0,
-          isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
-            ? 24
+          isCurrentOp67ResumeEvidence
+            ? 67
+            : isCurrentOp66ResumeEvidence
+            ? 67
+            : isCurrentOp64ResumeEvidence
+            ? 65
+            : isCurrentOp63ResumeEvidence
+            ? 64
+            : isCurrentOp55ResumeEvidence
+            ? 56
+            : isCurrentOp30ResumeEvidence
+            ? 31
+            : isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
+              ? 24
             : isCurrentV5ResumeEvidence
               ? 17
               : 10,
         )
         .map((receipt) => receipt.operationHash),
-      tokens: isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
-        ? [tokens[0].id, tokens[1].id, tokens[2].id]
-        : [tokens[0].id, tokens[1].id],
+      tokens: isCurrentOp63ResumeEvidence || isCurrentOp64ResumeEvidence || isCurrentOp66ResumeEvidence || isCurrentOp67ResumeEvidence
+        ? [tokens[0].id, tokens[1].id, tokens[2].id, tokens[3].id, tokens[4].id, tokens[5].id]
+        : isCurrentOp55ResumeEvidence
+        ? [tokens[0].id, tokens[1].id, tokens[2].id, tokens[3].id, tokens[4].id]
+        : isCurrentOp30ResumeEvidence
+        ? [tokens[0].id, tokens[1].id, tokens[2].id, tokens[3].id]
+        : isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
+          ? [tokens[0].id, tokens[1].id, tokens[2].id]
+          : [tokens[0].id, tokens[1].id],
       roleEvidence: [],
       urls: [
         `https://shadownet.tzkt.io/${input.mirror.routerAddress}`,
         `https://shadownet.tzkt.io/${input.mirror.routerAddress}/tokens/1`,
+        ...(isCurrentTerminalResumeEvidence
+          ? [
+              `https://shadownet.tzkt.io/${input.mirror.routerAddress}/tokens/3`,
+              `https://shadownet.tzkt.io/${input.mirror.routerAddress}/tokens/4`,
+              ...((isCurrentOp63ResumeEvidence || isCurrentOp64ResumeEvidence || isCurrentOp66ResumeEvidence || isCurrentOp67ResumeEvidence)
+                ? [`https://shadownet.tzkt.io/${input.mirror.routerAddress}/tokens/5`]
+                : []),
+            ]
+          : isCurrentOp30ResumeEvidence
+          ? [`https://shadownet.tzkt.io/${input.mirror.routerAddress}/tokens/3`]
+          : []),
         ...input.writeReceipts
           .slice(
             0,
-            isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
-              ? 24
+            isCurrentOp67ResumeEvidence
+              ? 67
+              : isCurrentOp66ResumeEvidence
+              ? 67
+              : isCurrentOp64ResumeEvidence
+              ? 65
+              : isCurrentOp63ResumeEvidence
+              ? 64
+              : isCurrentOp55ResumeEvidence
+              ? 56
+              : isCurrentOp30ResumeEvidence
+              ? 31
+              : isCurrentOp23ResumeEvidence || isCurrentV6ResumeEvidence || isCurrentV7ResumeEvidence
+                ? 24
               : isCurrentV5ResumeEvidence
                 ? 17
                 : 10,
@@ -15816,7 +18965,92 @@ async function writeRavioliProofPackage(
   };
 }
 
-export async function publishStagedRavioliFile(stagedPath: string, finalPath: string): Promise<void> {
+function ravioliPublicationRefreshIdentity(bytes: Uint8Array, label: string): JsonObject {
+  const source = ravioliCheckpointRecord(
+    JSON.parse(Buffer.from(bytes).toString("utf8")),
+    `${label} publication`,
+  );
+  assert.ok(
+    source.schema === "pastaprotocol-ravioli-ui-live-run@1"
+      || source.schema === "pastaprotocol-app-proof@1",
+    `${label} publication schema is not refreshable Ravioli evidence`,
+  );
+  if (source.schema === "pastaprotocol-app-proof@1") {
+    assert.equal(source.app, "ravioli", `${label} manifest app drift`);
+    assert.ok(String(source.runId || "").length > 0, `${label} manifest run id is missing`);
+  }
+  const proofPackageResume = ravioliCheckpointRecord(
+    source.proofPackageResume,
+    `${label} proof-package resume identity`,
+  );
+  assert.match(String(proofPackageResume.checkpointSha256 || ""), /^[0-9a-f]{64}$/, `${label} checkpoint hash is invalid`);
+  assert.equal(proofPackageResume.chainWriteBoundary, RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total);
+  assert.equal(proofPackageResume.checkpointArtifactId, "ravioli-package-resume-checkpoint");
+  const durableJournal = ravioliCheckpointRecord(source.durableJournal, `${label} durable journal identity`);
+  assert.match(String(durableJournal.journalId || ""), /^[0-9a-f]{64}$/);
+  assert.match(String(durableJournal.intentSha256 || ""), /^[0-9a-f]{64}$/);
+  assert.match(String(durableJournal.finalSha256 || ""), /^[0-9a-f]{64}$/);
+  assert.deepEqual(durableJournal.counts, {
+    actors: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.actors,
+    buys: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.buys,
+    calls: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.calls,
+    events: 236,
+    opens: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.opens,
+    originations: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.originations,
+    pins: 34,
+    refunds: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.refunds,
+    transfers: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.transfers,
+  });
+  const artifactIdentity = Array.isArray(source.artifacts)
+      ? source.artifacts.map((artifact: JsonObject) => ({
+        id: artifact.id,
+        path: artifact.path,
+        sha256: artifact.id === "ui-live-run-receipt" ? undefined : artifact.sha256,
+        ipfsUri: artifact.ipfsUri,
+        retrievedSha256: artifact.retrievedSha256,
+      }))
+    : Array.isArray(source.pins)
+      ? source.pins.map((artifact: JsonObject) => ({
+          id: artifact.id,
+          path: artifact.path,
+          sha256: artifact.sha256,
+          ipfsUri: artifact.ipfsUri,
+          retrievedSha256: artifact.retrievedSha256,
+        }))
+      : [];
+  assert.ok(artifactIdentity.length > 0, `${label} publication artifact identity is empty`);
+  const operationIdentity = Array.isArray(source.operations)
+    ? source.operations
+    : Array.isArray(source.receipts)
+      ? source.receipts.map((receipt: JsonObject) => ({
+          action: receipt.action,
+          chainId: receipt.chainId,
+          signerAddress: receipt.signerAddress,
+          contractAddress: receipt.contractAddress,
+          operationHash: receipt.operationHash,
+          entrypoints: receipt.entrypoints,
+        }))
+      : [];
+  assert.ok(operationIdentity.length >= RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total, `${label} publication operation identity is incomplete`);
+  return {
+    schema: source.schema,
+    ...(source.runId ? { runId: source.runId } : {}),
+    checkpointSha256: proofPackageResume.checkpointSha256,
+    journalId: durableJournal.journalId,
+    intentSha256: durableJournal.intentSha256,
+    finalSha256: durableJournal.finalSha256,
+    counts: durableJournal.counts,
+    operationIdentity,
+    artifactIdentity,
+    screenshots: source.screenshots,
+  };
+}
+
+export async function publishStagedRavioliFile(
+  stagedPath: string,
+  finalPath: string,
+  options: { allowAuthenticatedRefresh?: boolean } = {},
+): Promise<void> {
   const stagedInfo = await lstat(stagedPath);
   if (!stagedInfo.isFile() || stagedInfo.isSymbolicLink()) throw new Error(`Ravioli staging path is not a real file: ${stagedPath}`);
   const bytes = await readFile(stagedPath);
@@ -15832,7 +19066,18 @@ export async function publishStagedRavioliFile(stagedPath: string, finalPath: st
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     const finalInfo = await lstat(finalPath);
     if (!finalInfo.isFile() || finalInfo.isSymbolicLink()) throw new Error(`existing Ravioli publication is not a real file: ${finalPath}`);
-    assert.deepEqual(await readFile(finalPath), Buffer.from(bytes), `existing Ravioli publication differs: ${finalPath}`);
+    const existingBytes = await readFile(finalPath);
+    if (!existingBytes.equals(Buffer.from(bytes))) {
+      assert.equal(options.allowAuthenticatedRefresh, true, `existing Ravioli publication differs: ${finalPath}`);
+      assert.deepEqual(
+        ravioliPublicationRefreshIdentity(existingBytes, "existing Ravioli"),
+        ravioliPublicationRefreshIdentity(bytes, "staged Ravioli"),
+        `existing Ravioli publication does not share the staged checkpoint/journal identity: ${finalPath}`,
+      );
+      await rename(stagedPath, finalPath);
+      await syncRavioliUiLiveDirectory(path.dirname(finalPath));
+      return;
+    }
   }
   await syncRavioliUiLiveDirectory(path.dirname(finalPath));
   await unlink(stagedPath).catch((error: NodeJS.ErrnoException) => {
@@ -15843,10 +19088,33 @@ export async function publishStagedRavioliFile(stagedPath: string, finalPath: st
 
 async function publishStagedRavioliProof(
   proof: RavioliUiLiveResult & { stagedManifestPath: string; stagedReceiptPath: string },
+  options: { allowAuthenticatedRefresh?: boolean } = {},
 ): Promise<void> {
   // Publish the manifest last: aggregate tooling cannot mistake a partial package for complete.
-  await publishStagedRavioliFile(proof.stagedReceiptPath, proof.receiptPath);
-  await publishStagedRavioliFile(proof.stagedManifestPath, proof.manifestPath);
+  await publishStagedRavioliFile(proof.stagedReceiptPath, proof.receiptPath, options);
+  const [publishedReceiptBytes, stagedManifestBytes] = await Promise.all([
+    readFile(proof.receiptPath),
+    readFile(proof.stagedManifestPath),
+  ]);
+  const stagedManifest = ravioliCheckpointRecord(
+    JSON.parse(stagedManifestBytes.toString("utf8")),
+    "staged Ravioli manifest",
+  );
+  const runReceiptArtifacts = (stagedManifest.artifacts as JsonObject[]).filter(
+    (artifact) => artifact?.id === "ui-live-run-receipt",
+  );
+  assert.equal(runReceiptArtifacts.length, 1, "staged Ravioli manifest must reference exactly one run receipt");
+  assert.equal(
+    runReceiptArtifacts[0].path,
+    "artifacts/ravioli-ui-live-run.json",
+    "staged Ravioli manifest run-receipt path drift",
+  );
+  assert.equal(
+    runReceiptArtifacts[0].sha256,
+    sha256(publishedReceiptBytes),
+    "staged Ravioli manifest does not hash the published run receipt",
+  );
+  await publishStagedRavioliFile(proof.stagedManifestPath, proof.manifestPath, options);
 }
 
 export function formatRavioliUiLiveError(error: unknown, depth = 0): string {

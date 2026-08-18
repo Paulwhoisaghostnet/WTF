@@ -13,6 +13,7 @@ import {
   installPastaUiLiveBrowserProxy,
   PASTA_UI_LIVE_BRIDGE_SCHEMA,
   PASTA_UI_LIVE_RECEIPT_SCHEMA,
+  serializePastaUiLiveStorageProjection,
   startPastaUiLiveLoopbackServer,
   TaquitoPastaUiLiveSession,
   type PastaUiLiveAppliedOperationAssertion,
@@ -31,10 +32,13 @@ import {
   utf8ToHex,
 } from "./shadownet-proof-kit";
 import {
+  assertLasagnaRestartScriptIdentity,
   assertLasagnaTzktOperationApplied,
   assertLasagnaUiLiveExecutionAllowed,
+  createLasagnaUiLiveStorageProjector,
   lasagnaRawSha256Cid,
   loadLasagnaReferenceTokens,
+  projectLasagnaUiLiveStorage,
   verifyLasagnaTzktEvidence,
   type LasagnaReferenceToken,
 } from "./shadownet-lasagna-ui-live";
@@ -80,6 +84,109 @@ const REFERENCES: LasagnaReferenceToken[] = REFERENCE_APPS.map((app, index) => (
 
 const REVISION_ZERO_ITEMS = REFERENCES.slice(0, 2).map(({ contract, token_id }) => ({ contract, token_id }));
 const REVISION_ONE_ITEMS = REFERENCES.slice(2).map(({ contract, token_id }) => ({ contract, token_id }));
+
+test("Lasagna projects only bounded revision state for studio and public-page reads", async () => {
+  let unrelatedHandleReads = 0;
+  let selectedRevisionReads = 0;
+  class PoisonedBigMapHandle {
+    get provider() {
+      unrelatedHandleReads += 1;
+      throw new Error("unrelated provider handle must not be traversed");
+    }
+    get schema() {
+      unrelatedHandleReads += 1;
+      throw new Error("unrelated schema handle must not be traversed");
+    }
+  }
+  const selectedRevision = {
+    curator: CURATOR,
+    metadata_uri: utf8ToHex(`ipfs://${CIDS[0]}`),
+    items: REVISION_ZERO_ITEMS,
+  };
+  const projected = await projectLasagnaUiLiveStorage({
+    administrator: CREATOR,
+    metadata: new PoisonedBigMapHandle(),
+    curators: new PoisonedBigMapHandle(),
+    revision_count: { toString: () => "2" },
+    current_revision: { toString: () => "1" },
+    revisions: {
+      async get(key: unknown) {
+        selectedRevisionReads += 1;
+        assert.equal(key, 1);
+        return selectedRevision;
+      },
+    },
+  });
+  assert.equal(unrelatedHandleReads, 0);
+  assert.equal(selectedRevisionReads, 1);
+  assert.deepEqual(serializePastaUiLiveStorageProjection(projected), {
+    revision_count: 2,
+    current_revision: 1,
+    revisions: {
+      __pastaBridgeType: "map",
+      entries: [[1, selectedRevision]],
+    },
+  });
+
+  const empty = await projectLasagnaUiLiveStorage({
+    revision_count: 0,
+    current_revision: null,
+    revisions: {
+      get() {
+        throw new Error("empty storage must not read the revisions big-map");
+      },
+    },
+  });
+  assert.deepEqual(serializePastaUiLiveStorageProjection(empty), {
+    revision_count: 0,
+    current_revision: null,
+    revisions: { __pastaBridgeType: "map", entries: [] },
+  });
+});
+
+test("Lasagna restart projection replays each applied publication from its authenticated pre-state once", async () => {
+  const revisions = new Map<number, unknown>([
+    [0, {
+      curator: CURATOR,
+      metadata_uri: utf8ToHex(`ipfs://${CIDS[0]}`),
+      items: REVISION_ZERO_ITEMS,
+    }],
+    [1, {
+      curator: CREATOR,
+      metadata_uri: utf8ToHex(`ipfs://${CIDS[1]}`),
+      items: REVISION_ONE_ITEMS,
+    }],
+  ]);
+  const rawTerminalStorage = {
+    revision_count: 2,
+    current_revision: 0,
+    revisions: { get: async (key: number) => revisions.get(key) },
+  };
+
+  const curatorProjector = createLasagnaUiLiveStorageProjector(0);
+  assert.deepEqual(serializePastaUiLiveStorageProjection(await curatorProjector(rawTerminalStorage)), {
+    revision_count: 0,
+    current_revision: null,
+    revisions: { __pastaBridgeType: "map", entries: [] },
+  });
+  assert.deepEqual(serializePastaUiLiveStorageProjection(await curatorProjector(rawTerminalStorage)), {
+    revision_count: 2,
+    current_revision: 0,
+    revisions: { __pastaBridgeType: "map", entries: [[0, revisions.get(0)]] },
+  });
+
+  const creatorProjector = createLasagnaUiLiveStorageProjector(1);
+  assert.deepEqual(serializePastaUiLiveStorageProjection(await creatorProjector(rawTerminalStorage)), {
+    revision_count: 1,
+    current_revision: 0,
+    revisions: { __pastaBridgeType: "map", entries: [[0, revisions.get(0)]] },
+  });
+  assert.deepEqual(serializePastaUiLiveStorageProjection(await creatorProjector(rawTerminalStorage)), {
+    revision_count: 2,
+    current_revision: 0,
+    revisions: { __pastaBridgeType: "map", entries: [[0, revisions.get(0)]] },
+  });
+});
 
 function buildPackage() {
   return {
@@ -454,7 +561,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
     await creatorPage.waitForFunction(() => document.querySelector("[data-draft-status]")?.textContent?.startsWith("Saved"));
     captures.push(await captureMockStudioStage(creatorPage, creatorMonitor, outputRoot, 2, "draft-saved", "from CH-EASE handoff", "[data-draft-status]"));
 
-    await creatorPage.click("#btnConnect");
+    await creatorPage.click("#btnConnect", { noWaitAfter: true });
     await waitForLog(creatorPage, `connected ${CREATOR} on shadownet`);
     captures.push(await captureMockStudioStage(creatorPage, creatorMonitor, outputRoot, 3, "creator-connected", `connected ${CREATOR}`, "#account"));
 
@@ -531,7 +638,7 @@ test("real Lasagna studio and public exhibition complete the full registry lifec
     await curatorPage.waitForFunction(() => document.getElementById("sumCount")?.textContent === "2");
     captures.push(await captureMockStudioStage(curatorPage, curatorMonitor, outputRoot, 8, "curator-package-imported", "from CH-EASE file", "#refs"));
 
-    await curatorPage.click("#btnConnect");
+    await curatorPage.click("#btnConnect", { noWaitAfter: true });
     await waitForLog(curatorPage, `connected ${CURATOR} on shadownet`);
     captures.push(await captureMockStudioStage(curatorPage, curatorMonitor, outputRoot, 9, "curator-connected", `connected ${CURATOR}`, "#account"));
 
@@ -987,6 +1094,27 @@ test("Lasagna restart recovery derives the exact raw-SHA256 CID used by the proo
   );
 });
 
+test("Lasagna restart script identity ignores RPC JSON ordering but rejects semantic drift", () => {
+  const artifactCode = [
+    { prim: "parameter", args: [{ prim: "unit" }] },
+    { prim: "storage", args: [{ prim: "unit" }] },
+    { prim: "code", args: [[]] },
+  ];
+  const rpcCode = [
+    { args: [[]], prim: "code" },
+    { args: [{ prim: "unit" }], prim: "storage" },
+    { args: [{ prim: "unit" }], prim: "parameter" },
+  ];
+  assert.doesNotThrow(() => assertLasagnaRestartScriptIdentity(rpcCode, artifactCode));
+  assert.throws(
+    () => assertLasagnaRestartScriptIdentity(
+      [{ args: [[]], prim: "code" }, { args: [{ prim: "nat" }], prim: "storage" }, artifactCode[0]],
+      artifactCode,
+    ),
+    /code differs/,
+  );
+});
+
 test("production Lasagna runner is fresh-only, Shadownet-only, role-correct, and recorder-free", async () => {
   assert.throws(
     () => assertLasagnaUiLiveExecutionAllowed({}),
@@ -1038,11 +1166,20 @@ test("production Lasagna runner is fresh-only, Shadownet-only, role-correct, and
   assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_PRIMARY/);
   assert.match(source, /readPastaProofRestartRpcSnapshot\(SHADOWNET_RPC_FALLBACK/);
   assert.match(source, /reconcileLasagnaPendingPin\(restartJournal, ipfs\)/);
+  assert.match(source, /reconcilePastaProofRestartOperation\(\{/);
+  assert.match(source, /assertLasagnaRestartScriptIdentity\(script\.code, code\)/);
+  assert.equal(source.includes("/operations/${family}?sender="), false, "Lasagna restart must not query a counter-filtered TzKT collection");
+  assert.doesNotMatch(source, /hashJsonForBridge\(script\.code\)/);
   assert.match(source, /expectedCurrentCounter\(actor\)/);
   assert.equal(
     (source.match(/assertOperationApplied: \(assertion\) => verifyLasagnaTzktOperationApplied/g) || []).length,
     2,
     "creator and curator sessions must independently verify exact operation hashes",
+  );
+  assert.equal(
+    (source.match(/projectStorage: (?:creator|curator)StorageProjector/g) || []).length,
+    2,
+    "creator and curator sessions must install their restart-aware bounded storage projectors",
   );
   const firstOutputWrite = source.indexOf("await mkdir");
   const creatorFundingGate = source.indexOf("creator is underfunded before any pin or chain write");

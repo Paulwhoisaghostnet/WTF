@@ -17,6 +17,10 @@ h1 { margin:0; font-size:clamp(34px,7vw,72px); line-height:.96; }
 .action,.storage { margin-top:20px; padding:16px; border:1px solid var(--line); background:var(--panel); display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:end; gap:12px; }
 .action h2,.action p { margin:0 0 4px; }
 .storage h2,.storage p { margin:0 0 4px; }
+#deliveryResult { grid-template-columns:minmax(0,1fr); align-items:start; }
+#deliveryResult > *,#deliverySummary,#deliveryItems,#deliveryItems li,#deliveryItems a,#deliveryOperation { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+#deliveryItems { margin:0; padding-left:24px; }
+#deliveryOperation { justify-self:start; }
 label { display:grid; gap:5px; }
 input,select,button { min-height:42px; border:1px solid var(--line); background:var(--bg); color:var(--ink); padding:8px 11px; font:inherit; }
 button { cursor:pointer; }

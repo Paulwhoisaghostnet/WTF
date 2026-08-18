@@ -7,6 +7,11 @@ import {
   validateGnocchiRecoveryBoundary,
   validateRecoveredGnocchiOperations,
 } from "./shadownet-gnocchi-readonly-finalizer";
+import {
+  GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+  GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH,
+  validateGnocchiTerminalRecoveryReceipt,
+} from "./shadownet-gnocchi-terminal-readonly-recovery";
 
 const CONTRACT = "KT1Qzue6Uxojgsf2SxhVk5sqv1T3BGB9Ba69";
 const CREATOR = "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM";
@@ -175,6 +180,49 @@ function operationFixture() {
   };
 }
 
+function terminalRecoveryReceiptFixture() {
+  return {
+    schema: "pastaprotocol-gnocchi-terminal-readonly-recovery@1",
+    classification: GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+    status: "PASSED",
+    runId: "pasta-alpha-proof-20260808t181046z-v2",
+    network: "shadownet",
+    chainId: "NetXsqzbfFenSTS",
+    contract: { address: CONTRACT },
+    prefix: {
+      inventorySha256: "3ac30737a32e58ea015a8aee4de67e878bcd928b7d5517d6062afe19e7d943db",
+      preservedScreenshotOrdinals: Array.from({ length: 17 }, (_, index) => index + 1),
+    },
+    operationGraph: { operationHashes: [...HASHES], terminalOperationHash: HASHES.at(-1) },
+    terminalState: {
+      supplies: [4, 4, 3],
+      overCapRequest: { tokenId: 2, amount: 2, remaining: 1, reason: "not enough supply left" },
+    },
+    screenshots: [{ stageOrdinal: 18 }, { stageOrdinal: 19 }],
+    contentArtifacts: CONTENT_FILES.map((fileName) => ({ fileName })),
+    bridge: {
+      signerMaterialLoaded: false,
+      submittedOperations: 0,
+      injectedOperations: 0,
+      writeActionRequests: 0,
+      actors: ["collectorOne", "collectorTwo"].map((actor) => ({
+        actor,
+        requestedActions: ["read_storage"],
+        submittedOperations: 0,
+        injectedOperations: 0,
+        writeActionRequests: 0,
+      })),
+    },
+    unchanged: {
+      operationGraph: true,
+      contractState: true,
+      script: true,
+      actorCounters: true,
+      actorMempoolEmpty: true,
+    },
+  };
+}
+
 test("read-only finalizer is explicitly gated to an existing Shadownet proof root", () => {
   assert.throws(() => assertGnocchiReadonlyFinalizationAllowed({}), /GNOCCHI_READONLY_FINALIZE/);
   assert.throws(() => assertGnocchiReadonlyFinalizationAllowed({
@@ -260,6 +308,43 @@ test("recovery boundary fails closed on checkpoint count, pin, operation, or scr
     mutate(fixture);
     assert.throws(() => validateGnocchiRecoveryBoundary(fixture), expected, label);
   }
+});
+
+test("terminal recovery receipt proves 4/4/3, actual cap rejection, and zero submitted or injected writes", () => {
+  const receipt = terminalRecoveryReceiptFixture();
+  assert.equal(
+    validateGnocchiTerminalRecoveryReceipt({
+      receipt,
+      runId: receipt.runId,
+      contractAddress: CONTRACT,
+      operationHashes: HASHES,
+    }).classification,
+    GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+  );
+  for (const [label, mutate, expected] of [
+    ["supply", (value: ReturnType<typeof terminalRecoveryReceiptFixture>) => { value.terminalState.supplies[2] = 4; }, /strictly deep-equal/],
+    ["operation graph", (value: ReturnType<typeof terminalRecoveryReceiptFixture>) => { value.operationGraph.operationHashes.pop(); }, /strictly deep-equal/],
+    ["write", (value: ReturnType<typeof terminalRecoveryReceiptFixture>) => { value.bridge.injectedOperations = 1; }, /1 !== 0/],
+    ["cap rejection", (value: ReturnType<typeof terminalRecoveryReceiptFixture>) => { value.terminalState.overCapRequest.reason = "different"; }, /not enough supply left/],
+  ] as const) {
+    const changed = terminalRecoveryReceiptFixture();
+    mutate(changed);
+    assert.throws(() => validateGnocchiTerminalRecoveryReceipt({
+      receipt: changed,
+      runId: changed.runId,
+      contractAddress: CONTRACT,
+      operationHashes: HASHES,
+    }), expected, label);
+  }
+});
+
+test("read-only finalizer recognizes only the validated terminal recovery artifact", async () => {
+  const source = await readFile(new URL("./shadownet-gnocchi-readonly-finalizer.ts", import.meta.url), "utf8");
+  assert.match(source, /validateGnocchiTerminalRecoveryReceipt/);
+  assert.match(source, /GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION/);
+  assert.match(source, /GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH/);
+  assert.match(source, /cannot accept both checkpoint and terminal recovery receipts/);
+  assert.match(source, /replayedAppliedOperations: 0/);
 });
 
 test("finalizer delegates every remote read to the opaque GET-only retry capability and has no write path", async () => {

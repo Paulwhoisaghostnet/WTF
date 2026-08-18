@@ -41,6 +41,7 @@ import {
   assertRavioliUiLiveExecutionAllowed,
   assertRavioliNativeRecoveryRecheckStable,
   assertRavioliJournalTzktOperationApplied,
+  assertRavioliCurrentResumePackageEvidence,
   assertPortableRavioliCheckpointValue,
   buildRavioliRevealCapability,
   buildRavioliBlindDeadlines,
@@ -52,10 +53,12 @@ import {
   copyRavioliLimitedEditionDependencyEvidence,
   copyRavioliPrepackRecoveryEvidence,
   configureRavioliPackMode,
+  createRavioliPreparedPinAdopter,
   createRavioliMirroredSessionHandler,
   decodeRavioliPackageResumeCheckpoint,
   defaultRavioliBlindDeadlines,
   dependencyOriginationReceipt,
+  deriveRavioliCheckpointBlindController,
   encodeRavioliPackageResumeCheckpoint,
   formatRavioliUiLiveError,
   hasActiveRavioliOperator,
@@ -66,6 +69,9 @@ import {
   parseRavioliCurrentV2OpenKitEvidence,
   publishStagedRavioliFile,
   ravioliDeliveredTokenExplorerUrls,
+  readRavioliJournalActorIntents,
+  readRavioliJournalCounterLane,
+  readRavioliJournalCurrentActorState,
   ravioliPublicRevealPin,
   ravioliModeWriteOperationHashes,
   ravioliOutlivingLeProbeDatetimeLocal,
@@ -88,28 +94,44 @@ import {
   RAVIOLI_WITHHELD_REVEAL_TEST_FIXTURE_REVEAL_WINDOW_MS,
   RAVIOLI_WITHHELD_REVEAL_TEST_FIXTURE_SALE_WINDOW_MS,
   sampleRavioliUiLiveMemory,
+  resolveRavioliBrowserIpfsGateway,
   resolveRavioliLimitedEditionConstraint,
   resolveRavioliGreenDeadlinePolicy,
   requiredOptionSafeInteger,
   rethrowAfterClosingRavioliBuyerPage,
   ravioliChainWaitTimeoutMs,
+  ravioliCurrentResumeRetainsMode2PreOp24Recovery,
   ravioliSaleNeedsDeadlineWait,
   ravioliTokenInfoValue,
   shouldCaptureRavioliFailureRecovery,
   stableRavioliMode0MutationLiveCheck,
   validateRavioliGnocchiDependencyRoles,
+  verifyRavioliHistoricalOpenEvidence,
+  verifyRavioliHistoricalPurchaseEvidence,
   validateRavioliNativeDependencyTransition,
   validateRavioliOpenKitDownload,
   waitForRavioliBuyerPageReady,
+  waitForRavioliStudioAdapterRecoveryOutcome,
+  waitForRavioliStudioCancellationOutcome,
+  waitForRavioliStudioRefundOutcome,
   waitForRavioliStudioTransferOutcome,
+  waitForRavioliStudioWithdrawalOutcome,
   type PackKit,
+  type RavioliJournalReadOptions,
 } from "./shadownet-ravioli-ui-live";
 import {
   RAVIOLI_UI_LIVE_EFFECTIVE_OPERATION_MATRIX,
   RAVIOLI_UI_LIVE_EXPECTED_COUNTS,
   RAVIOLI_UI_LIVE_EXPECTED_OPERATION_MATRIX,
 } from "./shadownet-ravioli-ui-live-journal";
-import { deterministicJsonBytes, root, SHADOWNET_CHAIN_ID } from "./shadownet-proof-kit";
+import type { RavioliPreparedSealedPinRecoveryBridge } from "./shadownet-ravioli-current-resume";
+import {
+  deterministicJsonBytes,
+  root,
+  SHADOWNET_CHAIN_ID,
+  SHADOWNET_RPC_FALLBACK,
+  SHADOWNET_RPC_PRIMARY,
+} from "./shadownet-proof-kit";
 
 test("Ravioli serial origination estimate retries only its read-only simulation", async () => {
   let estimateCalls = 0;
@@ -134,6 +156,287 @@ test("Ravioli serial origination estimate retries only its read-only simulation"
   assert.equal(mutationCalls, 0);
 });
 
+const RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS = Object.freeze({
+  maxAttempts: 3,
+  deadlineMs: 1_000,
+  baseDelayMs: 0,
+  maxDelayMs: 0,
+  maxRetryAfterMs: 0,
+  jitterRatio: 0,
+});
+
+const EMPTY_RAVIOLI_MEMPOOL = Object.freeze({
+  applied: [],
+  validated: [],
+  branch_delayed: [],
+  unprocessed: [],
+});
+
+function ravioliJournalJsonResponse(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: status === 429 ? { "retry-after": "0" } : undefined,
+  });
+}
+
+test("Ravioli journal initial lane recovers a first 429 for every GET class without overlap", async () => {
+  const rpcUrl = "https://ravioli-journal-primary.invalid";
+  const actors = {
+    creator: "tz1-ravioli-creator",
+    collector1: "tz1-ravioli-collector-1",
+    collector2: "tz1-ravioli-collector-2",
+  } as const;
+  const calls: Array<{ path: string; method: string | undefined; body: BodyInit | null | undefined }> = [];
+  let activeReads = 0;
+  let maximumActiveReads = 0;
+  const attemptedPaths = new Set<string>();
+  const result = await readRavioliJournalCounterLane(rpcUrl, actors, {
+    retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+    fetchImpl: async (input, init) => {
+      activeReads += 1;
+      maximumActiveReads = Math.max(maximumActiveReads, activeReads);
+      try {
+        await Promise.resolve();
+        const path = new URL(String(input)).pathname;
+        calls.push({ path, method: init?.method, body: init?.body });
+        if (!attemptedPaths.has(path)) {
+          attemptedPaths.add(path);
+          return ravioliJournalJsonResponse({ error: "rate limited" }, 429);
+        }
+        if (path.endsWith("/chain_id")) return ravioliJournalJsonResponse(SHADOWNET_CHAIN_ID);
+        if (path.endsWith("/pending_operations")) return ravioliJournalJsonResponse(EMPTY_RAVIOLI_MEMPOOL);
+        if (path.includes(encodeURIComponent(actors.creator))) return ravioliJournalJsonResponse("41");
+        if (path.includes(encodeURIComponent(actors.collector1))) return ravioliJournalJsonResponse("17");
+        if (path.includes(encodeURIComponent(actors.collector2))) return ravioliJournalJsonResponse("23");
+        throw new Error(`unexpected journal GET ${path}`);
+      } finally {
+        activeReads -= 1;
+      }
+    },
+  });
+
+  assert.deepEqual(result, {
+    creator: { rpcUrl, counter: 41 },
+    collector1: { rpcUrl, counter: 17 },
+    collector2: { rpcUrl, counter: 23 },
+  });
+  assert.equal(maximumActiveReads, 1, "one RPC lane must never overlap its journal reads");
+  assert.deepEqual(calls.map(({ path }) => path), [
+    "/chains/main/chain_id",
+    "/chains/main/chain_id",
+    "/chains/main/mempool/pending_operations",
+    "/chains/main/mempool/pending_operations",
+    `/chains/main/blocks/head/context/contracts/${actors.creator}/counter`,
+    `/chains/main/blocks/head/context/contracts/${actors.creator}/counter`,
+    `/chains/main/blocks/head/context/contracts/${actors.collector1}/counter`,
+    `/chains/main/blocks/head/context/contracts/${actors.collector1}/counter`,
+    `/chains/main/blocks/head/context/contracts/${actors.collector2}/counter`,
+    `/chains/main/blocks/head/context/contracts/${actors.collector2}/counter`,
+  ]);
+  assert.ok(calls.every(({ method, body }) => method === "GET" && body === undefined));
+});
+
+test("Ravioli journal pre-submit lane recovers a first counter and mempool 429 without overlap", async () => {
+  const rpcUrl = "https://ravioli-journal-fallback.invalid";
+  const signerAddress = "tz1-ravioli-creator";
+  const calls: Array<{ path: string; method: string | undefined }> = [];
+  let activeReads = 0;
+  let maximumActiveReads = 0;
+  const attemptedPaths = new Set<string>();
+  const state = await readRavioliJournalCurrentActorState(rpcUrl, signerAddress, {
+    retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+    fetchImpl: async (input, init) => {
+      activeReads += 1;
+      maximumActiveReads = Math.max(maximumActiveReads, activeReads);
+      try {
+        await Promise.resolve();
+        const path = new URL(String(input)).pathname;
+        calls.push({ path, method: init?.method });
+        if (!attemptedPaths.has(path)) {
+          attemptedPaths.add(path);
+          return ravioliJournalJsonResponse({ error: "rate limited" }, 429);
+        }
+        if (path.endsWith("/counter")) return ravioliJournalJsonResponse("52");
+        return ravioliJournalJsonResponse(EMPTY_RAVIOLI_MEMPOOL);
+      } finally {
+        activeReads -= 1;
+      }
+    },
+  });
+
+  assert.deepEqual(state, { counter: 52, activeOperationCount: 0 });
+  assert.equal(maximumActiveReads, 1, "one RPC lane must serialize counter and mempool reads");
+  assert.deepEqual(calls.map(({ path }) => path), [
+    `/chains/main/blocks/head/context/contracts/${signerAddress}/counter`,
+    `/chains/main/blocks/head/context/contracts/${signerAddress}/counter`,
+    "/chains/main/mempool/pending_operations",
+    "/chains/main/mempool/pending_operations",
+  ]);
+  assert.ok(calls.every(({ method }) => method === "GET"));
+});
+
+test("Ravioli persistent journal 429 exhausts before later reads or mutation capabilities are reachable", async () => {
+  const rpcUrl = "https://ravioli-journal-exhausted.invalid";
+  const actors = {
+    creator: "tz1-ravioli-creator",
+    collector1: "tz1-ravioli-collector-1",
+    collector2: "tz1-ravioli-collector-2",
+  } as const;
+  const paths: string[] = [];
+  let mutationCapabilityReads = 0;
+  const options = new Proxy({
+    retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+    fetchImpl: async (input: string | URL | Request, init?: RequestInit) => {
+      assert.equal(init?.method, "GET");
+      paths.push(new URL(String(input)).pathname);
+      return ravioliJournalJsonResponse({ error: "still rate limited" }, 429);
+    },
+  }, {
+    get(target, property, receiver) {
+      if (property === "signer" || property === "pin" || property === "write") mutationCapabilityReads += 1;
+      return Reflect.get(target, property, receiver);
+    },
+  }) as RavioliJournalReadOptions;
+
+  await assert.rejects(
+    readRavioliJournalCounterLane(rpcUrl, actors, options),
+    (error: unknown) => {
+      assert.equal((error as { name?: string }).name, "ReadOnlyRetryExhaustedError");
+      assert.equal((error as { attempts?: number }).attempts, RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS.maxAttempts);
+      return true;
+    },
+  );
+  assert.deepEqual(paths, Array.from(
+    { length: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS.maxAttempts },
+    () => "/chains/main/chain_id",
+  ));
+  assert.equal(mutationCapabilityReads, 0, "the journal retry boundary must not inspect mutation capabilities");
+});
+
+test("Ravioli journal keeps primary and fallback counter and mempool evidence independent", async () => {
+  const actors = {
+    creator: "tz1-ravioli-creator",
+    collector1: "tz1-ravioli-collector-1",
+    collector2: "tz1-ravioli-collector-2",
+  } as const;
+  const counters = {
+    [actors.creator]: 101,
+    [actors.collector1]: 202,
+    [actors.collector2]: 303,
+  } as const;
+  const primaryOrigin = new URL(SHADOWNET_RPC_PRIMARY).origin;
+  const fallbackOrigin = new URL(SHADOWNET_RPC_FALLBACK).origin;
+  const buildFetch = (mode: "matching" | "fallback-counter-mismatch" | "fallback-active-mempool") => {
+    const activeByOrigin = new Map<string, number>();
+    const maximumByOrigin = new Map<string, number>();
+    const observedOrigins = new Set<string>();
+    const fetchImpl = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      assert.equal(init?.method, "GET");
+      const url = new URL(String(input));
+      const origin = url.origin;
+      observedOrigins.add(origin);
+      const active = (activeByOrigin.get(origin) ?? 0) + 1;
+      activeByOrigin.set(origin, active);
+      maximumByOrigin.set(origin, Math.max(maximumByOrigin.get(origin) ?? 0, active));
+      try {
+        await Promise.resolve();
+        if (url.pathname.endsWith("/chain_id")) return ravioliJournalJsonResponse(SHADOWNET_CHAIN_ID);
+        if (url.pathname.endsWith("/pending_operations")) {
+          const applied = mode === "fallback-active-mempool" && origin === fallbackOrigin
+            ? [{ contents: [{ source: actors.creator }] }]
+            : [];
+          return ravioliJournalJsonResponse({ ...EMPTY_RAVIOLI_MEMPOOL, applied });
+        }
+        const actorAddress = (Object.values(actors) as string[])
+          .find((address) => url.pathname.includes(encodeURIComponent(address)));
+        assert.ok(actorAddress, `unexpected journal counter URL ${url}`);
+        const mismatch = mode === "fallback-counter-mismatch" &&
+          origin === fallbackOrigin &&
+          actorAddress === actors.collector1;
+        return ravioliJournalJsonResponse(String(counters[actorAddress as keyof typeof counters] + (mismatch ? 1 : 0)));
+      } finally {
+        activeByOrigin.set(origin, (activeByOrigin.get(origin) ?? 1) - 1);
+      }
+    };
+    return { fetchImpl, maximumByOrigin, observedOrigins };
+  };
+
+  const matching = buildFetch("matching");
+  const intents = await readRavioliJournalActorIntents(actors, {
+    fetchImpl: matching.fetchImpl,
+    retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+  });
+  for (const actor of ["creator", "collector1", "collector2"] as const) {
+    assert.equal(intents[actor].counters.primary.counter, counters[actors[actor]]);
+    assert.equal(intents[actor].counters.fallback.counter, counters[actors[actor]]);
+  }
+  assert.deepEqual(matching.observedOrigins, new Set([primaryOrigin, fallbackOrigin]));
+  assert.ok([...matching.maximumByOrigin.values()].every((count) => count === 1));
+
+  const mismatch = buildFetch("fallback-counter-mismatch");
+  await assert.rejects(
+    readRavioliJournalActorIntents(actors, {
+      fetchImpl: mismatch.fetchImpl,
+      retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+    }),
+    /collector1 dual-RPC counters disagree before journal creation/,
+  );
+
+  const activeMempool = buildFetch("fallback-active-mempool");
+  await assert.rejects(
+    readRavioliJournalActorIntents(actors, {
+      fetchImpl: activeMempool.fetchImpl,
+      retryOptions: RAVIOLI_JOURNAL_RETRY_TEST_OPTIONS,
+    }),
+    /has an active Ravioli actor operation in its mempool/,
+  );
+});
+
+test("Ravioli journal retains independent dual-RPC assertions outside each serialized retry lane", async () => {
+  const source = await readFile(new URL("./shadownet-ravioli-ui-live.ts", import.meta.url), "utf8");
+  const actorIntentSource = source.slice(
+    source.indexOf("async function readRavioliJournalActorIntents"),
+    source.indexOf("export async function readRavioliJournalCurrentActorState"),
+  );
+  assert.match(actorIntentSource, /Promise\.all\(\[\s*readRavioliJournalCounterLane\(SHADOWNET_RPC_PRIMARY/);
+  assert.match(actorIntentSource, /readRavioliJournalCounterLane\(SHADOWNET_RPC_FALLBACK/);
+  assert.match(actorIntentSource, /assert\.equal\(primary\[actor\]\.counter, fallback\[actor\]\.counter/);
+
+  const preSubmitSource = source.slice(
+    source.indexOf("async function assertRavioliJournalCounterBeforeSubmit"),
+    source.indexOf("export function assertRavioliJournalTzktOperationApplied"),
+  );
+  assert.match(preSubmitSource, /Promise\.all\(\[\s*readRavioliJournalCurrentActorState\(intent\.counters\.primary\.rpcUrl/);
+  assert.match(preSubmitSource, /readRavioliJournalCurrentActorState\(intent\.counters\.fallback\.rpcUrl/);
+  assert.match(preSubmitSource, /lastPrimary\.counter === expectedCurrentCounter/);
+  assert.match(preSubmitSource, /lastFallback\.counter === expectedCurrentCounter/);
+});
+
+test("Ravioli short-expiry red fixture serializes every RPC read behind bounded recovery", async () => {
+  const source = await readFile(new URL("./shadownet-ravioli-ui-live.ts", import.meta.url), "utf8");
+  const fixture = source.slice(
+    source.indexOf("export async function assertOfficialLimitedEditionDependencyMismatchRejected"),
+    source.indexOf("async function assertLimitedEditionDirectMintRejected"),
+  );
+  assert.match(fixture, /const readFixture = <T>[\s\S]*readWithBoundedRetry[\s\S]*declareReadOnlyReader/);
+  assert.match(fixture, /await readFixture\("target contract"/);
+  assert.match(fixture, /await readFixture\("adapter contract"/);
+  assert.match(fixture, /await readFixture\("router contract"/);
+  assert.match(fixture, /await readFixture\("target script"/);
+  assert.match(fixture, /await readFixture\("adapter script"/);
+  assert.match(fixture, /await readFixture\("router script"/);
+  assert.match(fixture, /await readFixture\(\s*"target storage"/);
+  assert.match(fixture, /await readFixture\(\s*"adapter storage"/);
+  assert.match(fixture, /await readFixture\(\s*"router storage"/);
+  assert.match(fixture, /await readFixture\(\s*"target minter authorization"/);
+  assert.match(fixture, /await readFixture\(\s*"adapter router authorization"/);
+  assert.match(fixture, /await readFixture\("head"/);
+  assert.match(fixture, /await readFixture\("five-operation estimate"/);
+  assert.doesNotMatch(fixture, /Promise\.all\(\[\s*input\.tezos/);
+  assert.doesNotMatch(fixture, /Promise\.all\(\[\s*target\.storage\(\)/);
+  assert.doesNotMatch(fixture, /Promise\.all\(\[\s*input\.tezos\.rpc/);
+});
+
 test("Ravioli maximum-horizon LE rejection probe stays browser-representable and outlives the child", () => {
   const childEnd = "9999-12-31T23:58:00.000Z";
   const probe = ravioliOutlivingLeProbeDatetimeLocal(childEnd);
@@ -155,6 +458,42 @@ test("Ravioli current resume binds the live Gnocchi reservation level to commit_
   assert.doesNotMatch(
     recoveryBlock,
     /const reservedMint = currentResumePlan\.operations\.find\([\s\S]*globalOrdinal === 19/,
+  );
+});
+
+test("Ravioli operation-14 current resume routes collector replay through the coordinator without a duplicate signer receipt", async () => {
+  const source = await readFile(new URL("./shadownet-ravioli-ui-live.ts", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /currentResumeCompletedOperationCount === 14/,
+  );
+  assert.match(
+    source,
+    /nextGlobalOperation: 15,[\s\S]*entrypoint: "buy",[\s\S]*pinCount: 10,[\s\S]*eventCount: 53/,
+  );
+  assert.match(
+    source,
+    /bridgeHandler: \(delegate: PastaUiLiveBridgeHandler\) => \{[\s\S]*currentResumeCollectorDelegates\.collector1 = delegate;[\s\S]*currentResumeCoordinator\.handles\.collector1/,
+  );
+  assert.match(
+    source,
+    /captureAuthenticatedOperation14Purchase/,
+  );
+  assert.match(
+    source,
+    /balanceContext: "authenticated-operation-14-post-purchase"/,
+  );
+  assert.match(
+    source,
+    /primingMode: currentResumeStatePriming[\s\S]*\? "authenticated-state"/,
+  );
+  assert.match(
+    source,
+    /kind: currentResumeOp14Boundary \? "op14" as const : "v3" as const/,
+  );
+  assert.match(
+    source,
+    /operation-14 resume did not delegate operation 15 as its first new mutation/,
   );
 });
 
@@ -189,6 +528,386 @@ const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
 );
+
+const HISTORICAL_OPERATION_HASH = "opU3hjsJEBMmu3b9dJzArhoGzbCdaE2osEoWmicot6U1neGcwsh";
+
+function historicalOperationRow(input: {
+  id: number;
+  sender: string;
+  target: string;
+  entrypoint?: string;
+  value?: unknown;
+  amount?: number;
+  initiator?: string;
+  diffs?: unknown[];
+}): Record<string, any> {
+  return {
+    id: input.id,
+    hash: HISTORICAL_OPERATION_HASH,
+    level: 4_500_000,
+    timestamp: "2026-08-09T21:00:00Z",
+    counter: 77,
+    status: "applied",
+    sender: { address: input.sender },
+    target: { address: input.target },
+    ...(input.initiator ? { initiator: { address: input.initiator } } : {}),
+    amount: input.amount ?? 0,
+    ...(input.entrypoint ? { parameter: { entrypoint: input.entrypoint, value: input.value } } : {}),
+    diffs: input.diffs || [],
+  };
+}
+
+function historicalTokenTransfer(input: {
+  id: number;
+  transactionId: number;
+  contract: string;
+  tokenId: number;
+  from: string | null;
+  to: string | null;
+  amount?: number;
+}): Record<string, any> {
+  return {
+    id: input.id,
+    level: 4_500_000,
+    timestamp: "2026-08-09T21:00:00Z",
+    token: {
+      contract: { address: input.contract },
+      tokenId: String(input.tokenId),
+      standard: "fa2",
+    },
+    ...(input.from ? { from: { address: input.from } } : {}),
+    ...(input.to ? { to: { address: input.to } } : {}),
+    amount: String(input.amount ?? 1),
+    transactionId: input.transactionId,
+  };
+}
+
+function historicalPurchaseFixture(): { rows: Record<string, any>[]; transfers: Record<string, any>[] } {
+  return {
+    rows: [
+      historicalOperationRow({
+        id: 100,
+        sender: COLLECTOR_ONE,
+        target: ROUTER,
+        entrypoint: "buy",
+        value: { amount: "1", token_id: "1" },
+        amount: 1,
+        diffs: [
+          {
+            path: "sales",
+            action: "update_key",
+            content: {
+              key: "1",
+              value: { price: "1", remaining: "1", seller: CREATOR, treasury: CREATOR },
+            },
+          },
+          {
+            path: "ledger",
+            action: "update_key",
+            content: { key: { owner: CREATOR, token_id: "1" }, value: "1" },
+          },
+          {
+            path: "ledger",
+            action: "add_key",
+            content: { key: { owner: COLLECTOR_ONE, token_id: "1" }, value: "1" },
+          },
+        ],
+      }),
+      historicalOperationRow({
+        id: 101,
+        sender: ROUTER,
+        target: BLIND_CONTROLLER,
+        initiator: COLLECTOR_ONE,
+        entrypoint: "assign_claims",
+        value: { buyer: COLLECTOR_ONE, amount: "1", pack_token_id: "1" },
+        amount: 1,
+      }),
+    ],
+    transfers: [historicalTokenTransfer({
+      id: 102,
+      transactionId: 100,
+      contract: ROUTER,
+      tokenId: 1,
+      from: CREATOR,
+      to: COLLECTOR_ONE,
+    })],
+  };
+}
+
+function historicalAllocatedOpenFixture(): {
+  kit: PackKit;
+  rows: Record<string, any>[];
+  transfers: Record<string, any>[];
+} {
+  const nonce = "11".repeat(32);
+  const commitment = "22".repeat(32);
+  return {
+    kit: {
+      schema: "pasta-ravioli-open-kit@3",
+      network: "shadownet",
+      contract: ROUTER,
+      tokenId: 2,
+      mode: "blind_allocated_mint",
+      manifestUri: "ipfs://allocated",
+      blindSecurity: "sealed",
+      warning: "fixture",
+      editionPolicy: {
+        requiresLimitedWrapper: true,
+        wrapperEditionClass: "limited-edition",
+        earliestChildEnd: "9999-12-31T23:59:00.000Z",
+        wrapperSaleStart: null,
+        wrapperSaleEnd: "9999-12-31T23:57:00.000Z",
+        revealDeadline: "9999-12-31T23:58:00.000Z",
+        openDeadline: "9999-12-31T23:59:00.000Z",
+      },
+      recipes: [{
+        serial: 0,
+        nonce,
+        actions: [{
+          kind: "allocated",
+          adapter: GNOCCHI_ADAPTER,
+          resourceId: 0,
+          payloadCommitment: commitment,
+        }],
+      }],
+    },
+    rows: [
+      historicalOperationRow({
+        id: 200,
+        sender: COLLECTOR_ONE,
+        target: ROUTER,
+        entrypoint: "open_pack",
+        value: {
+          nonce,
+          actions: [{
+            allocated_mint: {
+              adapter: GNOCCHI_ADAPTER,
+              payload: "",
+              resource_id: "0",
+              payload_commitment: commitment,
+            },
+          }],
+          token_id: "2",
+          expected_claim_id: "0",
+        },
+        diffs: [
+          { path: "total_supply", action: "update_key", content: { key: "2", value: "0" } },
+          { path: "opened", action: "update_key", content: { key: "2", value: "1" } },
+          {
+            path: "ledger",
+            action: "remove_key",
+            content: { key: { owner: COLLECTOR_ONE, token_id: "2" }, value: "1" },
+          },
+        ],
+      }),
+      historicalOperationRow({
+        id: 201,
+        sender: ROUTER,
+        target: GNOCCHI_ADAPTER,
+        initiator: COLLECTOR_ONE,
+        entrypoint: "fulfill",
+        value: {
+          payload: "",
+          recipient: COLLECTOR_ONE,
+          open_serial: "0",
+          resource_id: "0",
+          action_index: "0",
+          pack_contract: ROUTER,
+          pack_token_id: "2",
+        },
+      }),
+      historicalOperationRow({
+        id: 202,
+        sender: GNOCCHI_ADAPTER,
+        target: GNOCCHI,
+        initiator: COLLECTOR_ONE,
+        entrypoint: "mint_reserved",
+        value: { to_: COLLECTOR_ONE, token_id: "2", amount: "1" },
+        diffs: [{
+          path: "ledger",
+          action: "add_key",
+          content: { key: { owner: COLLECTOR_ONE, token_id: "2" }, value: "1" },
+        }],
+      }),
+      historicalOperationRow({
+        id: 203,
+        sender: ROUTER,
+        target: BLIND_CONTROLLER,
+        initiator: COLLECTOR_ONE,
+        entrypoint: "consume_claim",
+        value: { holder: COLLECTOR_ONE, serial: "0", pack_token_id: "2", expected_claim_id: "0" },
+      }),
+      historicalOperationRow({
+        id: 204,
+        sender: BLIND_CONTROLLER,
+        target: CREATOR,
+        initiator: COLLECTOR_ONE,
+        amount: 1,
+      }),
+    ],
+    transfers: [
+      historicalTokenTransfer({
+        id: 205,
+        transactionId: 200,
+        contract: ROUTER,
+        tokenId: 2,
+        from: COLLECTOR_ONE,
+        to: null,
+      }),
+      historicalTokenTransfer({
+        id: 206,
+        transactionId: 202,
+        contract: GNOCCHI,
+        tokenId: 2,
+        from: null,
+        to: COLLECTOR_ONE,
+      }),
+    ],
+  };
+}
+
+test("Ravioli historical purchase evidence binds its exact actor, token, hash, and internal call count", () => {
+  const fixture = historicalPurchaseFixture();
+  const verify = (rows = fixture.rows, transfers = fixture.transfers) => verifyRavioliHistoricalPurchaseEvidence({
+    operationOrdinal: 14,
+    operationHash: HISTORICAL_OPERATION_HASH,
+    expectedCounter: 77,
+    routerAddress: ROUTER,
+    blindControllerAddress: BLIND_CONTROLLER,
+    creator: CREATOR,
+    collector: COLLECTOR_ONE,
+    tokenId: 1,
+    rows,
+    tokenTransfers: transfers,
+  });
+  const result = verify();
+  assert.equal(result.balance, 1);
+  assert.equal(result.amountMutez, 1);
+  assert.match(result.operationTreeSha256, /^[0-9a-f]{64}$/);
+  assert.throws(() => verify([{ ...fixture.rows[0], sender: { address: COLLECTOR_TWO } }, fixture.rows[1]!]), /one exact root call/);
+  assert.throws(() => verify([{ ...fixture.rows[0], hash: "op-adjacent-hash-drift" }, fixture.rows[1]!]), /one exact root call/);
+  const tokenDrift = structuredClone(fixture.rows);
+  tokenDrift[0]!.parameter.value.token_id = "2";
+  assert.throws(() => verify(tokenDrift), /payload drift/);
+  assert.throws(() => verify(fixture.rows.slice(0, 1)), /internal call count drift/);
+});
+
+test("Ravioli historical open evidence derives child balance deltas from operation-local transfer diffs and rejects drift", () => {
+  const fixture = historicalAllocatedOpenFixture();
+  const dependencies = {
+    gnocchiAddress: GNOCCHI,
+    gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+    gnocchiAllocationTokenId: 1,
+    gnocchiLimitedAllocationTokenId: 2,
+    rotiniAddress: ROTINI,
+    rotiniAdapterAddress: ROTINI_ADAPTER,
+    rotiniProjectId: 0,
+    generatedTokenIds: [3, 4, 5] as const,
+  };
+  const verify = (rows = fixture.rows, transfers = fixture.transfers) => verifyRavioliHistoricalOpenEvidence({
+    operationOrdinal: 49,
+    operationHash: HISTORICAL_OPERATION_HASH,
+    expectedCounter: 77,
+    routerAddress: ROUTER,
+    blindControllerAddress: BLIND_CONTROLLER,
+    creator: CREATOR,
+    collector: COLLECTOR_ONE,
+    tokenId: 2,
+    kit: fixture.kit,
+    dependencies,
+    rows,
+    tokenTransfers: transfers,
+  });
+  const result = verify();
+  assert.deepEqual(result.balanceDeltas.map((delta: Record<string, any>) => ({
+    contract: delta.contract,
+    tokenId: delta.tokenId,
+    before: delta.before,
+    after: delta.after,
+    delta: delta.delta,
+  })), [{ contract: GNOCCHI, tokenId: 2, before: 0, after: 1, delta: 1 }]);
+  assert.equal(result.exactCallCounts.rows, 5);
+  const actorDrift = structuredClone(fixture.rows);
+  actorDrift[0]!.sender.address = COLLECTOR_TWO;
+  assert.throws(() => verify(actorDrift), /one exact root call/);
+  const tokenDrift = structuredClone(fixture.rows);
+  tokenDrift[0]!.parameter.value.token_id = "3";
+  assert.throws(() => verify(tokenDrift), /3 !== 2|Expected values/);
+  const hashDrift = structuredClone(fixture.rows);
+  hashDrift[2]!.hash = "op-adjacent-hash-drift";
+  assert.throws(() => verify(hashDrift), /operation tree hash drift/);
+  assert.throws(() => verify(fixture.rows.slice(0, -1)), /internal execution tree drift|call-count drift/);
+  const transferDrift = structuredClone(fixture.transfers);
+  transferDrift[1]!.amount = "2";
+  assert.throws(() => verify(fixture.rows, transferDrift), /one exact TzKT token transfer/);
+});
+
+test("Ravioli portable delivery receipt stays visible at proof and responsive viewports", async () => {
+  const [css, html] = await Promise.all([
+    readFile(path.join(STATIC_ROOT, "creation-tools", "ravioli", "css", "site.css"), "utf8"),
+    readFile(path.join(STATIC_ROOT, "creation-tools", "ravioli", "site.html"), "utf8"),
+  ]);
+  const deliveryStart = html.indexOf('<section id="deliveryResult"');
+  const deliveryEnd = html.indexOf("</section>", deliveryStart);
+  assert.ok(deliveryStart >= 0 && deliveryEnd > deliveryStart, "Ravioli portable delivery receipt markup is missing");
+  const deliveryMarkup = html
+    .slice(deliveryStart, deliveryEnd + "</section>".length)
+    .replace(/\s+hidden(?=>)/, "");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({ viewport: PASTA_PROOF_VIEWPORT });
+    await page.setContent(`<style>${css}</style><main>${deliveryMarkup}</main>`);
+    await page.locator("#deliveryItems").evaluate((list) => {
+      const details = [
+        "Existing pooled FA2 token: 1 × KT1Mjjcb6tmSsLm7Cb3DSQszePjfchPM4Uxm token 123456789",
+        "Reserved allocated mint: 1 reserved mint via resource 18446744073709551615",
+        "Generated-at-open dependency-complete interactive ZIP: application/zip reproducible cache generated and minted at open (generator + immutable seed are canonical)",
+      ];
+      list.replaceChildren(...details.map((detail) => {
+        const item = document.createElement("li");
+        item.textContent = detail;
+        return item;
+      }));
+    });
+    await page.locator("#deliverySummary").evaluate((node) => {
+      node.textContent = "Wrapper 4, serial 0: 3 child actions confirmed atomically.";
+    });
+    await page.locator("#deliveryOperation").evaluate((node) => {
+      (node as HTMLAnchorElement).href = "https://shadownet.tzkt.io/oo8HnV5wXxJDoCW8rG8NGqxzTaTVcgB4mbww5T9wcEhJdbsMYMD";
+    });
+
+    for (const viewport of [PASTA_PROOF_VIEWPORT, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      const boxes = await page.evaluate(() => Object.fromEntries(
+        ["#deliveryResult", "#deliverySummary", "#deliveryItems", "#deliveryOperation"].map((selector) => {
+          const node = document.querySelector(selector);
+          if (!node) return [selector, null];
+          const rect = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return [selector, {
+            width: rect.width,
+            height: rect.height,
+            left: rect.left,
+            right: rect.right,
+            display: style.display,
+            visibility: style.visibility,
+          }];
+        }),
+      ));
+      for (const selector of ["#deliveryResult", "#deliverySummary", "#deliveryItems", "#deliveryOperation"] as const) {
+        const box = boxes[selector];
+        assert.ok(box, `${selector} is missing at ${viewport.width}px`);
+        assert.ok(box.width > 0 && box.height > 0, `${selector} collapsed at ${viewport.width}px`);
+        assert.ok(box.left >= 0 && box.right <= viewport.width, `${selector} escaped the ${viewport.width}px viewport`);
+        assert.notEqual(box.display, "none", `${selector} is display:none at ${viewport.width}px`);
+        assert.equal(box.visibility, "visible", `${selector} is not visible at ${viewport.width}px`);
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
 const ROTINI_GENERATOR_CID = "bafybeib6raviolirotinigeneratorfixtureaaaaaaaaaaaaaaaaaaaa";
 const ROTINI_LAYER_CID = "bafybeib6raviolirotinilayerfixtureaaaaaaaaaaaaaaaaaaaaaaaa";
 const ROTINI_GENERATOR_URI = `ipfs://${ROTINI_GENERATOR_CID}`;
@@ -1923,6 +2642,86 @@ test("Ravioli separates configurable long green windows from its explicit short-
   );
 });
 
+test("Ravioli keeps the public browser gateway separate from proof propagation", () => {
+  assert.equal(resolveRavioliBrowserIpfsGateway({}), "https://ipfs.io/ipfs");
+  assert.equal(
+    resolveRavioliBrowserIpfsGateway({
+      PASTA_SHADOWNET_RAVIOLI_BROWSER_IPFS_GATEWAY: "https://dweb.link/ipfs/",
+    }),
+    "https://dweb.link/ipfs",
+  );
+  for (const value of [
+    "http://ipfs.io/ipfs",
+    "https://user:secret@ipfs.io/ipfs",
+    "https://ipfs.io/ipfs?token=secret",
+    "https://localhost/ipfs",
+    "https://127.0.0.1/ipfs",
+    "https://ipfs.io/not-ipfs",
+  ]) {
+    assert.throws(
+      () => resolveRavioliBrowserIpfsGateway({
+        PASTA_SHADOWNET_RAVIOLI_BROWSER_IPFS_GATEWAY: value,
+      }),
+      /PASTA_SHADOWNET_RAVIOLI_BROWSER_IPFS_GATEWAY/,
+    );
+  }
+});
+
+test("Ravioli prepared-pin adoption compares canonical bytes across browser object prototypes", async () => {
+  const expectedValue = {
+    schema: "pasta-ravioli-sealed-reveal@1",
+    aad: { network: "shadownet", tokenId: 2 },
+    ciphertext: "authenticated-test-ciphertext",
+  };
+  const bytes = deterministicJsonBytes(expectedValue);
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  const proof: PastaUiLivePinProof = {
+    cid: "bafk-prepared-pin-test",
+    uri: "ipfs://bafk-prepared-pin-test",
+    fileName: "ravioli-sealed-reveal-2.json",
+    mimeType: "application/json",
+    byteLength: bytes.byteLength,
+    sha256: digest,
+    localGatewayUrl: "http://127.0.0.1:8080/ipfs/bafk-prepared-pin-test",
+    publicGatewayUrl: "https://ipfs.example.test/ipfs/bafk-prepared-pin-test",
+    publicGatewayVerified: true,
+    verificationAttempts: 1,
+  };
+  const bridge = {
+    envelope: {
+      cid: proof.cid,
+      fileName: proof.fileName,
+      mimeType: "application/json",
+      bytes,
+      value: expectedValue,
+      sha256: digest,
+      byteLength: bytes.byteLength,
+    },
+  } as unknown as RavioliPreparedSealedPinRecoveryBridge;
+  let fallbackCalls = 0;
+  const adopter = createRavioliPreparedPinAdopter({
+    bridge,
+    proof,
+    fallback: async () => {
+      fallbackCalls += 1;
+      return proof;
+    },
+  });
+  const browserValue = Object.assign(Object.create(null), expectedValue, {
+    aad: Object.assign(Object.create(null), expectedValue.aad),
+  });
+  assert.equal(
+    await adopter.pinJson({ value: browserValue, fileName: proof.fileName }),
+    proof,
+  );
+  assert.equal(adopter.didAdopt(), true);
+  assert.equal(fallbackCalls, 0);
+  await assert.rejects(
+    adopter.pinJson({ value: browserValue, fileName: proof.fileName }),
+    /adopted more than once/,
+  );
+});
+
 test("real Ravioli studio and buyer page drive all five v3 modes through loopback signer callbacks", async (context) => {
   const baselineHeapUsed = process.memoryUsage().heapUsed;
   const memorySamples = [sampleRavioliUiLiveMemory("browser-fixture-start")];
@@ -2532,6 +3331,85 @@ test("Ravioli live transfer waiter reports Studio preflight rejection immediatel
       /failed before confirmation.*does not expose its FA2 ledger/,
     );
     assert.ok(Date.now() - startedAt < 2_000, "Ravioli Studio preflight rejection was not surfaced immediately");
+  } finally {
+    await browser.close();
+  }
+});
+
+test("Ravioli live refund waiter reports Studio preflight rejection immediately instead of hiding it behind the success timeout", async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.setContent(`
+      <div id="ppNotice"></div>
+      <pre id="log"></pre>
+      <div id="refundInfo"></div>
+    `);
+    await page.evaluate(() => {
+      setTimeout(() => {
+        document.getElementById("ppNotice")!.textContent =
+          "Refund credit failed: claim is not refundable yet";
+        document.getElementById("log")!.textContent =
+          "refund credit failed: claim is not refundable yet";
+      }, 25);
+    });
+    const startedAt = Date.now();
+    await assert.rejects(
+      () => waitForRavioliStudioRefundOutcome(page, 5_000),
+      /failed before confirmation.*claim is not refundable yet/,
+    );
+    assert.ok(Date.now() - startedAt < 2_000, "Ravioli Studio refund rejection was not surfaced immediately");
+  } finally {
+    await browser.close();
+  }
+});
+
+test("Ravioli live terminal waiters report cancellation, withdrawal, and recovery failures immediately", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const fixture of [
+      {
+        ids: ["closureInfo"],
+        notice: "Unrevealed-pack closure failed: refund settlement is incomplete",
+        log: "unrevealed-pack closure failed: refund settlement is incomplete",
+        run: (page: Page) => waitForRavioliStudioCancellationOutcome(page, 5_000),
+        expected: /closure failed before confirmation.*settlement is incomplete/,
+      },
+      {
+        ids: ["refundInfo"],
+        notice: "Refund withdrawal failed: destination rejected tez",
+        log: "refund withdrawal failed: destination rejected tez",
+        run: (page: Page) => waitForRavioliStudioWithdrawalOutcome(page, 5_000),
+        expected: /withdrawal failed before confirmation.*destination rejected tez/,
+      },
+      {
+        ids: ["recoverAdapterInfo"],
+        notice: "Adapter recovery failed: reservation mismatch",
+        log: "adapter recovery failed: reservation mismatch",
+        run: (page: Page) => waitForRavioliStudioAdapterRecoveryOutcome(page, 2, 5_000),
+        expected: /adapter recovery failed before confirmation.*reservation mismatch/,
+      },
+    ]) {
+      const page = await browser.newPage();
+      try {
+        await page.setContent(`
+          <div id="ppNotice"></div>
+          <pre id="log"></pre>
+          ${fixture.ids.map((id) => `<div id="${id}"></div>`).join("")}
+        `);
+        await page.evaluate(({ notice, log }) => {
+          setTimeout(() => {
+            document.getElementById("ppNotice")!.textContent = notice;
+            document.getElementById("log")!.textContent = log;
+          }, 25);
+        }, { notice: fixture.notice, log: fixture.log });
+        const startedAt = Date.now();
+        await assert.rejects(() => fixture.run(page), fixture.expected);
+        assert.ok(Date.now() - startedAt < 2_000, "Ravioli terminal Studio rejection was not surfaced immediately");
+      } finally {
+        await page.close();
+      }
+    }
   } finally {
     await browser.close();
   }
@@ -4036,6 +4914,67 @@ test("Ravioli normalizes the live Taquito Rotini option shape before capacity ar
     expected.projectId + 1,
     "a project identifier must not be reused as the collection's global project counter",
   );
+  const terminalDependencies = {
+    ...capacityDependencies,
+    liveCheck: {
+      rotini: {
+        ...capacityDependencies.liveCheck.rotini,
+        nextTokenId: 6,
+        project0: {
+          ...capacityDependencies.liveCheck.rotini.project0,
+          minted: 4,
+        },
+      },
+    },
+  };
+  assert.throws(
+    () => buildRavioliRotiniCapacityExpectation(terminalDependencies, 0),
+    /prewrite token and mint counters differ from the exact fresh baseline/,
+  );
+  const terminalExpected = buildRavioliRotiniCapacityExpectation(
+    terminalDependencies,
+    0,
+    { phase: "terminal-indexed" },
+  );
+  assert.deepEqual(
+    terminalExpected,
+    expected,
+    "the exact post-generation live counters must preserve the original capacity baseline",
+  );
+  assert.throws(
+    () => buildRavioliRotiniCapacityExpectation({
+      ...capacityDependencies,
+      liveCheck: {
+        rotini: {
+          ...capacityDependencies.liveCheck.rotini,
+          nextTokenId: 6,
+          project0: {
+            ...capacityDependencies.liveCheck.rotini.project0,
+            minted: 3,
+          },
+        },
+      },
+    }, 0, { phase: "terminal-indexed" }),
+    /neither the exact pre-pack baseline nor the exact terminal generated state/,
+  );
+  for (const [nextTokenId, minted] of [[5, 4], [6, 3], [7, 4]] as const) {
+    assert.throws(
+      () => buildRavioliRotiniCapacityExpectation({
+        ...terminalDependencies,
+        liveCheck: {
+          rotini: {
+            ...terminalDependencies.liveCheck.rotini,
+            nextTokenId,
+            project0: {
+              ...terminalDependencies.liveCheck.rotini.project0,
+              minted,
+            },
+          },
+        },
+      }, 0, { phase: "terminal-indexed" }),
+      /neither the exact pre-pack baseline nor the exact terminal generated state/,
+    );
+  }
   const storage = {
     next_project_id: new BigNumber(3),
     next_token_id: new BigNumber(3),
@@ -4440,6 +5379,203 @@ test("Ravioli package-resume checkpoint is canonical, scope-bound, and payload-h
   }
 });
 
+test("Ravioli package checkpoint derives its omitted blind controller from authenticated terminal operations", () => {
+  const roleAddresses = {
+    blindController: BLIND_CONTROLLER,
+    router: ROUTER,
+    gnocchiAdapter: GNOCCHI_ADAPTER,
+    rotiniAdapter: ROTINI_ADAPTER,
+    gnocchi: GNOCCHI,
+    rotini: ROTINI,
+  } as const;
+  const originationHashes = [
+    "opSpcZQDp5AXAcoXRxUb2CwvRN2WtC4uTRbyKqHxzzj8SxPf7LB",
+    "op1mSWp61iXsCwfnDRWydwb3E4iEGPMEkqo5F3gX57rgx86iys2",
+    "onxgKrNvpkEHn7Mif6S9N7D8UdaGvKpq9QK5h9wyTGmHWwbNv1H",
+    "oohozTyrjNRau5BikxTfFwnwicU1pWJ76oqPypqDcpArojfEYf4",
+  ];
+  let originationIndex = 0;
+  const writeReceipts = RAVIOLI_UI_LIVE_EFFECTIVE_OPERATION_MATRIX.map((operation, index) => {
+    const address = roleAddresses[operation.targetRole as keyof typeof roleAddresses] || ROUTER;
+    const operationHash = operation.action === "originate"
+      ? originationHashes[originationIndex++]
+      : `operation-${index + 1}`;
+    return {
+      schema: "pastaprotocol-ui-live-receipt@1",
+      sequence: index + 1,
+      timestampUtc: new Date(1_750_000_000_000 + index).toISOString(),
+      action: operation.action,
+      chainId: SHADOWNET_CHAIN_ID,
+      signerAddress: operation.actor === "creator"
+        ? CREATOR
+        : operation.actor === "collector1"
+          ? COLLECTOR_ONE
+          : COLLECTOR_TWO,
+      contractAddress: address,
+      operationHash,
+      entrypoints: operation.entrypoint ? [operation.entrypoint] : [],
+    };
+  });
+  const recoveredOperations = RAVIOLI_UI_LIVE_EFFECTIVE_OPERATION_MATRIX.map((operation, index) => ({
+    globalOrdinal: index + 1,
+    actor: operation.actor,
+    action: operation.action,
+    entrypoint: operation.entrypoint || null,
+    contractAddress: writeReceipts[index].contractAddress,
+    operationHash: writeReceipts[index].operationHash,
+  }));
+  const payload = {
+    actors: { creator: CREATOR, collectorOne: COLLECTOR_ONE, collectorTwo: COLLECTOR_TWO },
+    dependencies: { gnocchi: { address: GNOCCHI }, rotini: { address: ROTINI } },
+    mirror: {
+      routerAddress: ROUTER,
+      gnocchiAdapterAddress: GNOCCHI_ADAPTER,
+      rotiniAdapterAddress: ROTINI_ADAPTER,
+    },
+    writeReceipts,
+    indexedInputs: { withheldRefundOutcome: { controllerAddress: BLIND_CONTROLLER } },
+    currentV3RestartEvidence: {
+      boundary: { operationCount: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total },
+      recoveredOperations,
+    },
+  };
+  assert.equal(deriveRavioliCheckpointBlindController(payload), BLIND_CONTROLLER);
+  assert.equal(
+    deriveRavioliCheckpointBlindController({
+      ...payload,
+      mirror: { ...payload.mirror, blindControllerAddress: BLIND_CONTROLLER },
+    }),
+    BLIND_CONTROLLER,
+  );
+  assert.throws(
+    () => deriveRavioliCheckpointBlindController({
+      ...payload,
+      mirror: { ...payload.mirror, blindControllerAddress: ROUTER },
+    }),
+    /explicit blind controller differs/,
+  );
+  assert.throws(
+    () => deriveRavioliCheckpointBlindController({
+      ...payload,
+      indexedInputs: { withheldRefundOutcome: { controllerAddress: ROUTER } },
+    }),
+    /withheld-refund controller drift/,
+  );
+  const wrongRecovered = structuredClone(payload);
+  wrongRecovered.currentV3RestartEvidence.recoveredOperations[0].operationHash = originationHashes[1];
+  assert.throws(
+    () => deriveRavioliCheckpointBlindController(wrongRecovered),
+    /recovered blindController hash drift/,
+  );
+  const wrongRefund = structuredClone(payload);
+  wrongRefund.writeReceipts[65].contractAddress = ROUTER;
+  assert.throws(
+    () => deriveRavioliCheckpointBlindController(wrongRefund),
+    /Expected values to be strictly equal/,
+  );
+});
+
+test("Ravioli package checkpoint accepts the exact op9, op23, op30, op55, op63, op64, op66, and terminal op67 current-resume profiles", () => {
+  const profiles = [
+    { eventCount: 38, pinCount: 10, operationCount: 9, nextGlobalOperation: 10, replaySteps: 19 },
+    { eventCount: 85, pinCount: 15, operationCount: 23, nextGlobalOperation: 24, replaySteps: 0 },
+    { eventCount: 112, pinCount: 21, operationCount: 30, nextGlobalOperation: 31, replaySteps: 1 },
+    { eventCount: 196, pinCount: 30, operationCount: 55, nextGlobalOperation: 56, replaySteps: 0 },
+    { eventCount: 224, pinCount: 34, operationCount: 63, nextGlobalOperation: 64, replaySteps: 0 },
+    { eventCount: 227, pinCount: 34, operationCount: 64, nextGlobalOperation: 65, replaySteps: 0 },
+    { eventCount: 233, pinCount: 34, operationCount: 66, nextGlobalOperation: 67, replaySteps: 0 },
+    { eventCount: 236, pinCount: 34, operationCount: 67, nextGlobalOperation: null, replaySteps: 0 },
+  ] as const;
+  for (const profile of profiles) {
+    const evidence = {
+      classification: "RAVIOLI-CURRENT-AUTHENTICATED-RESUME",
+      boundary: {
+        eventCount: profile.eventCount,
+        pinCount: profile.pinCount,
+        operationCount: profile.operationCount,
+        nextGlobalOperation: profile.nextGlobalOperation,
+      },
+      activePins: Array.from({ length: profile.pinCount }, (_, index) => ({ pinSequence: index + 1 })),
+      supersededPrivatePrecommitPins: [],
+      recoveredOperations: Array.from(
+        { length: profile.operationCount },
+        (_, index) => ({ globalOrdinal: index + 1 }),
+      ),
+      zeroSideEffectReplaySteps: profile.replaySteps,
+      recoveredSideEffectsReplayed: false,
+      firstNewOperation: profile.nextGlobalOperation,
+    };
+    assert.deepEqual(assertRavioliCurrentResumePackageEvidence(evidence), profile);
+  }
+});
+
+test("Ravioli creator bridge authorizes only the planned adapter-capacity recovery surface", () => {
+  assert.equal(RAVIOLI_UI_LIVE_ALLOWED_CREATOR_ENTRYPOINTS.has("recover_adapter"), true);
+  assert.equal(RAVIOLI_UI_LIVE_ALLOWED_CREATOR_ENTRYPOINTS.has("withdraw_refund"), false);
+  assert.equal(RAVIOLI_UI_LIVE_ALLOWED_CREATOR_ENTRYPOINTS.has("cancel_unrevealed_pack"), false);
+});
+
+test("Ravioli retains the mode-2 pre-op24 private proof only while its publish record is still terminal", () => {
+  assert.equal(ravioliCurrentResumeRetainsMode2PreOp24Recovery(23), true);
+  assert.equal(ravioliCurrentResumeRetainsMode2PreOp24Recovery(30), true);
+  assert.equal(ravioliCurrentResumeRetainsMode2PreOp24Recovery(55), false);
+  assert.equal(ravioliCurrentResumeRetainsMode2PreOp24Recovery(20), false);
+  assert.throws(
+    () => ravioliCurrentResumeRetainsMode2PreOp24Recovery(-1),
+    /operation count is invalid/,
+  );
+});
+
+test("Ravioli op30 package checkpoint requires one exact trailing-pin response replay", () => {
+  const evidence = {
+    classification: "RAVIOLI-CURRENT-AUTHENTICATED-RESUME",
+    boundary: {
+      eventCount: 112,
+      pinCount: 21,
+      operationCount: 30,
+      nextGlobalOperation: 31,
+    },
+    activePins: Array.from({ length: 21 }, (_, index) => ({ pinSequence: index + 1 })),
+    supersededPrivatePrecommitPins: [],
+    recoveredOperations: Array.from({ length: 30 }, (_, index) => ({ globalOrdinal: index + 1 })),
+    zeroSideEffectReplaySteps: 1,
+    recoveredSideEffectsReplayed: false,
+    firstNewOperation: 31,
+  };
+  assert.deepEqual(assertRavioliCurrentResumePackageEvidence(evidence), {
+    eventCount: 112,
+    pinCount: 21,
+    operationCount: 30,
+    nextGlobalOperation: 31,
+    replaySteps: 1,
+  });
+  assert.throws(
+    () => assertRavioliCurrentResumePackageEvidence({ ...evidence, zeroSideEffectReplaySteps: 0 }),
+    /0 !== 1/,
+  );
+  assert.throws(
+    () => assertRavioliCurrentResumePackageEvidence({
+      ...evidence,
+      boundary: { ...evidence.boundary, eventCount: 111 },
+    }),
+    /111 !== 112/,
+  );
+  assert.throws(
+    () => assertRavioliCurrentResumePackageEvidence({
+      ...evidence,
+      activePins: evidence.activePins.slice(0, -1),
+    }),
+    /20 !== 21/,
+  );
+  assert.throws(
+    () => assertRavioliCurrentResumePackageEvidence({
+      ...evidence,
+      recoveredOperations: evidence.recoveredOperations.slice(0, -1),
+    }),
+    /29 !== 30/,
+  );
+});
+
 test("Ravioli commits its durable checkpoint before an injected terminal-index failure", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "ravioli-terminal-boundary-"));
   try {
@@ -4497,6 +5633,69 @@ test("Ravioli staged publication is idempotent and rejects a conflicting final",
       () => publishStagedRavioliFile(symlinkStage, symlinkFinal),
       /existing Ravioli publication is not a real file/,
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Ravioli staged publication refreshes only the same authenticated checkpoint and journal", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "ravioli-authenticated-refresh-"));
+  try {
+    const stagedPath = path.join(directory, "receipt.json.awaiting-journal-finalization");
+    const finalPath = path.join(directory, "receipt.json");
+    const publication = (controller: string, checkpointSha256 = "a".repeat(64)) => ({
+      schema: "pastaprotocol-ravioli-ui-live-run@1",
+      proofPackageResume: {
+        chainWriteBoundary: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total,
+        checkpointArtifactId: "ravioli-package-resume-checkpoint",
+        checkpointSha256,
+      },
+      durableJournal: {
+        journalId: "b".repeat(64),
+        intentSha256: "c".repeat(64),
+        finalSha256: "d".repeat(64),
+        counts: {
+          actors: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.actors,
+          buys: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.buys,
+          calls: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.calls,
+          events: 236,
+          opens: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.opens,
+          originations: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.originations,
+          pins: 34,
+          refunds: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.refunds,
+          transfers: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.transfers,
+        },
+      },
+      receipts: Array.from({ length: RAVIOLI_UI_LIVE_EXPECTED_COUNTS.total }, (_, index) => ({
+        action: "call",
+        chainId: SHADOWNET_CHAIN_ID,
+        signerAddress: CREATOR,
+        contractAddress: ROUTER,
+        operationHash: `operation-${index + 1}`,
+        entrypoints: ["manage"],
+      })),
+      pins: [{
+        id: "pin-001",
+        path: "artifacts/pins/001.png",
+        sha256: "e".repeat(64),
+        ipfsUri: "ipfs://fixture",
+        retrievedSha256: "e".repeat(64),
+        kind: controller ? "generated-token-media" : "wrapper-media",
+      }],
+      screenshots: [{ stage: "terminal", sha256: "f".repeat(64) }],
+      contracts: { blindController: { address: controller } },
+    });
+    await writeFile(finalPath, JSON.stringify(publication("")));
+    await writeFile(stagedPath, JSON.stringify(publication(BLIND_CONTROLLER)));
+    await publishStagedRavioliFile(stagedPath, finalPath, { allowAuthenticatedRefresh: true });
+    assert.equal(JSON.parse((await readFile(finalPath)).toString("utf8")).contracts.blindController.address, BLIND_CONTROLLER);
+
+    await writeFile(stagedPath, JSON.stringify(publication(ROUTER, "9".repeat(64))));
+    await assert.rejects(
+      () => publishStagedRavioliFile(stagedPath, finalPath, { allowAuthenticatedRefresh: true }),
+      /does not share the staged checkpoint\/journal identity/,
+    );
+    assert.equal(JSON.parse((await readFile(finalPath)).toString("utf8")).contracts.blindController.address, BLIND_CONTROLLER);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -4835,6 +6034,13 @@ test("Ravioli production runner is Shadownet-only, dependency-gated, recovery-sc
   assert.doesNotMatch(main, /newWriteReceiptCount/);
   assert.match(source, /export async function waitForRavioliBuyerPageReady/);
   assert.match(source, /await waitForRavioliBuyerPageReady\(\{/);
+  assert.match(main, /connectWallet\?: boolean/);
+  assert.match(main, /if \(input\.connectWallet !== false\) await connectBuyer\(buyerActor\)/);
+  assert.match(
+    main,
+    /discoverPublicReveal: true,\s+connectWallet: false/,
+    "operation-55 terminal reconstruction must keep the portable buyer wallet-free",
+  );
   assert.match(main, /assertRemainingSaleWindow\("before purchase submission"\)/);
   assert.ok(main.indexOf("if (currentV4PreflightOnly)") < main.indexOf("await claimFreshRavioliUiLiveOutputDirectory"));
   const currentV4Runtime = main.slice(
@@ -5572,15 +6778,70 @@ test("Ravioli TzKT acceptance rejects non-FA2 contracts, missing tokens, and mis
   const operationHash = "opU3hjsJEBMmu3b9dJzArhoGzbCdaE2osEoWmicot6U1neGcwsh";
   const manifest = {
     app: "gnocchi",
-    operations: [{ kind: "origination", hash: operationHash, contractAddress: ROUTER }],
+    operations: [{ kind: "origination", status: "applied", hash: operationHash, contractAddress: ROUTER }],
   };
   const receipt = {
-    receipts: [{ action: "originate", operationHash, contractAddress: ROUTER, signerAddress: CREATOR }],
+    schema: "pastaprotocol-gnocchi-ui-live-run@1",
+    receipts: [{
+      schema: "pastaprotocol-ui-live-receipt@1",
+      action: "originate",
+      chainId: "NetXsqzbfFenSTS",
+      operationHash,
+      contractAddress: ROUTER,
+      signerAddress: CREATOR,
+    }],
   };
   assert.equal(dependencyOriginationReceipt(manifest, receipt, ROUTER, CREATOR).operationHash, operationHash);
   assert.throws(
     () => dependencyOriginationReceipt(manifest, receipt, ROUTER, COLLECTOR_ONE),
     /origination signer drift/,
+  );
+  const indexedReceipt = {
+    schema: "pastaprotocol-gnocchi-ui-live-finalized@1",
+    indexedOperationReceipts: [{
+      schema: "pastaprotocol-indexed-operation-receipt@1",
+      source: "tzkt",
+      action: "originate",
+      chainId: "NetXsqzbfFenSTS",
+      operationHash,
+      contractAddress: ROUTER,
+      signerAddress: CREATOR,
+      status: "applied",
+    }],
+  };
+  assert.equal(
+    dependencyOriginationReceipt(manifest, indexedReceipt, ROUTER, CREATOR).operationHash,
+    operationHash,
+  );
+  assert.throws(
+    () => dependencyOriginationReceipt(manifest, {
+      ...indexedReceipt,
+      indexedOperationReceipts: [{ ...indexedReceipt.indexedOperationReceipts[0], status: "failed" }],
+    }, ROUTER, CREATOR),
+    /indexed origination must be applied/,
+  );
+  assert.throws(
+    () => dependencyOriginationReceipt(manifest, {
+      ...indexedReceipt,
+      receipts: receipt.receipts,
+    }, ROUTER, CREATOR),
+    /must not mix native receipts/,
+  );
+  assert.throws(
+    () => dependencyOriginationReceipt(manifest, {
+      ...indexedReceipt,
+      indexedOperationReceipts: [{ ...indexedReceipt.indexedOperationReceipts[0], source: "untrusted" }],
+    }, ROUTER, CREATOR),
+    /indexed origination source drift/,
+  );
+  const rotiniManifest = { ...manifest, app: "rotini" };
+  const rotiniReceipt = {
+    schema: "pastaprotocol-rotini-ui-live-run@1",
+    bridgeReceipts: { creator: receipt.receipts },
+  };
+  assert.equal(
+    dependencyOriginationReceipt(rotiniManifest, rotiniReceipt, ROUTER, CREATOR).operationHash,
+    operationHash,
   );
 });
 

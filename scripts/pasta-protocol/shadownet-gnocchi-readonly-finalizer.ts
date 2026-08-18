@@ -32,6 +32,11 @@ import {
   SHADOWNET_TZKT_API,
 } from "./shadownet-proof-kit";
 import { buildGnocchiRavioliDependencyEvidence } from "./shadownet-gnocchi-ui-live";
+import {
+  GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+  GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH,
+  validateGnocchiTerminalRecoveryReceipt,
+} from "./shadownet-gnocchi-terminal-readonly-recovery";
 
 const EXECUTE_FLAG = "PASTA_SHADOWNET_GNOCCHI_READONLY_FINALIZE";
 const OUTPUT_ENV = "PASTA_PROOF_RUN_DIR";
@@ -553,6 +558,99 @@ async function readCurrentRecoveryEvidence(input: {
   };
 }
 
+async function readTerminalRecoveryEvidence(input: {
+  appRoot: string;
+  runId: string;
+  contractAddress: string;
+  operationHashes: string[];
+  screenshots: ScreenshotEvidence[];
+}): Promise<{
+  classification: typeof GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION;
+  artifacts: JsonObject[];
+  summary: JsonObject;
+} | undefined> {
+  const receiptPath = path.join(input.appRoot, GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH);
+  const receiptDetails = await lstat(receiptPath).catch(() => undefined);
+  if (!receiptDetails) return undefined;
+  assert.ok(
+    receiptDetails.isFile() && !receiptDetails.isSymbolicLink(),
+    "Gnocchi terminal recovery receipt must be a regular file",
+  );
+  const receiptBytes = await readFile(receiptPath);
+  const receipt = objectValue(
+    JSON.parse(receiptBytes.toString("utf8")),
+    "Gnocchi terminal recovery receipt",
+  );
+  const validated = validateGnocchiTerminalRecoveryReceipt({
+    receipt,
+    runId: input.runId,
+    contractAddress: input.contractAddress,
+    operationHashes: input.operationHashes,
+  });
+
+  const screenshotsByOrdinal = new Map(
+    input.screenshots.map((evidence) => [
+      safeInteger(evidence.sidecar.stageOrdinal, "Gnocchi screenshot ordinal"),
+      evidence,
+    ]),
+  );
+  const recoveredScreenshots = arrayValue(
+    receipt.screenshots,
+    "Gnocchi terminal recovery screenshots",
+  );
+  for (const item of recoveredScreenshots) {
+    const recovered = objectValue(item, "Gnocchi terminal recovery screenshot");
+    const ordinal = safeInteger(recovered.stageOrdinal, "Gnocchi terminal screenshot ordinal");
+    const evidence = screenshotsByOrdinal.get(ordinal);
+    assert.ok(evidence, `Gnocchi terminal screenshot ${ordinal} is missing`);
+    assert.equal(recovered.path, evidence.screenshot.path);
+    assert.equal(recovered.sha256, evidence.screenshot.sha256);
+    assert.equal(recovered.sidecarPath, evidence.sidecarArtifact.path);
+    assert.equal(recovered.sidecarSha256, evidence.sidecarArtifact.sha256);
+  }
+
+  const expectedContentPaths = EXPECTED_CONTENT_FILES.map((fileName) => `artifacts/${fileName}`);
+  const recoveredContent = arrayValue(
+    receipt.contentArtifacts,
+    "Gnocchi terminal recovery content artifacts",
+  );
+  assert.deepEqual(
+    recoveredContent.map((item) => String(item?.path || "")),
+    expectedContentPaths,
+    "Gnocchi terminal recovery content path inventory drift",
+  );
+  for (const item of recoveredContent) {
+    const content = objectValue(item, "Gnocchi terminal recovery content artifact");
+    const bytes = await readRegularFile(
+      path.join(input.appRoot, String(content.path)),
+      `Gnocchi terminal recovery content ${content.path}`,
+    );
+    assert.equal(sha256(bytes), content.sha256, `Gnocchi terminal recovery content ${content.path} hash`);
+    assert.equal(bytes.byteLength, safeInteger(content.byteLength, `${content.path} byte length`));
+  }
+
+  return {
+    classification: GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+    artifacts: [{
+      id: "gnocchi-terminal-readonly-recovery",
+      kind: "ui-live-terminal-readonly-recovery-receipt",
+      path: GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH,
+      sha256: sha256(receiptBytes),
+      durability: "package-only",
+    }],
+    summary: {
+      receiptSha256: sha256(receiptBytes),
+      prefix: validated.prefix,
+      operationGraph: validated.operationGraph,
+      terminalState: validated.terminalState,
+      bridge: validated.bridge,
+      unchanged: validated.unchanged,
+      recoveredScreenshotOrdinals: recoveredScreenshots.map((item) => item.stageOrdinal),
+      replayedAppliedOperations: 0,
+    },
+  };
+}
+
 export function assertGnocchiReadonlyFinalizationAllowed(environment: Record<string, string | undefined>): void {
   assert.equal(environment[EXECUTE_FLAG], "1", `${EXECUTE_FLAG}=1 is required`);
   assert.equal((environment.TEZOS_NETWORK || "shadownet").toLowerCase(), "shadownet", "Gnocchi finalization only permits Shadownet");
@@ -783,7 +881,11 @@ async function existingAcceptedFinalization(appRoot: string, runId: string): Pro
   assert.equal(manifest.app, APP);
   assert.equal(manifest.runId, runId);
   assert.ok(
-    new Set(["UI-LIVE-READ-ONLY-FINALIZATION", CURRENT_RECOVERY_CLASSIFICATION]).has(manifest.classification),
+    new Set([
+      "UI-LIVE-READ-ONLY-FINALIZATION",
+      CURRENT_RECOVERY_CLASSIFICATION,
+      GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+    ]).has(manifest.classification),
     "existing Gnocchi manifest classification is unsupported",
   );
   const contracts = arrayValue(manifest.contracts, "existing Gnocchi contracts");
@@ -822,6 +924,19 @@ async function existingAcceptedFinalization(appRoot: string, runId: string): Pro
     const recovery = await readCurrentRecoveryEvidence({ appRoot, runId, contractAddress, operationHashes });
     assert.ok(recovery, "existing recovered Gnocchi finalization lost its checkpoint evidence");
     assert.equal(receipt.recovery?.checkpoint?.checkpointId, recovery.summary.checkpoint.checkpointId);
+  } else if (manifest.classification === GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION) {
+    const terminalRecovery = await readTerminalRecoveryEvidence({
+      appRoot,
+      runId,
+      contractAddress,
+      operationHashes,
+      screenshots: await readScreenshots(appRoot),
+    });
+    assert.ok(terminalRecovery, "existing Gnocchi finalization lost its terminal recovery evidence");
+    assert.equal(
+      receipt.terminalRecovery?.receiptSha256,
+      terminalRecovery.summary.receiptSha256,
+    );
   }
   return { contractAddress, receiptPath, manifestPath, operationHashes };
 }
@@ -878,7 +993,20 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     contractAddress,
     operationHashes: operationEvidence.operationHashes,
   });
-  const classification = currentRecovery?.classification || "UI-LIVE-READ-ONLY-FINALIZATION";
+  const terminalRecovery = await readTerminalRecoveryEvidence({
+    appRoot,
+    runId,
+    contractAddress,
+    operationHashes: operationEvidence.operationHashes,
+    screenshots,
+  });
+  assert.ok(
+    !(currentRecovery && terminalRecovery),
+    "Gnocchi finalization cannot accept both checkpoint and terminal recovery receipts",
+  );
+  const classification = terminalRecovery?.classification ||
+    currentRecovery?.classification ||
+    "UI-LIVE-READ-ONLY-FINALIZATION";
 
   const mapIds = {
     ledger: safeInteger(storage.ledger, "Gnocchi ledger big-map id"),
@@ -1073,8 +1201,10 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     : undefined;
   const isRetiredRecoveryBoundary = recoveryCheckpoint?.recoveredOperations === 3 &&
     recoveryCheckpoint?.liveOperations === 9;
-  const recoveryBridgeReason = !currentRecovery
-    ? "The native UI run completed its visible actions, then exited on a terminal read-only RPC 429 before its in-memory bridge stream was packaged."
+  const recoveryBridgeReason = terminalRecovery
+    ? "The final collector mint was already applied before the original process exited. A signer-free bridge reloaded the exact live 4/4/3 state, captured the terminal token view and the app's actual over-cap rejection, and proved that it submitted and injected zero operations."
+    : !currentRecovery
+      ? "The native UI run completed its visible actions, then exited on a terminal read-only RPC 429 before its in-memory bridge stream was packaged."
     : isRetiredRecoveryBoundary
       ? "The first native UI process exited after a transient post-confirmation projected-storage HTTP 500. An immutable exact-boundary checkpoint then preserved the three applied prefix operations, performed the nine remaining operations without replay, and retained native receipts for the continuation."
       : `The first native UI process exited after a transient post-confirmation projected-storage read failure. An immutable exact-boundary checkpoint then preserved ${recoveryCheckpoint?.recoveredOperations} applied prefix operations, performed ${recoveryCheckpoint?.liveOperations} remaining operations without replay, and retained native receipts for the continuation.`;
@@ -1098,8 +1228,17 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
       ipfsWrites: 0,
       httpMethods: ["GET"],
     },
-    originalFailure: currentRecovery
+    originalFailure: terminalRecovery
       ? {
+        code: "POST_CONFIRMATION_TERMINAL_SCREENSHOT_MISSING",
+        stage: "after-collector-two-token-two-mint-before-terminal-screenshot",
+        chainMutationApplied: true,
+        ordinaryRerunForbidden: true,
+        bridgeReceiptStreamAvailable: false,
+        bridgeReceiptStreamSynthesized: false,
+      }
+      : currentRecovery
+        ? {
         code: recoveryInterruption?.code,
         stage: recoveryInterruption?.stage,
         bridgeReceiptStreamAvailable: false,
@@ -1135,6 +1274,7 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     indexed,
     ravioliDependency,
     ...(currentRecovery ? { recovery: currentRecovery.summary } : {}),
+    ...(terminalRecovery ? { terminalRecovery: terminalRecovery.summary } : {}),
   };
   const reconciliationBytes = deterministicJsonBytes(reconciliation);
   await writeNewOrIdentical(path.join(appRoot, RECONCILIATION_PATH), reconciliationBytes);
@@ -1188,6 +1328,7 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     screenshotSidecars: screenshots.map(({ sidecarArtifact }) => sidecarArtifact),
     chainReconciliation: reconciliationArtifact,
     ...(currentRecovery ? { recovery: currentRecovery.summary } : {}),
+    ...(terminalRecovery ? { terminalRecovery: terminalRecovery.summary } : {}),
   };
   const receiptBytes = deterministicJsonBytes(receipt);
   const receiptPath = path.join(appRoot, FINALIZATION_RECEIPT_PATH);
@@ -1199,7 +1340,7 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     sha256: sha256(receiptBytes),
   };
   const sidecarArtifacts = screenshots.map(({ sidecarArtifact }) => sidecarArtifact);
-  const recoveryArtifacts = currentRecovery?.artifacts || [];
+  const recoveryArtifacts = currentRecovery?.artifacts || terminalRecovery?.artifacts || [];
   const artifacts = [
     ...contentArtifacts,
     contractCodeArtifact,
@@ -1239,9 +1380,11 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
     },
     capabilities: [{
       id: "three-policy-collector-and-lifecycle-proof",
-      description: currentRecovery
-        ? "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject paused and over-cap minting, vault then reopen forever issuance through the real UI, recover an exact post-confirmation read failure without replaying any applied operation, and bind the complete continuation to an immutable checkpoint."
-        : "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject over-cap minting, vault then reopen forever issuance through the real UI, and finalize the complete evidence signer-free after a terminal read-only RPC rate limit.",
+      description: terminalRecovery
+        ? "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject paused and over-cap minting, vault then reopen forever issuance through the real UI, then recover the already-applied terminal state through a signer-free read-only bridge with zero submitted or injected operations."
+        : currentRecovery
+          ? "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject paused and over-cap minting, vault then reopen forever issuance through the real UI, recover an exact post-confirmation read failure without replaying any applied operation, and bind the complete continuation to an immutable checkpoint."
+          : "Originate one Gnocchi collection, publish timed OE, forever OE, and a timed capped LE, mint each from two independent collectors, reject over-cap minting, vault then reopen forever issuance through the real UI, and finalize the complete evidence signer-free after a terminal read-only RPC rate limit.",
       evidence: {
         screenshots: screenshots.map(({ screenshot }) => screenshot.stage),
         artifacts: artifacts.map((artifact) => artifact.id),

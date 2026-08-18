@@ -316,7 +316,12 @@ function pinnedArtifact(id, kind, written, fileName) {
 function ravioliChildBalanceDeltas(modeIndex, serial) {
   const childAllocations = [
     [{ kind: "escrow", contract: RAVIOLI_CONTRACTS.gnocchi, tokenId: 0, amount: 1 }],
-    [{ kind: "escrow", contract: RAVIOLI_CONTRACTS.gnocchi, tokenId: serial, amount: 1 }],
+    [{
+      kind: serial === 0 ? "escrow-returned-claim" : "escrow-transferred-claim",
+      contract: RAVIOLI_CONTRACTS.gnocchi,
+      tokenId: serial,
+      amount: 1,
+    }],
     [{ kind: "allocated", contract: RAVIOLI_CONTRACTS.gnocchi, tokenId: 2, amount: 1 }],
     [
       { kind: "generative", contract: RAVIOLI_CONTRACTS.rotini, tokenId: 3, amount: 1 },
@@ -364,7 +369,7 @@ function ravioliModeOutcome(
         status: "applied",
         entrypoint: "open_pack",
         value: {
-          token_id: modeIndex,
+          token_id: String(modeIndex),
           actions: Array.from({ length: shape.actions }, (_, actionIndex) => ({
             action_index: actionIndex,
           })),

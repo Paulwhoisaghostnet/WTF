@@ -50,6 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-612 | Blocked | Niko licensing handoff | 2026-08-18 | Creation tools / third-party redistribution and subpath isolation | P0 | 15 | 2 | 2 | 5 | 3 | Alpha integration is technically complete and fully inventoried; public release remains blocked only on Niko's redistribution license plus provenance or removal of disputed stamps |
+| WTF-BB-610 | Verified | Codex installer evidence binding | 2026-08-13 | Pasta Protocol / desktop alpha handoff integrity | P0 | 14 | 3 | 2 | 5 | 2 | macOS alpha receipts now bind the exact archive and packaged executable hashes plus per-format architectures, and the finalizer independently inspects ZIP and DMG bytes before accepting a handoff |
 | WTF-BB-584 | Verified | Codex human-alpha packaging | 2026-08-08 | Pasta Protocol / desktop alpha packaging | P0 | 11 | 8 | 2 | 4 | 0 | All nine macOS universal apps now expose an explicit dirty-preflight DMG/ZIP lane; 18/18 installed-format smokes, stable-origin relaunches, exact checksums, screenshots, and the developer handoff pass without weakening clean release provenance |
 | WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 15 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
 | WTF-BB-566 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Release governance / environment inventory | P2 | 8 | 13 | 1 | 3 | 1 | The deterministic environment inventory has been regenerated from the integrated release tree and passes source equality, safety, and coverage policy |
@@ -3849,8 +3851,8 @@ Priority labels:
 ### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
 
 - Category: Deploy / DB operations
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex public API/MCP pass
 - Score: C2 + F3 + P2(3) + S1 = 9
 - Evidence: `scripts/run-boot-backfill.ts` resolves region as `process.env.SUPABASE_REGION || "us-west-2"` and builds `aws-1-${region}.pooler.supabase.com`, coupled with forced no-verify SSL mode.
 - Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.
@@ -3903,8 +3905,8 @@ Priority labels:
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
 - Category: API / reliability
-- Status: Open
-- Owner/Session: -
+- Status: In Progress
+- Owner/Session: Codex public API/MCP pass
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
   - `server/routes/contract-activity.ts:135-139` defines local `fetchJson` using raw `fetch`.
@@ -12172,3 +12174,538 @@ Copy this when adding a new issue:
   - The production-verifier focus passes 13/13, including missing and duplicate exact TzKT rows, each requested evidence-field drift, signer mempool residue, wrong RPC identity, either-gateway byte drift, either-RPC script drift, all-six-role artifact completeness, a forced TzKT 429 recovery, and a transport audit proving every request is GET with no body.
   - The verifier plus shared bounded-read/restart-chain suites pass 35/35; the verifier plus current Ravioli journal/resume suite passes 28/28 after the explicit exact-row regression was added. No signer, operation submission, Kubo pin, Shadownet mutation, proof-artifact mutation, or external write occurred.
   - The entropy replay focus passes 4/4, covering exact mode-0 and mode-1 consumption, one native draft id per publish, non-enumerable secret handling, clone capability loss, wrong-order/wrong-view/extra-draw rejection, and retained-kit/journal-pin drift. A read-only load of the real nine-APPLIED/ten-pin current run authenticates mode 0 as one target draw and mode 1 as five target draws without printing private values.
+
+### WTF-BB-589 - Ravioli current resume confuses a plan-authorized repeated permission with replay
+
+- Category: Pasta Protocol / Ravioli restart safety
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The authenticated current run reached event 112 with 21 pinned artifacts and 30 exact APPLIED signer operations; modes 0 through 3 are issued and the mode-4 wrapper artwork was pinned before the process stopped.
+  - Semantic operation 31 is the mode-4 Gnocchi-adapter `add_minter` permission. Its descriptor is intentionally byte-identical to operation 18 because the same idempotent permission is required by another pack recipe.
+  - The current-resume coordinator rejects every historical descriptor fingerprint before considering the authenticated next semantic operation, so it refuses operation 31 even though the immutable plan requires it.
+- Why it matters:
+  - A safely recoverable live proof cannot continue, and rerunning from scratch would duplicate real contracts, tokens, reservations, pins, and sales.
+  - Treating descriptor equality as semantic identity is also incorrect for the later repeated `add_router` and `add_pack_minter` permissions in the same authoritative plan.
+- Correction direction:
+  - Replay only exact retained browser work, including pins that trail the last APPLIED signer operation, without invoking IPFS or Tezos.
+  - Before continuation, admit only the authenticated next actor/action/entrypoint even when its descriptor appeared earlier; after that boundary, let the immutable semantic journal validate every operation instead of applying a second fingerprint-only veto.
+- Verification idea:
+  - Reconstruct the exact event-112/21-pin/30-operation prefix, replay pin 21 with zero delegate calls, reject a wrong historical first signer request, admit operation 31 despite its operation-18 descriptor fingerprint, and complete the remaining plan exactly once on Shadownet.
+
+### WTF-BB-590 - Ravioli op30 dependency recheck applies the op23 Rotini reservation profile
+
+- Category: Pasta Protocol / Ravioli dependency authentication
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The event-112/21-pin/30-operation resume passed journal, target, signer, private-recovery, and retained-product authentication, then stopped before a new browser pin or signer action.
+  - Its current dependency recheck required Rotini project 0 `reserved = 0`, which is the operation-23 boundary. The authenticated live value is `2` after mode-3 operation 29 committed two generative actions through the Rotini adapter.
+- Why it matters:
+  - Reusing a valid generation-independent journal prefix at a later semantic boundary is blocked by a dependency-state profile fixed to an earlier prefix.
+  - Accepting any reservation count would weaken capacity proof and could let later hybrid publication overbook or consume unrelated Rotini supply.
+- Correction direction:
+  - Derive the exact allowed Rotini reservation state from the authenticated completed semantic prefix, preserving `0` for operation 23 and requiring `2` for operation 30.
+  - Keep every other project identity, supply, minted, active, deadline, script, RPC, and proof-artifact check strict and unchanged.
+- Verification idea:
+  - Prove op23/reserved-0 and op30/reserved-2 profiles pass, cross-profile and adjacent reservation values fail before external capabilities, then resume event 112 and require operation 31 to remain the first new signer mutation.
+
+### WTF-BB-591 - Ravioli short-expiry red proof bursts read-only RPC calls without recovery
+
+- Category: Pasta Protocol / Ravioli proof reliability
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C2 + F5 + S0 + P0(5) = 12
+- Evidence:
+  - The authenticated operation-30 resume passed both dependency checks and retained-boundary validation, then the short-expiry estimate-only red proof loaded three contracts and three scripts concurrently.
+  - The primary Shadownet RPC returned HTTP 429 from `contract.at`; the process stopped with the journal unchanged at event 112, 21 pins, and 30 APPLIED operations.
+- Why it matters:
+  - A zero-injection policy proof can repeatedly block a safe continuation even though its reads and simulation are retryable and no contract state is wrong.
+  - Retrying the whole live runner wastes all preceding authentication work and increases RPC burst pressure.
+- Correction direction:
+  - Serialize the fixture's contract, script, storage, big-map, head, and estimate reads, and place each only inside the established bounded read-only retry capability.
+  - Keep file reads local and keep every signer, injection, pin, journal append, and proof write outside that retry boundary.
+- Verification idea:
+  - Force a first-read 429 to recover within the shared read policy, statically prove the fixture has no parallel RPC burst, preserve the exact rejection and before/after state identity, then continue the unchanged journal at operation 31.
+
+### WTF-BB-592 - Ravioli op31 coordinator rejection leaves a browser recovery intent that cannot be safely resumed
+
+- Category: Pasta Protocol / Ravioli restart safety
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The operation-30 run pinned the exact hybrid wrapper artwork, then Studio durably recorded the expected Gnocchi `add_minter` signer intent before the former current-resume coordinator rejected it as a duplicate.
+  - The coordinator rejected before delegating to the journal or signer, so the authenticated journal remains at 30 APPLIED operations with no PREPARED/SUBMITTED operation 31 and the recovery record contains no operation hash.
+  - Studio correctly refuses its ordinary no-chain discard path because the record contains a signer intent, leaving the otherwise live-reconciled continuation blocked.
+- Why it matters:
+  - Deleting or generically completing a signer-intent record could hide an actually submitted operation, while preserving this specifically rejected record indefinitely prevents a valid hybrid pack from continuing.
+  - Weakening Studio's general recovery rule would turn a one-run harness defect into a product-wide safety regression.
+- Correction direction:
+  - Add a runner-only authenticated reconciliation that accepts only the exact live-reconciled operation-30 plan object, exact token-4 recovery history, exact next operation 31 target/entrypoint/payload, exact old coordinator rejection, no operation hash, and the retained event-112 wrapper pin.
+  - Preserve every private byte and prior history entry, append an explicit terminal no-submission verification checkpoint only in the in-memory restoration, and let the next normal private recovery capture durably replace the snapshot after continuation.
+- Verification idea:
+  - Prove the exact recovery transforms without touching disk, every identity/history/message/hash drift fails closed, Studio opens with the transformed copy, and the first new signer mutation remains journal operation 31.
+
+### WTF-BB-593 - Ravioli portable delivery receipt collapses outside the visual proof surface
+
+- Category: Pasta Protocol / Ravioli portable-page layout
+- Status: Verified
+- Owner/Session: Codex Ravioli delivery-layout correction
+- Score: C1 + F4 + S0 + P0(5) = 10
+- Evidence:
+  - Ravioli's successful atomic opening renders `#deliveryResult` through the shared `.storage` four-column grid.
+  - The list and operation-link auto columns can consume the available width and collapse the leading content column, leaving the confirmed-delivery heading and `#deliverySummary` Playwright-invisible at the fixed proof viewport.
+- Why it matters:
+  - The portable page can complete the real contract operation while hiding the human-readable delivery receipt that tells the collector what the wrapper produced.
+  - The Shadownet proof screenshot cannot establish the requested result when decisive content has zero rendered width.
+- Correction direction:
+  - Give `#deliveryResult` a scoped one-column layout and explicit min-width/wrapping behavior for the summary, delivered items, and operation link without changing other shared `.storage` panels.
+- Verification idea:
+  - Exercise the actual shared CSS and delivery markup in Chromium at the fixed proof viewport and a responsive viewport, requiring non-zero in-viewport boxes for the result, summary, items, and operation link.
+- Correction:
+  - The shared collector stylesheet now gives only `#deliveryResult` a one-column grid, constrains every receipt child to its available width, permits long receipt values to wrap, and keeps the operation link left-aligned without changing any other `.storage` panel.
+  - The canonical site kit was synchronized into Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna so every exported portable page carries the correction.
+- Verification:
+  - A failing-first Chromium regression using the real Ravioli portable markup and CSS reproduced `#deliverySummary` at zero width at the fixed 1440×900 proof viewport.
+  - After the correction, the same test requires non-zero, visible, in-viewport boxes for `#deliveryResult`, `#deliverySummary`, `#deliveryItems`, and `#deliveryOperation` at both 1440×900 and 390×844 and passes 1/1.
+  - The shared publisher vertical-slice policy passes 1/1 and proves all six distributed CSS copies remain byte-identical to the canonical site kit.
+  - The repository TypeScript gate passes with `npm run check`.
+
+### WTF-BB-594 - Gnocchi terminal proof recovery must not replay an already-applied mint
+
+- Category: Pasta Protocol / Gnocchi terminal proof recovery
+- Status: Verified
+- Owner/Session: Codex Gnocchi read-only terminal recovery
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - Fresh run `pasta-alpha-proof-20260808t181046z-v2` reached its already-applied final token-2 mint, while its terminal token-state and actual over-cap rejection screenshots were not retained for read-only finalization.
+  - Re-entering the ordinary UI-live workflow could resubmit a state-changing operation that the chain has already accepted.
+- Why it matters:
+  - Replaying the final mint would corrupt the exact 4/4/3 edition-supply proof and invalidate the run's operation graph.
+  - Inventing screenshots or accepting only local journal state would not prove the live Shadownet result or the required no-injection over-cap rejection.
+- Correction direction:
+  - Add an explicitly env-gated, run-specific terminal recovery that authenticates the immutable operation graph, validates live 4/4/3 supply and clean actor mempool state, permits only retry-declared read-only bridge actions, and captures honest stages 018 and 019 with no submitted or injected writes.
+  - Keep the existing read-only finalizer fail closed until both recovered screenshots and their unchanged-chain receipt are verified.
+- Verification idea:
+  - Mutate every run identity, operation, supply, screenshot, bridge-action, write-counter, and before/after chain discriminator in focused tests; prove the exact fixture passes while any write attempt is unreachable; then execute only the no-write recovery/finalization commands.
+- Correction:
+  - Added a run-specific, env-gated terminal recovery that authenticates the exact twelve-operation Shadownet graph and 4/4/3 live supply, restores only the seven CID/hash-bound content artifacts, and drives the real Gnocchi UI through a bridge allowlisted to balance, chain, contract lookup, and storage reads.
+  - The recovery now captures stage 018 from collector two's already-applied token-2 state and stage 019 from the actual UI over-cap rejection. It has no signer or writable contract authorization and binds before/after operation graph, storage, script, actor counters, and empty actor mempool evidence.
+  - The ordinary read-only finalizer accepts the new classification only after independently validating the receipt, screenshot/sidecar hashes, content hashes, exact operation graph, 4/4/3 state, and zero-write audit; checkpoint and terminal recovery receipts are mutually exclusive.
+  - Prefix validation now covers every canonical ordinal 001 through 017 and safely resumes after an interrupted attempt has already restored authenticated content bytes.
+- Verification:
+  - Recovery policy tests pass 6/6, including the complete 001-017 prefix, exact operation mutations, read-only retry boundary, unchanged snapshots, and static absence of signer/send/origination paths.
+  - Finalizer policy tests pass 8/8, including fail-closed mutation cases for supply, operation graph, cap rejection, and injected-write counters.
+  - Live recovery passed on `KT1Pr5GJoiQY8EZeQjmZ4bBy6NDHCLwvFGhv`; its receipt SHA-256 is `1392c195b4f4f01fd3af579719369bf964b3756cd62ad93668a39e548f8b6667` and records zero submitted operations, zero injected operations, zero write-action requests, no signer material, and unchanged chain state.
+  - Live read-only finalization passed with classification `UI-LIVE-READ-ONLY-TERMINAL-RECOVERY`; manifest SHA-256 is `ea55a18485d44ba36002ea041af74345b7c2217a18c6cba673394bab5104c767`.
+  - Repository TypeScript gate passes with `npm run check`.
+
+### WTF-BB-595 - Restart replay cursor consumes effects created by the current session
+
+- Category: Pasta Protocol / authenticated restart safety
+- Status: Verified
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - Fresh Spaghetti run `pasta-alpha-proof-20260808t181046z-v2` completed the deterministic media pin, then the actual Studio completed its collection-metadata pin before requesting token metadata.
+  - `PastaProofRestartJournal.replayOrHandle` recomputes its replay candidates from every currently applied step on each request. Its replay cursor therefore treated the collection pin created during this same browser session as historical work still requiring replay and rejected the next token-metadata request with `restart replay request differs from completed step collection-metadata`.
+  - The authenticated checkpoint contains only two applied pins and no prepared, submitted, or applied Tezos operation; no contract was originated.
+- Why it matters:
+  - A fresh first-run session can deadlock itself as soon as it creates more than one bridge effect, so restart support blocks the ordinary publishing path it is meant to protect.
+  - Deleting the checkpoint or weakening request matching would discard authenticated side-effect evidence and could permit an unsafe duplicate on a genuine restart.
+- Correction direction:
+  - Freeze the per-actor replay prefix at journal/session start and advance the cursor only through that immutable historical prefix. Effects prepared or applied during the current session must pass directly to the normal handler and remain available for a future process restart.
+  - Preserve exact request identity checks, actor ordering, journal hashing, and zero-replay behavior after the frozen prefix is exhausted.
+- Verification idea:
+  - Reproduce a journal with one historical applied effect, replay it exactly once, create a second effect through the normal handler, and prove a third request is delegated rather than mistaken for replay. Reopen the journal in a new instance and prove both prior effects then form the exact immutable replay prefix while any drift still fails closed.
+- Correction:
+  - `PastaProofRestartJournal.replayOrHandle` now freezes each actor's historical replay prefix when that actor first enters replay. Effects applied by the current process are journaled for a future restart but cannot be consumed by the current replay cursor.
+- Verification:
+  - Focused restart tests prove same-session effects delegate normally and become authenticated replay inputs only after reopening the journal.
+  - The fresh Spaghetti lifecycle completed all eight planned effects with the terminal checkpoint unchanged at 21 authenticated events and no duplicate pin or operation.
+
+### WTF-BB-596 - Restart journal compares global receipt sequence to signer-operation sequence
+
+- Category: Pasta Protocol / authenticated restart receipt validation
+- Status: Verified
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - Spaghetti's authenticated restart submitted origination `ooz38goJgnE2JRMR2NQCV7YJSgzZwkgS1hU45whsswFYXL7FzcK`; TzKT shows it applied from the exact creator counter and originated `KT1EMhhmbGwSeeMPv8bGevD863DaDosi2bUQ`.
+  - `TaquitoPastaUiLiveSession` maintains a global public-receipt sequence that includes pin receipts and a separate signer-operation sequence. `PastaProofRestartJournal.onReceipt` incorrectly requires the global `receipt.sequence` to equal the pending signer `operationSequence`.
+  - The receipt followed metadata pin receipts, so the valid applied origination was rejected locally with `restart APPLIED receipt identity differs from SUBMITTED` and remains durably SUBMITTED for exact-hash reconciliation.
+- Why it matters:
+  - Any restart-protected workflow that pins before its first operation rejects a valid applied receipt even though the exact hash, signer, action, chain, contract, and entrypoints all match.
+  - Retrying without reconciliation could submit a duplicate origination; accepting an arbitrary malformed receipt would weaken restart authentication.
+- Correction direction:
+  - Validate the public receipt sequence as a positive safe integer in its own domain, but bind APPLIED to SUBMITTED through operation hash, action, chain id, signer, contract, entrypoints, and timestamp. Do not compare the unrelated sequence domains.
+- Verification idea:
+  - Prove an operation-sequence-1 receipt with a later positive global receipt sequence is accepted, while zero/non-integer sequence and every signer/hash/action/chain/contract/entrypoint drift still fail closed; then reopen the live checkpoint and reconcile only its exact applied hash before continuing.
+- Correction:
+  - APPLIED receipt validation now treats the public receipt sequence as its own positive-safe-integer domain and binds the operation through its submitted hash, action, chain, signer, contract, entrypoints, and timestamp instead of comparing unrelated sequence counters.
+- Verification:
+  - Focused tests accept a later global receipt sequence for signer operation one and reject invalid sequence values and every operation-identity mutation.
+  - Live exact-hash reconciliation accepted the already-applied origination and continued on the same contract without another origination.
+
+### WTF-BB-597 - Submitted restart reconciliation relies on an ignored TzKT counter filter
+
+- Category: Pasta Protocol / authenticated restart chain reconciliation
+- Status: Verified
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The Spaghetti checkpoint durably binds submitted origination hash `ooz38goJgnE2JRMR2NQCV7YJSgzZwkgS1hU45whsswFYXL7FzcK`, creator counter `23831651`, and originated contract `KT1EMhhmbGwSeeMPv8bGevD863DaDosi2bUQ`.
+  - TzKT's exact-hash operation route returns the one applied origination with every bound field, while the collection query `operations/originations?...&counter=23831651&limit=10` ignores the unsupported counter parameter and returns unrelated oldest rows.
+  - The shared reconciler filters those unrelated rows locally, sees the actor counter consumed, and fails with `manager counter is consumed without exact indexed operation evidence` despite possessing an exact submitted hash.
+- Why it matters:
+  - A process restart after a valid submission cannot recover its exact applied operation and may tempt an unsafe duplicate submission.
+  - Broadening or removing the local counter/hash filters would admit unrelated manager operations and weaken exact-hash restart safety.
+- Correction direction:
+  - When a SUBMITTED journal event contains an operation hash, query TzKT's exact-hash route and retain all existing local signer, counter, type, status, uniqueness, and semantic validation. Keep PREPARED/no-hash reconciliation on its separate counter-discovery path.
+- Verification idea:
+  - Require the exact-hash URL for SUBMITTED recovery, reject rows with wrong hash/type/signer/counter/status or ambiguity, preserve the existing active/rejected mempool handling, and reconcile the retained Spaghetti hash without another signer call.
+- Correction:
+  - SUBMITTED recovery now queries TzKT's exact operation-hash route and retains local hash, type, signer, counter, status, and semantic checks. PREPARED recovery remains on its distinct counter-discovery path.
+- Verification:
+  - Chain-restart regressions cover exact-hash routing and every bound-field rejection.
+  - Origination `ooz38goJgnE2JRMR2NQCV7YJSgzZwkgS1hU45whsswFYXL7FzcK` reconciled to `KT1EMhhmbGwSeeMPv8bGevD863DaDosi2bUQ`, after which the lifecycle completed without a second submission.
+
+### WTF-BB-598 - Restart artifact validator hashes projected code against raw JSON ordering
+
+- Category: Pasta Protocol / authenticated restart artifact identity
+- Status: Verified
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - Spaghetti's immutable intent and the live browser validator bind raw contract code hash `17560740…e1d1`; that exact artifact was submitted and originated successfully.
+  - The restart journal deliberately projects descriptors into recursively key-sorted data before hashing and persistence. Recovery then hashes the projected descriptor with raw `JSON.stringify` and compares it directly to the raw artifact-order hash, yielding `899858dc…66f2` versus `17560740…e1d1`.
+  - Penne contains the same projected-descriptor-versus-raw-artifact comparison; on-chain script checks are a separate raw-code identity domain and remain valid.
+  - The next exact-hash reconciliation showed the RPC script has the same executable Michelson but a third JSON serialization order, so raw `JSON.stringify` is also invalid for the on-chain/artifact identity boundary.
+- Why it matters:
+  - Exact-hash recovery finds the correct applied origination but rejects its authenticated descriptor solely because equivalent JSON object key order was normalized by the journal.
+  - Removing code identity validation would admit a genuinely different contract artifact.
+- Correction direction:
+  - Add one shared restart-projection hash helper and compare persisted descriptors to the current artifact in that same projected domain. Retain the existing raw artifact hash for browser request validation, immutable intent, and on-chain script identity.
+  - Compare RPC scripts to the artifact with the existing canonical Michelson script-identity helper, which preserves nested instruction order and semantics while normalizing top-level section and object-key serialization order. Keep the raw hash only for the exact browser request and immutable local intent.
+- Verification idea:
+  - Prove projected hashes are invariant to object key insertion order but change on semantic code drift; require both Spaghetti and Penne restart validators to use the projected domain while their browser/on-chain checks continue using the raw artifact domain.
+- Correction:
+  - Restart descriptors now use the shared recursively projected-value hash, while live RPC script comparison uses canonical Michelson script identity. Raw artifact hashing remains at the exact browser request and immutable-intent boundaries where serialization identity is required.
+- Verification:
+  - Shared, Spaghetti, and Penne regressions prove object-order invariance and semantic-drift rejection across all three identity domains.
+  - Live Spaghetti recovery authenticated the deployed script and completed the original operation graph.
+
+### WTF-BB-599 - Fast authenticated replay collapses Spaghetti's pinned and originated screenshots
+
+- Category: Pasta Protocol / screenshot evidence integrity
+- Status: Verified
+- Owner/Session: Codex human-alpha proof completion
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - Fresh Spaghetti contract `KT1EMhhmbGwSeeMPv8bGevD863DaDosi2bUQ` completed its exact five-operation lifecycle and emitted a manifest.
+  - During authenticated restart replay, collection metadata and origination responses resolve fast enough that stage 003 (`metadata pinned`) and stage 004 (`contract originated`) capture identical pixels with SHA-256 `cec7881d…8ffd`.
+  - The strict package validator correctly refuses the manifest because distinct stages may not reuse screenshot bytes; all chain and journal evidence remains valid and complete.
+- Why it matters:
+  - Human reviewers cannot visually distinguish the pre-origination and post-origination states even though both semantic events occurred.
+  - Re-running or replacing the contract would waste a correct authenticated lifecycle and could obscure which contract the proof actually covers.
+- Correction direction:
+  - Gate the first creator origination bridge request until the runner captures the visible `originating collection contract` state, then release it. The gate must work for fresh submission and authenticated replay.
+  - Add an explicit completed-proof recapture mode that requires a terminal authenticated journal and denies every fallback pin/write request, allowing screenshots and the manifest to be regenerated from read-only UI replay without changing IPFS or Tezos state.
+- Verification idea:
+  - Prove the origination gate blocks until explicit release, completed recapture refuses an incomplete journal, replay delegates zero effect requests, regenerated stages 003/004 have distinct hashes, and strict manifest plus portable-site validation pass against the original five operation hashes.
+- Correction:
+  - The creator replay bridge now gates the six effect phases derived from the authoritative restart plan, retaining stages 003 through 006 before releasing the next dependent replay effect.
+  - Completed-proof recapture requires a terminal authenticated journal, refuses every non-replayed creator mutation, does not open a collector bridge, and reuses collector stages 009-011 only after exact receipt/manifest equality plus PNG/sidecar hash and schema validation.
+  - The runner asserts canonical stage order, a distinct PNG hash for every stage, and valid PNG/sidecar pairs before rewriting its receipt or manifest.
+- Verification:
+  - Focused Spaghetti tests pass 8/8, including phase blocking, retained-evidence tamper rejection, failure surfacing, and exact-hash finality.
+  - Zero-write recapture passed against the original five operations and 21-event terminal journal. Stages 001-011 have eleven distinct hashes; retained collector hashes remain `52bc205f…1034`, `8c52fa70…ece4`, and `28535d10…e83d`.
+  - The portable supplement added stages 901/902 with zero chain writes. Strict validation passes with 13 unique screenshots, 21 artifacts, five operations, and manifest SHA-256 `3a1878eb234e3275f47214c03215fb63a85ed1b93bf91ebd125cb92ea599f1bb`.
+
+### WTF-BB-600 - Ravioli rejects Gnocchi's terminal-recovery proof after portable augmentation
+
+- Category: Pasta Protocol / Ravioli dependency authentication
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The strict-valid Gnocchi proof in `pasta-alpha-proof-20260808t181046z-v2` finalized through the authenticated zero-write terminal recovery with receipt classification `UI-LIVE-READ-ONLY-TERMINAL-RECOVERY` and exact 4/4/3 live supply.
+  - Ravioli's fresh dependency loader accepts only two older recovery classifications and rejects this terminal profile before loading any signer, pinning content, creating Ravioli output, or submitting a chain write.
+  - The loader also requires the receipt and final manifest to contain the same exact nineteen screenshots. The canonical lifecycle receipt correctly retains stages 001-019, while the strict final manifest now contains the two authenticated portable self-hosting supplement stages 901/902 as well.
+- Why it matters:
+  - Ravioli cannot consume the current strict-valid Gnocchi LE allocation, so its five wrapper modes cannot enter the approved fresh long-horizon Shadownet proof.
+  - Merely widening a classification string or screenshot count would admit an unauthenticated terminal-recovery or arbitrary supplemental evidence.
+- Correction direction:
+  - Add an exact terminal-recovery dependency profile that authenticates its dedicated recovery/finalization receipt, unchanged-chain and zero-write audit, canonical stages 001-019, exact operation graph, content inventory, contract identity, and 4/4/3 terminal state.
+  - Continue requiring the lifecycle receipt's canonical nineteen screenshots, while allowing only the separately authenticated portable stages 901/902 in the augmented manifest and rejecting every other addition or mismatch.
+- Verification idea:
+  - Load the exact v2 Gnocchi/Rotini pair, mutate every terminal-recovery discriminator and zero-write field to fail closed, accept exactly the two manifest supplement stages after their sidecars/artifacts validate, reject any missing or extra stage, and prove dependency validation completes before any signer, IPFS, proof-directory, or chain-write capability becomes reachable.
+
+### WTF-BB-601 - Ravioli journal counter preflight bypasses bounded read-only retry
+
+- Category: Pasta Protocol / Ravioli Shadownet pre-write reliability
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The first ordinary fresh v2 Ravioli launch authenticated all local dependencies, then the primary Shadownet RPC returned HTTP 429 while reading the creator counter in `readRavioliJournalCounterLane`.
+  - That function bursts chain-id, mempool, and three actor-counter GETs through `Promise.all` and converts any non-2xx response directly to an assertion, bypassing the repository's declared bounded read-only retry capability.
+  - The failure occurred before creation of the public Ravioli output directory or private recovery records; both remained absent/empty, and no IPFS pin, signer request, or Tezos operation was attempted.
+- Why it matters:
+  - A transient read-rate response prevents the fresh five-mode proof from reaching its authenticated journal even though the same RPC is healthy and every dependency/contract gate passes.
+  - Retrying the entire proof command is safe only at this exact pre-write boundary; the same unprotected counter/mempool reads also run before later submissions, where whole-run retries are not safe.
+- Correction direction:
+  - Route every Ravioli journal chain-id, mempool, and actor-counter GET through the established branded bounded read-only retry helper, serialize requests within each RPC lane, and retain independent primary/fallback counter and mempool agreement.
+  - Keep signer loading, IPFS pins, journal mutations, contract calls, originations, and injection outside the retry capability.
+- Verification idea:
+  - Force a first 429 on each journal GET class to recover, exhaust a persistent 429 with no signer or mutation access, prove requests are serialized and GET-only, retain dual-RPC counter/mempool assertions, then restart the still-fresh live proof and confirm its first external mutation occurs only after the authenticated journal snapshot succeeds.
+
+### WTF-BB-602 - Ravioli cannot resume the applied operation-14 boundary after a proof-display gateway CORS failure
+
+- Category: Pasta Protocol / authenticated restart and screenshot evidence
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - Fresh long-horizon Ravioli run `pasta-alpha-proof-20260808t181046z-v2` durably records fourteen applied operations, fifty-three authenticated journal events, ten pinned payloads, canonical screenshots 001-007, and open-kit records for the first two modes.
+  - The fourteenth operation is collector one's applied deterministic-vault purchase `onzELwqMJn5dofob6TH3fA1B8ssXG5zXEjcfDfb798PYWZBAaFH` against router `KT1FaXgh7ExwP9J7M9DhjZW4AExQo98ZkzuY` at level 4535211.
+  - The next action was only a browser proof-display read. The configured public IPFS gateway omitted a CORS response header, so the browser could not render the already-applied purchase result and the run stopped before stage 008 without another pin or Tezos submission.
+  - The generic current-resume lane accepts only the older operation-9, operation-23, and operation-30 boundaries, so it cannot recover this exact safe prefix without either duplicating operation 14 or abandoning authenticated evidence.
+- Why it matters:
+  - Re-entering the ordinary workflow could buy the same pack again and invalidate the exact five-mode supply/accounting proof.
+  - Treating the missing browser screenshot as equivalent to a missing chain effect would confuse presentation failure with settlement failure; inventing the screenshot would make the proof package dishonest.
+- Correction direction:
+  - Extend the generic current-resume lane with one exact operation-14/event-53/ten-pin profile that authenticates the journal, dependencies, contract bindings, open-kit progress, private-recovery public identity, live chain state, and the already-applied operation hash.
+  - Reconstruct stage 008 only from the current on-chain post-purchase state using a CORS-capable public IPFS gateway, then continue from operation 15. The recovery must make operation 14 unreachable and preserve the long-horizon green window; the intentionally expired red-path pack remains a separate later case.
+- Verification idea:
+  - Pass the exact checkpoint and reject every operation/event/pin/screenshot/open-kit/private-recovery/contract/state mutation; prove the resumed workflow performs zero replayed writes, captures the honest missing stage from read-only state, and submits operation 15 as its first new mutation.
+
+### WTF-BB-603 - Ravioli conflates proof-propagation and browser-display IPFS gateways at the operation-20 recovery boundary
+
+- Category: Pasta Protocol / authenticated restart and IPFS evidence routing
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The authenticated `pasta-alpha-proof-20260808t181046z-v2` Ravioli journal now records twenty applied operations, seventy-four events, thirteen pinned payloads, and canonical screenshots 001-011 on router `KT1FaXgh7ExwP9J7M9DhjZW4AExQo98ZkzuY`.
+  - Operation 20 is applied Gnocchi-adapter router authorization `opFxrZvvLUshXe7dY1qsk9PfkYHtcxFCyPd7rKDbszBuAg32seP`; the exact adapter is `KT1PxJVi4bnw1kukmUfQqJJzo9qtKf97ez4F`. No operation 21 exists and the public restart journal has no pending effect.
+  - The private, authenticated mode-2 publish record stops at `PIN_SEALED_REVEAL:PREPARED`. No signer intent for the pack exists, so only the deterministic sealed-reveal pin may be retried after checkpoint authentication.
+  - `https://ipfs.io/ipfs` supplies browser CORS headers but did not make the new sealed-reveal payload observable within the proof runner's bounded public verification window. `https://ipfs.fileship.xyz/ipfs` made earlier pins observable quickly but omits the browser CORS header needed to render buyer proof state.
+- Why it matters:
+  - Re-running the ordinary workflow would replay already-applied adapter operations or abandon authenticated proof state.
+  - Requiring one gateway to provide both fast proof propagation and browser-readable CORS turns two independent availability properties into a false single dependency and can strand a valid pack between pin preparation and its first pack operation.
+- Correction direction:
+  - Keep local Kubo pinning and local verification explicit, use the configured public proof gateway only for propagation evidence, and add a separately validated browser-display gateway used solely by buyer pages.
+  - Add one exact operation-20/event-74/thirteen-pin resume profile that authenticates the journal, dependency state, adapter binding, retained stages, and private `PIN_SEALED_REVEAL:PREPARED` record. Resume the idempotent deterministic pin first, then require operation 21 to be the first new signer mutation.
+- Verification idea:
+  - Reject every operation/event/pin/screenshot/adapter/private-checkpoint mutation; prove no operation 1-20 can be delegated, prove the sealed-reveal retry resolves to the checkpoint-bound deterministic bytes and CID, require fileship propagation plus ipfs.io browser display, and submit `create_pack` as operation 21 before continuing the long-horizon green path.
+
+### WTF-BB-604 - Ravioli's full resume matrix has two stale boundary regressions
+
+- Category: Pasta Protocol / authenticated restart regression gate
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C3 + F5 + S1 + P0(5) = 14
+- Evidence:
+  - The complete fresh-dependency suite reaches the current-v6 reservation validator, then throws `ReferenceError: adapter is not defined`; the adapter address is authenticated in the preceding minter helper but was kept in that helper's local scope.
+  - The operation-30 private-recovery tests read the mutable recovery root's latest snapshot. That root has since advanced beyond the frozen event-112 boundary, so one test cites an operation outside the prefix and another finds no unfinished record.
+  - Focused operation-20 dependency/recovery tests, all 83 UI-live tests, and TypeScript pass; these failures are isolated to the broader resume regression matrix and must be cleared before the live continuation.
+- Why it matters:
+  - An uncaught scope error weakens the exact current-v6/current-op30 dependency guard, and a mutable historical fixture makes a correct recovery test non-reproducible.
+  - Human-alpha promotion cannot truthfully claim a green full resume matrix while either failure remains.
+- Correction direction:
+  - Re-derive the adapter address inside the reservation validator from the authenticated expectation.
+  - Select or construct the exact immutable operation-30 private snapshot instead of assuming the newest snapshot in an evolving recovery root belongs to the frozen journal prefix.
+- Verification idea:
+  - Run the complete dependency and resume-priming suites, retain all adjacent-value and mutation rejections, and prove the source recovery root is unchanged.
+
+### WTF-BB-605 - Ravioli cannot resume its fully opened five-mode state after a screenshot-only failure
+
+- Category: Pasta Protocol / authenticated restart and screenshot evidence
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - The current long-horizon Ravioli proof durably records fifty-five applied operations, 196 authenticated journal events, thirty pinned payloads, five retained open kits, and all five principal pack modes opened on Shadownet.
+  - Operation 55 is collector one's applied hybrid-pack open. The run then stopped only because the screenshot verifier expected stale heading text while attempting to capture the published blind-reveal state.
+  - The generic authenticated resume lane currently admits only operation 9, 14, 20, 23, and 30 boundaries, so it cannot reuse the completed five-mode chain state and would otherwise make earlier mutations reachable again.
+- Why it matters:
+  - Replaying any of the fifty-five settled operations would corrupt the exact supply, allocation, reveal, and delivery evidence the proof is intended to establish.
+  - Human-alpha promotion needs the withheld-reveal refund and isolated expiry-denial paths, but those must start from operation 56 without weakening the long-lived green fixture.
+- Correction direction:
+  - Add an exact operation-55/event-196/thirty-pin resume profile that authenticates the journal, dependency terminal states, bindings, open kits, screenshots, private-recovery public identity, and live chain state.
+  - Reconstruct the missing reveal screenshot from public read-only contract state, make operations 1-55 unreachable, then continue the withheld-reveal fixture at operation 56 and keep short-expiry denial testing isolated from every green-path pack.
+- Verification idea:
+  - Reject every boundary, dependency, screenshot, open-kit, recovery, and binding mutation; prove zero replayed writes or pins; require operation 56 as the first new signer mutation; finish the terminal proof; and pass strict package validation with separate long-horizon success and short-expiry denial evidence.
+
+### WTF-BB-606 - Operation-55 resume re-applies an obsolete pre-operation-24 private-recovery assertion
+
+- Category: Pasta Protocol / authenticated restart proof projection
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - The exact operation-55 continuation authenticated the journal, thirty pins, five retained open kits, dependency terminal state, and private recovery, then stopped before any new pin or signer call.
+  - `verifyCurrentResumeMode2PreOp24Proof` accepts every authenticated prefix at or after operation 23 and requires token 2's private record to remain the completed `publish` workflow at `PACK_READY`.
+  - At operation 55, token 2 has legitimately completed its reveal/open lifecycle, so the latest authenticated record is the completed `reveal` workflow rather than the historical pre-operation-24 publish checkpoint.
+- Why it matters:
+  - A correct terminal recovery cannot reach operation 56 even though the rejected assertion describes an earlier proof boundary, not current chain safety.
+  - Weakening the private-record check globally would reduce the exact operation-23 and operation-30 recovery guarantees.
+- Correction direction:
+  - Build the pre-operation-24 private proof only for the exact operation-23 and operation-30 profiles whose authenticated latest snapshot still retains the publish-stage record.
+  - At operation 55, retain the journal/open-kit/pin/chain-history proof and use the separately authenticated terminal recovery/read-only evidence instead of misrepresenting the current record as historical `PACK_READY` state.
+- Verification idea:
+  - Prove operation 23 and 30 still require the pre-operation-24 private proof, operation 55 deliberately omits it, and the same live continuation reaches operation 56 without any replayed pin or write.
+
+### WTF-BB-607 - Ravioli terminal reconstruction waits for text that the recovery renderer immediately replaces
+
+- Category: Pasta Protocol / screenshot reconstruction
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C1 + F5 + S1 + P0(5) = 12
+- Evidence:
+  - Operation-55 read-only reconstruction loaded token 4's exact terminal chain state, then timed out before any new pin or signer call while waiting on `#publishRecoveryInfo`.
+  - `loadBundle()` briefly writes `The local recovery journal records this pack as complete.`, then synchronously calls `renderLatestPublishRecovery()`, which replaces it with the canonical identity-bearing summary `Recovery checkpoint complete for <router> token 4.`.
+  - The former sentence is therefore not a stable rendered state and cannot be honest screenshot evidence.
+- Why it matters:
+  - The proof runner rejects the correct terminal UI because it waits for transient text that is already gone by the time Playwright observes the page.
+- Correction direction:
+  - Bind the read-only reconstruction to the stable, identity-bearing recovery summary that the app actually renders for the authenticated token-4 record.
+- Verification idea:
+  - Require exact router/token identity in the visible completion summary, preserve zero receipts/pins/journal events, and continue to the portable buyer screenshot before operation 56.
+
+### WTF-BB-608 - Ravioli's read-only portable reconstruction connects a wallet before its zero-side-effect assertion
+
+- Category: Pasta Protocol / screenshot reconstruction side-effect boundary
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C2 + F5 + S2 + P0(5) = 14
+- Evidence:
+  - With a CORS-capable gateway, the fresh portable token-4 buyer loaded and decrypted its authenticated on-chain reveal successfully.
+  - The shared `openBuyerFor` helper then unconditionally called `connectBuyer`, replacing the stable `On-chain state loaded.` status with wallet-connected state before the operation-55 screenshot assertions.
+  - The operation-55 branch is explicitly intended to prove portable discovery without an embedded kit, cache, wallet, pin, journal mutation, or signer-capable action.
+- Why it matters:
+  - A wallet connection weakens the claimed standalone read-only proof and increments bridge receipts that the branch correctly expects to remain unchanged.
+- Correction direction:
+  - Make wallet connection an explicit opt-out on the shared buyer helper and disable it only for terminal read-only reconstruction; keep every purchase/open caller connected by default.
+- Verification idea:
+  - Require the portable page to retain `On-chain state loaded.`, decrypt the exact reveal, capture the terminal screenshot, and leave journal events, pins, receipts, and continuation state byte-for-byte unchanged.
+
+### WTF-BB-609 - Lasagna and Colander retain pre-fix restart boundaries
+
+- Category: Pasta Protocol / Lasagna and Colander authenticated restart safety
+- Status: Verified
+- Owner/Session: Codex Lasagna and Colander final-app preflight
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Evidence:
+  - Lasagna and Colander still reconcile a retained `SUBMITTED` operation through TzKT collection URLs with a `counter` query parameter even though WTF-BB-597 established that TzKT ignores that filter; neither runner delegates to the shared exact-hash reconciler.
+  - Lasagna still compares the RPC-returned originated script to its artifact with raw JSON hashing even though WTF-BB-598 established that equivalent Michelson script JSON can differ in object and top-level section order.
+  - Their shared restart snapshot issues unprotected concurrent RPC GETs and treats a malformed mempool payload as an empty mempool, bypassing the bounded GET-only retry and fail-closed shape checks required before signer submission.
+- Why it matters:
+  - A browser, RPC, or process interruption after a valid submission can strand either of the final aggregate proof lanes, while a malformed mempool response can be mistaken for proof that no same-signer operation is active.
+  - Retrying by weakening the journal or replaying the operation would put the fresh exhibition registry and final management proof at risk of duplicate or unauthenticated writes.
+- Correction direction:
+  - Route both runners through the shared exact-hash restart reconciler, validate Lasagna RPC scripts in the canonical Michelson identity domain, and give every shared restart RPC read the established bounded GET-only retry boundary.
+  - Parse mempool responses as an explicit recognized-bucket object and fail closed on malformed top-level or bucket shapes while remaining compatible with approved RPC variants that expose either `applied` or `validated` as their accepted-operation bucket.
+- Verification idea:
+  - Prove both production runners use the shared exact-hash route, reordered-but-equivalent Lasagna Michelson scripts pass while semantic drift fails, first-429 chain/mempool/counter reads recover serially through GET only, and null/empty/wrong-bucket mempool payloads stop before any mutation capability.
+- Correction:
+  - Lasagna and Colander now delegate pending-operation recovery to `reconcilePastaProofRestartOperation`, so retained `SUBMITTED` operations use TzKT's exact-hash route and both runners inherit the shared signer, counter, target, entrypoint, payload, amount, and dual-RPC boundary checks.
+  - Lasagna now compares originated RPC scripts through canonical Michelson identity. Shared snapshot and actor-lane reads use bounded GET-only retry sequentially within each RPC lane and reject malformed mempool top-level or recognized-bucket shapes.
+- Verification:
+  - `npx tsx --test scripts/pasta-protocol/pasta-proof-restart-journal.test.ts scripts/pasta-protocol/pasta-proof-restart-chain.test.ts scripts/pasta-protocol/shadownet-lasagna-ui-live.test.ts scripts/pasta-protocol/shadownet-colander-ui-live.test.ts` passed 43/43, including production-consumer source assertions, exact-hash routing, canonical script ordering, semantic drift rejection, first-429 recovery, serialized reads, and fail-closed mempool cases.
+  - `npm run pasta:shadownet:proof-restart:check` passed 45/45, `npm run check -- --pretty false` passed, and the scoped diff passed `git diff --check`. No signer, chain, IPFS, or live-proof mutation was performed.
+
+### WTF-BB-610 - Pasta alpha handoff can certify substituted installer bytes
+
+- Category: Pasta Protocol / desktop alpha handoff integrity
+- Status: Verified
+- Owner/Session: Codex installer evidence binding
+- Score: C2 + F5 + S2 + P0(5) = 14
+- Evidence:
+  - The macOS installer smoke passes only an extracted executable path into the shared runtime harness. Its JSON receipt records that temporary path and embedded provenance, but neither the source DMG/ZIP SHA-256 nor the packaged executable SHA-256 or architectures.
+  - The alpha finalizer later hashes whichever archive occupies the expected release filename and accepts the earlier receipt solely from its fields. Replacing an artifact after smoke therefore does not invalidate the receipt.
+  - The finalizer runs `lipo` only on the ZIP executable and assigns those architectures to both the ZIP and DMG inventory rows, so a non-universal substituted DMG can inherit the ZIP's universal claim.
+- Why it matters:
+  - The generated checksum inventory can identify an artifact that was never launched by the retained smoke, defeating the exact installed-artifact evidence boundary.
+  - A developer handoff can overstate the DMG architecture even when its integrity image is structurally valid.
+- Correction direction:
+  - Pass the exact source archive and distribution into the runtime smoke, then record archive SHA-256, packaged executable SHA-256, and independently measured architectures in each receipt.
+  - Make the finalizer recompute and compare all three identities for both ZIP and DMG and reject any archive, executable, distribution, or architecture substitution.
+- Verification idea:
+  - Add focused failing-first tests for missing/mismatched receipt identities, archive replacement after smoke, executable substitution, and a DMG architecture that differs from the ZIP; keep every valid nine-product receipt accepted.
+- Correction:
+  - The macOS smoke wrapper now passes the exact archive path and distribution into the runtime smoke. Each receipt records the archive SHA-256, copied/extracted executable SHA-256, and that executable's independently read, normalized architecture list.
+  - The finalizer integrity-tests and extracts the ZIP, verifies and mounts the DMG, hashes each archive and each contained executable, and runs `lipo` separately for both formats. It requires the receipt's path, distribution, archive hash, executable hash, and architectures to match those independently observed values before writing inventory output.
+  - The generated handoff inventory and Markdown expose both archive and executable hashes plus per-format architectures; old or incomplete receipts now fail closed.
+- Verification:
+  - The failing-first focused gate initially stopped on the absent identity producer and validator exports. After correction, the full focused package/provenance/workflow suite passes 78/78; Node syntax, macOS shell syntax, and scoped whitespace checks pass.
+  - A read-only inspection of the retained Pasta Suite ZIP and licensed DMG exercised both real extraction/mount paths. Both executables independently reported `arm64` plus `x86_64` and SHA-256 `b7b3e3606f372257bddf580d6ff56451329696a3ae5bb52ce419548c20e80c55`; their archive hashes remained distinct as expected.
+  - No package build, signing, staging, commit, push, or generated handoff write occurred.
+
+### WTF-BB-611 - Lasagna UI-LIVE exposes raw Taquito big-map handles to the browser bridge
+
+- Category: Pasta Protocol / Lasagna UI-LIVE storage projection
+- Status: Claimed
+- Owner/Session: Codex human-alpha proof completion
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Evidence:
+  - The fresh Lasagna proof safely originated `KT1CqeN868yJ1o1Tvb98jirBqxSaytCsFzBb`, added the independent curator, pinned revision zero, and applied its `publish_revision` operation before screenshot 010.
+  - Lasagna's studio reads `revision_count` through the UI-live bridge before each publication, but neither the creator nor curator session supplies `projectStorage`.
+  - Real Taquito storage therefore reaches the shared serializer with `BigMapAbstraction` values. The serializer correctly rejects those provider-bearing handles with HTTP 500; the studio catches that read and continues with revision zero, while the fatal-console screenshot monitor correctly stops the proof rather than certifying a page with a hidden bridge failure.
+- Why it matters:
+  - A valid, journaled Shadownet publication cannot advance to its screenshot and package evidence, and later public-site rendering needs an explicit bounded projection of the selected exhibition revision.
+  - Weakening the shared serializer would reintroduce provider-graph traversal and heap-exhaustion risk already closed by WTF-BB-443.
+- Correction direction:
+  - Add one Lasagna-specific storage projector that returns only canonical `revision_count`, `current_revision`, and a fresh `MichelsonMap` containing the currently selected revision when present.
+  - Install it on both creator and curator sessions; retain the shared raw-big-map rejection unchanged.
+- Verification idea:
+  - Prove the projector never reads poisoned unrelated big-map handles, projects an empty pre-publication state and exactly the selected revision after publication, and round-trips through the bridge serializer.
+  - Rerun the exact retained Lasagna journal, require screenshot 010 onward to complete without fatal browser errors, and pass strict manifest validation without replaying the already-applied prefix.
+
+### WTF-BB-612 - PixAlerce cannot be redistributed or safely mounted at a wtfOS subpath as-is
+
+- Category: Creation tools / third-party redistribution and subpath isolation
+- Status: Blocked (public release only; alpha integration complete)
+- Owner/Session: Niko licensing handoff
+- Score: C2 + F5 + S3 + P0(5) = 15
+- Evidence:
+  - GitHub reports `NikoAlerce/3dpixelstudio` as private with no license metadata, and audited commit `99e243a34a509477e203a6dd7a5a1d18ed83f9fa` contains no license/notice file.
+  - The top-level stamp library has no source ledger and includes Mario, Game Boy, and Worms franchise assets. Collage packs do carry per-category public-domain/CC0 source ledgers, so provenance is incomplete rather than wholly absent.
+  - The unmodified build emits root-relative app assets and registers `/sw.js` with `/` scope. It also hardcodes `/stamps/*` and `/logo.png`, so copying the build under `/creation-tools/pixalerce/` would collide with or control the wtfOS host origin.
+  - A temporary six-file upstream-style patch made the base path configurable, scoped the PWA, and rebased public assets. The resulting 103 MB static build passed TypeScript and a real Chromium subpath smoke: default project creation, full editor render, stamp HTTP 200, same-origin camera/microphone/fullscreen capability, zero failed requests, and zero page errors.
+  - Upstream lint currently fails with 12 errors and 353 warnings. The install tree reports 14 audit findings; the production dependency tree reports two high and one critical finding through unused Firebase/Google packages, although those affected libraries are absent from the generated browser bundle.
+  - Alpha hardening on 2026-08-18 removed the unused vulnerable dependency path, refreshed the lock to zero `npm audit` findings, excluded the emergency backup from active lint, fixed all active-source lint errors, removed native sandbox modal dependencies, hid unconfigured Drive sync, localized remote default sprites, and disabled both PWA generation and the app-side host service-worker update watcher.
+  - The pinned build is vendored at `public/creation-tools/pixalerce/` with `provenance.json`, registered at `/tools/pixalerce`, and owned by route, launcher, package, admin, inventory, and behavior registries. `npm run build`, repository TypeScript, creation-tool asset validation, inventory coverage, focused PixAlerce persistence, and the full 676-test inventory suite all pass.
+- Why it matters:
+  - A public wtfOS deploy would redistribute a private, unlicensed codebase and recognizable third-party assets without recorded authority.
+  - The current root-scoped service worker could take control of unrelated wtfOS pages, while root asset paths can resolve to the wrong files or 404 after embedding.
+- Correction direction:
+  - The wtfOS owner authorized an alpha/tester-only integration on 2026-08-18 while the creator supplies the redistribution license and either documents or removes disputed stamp content before public launch.
+  - Obtain and record Niko's redistribution license/grant and a complete included-asset rights manifest; remove or replace any stamp without redistribution authority.
+  - Merge the proven base-path, embedded-PWA-disable, service-worker watcher, in-page dialog, optional-integration, lint, and dependency changes upstream so the next pinned source commit reproduces the vendored alpha build directly.
+- Verification idea:
+  - After Niko's license and asset ledger/removal land, update `provenance.json`, rerun typecheck/lint/audit and the subpath isolation scan, then repeat the green focused project persistence proof plus inventory coverage/full inventory before public promotion.
+
+### WTF-BB-613 - The shared dirty-snapshot checkout mixes releasable fixes with unfinished Pasta proof state
+
+- Category: Repository hygiene / release isolation
+- Status: Claimed
+- Owner/Session: Pasta proof completion owner
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence:
+  - After the independently verified PixAlerce change set was extracted, `codex/full-send-dirty-snapshot-20260808` still contained 39 tracked modifications, three untracked Pasta source/test files, and roughly 990 untracked live-proof artifacts.
+  - The modified source spans verified fixes and still-claimed WTF-BB-586 through WTF-BB-592, WTF-BB-600 through WTF-BB-608, and WTF-BB-611 recovery lanes. The artifact tree contains authenticated journals, pins, screenshots, open kits, and partial proof state from the same evolving run.
+  - A bulk commit or deployment would erase the ownership boundary between completed corrections, unfinished live-chain proof, and evidence that must pass the public-release secret screen before publication.
+- Why it matters:
+  - Loose mixed-state work is difficult to reproduce and easy to publish under a broader release claim than its validators support.
+  - Treating all dirty paths as one deployable unit could expose proof material, replay a completed chain prefix, or certify an incomplete Pasta alpha handoff.
+- Correction direction:
+  - Keep `docs/workspace-reconciliation-2026-08-18.md` as the path and branch ownership index.
+  - Finish each claimed bounty through its owning focused validator, then commit source corrections separately from generated proof evidence. Admit artifacts only through the existing assembler, secret scan, checksum, and strict package boundary.
+  - Rebase each accepted source commit onto current `origin/main` in a clean worktree and run the applicable aggregate gates before promotion.
+- Verification idea:
+  - Require the shared checkout to contain no unowned dirty path, every retained artifact to appear in a validated manifest, and every production candidate to reproduce from a clean current-main worktree without importing live-run scratch state.

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -12,15 +13,17 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ALPHA_VERSION = "1.0.1-alpha.1";
-const EXPECTED_TARGET = Object.freeze({
+export const ALPHA_VERSION = "1.0.1-alpha.1";
+export const EXPECTED_TARGET = Object.freeze({
   platform: "darwin",
   arch: "universal",
   format: "dmg+zip",
 });
+const UNIVERSAL_MAC_ARCHITECTURES = Object.freeze(["arm64", "x86_64"]);
 
-const products = Object.freeze([
+export const PRODUCTS = Object.freeze([
   {
     key: "pasta-suite",
     directory: "pasta-suite-desktop",
@@ -127,7 +130,8 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-function validateReceipt(receipt, product, distribution, expectedGitSha) {
+export function validateReceipt(receipt, product, expectedArtifact, expectedGitSha) {
+  const distribution = expectedArtifact.distribution;
   assert.equal(receipt.ok, true, `${product.key} ${distribution} smoke should pass`);
   assert.equal(receipt.app, product.key, `${product.key} ${distribution} app id should match`);
   assert.equal(receipt.origin, product.origin, `${product.key} ${distribution} origin should match`);
@@ -147,9 +151,83 @@ function validateReceipt(receipt, product, distribution, expectedGitSha) {
     true,
     `${product.key} receipt should identify the ${distribution} installation path`,
   );
+  assert.ok(
+    receipt.artifact && typeof receipt.artifact === "object",
+    `${product.key} ${distribution} artifact identity should be present`,
+  );
+  assert.equal(
+    receipt.artifact.distribution,
+    distribution,
+    `${product.key} artifact distribution should match`,
+  );
+  assert.equal(
+    path.resolve(receipt.artifact.path || ""),
+    path.resolve(expectedArtifact.path),
+    `${product.key} artifact path should match`,
+  );
+  assert.match(
+    receipt.artifact.sha256 || "",
+    /^[0-9a-f]{64}$/,
+    `${product.key} archive SHA-256 should be exact`,
+  );
+  assert.equal(
+    receipt.artifact.sha256,
+    expectedArtifact.sha256,
+    `${product.key} archive SHA-256 should match`,
+  );
+  assert.match(
+    receipt.artifact.executableSha256 || "",
+    /^[0-9a-f]{64}$/,
+    `${product.key} executable SHA-256 should be exact`,
+  );
+  assert.equal(
+    receipt.artifact.executableSha256,
+    expectedArtifact.executableSha256,
+    `${product.key} executable SHA-256 should match`,
+  );
+  assert.deepEqual(
+    expectedArtifact.architectures,
+    UNIVERSAL_MAC_ARCHITECTURES,
+    `${product.key} ${distribution} independently inspected executable should be universal`,
+  );
+  assert.deepEqual(
+    receipt.artifact.architectures,
+    expectedArtifact.architectures,
+    `${product.key} ${distribution} architectures should match`,
+  );
 }
 
-function verifyUniversalZip(zipPath, product) {
+function readExecutableIdentity(executablePath, distribution) {
+  const architectures = execFileSync("lipo", ["-archs", executablePath], {
+    encoding: "utf8",
+  })
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort();
+  assert.deepEqual(
+    architectures,
+    UNIVERSAL_MAC_ARCHITECTURES,
+    `${distribution} executable should contain arm64 and x86_64`,
+  );
+  return {
+    executableSha256: sha256(executablePath),
+    architectures,
+  };
+}
+
+function inspectedArtifact(filePath, distribution, executablePath) {
+  const absolutePath = path.resolve(filePath);
+  return {
+    distribution,
+    path: absolutePath,
+    bytes: statSync(absolutePath).size,
+    sha256: sha256(absolutePath),
+    ...readExecutableIdentity(executablePath, distribution),
+  };
+}
+
+export function inspectZipArtifact(zipPath, product) {
   const extractionRoot = mkdtempSync(path.join(os.tmpdir(), `pasta-alpha-${product.key}-`));
   try {
     execFileSync("unzip", ["-tq", zipPath], { stdio: "ignore" });
@@ -161,30 +239,55 @@ function verifyUniversalZip(zipPath, product) {
       "MacOS",
       product.executableName,
     );
-    const architectures = execFileSync("lipo", ["-archs", executablePath], {
-      encoding: "utf8",
-    })
-      .trim()
-      .split(/\s+/)
-      .sort();
-    assert.deepEqual(architectures, ["arm64", "x86_64"], `${product.key} executable should be universal`);
-    return architectures;
+    return inspectedArtifact(zipPath, "zip", executablePath);
   } finally {
     rmSync(extractionRoot, { recursive: true, force: true });
   }
 }
 
-function artifactRecord(repoRoot, product, distribution, filePath, architectures) {
-  const details = statSync(filePath);
+export function inspectDmgArtifact(dmgPath, product) {
+  const mountRoot = mkdtempSync(path.join(os.tmpdir(), `pasta-alpha-${product.key}-dmg-`));
+  const mountPoint = path.join(mountRoot, "mount");
+  mkdirSync(mountPoint, { recursive: true });
+  let attached = false;
+  try {
+    execFileSync("hdiutil", ["verify", dmgPath], { stdio: "ignore" });
+    execFileSync(
+      "hdiutil",
+      ["attach", "-nobrowse", "-readonly", "-mountpoint", mountPoint, dmgPath],
+      { input: "Y\n", stdio: ["pipe", "ignore", "pipe"] },
+    );
+    attached = true;
+    const executablePath = path.join(
+      mountPoint,
+      product.bundleName,
+      "Contents",
+      "MacOS",
+      product.executableName,
+    );
+    return inspectedArtifact(dmgPath, "dmg", executablePath);
+  } finally {
+    if (attached) {
+      execFileSync("hdiutil", ["detach", mountPoint], { stdio: "ignore" });
+    }
+    rmSync(mountRoot, { recursive: true, force: true });
+  }
+}
+
+function artifactRecord(repoRoot, product, inspection) {
   return {
     app: product.key,
-    distribution,
-    path: relativeToRepo(repoRoot, filePath),
-    bytes: details.size,
-    sha256: sha256(filePath),
+    distribution: inspection.distribution,
+    path: relativeToRepo(repoRoot, inspection.path),
+    bytes: inspection.bytes,
+    sha256: inspection.sha256,
+    executableSha256: inspection.executableSha256,
     unsigned: true,
-    verified: distribution === "zip" ? "unzip-test+lipo+launch+relaunch" : "dmg-verify+mount+copy+launch+relaunch",
-    architectures,
+    verified:
+      inspection.distribution === "zip"
+        ? "unzip-test+archive-hash+executable-hash+lipo+launch+relaunch"
+        : "dmg-verify+mount+archive-hash+executable-hash+lipo+copy+launch+relaunch",
+    architectures: inspection.architectures,
   };
 }
 
@@ -198,7 +301,7 @@ function handoffMarkdown(inventory) {
   const artifacts = inventory.artifacts
     .map(
       (artifact) =>
-        `| ${artifact.app} | ${artifact.distribution.toUpperCase()} | ${artifact.bytes} | \`${artifact.sha256}\` | \`${artifact.path}\` |`,
+        `| ${artifact.app} | ${artifact.distribution.toUpperCase()} | ${artifact.bytes} | \`${artifact.sha256}\` | \`${artifact.executableSha256}\` | ${artifact.architectures.join(" + ")} | \`${artifact.path}\` |`,
     )
     .join("\n");
 
@@ -218,8 +321,8 @@ ${rows}
 
 ## Exact artifact inventory
 
-| App | Format | Bytes | SHA-256 | Path |
-| --- | --- | ---: | --- | --- |
+| App | Format | Bytes | Archive SHA-256 | Executable SHA-256 | Architectures | Path |
+| --- | --- | ---: | --- | --- | --- | --- |
 ${artifacts}
 
 ## Architecture and workflow boundary
@@ -254,7 +357,7 @@ ${artifacts}
 `;
 }
 
-function main() {
+export function main() {
   const repoRoot = path.resolve(import.meta.dirname, "..");
   const evidenceRoot = parseEvidenceRoot(process.argv.slice(2));
   const expectedGitSha = execFileSync("git", ["rev-parse", "HEAD"], {
@@ -265,7 +368,7 @@ function main() {
 
   const artifacts = [];
   const productEvidence = [];
-  for (const product of products) {
+  for (const product of PRODUCTS) {
     const releaseRoot = path.join(repoRoot, "apps", product.directory, "release");
     const zipPath = path.join(
       releaseRoot,
@@ -275,15 +378,17 @@ function main() {
       releaseRoot,
       `${product.artifactBase}-${ALPHA_VERSION}-mac-universal.dmg`,
     );
-    const architectures = verifyUniversalZip(zipPath, product);
-    execFileSync("hdiutil", ["verify", dmgPath], { stdio: "ignore" });
+    const inspections = {
+      zip: inspectZipArtifact(zipPath, product),
+      dmg: inspectDmgArtifact(dmgPath, product),
+    };
 
     const receipts = {};
     for (const distribution of ["zip", "dmg"]) {
       const receiptPath = path.join(evidenceRoot, `${product.key}-${distribution}-smoke.json`);
       const screenshotPath = path.join(evidenceRoot, `${product.key}-${distribution}-first-run.png`);
       const receipt = readJson(receiptPath);
-      validateReceipt(receipt, product, distribution, expectedGitSha);
+      validateReceipt(receipt, product, inspections[distribution], expectedGitSha);
       assert.equal(path.resolve(receipt.screenshotPath), screenshotPath);
       const signature = readFileSync(screenshotPath).subarray(0, 8).toString("hex");
       assert.equal(signature, "89504e470d0a1a0a", `${product.key} ${distribution} screenshot should be PNG`);
@@ -295,8 +400,8 @@ function main() {
       };
     }
 
-    artifacts.push(artifactRecord(repoRoot, product, "dmg", dmgPath, architectures));
-    artifacts.push(artifactRecord(repoRoot, product, "zip", zipPath, architectures));
+    artifacts.push(artifactRecord(repoRoot, product, inspections.dmg));
+    artifacts.push(artifactRecord(repoRoot, product, inspections.zip));
     productEvidence.push({
       app: product.key,
       origin: product.origin,
@@ -318,11 +423,11 @@ function main() {
     sourceRevision: `${expectedGitSha}-dirty`,
     target: EXPECTED_TARGET,
     summary: {
-      apps: products.length,
+      apps: PRODUCTS.length,
       artifacts: artifacts.length,
-      runtimeSmokes: products.length * 2,
-      screenshots: products.length * 2,
-      stableOriginRelaunches: products.length * 2,
+      runtimeSmokes: PRODUCTS.length * 2,
+      screenshots: PRODUCTS.length * 2,
+      stableOriginRelaunches: PRODUCTS.length * 2,
       failures: 0,
     },
     products: productEvidence,
@@ -353,4 +458,6 @@ function main() {
   console.log(JSON.stringify(inventory.summary));
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

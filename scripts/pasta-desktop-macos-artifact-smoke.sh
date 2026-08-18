@@ -30,6 +30,7 @@ trap cleanup EXIT
 run_artifact_smoke() {
   local format="$1"
   local executable_path="$2"
+  local artifact_path="$3"
   local result_path="${PASTA_DESKTOP_RESULT_PATH:-}"
   local screenshot_path="${PASTA_DESKTOP_SCREENSHOT:-}"
 
@@ -45,7 +46,9 @@ run_artifact_smoke() {
   PASTA_DESKTOP_EXPECTED_GIT_SHA="${GITHUB_SHA:?GITHUB_SHA is required for artifact provenance verification}" \
   PASTA_DESKTOP_RESULT_PATH="$result_path" \
   PASTA_DESKTOP_SCREENSHOT="$screenshot_path" \
-  npm run pasta:desktop:artifact-smoke
+  npm run pasta:desktop:artifact-smoke -- \
+    "--artifact-path=$artifact_path" \
+    "--distribution=$format"
 }
 
 test -f "$dmg_path"
@@ -67,5 +70,5 @@ dmg_attached=0
 dmg_executable_path="$dmg_install_root/$app_bundle_name/Contents/MacOS/$executable_name"
 test -x "$dmg_executable_path"
 
-run_artifact_smoke "zip" "$zip_executable_path"
-run_artifact_smoke "dmg" "$dmg_executable_path"
+run_artifact_smoke "zip" "$zip_executable_path" "$zip_path"
+run_artifact_smoke "dmg" "$dmg_executable_path" "$dmg_path"

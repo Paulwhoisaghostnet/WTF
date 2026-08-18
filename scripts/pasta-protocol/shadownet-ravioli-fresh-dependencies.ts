@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 import {
   validateAddress,
@@ -12,7 +13,22 @@ import {
   ValidationResult,
 } from "@taquito/utils";
 import { deterministicJsonBytes, SHADOWNET_CHAIN_ID } from "./shadownet-proof-kit";
+import {
+  assertGnocchiTerminalSnapshotUnchanged,
+  GNOCCHI_TERMINAL_OPERATION_PLAN,
+  GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+  GNOCCHI_TERMINAL_RECOVERY_CONTRACT,
+  GNOCCHI_TERMINAL_RECOVERY_CREATOR,
+  GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH,
+  GNOCCHI_TERMINAL_RECOVERY_RUN_ID,
+  type GnocchiTerminalImmutableSnapshot,
+  validateGnocchiTerminalRecoveryReceipt,
+} from "./shadownet-gnocchi-terminal-readonly-recovery";
 import { openRotiniUiLiveCheckpoint } from "./shadownet-rotini-ui-live-checkpoint";
+import {
+  selectPortableSiteSubject,
+  validatePortableSiteArchive,
+} from "./supplement-portable-site-proofs";
 
 export const FRESH_RAVIOLI_DEPENDENCY_SCHEMA = "pastaprotocol-ravioli-fresh-dependencies@1";
 export const FRESH_RAVIOLI_NETWORK = "shadownet";
@@ -23,6 +39,33 @@ export const FRESH_ROTINI_RECEIPT_PATH = "artifacts/rotini-ui-live-run.json";
 export const FRESH_ROTINI_RECOVERED_RECEIPT_PATH = "artifacts/rotini-ui-readonly-finalization.json";
 const GNOCCHI_READ_ONLY_FINALIZATION_CLASSIFICATION = "UI-LIVE-READ-ONLY-FINALIZATION";
 const GNOCCHI_CHECKPOINTED_RECOVERY_CLASSIFICATION = "UI-LIVE-RECOVERED-CHECKPOINTED";
+
+export const GNOCCHI_TERMINAL_LIFECYCLE_STAGES = Object.freeze([
+  "001-publish-three-edition-policies-timed-oe-configured",
+  "002-publish-three-edition-policies-creator-connected-on-shadownet",
+  "003-publish-three-edition-policies-media-and-metadata-pinned",
+  "004-publish-three-edition-policies-collection-originated",
+  "005-publish-three-edition-policies-timed-oe-token-zero-live",
+  "006-publish-three-edition-policies-existing-collection-verified-for-second-edition",
+  "007-publish-three-edition-policies-forever-oe-token-one-live",
+  "008-publish-three-edition-policies-all-three-policies-live-in-one-collection",
+  "009-independent-collector-mints-collector-one-connected",
+  "010-independent-collector-mints-collector-one-minted-token-0",
+  "011-independent-collector-mints-collector-one-minted-token-1",
+  "012-independent-collector-mints-collector-one-minted-token-2",
+  "013-vault-and-reopen-forever-issuance-forever-oe-vaulted",
+  "014-vault-and-reopen-forever-issuance-vaulted-collector-mint-rejected",
+  "015-vault-and-reopen-forever-issuance-forever-oe-reopened",
+  "016-independent-collector-mints-collector-two-minted-token-0",
+  "017-independent-collector-mints-collector-two-minted-token-1",
+  "018-independent-collector-mints-collector-two-token-2-terminal-state-recovered-read-only",
+  "019-independent-collector-mints-limited-edition-cap-enforced",
+] as const);
+
+export const GNOCCHI_PORTABLE_SUPPLEMENT_STAGES = Object.freeze([
+  "901-portable-self-hosted-site-actual-studio-export-complete",
+  "902-portable-self-hosted-site-extracted-page-live-independently",
+] as const);
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 export const FRESH_GNOCCHI_CONTRACT_ARTIFACT_PATH = path.join(
@@ -208,8 +251,18 @@ export type FreshRavioliDependencyLiveCheck = {
 export const RAVIOLI_MODE0_REPLAY_DEPENDENCY_CLASSIFICATION = "RAVIOLI-MODE0-MUTATION-REPLAY";
 export const RAVIOLI_CURRENT_V2_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-V2-RESUME";
 export const RAVIOLI_CURRENT_V3_RESTART_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-V3-RESTART";
+export const RAVIOLI_CURRENT_OP14_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-OP14-RESUME";
+export const RAVIOLI_CURRENT_OP20_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-OP20-RESUME";
 export const RAVIOLI_CURRENT_V5_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-V5-RESUME";
 export const RAVIOLI_CURRENT_V6_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-V6-RESUME";
+export const RAVIOLI_CURRENT_OP55_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-OP55-RESUME";
+export const RAVIOLI_CURRENT_OP63_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-OP63-RESUME";
+export const RAVIOLI_CURRENT_OP67_RESUME_DEPENDENCY_CLASSIFICATION = "RAVIOLI-CURRENT-OP67-RESUME";
+export const RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL = 4_579_174;
+export const RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL = 4_579_176;
+export const RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL = 4_579_178;
+export const RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL = 4_550_641;
+export const RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL = 4_579_185;
 
 export type RavioliMode0ReplayRecovery = Readonly<{
   routerAddress: string;
@@ -223,11 +276,40 @@ export type RavioliCurrentV3RestartRecovery = Readonly<{
 }>;
 
 export type RavioliCurrentV5ResumeRecovery = RavioliCurrentV3RestartRecovery;
+export type RavioliCurrentOp14ResumeRecovery = RavioliCurrentV3RestartRecovery;
+export type RavioliCurrentOp20ResumeRecovery = RavioliCurrentV3RestartRecovery & Readonly<{
+  gnocchiAdapterAddress: string;
+  minterAppliedLevel: number;
+}>;
 
 export type RavioliCurrentV6ResumeRecovery = RavioliCurrentV3RestartRecovery & Readonly<{
   gnocchiAdapterAddress: string;
   minterAppliedLevel: number;
   reservedMintAppliedLevel: number;
+  rotiniReservation?: Readonly<{
+    adapterAddress: string;
+    packMinterAppliedLevel: number;
+    reservationAppliedLevel: number;
+  }>;
+}>;
+
+export type RavioliCurrentOp55ResumeRecovery = RavioliCurrentV3RestartRecovery & Readonly<{
+  gnocchiAdapterAddress: string;
+  rotiniAdapterAddress: string;
+  minterAppliedLevel: number;
+  minterSecondAppliedLevel: number;
+  mode1SecondAppliedLevel: number;
+  rotiniPackMinterAppliedLevel: number;
+  rotiniPackMinterSecondAppliedLevel: number;
+}>;
+
+export type RavioliCurrentOp63ResumeRecovery = RavioliCurrentOp55ResumeRecovery & Readonly<{
+  minterThirdAppliedLevel: number;
+  allocationAppliedLevel: number;
+  adapterRouterAppliedLevel: number;
+  reservedMintFirstAppliedLevel: number;
+  reservedMintAppliedLevel: number;
+  adapterRecoveryAppliedLevel?: number;
 }>;
 
 export type RavioliMode0ReplayDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
@@ -281,6 +363,36 @@ export type RavioliCurrentV5ResumeDependencyLiveCheck = FreshRavioliDependencyLi
   }>;
 };
 
+export type RavioliCurrentOp14ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
+  classification: typeof RAVIOLI_CURRENT_OP14_RESUME_DEPENDENCY_CLASSIFICATION;
+  acceptedMutation: Readonly<{
+    kind: "gnocchi-fa2-operators-and-current-funded-pools";
+    owner: string;
+    operator: string;
+    tokenIds: readonly [0, 1];
+    creatorBalances: Readonly<{ "0": 0; "1": 1 }>;
+    routerEscrowBalances: Readonly<{ "0": 2; "1": 1 }>;
+    mode0AppliedLevel: number;
+    mode1AppliedLevel: number;
+  }>;
+};
+
+export type RavioliCurrentOp20ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
+  classification: typeof RAVIOLI_CURRENT_OP20_RESUME_DEPENDENCY_CLASSIFICATION;
+  acceptedMutation: Readonly<{
+    kind: "gnocchi-fa2-operators-funded-pools-and-authorized-adapter";
+    owner: string;
+    operator: string;
+    gnocchiAdapter: string;
+    tokenIds: readonly [0, 1];
+    creatorBalances: Readonly<{ "0": 0; "1": 1 }>;
+    routerEscrowBalances: Readonly<{ "0": 2; "1": 1 }>;
+    mode0AppliedLevel: number;
+    mode1AppliedLevel: number;
+    minterAppliedLevel: number;
+  }>;
+};
+
 export type RavioliCurrentV6ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
   classification: typeof RAVIOLI_CURRENT_V6_RESUME_DEPENDENCY_CLASSIFICATION;
   acceptedMutation: Readonly<{
@@ -297,6 +409,82 @@ export type RavioliCurrentV6ResumeDependencyLiveCheck = FreshRavioliDependencyLi
     mode1AppliedLevel: number;
     minterAppliedLevel: number;
     reservedMintAppliedLevel: number;
+    rotiniReservation?: Readonly<{
+      adapter: string;
+      projectId: 0;
+      reservedAmount: 2;
+      packMinterAppliedLevel: number;
+      reservationAppliedLevel: number;
+    }>;
+  }>;
+};
+
+export type RavioliCurrentOp55ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
+  classification: typeof RAVIOLI_CURRENT_OP55_RESUME_DEPENDENCY_CLASSIFICATION;
+  acceptedMutation: Readonly<{
+    kind: "five-mode-terminal-dependency-state";
+    owner: string;
+    operator: string;
+    gnocchiAdapter: string;
+    rotiniAdapter: string;
+    creatorBalances: Readonly<{ "0": 0; "1": 0 }>;
+    routerEscrowBalances: Readonly<{ "0": 0; "1": 0 }>;
+    token2: Readonly<{ totalMinted: 4; totalReserved: 0 }>;
+    rotini: Readonly<{
+      nextTokenId: 6;
+      projectId: 0;
+      minted: 4;
+      reserved: 0;
+    }>;
+    mode0AppliedLevel: number;
+    mode1AppliedLevel: number;
+    minterAppliedLevel: number;
+    rotiniPackMinterAppliedLevel: number;
+    minterSecondAppliedLevel: number;
+    rotiniPackMinterSecondAppliedLevel: number;
+    mode1SecondAppliedLevel: number;
+  }>;
+};
+
+export type RavioliCurrentOp63ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
+  classification: typeof RAVIOLI_CURRENT_OP63_RESUME_DEPENDENCY_CLASSIFICATION;
+  acceptedMutation: Readonly<{
+    kind: "withheld-reveal-allocation-dependency-state";
+    owner: string;
+    operator: string;
+    gnocchiAdapter: string;
+    rotiniAdapter: string;
+    creatorBalances: Readonly<{ "0": 0; "1": 0 }>;
+    routerEscrowBalances: Readonly<{ "0": 0; "1": 0 }>;
+    token2: Readonly<{ totalMinted: 4; totalReserved: 0 }>;
+    reservedMint: Readonly<{ tokenId: 1; amount: 2 }>;
+    rotini: Readonly<{
+      nextTokenId: 6;
+      projectId: 0;
+      minted: 4;
+      reserved: 0;
+    }>;
+    mode0AppliedLevel: number;
+    mode1AppliedLevel: number;
+    minterAppliedLevel: number;
+    rotiniPackMinterAppliedLevel: number;
+    minterSecondAppliedLevel: number;
+    rotiniPackMinterSecondAppliedLevel: number;
+    mode1SecondAppliedLevel: number;
+    minterThirdAppliedLevel: number;
+    allocationAppliedLevel: number;
+    adapterRouterAppliedLevel: number;
+    reservedMintFirstAppliedLevel: number;
+    reservedMintAppliedLevel: number;
+  }>;
+};
+
+export type RavioliCurrentOp67ResumeDependencyLiveCheck = FreshRavioliDependencyLiveCheck & {
+  classification: typeof RAVIOLI_CURRENT_OP67_RESUME_DEPENDENCY_CLASSIFICATION;
+  acceptedMutation: Omit<RavioliCurrentOp63ResumeDependencyLiveCheck["acceptedMutation"], "kind" | "reservedMint"> & Readonly<{
+    kind: "withheld-reveal-released-dependency-state";
+    reservedMint: Readonly<{ tokenId: 1; amount: 0 }>;
+    adapterRecoveryAppliedLevel: number;
   }>;
 };
 
@@ -490,8 +678,9 @@ function recoveredGnocchiClassification(receipt: JsonObject, label: string): str
   const classification = stringValue(receipt.classification, `${label} classification`);
   requireValue(
     classification === GNOCCHI_READ_ONLY_FINALIZATION_CLASSIFICATION ||
-      classification === GNOCCHI_CHECKPOINTED_RECOVERY_CLASSIFICATION,
-    `${label} classification must be ${GNOCCHI_READ_ONLY_FINALIZATION_CLASSIFICATION} or ${GNOCCHI_CHECKPOINTED_RECOVERY_CLASSIFICATION}; received ${JSON.stringify(classification)}`,
+      classification === GNOCCHI_CHECKPOINTED_RECOVERY_CLASSIFICATION ||
+      classification === GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION,
+    `${label} classification must be ${GNOCCHI_READ_ONLY_FINALIZATION_CLASSIFICATION}, ${GNOCCHI_CHECKPOINTED_RECOVERY_CLASSIFICATION}, or ${GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION}; received ${JSON.stringify(classification)}`,
   );
   return classification;
 }
@@ -531,6 +720,173 @@ function assertReceiptContentArtifacts(
     exactValue(record.retrievedSha256, artifact.evidence.sha256, `${label} recovered content ${artifact.evidence.id} retrieved hash`);
     exactValue(record.ipfsUri, artifact.evidence.ipfsUri, `${label} recovered content ${artifact.evidence.id} IPFS URI`);
   }
+}
+
+const GNOCCHI_TERMINAL_CONTENT_IDS = Object.freeze([
+  "token-0-media",
+  "collection-metadata",
+  "token-0-metadata",
+  "token-1-media",
+  "token-1-metadata",
+  "token-2-media",
+  "token-2-metadata",
+] as const);
+
+const GNOCCHI_TERMINAL_CORE_ARTIFACT_IDS = Object.freeze([
+  ...GNOCCHI_TERMINAL_CONTENT_IDS,
+  "gnocchi-current-contract-code",
+  "gnocchi-terminal-readonly-recovery",
+  "gnocchi-chain-reconciliation-snapshot",
+  "ui-live-readonly-finalization",
+  ...GNOCCHI_TERMINAL_LIFECYCLE_STAGES.map((stage) => `screenshot-sidecar-${stage}`),
+  "gnocchi-proof-time-indexer-snapshot",
+] as const);
+
+const GNOCCHI_PORTABLE_ARTIFACT_IDS = Object.freeze([
+  "gnocchi-portable-self-hosted-site",
+  "gnocchi-portable-self-hosted-site-proof",
+  ...GNOCCHI_PORTABLE_SUPPLEMENT_STAGES.map((stage) => `screenshot-sidecar-${stage}`),
+] as const);
+
+const GNOCCHI_TERMINAL_READ_ACTIONS = new Set([
+  "balance",
+  "chain_check",
+  "connect",
+  "contract_at",
+  "read_storage",
+]);
+
+function exactJson(actual: unknown, expected: unknown, label: string): void {
+  requireValue(isDeepStrictEqual(actual, expected), `${label} does not match its authenticated source`);
+}
+
+function externalValidation(label: string, validate: () => void): void {
+  try {
+    validate();
+  } catch (error) {
+    fail(`${label} failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function exactStringArray(value: unknown, expected: readonly string[], label: string): void {
+  const actual = arrayValue(value, label).map((entry, index) => stringValue(entry, `${label} ${index}`));
+  exactJson(actual, [...expected], label);
+}
+
+function terminalSnapshot(
+  value: unknown,
+  supplies: readonly number[],
+  label: string,
+): GnocchiTerminalImmutableSnapshot {
+  const raw = objectValue(value, label);
+  const counters = objectValue(raw.actorCounters, `${label} actor counters`);
+  const actorCounters: Record<string, number> = {};
+  for (const actor of ["creator", "collectorOne", "collectorTwo"]) {
+    actorCounters[actor] = natValue(counters[actor], `${label} ${actor} counter`);
+  }
+  return {
+    operationGraphSha256: requireSha256(raw.operationGraphSha256, `${label} operation graph hash`),
+    contractStateSha256: requireSha256(raw.contractStateSha256, `${label} contract-state hash`),
+    scriptSha256: requireSha256(raw.scriptSha256, `${label} script hash`),
+    supplies,
+    actorCounters,
+    actorPendingOperations: arrayValue(raw.actorPendingOperations, `${label} actor pending operations`),
+  };
+}
+
+function validateTerminalRpcSnapshot(
+  value: unknown,
+  snapshot: GnocchiTerminalImmutableSnapshot,
+  label: string,
+): { storageSha256: string; scriptSha256: string; counters: Record<string, number> } {
+  const rpc = objectValue(value, label);
+  const expectedUrls = {
+    primary: "https://tezos-shadownet.octez.io/",
+    fallback: "https://tcinfra.net/rpc/tezos/shadownet",
+  } as const;
+  let storageSha256 = "";
+  for (const endpoint of ["primary", "fallback"] as const) {
+    const record = objectValue(rpc[endpoint], `${label} ${endpoint}`);
+    exactValue(record.rpcUrl, expectedUrls[endpoint], `${label} ${endpoint} URL`);
+    exactValue(record.chainId, FRESH_RAVIOLI_CHAIN_ID, `${label} ${endpoint} chain id`);
+    exactValue(record.scriptSha256, snapshot.scriptSha256, `${label} ${endpoint} script hash`);
+    const endpointStorageSha256 = requireSha256(record.storageSha256, `${label} ${endpoint} storage hash`);
+    if (endpoint === "primary") storageSha256 = endpointStorageSha256;
+    else exactValue(endpointStorageSha256, storageSha256, `${label} configured RPC storage agreement`);
+    exactJson(record.counters, snapshot.actorCounters, `${label} ${endpoint} actor counters`);
+    requireValue(
+      arrayValue(record.actorPendingOperations, `${label} ${endpoint} pending operations`).length === 0,
+      `${label} ${endpoint} actor mempool must be empty`,
+    );
+  }
+  return { storageSha256, scriptSha256: snapshot.scriptSha256, counters: snapshot.actorCounters };
+}
+
+function validateTerminalBridge(value: unknown, label: string): void {
+  const bridge = objectValue(value, label);
+  exactValue(bridge.signerMaterialLoaded, false, `${label} signer-material flag`);
+  exactValue(natValue(bridge.submittedOperations, `${label} submitted operations`), 0, `${label} submitted operations`);
+  exactValue(natValue(bridge.injectedOperations, `${label} injected operations`), 0, `${label} injected operations`);
+  exactValue(natValue(bridge.writeActionRequests, `${label} write requests`), 0, `${label} write requests`);
+  const actors = arrayValue(bridge.actors, `${label} actor audits`).map((value, index) =>
+    objectValue(value, `${label} actor audit ${index}`)
+  );
+  requireValue(actors.length === 2, `${label} must contain exactly two collector audits`);
+  const actorNames = actors.map((actor, index) => stringValue(actor.actor, `${label} actor ${index}`)).sort();
+  exactJson(actorNames, ["collectorOne", "collectorTwo"], `${label} actor identities`);
+  for (const actor of actors) {
+    const actorLabel = `${label} ${String(actor.actor)}`;
+    exactValue(natValue(actor.submittedOperations, `${actorLabel} submitted operations`), 0, `${actorLabel} submitted operations`);
+    exactValue(natValue(actor.injectedOperations, `${actorLabel} injected operations`), 0, `${actorLabel} injected operations`);
+    exactValue(natValue(actor.writeActionRequests, `${actorLabel} write requests`), 0, `${actorLabel} write requests`);
+    requireValue(
+      arrayValue(actor.receiptOperationHashes, `${actorLabel} receipt operation hashes`).length === 0,
+      `${actorLabel} must not contain an operation hash`,
+    );
+    for (const field of ["requestedActions", "delegatedActions"] as const) {
+      const actions = arrayValue(actor[field], `${actorLabel} ${field}`);
+      requireValue(actions.length > 0, `${actorLabel} ${field} must not be empty`);
+      requireValue(
+        actions.every((action) => typeof action === "string" && GNOCCHI_TERMINAL_READ_ACTIONS.has(action)),
+        `${actorLabel} ${field} contains a write-shaped or unknown action`,
+      );
+    }
+  }
+}
+
+function validateHistoricalGnocchiSnapshot(input: {
+  artifact: LoadedArtifact;
+  runId: string;
+  contractAddress: string;
+  operationHashes: readonly string[];
+}): void {
+  const snapshot = parseJson(input.artifact.bytes, "terminal Gnocchi historical indexer snapshot");
+  exactValue(snapshot.schema, "pastaprotocol-gnocchi-historical-indexer-proof@1", "terminal Gnocchi historical snapshot schema");
+  exactValue(snapshot.app, "gnocchi", "terminal Gnocchi historical snapshot app");
+  exactValue(snapshot.contractAddress, input.contractAddress, "terminal Gnocchi historical snapshot contract");
+  const network = objectValue(snapshot.network, "terminal Gnocchi historical snapshot network");
+  exactValue(network.name, FRESH_RAVIOLI_NETWORK, "terminal Gnocchi historical snapshot network name");
+  exactValue(network.chainId, FRESH_RAVIOLI_CHAIN_ID, "terminal Gnocchi historical snapshot chain id");
+  exactValue(
+    objectValue(snapshot.sourceManifest, "terminal Gnocchi historical snapshot source manifest").runId,
+    input.runId,
+    "terminal Gnocchi historical snapshot run id",
+  );
+  const accepted = arrayValue(snapshot.acceptedOperations, "terminal Gnocchi historical accepted operations")
+    .map((value, index) => objectValue(value, `terminal Gnocchi historical operation ${index}`));
+  requireValue(accepted.length === input.operationHashes.length, "terminal Gnocchi historical snapshot must bind all 12 operations");
+  accepted.forEach((operation, index) => {
+    exactValue(operation.hash, input.operationHashes[index], `terminal Gnocchi historical operation ${index} hash`);
+    exactValue(operation.contractAddress, input.contractAddress, `terminal Gnocchi historical operation ${index} contract`);
+    exactValue(operation.status, "applied", `terminal Gnocchi historical operation ${index} status`);
+  });
+  const terminal = objectValue(snapshot.terminalAcceptedOperation, "terminal Gnocchi historical terminal operation");
+  exactValue(terminal.hash, input.operationHashes.at(-1), "terminal Gnocchi historical terminal operation hash");
+  exactValue(
+    natValue(terminal.level, "terminal Gnocchi historical terminal level"),
+    GNOCCHI_TERMINAL_OPERATION_PLAN.at(-1)?.level,
+    "terminal Gnocchi historical terminal level",
+  );
 }
 
 async function loadAppEvidence(input: {
@@ -821,6 +1177,397 @@ function validateOrigination(input: {
   return operationHash;
 }
 
+async function validateTerminalPortableSupplement(input: {
+  manifest: JsonObject;
+  artifacts: Map<string, LoadedArtifact>;
+  appRoot: string;
+  runId: string;
+  contractAddress: string;
+  manifestScreenshots: JsonObject[];
+  capabilities: JsonObject[];
+}): Promise<void> {
+  requireValue(
+    input.manifestScreenshots.length === GNOCCHI_TERMINAL_LIFECYCLE_STAGES.length + GNOCCHI_PORTABLE_SUPPLEMENT_STAGES.length,
+    "terminal Gnocchi manifest must contain exactly lifecycle stages 001-019 followed by portable stages 901/902",
+  );
+  const portableScreenshots = input.manifestScreenshots.slice(GNOCCHI_TERMINAL_LIFECYCLE_STAGES.length);
+  exactStringArray(
+    portableScreenshots.map((screenshot) => screenshot.stage),
+    GNOCCHI_PORTABLE_SUPPLEMENT_STAGES,
+    "terminal Gnocchi portable screenshot stages",
+  );
+
+  let subject;
+  try {
+    subject = selectPortableSiteSubject(input.manifest, "gnocchi");
+  } catch (error) {
+    fail(`terminal Gnocchi portable subject failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  exactValue(subject.runId, input.runId, "terminal Gnocchi portable subject run id");
+  exactValue(subject.contract.address, input.contractAddress, "terminal Gnocchi portable subject contract");
+  requireValue(subject.token !== null, "terminal Gnocchi portable subject must bind token 0");
+  exactValue(subject.token.tokenId, "0", "terminal Gnocchi portable subject token id");
+
+  const zipArtifact = artifactByPath(
+    input.artifacts,
+    "artifacts/gnocchi-portable-self-hosted-site.zip",
+    "self-hosted-site-package",
+    "terminal Gnocchi portable ZIP",
+  );
+  exactValue(zipArtifact.evidence.id, GNOCCHI_PORTABLE_ARTIFACT_IDS[0], "terminal Gnocchi portable ZIP id");
+  const reportArtifact = artifactByPath(
+    input.artifacts,
+    "artifacts/gnocchi-portable-self-hosted-site-proof.json",
+    "self-hosted-site-proof",
+    "terminal Gnocchi portable report",
+  );
+  exactValue(reportArtifact.evidence.id, GNOCCHI_PORTABLE_ARTIFACT_IDS[1], "terminal Gnocchi portable report id");
+
+  let archive: ReturnType<typeof validatePortableSiteArchive>;
+  try {
+    archive = validatePortableSiteArchive(zipArtifact.bytes, subject);
+  } catch (error) {
+    fail(`terminal Gnocchi portable ZIP validation failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  exactValue(archive.sha256, zipArtifact.evidence.sha256, "terminal Gnocchi portable ZIP hash");
+
+  const report = parseJson(reportArtifact.bytes, "terminal Gnocchi portable report");
+  exactValue(report.schema, "pastaprotocol-portable-site-proof@1", "terminal Gnocchi portable report schema");
+  exactValue(report.classification, "UI-LIVE", "terminal Gnocchi portable report classification");
+  exactValue(report.app, "gnocchi", "terminal Gnocchi portable report app");
+  exactValue(report.runId, input.runId, "terminal Gnocchi portable report run id");
+  const reportNetwork = objectValue(report.network, "terminal Gnocchi portable report network");
+  exactValue(reportNetwork.name, FRESH_RAVIOLI_NETWORK, "terminal Gnocchi portable report network name");
+  exactValue(reportNetwork.chainId, FRESH_RAVIOLI_CHAIN_ID, "terminal Gnocchi portable report chain id");
+  exactJson(report.subject, { contract: subject.contract, token: subject.token }, "terminal Gnocchi portable report subject");
+  exactJson(report.studio, {
+    path: "/creation-tools/gnocchi/index.html",
+    exportControl: "#btnExportSite",
+    downloadedFileName: "gnocchi-site.zip",
+  }, "terminal Gnocchi portable Studio evidence");
+  const reportArchive = objectValue(report.archive, "terminal Gnocchi portable report archive");
+  exactValue(reportArchive.path, zipArtifact.evidence.path, "terminal Gnocchi portable report ZIP path");
+  exactValue(reportArchive.sha256, zipArtifact.evidence.sha256, "terminal Gnocchi portable report ZIP hash");
+  exactJson(reportArchive.entries, archive.entries, "terminal Gnocchi portable report entry inventory");
+  exactJson(reportArchive.config, archive.config, "terminal Gnocchi portable report config");
+  exactStringArray(report.screenshots, GNOCCHI_PORTABLE_SUPPLEMENT_STAGES, "terminal Gnocchi portable report screenshots");
+
+  const runtime = objectValue(report.independentRuntime, "terminal Gnocchi independent portable runtime");
+  exactValue(runtime.servedFromExtractedArchive, true, "terminal Gnocchi extracted-archive serving flag");
+  exactValue(runtime.reusedStudioOrigin, false, "terminal Gnocchi Studio-origin reuse flag");
+  exactValue(runtime.sourceApplicationFilesRequested, false, "terminal Gnocchi source-application request flag");
+  for (const [field, label] of [
+    ["objktRequests", "Objkt requests"],
+    ["teiaRequests", "Teia requests"],
+    ["wtfosRequests", "wtfOS requests"],
+    ["signerBridgeActions", "signer bridge actions"],
+  ] as const) {
+    exactValue(natValue(runtime[field], `terminal Gnocchi portable ${label}`), 0, `terminal Gnocchi portable ${label}`);
+  }
+  exactValue(runtime.appLabel, "Gnocchi · Pasta Protocol", "terminal Gnocchi portable app label");
+  exactValue(runtime.contract, input.contractAddress, "terminal Gnocchi portable runtime contract");
+  exactValue(runtime.itemId, "0", "terminal Gnocchi portable runtime token id");
+  exactValue(runtime.status, "On-chain state loaded.", "terminal Gnocchi portable runtime status");
+  stringValue(runtime.chainState, "terminal Gnocchi portable chain state");
+  exactStringArray(
+    runtime.localRequestedPaths,
+    archive.entries.map((entry) => entry.path),
+    "terminal Gnocchi portable local request inventory",
+  );
+  requireValue(
+    arrayValue(runtime.forbiddenRemoteHosts, "terminal Gnocchi portable forbidden hosts").length === 0,
+    "terminal Gnocchi portable runtime contacted a forbidden host",
+  );
+  const forbiddenHost = /(^|\.)(?:objkt\.com|objkt\.one|teia\.art|wtfos\.app|wtfos\.me)$/i;
+  arrayValue(runtime.remoteOrigins, "terminal Gnocchi portable remote origins").forEach((origin, index) => {
+    const parsed = new URL(stringValue(origin, `terminal Gnocchi portable remote origin ${index}`));
+    requireValue(!forbiddenHost.test(parsed.hostname), `terminal Gnocchi portable remote origin ${parsed.hostname} is forbidden`);
+  });
+
+  const portableSidecars: string[] = [];
+  for (const [index, expectedStage] of GNOCCHI_PORTABLE_SUPPLEMENT_STAGES.entries()) {
+    const screenshot = portableScreenshots[index];
+    const ordinal = 901 + index;
+    exactValue(screenshot.path, `screenshots/${expectedStage}.png`, `terminal Gnocchi portable screenshot ${ordinal} path`);
+    const screenshotBytes = await readRegularFile(
+      path.join(input.appRoot, stringValue(screenshot.path, `terminal Gnocchi portable screenshot ${ordinal} path`)),
+      input.appRoot,
+      `terminal Gnocchi portable screenshot ${ordinal}`,
+    );
+    const screenshotHash = requireSha256(screenshot.sha256, `terminal Gnocchi portable screenshot ${ordinal} hash`);
+    exactValue(hashBytes(screenshotBytes), screenshotHash, `terminal Gnocchi portable screenshot ${ordinal} byte hash`);
+    const sidecarId = `screenshot-sidecar-${expectedStage}`;
+    portableSidecars.push(sidecarId);
+    const sidecarArtifact = artifactById(input.artifacts, sidecarId, `terminal Gnocchi portable sidecar ${ordinal}`);
+    exactValue(sidecarArtifact.evidence.kind, "screenshot-sidecar", `terminal Gnocchi portable sidecar ${ordinal} kind`);
+    exactValue(
+      sidecarArtifact.evidence.path,
+      `artifacts/screenshot-${expectedStage}.json`,
+      `terminal Gnocchi portable sidecar ${ordinal} path`,
+    );
+    const sidecar = parseJson(sidecarArtifact.bytes, `terminal Gnocchi portable sidecar ${ordinal}`);
+    exactValue(sidecar.schema, "pastaprotocol-screenshot-evidence@1", `terminal Gnocchi portable sidecar ${ordinal} schema`);
+    exactValue(sidecar.app, "gnocchi", `terminal Gnocchi portable sidecar ${ordinal} app`);
+    exactValue(sidecar.classification, "UI-LIVE", `terminal Gnocchi portable sidecar ${ordinal} classification`);
+    exactValue(sidecar.capability, "portable self-hosted site", `terminal Gnocchi portable sidecar ${ordinal} capability`);
+    exactValue(natValue(sidecar.stageOrdinal, `terminal Gnocchi portable sidecar ${ordinal} ordinal`), ordinal, `terminal Gnocchi portable sidecar ${ordinal} ordinal`);
+    exactValue(
+      sidecar.stageName,
+      index === 0 ? "actual studio export complete" : "extracted page live independently",
+      `terminal Gnocchi portable sidecar ${ordinal} stage name`,
+    );
+    exactValue(sidecar.sha256, screenshotHash, `terminal Gnocchi portable sidecar ${ordinal} screenshot hash`);
+    exactValue(
+      natValue(sidecar.byteCount, `terminal Gnocchi portable sidecar ${ordinal} byte count`),
+      screenshotBytes.byteLength,
+      `terminal Gnocchi portable sidecar ${ordinal} byte count`,
+    );
+    const viewport = objectValue(sidecar.viewport, `terminal Gnocchi portable sidecar ${ordinal} viewport`);
+    exactJson(viewport, { width: 1440, height: 900, deviceScaleFactor: 1 }, `terminal Gnocchi portable sidecar ${ordinal} viewport`);
+    const sidecarUrl = new URL(stringValue(sidecar.url, `terminal Gnocchi portable sidecar ${ordinal} URL`));
+    exactValue(sidecarUrl.hostname, "127.0.0.1", `terminal Gnocchi portable sidecar ${ordinal} host`);
+    exactValue(
+      sidecarUrl.pathname,
+      index === 0 ? "/creation-tools/gnocchi/index.html" : "/index.html",
+      `terminal Gnocchi portable sidecar ${ordinal} page path`,
+    );
+    const requiredSelectors = index === 0
+      ? ["#btnExportSite", "#exportSiteStatus"]
+      : ["#appLabel", "#contract", "#itemId", "#status"];
+    const domEvidence = arrayValue(sidecar.domEvidence, `terminal Gnocchi portable sidecar ${ordinal} DOM evidence`)
+      .map((value, domIndex) => objectValue(value, `terminal Gnocchi portable sidecar ${ordinal} DOM evidence ${domIndex}`));
+    exactStringArray(domEvidence.map((record) => record.selector), requiredSelectors, `terminal Gnocchi portable sidecar ${ordinal} DOM selectors`);
+    domEvidence.forEach((record, domIndex) => {
+      exactValue(natValue(record.matchCount, `terminal Gnocchi portable DOM match ${domIndex}`), 1, `terminal Gnocchi portable DOM match ${domIndex}`);
+      exactValue(natValue(record.selectedIndex, `terminal Gnocchi portable DOM selection ${domIndex}`), 0, `terminal Gnocchi portable DOM selection ${domIndex}`);
+      stringValue(record.text, `terminal Gnocchi portable DOM text ${domIndex}`);
+    });
+  }
+
+  const portableCapability = input.capabilities[1];
+  exactValue(portableCapability.id, "portable-self-hosted-site", "terminal Gnocchi portable capability id");
+  const portableEvidence = objectValue(portableCapability.evidence, "terminal Gnocchi portable capability evidence");
+  exactStringArray(portableEvidence.screenshots, GNOCCHI_PORTABLE_SUPPLEMENT_STAGES, "terminal Gnocchi portable capability screenshots");
+  exactStringArray(portableEvidence.artifacts, [
+    zipArtifact.evidence.id,
+    reportArtifact.evidence.id,
+    ...portableSidecars,
+  ], "terminal Gnocchi portable capability artifacts");
+  exactStringArray(portableEvidence.contracts, [input.contractAddress], "terminal Gnocchi portable capability contracts");
+  exactStringArray(portableEvidence.tokens, ["gnocchi-token-0"], "terminal Gnocchi portable capability tokens");
+  exactStringArray(portableEvidence.urls, [subject.token.explorerUrl], "terminal Gnocchi portable capability URLs");
+  requireValue(arrayValue(portableEvidence.operations, "terminal Gnocchi portable capability operations").length === 0, "terminal Gnocchi portable capability must not claim an operation");
+  requireValue(arrayValue(portableEvidence.roleEvidence, "terminal Gnocchi portable role evidence").length === 0, "terminal Gnocchi portable capability must not claim role evidence");
+}
+
+async function validateTerminalGnocchiRecovery(input: {
+  receipt: JsonObject;
+  manifest: JsonObject;
+  artifacts: Map<string, LoadedArtifact>;
+  appRoot: string;
+  runId: string;
+  contractAddress: string;
+  creator: string;
+  operations: JsonObject[];
+  reconciliation: JsonObject;
+  receiptScreenshots: JsonObject[];
+  manifestScreenshots: JsonObject[];
+}): Promise<void> {
+  exactValue(input.runId, GNOCCHI_TERMINAL_RECOVERY_RUN_ID, "terminal Gnocchi run id");
+  exactValue(input.contractAddress, GNOCCHI_TERMINAL_RECOVERY_CONTRACT, "terminal Gnocchi contract");
+  exactValue(input.creator, GNOCCHI_TERMINAL_RECOVERY_CREATOR, "terminal Gnocchi creator");
+  exactValue(
+    objectValue(input.receipt.actors, "terminal Gnocchi actors").collectorOne,
+    "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej",
+    "terminal Gnocchi collector one",
+  );
+  exactValue(
+    objectValue(input.receipt.actors, "terminal Gnocchi actors").collectorTwo,
+    "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+    "terminal Gnocchi collector two",
+  );
+
+  const operationHashes = GNOCCHI_TERMINAL_OPERATION_PLAN.map(({ hash }) => hash);
+  input.operations.forEach((operation, index) => {
+    const expected = GNOCCHI_TERMINAL_OPERATION_PLAN[index];
+    exactValue(operation.operationHash, expected.hash, `terminal Gnocchi operation ${index} hash`);
+    exactValue(natValue(operation.level, `terminal Gnocchi operation ${index} level`), expected.level, `terminal Gnocchi operation ${index} level`);
+    exactValue(natValue(operation.counter, `terminal Gnocchi operation ${index} counter`), expected.counter, `terminal Gnocchi operation ${index} counter`);
+    exactValue(operation.timestampUtc, expected.timestamp, `terminal Gnocchi operation ${index} timestamp`);
+    exactValue(operation.signerAddress, expected.sender, `terminal Gnocchi operation ${index} signer`);
+    exactValue(operation.action, expected.action, `terminal Gnocchi operation ${index} action`);
+    if (expected.entrypoint === undefined) {
+      requireValue(
+        operation.entrypoints === undefined || operation.entrypoints === null,
+        "terminal Gnocchi origination must not expose an entrypoint",
+      );
+    } else {
+      exactJson(operation.entrypoints, [expected.entrypoint], `terminal Gnocchi operation ${index} entrypoint`);
+    }
+  });
+
+  exactStringArray(
+    input.receiptScreenshots.map((screenshot) => screenshot.stage),
+    GNOCCHI_TERMINAL_LIFECYCLE_STAGES,
+    "terminal Gnocchi lifecycle receipt stages",
+  );
+  for (const [index, stage] of GNOCCHI_TERMINAL_LIFECYCLE_STAGES.entries()) {
+    exactValue(input.receiptScreenshots[index].path, `screenshots/${stage}.png`, `terminal Gnocchi lifecycle screenshot ${index + 1} path`);
+  }
+
+  const terminalArtifact = artifactByPath(
+    input.artifacts,
+    GNOCCHI_TERMINAL_RECOVERY_RECEIPT_PATH,
+    "ui-live-terminal-readonly-recovery-receipt",
+    "terminal Gnocchi recovery receipt",
+  );
+  exactValue(terminalArtifact.evidence.id, "gnocchi-terminal-readonly-recovery", "terminal Gnocchi recovery artifact id");
+  exactValue(terminalArtifact.raw.durability, "package-only", "terminal Gnocchi recovery artifact durability");
+  const terminalReceipt = parseJson(terminalArtifact.bytes, "terminal Gnocchi recovery receipt");
+  validateTerminalBridge(terminalReceipt.bridge, "terminal Gnocchi bridge audit");
+  externalValidation("terminal Gnocchi recovery receipt", () => {
+    validateGnocchiTerminalRecoveryReceipt({
+      receipt: terminalReceipt,
+      runId: input.runId,
+      contractAddress: input.contractAddress,
+      operationHashes,
+    });
+  });
+
+  const operationGraph = objectValue(terminalReceipt.operationGraph, "terminal Gnocchi operation graph");
+  const expectedOperationGraphSha256 = hashBytes(deterministicJsonBytes(
+    GNOCCHI_TERMINAL_OPERATION_PLAN.map((operation) => ({ ...operation, contractAddress: input.contractAddress })),
+  ));
+  exactValue(operationGraph.operationGraphSha256, expectedOperationGraphSha256, "terminal Gnocchi operation-graph hash");
+  exactValue(operationGraph.terminalOperationAlreadyApplied, true, "terminal Gnocchi terminal-operation applied flag");
+  exactValue(natValue(operationGraph.replayedOperations, "terminal Gnocchi replayed operations"), 0, "terminal Gnocchi replayed operations");
+
+  const terminalState = objectValue(terminalReceipt.terminalState, "terminal Gnocchi terminal state");
+  const supplies = arrayValue(terminalState.supplies, "terminal Gnocchi terminal supplies")
+    .map((value, index) => natValue(value, `terminal Gnocchi terminal supply ${index}`));
+  exactJson(supplies, [4, 4, 3], "terminal Gnocchi terminal supplies");
+  const before = terminalSnapshot(terminalReceipt.before, supplies, "terminal Gnocchi before snapshot");
+  const after = terminalSnapshot(terminalReceipt.after, supplies, "terminal Gnocchi after snapshot");
+  externalValidation("terminal Gnocchi zero-write before/after proof", () => {
+    assertGnocchiTerminalSnapshotUnchanged(before, after);
+  });
+  exactValue(before.operationGraphSha256, expectedOperationGraphSha256, "terminal Gnocchi before operation-graph hash");
+  exactValue(after.operationGraphSha256, expectedOperationGraphSha256, "terminal Gnocchi after operation-graph hash");
+  const beforeRpc = validateTerminalRpcSnapshot(
+    objectValue(terminalReceipt.before, "terminal Gnocchi before snapshot").rpc,
+    before,
+    "terminal Gnocchi before RPC evidence",
+  );
+  const afterRpc = validateTerminalRpcSnapshot(
+    objectValue(terminalReceipt.after, "terminal Gnocchi after snapshot").rpc,
+    after,
+    "terminal Gnocchi after RPC evidence",
+  );
+  exactJson(afterRpc, beforeRpc, "terminal Gnocchi before/after RPC state");
+
+  const terminalContent = arrayValue(terminalReceipt.contentArtifacts, "terminal Gnocchi content artifacts")
+    .map((value, index) => objectValue(value, `terminal Gnocchi content artifact ${index}`));
+  requireValue(terminalContent.length === GNOCCHI_TERMINAL_CONTENT_IDS.length, "terminal Gnocchi receipt must bind exactly seven content artifacts");
+  terminalContent.forEach((record, index) => {
+    const id = GNOCCHI_TERMINAL_CONTENT_IDS[index];
+    exactValue(record.id, id, `terminal Gnocchi content artifact ${index} id`);
+    const packaged = artifactById(input.artifacts, id, `terminal Gnocchi content artifact ${index}`);
+    exactValue(record.path, packaged.evidence.path, `terminal Gnocchi content artifact ${id} path`);
+    exactValue(record.sha256, packaged.evidence.sha256, `terminal Gnocchi content artifact ${id} hash`);
+    exactValue(record.ipfsUri, packaged.evidence.ipfsUri, `terminal Gnocchi content artifact ${id} URI`);
+    exactValue(record.ipfsUri, `ipfs://${stringValue(record.cid, `terminal Gnocchi content artifact ${id} CID`)}`, `terminal Gnocchi content artifact ${id} CID binding`);
+    exactValue(
+      natValue(record.byteLength, `terminal Gnocchi content artifact ${id} byte length`),
+      packaged.bytes.byteLength,
+      `terminal Gnocchi content artifact ${id} byte length`,
+    );
+  });
+
+  const terminalScreenshots = arrayValue(terminalReceipt.screenshots, "terminal Gnocchi recovery screenshots")
+    .map((value, index) => objectValue(value, `terminal Gnocchi recovery screenshot ${index}`));
+  for (const [index, ordinal] of [18, 19].entries()) {
+    const terminalScreenshot = terminalScreenshots[index];
+    const lifecycleScreenshot = input.receiptScreenshots[ordinal - 1];
+    exactValue(terminalScreenshot.path, lifecycleScreenshot.path, `terminal Gnocchi recovered screenshot ${ordinal} path`);
+    exactValue(terminalScreenshot.sha256, lifecycleScreenshot.sha256, `terminal Gnocchi recovered screenshot ${ordinal} hash`);
+    const sidecarStage = GNOCCHI_TERMINAL_LIFECYCLE_STAGES[ordinal - 1];
+    const sidecar = artifactById(input.artifacts, `screenshot-sidecar-${sidecarStage}`, `terminal Gnocchi recovered sidecar ${ordinal}`);
+    exactValue(terminalScreenshot.sidecarPath, sidecar.evidence.path, `terminal Gnocchi recovered sidecar ${ordinal} path`);
+    exactValue(terminalScreenshot.sidecarSha256, sidecar.evidence.sha256, `terminal Gnocchi recovered sidecar ${ordinal} hash`);
+  }
+
+  const expectedTerminalSummary = {
+    receiptSha256: terminalArtifact.evidence.sha256,
+    prefix: terminalReceipt.prefix,
+    operationGraph: terminalReceipt.operationGraph,
+    terminalState: terminalReceipt.terminalState,
+    bridge: terminalReceipt.bridge,
+    unchanged: terminalReceipt.unchanged,
+    recoveredScreenshotOrdinals: [18, 19],
+    replayedAppliedOperations: 0,
+  };
+  exactJson(input.receipt.terminalRecovery, expectedTerminalSummary, "terminal Gnocchi finalization summary");
+  exactJson(input.reconciliation.terminalRecovery, expectedTerminalSummary, "terminal Gnocchi reconciliation summary");
+
+  const reconciliationNetwork = input.reconciliation.network;
+  exactValue(reconciliationNetwork, FRESH_RAVIOLI_NETWORK, "terminal Gnocchi reconciliation network");
+  exactValue(input.reconciliation.chainId, FRESH_RAVIOLI_CHAIN_ID, "terminal Gnocchi reconciliation chain id");
+  exactJson(input.reconciliation.actors, input.receipt.actors, "terminal Gnocchi reconciliation actors");
+  const originalFailure = objectValue(input.reconciliation.originalFailure, "terminal Gnocchi original failure");
+  exactJson(originalFailure, {
+    code: "POST_CONFIRMATION_TERMINAL_SCREENSHOT_MISSING",
+    stage: "after-collector-two-token-two-mint-before-terminal-screenshot",
+    chainMutationApplied: true,
+    ordinaryRerunForbidden: true,
+    bridgeReceiptStreamAvailable: false,
+    bridgeReceiptStreamSynthesized: false,
+  }, "terminal Gnocchi original failure");
+  const reconciliationSideEffects = objectValue(input.reconciliation.sideEffects, "terminal Gnocchi reconciliation side effects");
+  exactValue(reconciliationSideEffects.signerMaterialLoaded, false, "terminal Gnocchi reconciliation signer-material flag");
+  exactValue(natValue(reconciliationSideEffects.chainWrites, "terminal Gnocchi reconciliation chain writes"), 0, "terminal Gnocchi reconciliation chain writes");
+  exactValue(natValue(reconciliationSideEffects.ipfsWrites, "terminal Gnocchi reconciliation IPFS writes"), 0, "terminal Gnocchi reconciliation IPFS writes");
+  exactStringArray(reconciliationSideEffects.httpMethods, ["GET"], "terminal Gnocchi reconciliation HTTP methods");
+  exactJson(input.reconciliation.operations, input.operations, "terminal Gnocchi reconciliation operation graph");
+
+  const historicalArtifact = artifactByPath(
+    input.artifacts,
+    "artifacts/gnocchi-proof-time-indexer-snapshot.json",
+    "historical-indexer-snapshot",
+    "terminal Gnocchi historical indexer snapshot",
+  );
+  exactValue(historicalArtifact.evidence.id, "gnocchi-proof-time-indexer-snapshot", "terminal Gnocchi historical snapshot id");
+  validateHistoricalGnocchiSnapshot({
+    artifact: historicalArtifact,
+    runId: input.runId,
+    contractAddress: input.contractAddress,
+    operationHashes,
+  });
+
+  const expectedArtifactIds = [...GNOCCHI_TERMINAL_CORE_ARTIFACT_IDS, ...GNOCCHI_PORTABLE_ARTIFACT_IDS];
+  exactJson(Array.from(input.artifacts.keys()), expectedArtifactIds, "terminal Gnocchi manifest artifact inventory");
+  const capabilities = arrayValue(input.manifest.capabilities, "terminal Gnocchi capabilities")
+    .map((value, index) => objectValue(value, `terminal Gnocchi capability ${index}`));
+  requireValue(capabilities.length === 2, "terminal Gnocchi manifest must contain exactly lifecycle and portable capabilities");
+  exactValue(capabilities[0].id, "three-policy-collector-and-lifecycle-proof", "terminal Gnocchi lifecycle capability id");
+  const lifecycleEvidence = objectValue(capabilities[0].evidence, "terminal Gnocchi lifecycle capability evidence");
+  exactStringArray(lifecycleEvidence.artifacts, GNOCCHI_TERMINAL_CORE_ARTIFACT_IDS, "terminal Gnocchi lifecycle capability artifacts");
+  exactStringArray(lifecycleEvidence.contracts, [input.contractAddress], "terminal Gnocchi lifecycle capability contracts");
+  exactStringArray(lifecycleEvidence.operations, operationHashes, "terminal Gnocchi lifecycle capability operations");
+  exactStringArray(lifecycleEvidence.screenshots, GNOCCHI_TERMINAL_LIFECYCLE_STAGES, "terminal Gnocchi lifecycle capability screenshots");
+  exactStringArray(lifecycleEvidence.tokens, ["gnocchi-token-0", "gnocchi-token-1", "gnocchi-token-2"], "terminal Gnocchi lifecycle capability tokens");
+  requireValue(arrayValue(lifecycleEvidence.roleEvidence, "terminal Gnocchi lifecycle role evidence").length === 0, "terminal Gnocchi lifecycle capability must not claim role evidence");
+
+  await validateTerminalPortableSupplement({
+    manifest: input.manifest,
+    artifacts: input.artifacts,
+    appRoot: input.appRoot,
+    runId: input.runId,
+    contractAddress: input.contractAddress,
+    manifestScreenshots: input.manifestScreenshots,
+    capabilities,
+  });
+}
+
 async function validateRecoveredGnocchiReceipt(input: {
   receipt: JsonObject;
   manifest: JsonObject;
@@ -887,7 +1634,11 @@ async function validateRecoveredGnocchiReceipt(input: {
     const expectedEntrypoint = expectedEntrypoints[index];
     if (expectedEntrypoint === undefined) {
       exactValue(operation.action, "originate", "recovered Gnocchi first operation action");
-      requireValue(operation.entrypoints === undefined, "recovered Gnocchi origination must not expose an entrypoint");
+      requireValue(
+        operation.entrypoints === undefined ||
+          (classification === GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION && operation.entrypoints === null),
+        "recovered Gnocchi origination must not expose an entrypoint",
+      );
       exactValue(operation.signerAddress, input.creator, "recovered Gnocchi origination signer");
     } else {
       exactValue(operation.action, "call", `recovered Gnocchi operation ${index} action`);
@@ -908,7 +1659,16 @@ async function validateRecoveredGnocchiReceipt(input: {
   const receiptScreenshots = arrayValue(input.receipt.screenshots, "recovered Gnocchi receipt screenshots");
   const manifestScreenshots = arrayValue(input.manifest.screenshots, "recovered Gnocchi manifest screenshots");
   const sidecars = arrayValue(input.receipt.screenshotSidecars, "recovered Gnocchi screenshot sidecars");
-  requireValue(receiptScreenshots.length === 19 && manifestScreenshots.length === 19 && sidecars.length === 19, "recovered Gnocchi must bind exactly 19 screenshots and sidecars");
+  requireValue(
+    receiptScreenshots.length === 19 && sidecars.length === 19,
+    "recovered Gnocchi lifecycle receipt must bind exactly 19 screenshots and sidecars",
+  );
+  requireValue(
+    manifestScreenshots.length === (classification === GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION ? 21 : 19),
+    classification === GNOCCHI_TERMINAL_RECOVERY_CLASSIFICATION
+      ? "terminal Gnocchi manifest must bind exactly 21 screenshots (001-019 plus 901/902)"
+      : "recovered Gnocchi manifest must bind exactly 19 screenshots",
+  );
   for (let index = 0; index < 19; index += 1) {
     const receiptScreenshot = objectValue(receiptScreenshots[index], `recovered Gnocchi receipt screenshot ${index}`);
     const manifestScreenshot = objectValue(manifestScreenshots[index], `recovered Gnocchi manifest screenshot ${index}`);
@@ -922,9 +1682,15 @@ async function validateRecoveredGnocchiReceipt(input: {
     exactValue(sidecarReference.sha256, sidecarArtifact.evidence.sha256, `recovered Gnocchi sidecar ${index} hash`);
     const sidecar = parseJson(sidecarArtifact.bytes, `recovered Gnocchi sidecar ${index}`);
     exactValue(sidecar.schema, "pastaprotocol-screenshot-evidence@1", `recovered Gnocchi sidecar ${index} schema`);
+    exactValue(sidecar.app, "gnocchi", `recovered Gnocchi sidecar ${index} app`);
     exactValue(sidecar.classification, "UI-LIVE", `recovered Gnocchi sidecar ${index} classification`);
     exactValue(natValue(sidecar.stageOrdinal, `recovered Gnocchi sidecar ${index} ordinal`), index + 1, `recovered Gnocchi sidecar ${index} ordinal`);
     exactValue(sidecar.sha256, receiptScreenshot.sha256, `recovered Gnocchi sidecar ${index} screenshot hash`);
+    exactValue(
+      natValue(sidecar.byteCount, `recovered Gnocchi sidecar ${index} byte count`),
+      screenshotBytes.byteLength,
+      `recovered Gnocchi sidecar ${index} byte count`,
+    );
   }
 
   const reconciliationReference = objectValue(input.receipt.chainReconciliation, "recovered Gnocchi chain reconciliation reference");
@@ -954,7 +1720,7 @@ async function validateRecoveredGnocchiReceipt(input: {
       contractAddress: input.contractAddress,
       operations,
     });
-  } else {
+  } else if (classification === GNOCCHI_READ_ONLY_FINALIZATION_CLASSIFICATION) {
     requireValue(
       !("recovery" in input.receipt),
       "historical read-only Gnocchi finalization must not carry checkpointed recovery evidence",
@@ -974,6 +1740,24 @@ async function validateRecoveredGnocchiReceipt(input: {
       checkpointArtifacts.length === 0,
       "historical read-only Gnocchi finalization must not disguise checkpointed recovery artifacts",
     );
+  } else {
+    await validateTerminalGnocchiRecovery({
+      receipt: input.receipt,
+      manifest: input.manifest,
+      artifacts: input.artifacts,
+      appRoot: input.appRoot,
+      runId: input.runId,
+      contractAddress: input.contractAddress,
+      creator: input.creator,
+      operations,
+      reconciliation,
+      receiptScreenshots: receiptScreenshots.map((value, index) =>
+        objectValue(value, `terminal Gnocchi receipt screenshot ${index}`)
+      ),
+      manifestScreenshots: manifestScreenshots.map((value, index) =>
+        objectValue(value, `terminal Gnocchi manifest screenshot ${index}`)
+      ),
+    });
   }
 }
 
@@ -2084,13 +2868,37 @@ type GnocchiOperatorExpectation =
       appliedLevel: number;
     }>
   | Readonly<{
-      kind: "current-v3" | "current-v5" | "current-v6";
+      kind: "current-v3" | "current-op14" | "current-op20" | "current-v5" | "current-v6";
       routerAddress: string;
       mode0AppliedLevel: number;
       mode1AppliedLevel: number;
       gnocchiAdapterAddress?: string;
       minterAppliedLevel?: number;
       reservedMintAppliedLevel?: number;
+    }>
+  | Readonly<{
+      kind: "current-op55";
+      routerAddress: string;
+      gnocchiAdapterAddress: string;
+      mode0AppliedLevel: number;
+      mode1AppliedLevel: number;
+      minterAppliedLevel: number;
+      minterSecondAppliedLevel: number;
+      mode1SecondAppliedLevel: number;
+    }>
+  | Readonly<{
+      kind: "current-op63";
+      routerAddress: string;
+      gnocchiAdapterAddress: string;
+      mode0AppliedLevel: number;
+      mode1AppliedLevel: number;
+      minterAppliedLevel: number;
+      minterSecondAppliedLevel: number;
+      mode1SecondAppliedLevel: number;
+      minterThirdAppliedLevel: number;
+      reservedMintFirstAppliedLevel: number;
+      reservedMintAppliedLevel: number;
+      adapterRecoveryAppliedLevel?: number;
     }>;
 
 const FRESH_GNOCCHI_OPERATOR_EXPECTATION: GnocchiOperatorExpectation = Object.freeze({ kind: "fresh" });
@@ -2138,7 +2946,7 @@ function validateExactMode0RecoveryOperator(
 function validateCurrentV3RecoveryOperators(
   evidence: FreshRavioliDependencies,
   value: unknown,
-  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-v3" | "current-v5" | "current-v6" }>,
+  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-v3" | "current-op14" | "current-op20" | "current-v5" | "current-v6" }>,
 ): void {
   const entries = arrayValue(value, "live Gnocchi active operators");
   requireValue(
@@ -2184,34 +2992,224 @@ function validateCurrentV3RecoveryOperators(
   }
 }
 
+function validateCurrentTerminalRecoveryOperators(
+  evidence: FreshRavioliDependencies,
+  value: unknown,
+  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-op55" | "current-op63" }>,
+): void {
+  const boundary = expectation.kind === "current-op63" ? "operation-63" : "operation-55";
+  const entries = arrayValue(value, "live Gnocchi active operators");
+  requireValue(
+    entries.length === 2,
+    `live Gnocchi ${boundary} active operators must contain exactly the two journal-bound pool operators; received ${entries.length}`,
+  );
+  const seenTokenIds = new Set<number>();
+  const rows = new Map(entries.map((entry, index) => {
+    const row = objectValue(entry, `live Gnocchi ${boundary} operator row ${index}`);
+    exactValue(row.active, true, `live Gnocchi ${boundary} operator row ${index} active marker`);
+    const key = objectValue(row.key, `live Gnocchi ${boundary} operator row ${index} key`);
+    exactRecordKeys(key, ["owner", "operator", "token_id"], `live Gnocchi ${boundary} operator row ${index} key`);
+    exactValue(key.owner, evidence.creator, `live Gnocchi ${boundary} operator row ${index} owner`);
+    exactValue(key.operator, expectation.routerAddress, `live Gnocchi ${boundary} operator row ${index} contract`);
+    const tokenId = natValue(key.token_id, `live Gnocchi ${boundary} operator row ${index} token id`);
+    requireValue(tokenId === 0 || tokenId === 1, `live Gnocchi ${boundary} operator token id must be 0 or 1; received ${tokenId}`);
+    requireValue(!seenTokenIds.has(tokenId), `live Gnocchi ${boundary} operator token ${tokenId} is duplicated`);
+    seenTokenIds.add(tokenId);
+    exactRecordKeys(
+      objectValue(row.value, `live Gnocchi ${boundary} operator row ${index} unit value`),
+      [],
+      `live Gnocchi ${boundary} operator row ${index} unit value`,
+    );
+    return [tokenId, row] as const;
+  }));
+
+  const token0 = rows.get(0);
+  requireValue(token0, `live Gnocchi ${boundary} operator token 0 is missing`);
+  exactValue(
+    natValue(token0.firstLevel, `live Gnocchi ${boundary} operator token 0 first level`),
+    expectation.mode0AppliedLevel,
+    `live Gnocchi ${boundary} operator token 0 first level`,
+  );
+  exactValue(
+    natValue(token0.lastLevel, `live Gnocchi ${boundary} operator token 0 last level`),
+    expectation.mode1AppliedLevel,
+    `live Gnocchi ${boundary} operator token 0 last level`,
+  );
+  exactValue(
+    natValue(token0.updates, `live Gnocchi ${boundary} operator token 0 updates`),
+    2,
+    `live Gnocchi ${boundary} operator token 0 updates`,
+  );
+
+  const token1 = rows.get(1);
+  requireValue(token1, `live Gnocchi ${boundary} operator token 1 is missing`);
+  exactValue(
+    natValue(token1.firstLevel, `live Gnocchi ${boundary} operator token 1 first level`),
+    expectation.mode1AppliedLevel,
+    `live Gnocchi ${boundary} operator token 1 first level`,
+  );
+  exactValue(
+    natValue(token1.lastLevel, `live Gnocchi ${boundary} operator token 1 last level`),
+    expectation.mode1SecondAppliedLevel,
+    `live Gnocchi ${boundary} operator token 1 last level`,
+  );
+  exactValue(
+    natValue(token1.updates, `live Gnocchi ${boundary} operator token 1 updates`),
+    2,
+    `live Gnocchi ${boundary} operator token 1 updates`,
+  );
+}
+
+function validateCurrentMinter(
+  snapshot: FreshGnocchiLiveSnapshot,
+  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-op20" | "current-v6" }>,
+): void {
+  const adapter = requireContractAddress(
+    expectation.gnocchiAdapterAddress,
+    "Ravioli current Gnocchi adapter",
+  );
+  const minterLevel = natValue(
+    expectation.minterAppliedLevel,
+    "Ravioli current minter applied level",
+  );
+  requireValue(minterLevel > expectation.mode1AppliedLevel, "Ravioli current minter must follow funded-pool authorization");
+
+  const minters = arrayValue(snapshot.authorizedMinters, "live Gnocchi authorized minters");
+  requireValue(minters.length === 1, "live Gnocchi authorized minters must contain only the journal-bound adapter");
+  const minter = objectValue(minters[0], "live Gnocchi current minter");
+  exactValue(minter.active, true, "live Gnocchi current minter active marker");
+  exactValue(minter.key, adapter, "live Gnocchi current minter key");
+  exactRecordKeys(objectValue(minter.value, "live Gnocchi current minter value"), [], "live Gnocchi current minter value");
+  exactValue(natValue(minter.firstLevel, "live Gnocchi current minter first level"), minterLevel, "live Gnocchi current minter first level");
+  exactValue(natValue(minter.lastLevel, "live Gnocchi current minter last level"), minterLevel, "live Gnocchi current minter last level");
+  exactValue(natValue(minter.updates, "live Gnocchi current minter updates"), 1, "live Gnocchi current minter updates");
+}
+
+function validateCurrentOp55Minter(
+  snapshot: FreshGnocchiLiveSnapshot,
+  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-op55" }>,
+): void {
+  const minters = arrayValue(snapshot.authorizedMinters, "live Gnocchi authorized minters");
+  requireValue(
+    minters.length === 1,
+    "live Gnocchi operation-55 authorized minters must contain only the journal-bound adapter",
+  );
+  const minter = objectValue(minters[0], "live Gnocchi operation-55 minter");
+  exactValue(minter.active, true, "live Gnocchi operation-55 minter active marker");
+  exactValue(minter.key, expectation.gnocchiAdapterAddress, "live Gnocchi operation-55 minter key");
+  exactRecordKeys(
+    objectValue(minter.value, "live Gnocchi operation-55 minter value"),
+    [],
+    "live Gnocchi operation-55 minter value",
+  );
+  exactValue(
+    natValue(minter.firstLevel, "live Gnocchi operation-55 minter first level"),
+    expectation.minterAppliedLevel,
+    "live Gnocchi operation-55 minter first level",
+  );
+  exactValue(
+    natValue(minter.lastLevel, "live Gnocchi operation-55 minter last level"),
+    expectation.minterSecondAppliedLevel,
+    "live Gnocchi operation-55 minter last level",
+  );
+  exactValue(
+    natValue(minter.updates, "live Gnocchi operation-55 minter updates"),
+    2,
+    "live Gnocchi operation-55 minter updates",
+  );
+}
+
+function validateCurrentOp63MinterAndReservation(
+  snapshot: FreshGnocchiLiveSnapshot,
+  expectation: Extract<GnocchiOperatorExpectation, { kind: "current-op63" }>,
+): void {
+  const minters = arrayValue(snapshot.authorizedMinters, "live Gnocchi authorized minters");
+  requireValue(
+    minters.length === 1,
+    "live Gnocchi operation-63 authorized minters must contain only the journal-bound adapter",
+  );
+  const minter = objectValue(minters[0], "live Gnocchi operation-63 minter");
+  exactValue(minter.active, true, "live Gnocchi operation-63 minter active marker");
+  exactValue(minter.key, expectation.gnocchiAdapterAddress, "live Gnocchi operation-63 minter key");
+  exactRecordKeys(
+    objectValue(minter.value, "live Gnocchi operation-63 minter value"),
+    [],
+    "live Gnocchi operation-63 minter value",
+  );
+  exactValue(
+    natValue(minter.firstLevel, "live Gnocchi operation-63 minter first level"),
+    expectation.minterAppliedLevel,
+    "live Gnocchi operation-63 minter first level",
+  );
+  exactValue(
+    natValue(minter.lastLevel, "live Gnocchi operation-63 minter last level"),
+    expectation.minterThirdAppliedLevel,
+    "live Gnocchi operation-63 minter last level",
+  );
+  exactValue(
+    natValue(minter.updates, "live Gnocchi operation-63 minter updates"),
+    3,
+    "live Gnocchi operation-63 minter updates",
+  );
+
+  const reservations = arrayValue(snapshot.reservedMints, "live Gnocchi reserved mints");
+  if (expectation.adapterRecoveryAppliedLevel !== undefined) {
+    requireValue(
+      reservations.length === 0,
+      "live Gnocchi operation-67 reserved mints must be empty after child-capacity recovery",
+    );
+    return;
+  }
+  requireValue(
+    reservations.length === 1,
+    "live Gnocchi operation-63 reserved mints must contain only the journal-bound token-1 allocation",
+  );
+  const reservation = objectValue(reservations[0], "live Gnocchi operation-63 reservation");
+  exactValue(reservation.active, true, "live Gnocchi operation-63 reservation active marker");
+  const key = objectValue(reservation.key, "live Gnocchi operation-63 reservation key");
+  exactRecordKeys(key, ["owner", "token_id"], "live Gnocchi operation-63 reservation key");
+  exactValue(key.owner, expectation.gnocchiAdapterAddress, "live Gnocchi operation-63 reservation owner");
+  exactValue(
+    natValue(key.token_id, "live Gnocchi operation-63 reservation token"),
+    1,
+    "live Gnocchi operation-63 reservation token",
+  );
+  exactValue(
+    natValue(reservation.value, "live Gnocchi operation-63 reservation amount"),
+    2,
+    "live Gnocchi operation-63 reservation amount",
+  );
+  exactValue(
+    natValue(reservation.firstLevel, "live Gnocchi operation-63 reservation first level"),
+    expectation.reservedMintFirstAppliedLevel,
+    "live Gnocchi operation-63 reservation first level",
+  );
+  exactValue(
+    natValue(reservation.lastLevel, "live Gnocchi operation-63 reservation last level"),
+    expectation.reservedMintAppliedLevel,
+    "live Gnocchi operation-63 reservation last level",
+  );
+  exactValue(
+    natValue(reservation.updates, "live Gnocchi operation-63 reservation updates"),
+    4,
+    "live Gnocchi operation-63 reservation updates",
+  );
+}
+
 function validateCurrentV6MinterAndReservation(
   snapshot: FreshGnocchiLiveSnapshot,
   expectation: Extract<GnocchiOperatorExpectation, { kind: "current-v6" }>,
 ): void {
+  validateCurrentMinter(snapshot, expectation);
   const adapter = requireContractAddress(
     expectation.gnocchiAdapterAddress,
     "Ravioli current-v6 Gnocchi adapter",
-  );
-  const minterLevel = natValue(
-    expectation.minterAppliedLevel,
-    "Ravioli current-v6 minter applied level",
   );
   const reservationLevel = natValue(
     expectation.reservedMintAppliedLevel,
     "Ravioli current-v6 reservation applied level",
   );
-  requireValue(minterLevel > expectation.mode1AppliedLevel, "Ravioli current-v6 minter must follow funded-pool authorization");
-  requireValue(reservationLevel > minterLevel, "Ravioli current-v6 reservation must follow minter authorization");
-
-  const minters = arrayValue(snapshot.authorizedMinters, "live Gnocchi authorized minters");
-  requireValue(minters.length === 1, "live Gnocchi authorized minters must contain only the journal-bound adapter");
-  const minter = objectValue(minters[0], "live Gnocchi current-v6 minter");
-  exactValue(minter.active, true, "live Gnocchi current-v6 minter active marker");
-  exactValue(minter.key, adapter, "live Gnocchi current-v6 minter key");
-  exactRecordKeys(objectValue(minter.value, "live Gnocchi current-v6 minter value"), [], "live Gnocchi current-v6 minter value");
-  exactValue(natValue(minter.firstLevel, "live Gnocchi current-v6 minter first level"), minterLevel, "live Gnocchi current-v6 minter first level");
-  exactValue(natValue(minter.lastLevel, "live Gnocchi current-v6 minter last level"), minterLevel, "live Gnocchi current-v6 minter last level");
-  exactValue(natValue(minter.updates, "live Gnocchi current-v6 minter updates"), 1, "live Gnocchi current-v6 minter updates");
+  requireValue(reservationLevel > expectation.minterAppliedLevel!, "Ravioli current-v6 reservation must follow minter authorization");
 
   const reservations = arrayValue(snapshot.reservedMints, "live Gnocchi reserved mints");
   requireValue(reservations.length === 1, "live Gnocchi reserved mints must contain only the journal-bound LE reservation");
@@ -2248,7 +3246,7 @@ function validateGnocchiLive(
   exactRecordKeys(balances, ["0", "1"], "live Gnocchi creator escrow balances");
   exactValue(
     natValue(balances["0"], "live Gnocchi token 0 escrow balance"),
-    operatorExpectation.kind === "current-v5" || operatorExpectation.kind === "current-v6"
+    operatorExpectation.kind === "current-op14" || operatorExpectation.kind === "current-op20" || operatorExpectation.kind === "current-v5" || operatorExpectation.kind === "current-v6" || operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63"
       ? 0
       : operatorExpectation.kind === "current-v2" || operatorExpectation.kind === "current-v3"
         ? 1
@@ -2257,9 +3255,9 @@ function validateGnocchiLive(
   );
   exactValue(
     natValue(balances["1"], "live Gnocchi token 1 escrow balance"),
-    operatorExpectation.kind === "current-v5"
+    operatorExpectation.kind === "current-v5" || operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63"
       ? 0
-      : operatorExpectation.kind === "current-v6"
+      : operatorExpectation.kind === "current-op14" || operatorExpectation.kind === "current-op20" || operatorExpectation.kind === "current-v6"
         ? 1
         : 2,
     "live Gnocchi token 1 escrow balance",
@@ -2267,8 +3265,12 @@ function validateGnocchiLive(
   if (
     operatorExpectation.kind === "current-v2"
     || operatorExpectation.kind === "current-v3"
+    || operatorExpectation.kind === "current-op14"
+    || operatorExpectation.kind === "current-op20"
     || operatorExpectation.kind === "current-v5"
     || operatorExpectation.kind === "current-v6"
+    || operatorExpectation.kind === "current-op55"
+    || operatorExpectation.kind === "current-op63"
   ) {
     const routerBalances = objectValue(
       snapshot.recoveryRouterEscrowBalances,
@@ -2277,28 +3279,42 @@ function validateGnocchiLive(
     exactRecordKeys(
       routerBalances,
       operatorExpectation.kind === "current-v3"
+        || operatorExpectation.kind === "current-op14"
+        || operatorExpectation.kind === "current-op20"
         || operatorExpectation.kind === "current-v5"
         || operatorExpectation.kind === "current-v6"
+        || operatorExpectation.kind === "current-op55"
+        || operatorExpectation.kind === "current-op63"
         ? ["0", "1"]
         : ["0"],
       "live Gnocchi recovery router escrow balances",
     );
     exactValue(
       natValue(routerBalances["0"], "live Gnocchi recovery router token 0 escrow balance"),
-      operatorExpectation.kind === "current-v5" || operatorExpectation.kind === "current-v6"
-        ? 2
+      operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63"
+        ? 0
+        : operatorExpectation.kind === "current-op14" || operatorExpectation.kind === "current-op20" || operatorExpectation.kind === "current-v5" || operatorExpectation.kind === "current-v6"
+          ? 2
         : 1,
       "live Gnocchi recovery router token 0 escrow balance",
     );
     if (
       operatorExpectation.kind === "current-v3"
+      || operatorExpectation.kind === "current-op14"
+      || operatorExpectation.kind === "current-op20"
       || operatorExpectation.kind === "current-v5"
       || operatorExpectation.kind === "current-v6"
+      || operatorExpectation.kind === "current-op55"
+      || operatorExpectation.kind === "current-op63"
     ) {
       exactValue(
         natValue(routerBalances["1"], "live Gnocchi recovery router token 1 escrow balance"),
-        operatorExpectation.kind === "current-v3"
+        operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63"
           ? 0
+          : operatorExpectation.kind === "current-v3"
+          ? 0
+          : operatorExpectation.kind === "current-op14" || operatorExpectation.kind === "current-op20" || operatorExpectation.kind === "current-v6"
+            ? 1
           : operatorExpectation.kind === "current-v5"
             ? 2
             : 1,
@@ -2309,7 +3325,11 @@ function validateGnocchiLive(
   exactValue(snapshot.token2.active, true, "live Gnocchi token 2 active flag");
   exactValue(snapshot.token2.policyLocked, true, "live Gnocchi token 2 policy lock");
   exactValue(snapshot.token2.maxSupply, 4, "live Gnocchi token 2 max supply");
-  exactValue(natValue(snapshot.token2.totalMinted, "live Gnocchi token 2 total minted"), 3, "live Gnocchi token 2 total minted");
+  exactValue(
+    natValue(snapshot.token2.totalMinted, "live Gnocchi token 2 total minted"),
+    operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63" ? 4 : 3,
+    "live Gnocchi token 2 total minted",
+  );
   exactValue(
     natValue(snapshot.token2.totalReserved, "live Gnocchi token 2 total reserved"),
     operatorExpectation.kind === "current-v6" ? 1 : 0,
@@ -2326,8 +3346,12 @@ function validateGnocchiLive(
   requireValue(startMs < endMs, "live Gnocchi token 2 sale window is invalid");
   if (operatorExpectation.kind === "fresh") {
     emptyEvidence(snapshot.activeOperators, "live Gnocchi active operators");
+  } else if (operatorExpectation.kind === "current-op55" || operatorExpectation.kind === "current-op63") {
+    validateCurrentTerminalRecoveryOperators(evidence, snapshot.activeOperators, operatorExpectation);
   } else if (
     operatorExpectation.kind === "current-v3"
+    || operatorExpectation.kind === "current-op14"
+    || operatorExpectation.kind === "current-op20"
     || operatorExpectation.kind === "current-v5"
     || operatorExpectation.kind === "current-v6"
   ) {
@@ -2335,39 +3359,214 @@ function validateGnocchiLive(
   } else {
     validateExactMode0RecoveryOperator(evidence, snapshot.activeOperators, operatorExpectation);
   }
-  if (operatorExpectation.kind === "current-v6") {
+  if (operatorExpectation.kind === "current-op63") {
+    validateCurrentOp63MinterAndReservation(snapshot, operatorExpectation);
+  } else if (operatorExpectation.kind === "current-op55") {
+    validateCurrentOp55Minter(snapshot, operatorExpectation);
+    emptyEvidence(snapshot.reservedMints, "live Gnocchi reserved mints");
+  } else if (operatorExpectation.kind === "current-v6") {
     validateCurrentV6MinterAndReservation(snapshot, operatorExpectation);
+  } else if (operatorExpectation.kind === "current-op20") {
+    validateCurrentMinter(snapshot, operatorExpectation);
+    emptyEvidence(snapshot.reservedMints, "live Gnocchi reserved mints");
   } else {
     emptyEvidence(snapshot.authorizedMinters, "live Gnocchi authorized minters");
     emptyEvidence(snapshot.reservedMints, "live Gnocchi reserved mints");
   }
 }
 
-function validateRotiniLive(evidence: FreshRavioliDependencies, snapshot: FreshRotiniLiveSnapshot): void {
+function validateCurrentRotiniReservation(
+  snapshot: FreshRotiniLiveSnapshot,
+  expectation: NonNullable<RavioliCurrentV6ResumeRecovery["rotiniReservation"]>,
+): void {
+  const adapter = requireContractAddress(
+    expectation.adapterAddress,
+    "Ravioli current Rotini adapter",
+  );
+  const packMinterLevel = natValue(
+    expectation.packMinterAppliedLevel,
+    "Ravioli current Rotini pack-minter applied level",
+  );
+  const reservationLevel = natValue(
+    expectation.reservationAppliedLevel,
+    "Ravioli current Rotini reservation applied level",
+  );
+  requireValue(
+    reservationLevel > packMinterLevel,
+    "Ravioli current Rotini reservation must follow pack-minter authorization",
+  );
+
+  const packMinters = arrayValue(
+    snapshot.authorizedPackMinters,
+    "live Rotini authorized pack minters",
+  );
+  requireValue(
+    packMinters.length === 1,
+    "live Rotini authorized pack minters must contain only the journal-bound adapter",
+  );
+  const packMinter = objectValue(packMinters[0], "live Rotini current pack minter");
+  exactValue(packMinter.active, true, "live Rotini current pack minter active marker");
+  exactValue(packMinter.key, adapter, "live Rotini current pack minter key");
+  exactRecordKeys(
+    objectValue(packMinter.value, "live Rotini current pack minter value"),
+    [],
+    "live Rotini current pack minter value",
+  );
+  exactValue(
+    natValue(packMinter.firstLevel, "live Rotini current pack minter first level"),
+    packMinterLevel,
+    "live Rotini current pack minter first level",
+  );
+  exactValue(
+    natValue(packMinter.lastLevel, "live Rotini current pack minter last level"),
+    packMinterLevel,
+    "live Rotini current pack minter last level",
+  );
+  exactValue(
+    natValue(packMinter.updates, "live Rotini current pack minter updates"),
+    1,
+    "live Rotini current pack minter updates",
+  );
+
+  emptyEvidence(snapshot.openReservations, "live Rotini open reservations");
+  const reservations = arrayValue(snapshot.packReservations, "live Rotini pack reservations");
+  requireValue(
+    reservations.length === 1,
+    "live Rotini pack reservations must contain only the journal-bound project reservation",
+  );
+  const reservation = objectValue(reservations[0], "live Rotini current pack reservation");
+  exactValue(reservation.active, true, "live Rotini current pack reservation active marker");
+  const key = objectValue(reservation.key, "live Rotini current pack reservation key");
+  exactRecordKeys(key, ["owner", "token_id"], "live Rotini current pack reservation key");
+  exactValue(key.owner, adapter, "live Rotini current pack reservation owner");
+  exactValue(
+    natValue(key.token_id, "live Rotini current pack reservation project"),
+    0,
+    "live Rotini current pack reservation project",
+  );
+  exactValue(
+    natValue(reservation.value, "live Rotini current pack reservation amount"),
+    2,
+    "live Rotini current pack reservation amount",
+  );
+  exactValue(
+    natValue(reservation.firstLevel, "live Rotini current pack reservation first level"),
+    reservationLevel,
+    "live Rotini current pack reservation first level",
+  );
+  exactValue(
+    natValue(reservation.lastLevel, "live Rotini current pack reservation last level"),
+    reservationLevel,
+    "live Rotini current pack reservation last level",
+  );
+  exactValue(
+    natValue(reservation.updates, "live Rotini current pack reservation updates"),
+    2,
+    "live Rotini current pack reservation updates",
+  );
+}
+
+type RavioliCurrentOp55RotiniExpectation = Readonly<{
+  adapterAddress: string;
+  packMinterAppliedLevel: number;
+  packMinterSecondAppliedLevel: number;
+}>;
+
+function validateCurrentOp55Rotini(
+  snapshot: FreshRotiniLiveSnapshot,
+  expectation: RavioliCurrentOp55RotiniExpectation,
+): void {
+  const packMinters = arrayValue(
+    snapshot.authorizedPackMinters,
+    "live Rotini authorized pack minters",
+  );
+  requireValue(
+    packMinters.length === 1,
+    "live Rotini operation-55 authorized pack minters must contain only the journal-bound adapter",
+  );
+  const packMinter = objectValue(packMinters[0], "live Rotini operation-55 pack minter");
+  exactValue(packMinter.active, true, "live Rotini operation-55 pack minter active marker");
+  exactValue(packMinter.key, expectation.adapterAddress, "live Rotini operation-55 pack minter key");
+  exactRecordKeys(
+    objectValue(packMinter.value, "live Rotini operation-55 pack minter value"),
+    [],
+    "live Rotini operation-55 pack minter value",
+  );
+  exactValue(
+    natValue(packMinter.firstLevel, "live Rotini operation-55 pack minter first level"),
+    expectation.packMinterAppliedLevel,
+    "live Rotini operation-55 pack minter first level",
+  );
+  exactValue(
+    natValue(packMinter.lastLevel, "live Rotini operation-55 pack minter last level"),
+    expectation.packMinterSecondAppliedLevel,
+    "live Rotini operation-55 pack minter last level",
+  );
+  exactValue(
+    natValue(packMinter.updates, "live Rotini operation-55 pack minter updates"),
+    2,
+    "live Rotini operation-55 pack minter updates",
+  );
+  emptyEvidence(snapshot.openReservations, "live Rotini open reservations");
+  emptyEvidence(snapshot.packReservations, "live Rotini pack reservations");
+}
+
+function validateRotiniLive(
+  evidence: FreshRavioliDependencies,
+  snapshot: FreshRotiniLiveSnapshot,
+  reservationExpectation?: RavioliCurrentV6ResumeRecovery["rotiniReservation"],
+  operation55Expectation?: RavioliCurrentOp55RotiniExpectation,
+): void {
+  requireValue(
+    !(reservationExpectation && operation55Expectation),
+    "live Rotini dependency expectation cannot be both reserved and terminal",
+  );
   exactValue(snapshot.chainId, FRESH_RAVIOLI_CHAIN_ID, "live Rotini chain id");
   exactValue(snapshot.contractAddress, evidence.rotini.contractAddress, "live Rotini contract identity");
   exactValue(snapshot.scriptSha256, evidence.rotini.scriptSha256, "live Rotini script identity");
   exactValue(snapshot.scriptCodeSha256, evidence.rotini.scriptCodeSha256, "live Rotini Michelson code identity");
   exactValue(snapshot.administrator, evidence.creator, "live Rotini administrator");
   exactValue(natValue(snapshot.nextProjectId, "live Rotini next project id"), 3, "live Rotini next project id");
-  exactValue(natValue(snapshot.nextTokenId, "live Rotini next token id"), 3, "live Rotini next token id");
+  exactValue(
+    natValue(snapshot.nextTokenId, "live Rotini next token id"),
+    operation55Expectation ? 6 : 3,
+    "live Rotini next token id",
+  );
   exactValue(snapshot.project0.active, true, "live Rotini project 0 active flag");
   exactValue(snapshot.project0.outputMode, "png", "live Rotini project 0 output mode");
   exactValue(natValue(snapshot.project0.priceMutez, "live Rotini project 0 price"), 0, "live Rotini project 0 price");
   exactValue(snapshot.project0.maxSupply, 4, "live Rotini project 0 max supply");
-  exactValue(natValue(snapshot.project0.minted, "live Rotini project 0 minted"), 1, "live Rotini project 0 minted");
-  exactValue(natValue(snapshot.project0.reserved, "live Rotini project 0 reserved"), 0, "live Rotini project 0 reserved");
+  exactValue(
+    natValue(snapshot.project0.minted, "live Rotini project 0 minted"),
+    operation55Expectation ? 4 : 1,
+    "live Rotini project 0 minted",
+  );
+  exactValue(
+    natValue(snapshot.project0.reserved, "live Rotini project 0 reserved"),
+    reservationExpectation ? 2 : 0,
+    "live Rotini project 0 reserved",
+  );
   emptyEvidence(snapshot.activeOperators, "live Rotini active operators");
-  emptyEvidence(snapshot.authorizedPackMinters, "live Rotini authorized pack minters");
-  emptyEvidence(snapshot.openReservations, "live Rotini open reservations");
-  emptyEvidence(snapshot.packReservations, "live Rotini pack reservations");
+  if (operation55Expectation) {
+    validateCurrentOp55Rotini(snapshot, operation55Expectation);
+  } else if (reservationExpectation) {
+    validateCurrentRotiniReservation(snapshot, reservationExpectation);
+  } else {
+    emptyEvidence(snapshot.authorizedPackMinters, "live Rotini authorized pack minters");
+    emptyEvidence(snapshot.openReservations, "live Rotini open reservations");
+    emptyEvidence(snapshot.packReservations, "live Rotini pack reservations");
+  }
 }
 
 async function recheckRavioliDependencies(
   evidence: FreshRavioliDependencies,
   readers: FreshRavioliDependencyReaders,
   operatorExpectation: GnocchiOperatorExpectation,
-  options: { now?: Date | string | number },
+  options: {
+    now?: Date | string | number;
+    rotiniReservation?: RavioliCurrentV6ResumeRecovery["rotiniReservation"];
+    rotiniOperation55?: RavioliCurrentOp55RotiniExpectation;
+  },
 ): Promise<FreshRavioliDependencyLiveCheck> {
   exactValue(evidence.schema, FRESH_RAVIOLI_DEPENDENCY_SCHEMA, "fresh dependency evidence schema");
   exactValue(evidence.network.name, FRESH_RAVIOLI_NETWORK, "fresh dependency evidence network");
@@ -2399,7 +3598,7 @@ async function recheckRavioliDependencies(
     readers.readRotini(rotiniRequest),
   ]);
   validateGnocchiLive(evidence, gnocchi, nowMs, operatorExpectation);
-  validateRotiniLive(evidence, rotini);
+  validateRotiniLive(evidence, rotini, options.rotiniReservation, options.rotiniOperation55);
   return {
     schema: FRESH_RAVIOLI_DEPENDENCY_SCHEMA,
     runId: evidence.runId,
@@ -2600,6 +3799,124 @@ export async function recheckRavioliDependenciesForCurrentV5Resume(
   };
 }
 
+export async function recheckRavioliDependenciesForCurrentOp14Resume(
+  evidence: FreshRavioliDependencies,
+  readers: FreshRavioliDependencyReaders,
+  recovery: RavioliCurrentOp14ResumeRecovery,
+  options: { now?: Date | string | number } = {},
+): Promise<RavioliCurrentOp14ResumeDependencyLiveCheck> {
+  const routerAddress = requireContractAddress(
+    recovery.routerAddress,
+    "Ravioli operation-14 router",
+  );
+  requireValue(
+    routerAddress !== evidence.gnocchi.contractAddress && routerAddress !== evidence.rotini.contractAddress,
+    "Ravioli operation-14 router must be distinct from the Gnocchi and Rotini dependencies",
+  );
+  requireValue(
+    Number.isSafeInteger(recovery.mode0AppliedLevel) && recovery.mode0AppliedLevel > 0,
+    "Ravioli operation-14 mode-0 operator applied level must be a positive safe integer",
+  );
+  requireValue(
+    Number.isSafeInteger(recovery.mode1AppliedLevel)
+      && recovery.mode1AppliedLevel > recovery.mode0AppliedLevel,
+    "Ravioli operation-14 mode-1 operator applied level must follow its mode-0 operator",
+  );
+  const checked = await recheckRavioliDependencies(
+    evidence,
+    readers,
+    {
+      kind: "current-op14",
+      routerAddress,
+      mode0AppliedLevel: recovery.mode0AppliedLevel,
+      mode1AppliedLevel: recovery.mode1AppliedLevel,
+    },
+    options,
+  );
+  return {
+    ...checked,
+    classification: RAVIOLI_CURRENT_OP14_RESUME_DEPENDENCY_CLASSIFICATION,
+    acceptedMutation: Object.freeze({
+      kind: "gnocchi-fa2-operators-and-current-funded-pools",
+      owner: evidence.creator,
+      operator: routerAddress,
+      tokenIds: Object.freeze([0, 1]) as readonly [0, 1],
+      creatorBalances: Object.freeze({ "0": 0, "1": 1 }) as Readonly<{ "0": 0; "1": 1 }>,
+      routerEscrowBalances: Object.freeze({ "0": 2, "1": 1 }) as Readonly<{ "0": 2; "1": 1 }>,
+      mode0AppliedLevel: recovery.mode0AppliedLevel,
+      mode1AppliedLevel: recovery.mode1AppliedLevel,
+    }),
+  };
+}
+
+export async function recheckRavioliDependenciesForCurrentOp20Resume(
+  evidence: FreshRavioliDependencies,
+  readers: FreshRavioliDependencyReaders,
+  recovery: RavioliCurrentOp20ResumeRecovery,
+  options: { now?: Date | string | number } = {},
+): Promise<RavioliCurrentOp20ResumeDependencyLiveCheck> {
+  const routerAddress = requireContractAddress(
+    recovery.routerAddress,
+    "Ravioli operation-20 router",
+  );
+  const gnocchiAdapterAddress = requireContractAddress(
+    recovery.gnocchiAdapterAddress,
+    "Ravioli operation-20 Gnocchi adapter",
+  );
+  requireValue(
+    new Set([
+      evidence.gnocchi.contractAddress,
+      evidence.rotini.contractAddress,
+      routerAddress,
+      gnocchiAdapterAddress,
+    ]).size === 4,
+    "Ravioli operation-20 contracts must be pairwise distinct",
+  );
+  requireValue(
+    Number.isSafeInteger(recovery.mode0AppliedLevel) && recovery.mode0AppliedLevel > 0,
+    "Ravioli operation-20 mode-0 operator applied level must be a positive safe integer",
+  );
+  requireValue(
+    Number.isSafeInteger(recovery.mode1AppliedLevel)
+      && recovery.mode1AppliedLevel > recovery.mode0AppliedLevel,
+    "Ravioli operation-20 mode-1 operator applied level must follow its mode-0 operator",
+  );
+  requireValue(
+    Number.isSafeInteger(recovery.minterAppliedLevel)
+      && recovery.minterAppliedLevel > recovery.mode1AppliedLevel,
+    "Ravioli operation-20 minter applied level must follow its mode-1 operator",
+  );
+  const checked = await recheckRavioliDependencies(
+    evidence,
+    readers,
+    {
+      kind: "current-op20",
+      routerAddress,
+      mode0AppliedLevel: recovery.mode0AppliedLevel,
+      mode1AppliedLevel: recovery.mode1AppliedLevel,
+      gnocchiAdapterAddress,
+      minterAppliedLevel: recovery.minterAppliedLevel,
+    },
+    options,
+  );
+  return {
+    ...checked,
+    classification: RAVIOLI_CURRENT_OP20_RESUME_DEPENDENCY_CLASSIFICATION,
+    acceptedMutation: Object.freeze({
+      kind: "gnocchi-fa2-operators-funded-pools-and-authorized-adapter",
+      owner: evidence.creator,
+      operator: routerAddress,
+      gnocchiAdapter: gnocchiAdapterAddress,
+      tokenIds: Object.freeze([0, 1]) as readonly [0, 1],
+      creatorBalances: Object.freeze({ "0": 0, "1": 1 }) as Readonly<{ "0": 0; "1": 1 }>,
+      routerEscrowBalances: Object.freeze({ "0": 2, "1": 1 }) as Readonly<{ "0": 2; "1": 1 }>,
+      mode0AppliedLevel: recovery.mode0AppliedLevel,
+      mode1AppliedLevel: recovery.mode1AppliedLevel,
+      minterAppliedLevel: recovery.minterAppliedLevel,
+    }),
+  };
+}
+
 export async function recheckRavioliDependenciesForCurrentV6Resume(
   evidence: FreshRavioliDependencies,
   readers: FreshRavioliDependencyReaders,
@@ -2614,13 +3931,30 @@ export async function recheckRavioliDependenciesForCurrentV6Resume(
     recovery.gnocchiAdapterAddress,
     "Ravioli current-v6 Gnocchi adapter",
   );
+  const rotiniReservation = recovery.rotiniReservation
+    ? {
+        adapterAddress: requireContractAddress(
+          recovery.rotiniReservation.adapterAddress,
+          "Ravioli current-v6 Rotini adapter",
+        ),
+        packMinterAppliedLevel: natValue(
+          recovery.rotiniReservation.packMinterAppliedLevel,
+          "Ravioli current-v6 Rotini pack-minter applied level",
+        ),
+        reservationAppliedLevel: natValue(
+          recovery.rotiniReservation.reservationAppliedLevel,
+          "Ravioli current-v6 Rotini reservation applied level",
+        ),
+      }
+    : null;
   requireValue(
     new Set([
       evidence.gnocchi.contractAddress,
       evidence.rotini.contractAddress,
       routerAddress,
       gnocchiAdapterAddress,
-    ]).size === 4,
+      ...(rotiniReservation ? [rotiniReservation.adapterAddress] : []),
+    ]).size === (rotiniReservation ? 5 : 4),
     "Ravioli current-v6 contracts must be pairwise distinct",
   );
   requireValue(
@@ -2642,6 +3976,16 @@ export async function recheckRavioliDependenciesForCurrentV6Resume(
       && recovery.reservedMintAppliedLevel > recovery.minterAppliedLevel,
     "Ravioli current-v6 reservation applied level must follow its minter authorization",
   );
+  if (rotiniReservation) {
+    requireValue(
+      rotiniReservation.packMinterAppliedLevel > recovery.reservedMintAppliedLevel,
+      "Ravioli current-v6 Rotini pack-minter authorization must follow its Gnocchi reservation",
+    );
+    requireValue(
+      rotiniReservation.reservationAppliedLevel > rotiniReservation.packMinterAppliedLevel,
+      "Ravioli current-v6 Rotini reservation must follow its pack-minter authorization",
+    );
+  }
   const checked = await recheckRavioliDependencies(
     evidence,
     readers,
@@ -2654,7 +3998,10 @@ export async function recheckRavioliDependenciesForCurrentV6Resume(
       minterAppliedLevel: recovery.minterAppliedLevel,
       reservedMintAppliedLevel: recovery.reservedMintAppliedLevel,
     },
-    options,
+    {
+      ...options,
+      ...(rotiniReservation ? { rotiniReservation } : {}),
+    },
   );
   return {
     ...checked,
@@ -2673,6 +4020,357 @@ export async function recheckRavioliDependenciesForCurrentV6Resume(
       mode1AppliedLevel: recovery.mode1AppliedLevel,
       minterAppliedLevel: recovery.minterAppliedLevel,
       reservedMintAppliedLevel: recovery.reservedMintAppliedLevel,
+      ...(rotiniReservation
+        ? {
+            rotiniReservation: Object.freeze({
+              adapter: rotiniReservation.adapterAddress,
+              projectId: 0 as const,
+              reservedAmount: 2 as const,
+              packMinterAppliedLevel: rotiniReservation.packMinterAppliedLevel,
+              reservationAppliedLevel: rotiniReservation.reservationAppliedLevel,
+            }),
+          }
+        : {}),
+    }),
+  };
+}
+
+export async function recheckRavioliDependenciesForCurrentOp55Resume(
+  evidence: FreshRavioliDependencies,
+  readers: FreshRavioliDependencyReaders,
+  recovery: RavioliCurrentOp55ResumeRecovery,
+  options: { now?: Date | string | number } = {},
+): Promise<RavioliCurrentOp55ResumeDependencyLiveCheck> {
+  const routerAddress = requireContractAddress(
+    recovery.routerAddress,
+    "Ravioli operation-55 router",
+  );
+  const gnocchiAdapterAddress = requireContractAddress(
+    recovery.gnocchiAdapterAddress,
+    "Ravioli operation-55 Gnocchi adapter",
+  );
+  const rotiniAdapterAddress = requireContractAddress(
+    recovery.rotiniAdapterAddress,
+    "Ravioli operation-55 Rotini adapter",
+  );
+  requireValue(
+    new Set([
+      evidence.gnocchi.contractAddress,
+      evidence.rotini.contractAddress,
+      routerAddress,
+      gnocchiAdapterAddress,
+      rotiniAdapterAddress,
+    ]).size === 5,
+    "Ravioli operation-55 contracts must be pairwise distinct",
+  );
+
+  const mode0AppliedLevel = natValue(
+    recovery.mode0AppliedLevel,
+    "Ravioli operation-55 mode-0 operator first applied level",
+  );
+  const mode1AppliedLevel = natValue(
+    recovery.mode1AppliedLevel,
+    "Ravioli operation-55 mode-1 operator first applied level",
+  );
+  const minterAppliedLevel = natValue(
+    recovery.minterAppliedLevel,
+    "Ravioli operation-55 Gnocchi minter first applied level",
+  );
+  const rotiniPackMinterAppliedLevel = natValue(
+    recovery.rotiniPackMinterAppliedLevel,
+    "Ravioli operation-55 Rotini pack-minter first applied level",
+  );
+  const minterSecondAppliedLevel = natValue(
+    recovery.minterSecondAppliedLevel,
+    "Ravioli operation-55 Gnocchi minter second applied level",
+  );
+  const rotiniPackMinterSecondAppliedLevel = natValue(
+    recovery.rotiniPackMinterSecondAppliedLevel,
+    "Ravioli operation-55 Rotini pack-minter second applied level",
+  );
+  const mode1SecondAppliedLevel = natValue(
+    recovery.mode1SecondAppliedLevel,
+    "Ravioli operation-55 mode-1 operator second applied level",
+  );
+  requireValue(
+    mode0AppliedLevel > 0
+      && mode1AppliedLevel > mode0AppliedLevel
+      && minterAppliedLevel > mode1AppliedLevel
+      && rotiniPackMinterAppliedLevel > minterAppliedLevel
+      && minterSecondAppliedLevel > rotiniPackMinterAppliedLevel
+      && rotiniPackMinterSecondAppliedLevel > minterSecondAppliedLevel
+      && mode1SecondAppliedLevel > rotiniPackMinterSecondAppliedLevel,
+    "Ravioli operation-55 dependency update levels must match the strictly ordered journal history",
+  );
+
+  const checked = await recheckRavioliDependencies(
+    evidence,
+    readers,
+    {
+      kind: "current-op55",
+      routerAddress,
+      gnocchiAdapterAddress,
+      mode0AppliedLevel,
+      mode1AppliedLevel,
+      minterAppliedLevel,
+      minterSecondAppliedLevel,
+      mode1SecondAppliedLevel,
+    },
+    {
+      ...options,
+      rotiniOperation55: {
+        adapterAddress: rotiniAdapterAddress,
+        packMinterAppliedLevel: rotiniPackMinterAppliedLevel,
+        packMinterSecondAppliedLevel: rotiniPackMinterSecondAppliedLevel,
+      },
+    },
+  );
+  return {
+    ...checked,
+    classification: RAVIOLI_CURRENT_OP55_RESUME_DEPENDENCY_CLASSIFICATION,
+    acceptedMutation: Object.freeze({
+      kind: "five-mode-terminal-dependency-state",
+      owner: evidence.creator,
+      operator: routerAddress,
+      gnocchiAdapter: gnocchiAdapterAddress,
+      rotiniAdapter: rotiniAdapterAddress,
+      creatorBalances: Object.freeze({ "0": 0, "1": 0 }) as Readonly<{ "0": 0; "1": 0 }>,
+      routerEscrowBalances: Object.freeze({ "0": 0, "1": 0 }) as Readonly<{ "0": 0; "1": 0 }>,
+      token2: Object.freeze({ totalMinted: 4, totalReserved: 0 }) as Readonly<{
+        totalMinted: 4;
+        totalReserved: 0;
+      }>,
+      rotini: Object.freeze({
+        nextTokenId: 6,
+        projectId: 0,
+        minted: 4,
+        reserved: 0,
+      }) as Readonly<{
+        nextTokenId: 6;
+        projectId: 0;
+        minted: 4;
+        reserved: 0;
+      }>,
+      mode0AppliedLevel,
+      mode1AppliedLevel,
+      minterAppliedLevel,
+      rotiniPackMinterAppliedLevel,
+      minterSecondAppliedLevel,
+      rotiniPackMinterSecondAppliedLevel,
+      mode1SecondAppliedLevel,
+    }),
+  };
+}
+
+export async function recheckRavioliDependenciesForCurrentOp63Resume(
+  evidence: FreshRavioliDependencies,
+  readers: FreshRavioliDependencyReaders,
+  recovery: RavioliCurrentOp63ResumeRecovery,
+  options: { now?: Date | string | number } = {},
+): Promise<RavioliCurrentOp63ResumeDependencyLiveCheck | RavioliCurrentOp67ResumeDependencyLiveCheck> {
+  const routerAddress = requireContractAddress(
+    recovery.routerAddress,
+    "Ravioli operation-63 router",
+  );
+  const gnocchiAdapterAddress = requireContractAddress(
+    recovery.gnocchiAdapterAddress,
+    "Ravioli operation-63 Gnocchi adapter",
+  );
+  const rotiniAdapterAddress = requireContractAddress(
+    recovery.rotiniAdapterAddress,
+    "Ravioli operation-63 Rotini adapter",
+  );
+  requireValue(
+    new Set([
+      evidence.gnocchi.contractAddress,
+      evidence.rotini.contractAddress,
+      routerAddress,
+      gnocchiAdapterAddress,
+      rotiniAdapterAddress,
+    ]).size === 5,
+    "Ravioli operation-63 contracts must be pairwise distinct",
+  );
+
+  const mode0AppliedLevel = natValue(
+    recovery.mode0AppliedLevel,
+    "Ravioli operation-63 mode-0 operator first applied level",
+  );
+  const mode1AppliedLevel = natValue(
+    recovery.mode1AppliedLevel,
+    "Ravioli operation-63 mode-1 operator first applied level",
+  );
+  const minterAppliedLevel = natValue(
+    recovery.minterAppliedLevel,
+    "Ravioli operation-63 Gnocchi minter first applied level",
+  );
+  const rotiniPackMinterAppliedLevel = natValue(
+    recovery.rotiniPackMinterAppliedLevel,
+    "Ravioli operation-63 Rotini pack-minter first applied level",
+  );
+  const minterSecondAppliedLevel = natValue(
+    recovery.minterSecondAppliedLevel,
+    "Ravioli operation-63 Gnocchi minter second applied level",
+  );
+  const rotiniPackMinterSecondAppliedLevel = natValue(
+    recovery.rotiniPackMinterSecondAppliedLevel,
+    "Ravioli operation-63 Rotini pack-minter second applied level",
+  );
+  const mode1SecondAppliedLevel = natValue(
+    recovery.mode1SecondAppliedLevel,
+    "Ravioli operation-63 mode-1 operator second applied level",
+  );
+  const minterThirdAppliedLevel = natValue(
+    recovery.minterThirdAppliedLevel,
+    "Ravioli operation-63 Gnocchi minter third applied level",
+  );
+  const allocationAppliedLevel = natValue(
+    recovery.allocationAppliedLevel,
+    "Ravioli operation-63 adapter allocation applied level",
+  );
+  const adapterRouterAppliedLevel = natValue(
+    recovery.adapterRouterAppliedLevel,
+    "Ravioli operation-63 adapter router applied level",
+  );
+  const reservedMintFirstAppliedLevel = natValue(
+    recovery.reservedMintFirstAppliedLevel,
+    "Ravioli operation-63 reserved mint first applied level",
+  );
+  const reservedMintAppliedLevel = natValue(
+    recovery.reservedMintAppliedLevel,
+    "Ravioli operation-63 reserved mint terminal applied level",
+  );
+  const adapterRecoveryAppliedLevel = recovery.adapterRecoveryAppliedLevel === undefined
+    ? null
+    : natValue(
+        recovery.adapterRecoveryAppliedLevel,
+        "Ravioli operation-67 adapter recovery applied level",
+      );
+  exactValue(
+    minterThirdAppliedLevel,
+    RAVIOLI_CURRENT_OP63_MINTER_THIRD_APPLIED_LEVEL,
+    "Ravioli operation-63 Gnocchi minter third applied level",
+  );
+  exactValue(
+    allocationAppliedLevel,
+    RAVIOLI_CURRENT_OP63_ALLOCATION_APPLIED_LEVEL,
+    "Ravioli operation-63 adapter allocation applied level",
+  );
+  exactValue(
+    adapterRouterAppliedLevel,
+    RAVIOLI_CURRENT_OP63_ADAPTER_ROUTER_APPLIED_LEVEL,
+    "Ravioli operation-63 adapter router applied level",
+  );
+  exactValue(
+    reservedMintFirstAppliedLevel,
+    RAVIOLI_CURRENT_OP63_RESERVED_MINT_FIRST_APPLIED_LEVEL,
+    "Ravioli operation-63 reserved mint first applied level",
+  );
+  exactValue(
+    reservedMintAppliedLevel,
+    RAVIOLI_CURRENT_OP63_RESERVED_MINT_APPLIED_LEVEL,
+    "Ravioli operation-63 reserved mint terminal applied level",
+  );
+  requireValue(
+    mode0AppliedLevel > 0
+      && mode1AppliedLevel > mode0AppliedLevel
+      && minterAppliedLevel > mode1AppliedLevel
+      && rotiniPackMinterAppliedLevel > minterAppliedLevel
+      && minterSecondAppliedLevel > rotiniPackMinterAppliedLevel
+      && rotiniPackMinterSecondAppliedLevel > minterSecondAppliedLevel
+      && mode1SecondAppliedLevel > rotiniPackMinterSecondAppliedLevel
+      && reservedMintFirstAppliedLevel > mode1SecondAppliedLevel
+      && minterThirdAppliedLevel > reservedMintFirstAppliedLevel
+      && allocationAppliedLevel > minterThirdAppliedLevel
+      && adapterRouterAppliedLevel > allocationAppliedLevel
+      && reservedMintAppliedLevel > adapterRouterAppliedLevel
+      && (adapterRecoveryAppliedLevel === null || adapterRecoveryAppliedLevel > reservedMintAppliedLevel),
+    "Ravioli operation-63 dependency update levels must match the strictly ordered journal history",
+  );
+
+  const checked = await recheckRavioliDependencies(
+    evidence,
+    readers,
+    {
+      kind: "current-op63",
+      routerAddress,
+      gnocchiAdapterAddress,
+      mode0AppliedLevel,
+      mode1AppliedLevel,
+      minterAppliedLevel,
+      minterSecondAppliedLevel,
+      mode1SecondAppliedLevel,
+      minterThirdAppliedLevel,
+      reservedMintFirstAppliedLevel,
+      reservedMintAppliedLevel,
+      ...(adapterRecoveryAppliedLevel === null ? {} : { adapterRecoveryAppliedLevel }),
+    },
+    {
+      ...options,
+      rotiniOperation55: {
+        adapterAddress: rotiniAdapterAddress,
+        packMinterAppliedLevel: rotiniPackMinterAppliedLevel,
+        packMinterSecondAppliedLevel: rotiniPackMinterSecondAppliedLevel,
+      },
+    },
+  );
+  const sharedAcceptedMutation = {
+    owner: evidence.creator,
+    operator: routerAddress,
+    gnocchiAdapter: gnocchiAdapterAddress,
+    rotiniAdapter: rotiniAdapterAddress,
+    creatorBalances: Object.freeze({ "0": 0, "1": 0 }) as Readonly<{ "0": 0; "1": 0 }>,
+    routerEscrowBalances: Object.freeze({ "0": 0, "1": 0 }) as Readonly<{ "0": 0; "1": 0 }>,
+    token2: Object.freeze({ totalMinted: 4, totalReserved: 0 }) as Readonly<{
+      totalMinted: 4;
+      totalReserved: 0;
+    }>,
+    rotini: Object.freeze({
+      nextTokenId: 6,
+      projectId: 0,
+      minted: 4,
+      reserved: 0,
+    }) as Readonly<{
+      nextTokenId: 6;
+      projectId: 0;
+      minted: 4;
+      reserved: 0;
+    }>,
+    mode0AppliedLevel,
+    mode1AppliedLevel,
+    minterAppliedLevel,
+    rotiniPackMinterAppliedLevel,
+    minterSecondAppliedLevel,
+    rotiniPackMinterSecondAppliedLevel,
+    mode1SecondAppliedLevel,
+    minterThirdAppliedLevel,
+    allocationAppliedLevel,
+    adapterRouterAppliedLevel,
+    reservedMintFirstAppliedLevel,
+    reservedMintAppliedLevel,
+  } as const;
+  if (adapterRecoveryAppliedLevel !== null) return {
+    ...checked,
+    classification: RAVIOLI_CURRENT_OP67_RESUME_DEPENDENCY_CLASSIFICATION,
+    acceptedMutation: Object.freeze({
+      ...sharedAcceptedMutation,
+      kind: "withheld-reveal-released-dependency-state" as const,
+      reservedMint: Object.freeze({ tokenId: 1, amount: 0 }) as Readonly<{
+        tokenId: 1;
+        amount: 0;
+      }>,
+      adapterRecoveryAppliedLevel,
+    }),
+  };
+  return {
+    ...checked,
+    classification: RAVIOLI_CURRENT_OP63_RESUME_DEPENDENCY_CLASSIFICATION,
+    acceptedMutation: Object.freeze({
+      ...sharedAcceptedMutation,
+      kind: "withheld-reveal-allocation-dependency-state",
+      reservedMint: Object.freeze({ tokenId: 1, amount: 2 }) as Readonly<{
+        tokenId: 1;
+        amount: 2;
+      }>,
     }),
   };
 }

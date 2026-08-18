@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -27,7 +27,9 @@ import { root } from "./shadownet-proof-kit";
 import {
   assertSpaghettiTzktOperationApplied,
   assertSpaghettiUiLiveExecutionAllowed,
+  createSpaghettiCreatorCaptureGate,
   focusSpaghettiCompletionNotice,
+  loadSpaghettiCompletedCollectorCaptures,
   waitForSpaghettiCollectorWrite,
   waitForSpaghettiLog,
 } from "./shadownet-spaghetti-ui-live";
@@ -868,6 +870,9 @@ test("production runner is execute-gated, Shadownet-only, and contains no record
   assert.match(source, /pastaprotocol-spaghetti-tzkt-index@1/);
   assert.match(source, /tokens\/balances\?account=/);
   assert.match(source, /publicGatewayVerified/);
+  assert.match(source, /Spaghetti recapture requires a terminal authenticated restart journal/);
+  assert.match(source, /Spaghetti recapture refuses non-replayed creator effect/);
+  assert.match(source, /loadSpaghettiCompletedCollectorCaptures\(appRoot\)/);
   assert.equal(
     (source.match(/assertOperationApplied: \(assertion\) => verifySpaghettiTzktOperationApplied/g) || []).length,
     2,
@@ -875,4 +880,111 @@ test("production runner is execute-gated, Shadownet-only, and contains no record
   );
   assert.doesNotMatch(source, /UI-MOCK/);
   assert.doesNotMatch(source, /recordVideo|recordHar|tracing\.start|launchPersistentContext/);
+});
+
+test("Spaghetti creator capture gate holds every replay phase until its visual evidence is retained", async () => {
+  const gate = createSpaghettiCreatorCaptureGate();
+  await gate.wait("pin_json");
+  let originated = false;
+  const origination = gate.wait("originate").then(() => { originated = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(originated, false, "origination must remain blocked before screenshot 003");
+  gate.allowThrough(2);
+  await origination;
+  assert.equal(originated, true);
+
+  let tokenPinned = false;
+  const tokenPin = gate.wait("pin_json").then(() => { tokenPinned = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(tokenPinned, false, "token metadata pin must remain blocked before screenshot 004");
+  gate.allowThrough(4);
+  await tokenPin;
+  await gate.wait("batch");
+
+  let minted = false;
+  const mint = gate.wait("batch").then(() => { minted = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(minted, false, "mint must remain blocked before screenshot 005");
+  gate.allowThrough(5);
+  await mint;
+
+  let saleOpened = false;
+  const sale = gate.wait("batch").then(() => { saleOpened = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(saleOpened, false, "sale must remain blocked before screenshot 006");
+  gate.allowThrough(6);
+  await sale;
+  assert.equal(saleOpened, true);
+  gate.releaseAll();
+});
+
+test("completed Spaghetti recapture retains only hash-verified collector screenshots from the same proof", async () => {
+  const outputRoot = await import("node:fs/promises").then(({ mkdtemp }) =>
+    mkdtemp(path.join(tmpdir(), "spaghetti-completed-collector-captures-")));
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({
+    viewport: PASTA_PROOF_VIEWPORT,
+    deviceScaleFactor: 1,
+  });
+  const monitor = monitorPastaProofPage(page);
+  try {
+    await page.route("http://pasta-proof.test/collector", (route) => route.fulfill({
+      contentType: "text/html; charset=utf-8",
+      body: "<h1>Spaghetti collector proof fixture</h1>",
+    }));
+    await page.goto("http://pasta-proof.test/collector");
+    const specs = [
+      [9, "load self-hosted primary sale", "primary sale loaded"],
+      [10, "connect independent collector", "collector connected"],
+      [11, "buy from creator primary sale", "collector purchase confirmed"],
+    ] as const;
+    const captures: CapturePastaProofStageResult[] = [];
+    for (const [stageOrdinal, capability, stageName] of specs) {
+      captures.push(await capturePastaProofStage({
+        page,
+        monitor,
+        outputRoot,
+        app: "spaghetti",
+        capability,
+        stageOrdinal,
+        stageName,
+        classification: "UI-LIVE",
+        requiredEvidence: [{ selector: "h1", expectedText: "Spaghetti collector proof fixture" }],
+        waitForLoadState: "none",
+      }));
+    }
+    const appRoot = path.join(outputRoot, "spaghetti");
+    const manifestPath = path.join(appRoot, "manifest.json");
+    const manifest = {
+      screenshots: captures.map((capture) => ({ ...capture.manifestScreenshot })),
+      artifacts: captures.map((capture) => ({ ...capture.manifestSidecarArtifact })),
+    };
+    const receiptPath = path.join(appRoot, "artifacts", "spaghetti-ui-live-run.json");
+    const receipt = {
+      screenshots: captures.map((capture) => ({ ...capture.manifestScreenshot })),
+      screenshotSidecars: captures.map((capture) => ({ ...capture.manifestSidecarArtifact })),
+    };
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    await writeFile(receiptPath, JSON.stringify(receipt));
+
+    const retained = await loadSpaghettiCompletedCollectorCaptures(appRoot);
+    assert.deepEqual(
+      retained.map((capture) => capture.manifestScreenshot.stage),
+      captures.map((capture) => capture.manifestScreenshot.stage),
+    );
+    for (const capture of retained) await verifyScreenshotSidecar(capture.pngPath, capture.sidecarPath);
+
+    manifest.screenshots[0].sha256 = "0".repeat(64);
+    receipt.screenshots[0].sha256 = "0".repeat(64);
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    await writeFile(receiptPath, JSON.stringify(receipt));
+    await assert.rejects(
+      () => loadSpaghettiCompletedCollectorCaptures(appRoot),
+      /manifest screenshot hash drift/,
+    );
+  } finally {
+    monitor.dispose();
+    await browser.close();
+    await rm(outputRoot, { recursive: true, force: true });
+  }
 });

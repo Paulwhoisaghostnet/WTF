@@ -31,9 +31,12 @@ import {
   capturePastaProofStage,
   monitorPastaProofPage,
   PASTA_PROOF_VIEWPORT,
+  verifyScreenshotSidecar,
   type CapturePastaProofStageResult,
 } from "./pasta-proof-screenshot-kit";
+import { hashMichelsonScriptCode } from "./pasta-michelson-script-identity";
 import {
+  hashPastaProofRestartProjectedValue,
   PastaProofRestartJournal,
   type PastaProofRestartActor,
   type PastaProofRestartStep,
@@ -72,6 +75,7 @@ import {
 } from "./shadownet-proof-kit";
 
 const EXECUTE_FLAG = "PASTA_SHADOWNET_SPAGHETTI_UI_LIVE_EXECUTE";
+const RECAPTURE_FLAG = "PASTA_SHADOWNET_SPAGHETTI_UI_LIVE_RECAPTURE";
 const OUTPUT_ENV = "PASTA_PROOF_RUN_DIR";
 const OPERATION_RESERVE_MUTEZ = 1_000_000;
 const COLLECTOR_OPERATION_RESERVE_MUTEZ = 500_000;
@@ -91,6 +95,38 @@ const CONTRACT_ARTIFACT_PATH = path.join(
 );
 const STATIC_ROOT = path.join(root, "public");
 
+const COMPLETED_CREATOR_CAPTURE_STAGES = Object.freeze([
+  "001-configure-collection-and-token-configured",
+  "002-connect-creator-signer-connected",
+  "003-pin-collection-metadata-metadata-pinned",
+  "004-originate-standard-collection-contract-originated",
+  "005-create-token-type-token-created",
+  "006-mint-creator-editions-minted",
+  "007-open-direct-primary-sale-sale-opened",
+  "008-complete-publishing-lifecycle-complete",
+]);
+
+const COMPLETED_COLLECTOR_CAPTURE_SPECS = Object.freeze([
+  {
+    ordinal: 9,
+    capability: "load self-hosted primary sale",
+    stageName: "primary sale loaded",
+    stage: "009-load-self-hosted-primary-sale-primary-sale-loaded",
+  },
+  {
+    ordinal: 10,
+    capability: "connect independent collector",
+    stageName: "collector connected",
+    stage: "010-connect-independent-collector-collector-connected",
+  },
+  {
+    ordinal: 11,
+    capability: "buy from creator primary sale",
+    stageName: "collector purchase confirmed",
+    stage: "011-buy-from-creator-primary-sale-collector-purchase-confirmed",
+  },
+]);
+
 export const SPAGHETTI_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.freeze([
   { id: "media", actor: "creator", kind: "pin", fileName: "spaghetti-ui-live-proof.png", transport: "direct" },
   { id: "collection-metadata", actor: "creator", kind: "pin", fileName: "collection.json", transport: "bridge" },
@@ -101,6 +137,9 @@ export const SPAGHETTI_RESTART_PLAN: readonly PastaProofRestartStep[] = Object.f
   { id: "open-sale", actor: "creator", kind: "operation", action: "batch", entrypoints: ["set_sale"], transport: "bridge" },
   { id: "collector-buy", actor: "collector", kind: "operation", action: "call", entrypoint: "buy", transport: "bridge" },
 ]);
+const SPAGHETTI_CREATOR_BRIDGE_EFFECT_COUNT = SPAGHETTI_RESTART_PLAN.filter(
+  (step) => step.actor === "creator" && step.transport === "bridge",
+).length;
 
 function crc32(bytes: Uint8Array): number {
   let value = 0xffffffff;
@@ -201,7 +240,8 @@ function sha256(bytes: Uint8Array): string {
 
 async function requireFreshAppOutputDirectory(
   runRoot: string,
-): Promise<{ appRoot: string; runId: string; existing: boolean }> {
+): Promise<{ appRoot: string; runId: string; existing: boolean; recapture: boolean }> {
+  const recaptureRequested = process.env[RECAPTURE_FLAG] === "1";
   const absoluteRunRoot = path.resolve(runRoot);
   let runRootStat;
   try {
@@ -227,11 +267,15 @@ async function requireFreshAppOutputDirectory(
     if (!info.isDirectory() || info.isSymbolicLink()) {
       block("Spaghetti proof output path is not a regular directory", [`Refusing \`${appRoot}\`.`]);
     }
+    let manifestExists = false;
     try {
       await lstat(path.join(appRoot, "manifest.json"));
-      block("Spaghetti proof is already complete", [
-        `A final manifest already exists at \`${path.join(appRoot, "manifest.json")}\`.`,
-      ]);
+      manifestExists = true;
+      if (!recaptureRequested) {
+        block("Spaghetti proof is already complete", [
+          `A final manifest already exists at \`${path.join(appRoot, "manifest.json")}\`.`,
+        ]);
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
@@ -245,11 +289,147 @@ async function requireFreshAppOutputDirectory(
       }
       throw error;
     }
-    return { appRoot, runId, existing: true };
+    if (recaptureRequested && !manifestExists) {
+      block("Spaghetti completed-proof recapture requires a final manifest", [
+        `No completed manifest exists at \`${path.join(appRoot, "manifest.json")}\`.`,
+      ]);
+    }
+    return { appRoot, runId, existing: true, recapture: recaptureRequested };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { appRoot, runId, existing: false };
+  if (recaptureRequested) {
+    block("Spaghetti completed-proof recapture requires an existing proof", [
+      `No authenticated Spaghetti proof exists at \`${appRoot}\`.`,
+    ]);
+  }
+  return { appRoot, runId, existing: false, recapture: false };
+}
+
+export function createSpaghettiCreatorCaptureGate(): {
+  wait(action: string): Promise<void>;
+  allowThrough(effectOrdinal: number): void;
+  releaseAll(): void;
+} {
+  let observedEffects = 0;
+  let allowedThrough = 1;
+  let released = false;
+  const pending = new Map<number, () => void>();
+  return {
+    wait(action) {
+      if (!isSpaghettiEffectAction(action)) return Promise.resolve();
+      observedEffects += 1;
+      assert.ok(
+        observedEffects <= SPAGHETTI_CREATOR_BRIDGE_EFFECT_COUNT,
+        `Spaghetti creator bridge effect count drifted beyond ${SPAGHETTI_CREATOR_BRIDGE_EFFECT_COUNT}`,
+      );
+      if (released || observedEffects <= allowedThrough) return Promise.resolve();
+      return new Promise<void>((resolve) => pending.set(observedEffects, resolve));
+    },
+    allowThrough(effectOrdinal) {
+      assert.ok(
+        Number.isSafeInteger(effectOrdinal) && effectOrdinal >= allowedThrough &&
+          effectOrdinal <= SPAGHETTI_CREATOR_BRIDGE_EFFECT_COUNT,
+        `Spaghetti capture gate ordinal must be between ${allowedThrough} and ${SPAGHETTI_CREATOR_BRIDGE_EFFECT_COUNT}`,
+      );
+      allowedThrough = effectOrdinal;
+      for (const [ordinal, resolve] of pending) {
+        if (ordinal <= allowedThrough) {
+          pending.delete(ordinal);
+          resolve();
+        }
+      }
+    },
+    releaseAll() {
+      released = true;
+      for (const resolve of pending.values()) resolve();
+      pending.clear();
+    },
+  };
+}
+
+function isSpaghettiEffectAction(action: string): boolean {
+  return action === "pin_json" || action === "pin_blob" || action === "originate" || action === "call" || action === "batch";
+}
+
+export async function loadSpaghettiCompletedCollectorCaptures(
+  appRoot: string,
+): Promise<CapturePastaProofStageResult[]> {
+  const manifestPath = path.join(appRoot, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+    screenshots?: unknown;
+    artifacts?: unknown;
+  };
+  const receipt = JSON.parse(
+    await readFile(path.join(appRoot, "artifacts", "spaghetti-ui-live-run.json"), "utf8"),
+  ) as { screenshots?: unknown; screenshotSidecars?: unknown };
+  assert.ok(Array.isArray(manifest.screenshots), "completed Spaghetti manifest screenshots are missing");
+  assert.ok(Array.isArray(manifest.artifacts), "completed Spaghetti manifest artifacts are missing");
+  assert.ok(Array.isArray(receipt.screenshots), "completed Spaghetti receipt screenshots are missing");
+  assert.ok(Array.isArray(receipt.screenshotSidecars), "completed Spaghetti receipt sidecars are missing");
+
+  return Promise.all(COMPLETED_COLLECTOR_CAPTURE_SPECS.map(async (spec) => {
+    const screenshotMatches = manifest.screenshots!.filter((entry) =>
+      entry && typeof entry === "object" && (entry as { stage?: unknown }).stage === spec.stage);
+    assert.equal(screenshotMatches.length, 1, `completed Spaghetti manifest must contain one ${spec.stage} screenshot`);
+    const manifestScreenshot = screenshotMatches[0] as {
+      stage: string;
+      path: string;
+      sha256: string;
+      caption: string;
+    };
+    const expectedPngRelativePath = `screenshots/${spec.stage}.png`;
+    assert.equal(manifestScreenshot.path, expectedPngRelativePath, `${spec.stage} screenshot path drift`);
+    assert.match(manifestScreenshot.sha256, /^[a-f0-9]{64}$/, `${spec.stage} screenshot hash is invalid`);
+    assert.equal(typeof manifestScreenshot.caption, "string", `${spec.stage} screenshot caption is missing`);
+    const receiptScreenshotMatches = receipt.screenshots!.filter((entry) =>
+      entry && typeof entry === "object" && (entry as { stage?: unknown }).stage === spec.stage);
+    assert.equal(receiptScreenshotMatches.length, 1, `completed Spaghetti receipt must contain one ${spec.stage} screenshot`);
+    assert.deepEqual(receiptScreenshotMatches[0], manifestScreenshot, `${spec.stage} receipt/manifest screenshot drift`);
+
+    const sidecarId = `screenshot-sidecar-${spec.stage}`;
+    const sidecarMatches = manifest.artifacts!.filter((entry) =>
+      entry && typeof entry === "object" && (entry as { id?: unknown }).id === sidecarId);
+    assert.equal(sidecarMatches.length, 1, `completed Spaghetti manifest must contain one ${sidecarId} artifact`);
+    const manifestSidecarArtifact = sidecarMatches[0] as {
+      id: string;
+      kind: "screenshot-sidecar";
+      path: string;
+      sha256: string;
+    };
+    const expectedSidecarRelativePath = `artifacts/screenshot-${spec.stage}.json`;
+    assert.equal(manifestSidecarArtifact.kind, "screenshot-sidecar", `${sidecarId} kind drift`);
+    assert.equal(manifestSidecarArtifact.path, expectedSidecarRelativePath, `${sidecarId} path drift`);
+    assert.match(manifestSidecarArtifact.sha256, /^[a-f0-9]{64}$/, `${sidecarId} hash is invalid`);
+    const receiptSidecarMatches = receipt.screenshotSidecars!.filter((entry) =>
+      entry && typeof entry === "object" && (entry as { id?: unknown }).id === sidecarId);
+    assert.equal(receiptSidecarMatches.length, 1, `completed Spaghetti receipt must contain one ${sidecarId} artifact`);
+    assert.deepEqual(receiptSidecarMatches[0], manifestSidecarArtifact, `${sidecarId} receipt/manifest drift`);
+
+    const pngPath = path.join(appRoot, manifestScreenshot.path);
+    const sidecarPath = path.join(appRoot, manifestSidecarArtifact.path);
+    const sidecar = await verifyScreenshotSidecar(pngPath, sidecarPath);
+    const [pngBytes, sidecarBytes] = await Promise.all([readFile(pngPath), readFile(sidecarPath)]);
+    assert.equal(sha256(pngBytes), manifestScreenshot.sha256, `${spec.stage} manifest screenshot hash drift`);
+    assert.equal(sha256(sidecarBytes), manifestSidecarArtifact.sha256, `${sidecarId} manifest artifact hash drift`);
+    assert.equal(sidecar.app, "spaghetti", `${spec.stage} sidecar app drift`);
+    assert.equal(sidecar.classification, "UI-LIVE", `${spec.stage} sidecar classification drift`);
+    assert.equal(sidecar.stageOrdinal, spec.ordinal, `${spec.stage} sidecar ordinal drift`);
+    assert.equal(sidecar.capability, spec.capability, `${spec.stage} sidecar capability drift`);
+    assert.equal(sidecar.stageName, spec.stageName, `${spec.stage} sidecar stage-name drift`);
+
+    return {
+      appDirectory: appRoot,
+      pngPath,
+      sidecarPath,
+      pngRelativePath: manifestScreenshot.path,
+      sidecarRelativePath: manifestSidecarArtifact.path,
+      filenameStem: spec.stage,
+      sidecar,
+      manifestScreenshot,
+      manifestSidecarArtifact,
+    };
+  }));
 }
 
 async function readContractArtifact(): Promise<unknown[]> {
@@ -624,13 +804,19 @@ async function assertSpaghettiRestartApplied(input: {
   signerAddress: string;
   tezos: ReturnType<typeof buildToolkit>;
   expectedCodeHash: string;
+  expectedProjectedCodeHash: string;
+  expectedCanonicalCodeHash: string;
 }): Promise<{ contractAddress: string; entrypoints: string[] }> {
   if (input.pending.step.action !== "originate") {
     return assertPastaProofRestartTransaction(input);
   }
   const resolved = assertPastaProofRestartOrigination(input);
   const descriptor = projectedRecord(input.pending.descriptor, "Spaghetti restart origination descriptor");
-  assert.equal(hashJsonForBridge(descriptor.code), input.expectedCodeHash, "Spaghetti restart artifact identity differs");
+  assert.equal(
+    hashPastaProofRestartProjectedValue(descriptor.code),
+    input.expectedProjectedCodeHash,
+    "Spaghetti restart artifact identity differs",
+  );
   const requestedStorage = projectedRecord(descriptor.storage, "Spaghetti restart origination storage");
   assert.equal(requestedStorage.administrator, input.signerAddress);
   assert.equal(requestedStorage.pending_administrator, null);
@@ -647,7 +833,11 @@ async function assertSpaghettiRestartApplied(input: {
   assert.equal(rowStorage.pending_administrator, null);
   assert.equal(Number(rowStorage.next_token_id), 0);
   const script = await input.tezos.rpc.getScript(resolved.contractAddress);
-  assert.equal(hashJsonForBridge(script.code), input.expectedCodeHash, "Spaghetti recovered on-chain code differs");
+  assert.equal(
+    hashMichelsonScriptCode(script.code),
+    input.expectedCanonicalCodeHash,
+    "Spaghetti recovered on-chain code differs",
+  );
   const contract = await input.tezos.contract.at(resolved.contractAddress);
   const storage = await contract.storage() as { metadata: { get(key: string): Promise<unknown> } };
   assert.equal(await storage.metadata.get(""), expectedMetadataHex, "Spaghetti recovered collection metadata URI differs");
@@ -777,6 +967,8 @@ async function prepareSpaghettiRestartJournal(input: {
 }): Promise<PastaProofRestartJournal> {
   const actors = { creator: input.creatorAddress, collector: input.collectorAddress } as const;
   const expectedCodeHash = hashJsonForBridge(input.code);
+  const expectedProjectedCodeHash = hashPastaProofRestartProjectedValue(input.code);
+  const expectedCanonicalCodeHash = hashMichelsonScriptCode(input.code);
   const intent = {
     contractArtifactPath: path.relative(root, CONTRACT_ARTIFACT_PATH),
     contractArtifactSha256: expectedCodeHash,
@@ -834,6 +1026,8 @@ async function prepareSpaghettiRestartJournal(input: {
       signerAddress: actorAddress(pending.step.actor),
       tezos: actorToolkit(pending.step.actor),
       expectedCodeHash,
+      expectedProjectedCodeHash,
+      expectedCanonicalCodeHash,
     }),
   });
   await journal.reconcile(reconcile);
@@ -866,6 +1060,8 @@ async function prepareSpaghettiRestartJournal(input: {
         signerAddress: actorAddress(applied.step.actor),
         tezos: actorToolkit(applied.step.actor),
         expectedCodeHash,
+        expectedProjectedCodeHash,
+        expectedCanonicalCodeHash,
       }),
     });
     assert.equal(resolution.status, "applied", `Spaghetti applied-prefix ${applied.step.id} is no longer applied`);
@@ -1041,7 +1237,7 @@ async function verifyTzktEvidence(input: {
 export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
   assertSpaghettiUiLiveExecutionAllowed(process.env);
   const runRoot = path.resolve(process.env[OUTPUT_ENV] || "");
-  const { appRoot, runId, existing } = await requireFreshAppOutputDirectory(runRoot);
+  const { appRoot, runId, existing, recapture } = await requireFreshAppOutputDirectory(runRoot);
   const ipfs: IpfsProofConfig = resolveIpfsProofConfig();
   const rpc = await probeRpcChainId();
   assert.equal(rpc.chainId, SHADOWNET_CHAIN_ID);
@@ -1095,6 +1291,9 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     code,
     ipfs,
   });
+  if (recapture) {
+    assert.equal(restartJournal.isComplete(), true, "Spaghetti recapture requires a terminal authenticated restart journal");
+  }
   let artifactPin = restartJournal.appliedPin("media")?.proof;
   if (artifactPin) {
     assert.deepEqual(
@@ -1174,9 +1373,18 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     operationReserveMutez: OPERATION_RESERVE_MUTEZ,
   });
 
+  const creatorCaptureGate = createSpaghettiCreatorCaptureGate();
   const bridge = await startPastaUiLiveLoopbackServer({
     staticRoot: STATIC_ROOT,
-    handleAction: (request) => restartJournal.replayOrHandle("creator", request, () => session.handle(request)),
+    handleAction: async (request) => {
+      await creatorCaptureGate.wait(request.action);
+      return restartJournal.replayOrHandle("creator", request, () => {
+        if (recapture && isSpaghettiEffectAction(request.action)) {
+          throw new Error(`Spaghetti recapture refuses non-replayed creator effect ${request.action}`);
+        }
+        return session.handle(request);
+      });
+    },
   });
   let browser: Browser | null = null;
   let monitor: ReturnType<typeof monitorPastaProofPage> | null = null;
@@ -1229,15 +1437,19 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     await waitForSpaghettiLog(opened.page, "originating collection contract");
     await opened.page.waitForFunction(() => (window as any).__pastaUiLiveBridge?.pins?.length >= 1);
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 3, "pin collection metadata", "metadata pinned", "originating collection contract"));
+    creatorCaptureGate.allowThrough(2);
 
     await waitForSpaghettiLog(opened.page, "collection deployed:");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 4, "originate standard collection", "contract originated", "collection deployed:"));
+    creatorCaptureGate.allowThrough(4);
 
     await waitForSpaghettiLog(opened.page, "token types created");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 5, "create token type", "token created", "token types created"));
+    creatorCaptureGate.allowThrough(5);
 
     await waitForSpaghettiLog(opened.page, "editions minted");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 6, "mint creator editions", "minted", "editions minted"));
+    creatorCaptureGate.allowThrough(6);
 
     await waitForSpaghettiLog(opened.page, "direct primary sales opened");
     screenshots.push(await captureStage(opened.page, monitor, runRoot, 7, "open direct primary sale", "sale opened", "direct primary sales opened"));
@@ -1275,6 +1487,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
       "Spaghetti browser omitted replayed creator receipts",
     );
   } finally {
+    creatorCaptureGate.releaseAll();
     monitor?.dispose();
     await browser?.close();
     await bridge.close();
@@ -1338,109 +1551,114 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
     operationReserveMutez: COLLECTOR_OPERATION_RESERVE_MUTEZ,
   });
 
-  const collectorBridge = await startPastaUiLiveLoopbackServer({
-    staticRoot: STATIC_ROOT,
-    handleAction: (request) => restartJournal.replayOrHandle("collector", request, () => collectorSession.handle(request)),
-  });
-  let collectorBrowser: Browser | null = null;
-  let collectorMonitor: ReturnType<typeof monitorPastaProofPage> | null = null;
-  try {
-    const opened = await openBrowser();
-    collectorBrowser = opened.browser;
-    const config = {
-      app: "spaghetti",
-      label: "Spaghetti",
-      title: "Spaghetti UI-LIVE Shadownet Proof",
-      description: "A separate collector buys one edition from the creator-owned primary sale.",
-      contract: identifiers.contractAddress,
-      tokenId: 0,
-      network: "shadownet",
-      ipfsGateway: "https://ipfs.io/ipfs/",
-    };
-    await opened.page.route("**/creation-tools/spaghetti/pasta.config.js", async (route) => {
-      await route.fulfill({
-        contentType: "text/javascript; charset=utf-8",
-        body: `window.PASTA_SITE_CONFIG=${JSON.stringify(config).replace(/</g, "\\u003c")};`,
+  if (recapture) {
+    screenshots.push(...await loadSpaghettiCompletedCollectorCaptures(appRoot));
+  } else {
+    const collectorBridge = await startPastaUiLiveLoopbackServer({
+      staticRoot: STATIC_ROOT,
+      handleAction: (request) => restartJournal.replayOrHandle("collector", request, () =>
+        collectorSession.handle(request)),
+    });
+    let collectorBrowser: Browser | null = null;
+    let collectorMonitor: ReturnType<typeof monitorPastaProofPage> | null = null;
+    try {
+      const opened = await openBrowser();
+      collectorBrowser = opened.browser;
+      const config = {
+        app: "spaghetti",
+        label: "Spaghetti",
+        title: "Spaghetti UI-LIVE Shadownet Proof",
+        description: "A separate collector buys one edition from the creator-owned primary sale.",
+        contract: identifiers.contractAddress,
+        tokenId: 0,
+        network: "shadownet",
+        ipfsGateway: "https://ipfs.io/ipfs/",
+      };
+      await opened.page.route("**/creation-tools/spaghetti/pasta.config.js", async (route) => {
+        await route.fulfill({
+          contentType: "text/javascript; charset=utf-8",
+          body: `window.PASTA_SITE_CONFIG=${JSON.stringify(config).replace(/</g, "\\u003c")};`,
+        });
       });
-    });
-    await opened.page.route("**/creation-tools/spaghetti/js/site.js", async (route) => {
-      const response = await route.fetch();
-      const source = await response.text();
-      await route.fulfill({
-        response,
-        body: `${buildPastaUiLiveProxyInstallerSource(
-          collectorBridge.origin,
-          collectorBridge.sessionToken,
-          "UI-LIVE",
-        )}\n${source}`,
+      await opened.page.route("**/creation-tools/spaghetti/js/site.js", async (route) => {
+        const response = await route.fetch();
+        const source = await response.text();
+        await route.fulfill({
+          response,
+          body: `${buildPastaUiLiveProxyInstallerSource(
+            collectorBridge.origin,
+            collectorBridge.sessionToken,
+            "UI-LIVE",
+          )}\n${source}`,
+        });
       });
-    });
-    collectorMonitor = monitorPastaProofPage(opened.page);
-    await opened.page.goto(`${collectorBridge.origin}/creation-tools/spaghetti/site.html`, {
-      waitUntil: "networkidle",
-      timeout: 30_000,
-    });
-    await opened.page.waitForFunction(
-      () =>
-        document.getElementById("status")?.textContent === "On-chain state loaded." &&
-        document.getElementById("chainState")?.textContent === "Primary sale open",
-      undefined,
-      { timeout: 30_000 },
-    );
-    screenshots.push(
-      await captureCollectorStage(
-        opened.page,
-        collectorMonitor,
-        runRoot,
-        9,
-        "load self-hosted primary sale",
-        "primary sale loaded",
-        "On-chain state loaded.",
-        "Primary sale open",
-      ),
-    );
+      collectorMonitor = monitorPastaProofPage(opened.page);
+      await opened.page.goto(`${collectorBridge.origin}/creation-tools/spaghetti/site.html`, {
+        waitUntil: "networkidle",
+        timeout: 30_000,
+      });
+      await opened.page.waitForFunction(
+        () =>
+          document.getElementById("status")?.textContent === "On-chain state loaded." &&
+          document.getElementById("chainState")?.textContent === "Primary sale open",
+        undefined,
+        { timeout: 30_000 },
+      );
+      screenshots.push(
+        await captureCollectorStage(
+          opened.page,
+          collectorMonitor,
+          runRoot,
+          9,
+          "load self-hosted primary sale",
+          "primary sale loaded",
+          "On-chain state loaded.",
+          "Primary sale open",
+        ),
+      );
 
-    await opened.page.click("#connect");
-    await opened.page.waitForFunction(
-      () => document.getElementById("status")?.textContent?.startsWith("Wallet connected."),
-      undefined,
-      { timeout: 30_000 },
-    );
-    screenshots.push(
-      await captureCollectorStage(
-        opened.page,
-        collectorMonitor,
-        runRoot,
-        10,
-        "connect independent collector",
-        "collector connected",
-        "Wallet connected. Review the action before signing.",
-        "Primary sale open",
-      ),
-    );
+      await opened.page.click("#connect");
+      await opened.page.waitForFunction(
+        () => document.getElementById("status")?.textContent?.startsWith("Wallet connected."),
+        undefined,
+        { timeout: 30_000 },
+      );
+      screenshots.push(
+        await captureCollectorStage(
+          opened.page,
+          collectorMonitor,
+          runRoot,
+          10,
+          "connect independent collector",
+          "collector connected",
+          "Wallet connected. Review the action before signing.",
+          "Primary sale open",
+        ),
+      );
 
-    await opened.page.click("#submit");
-    await waitForSpaghettiCollectorWrite(
-      opened.page,
-      "Confirmed on Tezos. On-chain state refreshed.",
-      "Sold out",
-    );
-    screenshots.push(
-      await captureCollectorStage(
+      await opened.page.click("#submit");
+      await waitForSpaghettiCollectorWrite(
         opened.page,
-        collectorMonitor,
-        runRoot,
-        11,
-        "buy from creator primary sale",
-        "collector purchase confirmed",
         "Confirmed on Tezos. On-chain state refreshed.",
         "Sold out",
-      ),
-    );
-  } finally {
-    collectorMonitor?.dispose();
-    await collectorBrowser?.close();
-    await collectorBridge.close();
+      );
+      screenshots.push(
+        await captureCollectorStage(
+          opened.page,
+          collectorMonitor,
+          runRoot,
+          11,
+          "buy from creator primary sale",
+          "collector purchase confirmed",
+          "Confirmed on Tezos. On-chain state refreshed.",
+          "Sold out",
+        ),
+      );
+    } finally {
+      collectorMonitor?.dispose();
+      await collectorBrowser?.close();
+      await collectorBridge.close();
+    }
   }
 
   const collectorReceipts = restartJournal.operationReceipts().filter((receipt) => receipt.signerAddress === collector.address);
@@ -1463,6 +1681,21 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
   assert.equal(collectorOperationReceipts.length, 1, "collector should submit exactly one buy operation");
   assert.deepEqual(collectorOperationReceipts[0].entrypoints, ["buy"]);
   assert.equal(validateOperation(collectorOperationReceipts[0].operationHash), ValidationResult.VALID);
+  const expectedScreenshotStages = [
+    ...COMPLETED_CREATOR_CAPTURE_STAGES,
+    ...COMPLETED_COLLECTOR_CAPTURE_SPECS.map((spec) => spec.stage),
+  ];
+  assert.deepEqual(
+    screenshots.map((capture) => capture.manifestScreenshot.stage),
+    expectedScreenshotStages,
+    "Spaghetti proof screenshot stage order drifted",
+  );
+  assert.equal(
+    new Set(screenshots.map((capture) => capture.manifestScreenshot.sha256)).size,
+    expectedScreenshotStages.length,
+    "Spaghetti proof requires a visually distinct PNG for every stage",
+  );
+  await Promise.all(screenshots.map((capture) => verifyScreenshotSidecar(capture.pngPath, capture.sidecarPath)));
   assert.equal(pinnedMetadata.length, 2, "Spaghetti should pin collection and token metadata through the bridge");
   const metadataArtifacts = await writePinnedMetadataArtifacts(appRoot, pinnedMetadata);
   assert.equal(artifactPin.publicGatewayVerified, true, "Spaghetti media lacks public-gateway verification");

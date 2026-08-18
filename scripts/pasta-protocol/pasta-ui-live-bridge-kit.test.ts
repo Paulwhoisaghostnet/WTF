@@ -107,6 +107,10 @@ function fakeTezos() {
           assert.deepEqual(options, { block: "head" });
           return { protocol: PROTOCOL };
         },
+        async getBlockHeader(options: { block: string }) {
+          assert.deepEqual(options, { block: "head" });
+          return { timestamp: "2026-08-13T14:00:00Z", level: 4_603_700 };
+        },
         async getScript(address: string) {
           assert.equal(address, CONTRACT);
           return { code: SCRIPT_CODE, storage: { prim: "Unit" } };
@@ -291,6 +295,47 @@ test("browser proxy exposes only a validated script-code hash read", async () =>
   await assert.rejects(toolkit.rpc.getScriptCodeHash(CONTRACT), /invalid script-code hash/);
   assert.equal(requestedAction, "script_code_hash");
   assert.equal(windowMock.__pastaUiLiveBridge.receipts.length, 0);
+});
+
+test("browser proxy exposes only the bounded active-head block header read", async () => {
+  const source = buildPastaUiLiveProxyInstallerSource(
+    "http://127.0.0.1:4173",
+    "session-token",
+    "UI-MOCK",
+  );
+  let toolkit: any;
+  const requested: any[] = [];
+  const windowMock: any = {
+    MD: { useToolkitAdapter(value: unknown) { toolkit = value; } },
+    TZ: { MichelsonMap: class {} },
+  };
+  const fetchMock = async (_url: string, input: { body: string }) => {
+    requested.push(JSON.parse(input.body));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        result: {
+          block: "head",
+          chainId: CHAIN_ID,
+          timestamp: "2026-08-13T14:00:00Z",
+          level: 4_603_700,
+        },
+      }),
+    };
+  };
+  new Function("window", "fetch", source)(windowMock, fetchMock);
+  assert.deepEqual(await toolkit.rpc.getBlockHeader(), {
+    timestamp: "2026-08-13T14:00:00Z",
+    level: 4_603_700,
+  });
+  assert.equal(requested.at(-1)?.action, "block_header");
+  assert.deepEqual(requested.at(-1)?.payload, { block: "head" });
+  await assert.rejects(
+    toolkit.rpc.getBlockHeader({ block: "42" }),
+    /permits only the active head block-header read/,
+  );
 });
 
 test("browser proxy exposes only the active head protocol read", async () => {

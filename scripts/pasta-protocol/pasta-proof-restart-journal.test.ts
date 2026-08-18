@@ -13,11 +13,13 @@ import {
   type PastaUiLiveSubmittedOperation,
 } from "./pasta-ui-live-bridge-kit";
 import {
+  hashPastaProofRestartProjectedValue,
   PastaProofRestartJournal,
   readPastaProofRestartRpcSnapshot,
   type PastaProofRestartActor,
   type PastaProofRestartStep,
 } from "./pasta-proof-restart-journal";
+import type { ReadOnlyFetch } from "./pasta-readonly-retry";
 import { SHADOWNET_CHAIN_ID } from "./shadownet-proof-kit";
 
 const CREATOR = "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM";
@@ -243,6 +245,53 @@ test("applied pin replay returns the durable proof without calling the pinner an
   assert.equal((replay as any).pin.fileName, "token.json");
 });
 
+test("replay prefix freezes before current-session effects and becomes historical after reopen", async () => {
+  const plan: readonly PastaProofRestartStep[] = [
+    { id: "media", actor: "creator", kind: "pin", fileName: "media.png", transport: "direct" },
+    { id: "collection", actor: "creator", kind: "pin", fileName: "collection.json", transport: "bridge" },
+    { id: "token", actor: "creator", kind: "pin", fileName: "token.json", transport: "bridge" },
+  ];
+  const journal = await createJournal(plan);
+  await applyPin(journal, plan[0], { bytes: Uint8Array.from([137, 80, 78, 71]), mimeType: "image/png" });
+
+  let delegated = 0;
+  assert.deepEqual(
+    await journal.replayOrHandle("creator", requestForStep(plan[1], "fresh-collection"), async () => {
+      delegated += 1;
+      return { delegated: "collection" };
+    }),
+    { delegated: "collection" },
+  );
+  await applyPin(journal, plan[1]);
+  assert.deepEqual(
+    await journal.replayOrHandle("creator", requestForStep(plan[2], "fresh-token"), async () => {
+      delegated += 1;
+      return { delegated: "token" };
+    }),
+    { delegated: "token" },
+  );
+  await applyPin(journal, plan[2]);
+  assert.equal(delegated, 2, "effects created after bridge start must not become replay obligations");
+
+  const reopened = await PastaProofRestartJournal.open(journal.filePath, {
+    app: "colander",
+    runId: "pasta-alpha-proof-test",
+    actors: { creator: CREATOR, curator: CURATOR },
+    plan,
+    intent: { contractArtifactSha256: "a".repeat(64), mediaSha256: "b".repeat(64) },
+    authenticateInitialCounters: () => undefined,
+  });
+  let reopenedDelegations = 0;
+  for (const [index, step] of plan.slice(1).entries()) {
+    const replay = await reopened.replayOrHandle("creator", requestForStep(step, `reopen-${index}`), async () => {
+      reopenedDelegations += 1;
+      return null;
+    });
+    assert.equal((replay as any).pin.fileName, step.fileName);
+  }
+  assert.equal(reopenedDelegations, 0, "a new process must replay the exact prior bridge prefix");
+});
+
 test("PIN_PREPARED reconciliation either abandons absent bytes or records the exact recovered proof", async () => {
   const plan: readonly PastaProofRestartStep[] = [
     { id: "metadata", actor: "creator", kind: "pin", fileName: "token.json" },
@@ -309,6 +358,56 @@ test("Colander replays an already-applied management call without delegating a s
   });
   assert.equal(delegated, 0);
   assert.equal((replay as any).operationHash, HASHES[0]);
+});
+
+test("APPLIED validation keeps receipt and signer-operation sequence domains independent", async () => {
+  const plan: readonly PastaProofRestartStep[] = [
+    { id: "manage", actor: "creator", kind: "operation", action: "call", entrypoint: "set_current_revision" },
+  ];
+  const journal = await createJournal(plan);
+  const before = prepared(plan[0], 1);
+  await journal.beforeOperationSubmit("creator", before);
+  await journal.onOperationSubmitted("creator", { ...before, status: "SUBMITTED", operationHash: HASHES[0] });
+  await journal.onReceipt("creator", {
+    schema: PASTA_UI_LIVE_RECEIPT_SCHEMA,
+    sequence: 7,
+    timestampUtc: before.timestampUtc,
+    action: "call",
+    chainId: SHADOWNET_CHAIN_ID,
+    signerAddress: CREATOR,
+    contractAddress: CONTRACT,
+    operationHash: HASHES[0],
+    entrypoints: ["set_current_revision"],
+  });
+  assert.equal(journal.operationReceipts()[0].sequence, 7);
+
+  for (const invalidSequence of [0, 1.5]) {
+    const invalid = await createJournal(plan);
+    await invalid.beforeOperationSubmit("creator", before);
+    await invalid.onOperationSubmitted("creator", { ...before, status: "SUBMITTED", operationHash: HASHES[1] });
+    await assert.rejects(
+      invalid.onReceipt("creator", {
+        schema: PASTA_UI_LIVE_RECEIPT_SCHEMA,
+        sequence: invalidSequence,
+        timestampUtc: before.timestampUtc,
+        action: "call",
+        chainId: SHADOWNET_CHAIN_ID,
+        signerAddress: CREATOR,
+        contractAddress: CONTRACT,
+        operationHash: HASHES[1],
+        entrypoints: ["set_current_revision"],
+      }),
+      /identity differs/,
+    );
+  }
+});
+
+test("restart projection hash ignores object insertion order but rejects semantic drift", () => {
+  const first = [{ prim: "pair", args: [{ int: "1", annots: ["%left"] }, { string: "right" }] }];
+  const reordered = [{ args: [{ annots: ["%left"], int: "1" }, { string: "right" }], prim: "pair" }];
+  const changed = [{ args: [{ annots: ["%left"], int: "2" }, { string: "right" }], prim: "pair" }];
+  assert.equal(hashPastaProofRestartProjectedValue(first), hashPastaProofRestartProjectedValue(reordered));
+  assert.notEqual(hashPastaProofRestartProjectedValue(first), hashPastaProofRestartProjectedValue(changed));
 });
 
 test("journal rejects immutable intent and event-chain drift", async () => {
@@ -382,5 +481,78 @@ test("approved-RPC snapshot normalizes active and terminal manager-operation lan
     );
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("approved-RPC snapshot retries bounded GET reads serially within one RPC lane", async () => {
+  const attempts = new Map<string, number>();
+  const requestOrder: string[] = [];
+  let activeRequests = 0;
+  let maximumActiveRequests = 0;
+  const fetchImpl: ReadOnlyFetch = async (input, init) => {
+    assert.equal(init?.method, "GET", "restart snapshot reads must remain GET-only");
+    const url = new URL(String(input));
+    const key = url.pathname;
+    requestOrder.push(key);
+    attempts.set(key, (attempts.get(key) ?? 0) + 1);
+    activeRequests += 1;
+    maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    activeRequests -= 1;
+    if (attempts.get(key) === 1) return new Response("rate limited", { status: 429 });
+    if (key.endsWith("/chains/main/chain_id")) return Response.json(SHADOWNET_CHAIN_ID);
+    if (key.endsWith("/chains/main/mempool/pending_operations")) {
+      return Response.json({ applied: [], validated: [] });
+    }
+    if (key.includes(`/contracts/${CREATOR}/counter`)) return Response.json("100");
+    if (key.includes(`/contracts/${CURATOR}/counter`)) return Response.json("200");
+    return new Response("not found", { status: 404 });
+  };
+
+  const snapshot = await readPastaProofRestartRpcSnapshot(
+    "https://rpc.example.test/",
+    { creator: CREATOR, curator: CURATOR },
+    {
+      fetchImpl,
+      retryOptions: {
+        maxAttempts: 2,
+        deadlineMs: 5_000,
+        baseDelayMs: 0,
+        maxDelayMs: 0,
+        jitterRatio: 0,
+        sleep: async () => undefined,
+      },
+    },
+  );
+
+  assert.deepEqual(snapshot.counters, { creator: 100, curator: 200 });
+  assert.equal(maximumActiveRequests, 1, "one approved RPC lane must not burst concurrent reads");
+  assert.ok([...attempts.values()].every((count) => count === 2), "every transient 429 must be retried exactly once");
+  assert.deepEqual(requestOrder.slice(0, 2), ["/chains/main/chain_id", "/chains/main/chain_id"]);
+});
+
+test("approved-RPC snapshot rejects malformed mempool payloads instead of treating them as empty", async () => {
+  const malformed: readonly unknown[] = [
+    null,
+    {},
+    { applied: {} },
+    { branch_delayed: [] },
+  ];
+  for (const mempool of malformed) {
+    const fetchImpl: ReadOnlyFetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith("/chains/main/chain_id")) return Response.json(SHADOWNET_CHAIN_ID);
+      if (url.endsWith("/chains/main/mempool/pending_operations")) return Response.json(mempool);
+      if (url.includes(`/contracts/${CREATOR}/counter`)) return Response.json("100");
+      return new Response("not found", { status: 404 });
+    };
+    await assert.rejects(
+      readPastaProofRestartRpcSnapshot(
+        "https://rpc.example.test/",
+        { creator: CREATOR },
+        { fetchImpl },
+      ),
+      /mempool/i,
+    );
   }
 });
