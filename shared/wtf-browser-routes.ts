@@ -58,6 +58,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tools/colander", auth: true, title: "Colander" },
   { pattern: "/tools/broot", auth: true, title: "Broot" },
   { pattern: "/tools/particle-painter", auth: true, title: "Particle Painter" },
+  { pattern: "/tools/pixalerce", auth: true, title: "PixAlerce" },
   { pattern: "/tools/industrializer", auth: true, title: "Industrializer" },
   { pattern: "/tools/pauls-particles-v1", auth: true, title: "Paul's Particles" },
   { pattern: "/tools/nikshumika-paint", auth: true, title: "Nikshumika Paint" },

@@ -1,0 +1,9 @@
+# personas — recortes de gente para collage
+# NOTA: este lote se genero en una corrida que se corto por limite de sesion
+# ANTES de escribir el manifiesto por-archivo. El contenido son piezas de
+# dominio publico de museo: esculturas/bustos del Met Open Access (CC0),
+# cartes de visite y cabinet cards de beisbol (pre-1929, PD), y siluetas PD.
+# Todas anteriores a 1929 o de coleccion open-access institucional.
+# Fuente principal: The Met Open Access (metmuseum.org, isPublicDomain=true, CC0).
+# Provenance por-archivo no capturada en esta corrida; re-generar si se necesita
+# atribucion exacta.

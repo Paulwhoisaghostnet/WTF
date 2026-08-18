@@ -317,6 +317,7 @@ function findSurfaceForPath(path: string) {
 const CREATION_TOOL_DESKTOP_ICON_PATHS = new Set<string>([
   "/tools/broot",
   "/tools/particle-painter",
+  "/tools/pixalerce",
   "/tools/industrializer",
   "/tools/pauls-particles-v1",
   "/tools/kandinsky-composer",

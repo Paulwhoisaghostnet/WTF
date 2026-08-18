@@ -1,0 +1,160 @@
+# filename	license	source	url  (all Wikimedia Commons PD/CC0, license verified via extmetadata)
+pocket_watch.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Bernard_Runyan_watch_recovered_at_wreck.jpg
+padlock.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Brass_St._Louis_Padlock_From_the_1904_World's_Fair.jpg
+perfume_bottle.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Scent_Bottle_SAAM-1929.8.245.47_1.jpg
+hourglass.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Masonic_Hourglass.jpg
+magnifying_glass.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Magnifying_glass2.jpg
+quill_pen.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Quill-shaped_cirrus_cloud.jpg
+brass_compass.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Combined_compass_and_sundial,_Iran,_19th_century,_brass_-_Huntington_Museum_of_Art_-_DSC04910.JPG
+hand_mirror.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Two_mermaids_comb_their_hair_with_sea-shell_hand_mirrors.jpg
+candelabra.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Thirteen_light_candelabra,_designed_by_Bruno_Paul,_made_by_K._M._Seifert_&_Co.,_1901,_brass_-_Bröhan_Museum,_Berlin_-_DSC04023.JPG
+oil_lamp.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Russell_Madole,_Brass_Oil_Lamp,_c._1939,_NGA_24591.jpg
+gold_coin.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Gold_Coin_of_Brutus,_50_B.C.,_from_the_Ancient_Coins_series_(N180)_issued_by_Wm._S._Kimball_&_Co._MET_DPB870604.jpg
+silver_coin.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Roman_Empire_-_Maximianus_Herculius_AR_Argenteus_(AD_286-305)_-_Four_tetrarchs_before_city_gate,_ss_-_ss+_-_MA-Shops_01.jpg
+gold_ring.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Gold_ring-shaped_pendant.jpg
+brooch.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Victoria_and_Albert_Museum_Jewellery_11042019_Brooch_Rubies_Sapphires_2922.jpg
+bracelet.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Gold_bracelet_MET_DT333008.jpg
+pearl_necklace.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Parure_of_jewellery,_with_emerald_necklace,_bracelet,_and_brooches.jpg
+pendant.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Victoria_and_Albert_Museum_Jewellery_11042019_Pendant_Gold_Amethysts_Spain_17th_century_3093.jpg
+wristwatch_gold.webp	no restrictions	wikimedia	https://commons.wikimedia.org/wiki/File:Helbros_Gold_Wristwatch_Given_to_Evangeline_Lindbergh_-_DPLA_-_799317e98397bf47b55a50576720d8ec_(page_8).jpg
+sundial.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Portable,_horizontal,_nocturnal_sundial_and_altitude_sundial_MET_189559.jpg
+microscope.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:1850-1880,_Nachet_small_brass_chest_microscope,_Nachet_&_Son,_France,_compound_microscope_-_Golub_Collection_of_Antique_Microscopes_-_DSC04716.JPG
+telescope.webp	no restrictions	wikimedia	https://commons.wikimedia.org/wiki/File:Brass_Handheld_Telescope_Given_to_Charles_A._Lindbergh_-_DPLA_-_aaf3782518260dabf17d93df66bce2d4_(page_10).jpg
+globe.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:(Venice)_French_goldsmith,_mechanical_celestial_and_terrestrial_globe,_post_1565_-_Correr_Museum.jpg
+abacus.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Abacus_actually_in_use_at_kimono_shop_in_Otaru_-50418.jpeg
+typewriter.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Parts_of_a_Corona_No._3_folding_typewriter_(rear).jpg
+fountain_pen.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:The_Fountain_pen.jpeg
+inkpot.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Carters_ink_inkwell.JPG
+wax_seal.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Sealstone_from_Kokkolata.jpg
+hand_fan.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Folding_Fan_LACMA_M.84.254.jpg
+hammer_tool.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Hammer_hand_tool.jpg
+wrench.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Spanner_wrenches_various_kinds_from_Colvin_and_Stanley_1910_p64.png
+pliers.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Repair_tool_kit.jpg
+screwdriver.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Flat_minus_screwdriver_on_table.jpg
+handsaw.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Unknown_artist_-_Hand_Saw_-_1920.70_-_Cleveland_Museum_of_Art.jpg
+axe.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Hatchet_2_(PSF).png
+dagger.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Dagger_blade-MAHG-D_1054-IMG_1711-black.jpg
+saber_sword.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Saber_MET_DP163328.jpg
+flintlock_pistol.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Flintlock_pistol,_1790-1820_-_Wisconsin_Historical_Museum_-_DSC03273.JPG
+crossbow.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Hunting_crossbow_of_about_1590,_V&A_London.jpg
+shield_round.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:ShieldsLHist.JPG
+helmet_knight.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Helmet_-_Medieval_Knight_(PSF).png
+bow_arrow.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Bow_-_18-19c_-_Tula_State_Museum_of_Weapons.jpg
+anchor_iron.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Study_of_heaving_the_starboard_anchors_home_on_HMS_'Iron_Duke'_RMG_PV2699.jpg
+ships_wheel.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Helm_-_Female_(PSF).png
+lantern_old.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Indian_-_Hanging_Oil_Lantern_in_the_Shape_of_a_Bird_-_Walters_54448.jpg
+wine_bottle.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Bottle_and_glass_of_Barefoot_white_zinfandel_wine,_2012.jpg
+glass_flask.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Funnels_and_flat_bottom_flasks.jpg
+test_tube.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Fiolax_Reagenzglas.jpg
+mortar_pestle.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Carl_Buergerniss,_Brass_Mortar_and_Pestle,_c._1939,_NGA_24795.jpg
+brass_bell.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Columbus_Simpson,_Portable_Brass_Hand_Bell,_c._1936,_NGA_20880.jpg
+thimble.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Thimble_(PSF).png
+spinning_top.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Metal_die_spinning_on_faux_wood_surface.png
+marbles.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Several_marbles.jpg
+dice.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Image_of_GP5_chip_next_to_a_pair_of_dice_for_size_comparison.jpg
+chess_piece.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Chess_Piece,_Knight_MET_1974.27.2.jpg
+playing_cards.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Print,_playing-card,_map_(BM_1938,0709.57.1-60_14).jpg
+harmonica.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:A_Nukak_Makú_young_man_playing_the_Harmonica_and_holding_an_animal_bone_flute_like_instrument.jpg
+violin.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Violin_VL100.png
+trumpet.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Dynacord_PowerMate_600_powered_mixer_&_trumpet_(brass_instrument,_trumpet,_electronics,_audio,_equipment)_(2015-09-25_21.14.30_by_hpgruesen_@PIXNIO_251311).jpg
+accordion.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Čelo_leaning_on_the_accordion_(2015-06-13_16.46.59_Marko_Milivojevic_@PIXNIO_2451141).jpg
+cameo.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Parure-_tiara,_necklace,_and_brooch_MET_DP158012.jpg
+keyring.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Two_keys_and_key_ring_MET_208729.jpg
+umbrella_parasol.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Parasol_MET_1984.579_S.jpg
+walking_cane.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Cane_cutters_in_Jamaica.jpg
+top_hat.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Constantin_Hansen,_Et_selskab_af_danske_kunstnere_i_Rom,_1837,_KMS3236,_SMK.jpg
+pipe_smoking.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Christopher_Wood_Breton_Man_Smoking_a_Pipe_1929-30.jpg
+goggles.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Aviator_Wilmer_Stultz_in_1928_(cropped).jpg
+binocular_opera.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Opera_glasses.jpg
+stopwatch.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Seiko_stopwatch_at_Suginami_Animation_Museum.jpg
+sextant_tool.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Navigation_sextant_in_Museum_of_the_World_Ocean_-_p8.jpg
+horseshoe.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Magnetic_field_of_horseshoe_magnet.png
+thermometer.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Beckmann_thermometers.png
+barometer.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Barometer_and_thermometer,_France,_c._1770,_pearwood,_marquetry_to_brass_and_turtleshell,_mahogany,_gilt-bronze_-_Wallace_Collection_-_London,_UK_-_DSC06356.jpg
+snuff_box.webp	cc0	wikimedia	https://commons.wikimedia.org/wiki/File:Columbus_Simpson,_Silver_Snuff_Box,_c._1936,_NGA_25929.jpg
+cigarette_case.webp	public domain	wikimedia	https://commons.wikimedia.org/wiki/File:Engraved_Silver_Cigarette_Case.jpg
+african_mask.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1969.2
+african_mask_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1935.304
+celadon_vase.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1944.190
+greek_amphora.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1926.241
+equestrian_armor.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1964.88
+armor_breastplate.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.684
+hurdy_gurdy_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.378
+porcelain_figurine.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1917.627.1
+cannon.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1919.45
+cauldron.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1960.288
+bull_head.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1942.204
+chalice.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1950.378
+gold_earrings.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1947.178.a
+laurel_bust.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1939.160
+bronze_statuette.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1963.92
+crown.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1966.436.b
+crozier.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1947.504
+wine_coaster.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1941.598
+door_knocker.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1930.731
+door_knocker_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1964.33
+drum.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1929.343
+painted_drum.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2022.37
+ewer.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1953.363
+ewer_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1956.11
+flute.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1921.914
+war_club.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.389
+gauntlet.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.1082
+gauntlet_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.2081
+goblet.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1991.16
+silver_beaker.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1966.371
+bronze_mirror.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1995.375
+lacquer_bowl.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1947.675.a
+halberd.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.1564
+biwa.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.356
+biwa_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1929.344
+hurdy_gurdy.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2020.422
+inro.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.860
+inro_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.885
+bronze_medal.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1978.116.a
+ladle.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1983.162
+ladle_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1943.214
+curved_dagger.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2022.109
+letter_opener.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2013.99
+lute.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.368
+lute_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.347
+mace_weapon.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.1589
+mace_head.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1992.348
+silver_dragon.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1969.78.1
+mandolin.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.340
+marble_bust.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1951.288
+marble_bust_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1925.943
+oud.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1918.350
+brass_box.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1944.482
+lacquer_case.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.848
+netsuke.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1920.490
+war_hammer.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1929.364
+powder_flask.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.666
+powder_horn.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1916.37
+arm_reliquary.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1930.739
+bronze_urn.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1976.71
+greek_pail.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1977.179
+majolica_jar.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1920.421
+salt_cellar.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1953.279
+scepter.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2010.447
+ruyi_scepter.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1970.155
+porcelain_bottle.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1964.272
+silver_dish.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1940.21
+marble_statue.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1973.168
+fire_tongs.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2008.171
+golden_ibis.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1980.74.3
+sugar_bowl.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1966.500.3
+silver_plate.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1947.491
+white_figurine.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1927.67
+tankard.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1936.352
+tankard_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1971.266
+teapot.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1940.228
+teapot_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2022.168.a
+lacquer_mask.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1949.158
+black_ewer.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1952.16
+stone_head.webp	cc0	cleveland museum of art	https://clevelandart.org/art/2011.147
+tsuba.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1915.91
+tsuba_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1919.298
+tureen.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1968.242.a
+tureen_2.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1977.182
+weathervane.webp	cc0	cleveland museum of art	https://clevelandart.org/art/1946.354

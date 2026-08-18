@@ -1,0 +1,137 @@
+# adultos collage stamps - image sources and licenses
+# file	source	license	title	source_url
+sebastian_bronze.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Saint Sebastian	https://www.metmuseum.org/art/collection/search/198643
+triton_nereid.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Triton and Nereid	https://www.metmuseum.org/art/collection/search/200554
+paris_bronze.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Paris	https://www.metmuseum.org/art/collection/search/201862
+seated_faun.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Seated Faun	https://www.metmuseum.org/art/collection/search/203915
+hercules_archer.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Seated Hercules in the act of shooting at the stymphalian birds	https://www.metmuseum.org/art/collection/search/204504
+seated_nude_bronze.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Seated male figure	https://www.metmuseum.org/art/collection/search/204692
+wrestlers_bronze.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Nude Women Wrestling	https://www.metmuseum.org/art/collection/search/207024
+hercules_achelous.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Hercules and Achelous	https://www.metmuseum.org/art/collection/search/207032
+aphrodite_eros.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Limestone statue of Aphrodite holding winged Eros	https://www.metmuseum.org/art/collection/search/242017
+ivory_recline.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Ivory statuette of a reclining woman	https://www.metmuseum.org/art/collection/search/249180
+aphrodite_bronze.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Bronze statuette of Aphrodite	https://www.metmuseum.org/art/collection/search/253504
+daguerreotype_nude.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	[Reclining Nude]	https://www.metmuseum.org/art/collection/search/283114
+woman_parrot.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Woman with a Parrot	https://www.metmuseum.org/art/collection/search/436002
+woman_waves.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	The Woman in the Waves	https://www.metmuseum.org/art/collection/search/436004
+judgment_paris.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	The Judgment of Paris	https://www.metmuseum.org/art/collection/search/436037
+venus_lute.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Venus and the Lute Player	https://www.metmuseum.org/art/collection/search/437827
+male_nude_oil.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Male Nude	https://www.metmuseum.org/art/collection/search/438857
+nymph_spring.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Nymph of the Spring	https://www.metmuseum.org/art/collection/search/459078
+mercury_cupid.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Mercury and Cupid	https://www.metmuseum.org/art/collection/search/761114
+nanshoku_scroll.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Handscroll of Ten Homoerotic (Nanshoku) Scenes	https://www.metmuseum.org/art/collection/search/888663
+shunga_chamber.webp	Wikimedia Commons	Public domain	File:Brooklyn Museum - Amorous Couple - Isoda Koryusai.jpg	https://commons.wikimedia.org/wiki/File:Brooklyn_Museum_-_Amorous_Couple_-_Isoda_Koryusai.jpg
+shunga_embrace_1.webp	Wikimedia Commons	CC0	File:MET DP143380.jpg	https://commons.wikimedia.org/wiki/File:MET_DP143380.jpg
+shunga_green_pillow.webp	Wikimedia Commons	Public domain	File:Painting, shunga (BM 1996,1002,0.1).jpg	https://commons.wikimedia.org/wiki/File:Painting,_shunga_(BM_1996,1002,0.1).jpg
+shunga_checkered_futon.webp	Wikimedia Commons	Public domain	File:Painting, shunga (BM 1986,0522,0.1).jpg	https://commons.wikimedia.org/wiki/File:Painting,_shunga_(BM_1986,0522,0.1).jpg
+shunga_grey_robe.webp	Wikimedia Commons	Public domain	File:Painting, handscroll, shunga (BM OA+,0.140 1).jpg	https://commons.wikimedia.org/wiki/File:Painting,_handscroll,_shunga_(BM_OA%2B,0.140_1).jpg
+shunga_straw_mat.webp	Wikimedia Commons	Public domain	File:Painting, handscroll, shunga (BM OA+,0.140 2).jpg	https://commons.wikimedia.org/wiki/File:Painting,_handscroll,_shunga_(BM_OA%2B,0.140_2).jpg
+shunga_tumble.webp	Wikimedia Commons	Public domain	File:Painting, handscroll, shunga (BM OA+,0.140 3).jpg	https://commons.wikimedia.org/wiki/File:Painting,_handscroll,_shunga_(BM_OA%2B,0.140_3).jpg
+shunga_red_robe.webp	Wikimedia Commons	Public domain	File:Painting, handscroll, shunga (BM OA+,0.140 4).jpg	https://commons.wikimedia.org/wiki/File:Painting,_handscroll,_shunga_(BM_OA%2B,0.140_4).jpg
+shunga_striped_robe.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14).jpg
+shunga_beauty.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 02).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_02).jpg
+shunga_blue_robes.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 04).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_04).jpg
+shunga_green_robe.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 06).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_06).jpg
+shunga_wave_pattern.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 08).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_08).jpg
+shunga_bending.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 10).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_10).jpg
+shunga_lovers_green.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 11).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_11).jpg
+shunga_arched.webp	Wikimedia Commons	Public domain	File:Goban e-awase 碁盤絵合 (BM OA+,0.437.1-14 12).jpg	https://commons.wikimedia.org/wiki/File:Goban_e-awase_%E7%A2%81%E7%9B%A4%E7%B5%B5%E5%90%88_(BM_OA%2B,0.437.1-14_12).jpg
+shunga_dark_pair.webp	Wikimedia Commons	Public domain	File:Junikagetsu no uchi (BM OA+,0.439.5).jpg	https://commons.wikimedia.org/wiki/File:Junikagetsu_no_uchi_(BM_OA%2B,0.439.5).jpg
+shunga_trio.webp	Wikimedia Commons	Public domain	File:Cha no yu no tatezome (BM OA+,0.436.1-6 1).jpg	https://commons.wikimedia.org/wiki/File:Cha_no_yu_no_tatezome_(BM_OA%2B,0.436.1-6_1).jpg
+shunga_long_hair.webp	Wikimedia Commons	Public domain	File:Cha no yu no tatezome (BM OA+,0.436.1-6 2).jpg	https://commons.wikimedia.org/wiki/File:Cha_no_yu_no_tatezome_(BM_OA%2B,0.436.1-6_2).jpg
+shunga_bright_robes.webp	Wikimedia Commons	Public domain	File:Cha no yu no tatezome (BM OA+,0.436.1-6 3).jpg	https://commons.wikimedia.org/wiki/File:Cha_no_yu_no_tatezome_(BM_OA%2B,0.436.1-6_3).jpg
+shunga_recline_pair.webp	Wikimedia Commons	Public domain	File:Cha no yu no tatezome (BM OA+,0.436.1-6 5).jpg	https://commons.wikimedia.org/wiki/File:Cha_no_yu_no_tatezome_(BM_OA%2B,0.436.1-6_5).jpg
+shunga_great_robe.webp	Wikimedia Commons	Public domain	File:Junikagetsu no uchi (BM OA+,0.439.2).jpg	https://commons.wikimedia.org/wiki/File:Junikagetsu_no_uchi_(BM_OA%2B,0.439.2).jpg
+shunga_whisper.webp	Wikimedia Commons	Public domain	File:Kitagawa Utamaro 1753 – 1806 Male Couple c 1802 size half-size oban horizontal yoko-e 16-3 x 36-2 cms woodblock color print.jpg	https://commons.wikimedia.org/wiki/File:Kitagawa_Utamaro_1753_%E2%80%93_1806_Male_Couple_c_1802_size_half-size_oban_horizontal_yoko-e_16-3_x_36-2_cms_woodblock_color_print.jpg
+shunga_kunisada.webp	Wikimedia Commons	Public domain	File:Keisai Eisen, Couple Beside Painting of Bamboo.jpg	https://commons.wikimedia.org/wiki/File:Keisai_Eisen,_Couple_Beside_Painting_of_Bamboo.jpg
+shunga_embrace_2.webp	Wikimedia Commons	Public domain	File:Keisai Eisen, Couple Embracing.jpg	https://commons.wikimedia.org/wiki/File:Keisai_Eisen,_Couple_Embracing.jpg
+postcard_cape.webp	Wikimedia Commons	Public domain	File:Alice Wilkie, Ziegfeld girl, by Alfred Cheney Johnston, ca. 1925.jpg	https://commons.wikimedia.org/wiki/File:Alice_Wilkie,_Ziegfeld_girl,_by_Alfred_Cheney_Johnston,_ca._1925.jpg
+studio_stand.webp	Wikimedia Commons	Public domain	File:Naomi Johnson by Alfred Cheney Johnston, 1920s.jpg	https://commons.wikimedia.org/wiki/File:Naomi_Johnson_by_Alfred_Cheney_Johnston,_1920s.jpg
+nude_boa.webp	Wikimedia Commons	Public domain	File:Alfred Cheney Johnston Hazel Forbes nude 1920s.jpg	https://commons.wikimedia.org/wiki/File:Alfred_Cheney_Johnston_Hazel_Forbes_nude_1920s.jpg
+bather_back.webp	Wikimedia Commons	Public domain	File:Nude in the studio by Nikolai Bodarevsky.jpg	https://commons.wikimedia.org/wiki/File:Nude_in_the_studio_by_Nikolai_Bodarevsky.jpg
+seated_ochre.webp	Wikimedia Commons	Public domain	File:William Etty (1787-1849) (studio of) - Reclining Female Nude (recto) - YORAG , 1241 - York Art Gallery.jpg	https://commons.wikimedia.org/wiki/File:William_Etty_(1787-1849)_(studio_of)_-_Reclining_Female_Nude_(recto)_-_YORAG_,_1241_-_York_Art_Gallery.jpg
+nude_drape.webp	Wikimedia Commons	Public domain	File:Beatrice Offor (1864-1920) - Nude Study - ldbcm-inv.259 - Bruce Castle.jpg	https://commons.wikimedia.org/wiki/File:Beatrice_Offor_(1864-1920)_-_Nude_Study_-_ldbcm-inv.259_-_Bruce_Castle.jpg
+standing_nude_oil.webp	Wikimedia Commons	Public domain	File:William Etty (1787-1849) (studio of) - Standing Female Nude Plaiting Her Hair - YORAG , 1239 - York Art Gallery.jpg	https://commons.wikimedia.org/wiki/File:William_Etty_(1787-1849)_(studio_of)_-_Standing_Female_Nude_Plaiting_Her_Hair_-_YORAG_,_1239_-_York_Art_Gallery.jpg
+half_nude_oil.webp	Wikimedia Commons	Public domain	File:William Etty (1787-1849) (studio of) - Female Nude - YORAG , 1057 - York Art Gallery.jpg	https://commons.wikimedia.org/wiki/File:William_Etty_(1787-1849)_(studio_of)_-_Female_Nude_-_YORAG_,_1057_-_York_Art_Gallery.jpg
+pastel_recline.webp	Wikimedia Commons	Public domain	File:Federico Zandomeneghi - Reading, c. 1886.jpg	https://commons.wikimedia.org/wiki/File:Federico_Zandomeneghi_-_Reading,_c._1886.jpg
+cabaret_net.webp	Wikimedia Commons	Public domain	File:Alfred Cheney Johnston - Dorothy Flood with The Mirror (1920).jpg	https://commons.wikimedia.org/wiki/File:Alfred_Cheney_Johnston_-_Dorothy_Flood_with_The_Mirror_(1920).jpg
+nude_back_walk.webp	Wikimedia Commons	Public domain	File:Study of female nude (1873), by Giacomo Favretto.jpg	https://commons.wikimedia.org/wiki/File:Study_of_female_nude_(1873),_by_Giacomo_Favretto.jpg
+bather_seated.webp	Wikimedia Commons	Public domain	File:William McGregor Paxton Seated nude with sculpture.jpg	https://commons.wikimedia.org/wiki/File:William_McGregor_Paxton_Seated_nude_with_sculpture.jpg
+crouching_figure.webp	Wikimedia Commons	Public domain	File:Aba-Novák Nude from the Back c. 1920-1921.jpg	https://commons.wikimedia.org/wiki/File:Aba-Nov%C3%A1k_Nude_from_the_Back_c._1920-1921.jpg
+cyanotype_seated.webp	Wikimedia Commons	Public domain	File:Linley-sambourne.-nude-study-1880s-3-3.jpg	https://commons.wikimedia.org/wiki/File:Linley-sambourne.-nude-study-1880s-3-3.jpg
+cyanotype_recline.webp	Wikimedia Commons	Public domain	File:Linley-sambourne.-nude-study-1880s-2-2.jpg	https://commons.wikimedia.org/wiki/File:Linley-sambourne.-nude-study-1880s-2-2.jpg
+cyanotype_pair.webp	Wikimedia Commons	Public domain	File:Linley-sambourne.-nude-study-1880s-2.jpg	https://commons.wikimedia.org/wiki/File:Linley-sambourne.-nude-study-1880s-2.jpg
+cyanotype_back.webp	Wikimedia Commons	Public domain	File:Linley-sambourne.-nude-study-1880s.jpg	https://commons.wikimedia.org/wiki/File:Linley-sambourne.-nude-study-1880s.jpg
+cyanotype_embrace.webp	Wikimedia Commons	Public domain	File:Linley-sambourne.-nude-study-1880s-4.jpg	https://commons.wikimedia.org/wiki/File:Linley-sambourne.-nude-study-1880s-4.jpg
+cyanotype_duo.webp	Wikimedia Commons	Public domain	File:Two female nude models by Edward Linley Sambourne (1904) - 1.jpg	https://commons.wikimedia.org/wiki/File:Two_female_nude_models_by_Edward_Linley_Sambourne_(1904)_-_1.jpg
+cyanotype_walk.webp	Wikimedia Commons	Public domain	File:Two female nude models by Edward Linley Sambourne (1904) - 2.jpg	https://commons.wikimedia.org/wiki/File:Two_female_nude_models_by_Edward_Linley_Sambourne_(1904)_-_2.jpg
+cyanotype_dance.webp	Wikimedia Commons	Public domain	File:Two female nude models by Edward Linley Sambourne (1904) - 3.jpg	https://commons.wikimedia.org/wiki/File:Two_female_nude_models_by_Edward_Linley_Sambourne_(1904)_-_3.jpg
+seated_study.webp	Wikimedia Commons	Public domain	File:（Female Nude in Studio） (IA mma female nude in studio 282602).jpg	https://commons.wikimedia.org/wiki/File:%EF%BC%88Female_Nude_in_Studio%EF%BC%89_(IA_mma_female_nude_in_studio_282602).jpg
+recline_bronzed.webp	Wikimedia Commons	Public domain	File:Combier - 276 001.jpg	https://commons.wikimedia.org/wiki/File:Combier_-_276_001.jpg
+shadow_crouch.webp	Wikimedia Commons	Public domain	File:038- Fred Holland Day, c. 1905.jpg	https://commons.wikimedia.org/wiki/File:038-_Fred_Holland_Day,_c._1905.jpg
+studio_pose.webp	Wikimedia Commons	Public domain	File:046- Heinrich Zille, c.1905.jpg	https://commons.wikimedia.org/wiki/File:046-_Heinrich_Zille,_c.1905.jpg
+sepia_seated.webp	Wikimedia Commons	Public domain	File:Cairo Postcard Trust - Type Orientale.jpg	https://commons.wikimedia.org/wiki/File:Cairo_Postcard_Trust_-_Type_Orientale.jpg
+odalisque_photo.webp	Wikimedia Commons	Public domain	File:Kricorian - 94 - Jeune femme arabe.jpg	https://commons.wikimedia.org/wiki/File:Kricorian_-_94_-_Jeune_femme_arabe.jpg
+lovers_rest.webp	Wikimedia Commons	Public domain	File:11 - Nu academique marocain.jpg	https://commons.wikimedia.org/wiki/File:11_-_Nu_academique_marocain.jpg
+recline_gold.webp	Wikimedia Commons	Public domain	File:EPA - 6 - Au repos.jpg	https://commons.wikimedia.org/wiki/File:EPA_-_6_-_Au_repos.jpg
+nude_back_seated.webp	Wikimedia Commons	Public domain	File:Janis Rozentāls - The Painter’s Studio - Google Art Project.jpg	https://commons.wikimedia.org/wiki/File:Janis_Rozent%C4%81ls_-_The_Painter%E2%80%99s_Studio_-_Google_Art_Project.jpg
+torso_pale.webp	Wikimedia Commons	Public domain	File:Lehnert & Landrocck - Nudes of all nations - Berber.jpg	https://commons.wikimedia.org/wiki/File:Lehnert_%26_Landrocck_-_Nudes_of_all_nations_-_Berber.jpg
+burlesque_dancer.webp	Wikimedia Commons	Public domain	File:Gaston Bussiere- Exotic Dancers c 1880.jpg	https://commons.wikimedia.org/wiki/File:Gaston_Bussiere-_Exotic_Dancers_c_1880.jpg
+cabaret_dancer.webp	Wikimedia Commons	Public domain	File:Joe Weber's burlesque of The merry widow by arrangement with Henry W. Savage ; original music by Franz Lehar ; book by Geo. V. Hobart ; staged by Julian Mitchell. LCCN2014635763.tif	https://commons.wikimedia.org/wiki/File:Joe_Weber%27s_burlesque_of_The_merry_widow_by_arrangement_with_Henry_W._Savage_;_original_music_by_Franz_Lehar_;_book_by_Geo._V._Hobart_;_staged_by_Julian_Mitchell._LCCN2014635763.tif
+seated_model.webp	Wikimedia Commons	Public domain	File:Lorenz Frølich - Female Nude in the Studio of Thomas Couture - KMS8241 - Statens Museum for Kunst.jpg	https://commons.wikimedia.org/wiki/File:Lorenz_Fr%C3%B8lich_-_Female_Nude_in_the_Studio_of_Thomas_Couture_-_KMS8241_-_Statens_Museum_for_Kunst.jpg
+academic_male_1.webp	Wikimedia Commons	Public domain	File:Academic male nude, 1889 (Marie Krøyer).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_1889_(Marie_Kr%C3%B8yer).jpg
+anatomical_male.webp	Wikimedia Commons	Public domain	File:Academic male nude, 1886 (Marie Krøyer) - 2.jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_1886_(Marie_Kr%C3%B8yer)_-_2.jpg
+male_stance.webp	Wikimedia Commons	Public domain	File:Academic male nude, February 1886 (Marie Krøyer).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_February_1886_(Marie_Kr%C3%B8yer).jpg
+male_staff.webp	Wikimedia Commons	Public domain	File:Academic male nude, January 1886 (Marie Krøyer).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_January_1886_(Marie_Kr%C3%B8yer).jpg
+male_striding.webp	Wikimedia Commons	Public domain	File:Academic male nude (Marie Krøyer).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude_(Marie_Kr%C3%B8yer).jpg
+swordsman_nude.webp	Wikimedia Commons	Public domain	File:Academic male nude (Preisler).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude_(Preisler).jpg
+marble_pose.webp	Wikimedia Commons	Public domain	File:Portret quasi-naakte danseres op programma voor concert reclame voor Comptoir Photographique de l'Ouest te Le Mans, RP-F-F15853.jpg	https://commons.wikimedia.org/wiki/File:Portret_quasi-naakte_danseres_op_programma_voor_concert_reclame_voor_Comptoir_Photographique_de_l%27Ouest_te_Le_Mans,_RP-F-F15853.jpg
+profile_stand.webp	Wikimedia Commons	Public domain	File:Anders Zorn Model Study Thielska 411.tif	https://commons.wikimedia.org/wiki/File:Anders_Zorn_Model_Study_Thielska_411.tif
+tarquin_lucretia.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	Tarquin and Lucretia	https://www.metmuseum.org/art/collection/search/200723
+david_goliath.webp	The Met Open Access	CC0 (Met Open Access, isPublicDomain=true)	David and Goliath	https://www.metmuseum.org/art/collection/search/207021
+males_embrace.webp	Wikimedia Commons	Public domain	File:Gloeden, Wilhelm von (1856-1931) - n. 1282 recto - Data stampa 5-7-1910. Cm 22,5 x 17. Drout auctions.png	https://commons.wikimedia.org/wiki/File:Gloeden,_Wilhelm_von_(1856-1931)_-_n._1282_recto_-_Data_stampa_5-7-1910._Cm_22,5_x_17._Drout_auctions.png
+standing_soft.webp	Wikimedia Commons	Public domain	File:Fernande postcard.jpg	https://commons.wikimedia.org/wiki/File:Fernande_postcard.jpg
+recline_tinted.webp	Wikimedia Commons	Public domain	File:French Nude circa 1910 A.jpg	https://commons.wikimedia.org/wiki/File:French_Nude_circa_1910_A.jpg
+recline_rose.webp	Wikimedia Commons	Public domain	File:French Nude circa 1910 C.jpg	https://commons.wikimedia.org/wiki/File:French_Nude_circa_1910_C.jpg
+anatomy_pair.webp	Wikimedia Commons	Public domain	File:Gloeden, Wilhelm von (1856-1931) - n. 0858 - Datato 12-9-1910 - Deposé 1903 - Cm 16,9x22, Turner p. 15.jpg	https://commons.wikimedia.org/wiki/File:Gloeden,_Wilhelm_von_(1856-1931)_-_n._0858_-_Datato_12-9-1910_-_Depos%C3%A9_1903_-_Cm_16,9x22,_Turner_p._15.jpg
+etched_back.webp	Wikimedia Commons	Public domain	File:Academic male nude in the act of writing "W Garibaldi" (1860), by Daniele Ranzoni.jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude_in_the_act_of_writing_%22W_Garibaldi%22_(1860),_by_Daniele_Ranzoni.jpg
+grey_stride.webp	Wikimedia Commons	Public domain	File:Wanda Stevenson - Nov 1928 Real Story Book.jpg	https://commons.wikimedia.org/wiki/File:Wanda_Stevenson_-_Nov_1928_Real_Story_Book.jpg
+dancer_veil.webp	Wikimedia Commons	Public domain	File:Agelou5.jpg	https://commons.wikimedia.org/wiki/File:Agelou5.jpg
+seated_necklace.webp	Wikimedia Commons	Public domain	File:Agelou26.jpg	https://commons.wikimedia.org/wiki/File:Agelou26.jpg
+flapper_arms_back.webp	Wikimedia Commons	Public domain	File:Jean Agélou - Serie 040.jpg	https://commons.wikimedia.org/wiki/File:Jean_Ag%C3%A9lou_-_Serie_040.jpg
+flapper_arm_up.webp	Wikimedia Commons	Public domain	File:Jean Agélou - Serie 040 - No 1.jpg	https://commons.wikimedia.org/wiki/File:Jean_Ag%C3%A9lou_-_Serie_040_-_No_1.jpg
+flapper_hip.webp	Wikimedia Commons	Public domain	File:JA-Serie-040 French postcard-number3.jpg	https://commons.wikimedia.org/wiki/File:JA-Serie-040_French_postcard-number3.jpg
+kneeling_chair.webp	Wikimedia Commons	Public domain	File:William Etty (1787-1849) (studio of) - Study of an Arm and Female Nude (verso) - YORAG , 1240.a - York Art Gallery.jpg	https://commons.wikimedia.org/wiki/File:William_Etty_(1787-1849)_(studio_of)_-_Study_of_an_Arm_and_Female_Nude_(verso)_-_YORAG_,_1240.a_-_York_Art_Gallery.jpg
+male_back_sepia.webp	Wikimedia Commons	Public domain	File:Gloeden, Wilhelm von (1856-1931) - n. 2002 - Galleria del levante p. 77.jpg	https://commons.wikimedia.org/wiki/File:Gloeden,_Wilhelm_von_(1856-1931)_-_n._2002_-_Galleria_del_levante_p._77.jpg
+seated_amber.webp	Wikimedia Commons	Public domain	File:Gloeden, Wilhelm von (1856-1931) - n. 1460 - datato 18.I.1914 r.jpg	https://commons.wikimedia.org/wiki/File:Gloeden,_Wilhelm_von_(1856-1931)_-_n._1460_-_datato_18.I.1914_r.jpg
+male_seated.webp	Wikimedia Commons	Public domain	File:Gloeden, Wilhelm von (1856-1931) - n. 1918 - Taschen p. 24.jpg	https://commons.wikimedia.org/wiki/File:Gloeden,_Wilhelm_von_(1856-1931)_-_n._1918_-_Taschen_p._24.jpg
+male_back_flex.webp	Wikimedia Commons	Public domain	File:Lionel Strongfort (Max Unger) 001.jpg	https://commons.wikimedia.org/wiki/File:Lionel_Strongfort_(Max_Unger)_001.jpg
+cyanotype_mermaid.webp	Wikimedia Commons	Public domain	File:Ethel Warwick by Edward Linley Sambourne (1900) - 2a.jpg	https://commons.wikimedia.org/wiki/File:Ethel_Warwick_by_Edward_Linley_Sambourne_(1900)_-_2a.jpg
+turban_robe.webp	Wikimedia Commons	Public domain	File:Lehnert et Landrock - 065.jpg	https://commons.wikimedia.org/wiki/File:Lehnert_et_Landrock_-_065.jpg
+gilded_pose.webp	Wikimedia Commons	Public domain	File:Marconi, Gaudenzio (1841-1885) - n. 0026 recto - Nudo accademico maschile appoggiato a una staffa.jpg	https://commons.wikimedia.org/wiki/File:Marconi,_Gaudenzio_(1841-1885)_-_n._0026_recto_-_Nudo_accademico_maschile_appoggiato_a_una_staffa.jpg
+skirt_lift.webp	Wikimedia Commons	Public domain	File:JA-Serie-0117 French postcard-number1.jpg	https://commons.wikimedia.org/wiki/File:JA-Serie-0117_French_postcard-number1.jpg
+fringed_shawl.webp	Wikimedia Commons	Public domain	File:Virginia Biddle, 1927.jpg	https://commons.wikimedia.org/wiki/File:Virginia_Biddle,_1927.jpg
+pinup_prone.webp	Wikimedia Commons	Public domain	File:JA-629 French postcard.jpg	https://commons.wikimedia.org/wiki/File:JA-629_French_postcard.jpg
+leaning_bare.webp	Wikimedia Commons	Public domain	File:Robert (Leon) Demachy - Nude Study - Google Art Project.jpg	https://commons.wikimedia.org/wiki/File:Robert_(Leon)_Demachy_-_Nude_Study_-_Google_Art_Project.jpg
+seated_plump.webp	Wikimedia Commons	Public domain	File:Fernande in easy chair from French postcard.jpg	https://commons.wikimedia.org/wiki/File:Fernande_in_easy_chair_from_French_postcard.jpg
+arms_raised.webp	Wikimedia Commons	Public domain	File:Miss Fernande.jpg	https://commons.wikimedia.org/wiki/File:Miss_Fernande.jpg
+alabaster_stand.webp	Wikimedia Commons	Public domain	File:ACJohnstonNude.jpg	https://commons.wikimedia.org/wiki/File:ACJohnstonNude.jpg
+kneeling_arch.webp	Wikimedia Commons	Public domain	File:Fernande nude photo.jpg	https://commons.wikimedia.org/wiki/File:Fernande_nude_photo.jpg
+floor_sit.webp	Wikimedia Commons	Public domain	File:Tilly Losch Johnston3.jpg	https://commons.wikimedia.org/wiki/File:Tilly_Losch_Johnston3.jpg
+sheer_slip.webp	Wikimedia Commons	Public domain	File:Fernande - Jean Agelou.jpg	https://commons.wikimedia.org/wiki/File:Fernande_-_Jean_Agelou.jpg
+seated_curl.webp	Wikimedia Commons	CC0	File:-Female Nude in Studio- MET DT1168.jpg	https://commons.wikimedia.org/wiki/File:-Female_Nude_in_Studio-_MET_DT1168.jpg
+crinoline_bare.webp	Wikimedia Commons	CC0	File:-Nude Study- MET DP139566.jpg	https://commons.wikimedia.org/wiki/File:-Nude_Study-_MET_DP139566.jpg
+veiled_marble.webp	Wikimedia Commons	Public domain	File:Corinne Griffith ACJ1.jpg	https://commons.wikimedia.org/wiki/File:Corinne_Griffith_ACJ1.jpg
+profile_soft.webp	Wikimedia Commons	Public domain	File:Zorn - Nude, New York, 1894 (with frame).jpg	https://commons.wikimedia.org/wiki/File:Zorn_-_Nude,_New_York,_1894_(with_frame).jpg
+male_back_study.webp	Wikimedia Commons	Public domain	File:Drawing, Standing male nude seen from the back, ca. 1910 (CH 18437649).jpg	https://commons.wikimedia.org/wiki/File:Drawing,_Standing_male_nude_seen_from_the_back,_ca._1910_(CH_18437649).jpg
+strongman_trunks.webp	Wikimedia Commons	Public domain	File:Sarony, Napoleon (1821-1896) - Lionel Strongfort (Max Unger) - 1900 - nwsgrp2 01.jpg	https://commons.wikimedia.org/wiki/File:Sarony,_Napoleon_(1821-1896)_-_Lionel_Strongfort_(Max_Unger)_-_1900_-_nwsgrp2_01.jpg
+male_flex_pose.webp	Wikimedia Commons	Public domain	File:Sarony, Napoleon (1821-1896) - Lionel Strongfort (Max Unger) - 1900.jpg	https://commons.wikimedia.org/wiki/File:Sarony,_Napoleon_(1821-1896)_-_Lionel_Strongfort_(Max_Unger)_-_1900.jpg
+academic_male_2.webp	Wikimedia Commons	Public domain	File:Academic male nude, 1886 (Marie Krøyer) - 3.jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_1886_(Marie_Kr%C3%B8yer)_-_3.jpg
+stout_model.webp	Wikimedia Commons	Public domain	File:Academic male nude, April 1886 (Marie Krøyer).jpg	https://commons.wikimedia.org/wiki/File:Academic_male_nude,_April_1886_(Marie_Kr%C3%B8yer).jpg
+nude_back_stand.webp	Wikimedia Commons	CC0	File:Marconi, Gaudenzio (1841-1885) - n. 0047 - Male nude from behind - Cleveland Museum of Art - 1996.357.jpg	https://commons.wikimedia.org/wiki/File:Marconi,_Gaudenzio_(1841-1885)_-_n._0047_-_Male_nude_from_behind_-_Cleveland_Museum_of_Art_-_1996.357.jpg
+gesture_back.webp	Wikimedia Commons	CC0	File:Guglielmo Marconi - Male Nude - 1996.357 - Cleveland Museum of Art.tif	https://commons.wikimedia.org/wiki/File:Guglielmo_Marconi_-_Male_Nude_-_1996.357_-_Cleveland_Museum_of_Art.tif
+back_turn.webp	Wikimedia Commons	CC0	File:Marconi, Gaudenzio (1841-1885) - n. 0035 - Mannelijk academisch naakt, op de rug gezien, RP-F-1996-258.jpg	https://commons.wikimedia.org/wiki/File:Marconi,_Gaudenzio_(1841-1885)_-_n._0035_-_Mannelijk_academisch_naakt,_op_de_rug_gezien,_RP-F-1996-258.jpg
+painter_chair.webp	Wikimedia Commons	Public domain	File:Vuillard - Standing Nude at the Studio, 1909.jpg	https://commons.wikimedia.org/wiki/File:Vuillard_-_Standing_Nude_at_the_Studio,_1909.jpg
+stockings_back.webp	Wikimedia Commons	Public domain	File:Jean Agélou - Serie 034 - No 2.jpg	https://commons.wikimedia.org/wiki/File:Jean_Ag%C3%A9lou_-_Serie_034_-_No_2.jpg
+golden_skirt.webp	Wikimedia Commons	Public domain	File:Julius Exner - The Artist's Model.jpg	https://commons.wikimedia.org/wiki/File:Julius_Exner_-_The_Artist%27s_Model.jpg
+courtesan_seated.webp	Wikimedia Commons	Public domain	File:Kikugawa eizan, donna seduta su una scalinata.jpg	https://commons.wikimedia.org/wiki/File:Kikugawa_eizan,_donna_seduta_su_una_scalinata.jpg

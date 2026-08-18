@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+index e3c19e7..0ace556 100644
+--- a/index.html
++++ b/index.html
+@@ -9,9 +9,9 @@
+     <meta name="apple-mobile-web-app-capable" content="yes" />
+     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+     <meta name="apple-mobile-web-app-title" content="PixAlerce" />
+-    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+-    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
++    <link rel="icon" type="image/png" sizes="64x64" href="%BASE_URL%favicon.png" />
++    <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%pwa-192.png" />
++    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
+     <title>PixAlerce</title>
+   </head>
+   <body>
+diff --git a/src/components/ui/SplashScreen.tsx b/src/components/ui/SplashScreen.tsx
+index 0e18526..080a491 100644
+--- a/src/components/ui/SplashScreen.tsx
++++ b/src/components/ui/SplashScreen.tsx
+@@ -204,7 +204,7 @@ function LogoCRT() {
+         aria-hidden
+       />
+       <img
+-        src="/logo.png"
++        src={`${import.meta.env.BASE_URL}logo.png`}
+         alt="PixAlerce"
+         className="relative w-full drop-shadow-[0_18px_40px_rgba(0,0,0,0.75)]"
+         draggable={false}
+diff --git a/src/components/ui/TopBar.tsx b/src/components/ui/TopBar.tsx
+index 5423e7a..215d6df 100644
+--- a/src/components/ui/TopBar.tsx
++++ b/src/components/ui/TopBar.tsx
+@@ -66,7 +66,7 @@ export function TopBar({
+     >
+       <div className="flex min-w-0 items-center gap-2">
+         <img
+-          src="/logo.png"
++          src={`${import.meta.env.BASE_URL}logo.png`}
+           alt=""
+           className="h-7 w-7 shrink-0 rounded-lg object-contain drop-shadow-[0_0_10px_rgba(124,224,58,0.35)]"
+           draggable={false}
+diff --git a/src/lib/defaultSprites.ts b/src/lib/defaultSprites.ts
+index af16a60..8d29332 100644
+--- a/src/lib/defaultSprites.ts
++++ b/src/lib/defaultSprites.ts
+@@ -1,5 +1,7 @@
+ export const svgToDataUrl = (svg: string) => `data:image/svg+xml;base64,${btoa(svg)}`;
+
++const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
++
+ /** Entrada de la biblioteca de sellos del pincel (incluidos + subidos). */
+ export type BrushSpriteStamp = {
+   id: string;
+@@ -2196,7 +2198,7 @@ export function createBuiltinBrushSpriteStamps(): BrushSpriteStamp[] {
+       names.map((name) => ({
+         id: `__brushpack_${group}_${category}_${name}`,
+         name,
+-        url: `/stamps/packs/${group}/${category}/${name}.${ext}`,
++        url: assetUrl(`stamps/packs/${group}/${category}/${name}.${ext}`),
+         group,
+         category,
+       })),
+@@ -2215,7 +2217,7 @@ export function createBuiltinBrushSpriteStamps(): BrushSpriteStamp[] {
+   ];
+ }
+
+-export const defaultSpriteLibrary = [
++const legacyDefaultSpriteLibrary = [
+   {
+     name: "Circle",
+     url: svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="white"/></svg>`)
+@@ -2349,3 +2351,8 @@ export const defaultSpriteLibrary = [
+     url: "/stamps/worms_game_PNG3.png"
+   }
+ ];
++
++export const defaultSpriteLibrary = legacyDefaultSpriteLibrary.map((stamp) => ({
++  ...stamp,
++  url: stamp.url.startsWith("/stamps/") ? assetUrl(stamp.url) : stamp.url,
++}));
+diff --git a/src/lib/projectRestore.ts b/src/lib/projectRestore.ts
+index aca54c5..02154cd 100644
+--- a/src/lib/projectRestore.ts
++++ b/src/lib/projectRestore.ts
+@@ -119,7 +119,7 @@ export async function restoreProjectIntoEditor(
+   // nada), así que la descartamos y volvemos al look plano.
+   const packUrls = new Set(builtins.map((b) => b.url));
+   const isDeadPackUrl = (u: unknown): u is string =>
+-    typeof u === "string" && u.startsWith("/stamps/packs/") && !packUrls.has(u);
++    typeof u === "string" && /\/stamps\/packs\//.test(u) && !packUrls.has(u);
+   for (const [urlKey, lookKey, stampKey] of [
+     ["brushParticleSpriteUrl", "brushPaintLook", "activeBrushSpriteStampId"],
+     ["shapeParticleSpriteUrl", "shapePaintLook", "activeShapeSpriteStampId"],
+diff --git a/vite.config.ts b/vite.config.ts
+index abebc98..047d43b 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -28,6 +28,8 @@ function zipThreeRawPlugin(): Plugin {
+
+ export default defineConfig(({ mode }) => {
+   const env = loadEnv(mode, '.', '');
++  const requestedBase = env.PIXALERCE_BASE_PATH || '/';
++  const base = requestedBase.endsWith('/') ? requestedBase : `${requestedBase}/`;
+   // Only inline the Gemini key in dev. In prod the key MUST come from the user
+   // (typed into the Creative panel and stored in localStorage) to avoid leaking
+   // it inside the public bundle.
+@@ -38,6 +40,7 @@ export default defineConfig(({ mode }) => {
+       tailwindcss(),
+       zipThreeRawPlugin(),
+       VitePWA({
++        scope: base,
+         registerType: 'autoUpdate',
+         includeAssets: ['pwa-192.png', 'pwa-512.png', 'apple-touch-icon.png', 'favicon.png', 'logo.png'],
+         manifest: {
+@@ -49,8 +52,8 @@ export default defineConfig(({ mode }) => {
+           background_color: '#0E0E10',
+           display: 'standalone',
+           orientation: 'any',
+-          scope: '/',
+-          start_url: '/',
++          scope: base,
++          start_url: base,
+           categories: ['graphics', 'entertainment', 'creativity'],
+           icons: [
+             {
+@@ -90,6 +93,7 @@ export default defineConfig(({ mode }) => {
+         },
+       }),
+     ],
++    base,
+     build: {
+       rollupOptions: {
+         output: {

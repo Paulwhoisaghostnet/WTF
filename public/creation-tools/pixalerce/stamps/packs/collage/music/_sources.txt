@@ -1,0 +1,52 @@
+
+# --- added by sourcing run 2026-07-20 ---
+guitar.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6675280/png-sticker-vintage
+guitar_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6677515/vector-vintage-public-domain-black
+violin_vintage.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6258358/vector-sticker-vintage-public-domain
+cello.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Illustrated_catalogue_of_the_important_collection_of_antique_Chinese_porcelains,_Sung_and_Ming_potteries,_ancient_stone_sculptures,_carved_jades_and_other_hard_stones,_snuff_bottles,_Mandarin_(14800288683).jpg
+cello_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6265234/image-vintage-public-domain-art
+double_bass.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6560340/png-sticker-vintage
+grand_piano.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Old_Mexico_and_her_lost_provinces;_a_journey_in_Mexico,_southern_California,_and_Arizona,_by_way_of_Cuba_(1883)_(14594778519).jpg
+grand_piano_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6516720/png-sticker-vintage
+upright_piano.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Photograph_of_the_playroom,_Ingleholme,_n.d._-_by_unknown_photographer_(3003327967).jpg
+harp_vintage.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Malcolm_Fraser_-_c674eba996.jpg
+harp_vintage_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6560367/png-sticker-vintage
+french_horn.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6727967/png-sticker-vintage
+french_horn_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/18982890/french-horn-null-hans-thoma
+trumpet.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Julia_Ward_Howe_1902.jpg
+trombone.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Programme_(1921)_(14598331658).jpg
+tuba.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6510481/psd-sticker-vintage-public-domain
+tuba_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10095517/png-face-paper
+saxophone_vintage.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6484461/png-sticker-vintage
+saxophone_vintage_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6332861/image-public-domain-vintage-illustrations-woman
+clarinet.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:The_orchestra_and_its_instruments_(1917)_(14595830620).jpg
+flute_vintage.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Pompeii,_its_life_and_art_(1902)_(14578424957).jpg
+flute_vintage_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3392145/free-illustration-image-antique-art-artwork
+pan_flute.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:American_homes_and_gardens_(1911)_(17966102808).jpg
+bagpipes.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6302846/png-sticker-vintage
+bagpipes_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/8899098/angel-playing-bagpipes
+accordion.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6501130/psd-sticker-vintage-public-domain
+accordion_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7620170/png-people-vintage
+banjo_vintage.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3363900/free-illustration-image-antique-art-artwork
+banjo_vintage_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6749945/psd-sticker-public-domain-vintage-illustration
+lute.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:All_the_Russias-_travels_and_studies_in_contemporary_European_Russia,_Finland,_Siberia,_the_Caucasus,_and_Central_Asia_(1902)_(14597687247).jpg
+lute_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9674668/image-leaves-book-person
+lyre.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Gesneden_steen_met_de_beeltenis_van_Apollo,_RP-P-OB-51.125(V).jpg
+lyre_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Gérôme_-_the_life_and_works_of_Jean_Léon_Gérôme_(1892)_(14740169286).jpg
+snare_drum.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6438183/vector-vintage-public-domain-black
+snare_drum_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6440257/png-vintage-public-domain
+tambourine.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Character_sketches_of_romance,_fiction_and_the_drama_(1892)_(14805002503).jpg
+tambourine_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Italy_from_the_Alps_to_Mount_Etna_(1877)_(14775032454).jpg
+cymbals.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6261934/image-vintage-public-domain-art
+cymbals_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10103474/image-face-person-art
+triangle_instrument.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Bulletin_-_United_States_National_Museum_(1891)_(19805792124).jpg
+triangle_instrument_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Complete_catalog_and_price_list_(1900)_(14764975532).jpg
+xylophone.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6440091/png-vintage-public-domain
+gramophone.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6260783/vector-vintage-public-domain-art
+gramophone_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6265183/png-vintage-public-domain
+phonograph.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:North_American_Phonograph_1893.jpg
+phonograph_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6289756/image-vintage-public-domain-black
+sheet_music.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:"Ingenues"_on_stage,_1928-1929_-_by_Sam_Hood_(3273848616).jpg
+sheet_music_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_wet_Angel_Place,_Sydney,_1930s_-_Sam_Hood_(3293630577).jpg
+music_note.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Antique_views_of_ye_towne_of_Boston_(1882)_(14790238413).jpg
+music_note_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Collection_d'autographes,_de_dessins_et_de_portraits_de_personnages_célèbres,_français_et_étrangers,_du_XVIe_au_XIXe_siècle,_formée_par_Alexandre_Bixio._XVIe-XIXe_siècle._VIII._S_-_Z_-_btv1b10028242b_(362_of_618).jpg

@@ -1,0 +1,152 @@
+# eroticart — arte erotico de dominio publico y licencia libre
+# --- shunga (grabados japoneses) ---
+SHUNGA HI-RES DOWNLOAD — SOURCES & MANIFEST
+Source: Wikimedia Commons (open-access museum scans). All public-domain or CC0/CC-BY.
+Collected 2026-07-19. Fields: filename | WxH px | longest-side | license | scene/artist | Commons page
+Color-calibration bar flag: 'BAR' = a Munsell/color strip is visible along an edge; 'clean' otherwise.
+========================================================================================================================
+
+shunga_eisen_1.jpg | 6400x4412 | long=6400px | CC0 1.0 Public Domain Dedication | Keisai Eisen — shunga | clean | https://commons.wikimedia.org/wiki/File:Minnend_paar_voor_ketel,_RP-P-2001-18.jpg
+shunga_eisen_2.jpg | 6400x4332 | long=6400px | CC0 1.0 Public Domain Dedication | Keisai Eisen — shunga | clean | https://commons.wikimedia.org/wiki/File:Minnend_paar_voor_lakkast,_RP-P-2001-17.jpg
+shunga_eisen_3.jpg | 6226x4238 | long=6226px | CC0 1.0 Public Domain Dedication | Keisai Eisen — shunga | clean | https://commons.wikimedia.org/wiki/File:Geisha_aan_het_werk_op_de_Sumida_rivier_Sumidagawa_yoseru_geisha._(titel_op_object),_RP-P-2007-239.jpg
+shunga_eisen_4.jpg | 2802x1907 | long=2802px | Public Domain (PD-old / PD-Art) | Keisai Eisen — shunga | clean | https://commons.wikimedia.org/wiki/File:Geisha_aan_het_werk_op_de_Sumida_rivier-Rijksmuseum_RP-P-2007-239.jpeg
+shunga_eisen_fukujuso_1.jpg | 5982x4090 | long=5982px | CC0 1.0 Public Domain Dedication | Keisai Eisen — Fukujuso | clean | https://commons.wikimedia.org/wiki/File:In_de_buitenlucht_De_Adonis_plant_(serietitel)_Fukujuso_(serietitel),_RP-P-2008-6.jpg
+shunga_eisen_fukujuso_2.jpg | 5952x4034 | long=5952px | CC0 1.0 Public Domain Dedication | Keisai Eisen — Fukujuso | clean | https://commons.wikimedia.org/wiki/File:Weduwe_en_jongeman_De_Adonis_plant_(serietitel)_Fukujuso_(serietitel),_RP-P-2008-8.jpg
+shunga_eisen_fukujuso_3.jpg | 5614x3726 | long=5614px | CC0 1.0 Public Domain Dedication | Keisai Eisen — Fukujuso | clean | https://commons.wikimedia.org/wiki/File:In_borst_bijtende_man_De_Adonis_plant_(serietitel)_Fukujuso_(serietitel),_RP-P-2008-5.jpg
+shunga_eisen_fukujuso_4.jpg | 5172x3430 | long=5172px | CC0 1.0 Public Domain Dedication | Keisai Eisen — Fukujuso | clean | https://commons.wikimedia.org/wiki/File:Man_en_vrouw_in_innige_omarming_De_Adonis_plant_(serietitel)_Fukujuso_(serietitel),_RP-P-2008-4.jpg
+shunga_harunobu_2.jpg | 4000x2850 | long=4000px | CC0 1.0 Public Domain Dedication | Suzuki Harunobu — shunga | clean | https://commons.wikimedia.org/wiki/File:MET_DP148118.jpg
+shunga_hokusai_2.jpg | 4450x3282 | long=4450px | CC0 1.0 Public Domain Dedication | Katsushika Hokusai — shunga | clean | https://commons.wikimedia.org/wiki/File:Liefdespaar_en_ratten,_RP-P-1995-329.jpg
+shunga_hokusai_kinoe_1.jpg | 3200x2505 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Kinoe no Komatsu | clean | https://commons.wikimedia.org/wiki/File:Kinoe_no_Komatsu_05.jpg
+shunga_hokusai_kinoe_2.jpg | 3200x2533 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Kinoe no Komatsu | clean | https://commons.wikimedia.org/wiki/File:Kinoe_no_Komatsu_02.jpg
+shunga_hokusai_kinoe_4.jpg | 3200x2505 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Kinoe no Komatsu | clean | https://commons.wikimedia.org/wiki/File:Kinoe_no_Komatsu_04.jpg
+shunga_hokusai_kinoe_5.jpg | 3200x2533 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Kinoe no Komatsu | clean | https://commons.wikimedia.org/wiki/File:Kinoe_no_Komatsu_06.jpg
+shunga_hokusai_kinoe_6.jpg | 3200x2505 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Kinoe no Komatsu | clean | https://commons.wikimedia.org/wiki/File:Kinoe_no_Komatsu_09.jpg
+shunga_hokusai_namichidori_1.jpg | 2048x1338 | long=2048px | Public Domain (PD-old / PD-Art) | Hokusai — Nami Chidori | clean | https://commons.wikimedia.org/wiki/File:Katsushika_Hokusai_Plovers_Above_Waves_(Nami-chidori)_01.jpg
+shunga_hokusai_namichidori_2.jpg | 2048x1334 | long=2048px | Public Domain (PD-old / PD-Art) | Hokusai — Nami Chidori | clean | https://commons.wikimedia.org/wiki/File:Katsushika_Hokusai_Plovers_Above_Waves_(Nami-chidori)_02.jpg
+shunga_hokusai_namichidori_3.jpg | 2048x1334 | long=2048px | Public Domain (PD-old / PD-Art) | Hokusai — Nami Chidori | clean | https://commons.wikimedia.org/wiki/File:Katsushika_Hokusai_Plovers_Above_Waves_(Nami-chidori)_03.jpg
+shunga_hokusai_tako_1.jpg | 3731x2622 | long=3731px | Public Domain (PD-old / PD-Art) | Hokusai — Dream of the Fisherman's Wife (Tako to ama) | clean | https://commons.wikimedia.org/wiki/File:The_Dream_of_the_Fisherman%27s_Wife,_British_Museum,_version_1_(cropped).jpg
+shunga_hokusai_tako_2.jpg | 3200x2505 | long=3200px | Public Domain (PD-old / PD-Art) | Hokusai — Dream of the Fisherman's Wife (Tako to ama) | clean | https://commons.wikimedia.org/wiki/File:The_Dream_of_the_Fisherman%27s_Wife.jpg
+shunga_hokusai_tsui_1.jpg | 6400x4384 | long=6400px | CC0 1.0 Public Domain Dedication | Hokusai — Ehon Tsui no Hinagata | clean | https://commons.wikimedia.org/wiki/File:Liefdeskoppel_bij_naaidoos_Tsui_no_hinagata_(serietitel),_RP-P-2007-238.jpg
+shunga_kiyonaga_1.jpg | 11304x2302 | long=11304px | CC0 1.0 Public Domain Dedication | Torii Kiyonaga — shunga | clean | https://commons.wikimedia.org/wiki/File:Haastige_liefde_Sode_no_maki_(serietitel),_RP-P-2007-231.jpg
+shunga_kiyonaga_2.jpg | 11008x2344 | long=11008px | CC0 1.0 Public Domain Dedication | Torii Kiyonaga — shunga | clean | https://commons.wikimedia.org/wiki/File:Geisha_met_gesloten_ogen._Sode_no_maki_(serietitel),_RP-P-2007-232.jpg
+shunga_kiyonaga_3.jpg | 6266x4278 | long=6266px | CC0 1.0 Public Domain Dedication | Torii Kiyonaga — shunga | clean | https://commons.wikimedia.org/wiki/File:Bordeelbezoeker_met_courtisane_Courtisane-in-opleiding_en_bordeelbezoeker_Shikido_juniban_(serietitel_op_object),_RP-P-2007-230.jpg
+shunga_kiyonaga_4.jpg | 2820x1925 | long=2820px | Public Domain (PD-old / PD-Art) | Torii Kiyonaga — shunga | clean | https://commons.wikimedia.org/wiki/File:Courtisane-in-opleiding_en_bordeelbezoeker-Rijksmuseum_RP-P-2007-230.jpeg
+shunga_kunisada_1.jpg | 6276x3326 | long=6276px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:Badhuis_in_Hakone,_RP-P-2007-241.jpg
+shunga_kunisada_2.jpg | 6200x4128 | long=6200px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:Beweegbare_erotische_prent,_RP-P-2004-166.jpg
+shunga_kunisada_3.jpg | 6026x4208 | long=6026px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:Pleisterplaats_van_de_Tokaido_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-178.jpg
+shunga_kunisada_4.jpg | 5892x4128 | long=5892px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:De_pleisterplaats_Shimada_Shimada_(titel_op_object)_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-175.jpg
+shunga_kunisada_5.jpg | 5706x4182 | long=5706px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:De_pleisterplaats_Ishibe_Ishibe_(titel_op_object)_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-179.jpg
+shunga_kunisada_6.jpg | 5572x4208 | long=5572px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:De_pleisterplaats_Sakanoshita_Sakanoshita_(titel_op_object)_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-177.jpg
+shunga_kunisada_7.jpg | 5404x3762 | long=5404px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:Een_ontmoeting_bij_de_tempel_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-170.jpg
+shunga_kunisada_8.jpg | 5360x3816 | long=5360px | CC0 1.0 Public Domain Dedication | Utagawa Kunisada — shunga | clean | https://commons.wikimedia.org/wiki/File:De_pleisterplaats_Kusatsu_Kusatsu_(titel_op_object)_De_erotische_weg_naar_de_hoofdstad_(serietitel),_RP-P-2004-173.jpg
+shunga_shinasadame_1.jpg | 4000x2670 | long=4000px | CC0 1.0 Public Domain Dedication | Enshoku Shinasadame | clean | https://commons.wikimedia.org/wiki/File:MET_2013_758_a_c_a_08.jpg
+shunga_shinasadame_2.jpg | 4000x2670 | long=4000px | CC0 1.0 Public Domain Dedication | Enshoku Shinasadame | clean | https://commons.wikimedia.org/wiki/File:MET_2013_758_a_c_a_09.jpg
+shunga_shunga_1.jpg | 3864x2600 | long=3864px | Public Domain (PD-old / PD-Art) | Shunga (ukiyo-e) | clean | https://commons.wikimedia.org/wiki/File:%D0%A1%D1%8E%D0%BD%D0%B3%D0%B0_10.jpg
+shunga_shunga_2.jpg | 3863x2582 | long=3863px | Public Domain (PD-old / PD-Art) | Shunga (ukiyo-e) | clean | https://commons.wikimedia.org/wiki/File:%D0%A1%D1%8E%D0%BD%D0%B3%D0%B0_5.jpg
+shunga_shunga_3.jpg | 3855x2620 | long=3855px | Public Domain (PD-old / PD-Art) | Shunga (ukiyo-e) | clean | https://commons.wikimedia.org/wiki/File:%D0%A1%D1%8E%D0%BD%D0%B3%D0%B0_8.jpg
+shunga_shunga_4.jpg | 3847x2592 | long=3847px | Public Domain (PD-old / PD-Art) | Shunga (ukiyo-e) | clean | https://commons.wikimedia.org/wiki/File:%D0%A1%D1%8E%D0%BD%D0%B3%D0%B0_3.jpg
+shunga_sukenobu_2.jpg | 6512x4958 | long=6512px | Public Domain (PD-old / PD-Art) | Nishikawa Sukenobu — ehon | clean | https://commons.wikimedia.org/wiki/File:Kage_e_LCCN2008661118.jpg
+shunga_sukenobu_3.jpg | 6508x4604 | long=6508px | Public Domain (PD-old / PD-Art) | Nishikawa Sukenobu — ehon | clean | https://commons.wikimedia.org/wiki/File:Haha_to_ko_LCCN2008660814.jpg
+shunga_utamaro_1.jpg | 5361x4209 | long=5361px | Public Domain (PD-old / PD-Art) | Kitagawa Utamaro — shunga | clean | https://commons.wikimedia.org/wiki/File:Makura_ehon_no_iichibu_LCCN2008661230.jpg
+shunga_utamaro_2.jpg | 4752x3168 | long=4752px | Public Domain (PD-old / PD-Art) | Kitagawa Utamaro — shunga | BAR | https://commons.wikimedia.org/wiki/File:17XX_Utamaro_Shunga_anagoria.JPG
+shunga_utamaro_negai_3.jpg | 6186x4236 | long=6186px | CC0 1.0 Public Domain Dedication | Utamaro — Negai no Itoguchi | clean | https://commons.wikimedia.org/wiki/File:Getrouwde_man_en_weduwe_Negai_no_itoguchi_(serietitel),_RP-P-2003-476.jpg
+shunga_utamaro_negai_5.jpg | 5788x3928 | long=5788px | CC0 1.0 Public Domain Dedication | Utamaro — Negai no Itoguchi | clean | https://commons.wikimedia.org/wiki/File:Geisha_en_haar_geliefde_Negai_no_itoguchi_(serietitel),_RP-P-2006-277.jpg
+shunga_utamaro_utamakura_1.jpg | 5616x3744 | long=5616px | Public Domain (PD-old / PD-Art) | Utamaro — Utamakura (Poem of the Pillow) | clean | https://commons.wikimedia.org/wiki/File:Oberhausen_-_Gasometer_-_Der_sch%C3%B6ne_Schein_-_The_Lovers_(Kitagawa_Utamaro)_01_ies.jpg
+shunga_utamaro_utamakura_4.jpg | 2500x1664 | long=2500px | Public Domain (PD-old / PD-Art) | Utamaro — Utamakura (Poem of the Pillow) | BAR | https://commons.wikimedia.org/wiki/File:Utamaro_(1788)_Utamakura_print_No._02_(BM).jpg
+shunga_utamaro_utamakura_5.jpg | 2500x1679 | long=2500px | Public Domain (PD-old / PD-Art) | Utamaro — Utamakura (Poem of the Pillow) | BAR | https://commons.wikimedia.org/wiki/File:Utamaro_(1788)_Utamakura_print_No._03_(BM).jpg
+shunga_utamaro_utamakura_6.jpg | 2500x1677 | long=2500px | Public Domain (PD-old / PD-Art) | Utamaro — Utamakura (Poem of the Pillow) | BAR | https://commons.wikimedia.org/wiki/File:Utamaro_(1788)_Utamakura_print_No._05_(BM).jpg
+shunga_utamaro_utamakura_7.jpg | 2500x1666 | long=2500px | Public Domain (PD-old / PD-Art) | Utamaro — Utamakura (Poem of the Pillow) | BAR | https://commons.wikimedia.org/wiki/File:Utamaro_(1788)_Utamakura_print_No._07_(BM).jpg
+shunga_zashiki8_1.jpg | 3247x2493 | long=3247px | Public Domain (PD-old / PD-Art) | Furyu Zashiki Hakkei | BAR | https://commons.wikimedia.org/wiki/File:Suzuki_Harunobu_-_Geese_descending_on_the_koto_bridges_(_Kotoji_rakugan)_-_from_the_set_%27Eight_fashionable_parlour_vie..._-_Google_Art_Project.jpg
+shunga_zashiki8_2.jpg | 2500x1791 | long=2500px | Public Domain (PD-old / PD-Art) | Furyu Zashiki Hakkei | BAR | https://commons.wikimedia.org/wiki/File:Suzuki_Harunobu_-_F%C5%ABry%C5%AB_zashiki_hakkei_-_Sensu_seiran_(British_Museum).jpg
+# --- maestros eroticos (Wegener, Bayros, Avril, kamasutra, nepali, etc) ---
+MODERN / FREE-LICENSED EROTIC ART — SOURCE LOG
+Hunt date: 2026-07-19. All from Wikimedia Commons (verified per-file extmetadata license).
+License buckets: cc0/ccby/ccbysa = modern free CC licenses; pd = public domain (old-master, style often reads as illustrated/modern).
+
+TOTAL FILES: 81   (>=1500px on a side: 70)
+License short-name counts: Public domain=53, CC BY 4.0=15, CC0=5, CC BY-SA 4.0=4, CC BY 2.0=3, CC BY 2.5=1
+Bucket counts: pd=53, ccby=19, cc0=5, ccbysa=4
+
+FILE | WxH | LICENSE | BUCKET | SOURCE URL | ARTIST/ATTRIBUTION
+----------------------------------------------------------------------------------------------------
+ero_avril_1.jpg | 3200x2363 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Paul_Avril,_signed_'Phall'_-_Post-Communion.jpg | Édouard-Henri Avril
+ero_avril_2.jpg | 1760x1341 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Paul_Avril,_signed_'Phall'_-_L'Oblation_du_Calice.jpg | Édouard-Henri Avril
+ero_avril_3.jpg | 1374x999 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Année_galante_ou_Étrenne_à_l’amour,_1773_-_Avril.jpg | anonymous
+ero_bayros_1.jpg | 3844x5397 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_Sinnlicher_Reigen.jpg | Franz von Bayros
+ero_bayros_2.jpg | 3456x4608 | CC BY-SA 4.0 | ccbysa | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_grave,_Vienna,_2017.jpg | Eva Maria Mandl
+ero_bayros_3.jpg | 3200x2795 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_-_A_knight_before_a_vision_of_Christ.jpg | Franz von Bayros
+ero_bayros_4.jpg | 2640x3200 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_-_Ode_to_Dante.jpg | Franz von Bayros
+ero_bayros_5.jpg | 2480x3069 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_-_Vor_dem_Ball.jpg | Franz von Bayros
+ero_bayros_6.jpg | 2480x2700 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_-_Die_Malerin.jpg | Franz von Bayros
+ero_bayros_7.jpg | 2461x2560 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_043.jpg | Franz von Bayros
+ero_bayros_8.jpg | 2444x2560 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Franz_von_Bayros_038.jpg | Franz von Bayros
+ero_becat_1.jpg | 1000x872 | CC BY 2.5 | ccby | https://commons.wikimedia.org/wiki/File:Becat_Illustration.jpg | Presbytre
+ero_carlnewman_1.tif | 3334x2381 | CC0 | cc0 | https://commons.wikimedia.org/wiki/File:Vintage_erotic_nude_art_of_a_naked_woman._Female_Nude_by_Carl_Newman._Original_from_The_Smithsonian._Digitally_enhanced_by_rawpixel.tif | Carl Newman
+ero_chastitybelt_1.jpg | 1922x2248 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_man_unlocking_a_chastity_belt_on_a_woman_Wellcome_L0035451.jpg | 
+ero_chastitybelt_2.jpg | 2269x1757 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_man_unlocking_a_chastity_belt_on_a_woman_Wellcome_L0035452.jpg | 
+ero_chenavard_1.jpg | 2880x1969 | Public domain | pd | https://commons.wikimedia.org/wiki/File:La_Vie_érotique_(Paul_Chenavard)_-_Blowing_bubbles.jpg | Paul Chenavard
+ero_chenavard_2.jpg | 2880x1964 | Public domain | pd | https://commons.wikimedia.org/wiki/File:La_Vie_érotique_(Paul_Chenavard)_-_An_intimate_encounter.jpg | Paul Chenavard
+ero_chenavard_3.jpg | 2880x1796 | Public domain | pd | https://commons.wikimedia.org/wiki/File:La_Vie_érotique_(Paul_Chenavard)_-_Bathtime_-_An_aquatic_encounter.jpg | Paul Chenavard
+ero_copulerend_1.jpg | 3952x5488 | CC0 | cc0 | https://commons.wikimedia.org/wiki/File:Copulerend_paar,_RP-P-OB-47.335.jpg | Rijksmuseum
+ero_eckersberg_1.png | 5784x3674 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Christoffer_Wilhelm_Eckersberg_-_Erotisk_scene.png | Christoffer Wilhelm Eckersberg
+ero_floating_lovers_1.jpg | 3330x2288 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Portrait_of_the_Floating_World,_A_Pair_of_Lovers_by_Utamaro_(From_The_Poem_of_the_Pillow).jpg | Utamaro
+ero_harunobu_dream_1.png | 1882x1022 | CC0 | cc0 | https://commons.wikimedia.org/wiki/File:Young_woman's_dream_of_an_erotic_encounter_(c.1770)_in_the_style_of_Harunobu_Suzuki_(Housed_in_the_British_Museum)_Print,_shunga_(BM_OA+,0.83)_(cropped).png | Unknown authorUnknown author
+ero_invocation_1.jpg | 3671x3139 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Invocation_a_l'amour,_c._1825._Wellcome_L0030561.jpg | 
+ero_kamasutra_ms_1.jpg | 3716x2672 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Kamasutra_vatsyayana_Wellcome_L0045293.jpg | 
+ero_kamasutra_ms_2.jpg | 3894x1892 | CC BY-SA 4.0 | ccbysa | https://commons.wikimedia.org/wiki/File:3rd_or_4th_century_CE_Kamasutra_Vatsyayana,_verse_1.5.10–12,_13th-century_Jayamangala_commentary_of_Yashodhara,_Bendall_purchase_1885CE_in_Nepal,_Sanskrit,_Devanagari_front_and_back_folio.jpg | Ms Sarah Welch
+ero_kamasutra_ms_3.jpg | 2222x3190 | Public domain | pd | https://commons.wikimedia.org/wiki/File:A_Maharahja_in_His_Harem,_the_ruler_seated_on_a_dais_supended_from_the_chandelier_above,_frolicking_with_six_courtesans,_from_Bundi.jpg | Unknown authorUnknown author
+ero_kamasutra_ms_4.jpg | 3864x1082 | CC BY-SA 4.0 | ccbysa | https://commons.wikimedia.org/wiki/File:3rd_or_4th_century_CE_Kamasutra_Vatsyayana,_verse_1.5.10–12,_13th-century_Jayamangala_commentary_of_Yashodhara,_Bendall_purchase_1885CE_in_Nepal,_Sanskrit,_Devanagari_verso-side.jpg | Ms Sarah Welch
+ero_kamasutra_ms_5.jpg | 3894x802 | CC BY-SA 4.0 | ccbysa | https://commons.wikimedia.org/wiki/File:3rd_or_4th_century_CE_Kamasutra_Vatsyayana,_verse_1.5.10–12,_13th-century_Jayamangala_commentary_of_Yashodhara,_Bendall_purchase_1885CE_in_Nepal,_Sanskrit,_Devanagari_recto-side.jpg | Ms Sarah Welch
+ero_klimt_lovers_1.jpg | 7000x4598 | CC BY 2.0 | ccby | https://commons.wikimedia.org/wiki/File:The_Lovers_(1913)_by_Gustav_Klimt._Original_from_The_MET_Museum._Digitally_enhanced_by_rawpixel._(50637157957).jpg | Rawpixel Ltd
+ero_kuniyoshi_1.jpg | 8975x11746 | Public domain | pd | https://commons.wikimedia.org/wiki/File:1830_Yokai_Mitate_Yin-Yang._Ilustración_10;_Utagawa_Kuniyoshi.jpg | Utagawa Kuniyoshi
+ero_kuniyoshi_2.jpg | 8950x11696 | Public domain | pd | https://commons.wikimedia.org/wiki/File:1830_Yokai_Mitate_Yin-Yang._Ilustración_04;_Utagawa_Kuniyoshi.jpg | Utagawa Kuniyoshi
+ero_lesbianpos_1.jpg | 1920x1920 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Lesbian_sexual_position_2.jpg | Javadst
+ero_liefdes_jupiter_1.jpg | 921x1417 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Neptune_and_Amphitrite_copulating_in_a_chariot,_surrounded_by_Tritons_PK-Thysiana_712.jpg | Boyvin, René (1525-1580?)
+ero_liefdes_jupiter_2.jpg | 852x1114 | CC0 | cc0 | https://commons.wikimedia.org/wiki/File:Jupiter_met_een_naakte_vrouw_op_bed_Liefdes_van_Jupiter_(serietitel),_RP-P-OB-54.637.jpg | Rijksmuseum
+ero_marvel_tales_1.jpg | 2123x3000 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Cover_of_Marvel_Tales,_May_1940.jpg | H, W, Scott / Western Fiction Publishing
+ero_moderndrawing_1.jpg | 2985x3856 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Drawing_-_Erotic_art_-_2ab.jpg | James Grantham Turner
+ero_modernpainting_1.jpg | 2599x3072 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Painting_-_B4.jpg | Philadelphia Museum of Art
+ero_modernpainting_2.jpg | 2590x3072 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Painting_-_B3.jpg | Philadelphia Museum of Art
+ero_modernpainting_3.jpg | 2554x3072 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Painting_-_B1.jpg | Philadelphia Museum of Art
+ero_modernpainting_4.jpg | 2533x3073 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Painting_-_B2.jpg | Philadelphia Museum of Art
+ero_nepalese_ms_1.jpg | 4116x2728 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Oriental_Collection,_Nepalese_erotic_MS,_Ind_Wellcome_L0031441.jpg | 
+ero_nepalese_ms_2.jpg | 5026x2190 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Oriental_Collection,_Nepalese_erotic_MS,_Ind_Wellcome_L0031438.jpg | 
+ero_nepalese_ms_3.jpg | 4116x2663 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Oriental_Collection,_Nepalese_erotic_MS,_Ind_Wellcome_L0031442.jpg | 
+ero_nepalese_ms_4.jpg | 4076x2584 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Oriental_Collection,_Nepalese_erotic_MS,_Ind_Wellcome_L0031443.jpg | 
+ero_nerciat_1.jpg | 3190x4680 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Nerciat_-_Monrose,_1871,_t2p55_-_0302.jpg | André Robert de Nerciat
+ero_nerciat_2.jpg | 1979x2833 | Public domain | pd | https://commons.wikimedia.org/wiki/File:JustineJuliette1797lvii.jpg | Unknown authorUnknown author
+ero_nerciat_3.jpg | 1357x2116 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Nerciat_-_Le_Diable_au_corps,_1803,_T1-p.249.jpg | Nerciat, André-Robert Andréa de (1739-1800)
+ero_nerciat_4.jpg | 1344x2026 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Nerciat_-_Le_Diable_au_corps,_1803,_T1-p.196.jpg | Nerciat, André-Robert Andréa de (1739-1800)
+ero_nerciat_5.jpg | 1303x2064 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Nerciat_-_Le_Diable_au_corps,_1803,_T2-p.69.jpg | Nerciat, André-Robert Andréa de (1739-1800)
+ero_playing_nude_1.jpg | 4992x3328 | CC BY 2.0 | ccby | https://commons.wikimedia.org/wiki/File:Playing_(nude).jpg | peter klashorst
+ero_shunga_1.jpg | 4000x2670 | CC0 | cc0 | https://commons.wikimedia.org/wiki/File:閨暦大雑書玉門大成-Erotica;_Compendium_Guide_to_the_Brothels_of_Osaka_(Keiryaku_ōzassho_gyokumon_taisei)_MET_2013_807_a_b_04_crd.jpg | Kitao Shigemasa
+ero_shunga_2.jpg | 3855x2620 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_8.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_3.jpg | 3864x2600 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_10.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_4.jpg | 3863x2582 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_5.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_5.jpg | 3847x2592 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_3.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_6.jpg | 3837x2585 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_6.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_7.jpg | 3825x2593 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_11.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_shunga_8.jpg | 3826x2590 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Сюнга_13.jpg | Сюнга - эротические гравюры укиё-э, широко распространенные в средневековой Японии периода Эдо (1603-1868)
+ero_sketch2010_1.jpg | 2289x1513 | CC BY 2.0 | ccby | https://commons.wikimedia.org/wiki/File:Erotic_sketch-Jan2010.jpg | mileamne
+ero_solomko_1.jpg | 3852x2481 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Sergei_Sergeyevich_Solomko_Konkubine.jpg | Sergei Sergeyevich Solomko (1867–1928)
+ero_still_life_erotic_1.jpg | 2130x4166 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:Still_life_of_roses_and_fruit_with_concealed_erotic_scenes._Wellcome_V0018458.jpg | 
+ero_wegener_1.jpg | 2920x2916 | Public domain | pd | https://commons.wikimedia.org/wiki/File:1925_Wegener_Les_Delassements_dEros_06_anagoria.JPG | Gerda Wegener
+ero_wegener_2.jpg | 2216x2856 | Public domain | pd | https://commons.wikimedia.org/wiki/File:1925_Wegener_Les_Delassements_dEros_07_anagoria.JPG | Gerda Wegener
+ero_wegener_3.jpg | 2985x1960 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Gerda-and-inar_Magnus_Andreas_Wegener_1924.jpg | Unknown authorUnknown author
+ero_wegener_4.jpg | 2125x2733 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Gerda_Wegener,_I_sommervarmen_(Lili),_1924,_Öl_auf_Leinwand,_115_x_87cm,_privatsammlung_Dänemark.jpg | Gerda Wegener
+ero_wegener_5.png | 2716x2135 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Gerda_Wegener_-_Erotisk_scene.png | Gerda Wegener
+ero_wegener_6.jpg | 2048x2530 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Wegener_venise1.jpg | Gerda Wegener
+ero_wegener_7.jpg | 2048x2450 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Wegener_venise2.jpg | Gerda Wegener
+ero_wegener_8.jpg | 1721x2000 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Wegener_venise3.jpg | Gerda Wegener
+ero_wellcome_couple_1.jpg | 3072x2384 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_couple_engaged_in_sexual_intercourse;_the_man_is_wearing_a_Wellcome_V0047299.jpg | 
+ero_wellcome_couple_2.jpg | 2835x2562 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_couple_making_love;_outside_the_room,_a_garden_is_seen_by_Wellcome_V0047303.jpg | 
+ero_wellcome_couple_3.jpg | 2834x2499 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_couple_making_love_in_a_room._Gouache_painting._Wellcome_V0047304.jpg | 
+ero_wellcome_couple_4.jpg | 3189x2192 | CC BY 4.0 | ccby | https://commons.wikimedia.org/wiki/File:A_middle-aged_couple_making_love._Coloured_reproduction_of_a_Wellcome_V0047300.jpg | 
+ero_zichy_1.jpg | 4000x3054 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Szerelmesek_egy_parkban.jpg | Mihály Zichy
+ero_zichy_2.jpg | 958x1328 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Two_young_men,_one_of_them_unconscious,_presumably_drunk.jpg | Mihály Zichy
+ero_zichy_3.jpg | 995x1260 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Studies_Of_Nudes_(0).jpg | Mihály Zichy
+ero_zichy_4.jpg | 955x1260 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Studies_Of_Nudes_(1).jpg | Mihály Zichy
+ero_zichy_5.jpg | 1106x1011 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Studies_Of_Nudes_(9).jpg | Mihály Zichy
+ero_zichy_6.jpg | 788x1107 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Artist's_Love_-_WGA25980.jpg | Mihály Zichy
+ero_zichy_7.jpg | 854x1010 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Studies_Of_Nudes_(8).jpg | Mihály Zichy
+ero_zichy_8.jpg | 1069x796 | Public domain | pd | https://commons.wikimedia.org/wiki/File:Mihály_Zichy_-_Studies_Of_Nudes_(6).jpg | Mihály Zichy

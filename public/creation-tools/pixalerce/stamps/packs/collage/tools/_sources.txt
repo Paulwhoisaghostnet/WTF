@@ -1,0 +1,105 @@
+
+# --- added by sourcing run 2026-07-20 ---
+mallet.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3358489/free-illustration-image-antique-art-artwork
+hand_saw.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Dr_Batson_in_faquir_dress_after_Delhi_Massacre,_India,_Indian_Rebellion,_Mutiny_views,_Sepoy_Mutiny,_old_vintage_1800s_steel_engraving.jpg
+hand_saw_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Every_life_a_delight_(1914)_(14781559772).jpg
+adjustable_wrench.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6488136/png-sticker-vintage
+adjustable_wrench_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6484486/png-sticker-vintage
+spanner.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6817482/png-sticker-vintage
+pliers.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6820600/png-sticker-vintage
+pliers_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6817449/png-sticker-vintage
+screwdriver.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Matchbox_label_-_Replace_Broken_Tools!_-_Czechoslovakia_(circa_1940s)_-_MBP1628258663.jpg
+screwdriver_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10023224/image-airplane-art-vintage
+hand_plane.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6488611/png-sticker-vintage
+trowel.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6820695/png-sticker-vintage
+trowel_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6819493/vector-vintage-public-domain-black
+pruning_shears.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10302879/image-paper-art-vintage
+pitchfork.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/51001/free-illustration-image-tools-gardening-shovel
+wheelbarrow.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Matchbox_label_-_Build_New_Playgrounds_-_Czechoslovakia_(circa_1940s)_-_MBP1420127095.jpg
+wheelbarrow_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6678093/vector-vintage-public-domain-person
+watering_can.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_lake_tour_to_picturesque_Mackinac_via_the_D._and_C_(1890)_(14577646897).jpg
+watering_can_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:British_fresh_water_fishes_(Page_ii)_(8552032080).jpg
+spirit_level.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6501380/image-vintage-public-domain-illustrations
+caliper.webp | CC0 1.0 | Openverse/thingiverse | https://www.thingiverse.com/thing:1166700
+dividers.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6258123/image-vintage-public-domain-art
+anvil.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6715127/vector-vintage-public-domain-person
+anvil_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6713911/png-sticker-vintage
+pickaxe.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6820783/png-sticker-vintage
+pickaxe_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6819593/vector-vintage-public-domain-black
+shears.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6820630/png-sticker-vintage
+shears_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6819691/vector-vintage-public-domain-black
+wooden_mallet.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:PSM_V09_D034_Carpenter_wooden_mallet.jpg
+brace_and_bit.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9638462/brace-and-bit
+brace_and_bit_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3367885/free-illustration-image-antique-art-artwork
+cultivator.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Catalogue_of_seeds,_agricultural_and_horticultural_supplies_and_guide_for_the_garden,_field_and_farm_(1893)_(14755850896).jpg
+cultivator_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Choice_Iowa_seeds_-_second_edition_of_the_27th_annual_catalogue_and_garden_guide_(1897)_(19926492484).jpg
+machinist_tool.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Bement_and_Dougherty,_Industrial_Works,_Machinists'_Tools_(8706012304).jpg
+marking_gauge.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Appendix_to_the_Journals_of_the_Senate_and_Assembly_of_the_session_of_the_Legislature_of_the_State_of_California_(1917)_(14597571739).jpg
+marking_gauge_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Building_and_repairing_railways_-_Forming_one_of_the_series_of_the_volumes_comprised_in_the_Revised_and_enlarged_edition_of_The_science_of_railways,_(1906)_(14574707158).jpg
+
+# --- added by tools sourcing run 2026-07-20 ---
+adze.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Adze_•_p784_•_Scammell's_Cyclopedia_of_Valuable_Receipts_(1897).tif
+bow_saw.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Beugelzaag_hout.jpg
+nail_puller.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Catspaw_(Tool_nail_puller).jpg
+drawknife.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Drawknife.jpg
+drawknife_2.webp | CC0 1.0 | Openverse/wikimedia | https://commons.wikimedia.org/w/index.php?curid=82017808
+drawknife_3.webp | CC0 1.0 | Openverse/wikimedia | https://commons.wikimedia.org/w/index.php?curid=82071812
+folding_rule.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Handmade_Wooden_Carpenters'_Folding_Rule.jpg
+hammer_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Claw-hammer.jpg
+hand_saw_3.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Cassells_Carpentry.78_hand_saw.png
+hatchet.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Hatchet_2_(PSF).png
+hatchet_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Hatchet_firefighter.png
+hoe.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:GardenHoe2.PNG
+pincers.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Klieste_klasicke.jpg
+pincers_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Pincer_(PSF).png
+plumb_bob.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Plumb-Bob_Pendant_LACMA_M.80.198.185.jpg
+plumb_bob_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Plumb_1_(PSF).png
+rake.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Rake_-_Tool_3_(PSF).png
+scissors_case.webp | CC0 1.0 | Cleveland Museum of Art | https://clevelandart.org/art/1953.632
+sugar_scissors.webp | CC0 1.0 | Cleveland Museum of Art | https://clevelandart.org/art/1940.224
+scissors.webp | CC0 1.0 | Cleveland Museum of Art | https://clevelandart.org/art/1967.157.j
+thimble.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3358752/free-illustration-image-sewing-antique-art
+tongs.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Grilling-tongs.png
+vise.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Benchtop_Vise_Used_By_Stephen_and_Elmer_Braun_-_DPLA_-_2fabd3d8cf33037a86b84503c66fadc1_(page_1).jpg
+vise_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Benchtop_Vise_Used_By_Stephen_and_Elmer_Braun_-_DPLA_-_2fabd3d8cf33037a86b84503c66fadc1_(page_10).jpg
+wrench_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Clé_plate.jpg
+wrench_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6817538/vector-vintage-public-domain-black
+auger.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3392182/free-illustration-image-antique-art-artwork
+auger_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3363024/free-illustration-image-alfonso-moreno-antique-art
+spindle.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/8933766/awl
+axe_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3362737/free-illustration-image-antique-art-artwork
+broad_axe.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3358351/free-illustration-image-antique-archie-thompson-art
+axe_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3391915/free-illustration-image-adze-antique-art
+chisel.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3391223/free-illustration-image-antique-art-artwork
+clamp.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6819496/vector-vintage-public-domain-wood
+compass.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Compass2_(PSF).png
+flat_iron.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3387472/free-illustration-image-antique-arlington-gregg-art
+flat_iron_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3387466/free-illustration-image-antique-art-artwork
+hammer_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3390655/free-illustration-image-antique-art-artwork
+hand_plane_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/10081230/rabbet-plane-c-1938-samuel-faigin
+hand_plane_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3369031/free-illustration-image-antique-art-artwork
+hand_plane_4.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9630185/carpenters-plane
+fish_hook.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/8446089/fish-hook
+step_ladder.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7669423/png-pattern-cartoon
+magnifying_glass.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5912126/image-public-domain-wooden-vintage
+magnifying_glass_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5904151/magnifying-glass-free-public-domain-cc0-image
+nail_box.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3367870/free-illustration-image-vintage-antique-art
+hammer_nails.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5914305/image-public-domain-vintage-construction
+oil_can.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5920025/motor-oiling-can-free-public-domain-cc0-photo
+oil_can_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3379315/free-illustration-image-20th-century-antique-art
+pliers_3.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Plier_1_(PSF).png
+pliers_4.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Plier_2_(PSF).png
+hand_saw_4.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9638134/hand-saw
+scissors_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6812978/image-vintage-public-domain-black
+scissors_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6488381/png-sticker-vintage
+screwdriver_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6329846/png-sticker-public-domain
+sewing_machine.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/8232128/sewing-machine-ca1940-harold-oldfield
+sewing_machine_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3337500/free-photo-image-sewing-appliance-vintage
+sewing_machine_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/3370339/free-illustration-image-antique-art-artwork
+shears_3.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9265959/scissors-unidentified-maker
+shovel_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Shovel_(PSF).png
+strigil.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/14247143/strigil
+sledgehammer.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5942050/free-public-domain-cc0-photo
+garden_trowel.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6870551/png-sticker-public-domain
+tape_measure.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/5921621/free-tape-measure-public-domain-cc0-photo
+vise_3.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Vise_(PSF).png

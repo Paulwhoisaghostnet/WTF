@@ -1,0 +1,40 @@
+
+# --- added by sourcing run 2026-07-20 ---
+anatomy_skull.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Plate_Vb_Human_Skull,_engraving_by_William_Miller_after_drawing_by_W_Miller.jpg
+skeleton.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/561116/skull-vintage-style
+anatomy_hand.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6288053/image-vintage-public-domain-person
+anatomy_hand_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/6515999/image-heart-vintage-public-domain
+anatomy_eye.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_complete_physico-medical_and_chirurgical_treatise_on_the_human_eye-_and_a_demonstration_of_natural_vision_Fleuron_T153844-10.png
+anatomy_eye_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_complete_physico-medical_and_chirurgical_treatise_on_the_human_eye-_and_a_demonstration_of_natural_vision_Fleuron_T153844-14.png
+celestial_chart.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:1660_celestial_chart_showing_the_selenographic_phases_of_the_moon.jpg
+celestial_chart_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:1675_double_hemisphere_celestial_chart_by_Louis_Vlasbloem.jpg
+constellation.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/9329171/tray
+zodiac_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Antique_gems_and_rings_(1872)_(14778853775).jpg
+armillary_sphere_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Compass_rose_detail_from_1748_Bowen_Mariner’s_Compass_and_Armillary_Sphere_-_Geographicus_-_CircleofWinds-bowen-1747_(cropped).jpg
+moth_specimen.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Butterflies_and_moths_(Plate_XXI)_(9261753403).jpg
+moth_specimen_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/431473/free-illustration-image-butterfly-vintage-shell
+ornate_frame.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:"Christierna_Ertzherzogin_zu_Österreich",_engraving.jpg
+ornate_frame_2.webp | PDM 1.0 | Openverse/flickr | https://www.flickr.com/photos/37667416@N04/4383851321
+cartouche.webp | CC0 1.0 | Openverse/clevelandmuseum | https://clevelandart.org/art/1932.374.9
+cartouche_2.webp | CC0 1.0 | Openverse/clevelandmuseum | https://clevelandart.org/art/1932.374.1
+flourish.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:A_treatise_on_wood_engravings_-_historical_and_practical_(1881)_(14590307589).jpg
+flourish_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:British_Library_digitised_image_from_page_11_of_"The_Poetical_Works_of_Percy_Bysshe_Shelley._Unannotated_edition._Edited,_Unannotated_edition._Edited,_with_a_critical_memoir,_by_William_Michael_Rossetti.jpg
+watch_movement.webp | CC0 1.0 | Openverse/smithsonian_african_american_history_museum | https://nmaahc.si.edu/object/nmaahc_2014.115.6.1
+watch_movement_2.webp | CC0 1.0 | Openverse/smithsonian_african_american_history_museum | https://nmaahc.si.edu/object/nmaahc_2014.115.6.1
+greek_god.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Greek_mythology_systematized_(1880)_(14746240505).jpg
+medusa.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Antique_Ewer_with_a_Handle_in_the_Shape_of_Two_Snakes_coming_from_the_Head_of_Medusa_below,_from_Vases_after_the_Antique_MET_DP832543.jpg
+medusa_2.webp | CC0 | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Etienne_Delaune,_Head_of_Medusa,_NGA_6517.jpg
+occult.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Beauty_for_ashes_(1914)_(14780868991).jpg
+occult_2.webp | No restrictions | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:The_astrologer_of_the_nineteenth_century_(1825)_(14577005098).jpg
+all_seeing_eye.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/7666766/image-art-vintage-hands
+skull_crossbones.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:17th_Lancers_-_cap_badge,_original,_antique.jpg
+saturn.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:George_Wither_-_Sapiens_dominabitur_astris,_Illustr._XXXI,_1635.jpg
+sea_monster.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:1690_Coronelli_Map_-_St._Stephen's_Church_Albania.jpg
+sea_monster_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Hans_Egede_1734_sea_serpent.jpg
+angel_wings_2.webp | CC0 1.0 | Openverse/rawpixel | https://www.rawpixel.com/image/8921000/winged-genius-with-aim-gerhard-ludvig-lahde
+anatomy_brain.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Bell_brain_cut.jpg
+anatomy_brain_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:J._Voort_Kamp_in_Caspar_Bartholin_Institutiones_Anatomicae.png
+mars.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:George_Wither_-_Sapiens_dominabitur_astris,_Illustr._XXXI,_1635.jpg
+crescent_moon.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:17th_c_Sun_and_Moon_Engraved_Image,_hand-colored.jpg
+crescent_moon_2.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:Eckarth_1807_12_Luxenburg.jpg
+ornate_cross.webp | Public domain | Wikimedia Commons | https://commons.wikimedia.org/wiki/File:"Christierna_Ertzherzogin_zu_Österreich",_engraving.jpg
