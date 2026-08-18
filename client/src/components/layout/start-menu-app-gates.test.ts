@@ -222,11 +222,13 @@ test("Start Menu keeps admin tools out of the first-class app rail", () => {
   assert(!appPaths.includes("/control-board"));
   assert(!appPaths.includes("/contract-factory"));
   assert(!appPaths.includes("/operator-wallet"));
+  assert(!appPaths.includes("/payroll"));
 
   assert(adminPaths.includes("/admin"));
   assert(adminPaths.includes("/control-board"));
   assert(adminPaths.includes("/contract-factory"));
   assert(adminPaths.includes("/operator-wallet"));
+  assert(adminPaths.includes("/payroll"));
 });
 
 test("Start Menu only exposes private Objkt Operator after the owner probe", () => {

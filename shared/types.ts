@@ -486,6 +486,7 @@ export const DESKTOP_APPS = [
   "mail",
   "admin-inbox",
   "objkt-operator",
+  "payroll",
 ] as const;
 export type DesktopAppKey = (typeof DESKTOP_APPS)[number];
 
@@ -520,6 +521,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   mail: "Inbox",
   "admin-inbox": "Contact Admin",
   "objkt-operator": "Objkt Operator",
+  payroll: "Payroll",
 };
 
 export const EXPERIMENTAL_DESKTOP_APPS = [

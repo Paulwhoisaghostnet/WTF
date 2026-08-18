@@ -552,10 +552,9 @@ export function Desktop({
   }, [appAccessBlocked, wm]);
 
   const sourceApps = data?.apps ?? DISABLED_DESKTOP_APPS;
-  const appGateBypass = useMemo(() => {
-    const roles = normalizeUserRoles(user?.roles ?? user?.role ?? null);
-    return roles.includes("admin") || roles.includes("trusted_creator");
-  }, [user?.role, user?.roles]);
+  const desktopRoles = useMemo(() => normalizeUserRoles(user?.roles ?? user?.role ?? null), [user?.role, user?.roles]);
+  const appGateBypass = desktopRoles.includes("admin") || desktopRoles.includes("trusted_creator");
+  const payrollAvailable = desktopRoles.includes("admin");
   const apps = {
     wtfiam: sourceApps.wtfiam,
     wim: sourceApps.wim,
@@ -586,6 +585,7 @@ export function Desktop({
     applications: sourceApps.applications,
     mail: sourceApps.mail,
     "objkt-operator": sourceApps["objkt-operator"],
+    payroll: sourceApps.payroll,
   };
 
   const iconDefs = useMemo<DesktopIconDef[]>(
@@ -593,11 +593,13 @@ export function Desktop({
       appAccessBlocked,
       appGateBypass,
       objktOperatorAvailable: objktOperatorAccessQuery.data?.allowed === true,
+      payrollAvailable,
     }),
     [
       appAccessBlocked,
       appGateBypass,
       objktOperatorAccessQuery.data?.allowed,
+      payrollAvailable,
       apps.console,
       apps.dicksword,
       apps["dear-diary"],
@@ -620,6 +622,7 @@ export function Desktop({
       apps.agent,
       apps.applications,
       apps["objkt-operator"],
+      apps.payroll,
       apps.studio,
       apps.tv,
       apps.wim,

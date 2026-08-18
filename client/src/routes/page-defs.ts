@@ -222,6 +222,9 @@ const ContractFactoryPage = lazy(() =>
 const OperatorWalletPage = lazy(() =>
   import("../pages/OperatorWallet").then((m) => ({ default: m.OperatorWallet }))
 );
+const PayrollPage = lazy(() =>
+  import("../pages/Payroll").then((m) => ({ default: m.Payroll }))
+);
 const ObjktOperatorPage = lazy(() =>
   import("../pages/ObjktOperator").then((m) => ({ default: m.ObjktOperator }))
 );
@@ -632,6 +635,16 @@ export const PAGE_DEFS: PageDef[] = [
     title: "Operator Wallet",
     group: "admin",
     startMenu: true,
+  },
+  {
+    pattern: "/payroll",
+    component: PayrollPage,
+    auth: true,
+    roles: ["admin"],
+    title: "Payroll",
+    group: "admin",
+    startMenu: true,
+    desktopIcon: true,
   },
   {
     pattern: "/objkt-operator",
