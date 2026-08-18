@@ -10659,3 +10659,13 @@
 **Why it mattered**: The environment inventory fingerprints both discovered variables and the exact governed source boundary. A feature can leave every environment-variable row unchanged while still making the checked-in governance artifact stale.
 
 **Rule**: After adding, deleting, or moving any file under the environment inventory's configured source roots, run `npm run env:inventory`, `npm run env:inventory:check`, and `node --test scripts/environment-inventory-policy.test.mjs` on the clean release candidate before promotion.
+
+---
+
+## 2026-08-18 — Parallel registries must preserve canonical creation-tool order
+
+**What happened**: PixAlerce was inserted third in the canonical creation-tool registry but appended near the end of the package-acceptance registry. Focused route, asset, browser, typecheck, build, and inventory tests all passed, while the aggregate unit suite correctly rejected the different tool ordering.
+
+**Why it mattered**: Package acceptance is a positional mirror of the canonical registry so routes, provenance, rollback data, and admin observability cannot silently drift into independently maintained catalogues.
+
+**Rule**: When adding or reordering a creation tool, place its package-acceptance record at the same index as the canonical tool registry and run `node --import tsx --test shared/wtf-app-packages.test.ts` plus the aggregate unit suite before promotion.
