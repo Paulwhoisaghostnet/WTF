@@ -10649,3 +10649,13 @@
 **Why it mattered**: A deploy can succeed independently while the canonical release workflow remains red. Generated governance artifacts are part of the release contract even when the runtime feature itself does not consume a new production secret.
 
 **Rule**: After adding or moving any environment-variable reference, run `npm run env:inventory` and then `npm run env:inventory:check` on the exact clean release candidate before promotion. Treat a green feature suite as incomplete until generated policy inventories also match the candidate tree.
+
+---
+
+## 2026-08-18 — New governed source files must refresh the environment inventory even when they add no variables
+
+**What happened**: The PixAlerce integration passed typecheck, build, creation-tool checks, inventory coverage, its focused persistence test, and the complete browser inventory. Main CI still stopped at `env:inventory:check` because a new tracked test file increased the generator's governed source-file count from 2,187 to 2,188 without changing the set of environment variables.
+
+**Why it mattered**: The environment inventory fingerprints both discovered variables and the exact governed source boundary. A feature can leave every environment-variable row unchanged while still making the checked-in governance artifact stale.
+
+**Rule**: After adding, deleting, or moving any file under the environment inventory's configured source roots, run `npm run env:inventory`, `npm run env:inventory:check`, and `node --test scripts/environment-inventory-policy.test.mjs` on the clean release candidate before promotion.
