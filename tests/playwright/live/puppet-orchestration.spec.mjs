@@ -510,6 +510,130 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("community Casino practice tables submit, moderate, publish, and play without value", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const creator = actorByRole(puppetCredentials, "trusted_creator");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const player = actorByRole(puppetCredentials, "contestant");
+    const creatorRequest = await actorRequestContext(playwright, baseURL, creator);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const playerRequest = await actorRequestContext(playwright, baseURL, player);
+    const testRunId = `live-puppet-casino-practice-${Date.now().toString(36)}`;
+
+    try {
+      const creatorHeaders = await csrfHeaders(creatorRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const playerHeaders = await csrfHeaders(playerRequest);
+
+      const submitted = await expectOkJson(
+        await creatorRequest.post("/api/casino/practice-games", {
+          headers: creatorHeaders,
+          data: {
+            title: `Practice Stars ${testRunId}`,
+            summary: "A creator-authored equal-chance practice table.",
+            instructions: "Start a practice round and read the stored result.",
+            outcomes: ["Sun", "Moon", "Star"],
+          },
+        }),
+        "submit community Casino practice table"
+      );
+      expect(submitted.game.status).toBe("submitted");
+      expect(submitted.game.active).toBe(false);
+      expect(submitted.game.practiceOnly).toBe(true);
+      expect(submitted.game.wageringEnabled).toBe(false);
+      expect(submitted.game.rewardsEnabled).toBe(false);
+      expect(submitted.game.currency).toBeNull();
+
+      const creatorView = await expectOkJson(
+        await creatorRequest.get("/api/casino/practice-games"),
+        "creator practice table status"
+      );
+      expect(
+        creatorView.mine.some((game) => game.id === submitted.game.id),
+        "creator can see submitted status"
+      ).toBe(true);
+      expect(
+        creatorView.games.some((game) => game.id === submitted.game.id),
+        "unreviewed table remains hidden from practice floor"
+      ).toBe(false);
+
+      const unauthorizedReview = await creatorRequest.post(
+        `/api/casino/practice-games/${submitted.game.id}/review`,
+        {
+          headers: creatorHeaders,
+          data: { action: "approve", note: "Creator cannot self-approve." },
+        }
+      );
+      expect(unauthorizedReview.status()).toBe(403);
+
+      const adminQueue = await expectOkJson(
+        await adminRequest.get("/api/casino/practice-games"),
+        "Casino operator practice queue"
+      );
+      expect(adminQueue.canModerate).toBe(true);
+      expect(
+        adminQueue.moderationQueue.some((game) => game.id === submitted.game.id),
+        "submitted table reaches operator queue"
+      ).toBe(true);
+
+      const approved = await expectOkJson(
+        await adminRequest.post(`/api/casino/practice-games/${submitted.game.id}/review`, {
+          headers: adminHeaders,
+          data: { action: "approve", note: "Approved for no-wager community practice." },
+        }),
+        "approve community Casino practice table"
+      );
+      expect(approved.game.status).toBe("approved");
+      expect(approved.game.active).toBe(true);
+      expect(approved.game.moderationNote).toBe("Approved for no-wager community practice.");
+
+      const playerFloor = await expectOkJson(
+        await playerRequest.get("/api/casino/practice-games"),
+        "member community Casino practice floor"
+      );
+      const published = playerFloor.games.find((game) => game.id === submitted.game.id);
+      expect(published, "approved table is discoverable").toBeTruthy();
+      expect(published.creatorName).toBe(creator.displayName || creator.username);
+      expect(published.practiceOnly).toBe(true);
+
+      const played = await expectOkJson(
+        await playerRequest.post(`/api/casino/practice-games/${published.slug}/play`, {
+          headers: playerHeaders,
+          data: {},
+        }),
+        "play community Casino practice table"
+      );
+      expect(["Sun", "Moon", "Star"]).toContain(played.result.outcomeLabel);
+      expect(played.result.practiceOnly).toBe(true);
+      expect(played.result.wager).toBeNull();
+      expect(played.result.reward).toBeNull();
+      expect(played.game.playCount).toBeGreaterThan(published.playCount);
+
+      const events = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=casino.practice_game.played&limit=20"
+        ),
+        "Casino practice play audit events"
+      );
+      expect(
+        events.events.some(
+          (event) =>
+            String(event.rawRefId) === String(played.result.playId) &&
+            event.metadata?.practiceOnly === true &&
+            event.metadata?.wager === null &&
+            event.metadata?.reward === null
+        ),
+        "practice play event records no-value boundary"
+      ).toBe(true);
+    } finally {
+      await creatorRequest.dispose();
+      await adminRequest.dispose();
+      await playerRequest.dispose();
+    }
+  });
+
   test("every Console and Arcade catalog game can start a play session", async ({
     playwright,
     baseURL,

@@ -10820,3 +10820,23 @@
 **Rule**: Cross-app publishing tests must follow persisted origin and creator attribution through the destination's public catalog and detail DTOs. When the origin is workflow provenance rather than token provenance, expose a truthful plain-language source label instead of coercing it into an unrelated chain-provenance type.
 
 ---
+
+## 2026-08-29 — Community Casino creation needs a separate no-value data contract
+
+**What happened**: The Casino offered three carefully fail-closed staff-authored simulations, but fulfilling the creator requirement by adding user games to the same wager-oriented registry would have made practice content inherit house-take, wager-asset, and future settlement semantics it did not own.
+
+**Why it mattered**: A label saying “wagering disabled” is weaker than a data model that cannot represent a wager or reward. Mixing creator content with future wager sessions would make the customer-facing boundary ambiguous and increase the chance that a later live-value change accidentally reaches unreviewed community games.
+
+**Rule**: Persist community Casino practice games, moderation, and play results separately from wager sessions. The public DTO and audit event must state the no-value boundary, the UI must explain it before play, and actor tests must assert null wager/reward values as well as operator review and creator attribution.
+
+---
+
+## 2026-08-29 — Navigation-label changes must update shell breadcrumb proofs
+
+**What happened**: The canonical `/faq` route and rendered Gamma breadcrumb were correctly renamed from “FAQ” to the more useful “Help & Start Here,” but a broad Gamma route-containment test retained the old hard-coded title. Focused first-run and help tests passed, while the full interaction suite failed only when it audited static nested routes.
+
+**Why it mattered**: The product behavior was correct, but a stale alternate-shell expectation made the release suite appear regressed and could encourage reverting clearer customer language instead of correcting the proof.
+
+**Rule**: When a registered route title changes, update every shell-owned breadcrumb, launcher, and route-containment assertion in the same pass. Focused content checks do not replace the broad proof that Classic, Beta, and Gamma all present the canonical route label.
+
+---

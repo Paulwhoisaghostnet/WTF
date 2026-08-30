@@ -1436,7 +1436,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     const documentedRoutes = [
       { path: "/beta", title: "WTFOS Beta" },
       { path: "/links", title: "Links" },
-      { path: "/faq", title: "FAQ" },
+      { path: "/faq", title: "Help & Start Here" },
       { path: "/discord/terms", title: "Discord Terms" },
       { path: "/discord/privacy", title: "Discord Privacy" },
       { path: "/discord/linked-roles", title: "Discord Linked Roles" },

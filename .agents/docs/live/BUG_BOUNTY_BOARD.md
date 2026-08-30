@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-626 | Verified | Codex commission fulfillment | 2026-08-29 | Casino / community practice-game creation | P1 | 12 | 7 | 3 | 4 | 1 | Casino has staff-authored mocked tables but no user builder, submission status, moderation, public attribution, or durable practice-play path |
 | WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
@@ -12664,3 +12665,31 @@ Copy this when adding a new issue:
 - Verification:
   - Focused source/attribution tests pass 4/4; TypeScript, production build, and inventory coverage pass.
   - Real local database actor proof passes 1/1 with the seeded `cookiemonster` trusted creator and a production server process.
+
+### WTF-BB-626 - Casino has no community practice-game creation loop
+
+- Category: Casino / community practice-game creation
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - The Casino game registry contains three staff-authored mocked-playable games and no persistent creator-game model.
+  - `/api/casino/games` can list built-in tables, but there is no creator submission, personal status, operator review, public creator attribution, or generic safe-play endpoint.
+  - The Casino page describes disabled wagers and house take but offers no visible route for a community member to build a game.
+- Why it matters:
+  - The commission explicitly requires community members to build games for the Casino, while the platform must keep wagering fail-closed until its compliance and settlement requirements are met.
+  - Without an explicit practice-only boundary, either the creator requirement stays unmet or user content risks being confused with real-value wagering.
+- Correction direction:
+  - Add a persistent no-wager practice-table specification with equal-chance outcomes, creator attribution, submitted/approved/rejected moderation state, and durable play results.
+  - Expose a plain-language creator desk and operator review controls inside the Casino, while keeping all currency, rewards, house take, and live wagering absent from community tables.
+  - Emit normalized create/review/play events and preserve the existing app-pass plus membership entry gate for play.
+- Verification idea:
+  - Use a creator actor to submit a unique practice table and see pending status; prove it is absent from the playable floor; use an admin actor to approve it with an audit note; use a member actor to play it and persist a result with no wager/reward fields.
+- Correction:
+  - Added a persistent creator practice-table specification with title, description, instructions, equal-chance result labels, creator attribution, review state/note/reviewer, and durable play results.
+  - Added a plain-language Casino creator desk, personal status history, operator review queue, approved community floor, and explicit practice/no-wager/no-reward language throughout the lobby.
+  - Preserved the existing app-pass plus active-membership play gate and kept community play records structurally separate from wager sessions.
+- Verification:
+  - Practice outcome tests pass 2/2, inventory coverage passes, TypeScript passes, and the production build succeeds.
+  - Focused browser presentation proof passes 1/1 through submit, hidden state, approval, public creator card, and practice result.
+  - Real local PostgreSQL actor proof passes 1/1 with trusted creator, admin, and contestant sessions; the existing built-in Casino API proof also passes, for 2/2 focused live tests.

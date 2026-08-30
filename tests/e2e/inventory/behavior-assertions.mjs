@@ -763,6 +763,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness exercises entry, quote, join, and bet-intent endpoints while preserving fail-closed response contracts.",
   },
   {
+    id: "casino.community-practice-create-moderate-play",
+    domain: "WTF Casino, Membership, and Wagered Games",
+    ownerSurfaceIds: ["casino"],
+    ownerSpec:
+      "server/features/casino/practice-games.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      'npx tsx --test server/features/casino/practice-games.test.ts && WTF_E2E_ACTOR_FILTER=cookiemonster,thecount,bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "community Casino practice tables"',
+    userVisibleAssertion:
+      "A creator can define a clearly labeled no-wager practice table, see its private review status, and after operator approval members can discover the attributed table and play a stored equal-chance result.",
+    durableSideEffectAssertion:
+      "The real-database actor harness proves hidden submitted state, blocked creator self-approval, operator attribution and note, approved public state, durable play count/result, normalized audit events, and null wager/reward fields.",
+  },
+  {
     id: "arcade-console.sessions-and-scores",
     domain: "WTF Arcade, WTF Console, and Game Studio SDK",
     ownerSurfaceIds: ["arcade", "console", "game-studio"],

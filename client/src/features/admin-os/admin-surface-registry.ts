@@ -1417,7 +1417,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     id: "casino",
     label: "WTF Casino",
     domain: "Casino",
-    subdomain: "Wagered games",
+    subdomain: "Practice and gated games",
     kind: "app",
     routePatterns: [
       "/casino",
@@ -1433,6 +1433,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "house take policy",
       "casino audit chain",
       "game table registry",
+      "community practice-table moderation",
       "WTF Button mocked escrow adapter",
       "WTF Button price protection policy",
       "WTF Button Rug Clash randomness audit",
@@ -1451,6 +1452,9 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "casino.entry.rejected",
       "casino.wager_session.rejected",
       "casino.audit.event_recorded",
+      "casino.practice_game.submitted",
+      "casino.practice_game.reviewed",
+      "casino.practice_game.played",
       "wtf_button.lobby.viewed",
       "wtf_button.table.viewed",
       "wtf_button.quote.created",
@@ -1495,6 +1499,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: [
       "inventory.temporary-grants-unlock-apps",
       "casino.access-game-apis",
+      "casino.community-practice-create-moderate-play",
     ],
   },
   {

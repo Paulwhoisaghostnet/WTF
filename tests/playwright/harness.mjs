@@ -41,6 +41,10 @@ const state = {
   macaroniPackages: [],
   macaroniNextPackageId: 1,
   macaroniNextItemId: 1,
+  casinoCanEnter: false,
+  casinoPracticeGames: [],
+  casinoNextPracticeGameId: 1,
+  casinoNextPracticePlayId: 1,
   wtfUserSiteClaimed: false,
   wtfUserSiteStatus: "draft",
   wtfUserSitePages: [],
@@ -528,6 +532,10 @@ app.post("/__test/state", (req, res) => {
   state.macaroniPackages = [];
   state.macaroniNextPackageId = 1;
   state.macaroniNextItemId = 1;
+  state.casinoCanEnter = Boolean(req.body?.casinoCanEnter);
+  state.casinoPracticeGames = [];
+  state.casinoNextPracticeGameId = 1;
+  state.casinoNextPracticePlayId = 1;
   state.wtfUserSiteClaimed = Boolean(req.body?.wtfUserSiteClaimed);
   state.wtfUserSiteStatus = String(req.body?.wtfUserSiteStatus || "draft");
   state.wtfUserSitePages = normalizeHarnessWtfUserSitePages(req.body?.wtfUserSitePages);
@@ -569,6 +577,7 @@ app.post("/__test/state", (req, res) => {
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
       wtfUserSiteStatus: state.wtfUserSiteStatus,
       wtfUserSitePages: state.wtfUserSitePages,
+      casinoCanEnter: state.casinoCanEnter,
       ownedAppPasses,
     },
   });
@@ -594,6 +603,7 @@ app.get("/__test/state", (_req, res) => {
     wtfUserSiteClaimed: state.wtfUserSiteClaimed,
     wtfUserSiteStatus: state.wtfUserSiteStatus,
     wtfUserSitePages: state.wtfUserSitePages,
+    casinoPracticeGames: state.casinoPracticeGames,
   });
 });
 
@@ -4064,9 +4074,9 @@ function apiMock(req, res) {
   if (pathName === "/api/casino/status") {
     return res.json({
       userId: 1,
-      appPass: { sku: "casino-app-pass", owned: false, quantity: 0, marketCategory: "casino" },
-      membership: { active: false, expiresAt: null, walletAddress: null, purchaseRef: null },
-      canEnter: false,
+      appPass: { sku: "casino-app-pass", owned: state.casinoCanEnter, quantity: state.casinoCanEnter ? 1 : 0, marketCategory: "casino" },
+      membership: { active: state.casinoCanEnter, expiresAt: state.casinoCanEnter ? nowIso() : null, walletAddress: null, purchaseRef: null },
+      canEnter: state.casinoCanEnter,
       wageringEnabled: false,
       config: {
         network: "inventory-harness",
@@ -4150,8 +4160,90 @@ function apiMock(req, res) {
           },
         },
       ],
-      canEnter: false,
+      canEnter: state.casinoCanEnter,
       wageringEnabled: false,
+    });
+  }
+  if (pathName === "/api/casino/practice-games" && req.method === "GET") {
+    const user = currentAuthUser();
+    const canModerate = state.userRole === "admin";
+    return res.json({
+      games: state.casinoPracticeGames.filter((game) => game.status === "approved" && game.active),
+      mine: state.casinoPracticeGames.filter((game) => game.creatorUserId === user?.id),
+      moderationQueue: canModerate
+        ? state.casinoPracticeGames.filter((game) => game.status === "submitted")
+        : [],
+      canModerate,
+      practiceOnly: true,
+      wageringEnabled: false,
+      rewardsEnabled: false,
+    });
+  }
+  if (pathName === "/api/casino/practice-games" && req.method === "POST") {
+    const user = currentAuthUser();
+    const game = {
+      id: state.casinoNextPracticeGameId++,
+      slug: `practice-${state.casinoNextPracticeGameId}-${String(req.body?.title || "table").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      creatorUserId: user?.id ?? 1,
+      creatorName: user?.displayName || user?.username || "Creator",
+      title: String(req.body?.title || "Practice Table"),
+      summary: String(req.body?.summary || ""),
+      instructions: String(req.body?.instructions || ""),
+      outcomes: Array.isArray(req.body?.outcomes) ? req.body.outcomes : [],
+      status: "submitted",
+      active: false,
+      moderationNote: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      playCount: 0,
+      practiceOnly: true,
+      wageringEnabled: false,
+      rewardsEnabled: false,
+      currency: null,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.casinoPracticeGames.unshift(game);
+    state.interactionLog.push({ eventType: "casino.practice_game.submitted" });
+    return res.status(201).json({ ok: true, game });
+  }
+  const practiceReviewMatch = pathName.match(/^\/api\/casino\/practice-games\/(\d+)\/review$/);
+  if (practiceReviewMatch && req.method === "POST") {
+    if (state.userRole !== "admin") return res.status(403).json({ error: "Operator required" });
+    const game = state.casinoPracticeGames.find((entry) => entry.id === Number(practiceReviewMatch[1]));
+    if (!game) return res.status(404).json({ error: "Practice table not found" });
+    game.status = req.body?.action === "approve" ? "approved" : "rejected";
+    game.active = game.status === "approved";
+    game.moderationNote = String(req.body?.note || "");
+    game.reviewedBy = currentAuthUser()?.id ?? 1;
+    game.reviewedAt = nowIso();
+    game.updatedAt = nowIso();
+    state.interactionLog.push({ eventType: "casino.practice_game.reviewed" });
+    return res.json({ ok: true, game });
+  }
+  const practicePlayMatch = pathName.match(/^\/api\/casino\/practice-games\/([^/]+)\/play$/);
+  if (practicePlayMatch && req.method === "POST") {
+    if (!state.casinoCanEnter) return res.status(402).json({ error: "Casino entry required" });
+    const game = state.casinoPracticeGames.find(
+      (entry) => entry.slug === practicePlayMatch[1] && entry.status === "approved" && entry.active
+    );
+    if (!game) return res.status(404).json({ error: "Practice table not found" });
+    game.playCount += 1;
+    game.updatedAt = nowIso();
+    const playId = state.casinoNextPracticePlayId++;
+    state.interactionLog.push({ eventType: "casino.practice_game.played" });
+    return res.status(201).json({
+      ok: true,
+      game,
+      result: {
+        playId,
+        outcomeIndex: 0,
+        outcomeLabel: game.outcomes[0],
+        practiceOnly: true,
+        wager: null,
+        reward: null,
+        createdAt: nowIso(),
+      },
     });
   }
   if (pathName === "/api/casino/wtf-button/state") {

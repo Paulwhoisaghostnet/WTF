@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button, GroupBox, Hourglass, Panel } from "react95";
 import styled from "styled-components";
 import { useLocation } from "wouter";
@@ -66,6 +67,35 @@ type CasinoIntentResponse = {
     feeTez: string;
     expiresAt: string;
   };
+};
+
+type CasinoPracticeGame = {
+  id: number;
+  slug: string;
+  creatorUserId: number;
+  creatorName: string;
+  title: string;
+  summary: string;
+  instructions: string;
+  outcomes: string[];
+  status: "submitted" | "approved" | "rejected";
+  active: boolean;
+  moderationNote: string | null;
+  playCount: number;
+  practiceOnly: true;
+  wageringEnabled: false;
+  rewardsEnabled: false;
+  currency: null;
+};
+
+type CasinoPracticeResponse = {
+  games: CasinoPracticeGame[];
+  mine: CasinoPracticeGame[];
+  moderationQueue: CasinoPracticeGame[];
+  canModerate: boolean;
+  practiceOnly: true;
+  wageringEnabled: false;
+  rewardsEnabled: false;
 };
 
 const gammaCasinoScope = `[data-casino-presentation-host="gamma"]`;
@@ -340,6 +370,95 @@ const StatusLine = styled.div<{ $error?: boolean }>`
   }
 `;
 
+const PracticeNotice = styled(Panel).attrs({ variant: "well" })`
+  margin: 10px 0;
+  padding: 9px;
+  background: #dff7df;
+  color: #173b18;
+  font-size: 12px;
+
+  ${gammaCasinoScope} & {
+    background: rgba(125, 255, 148, 0.08);
+    border: 1px solid rgba(125, 255, 148, 0.35);
+    border-radius: 6px;
+    color: #a8ffb8;
+  }
+`;
+
+const CommunityLayout = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+  gap: 10px;
+  margin-top: 10px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  gap: 7px;
+`;
+
+const Field = styled.label`
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+`;
+
+const TextInput = styled.input`
+  min-width: 0;
+  padding: 6px;
+  border: 2px inset #808080;
+  background: #fff;
+  color: #101010;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.06);
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    color: #f2ead9;
+  }
+`;
+
+const TextArea = styled.textarea`
+  min-width: 0;
+  min-height: 64px;
+  resize: vertical;
+  padding: 6px;
+  border: 2px inset #808080;
+  background: #fff;
+  color: #101010;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.06);
+    border: 1px solid rgba(242, 234, 217, 0.22);
+    border-radius: 4px;
+    color: #f2ead9;
+  }
+`;
+
+const SubmissionList = styled.div`
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+`;
+
+const SubmissionRow = styled(Panel).attrs({ variant: "well" })`
+  padding: 7px;
+  background: #eee6c8;
+  color: #101010;
+  font-size: 11px;
+
+  ${gammaCasinoScope} & {
+    background: rgba(242, 234, 217, 0.035);
+    border: 1px solid rgba(242, 234, 217, 0.16);
+    border-radius: 4px;
+    color: rgba(242, 234, 217, 0.8);
+  }
+`;
+
 function formatExpiry(value: string | null): string {
   if (!value) return "No active card";
   return new Date(value).toLocaleString([], {
@@ -356,6 +475,12 @@ function CasinoSurface() {
   const wallet = useWallet();
   const wm = useWindowManager();
   const [, setLocation] = useLocation();
+  const [practiceTitle, setPracticeTitle] = useState("");
+  const [practiceSummary, setPracticeSummary] = useState("");
+  const [practiceInstructions, setPracticeInstructions] = useState("");
+  const [practiceOutcomes, setPracticeOutcomes] = useState("");
+  const [practiceResult, setPracticeResult] = useState("");
+  const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
 
   const statusQuery = useQuery({
     queryKey: ["casino", "status"],
@@ -370,6 +495,13 @@ function CasinoSurface() {
         "/api/casino/games"
       ),
     staleTime: 20_000,
+  });
+
+  const practiceQuery = useQuery({
+    queryKey: ["casino", "practice-games"],
+    queryFn: () =>
+      api.get<CasinoPracticeResponse>("/api/casino/practice-games"),
+    staleTime: 10_000,
   });
 
   const membershipMutation = useMutation({
@@ -397,8 +529,55 @@ function CasinoSurface() {
     mutationFn: () => api.post("/api/casino/entry", {}),
   });
 
+  const createPracticeMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ ok: true; game: CasinoPracticeGame }>("/api/casino/practice-games", {
+        title: practiceTitle,
+        summary: practiceSummary,
+        instructions: practiceInstructions,
+        outcomes: practiceOutcomes
+          .split("\n")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      }),
+    onSuccess: () => {
+      setPracticeTitle("");
+      setPracticeSummary("");
+      setPracticeInstructions("");
+      setPracticeOutcomes("");
+      qc.invalidateQueries({ queryKey: ["casino", "practice-games"] });
+    },
+  });
+
+  const reviewPracticeMutation = useMutation({
+    mutationFn: ({ gameId, action }: { gameId: number; action: "approve" | "reject" }) =>
+      api.post(`/api/casino/practice-games/${gameId}/review`, {
+        action,
+        note: reviewNotes[gameId] || "",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["casino", "practice-games"] });
+    },
+  });
+
+  const playPracticeMutation = useMutation({
+    mutationFn: (slug: string) =>
+      api.post<{
+        ok: true;
+        game: CasinoPracticeGame;
+        result: { outcomeLabel: string; wager: null; reward: null };
+      }>(`/api/casino/practice-games/${slug}/play`, {}),
+    onSuccess: (data) => {
+      setPracticeResult(`${data.game.title}: ${data.result.outcomeLabel} — practice only; no wager or reward.`);
+      qc.invalidateQueries({ queryKey: ["casino", "practice-games"] });
+    },
+  });
+
   const status = statusQuery.data;
   const games = gamesQuery.data?.games ?? [];
+  const practiceGames = practiceQuery.data?.games ?? [];
+  const myPracticeGames = practiceQuery.data?.mine ?? [];
+  const practiceQueue = practiceQuery.data?.moderationQueue ?? [];
   const busy = statusQuery.isLoading || gamesQuery.isLoading;
   const membershipError =
     membershipMutation.error instanceof Error ? membershipMutation.error.message : "";
@@ -436,6 +615,12 @@ function CasinoSurface() {
         </Meter>
       </Header>
 
+      <PracticeNotice data-casino-region="practice-notice">
+        <strong>Practice floor only.</strong> Every built-in and community table uses simulated
+        results. No community table can accept a wager, move currency, award a prize, or enable a
+        house take.
+      </PracticeNotice>
+
       <Layout data-casino-region="layout">
         <Box label="Casino Floor" data-casino-region="floor">
           {busy ? (
@@ -460,10 +645,9 @@ function CasinoSurface() {
                       : `${game.minPlayers}+ players`}
                   </CardMeta>
                   <CardMeta data-casino-region="meta">
-                    Wager: {game.wagerAsset ?? "XTZ"} · House:{" "}
-                    {game.defaultHouseTakeBps / 100}%
+                    Practice balance: {game.wagerAsset ?? "XTZ"} simulation
                   </CardMeta>
-                  <CardMeta data-casino-region="meta">Live wagers: {game.wageringEnabled ? "enabled" : "disabled"}</CardMeta>
+                  <CardMeta data-casino-region="meta">Live wagers and real rewards: disabled</CardMeta>
                   {game.highlights && game.highlights.length > 0 && (
                     <CardTagLine data-casino-region="card-tags">
                       {game.highlights.slice(0, 4).map((highlight) => (
@@ -522,6 +706,164 @@ function CasinoSurface() {
           </Controls>
         </Box>
       </Layout>
+
+      <CommunityLayout data-casino-region="community-practice-layout">
+        <Box label="Community Practice Tables" data-casino-region="community-practice-floor">
+          <CardMeta data-casino-region="meta">
+            Member-made chance games approved by an operator. Results are stored for play history,
+            but never pay or cost currency.
+          </CardMeta>
+          {practiceQuery.isLoading ? (
+            <Empty data-casino-region="empty"><Hourglass size={24} /></Empty>
+          ) : practiceGames.length === 0 ? (
+            <Empty data-casino-region="empty">No community practice tables are approved yet.</Empty>
+          ) : (
+            <GameGrid data-casino-region="community-game-grid">
+              {practiceGames.map((game) => (
+                <GameCard key={game.id} data-casino-region="community-game-card">
+                  <strong>{game.title}</strong>
+                  <CardMeta data-casino-region="meta">By {game.creatorName}</CardMeta>
+                  <CardMeta data-casino-region="meta">{game.summary}</CardMeta>
+                  <CardMeta data-casino-region="meta">How to play: {game.instructions}</CardMeta>
+                  <CardMeta data-casino-region="meta">
+                    Equal-chance results: {game.outcomes.join(" · ")}
+                  </CardMeta>
+                  <CardTagLine data-casino-region="card-tags">
+                    <CardTag>PRACTICE ONLY</CardTag>
+                    <CardTag>NO WAGER</CardTag>
+                    <CardTag>{game.playCount} PLAYS</CardTag>
+                  </CardTagLine>
+                  <CardActions data-casino-region="card-actions">
+                    <Button
+                      size="sm"
+                      disabled={!status?.canEnter || playPracticeMutation.isPending}
+                      onClick={() => playPracticeMutation.mutate(game.slug)}
+                    >
+                      Play Practice Round
+                    </Button>
+                  </CardActions>
+                </GameCard>
+              ))}
+            </GameGrid>
+          )}
+          <StatusLine
+            $error={playPracticeMutation.isError}
+            data-casino-region="practice-play-status"
+          >
+            {playPracticeMutation.error instanceof Error
+              ? playPracticeMutation.error.message
+              : practiceResult ||
+                (status?.canEnter
+                  ? "Choose an approved table to play a no-wager round."
+                  : "App pass and active membership are required to play.")}
+          </StatusLine>
+        </Box>
+
+        <Box label="Create a Practice Table" data-casino-region="practice-creator-desk">
+          <CardMeta data-casino-region="meta">
+            Write the table name, explain the rules, and put one possible result on each line.
+            Every result has the same chance. Submissions stay hidden until operator approval.
+          </CardMeta>
+          <FormGrid>
+            <Field>
+              Table name
+              <TextInput value={practiceTitle} onChange={(event) => setPracticeTitle(event.target.value)} />
+            </Field>
+            <Field>
+              Short description
+              <TextArea value={practiceSummary} onChange={(event) => setPracticeSummary(event.target.value)} />
+            </Field>
+            <Field>
+              How to play
+              <TextArea value={practiceInstructions} onChange={(event) => setPracticeInstructions(event.target.value)} />
+            </Field>
+            <Field>
+              Possible results — one per line
+              <TextArea value={practiceOutcomes} onChange={(event) => setPracticeOutcomes(event.target.value)} />
+            </Field>
+            <Button
+              onClick={() => createPracticeMutation.mutate()}
+              disabled={createPracticeMutation.isPending}
+            >
+              {createPracticeMutation.isPending ? "Submitting" : "Submit for Review"}
+            </Button>
+          </FormGrid>
+          <StatusLine
+            $error={createPracticeMutation.isError}
+            data-casino-region="practice-create-status"
+          >
+            {createPracticeMutation.error instanceof Error
+              ? createPracticeMutation.error.message
+              : createPracticeMutation.isSuccess
+                ? "Submitted. Your table is hidden while an operator reviews it."
+                : "No wagers, wallet actions, or rewards are added to community tables."}
+          </StatusLine>
+
+          <SubmissionList data-casino-region="practice-submissions">
+            {myPracticeGames.map((game) => (
+              <SubmissionRow key={game.id}>
+                <strong>{game.title}</strong> · {game.status}
+                {game.moderationNote ? <div>Operator note: {game.moderationNote}</div> : null}
+              </SubmissionRow>
+            ))}
+          </SubmissionList>
+        </Box>
+      </CommunityLayout>
+
+      {practiceQuery.data?.canModerate ? (
+        <Box label="Operator Practice Review" data-casino-region="practice-review-queue">
+          {practiceQueue.length === 0 ? (
+            <CardMeta data-casino-region="meta">No practice tables are awaiting review.</CardMeta>
+          ) : (
+            <SubmissionList>
+              {practiceQueue.map((game) => (
+                <SubmissionRow key={game.id}>
+                  <strong>{game.title}</strong> · By {game.creatorName}
+                  <div>{game.summary}</div>
+                  <div>How to play: {game.instructions}</div>
+                  <div>Results: {game.outcomes.join(" · ")}</div>
+                  <Field>
+                    Required review note
+                    <TextInput
+                      value={reviewNotes[game.id] || ""}
+                      onChange={(event) =>
+                        setReviewNotes((current) => ({ ...current, [game.id]: event.target.value }))
+                      }
+                    />
+                  </Field>
+                  <CardActions>
+                    <Button
+                      size="sm"
+                      disabled={
+                        reviewPracticeMutation.isPending ||
+                        !(reviewNotes[game.id] || "").trim()
+                      }
+                      onClick={() => reviewPracticeMutation.mutate({ gameId: game.id, action: "approve" })}
+                    >
+                      Approve Practice Table
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={
+                        reviewPracticeMutation.isPending ||
+                        !(reviewNotes[game.id] || "").trim()
+                      }
+                      onClick={() => reviewPracticeMutation.mutate({ gameId: game.id, action: "reject" })}
+                    >
+                      Reject
+                    </Button>
+                  </CardActions>
+                </SubmissionRow>
+              ))}
+            </SubmissionList>
+          )}
+          <StatusLine $error={reviewPracticeMutation.isError}>
+            {reviewPracticeMutation.error instanceof Error
+              ? reviewPracticeMutation.error.message
+              : "Enter a review note before approving or rejecting a table."}
+          </StatusLine>
+        </Box>
+      ) : null}
     </Shell>
   );
 }

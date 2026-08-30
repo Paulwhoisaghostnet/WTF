@@ -40,6 +40,8 @@ import {
 import {
   casinoMembershipIntents,
   casinoMemberships,
+  casinoPracticeGames,
+  casinoPracticePlays,
   casinoWagerSessions,
 } from "./schema-casino";
 import {
@@ -164,6 +166,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   challengeAutomationAuditLogs: many(challengeAutomationAuditLogs),
   casinoMembershipIntents: many(casinoMembershipIntents),
   casinoMemberships: many(casinoMemberships),
+  casinoPracticeGames: many(casinoPracticeGames),
+  casinoPracticePlays: many(casinoPracticePlays),
   casinoWagerSessions: many(casinoWagerSessions),
   clubDuesContractsDeployed: many(clubDuesContracts),
   clubDuesDeploymentRuns: many(clubDuesDeploymentRuns),
