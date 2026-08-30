@@ -20,6 +20,8 @@ test("Calendar has an OS-priority tray reminder and modern calendar workspace", 
   assert.match(taskbarSource, /data-calendar-tray="true"/);
   assert.match(taskbarSource, /data-calendar-reminder-popup/);
   assert.match(taskbarSource, /selectCalendarReminder/);
+  assert.match(taskbarSource, /\/api\/calendar\/participations\/mine\?reminders=1/);
+  assert.doesNotMatch(taskbarSource, /calendar-tray-reminders/);
   assert.match(taskbarSource, /wm\.openPage\("\/calendar"\)/);
   assert.match(calendarSource, /data-calendar-region="calendar-grid"/);
   assert.match(calendarSource, /data-calendar-view=\{view\}/);
@@ -51,6 +53,9 @@ test("Calendar Gamma chrome covers browse forms tickets and TTC modal regions", 
     "submit-form",
     "tickets-panel",
     "ticket-card",
+    "plans-panel",
+    "plan-card",
+    "participation-controls",
     "ttc-modal",
     "ttc-frame",
   ]) {
@@ -66,6 +71,8 @@ test("Calendar Gamma chrome covers browse forms tickets and TTC modal regions", 
 test("Calendar keeps shared event APIs local storage and TTC handoff unchanged", () => {
   assert.match(calendarSource, /\/api\/calendar\/events\?from=/);
   assert.match(calendarSource, /\/api\/calendar\/tickets\/mine/);
+  assert.match(calendarSource, /\/api\/calendar\/participations\/mine/);
+  assert.match(calendarSource, /api\.put\("\/api\/calendar\/participations"/);
   assert.match(calendarSource, /api\.post\("\/api\/calendar\/tickets"/);
   assert.match(calendarSource, /\/api\/calendar\/feed\.ics/);
   assert.match(calendarSource, /wtf:calendar:personal/);

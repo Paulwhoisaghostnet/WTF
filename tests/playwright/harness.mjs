@@ -45,6 +45,8 @@ const state = {
   casinoPracticeGames: [],
   casinoNextPracticeGameId: 1,
   casinoNextPracticePlayId: 1,
+  calendarParticipations: [],
+  calendarNextParticipationId: 1,
   wtfUserSiteClaimed: false,
   wtfUserSiteStatus: "draft",
   wtfUserSitePages: [],
@@ -551,6 +553,8 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
   state.wtfLiveStageMembers = [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }];
+  state.calendarParticipations = [];
+  state.calendarNextParticipationId = 1;
   Object.assign(
     desktopLocalization,
     req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
@@ -604,6 +608,7 @@ app.get("/__test/state", (_req, res) => {
     wtfUserSiteStatus: state.wtfUserSiteStatus,
     wtfUserSitePages: state.wtfUserSitePages,
     casinoPracticeGames: state.casinoPracticeGames,
+    calendarParticipations: state.calendarParticipations,
   });
 });
 
@@ -3568,6 +3573,39 @@ function apiMock(req, res) {
       ],
       wallet: { count: 0, addresses: [] },
     });
+  }
+  if (pathName === "/api/calendar/participations/mine" && req.method === "GET") {
+    const remindersOnly = url.searchParams.get("reminders") === "1";
+    return res.json(
+      state.calendarParticipations.filter((plan) => !remindersOnly || plan.reminderEnabled)
+    );
+  }
+  if (pathName === "/api/calendar/participations" && req.method === "PUT") {
+    const eventKey = String(req.body?.eventKey || "");
+    const existingIndex = state.calendarParticipations.findIndex((plan) => plan.eventKey === eventKey);
+    if (req.body?.status === "none") {
+      if (existingIndex >= 0) state.calendarParticipations.splice(existingIndex, 1);
+      recordHarnessInteraction("calendar.participation.cleared", { eventKey }, "calendar");
+      return res.json({ ok: true, participation: null });
+    }
+    const existing = existingIndex >= 0 ? state.calendarParticipations[existingIndex] : null;
+    const participation = {
+      id: existing?.id ?? state.calendarNextParticipationId++,
+      eventKey,
+      sourceProvider: String(req.body?.sourceProvider || "wtf"),
+      sourceEventId: req.body?.sourceEventId ?? null,
+      title: String(req.body?.title || "Calendar event"),
+      startsAt: String(req.body?.startsAt || nowIso()),
+      endsAt: req.body?.endsAt ?? null,
+      allDay: Boolean(req.body?.allDay),
+      status: req.body?.status === "going" ? "going" : "interested",
+      reminderEnabled: req.body?.reminderEnabled !== false,
+      updatedAt: nowIso(),
+    };
+    if (existingIndex >= 0) state.calendarParticipations[existingIndex] = participation;
+    else state.calendarParticipations.push(participation);
+    recordHarnessInteraction("calendar.participation.updated", participation, "calendar");
+    return res.json({ ok: true, participation });
   }
   if (pathName === "/api/calendar/events") return res.json([]);
   if (pathName === "/api/calendar/tickets/mine") return res.json([]);

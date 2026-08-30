@@ -634,6 +634,154 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("Calendar participation persists Going, chosen reminders, audit, and clear", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const admin = actorByRole(puppetCredentials, "admin");
+    const member = actorByRole(puppetCredentials, "contestant");
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const memberRequest = await actorRequestContext(playwright, baseURL, member);
+    const runId = `live-puppet-calendar-${Date.now().toString(36)}`;
+    const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    let eventId = null;
+
+    try {
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const memberHeaders = await csrfHeaders(memberRequest);
+      const created = await expectOkJson(
+        await adminRequest.post("/api/calendar/events", {
+          headers: adminHeaders,
+          data: {
+            title: `Calendar participation ${runId}`,
+            description: "A disposable event for account-backed participation proof.",
+            startsAt: startsAt.toISOString(),
+            endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
+            allDay: false,
+            kind: "custom",
+            visibility: "public",
+            status: "published",
+            links: [{ label: "Participation room", url: "https://example.com/calendar-live-proof" }],
+          },
+        }),
+        "create Calendar participation fixture"
+      );
+      eventId = created.id;
+      const eventKey = `wtf:${created.id}:${new Date(created.startsAt).toISOString()}`;
+
+      const saved = await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "going",
+            reminderEnabled: true,
+          },
+        }),
+        "save Calendar Going plan"
+      );
+      expect(saved.participation.status).toBe("going");
+      expect(saved.participation.reminderEnabled).toBe(true);
+      expect(saved.participation.title).toBe(created.title);
+
+      const persisted = await expectOkJson(
+        await memberRequest.get("/api/calendar/participations/mine"),
+        "reload Calendar plans"
+      );
+      expect(persisted.some((plan) => plan.id === saved.participation.id)).toBe(true);
+
+      const reminderPlans = await expectOkJson(
+        await memberRequest.get("/api/calendar/participations/mine?reminders=1"),
+        "load chosen Calendar reminders"
+      );
+      expect(reminderPlans.map((plan) => plan.id)).toContain(saved.participation.id);
+
+      const reminderOff = await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "going",
+            reminderEnabled: false,
+          },
+        }),
+        "turn Calendar reminder off"
+      );
+      expect(reminderOff.participation.reminderEnabled).toBe(false);
+      const remindersAfterOff = await memberRequest
+        .get("/api/calendar/participations/mine?reminders=1")
+        .then((response) => response.json());
+      expect(remindersAfterOff.some((plan) => plan.eventKey === eventKey)).toBe(false);
+
+      await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "none",
+            reminderEnabled: false,
+          },
+        }),
+        "clear Calendar plan"
+      );
+      const plansAfterClear = await memberRequest
+        .get("/api/calendar/participations/mine")
+        .then((response) => response.json());
+      expect(plansAfterClear.some((plan) => plan.eventKey === eventKey)).toBe(false);
+
+      const updatedEvents = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.updated&limit=20"
+        ),
+        "Calendar participation update audit events"
+      );
+      expect(
+        updatedEvents.events.some(
+          (event) =>
+            String(event.rawRefId) === String(saved.participation.id) &&
+            event.metadata?.eventKey === eventKey &&
+            event.metadata?.status === "going"
+        )
+      ).toBe(true);
+
+      const clearedEvents = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.cleared&limit=20"
+        ),
+        "Calendar participation clear audit events"
+      );
+      expect(clearedEvents.events.some((event) => event.rawRefId === eventKey)).toBe(true);
+    } finally {
+      if (eventId) {
+        const adminHeaders = await csrfHeaders(adminRequest).catch(() => ({}));
+        await adminRequest.patch(`/api/calendar/events/${eventId}`, {
+          headers: adminHeaders,
+          data: { status: "cancelled" },
+        }).catch(() => undefined);
+      }
+      await adminRequest.dispose();
+      await memberRequest.dispose();
+    }
+  });
+
   test("every Console and Arcade catalog game can start a play session", async ({
     playwright,
     baseURL,

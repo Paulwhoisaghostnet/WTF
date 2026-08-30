@@ -38,6 +38,9 @@ import {
   challengeSystemEvents,
 } from "./schema-challenge-automation";
 import {
+  calendarParticipations,
+} from "./schema-liveops";
+import {
   casinoMembershipIntents,
   casinoMemberships,
   casinoPracticeGames,
@@ -164,6 +167,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   challengeAutomationCompletions: many(challengeAutomationCompletions),
   challengeAutomationActionLogs: many(challengeAutomationActionLogs),
   challengeAutomationAuditLogs: many(challengeAutomationAuditLogs),
+  calendarParticipations: many(calendarParticipations),
   casinoMembershipIntents: many(casinoMembershipIntents),
   casinoMemberships: many(casinoMemberships),
   casinoPracticeGames: many(casinoPracticeGames),

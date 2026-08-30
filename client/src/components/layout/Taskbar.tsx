@@ -393,25 +393,32 @@ export function Taskbar({
     setViewedReminderIds(readViewedReminderIds(reminderStorageKey));
   }, [reminderStorageKey]);
 
-  const reminderRange = useMemo(() => {
-    const from = new Date(time);
-    from.setDate(from.getDate() - 1);
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(time);
-    to.setDate(to.getDate() + 2);
-    to.setHours(23, 59, 59, 999);
-    return { from, to };
-  }, [time.toDateString()]);
-
-  const calendarReminderQuery = useQuery<ReminderEvent[]>({
-    queryKey: ["calendar-tray-reminders", reminderRange.from.toISOString(), reminderRange.to.toISOString()],
-    queryFn: () => api.get<ReminderEvent[]>(
-      `/api/calendar/events?from=${encodeURIComponent(reminderRange.from.toISOString())}&to=${encodeURIComponent(reminderRange.to.toISOString())}`,
-    ),
+  const calendarParticipationQuery = useQuery<Array<{
+    eventKey: string;
+    title: string;
+    startsAt: string;
+    endsAt?: string | null;
+    allDay?: boolean;
+    sourceProvider: string;
+  }>>({
+    queryKey: ["calendar-tray-participations"],
+    queryFn: () => api.get("/api/calendar/participations/mine?reminders=1"),
     refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
     enabled: Boolean(user),
   });
+
+  const followedReminderEvents = useMemo<ReminderEvent[]>(
+    () => (calendarParticipationQuery.data ?? []).map((plan) => ({
+      id: plan.eventKey,
+      title: plan.title,
+      startsAt: plan.startsAt,
+      endsAt: plan.endsAt,
+      allDay: plan.allDay,
+      sourceProvider: plan.sourceProvider,
+    })),
+    [calendarParticipationQuery.data],
+  );
 
   const personalReminderEvents = useMemo<ReminderEvent[]>(() => {
     try {
@@ -425,11 +432,11 @@ export function Taskbar({
 
   const activeCalendarReminder = useMemo(
     () => user ? selectCalendarReminder(
-      [...(calendarReminderQuery.data ?? []), ...personalReminderEvents],
+      [...followedReminderEvents, ...personalReminderEvents],
       viewedReminderIds,
       time,
     ) : null,
-    [calendarReminderQuery.data, personalReminderEvents, time, user, viewedReminderIds],
+    [followedReminderEvents, personalReminderEvents, time, user, viewedReminderIds],
   );
 
   const viewCalendarReminder = () => {

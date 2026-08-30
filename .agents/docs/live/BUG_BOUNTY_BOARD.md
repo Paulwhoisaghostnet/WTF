@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-627 | Verified | Codex commission fulfillment | 2026-08-29 | Calendar / durable participation and reminders | P1 | 11 | 8 | 3 | 4 | 0 | Calendar supports browsing and event submissions but has no persistent RSVP/My plans loop, while tray reminders target every visible event instead of a user's chosen events |
 | WTF-BB-626 | Verified | Codex commission fulfillment | 2026-08-29 | Casino / community practice-game creation | P1 | 12 | 7 | 3 | 4 | 1 | Casino has staff-authored mocked tables but no user builder, submission status, moderation, public attribution, or durable practice-play path |
 | WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
@@ -12693,3 +12694,32 @@ Copy this when adding a new issue:
   - Practice outcome tests pass 2/2, inventory coverage passes, TypeScript passes, and the production build succeeds.
   - Focused browser presentation proof passes 1/1 through submit, hidden state, approval, public creator card, and practice result.
   - Real local PostgreSQL actor proof passes 1/1 with trusted creator, admin, and contestant sessions; the existing built-in Casino API proof also passes, for 2/2 focused live tests.
+
+### WTF-BB-627 - Calendar has no durable RSVP or chosen-reminder loop
+
+- Category: Calendar / durable participation and reminders
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - Calendar browsing, personal browser entries, community ticket submission, and operator publication already exist.
+  - Published event details expose no Interested, Going, reminder, or clear-plan action, and there is no account-backed participation table or endpoint.
+  - The task tray loads every visible calendar event into its reminder selector, so a signed-in user receives reminders without choosing to follow the event.
+- Why it matters:
+  - The commission requires users to participate in the community calendar, not only read it or submit listings.
+  - An unrequested global reminder stream is difficult to understand and becomes noisy as the community calendar grows.
+- Correction direction:
+  - Persist one account-backed participation record per user/event reference with Interested or Going status and an explicit reminder preference.
+  - Add self-explanatory controls to event details plus a My plans view that survives another browser session.
+  - Filter the task-tray reminder candidates to followed events and retain personal browser entries as the clearly labeled local-only path.
+- Verification idea:
+  - Use one member actor to mark a published event Going with reminders enabled, reload through a fresh request, see it in My plans, turn reminders off, and clear the plan; verify normalized participation events and no remaining durable record.
+- Correction:
+  - Added one account-backed participation record per user/event with Interested or Going status, explicit task-tray reminder preference, event snapshot, and normalized update/clear events.
+  - Added plain-language participation controls, event-room links, durable My plans cards, guest guidance, and clear-plan feedback to Calendar event details.
+  - Changed task-tray reminder candidates from every visible shared event to reminder-enabled saved plans plus browser-only personal entries the user explicitly created.
+- Verification:
+  - TypeScript, production build, public API contract, and interaction inventory coverage pass; Calendar reminder/presentation policy passes 8/8 and TTC source behavior passes 5/5.
+  - Focused browser proof passes 1/1 through Going, reload, My plans, reminder-off filtering, and clear.
+  - Real local PostgreSQL actor proof passes 1/1 through operator event creation, contestant persistence, selected reminders, audit events, and durable removal.
+  - The complete inventory browser suite passes 691/691 after the Calendar integration.

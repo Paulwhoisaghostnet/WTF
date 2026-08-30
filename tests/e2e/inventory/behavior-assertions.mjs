@@ -327,6 +327,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused adapter tests prove backward recurrence restoration, TTC WordPress creator enrichment, email-shaped creator-name redaction, and canonical source URLs; browser coverage proves TTC creator and source provenance are visible from an activated event without changing calendar state.",
   },
   {
+    id: "calendar.account-participation-and-chosen-reminders",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["calendar"],
+    ownerSpec:
+      "tests/playwright/inventory/calendar-participation.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/calendar-participation.spec.mjs --project=chromium --reporter=list && WTF_E2E_ACTOR_FILTER=admin,contestant npx playwright test tests/playwright/live/puppet-orchestration.spec.mjs -g \"Calendar participation\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in member can open a WTF or TTC event, choose Interested or Going, explicitly toggle its task-tray reminder, find the saved choice in My plans after reload, follow the event link, and clear the plan.",
+    durableSideEffectAssertion:
+      "One user/event participation row is upserted with an account-backed status and reminder preference; tray reminders load only reminder-enabled plans plus explicitly created personal entries; clear removes the row; normalized update and clear events retain the event reference and choice without creating attendance or reward claims.",
+  },
+  {
     id: "gamma.auth-return-continuity",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],

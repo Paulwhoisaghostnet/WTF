@@ -10840,3 +10840,23 @@
 **Rule**: When a registered route title changes, update every shell-owned breadcrumb, launcher, and route-containment assertion in the same pass. Focused content checks do not replace the broad proof that Classic, Beta, and Gamma all present the canonical route label.
 
 ---
+
+## 2026-08-29 — Calendar reminders must follow explicit user intent
+
+**What happened**: The task tray loaded every shared event visible to a signed-in account, even though Calendar had no RSVP or reminder preference. As the feed grew, merely having permission to see an event silently enrolled the user in its reminder thresholds.
+
+**Why it mattered**: A community calendar becomes difficult to navigate when discovery and commitment are treated as the same action. Users could neither explain why a reminder appeared nor review and reverse a durable choice because no choice had been recorded.
+
+**Rule**: Keep event discovery separate from participation. Persist Interested or Going and reminder preference per account/event, show those decisions in a My plans surface, build tray candidates only from reminder-enabled plans plus explicitly created personal entries, and prove save, reload, reminder-off, and clear against the real database.
+
+---
+
+## 2026-08-29 — Browser proofs that serve build output must not overlap a build
+
+**What happened**: A Gamma Calendar browser smoke ran in parallel with the production build. The build temporarily replaced `dist/public`, so the browser server logged missing `index.html` reads even though it eventually loaded the rebuilt output and the assertion passed.
+
+**Why it mattered**: The product behavior was healthy, but sharing a mutable build directory made the proof nondeterministic and polluted otherwise clean evidence with transient server errors.
+
+**Rule**: Finish the production build before starting any browser proof whose harness serves `dist/public`, or give the proof an isolated immutable build directory. Parallelize read-only gates, not a build writer with its build-output consumer.
+
+---

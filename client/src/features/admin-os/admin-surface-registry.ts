@@ -262,15 +262,18 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     kind: "public-surface",
     routePatterns: ["/calendar"],
     adminPanelTabs: ["Automation", "Control Board"],
-    nativeSettings: ["event publishing", "attendance triggers", "ticket review"],
+    nativeSettings: ["event publishing", "account participation and reminders", "attendance triggers", "ticket review"],
     automationHandles: [
       "calendar.ticket_submitted",
+      "calendar.participation.updated",
+      "calendar.participation.cleared",
       "attendance.claimed",
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
       "calendar.tray-reminders-cross-app-handoffs",
       "calendar.ttc-source-parity-and-event-details",
+      "calendar.account-participation-and-chosen-reminders",
     ],
   },
   {
