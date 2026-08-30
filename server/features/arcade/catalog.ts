@@ -94,6 +94,20 @@ export async function getArcadeStats() {
         WHERE ${nonArcadeSourceStorageModeSql(sql`cg.storage_mode`)}
           AND (cg.created_by IS NOT NULL OR cg.builder_user_id IS NOT NULL)
       )::int AS creator_games,
+      COUNT(*) FILTER (
+        WHERE EXISTS (
+          SELECT 1
+          FROM console_game_versions cgv
+          WHERE cgv.game_id = cg.id
+            AND cgv.bundle_metadata->>'source' = 'game_studio_project'
+        )
+      )::int AS game_studio_games,
+      (
+        SELECT COUNT(*)::int
+        FROM console_games pending_games
+        WHERE pending_games.status = 'pending'
+          AND ${gameSurfaceAliasSql("arcade", "pending_games")}
+      ) AS pending_games,
       COALESCE(SUM(cg.play_count), 0)::int AS total_plays,
       COALESCE(SUM(cg.player_count), 0)::int AS total_players,
       (
@@ -118,10 +132,10 @@ export async function getArcadeStats() {
   return {
     totalGames: catalog.all.length,
     publishedGames: catalog.all.length,
-    pendingGames: 0,
+    pendingGames: Number(row.pending_games || 0),
     sourceArcadeGames: Number(row.source_games || 0),
     creatorGames: Number(row.creator_games || 0),
-    gameStudioGames: 0,
+    gameStudioGames: Number(row.game_studio_games || 0),
     totalPlays: Number(row.total_plays || 0),
     totalPlayers: Number(row.total_players || 0),
     totalScores: Number(row.total_scores || 0),

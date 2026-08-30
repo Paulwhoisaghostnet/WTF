@@ -3,6 +3,7 @@ import { isArcadeSourceStorageMode } from "../arcade/source-constants";
 export type ConsoleSourceAttributionInput = {
   storageMode?: string | null;
   sourceUrl?: string | null;
+  creationSource?: string | null;
 };
 
 export type ConsoleSourceAttribution = {
@@ -19,6 +20,14 @@ export function getConsoleSourceAttribution(
       sourceUrl: input.sourceUrl ?? null,
       sourceLabel: "Built on hack.tez",
       licenseName: "MIT",
+    };
+  }
+
+  if (input.creationSource === "game_studio_project") {
+    return {
+      sourceUrl: input.sourceUrl ?? null,
+      sourceLabel: "Built with WTF Game Studio",
+      licenseName: null,
     };
   }
 

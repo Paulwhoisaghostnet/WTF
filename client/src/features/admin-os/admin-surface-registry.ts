@@ -1129,6 +1129,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     automationHandles: ["arcade.game.submitted", "arcade.game.approved", "game_sdk.score_updated"],
     behaviorAssertionIds: [
       "arcade-console.sessions-and-scores",
+      "arcade.creator-build-publish-discover",
       "media.creation-gallery-preservation-proof",
     ],
   },
@@ -1408,6 +1409,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: [
       "inventory.temporary-grants-unlock-apps",
       "arcade-console.sessions-and-scores",
+      "arcade.creator-build-publish-discover",
       "skullzarmy.fafolab-integration-contracts",
     ],
   },

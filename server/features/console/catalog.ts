@@ -148,9 +148,10 @@ export function isZipToken(meta: Record<string, any>, artifactUri: string): bool
 
 function rowToPublishedGame(
   row: typeof consoleGames.$inferSelect,
-  provenance: ConsolePublishedGame["provenance"] = null
+  provenance: ConsolePublishedGame["provenance"] = null,
+  creationSource: string | null = null
 ): ConsolePublishedGame {
-  const attribution = getConsoleSourceAttribution(row);
+  const attribution = getConsoleSourceAttribution({ ...row, creationSource });
   return {
     id: row.id,
     slug: row.slug,
@@ -212,9 +213,10 @@ function rowToModerationGame(
 
 function publishedGameToCartridge(
   row: typeof consoleGames.$inferSelect,
-  provenance: ConsoleCartridge["provenance"] = null
+  provenance: ConsoleCartridge["provenance"] = null,
+  creationSource: string | null = null
 ): ConsoleCartridge {
-  const attribution = getConsoleSourceAttribution(row);
+  const attribution = getConsoleSourceAttribution({ ...row, creationSource });
   return {
     id: `published-${row.slug}`,
     slug: row.slug,
@@ -245,8 +247,13 @@ function publishedGameToCartridge(
   };
 }
 
-async function publishedProvenanceByGameId(rows: (typeof consoleGames.$inferSelect)[]) {
-  const out = new Map<number, ConsoleCartridge["provenance"]>();
+type PublishedVersionContext = {
+  provenance: ConsoleCartridge["provenance"];
+  creationSource: string | null;
+};
+
+async function publishedVersionContextByGameId(rows: (typeof consoleGames.$inferSelect)[]) {
+  const out = new Map<number, PublishedVersionContext>();
   if (rows.length === 0) return out;
 
   const versions = await db
@@ -264,11 +271,16 @@ async function publishedProvenanceByGameId(rows: (typeof consoleGames.$inferSele
   for (const row of rows) {
     const version = latestByGame.get(row.id);
     const metadata = version?.bundleMetadata as Record<string, any> | null | undefined;
+    const creationSource = String(metadata?.source || "").trim() || null;
     const stored = metadata?.wtfProvenance || metadata?.provenance;
     if (stored && typeof stored === "object") {
-      out.set(row.id, stored as ConsoleCartridge["provenance"]);
+      out.set(row.id, {
+        provenance: stored as ConsoleCartridge["provenance"],
+        creationSource,
+      });
       continue;
     }
+    out.set(row.id, { provenance: null, creationSource });
     if (metadata?.tokenContract && metadata?.tokenId) {
       inputs.push({
         gameId: row.id,
@@ -285,7 +297,12 @@ async function publishedProvenanceByGameId(rows: (typeof consoleGames.$inferSele
     const provenance = provenanceByToken.get(
       tokenIdentityKey(input.tokenContract, input.tokenId)
     );
-    if (provenance) out.set(input.gameId, provenance);
+    if (provenance) {
+      out.set(input.gameId, {
+        provenance,
+        creationSource: out.get(input.gameId)?.creationSource ?? null,
+      });
+    }
   }
 
   return out;
@@ -316,8 +333,15 @@ export async function listPublishedConsoleGames(options: {
     .orderBy(desc(consoleGames.updatedAt))
     .limit(Math.max(1, Math.min(100, options.limit ?? 50)));
 
-  const provenanceByGame = await publishedProvenanceByGameId(rows);
-  return rows.map((row) => rowToPublishedGame(row, provenanceByGame.get(row.id) ?? null));
+  const contextByGame = await publishedVersionContextByGameId(rows);
+  return rows.map((row) => {
+    const context = contextByGame.get(row.id);
+    return rowToPublishedGame(
+      row,
+      context?.provenance ?? null,
+      context?.creationSource ?? null
+    );
+  });
 }
 
 export async function listPublishedConsoleCartridges(
@@ -339,10 +363,15 @@ export async function listPublishedConsoleCartridges(
     .orderBy(desc(consoleGames.updatedAt))
     .limit(Math.max(1, Math.min(100, limit)));
 
-  const provenanceByGame = await publishedProvenanceByGameId(rows);
-  return rows.map((row) =>
-    publishedGameToCartridge(row, provenanceByGame.get(row.id) ?? null)
-  );
+  const contextByGame = await publishedVersionContextByGameId(rows);
+  return rows.map((row) => {
+    const context = contextByGame.get(row.id);
+    return publishedGameToCartridge(
+      row,
+      context?.provenance ?? null,
+      context?.creationSource ?? null
+    );
+  });
 }
 
 export async function getPublishedConsoleGameBySlug(slug: string) {
@@ -653,7 +682,11 @@ export async function submitConsoleGameFromBundle(
     });
   }
 
-  return rowToPublishedGame(game, provenance);
+  return rowToPublishedGame(
+    game,
+    provenance,
+    String(input.bundleMetadata?.source || "").trim() || null
+  );
 }
 
 export async function submitConsoleGameFromMedia(
@@ -845,10 +878,14 @@ async function submitConsoleGameUpdateFromBundle(
   const trustedBypass = await canBypassConsoleReview(user);
   const reviewStatus = trustedBypass ? "active" : "pending";
   const metadataProvenance = await provenanceForBundleMetadata(input.bundleMetadata, title);
-  const previousProvenance = metadataProvenance
+  const previousContext = metadataProvenance
     ? null
-    : (await publishedProvenanceByGameId([existing])).get(existing.id) ?? null;
-  const provenance = metadataProvenance ?? previousProvenance;
+    : (await publishedVersionContextByGameId([existing])).get(existing.id) ?? null;
+  const provenance = metadataProvenance ?? previousContext?.provenance ?? null;
+  const creationSource =
+    String(input.bundleMetadata?.source || "").trim() ||
+    previousContext?.creationSource ||
+    null;
 
   const [lastVersion] = await db
     .select({ version: consoleGameVersions.version })
@@ -973,7 +1010,7 @@ async function submitConsoleGameUpdateFromBundle(
       metadata: { channel: "trusted_creator_auto_publish" },
     });
 
-    return rowToPublishedGame(published, provenance);
+    return rowToPublishedGame(published, provenance, creationSource);
   }
 
   await db
@@ -1019,7 +1056,7 @@ async function submitConsoleGameUpdateFromBundle(
     .from(consoleGames)
     .where(eq(consoleGames.id, existing.id))
     .limit(1);
-  return rowToPublishedGame(updated ?? existing, provenance);
+  return rowToPublishedGame(updated ?? existing, provenance, creationSource);
 }
 
 async function submitConsoleGameUpdateFromMedia(
@@ -1376,8 +1413,15 @@ export async function listUserSubmittedConsoleGames(userId: number) {
     .orderBy(desc(consoleGames.updatedAt))
     .limit(100);
 
-  const provenanceByGame = await publishedProvenanceByGameId(rows);
-  return rows.map((row) => rowToPublishedGame(row, provenanceByGame.get(row.id) ?? null));
+  const contextByGame = await publishedVersionContextByGameId(rows);
+  return rows.map((row) => {
+    const context = contextByGame.get(row.id);
+    return rowToPublishedGame(
+      row,
+      context?.provenance ?? null,
+      context?.creationSource ?? null
+    );
+  });
 }
 
 export async function listConsoleModerationQueue(options: {

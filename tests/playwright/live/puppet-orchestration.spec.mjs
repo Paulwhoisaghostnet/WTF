@@ -1504,13 +1504,14 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
-  test("media upload, project bundles, and Game Studio builds preserve creator work", async ({
+  test("media upload, Game Studio builds, and Arcade publication preserve creator work", async ({
     playwright,
     baseURL,
   }) => {
-    const creator =
-      puppetCredentials.actors.find((actor) => actor.role === "trusted_creator") ||
-      actorByRole(puppetCredentials, "contestant");
+    const creator = puppetCredentials.actors.find(
+      (actor) => actor.role === "trusted_creator"
+    );
+    expect(creator, "trusted creator puppet is seeded").toBeTruthy();
     const request = await actorRequestContext(playwright, baseURL, creator);
     const testRunId = `live-puppet-media-${Date.now().toString(36)}`;
     let mediaId = null;
@@ -1629,6 +1630,48 @@ test.describe("live E2E puppet orchestration", () => {
         builds.builds.some((entry) => entry.id === build.build.id),
         "Game Studio build persists in build history"
       ).toBe(true);
+
+      const submitted = await expectOkJson(
+        await request.post(`/api/game-studio/projects/${project.project.id}/submit`, {
+          headers,
+          data: {
+            title: `Live Puppet Game ${testRunId}`,
+            description: "Creator-built Arcade publication proof.",
+            category: "arcade",
+          },
+        }),
+        "submit Game Studio project to Arcade"
+      );
+      expect(submitted.game?.status).toBe("active");
+      expect(submitted.project?.status).toBe("published");
+      expect(submitted.game?.builderName).toBe(creator.displayName || creator.username);
+      expect(submitted.game?.sourceLabel).toBe("Built with WTF Game Studio");
+      expect(submitted.game?.slug, "published Arcade slug").toBeTruthy();
+
+      const arcadeCatalog = await expectOkJson(
+        await request.get("/api/arcade/games"),
+        "public Arcade catalog"
+      );
+      const publishedGame = arcadeCatalog.all?.find(
+        (game) => game.slug === submitted.game.slug
+      );
+      expect(publishedGame, "creator game is publicly discoverable").toBeTruthy();
+      expect(publishedGame.builderName).toBe(creator.displayName || creator.username);
+      expect(publishedGame.sourceLabel).toBe("Built with WTF Game Studio");
+
+      const arcadeDetail = await expectOkJson(
+        await request.get(`/api/arcade/games/${submitted.game.slug}`),
+        "published Arcade game detail"
+      );
+      expect(arcadeDetail.game?.builderName).toBe(creator.displayName || creator.username);
+      expect(arcadeDetail.game?.sourceLabel).toBe("Built with WTF Game Studio");
+
+      const arcadeStats = await expectOkJson(
+        await request.get("/api/arcade/stats"),
+        "Arcade creator statistics"
+      );
+      expect(arcadeStats.creatorGames, "Arcade creator game count").toBeGreaterThan(0);
+      expect(arcadeStats.gameStudioGames, "Game Studio Arcade game count").toBeGreaterThan(0);
     } finally {
       if (mediaId) {
         const headers = await csrfHeaders(request).catch(() => null);

@@ -773,6 +773,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness posts score submissions using run tickets for every catalog slug that exposes a score path.",
   },
   {
+    id: "arcade.creator-build-publish-discover",
+    domain: "WTF Arcade, WTF Console, and Game Studio SDK",
+    ownerSurfaceIds: ["arcade", "game-studio"],
+    ownerSpec:
+      "server/features/arcade/stats-policy.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      'npx tsx --test server/features/arcade/stats-policy.test.ts && WTF_E2E_ACTOR_FILTER=cookiemonster npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "Arcade publication preserve creator work"',
+    userVisibleAssertion:
+      "A trusted creator can create and build a Game Studio project, publish it into the public Arcade, and find the game there with their creator name and a clear Built with WTF Game Studio source label.",
+    durableSideEffectAssertion:
+      "The live harness proves the project and ZIP build persist, submission changes the project to published, the public Arcade catalog and detail return the attributed game, and persisted creator/Game Studio games contribute to Arcade statistics.",
+  },
+  {
     id: "desktop.settings-events-pet",
     domain: "Desktop OS, Navigation, and Personal Environment",
     ownerSurfaceIds: ["desktop-appearance", "desktop-pet"],

@@ -918,6 +918,10 @@ export const DOMAIN_WORKFLOWS = [
       "macaroni.drop_published",
       "arcade.game.submitted",
     ],
+    behaviorAssertionIds: [
+      "media.creation-gallery-preservation-proof",
+      "arcade.creator-build-publish-discover",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
       { method: "GET", path: "/api/cockpit/project-bundles" },
@@ -972,6 +976,10 @@ export const DOMAIN_WORKFLOWS = [
       "console.score.accepted",
       "game_sdk.avatar_loaded",
       "game_sdk.game_over",
+    ],
+    behaviorAssertionIds: [
+      "arcade-console.sessions-and-scores",
+      "arcade.creator-build-publish-discover",
     ],
     apiProbes: [
       { method: "GET", path: "/api/arcade/stats" },

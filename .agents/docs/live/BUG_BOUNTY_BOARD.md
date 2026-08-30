@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-623 | Open | - | 2026-08-29 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The declared phased live-puppet command references missing phase specs, including Arcade/Casino, so it cannot prove the release journeys it names |
@@ -9872,7 +9873,7 @@ Priority labels:
 ### WTF-BB-470 - Ravioli rejects legitimate Gnocchi policy shapes and mixed allocation packs
 
 - Category: Pasta Protocol / allocation policy composition
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence:
@@ -12637,3 +12638,29 @@ Copy this when adding a new issue:
   - Creator moderation policy tests pass 2/2; production build and interaction-inventory coverage pass.
   - Focused browser coverage passes 2/2: the complete submit-hidden/approve-visible/EXP-purchase journey and the ordinary-member permission explanation/Contact Admin recovery journey.
   - Real database and production verification remain part of the actor-backed release pass, so this bounty is Fixed rather than Verified.
+
+### WTF-BB-625 - Arcade reports zero Game Studio output and does not prove creator publication
+
+- Category: Arcade / creator publication evidence
+- Status: Claimed
+- Owner/Session: Codex commission fulfillment
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - `getArcadeStats()` returns literal `pendingGames: 0` and `gameStudioGames: 0` despite persisted `console_games` moderation state and `console_game_versions.bundle_metadata.source = game_studio_project`.
+  - Production consequently reported zero Game Studio games, which cannot distinguish an empty community from a broken statistic.
+  - The actor-backed Game Studio scenario creates and builds a durable project but never calls its submit endpoint or proves the result appears in public Arcade discovery with builder attribution.
+- Why it matters:
+  - The commission requires users to build games for the Arcade; a build that never reaches Arcade is incomplete customer evidence.
+  - Operators and the customer cannot use a hardcoded zero to judge creator adoption or a moderation backlog.
+- Correction direction:
+  - Derive pending and Game Studio counts from authoritative Arcade game/version rows.
+  - Extend the actor-backed creator journey through submit, persisted project publication state, public Arcade detail/catalog, creator attribution, and corrected stats.
+- Verification idea:
+  - Build and submit a unique Game Studio project with a real creator actor, assert its public Arcade slug and builder, verify its project/build linkage and stats, then retain the existing all-catalog play/session/score proof.
+- Correction:
+  - Replaced literal pending and Game Studio counts with queries against active Arcade games, pending moderation rows, and persisted Game Studio version metadata.
+  - Public Arcade catalog/detail entries now expose a plain-language `Built with WTF Game Studio` source label while retaining the creator's display name.
+  - Extended the signed-in trusted-creator journey through project creation, durable ZIP build history, submit, published project state, public catalog/detail discovery, source attribution, and nonzero creator/Game Studio statistics.
+- Verification:
+  - Focused source/attribution tests pass 4/4; TypeScript, production build, and inventory coverage pass.
+  - Real local database actor proof passes 1/1 with the seeded `cookiemonster` trusted creator and a production server process.

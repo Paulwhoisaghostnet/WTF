@@ -10810,3 +10810,13 @@
 **Rule**: In classic desktop browser tests, scope interactions to the owning application surface or active window before selecting controls, and use exact accessible names when a primary action shares a prefix with secondary controls. Global locators are appropriate only for truly shell-global UI.
 
 ---
+
+## 2026-08-29 — Creator provenance must survive the publish-to-catalog read boundary
+
+**What happened**: Game Studio correctly stored its project/build source in the Arcade version metadata, and the submitted game retained the creator name, but public Arcade catalog/detail reads reconstructed cartridges using only token provenance. Game Studio publications therefore returned a null provenance field and no visible source label even though the authoritative version row identified their origin.
+
+**Why it mattered**: A creator could publish successfully yet see an unexplained public game card, while the customer could not distinguish a native Game Studio contribution from an arbitrary uploaded bundle. Testing only project build persistence would have missed the loss at the public read boundary.
+
+**Rule**: Cross-app publishing tests must follow persisted origin and creator attribution through the destination's public catalog and detail DTOs. When the origin is workflow provenance rather than token provenance, expose a truthful plain-language source label instead of coercing it into an unrelated chain-provenance type.
+
+---
