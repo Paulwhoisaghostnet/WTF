@@ -965,6 +965,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtfiam.checkout.completed",
       "wtfiam.admin.price_rebalanced",
       "wtfiam.admin.sale_updated",
+      "wtfiam.creator_item.created",
+      "wtfiam.creator_item.reviewed",
       "inventory.item.granted",
       "inventory.item.transferred",
       "wtf_live.tip.redeemed",
@@ -976,6 +978,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wallet.checkout-intent-bound-to-signed-session",
       "inventory.temporary-grants-unlock-apps",
       "wtf-live.tip-items-transfer-redeem",
+      "wtfiam.creator-store-moderation-purchase",
     ],
   },
   {

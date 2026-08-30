@@ -10800,3 +10800,13 @@
 **Rule**: When a browser harness replaces a state-changing production endpoint, it must update its authoritative harness state and mirror the production event or audit boundary before returning the response. A response-shaped mock proves rendering; it does not prove persistence.
 
 ---
+
+## 2026-08-29 — Desktop E2E locators must be scoped to the active application surface
+
+**What happened**: The Store contribution journey opened Admin and then returned to WTFIAM. The classic desktop kept both application windows mounted, so broad role locators for `Add` and `EXP` matched controls in the active Store plus similarly named controls in the background Admin window. Playwright correctly rejected the ambiguous actions.
+
+**Why it mattered**: The customer could use the active window normally, but an unscoped test could click the wrong mounted application or fail for reasons unrelated to the workflow. Prefix matching also made `Add` match both the primary action and `Add ticket` stepper.
+
+**Rule**: In classic desktop browser tests, scope interactions to the owning application surface or active window before selecting controls, and use exact accessible names when a primary action shares a prefix with secondary controls. Global locators are appropriate only for truly shell-global UI.
+
+---

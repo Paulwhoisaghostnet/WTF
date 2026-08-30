@@ -69,6 +69,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The shared wayfinder regression locks the five route mappings; the browser harness completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the public help route exposes the same task map.",
   },
   {
+    id: "wtfiam.creator-store-moderation-purchase",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    ownerSurfaceIds: ["wtfiam"],
+    ownerSpec:
+      "server/features/in-app-market/creator-items-policy.test.ts; tests/playwright/inventory/wtfiam-creator-store.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/in-app-market/creator-items-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/wtfiam-creator-store.spec.mjs",
+    userVisibleAssertion:
+      "A trusted creator can submit an item from the Store, see its review status and operator note, and only after operator approval can a shopper find and purchase the attributed item.",
+    durableSideEffectAssertion:
+      "Creator attribution and submitted status are persisted on a hidden market row; operator review records approver, timestamp, status, and note while controlling visibility; the browser harness proves the approved item enters checkout and the EXP purchase grants owned inventory with normalized create, review, intent, and completion events.",
+  },
+  {
     id: "gamma.login-daily-return-strip",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],

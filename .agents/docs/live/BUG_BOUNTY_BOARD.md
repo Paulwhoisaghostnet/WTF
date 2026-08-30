@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-623 | Open | - | 2026-08-29 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The declared phased live-puppet command references missing phase specs, including Arcade/Casino, so it cannot prove the release journeys it names |
 | WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
@@ -12607,3 +12608,32 @@ Copy this when adding a new issue:
   - Restore domain-owned phase specs from an authoritative source or replace the stale script with real, present domain specs that prove the same actor and durable-state contracts.
 - Verification idea:
   - Require every file named by the script to exist, collect in Playwright, and run against the isolated production-shaped puppet database; bind each commission journey to the exact live spec that proves it.
+
+### WTF-BB-624 - Creator Store submissions bypass moderation and have no customer-facing workflow
+
+- Category: Store / creator contribution and moderation
+- Status: Fixed
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - `POST /api/in-app-market/creator-items` requires the intended `trusted_market_creator` permission but inserts the item with `active: true`, making it public immediately.
+  - WTFIAM has browse, cart, checkout, inventory, sale, and tip-ledger UI but no creator submission form or status history.
+  - The Admin in-app market tab can generically hide/show items but does not identify creator submissions or record an approve/reject decision and review note.
+- Why it matters:
+  - The commissioned community-driven shop cannot be used without a private API or MCP client, and operator moderation can be bypassed by every trusted submission.
+  - Creators receive no confirmation, status, attribution, or recovery path, while operators cannot distinguish a reviewed listing from an arbitrary hidden catalog row.
+- Correction direction:
+  - Persist trusted creator items hidden with submitted status and immutable creator attribution.
+  - Add a first-class Store contribution form and creator-owned status history, with a Contact Admin recovery path for accounts missing the permission.
+  - Add explicit operator approve/reject actions, review notes, audit handles, and approved-only public listing behavior.
+- Verification idea:
+  - Prove a trusted creator submits an item that remains absent from public browse, an operator sees attribution and approves it, the creator sees approved status, and a buyer purchases the now-visible item with inventory/purchase persistence.
+- Correction:
+  - Trusted creator submissions now persist as hidden Store items with creator identity, submitted status, and submission time; creator-owned status history is available from the Store.
+  - Added the Store's Creator Submission Desk, including category, type, EXP price, stock, description, status, operator note, and an explained Contact Admin recovery route for members without permission.
+  - Added explicit approve/reject controls to the operator market table. Review records status, reviewer identity, timestamp, and note; only approval activates the public listing.
+  - Added normalized create/review events and inventory-owned behavior coverage for submission, moderation, public visibility, EXP checkout, and purchase inventory.
+- Verification:
+  - Creator moderation policy tests pass 2/2; production build and interaction-inventory coverage pass.
+  - Focused browser coverage passes 2/2: the complete submit-hidden/approve-visible/EXP-purchase journey and the ordinary-member permission explanation/Contact Admin recovery journey.
+  - Real database and production verification remain part of the actor-backed release pass, so this bounty is Fixed rather than Verified.

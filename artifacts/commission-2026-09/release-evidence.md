@@ -7,8 +7,8 @@ Status: implementation in progress
 | Journey | Status | Actor/environment | Automated proof | Durable result | Visual/trace evidence | Defect or blocker |
 | --- | --- | --- | --- | --- | --- | --- |
 | J-01 First-run wayfinding | PASS — LOCAL CANDIDATE | Fresh contestant + stale-session actor/local harness | shared task-map and Start Menu tests; `auth-session.spec.mjs` 2/2 | welcome completion persisted; `auth.welcome.completed` mirrored | Playwright screenshot/trace retained only on failure | Production deploy verification pending |
-| J-02 Community store contribution | NOT RUN | — | — | — | — | WP-02 |
-| J-03 Store purchase | NOT RUN | — | — | — | — | WP-02, `WTF-BB-182`, affected `WTF-BB-124/125` writes |
+| J-02 Community store contribution | PASS — LOCAL CANDIDATE | Trusted creator + operator/local harness | creator policy 2/2; Store browser 2/2 | hidden submitted row; attributed review status/note; approval controls visibility | Playwright screenshot/trace retained only on failure | Real DB actor retest pending |
+| J-03 Store purchase | PASS — HARNESS / LIVE PROOF PENDING | Approved creator item + buyer/local harness | approved listing enters EXP cart and completes checkout | owned inventory granted; intent/completion events emitted | Playwright screenshot/trace retained only on failure | Mainnet WTF path remains governed by existing wallet/contract proof; actor DB retest pending |
 | J-04 Arcade creation | NOT RUN | — | — | — | — | WP-03; production has zero creator/Game Studio games |
 | J-05 Arcade participation | NOT RUN | — | — | — | — | WP-03; production app disabled |
 | J-06 Casino creation | NOT RUN | — | — | — | — | WP-04; no creator submission path |

@@ -800,6 +800,8 @@ export const DOMAIN_WORKFLOWS = [
       "wtfiam.cart_intent.created",
       "wtfiam.admin.price_rebalanced",
       "wtfiam.admin.sale_updated",
+      "wtfiam.creator_item.created",
+      "wtfiam.creator_item.reviewed",
       "inventory.item.consumed",
       "inventory.item.transferred",
       "reward.market_spent",
@@ -818,10 +820,20 @@ export const DOMAIN_WORKFLOWS = [
       "trade_board.offer_accept_terms_previewed",
       "swap.confirmed",
     ],
+    behaviorAssertionIds: [
+      "wtfiam.creator-store-moderation-purchase",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/in-app-market?category=apps" },
       { method: "GET", path: "/api/in-app-market?category=desktop_pet" },
       { method: "GET", path: "/api/in-app-market?category=wtf_live" },
+      { method: "GET", path: "/api/in-app-market/creator-items/mine" },
+      {
+        method: "POST",
+        path: "/api/in-app-market/creator-items",
+        body: { name: "E2E Creator Item", category: "desktop_fun", kind: "creator-item", priceExp: 100, stockQuantity: 1 },
+        expectedStatuses: [201, 400, 401, 403, 500],
+      },
       {
         method: "POST",
         path: "/api/in-app-market/intents",

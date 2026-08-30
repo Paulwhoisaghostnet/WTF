@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **899 unique method/path operations**, grouped into **97 route families** and declared across **124 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **901 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 899 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 901 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -136,7 +136,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `game-studio` | 15 | Game Studio projects, builds, files, and publishing. |
 | `gnocchi` | 1 | Operations for the gnocchi domain. |
 | `health` | 5 | Liveness, readiness, authenticated diagnostics, metrics, and disk status. |
-| `in-app-market` | 10 | In-app market catalogue, purchases, sales, pricing, and reconciliation. |
+| `in-app-market` | 11 | In-app market catalogue, purchases, sales, pricing, and reconciliation. |
 | `ipfs-pinning` | 5 | Operations for the ipfs pinning domain. |
 | `lasagna` | 1 | Operations for the lasagna domain. |
 | `leaderboard` | 6 | Platform leaderboards and ranking data. |
@@ -149,6 +149,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `media` | 8 | Media library metadata, uploads, imports, files, and lifecycle management. |
 | `messages` | 18 | Direct-message conversations, messages, participants, and read state. |
 | `mint` | 4 | Mint portal configuration and minting workflows. |
+| `mint-manager` | 1 | Operations for the mint manager domain. |
 | `music` | 5 | Music catalogue, playback metadata, and library actions. |
 | `notifications` | 6 | Notification feeds, preferences, and read state. |
 | `objkt-operator` | 11 | Operations for the objkt operator domain. |
@@ -191,7 +192,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 436**, **PATCH 36**, **POST 306**, **PUT 63**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 135**, **Public/handler 207**, **Session 453**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 437**, **PATCH 36**, **POST 307**, **PUT 63**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 135**, **Public/handler 207**, **Session 455**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -245,13 +246,13 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | GET | `/api/admin/diagnostics` | Read or list admin diagnostics. | Admin | `server/features/admin/media-storage-routes.ts:150` |
 | POST | `/api/admin/etherlink/sync-all` | Create, submit, or run admin etherlink sync all. | Admin | `server/routes/etherlink-wallets.ts:514` |
 | GET | `/api/admin/help-index` | Read or list admin help index. | Admin | `server/features/admin/help-index-routes.ts:21` |
-| GET | `/api/admin/in-app-market/items` | Read or list admin in app market items. | Admin | `server/features/admin/in-app-market-routes.ts:198` |
-| POST | `/api/admin/in-app-market/items` | Create, submit, or run admin in app market items. | Admin | `server/features/admin/in-app-market-routes.ts:211` |
-| PATCH | `/api/admin/in-app-market/items/:id` | Partially update admin in app market items id. | Admin | `server/features/admin/in-app-market-routes.ts:276` |
-| POST | `/api/admin/in-app-market/reprice` | Create, submit, or run admin in app market reprice. | Admin | `server/features/admin/in-app-market-routes.ts:363` |
-| POST | `/api/admin/in-app-market/sales` | Create, submit, or run admin in app market sales. | Admin | `server/features/admin/in-app-market-routes.ts:377` |
-| DELETE | `/api/admin/in-app-market/sales/:id` | Delete, revoke, or stop admin in app market sales id. | Admin | `server/features/admin/in-app-market-routes.ts:443` |
-| PATCH | `/api/admin/in-app-market/sales/:id` | Partially update admin in app market sales id. | Admin | `server/features/admin/in-app-market-routes.ts:402` |
+| GET | `/api/admin/in-app-market/items` | Read or list admin in app market items. | Admin | `server/features/admin/in-app-market-routes.ts:203` |
+| POST | `/api/admin/in-app-market/items` | Create, submit, or run admin in app market items. | Admin | `server/features/admin/in-app-market-routes.ts:216` |
+| PATCH | `/api/admin/in-app-market/items/:id` | Partially update admin in app market items id. | Admin | `server/features/admin/in-app-market-routes.ts:281` |
+| POST | `/api/admin/in-app-market/reprice` | Create, submit, or run admin in app market reprice. | Admin | `server/features/admin/in-app-market-routes.ts:404` |
+| POST | `/api/admin/in-app-market/sales` | Create, submit, or run admin in app market sales. | Admin | `server/features/admin/in-app-market-routes.ts:418` |
+| DELETE | `/api/admin/in-app-market/sales/:id` | Delete, revoke, or stop admin in app market sales id. | Admin | `server/features/admin/in-app-market-routes.ts:484` |
+| PATCH | `/api/admin/in-app-market/sales/:id` | Partially update admin in app market sales id. | Admin | `server/features/admin/in-app-market-routes.ts:443` |
 | GET | `/api/admin/media` | Read or list admin media. | Admin | `server/features/admin/media-storage-routes.ts:23` |
 | DELETE | `/api/admin/media/:id` | Delete, revoke, or stop admin media id. | Admin | `server/features/admin/media-storage-routes.ts:87` |
 | PUT | `/api/admin/media/:id/status` | Replace or set admin media id status. | Admin | `server/features/admin/media-storage-routes.ts:61` |
@@ -1049,31 +1050,32 @@ Liveness, readiness, authenticated diagnostics, metrics, and disk status.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:230` |
-| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:251` |
-| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:301` |
-| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:236` |
-| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:269` |
+| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:231` |
+| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:252` |
+| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:302` |
+| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:237` |
+| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:270` |
 
 </details>
 
 <details>
-<summary><code>in-app-market</code> — 10 operations</summary>
+<summary><code>in-app-market</code> — 11 operations</summary>
 
 In-app market catalogue, purchases, sales, pricing, and reconciliation.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/in-app-market` | Read or list in app market. | Session | `server/routes/in-app-market.ts:575` |
-| POST | `/api/in-app-market/checkout-exp` | Create, submit, or run in app market checkout exp. | Session | `server/routes/in-app-market.ts:843` |
-| POST | `/api/in-app-market/checkout-reward-wtf` | Create, submit, or run in app market checkout reward wtf. | Session | `server/routes/in-app-market.ts:1052` |
-| POST | `/api/in-app-market/creator-items` | Create, submit, or run in app market creator items. | Session | `server/routes/in-app-market.ts:549` |
-| POST | `/api/in-app-market/intents` | Create, submit, or run in app market intents. | Session | `server/routes/in-app-market.ts:704` |
-| POST | `/api/in-app-market/sync` | Create, submit, or run in app market sync. | Session | `server/routes/in-app-market.ts:1598` |
-| POST | `/api/in-app-market/tips` | Create, submit, or run in app market tips. | Session | `server/routes/in-app-market.ts:1249` |
-| POST | `/api/in-app-market/tips/redeem` | Create, submit, or run in app market tips redeem. | Session | `server/routes/in-app-market.ts:1416` |
-| POST | `/api/in-app-market/use` | Create, submit, or run in app market use. | Session | `server/routes/in-app-market.ts:1636` |
-| POST | `/api/in-app-market/verify` | Create, submit, or run in app market verify. | Session | `server/routes/in-app-market.ts:1608` |
+| GET | `/api/in-app-market` | Read or list in app market. | Session | `server/routes/in-app-market.ts:604` |
+| POST | `/api/in-app-market/checkout-exp` | Create, submit, or run in app market checkout exp. | Session | `server/routes/in-app-market.ts:872` |
+| POST | `/api/in-app-market/checkout-reward-wtf` | Create, submit, or run in app market checkout reward wtf. | Session | `server/routes/in-app-market.ts:1081` |
+| POST | `/api/in-app-market/creator-items` | Create, submit, or run in app market creator items. | Session | `server/routes/in-app-market.ts:553` |
+| GET | `/api/in-app-market/creator-items/mine` | Read or list in app market creator items mine. | Session | `server/routes/in-app-market.ts:587` |
+| POST | `/api/in-app-market/intents` | Create, submit, or run in app market intents. | Session | `server/routes/in-app-market.ts:733` |
+| POST | `/api/in-app-market/sync` | Create, submit, or run in app market sync. | Session | `server/routes/in-app-market.ts:1627` |
+| POST | `/api/in-app-market/tips` | Create, submit, or run in app market tips. | Session | `server/routes/in-app-market.ts:1278` |
+| POST | `/api/in-app-market/tips/redeem` | Create, submit, or run in app market tips redeem. | Session | `server/routes/in-app-market.ts:1445` |
+| POST | `/api/in-app-market/use` | Create, submit, or run in app market use. | Session | `server/routes/in-app-market.ts:1665` |
+| POST | `/api/in-app-market/verify` | Create, submit, or run in app market verify. | Session | `server/routes/in-app-market.ts:1637` |
 
 </details>
 
@@ -1286,6 +1288,17 @@ Mint portal configuration and minting workflows.
 </details>
 
 <details>
+<summary><code>mint-manager</code> — 1 operations</summary>
+
+Operations for the mint manager domain.
+
+| Method | Path | Use | Access | Source |
+| --- | --- | --- | --- | --- |
+| POST | `/api/mint-manager/receipt` | Create, submit, or run mint manager receipt. | Session | `server/routes/mint-manager.ts:65` |
+
+</details>
+
+<details>
 <summary><code>music</code> — 5 operations</summary>
 
 Music catalogue, playback metadata, and library actions.
@@ -1462,10 +1475,10 @@ Operations for the public domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:213` |
-| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:213` |
-| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:223` |
-| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:218` |
+| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:214` |
+| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:214` |
+| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:224` |
+| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:219` |
 
 </details>
 

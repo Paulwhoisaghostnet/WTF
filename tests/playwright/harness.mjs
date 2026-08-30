@@ -665,6 +665,7 @@ app.get("/api/auth/user", (_req, res) => {
             manage_desktop_apps: true,
             manage_gameshow: true,
             manage_rewards: true,
+            trusted_market_creator: true,
           }
         : state.userRole === COBWEBSAINTS_FULL_USER_ROLE
           ? {
@@ -1072,13 +1073,14 @@ function makeHarnessMarketItem(input) {
     metadata: input.metadata ?? { kind: input.kind },
     stockQuantity: input.stockQuantity ?? 1000,
     quantityOwned: 0,
-    active: true,
+    active: input.active !== false,
     rarityTier: input.rarityTier,
     rarityLabel: pricingTiers.find((tier) => tier.tier === input.rarityTier)?.label ?? "Common",
     priceScore: input.priceScore,
     priceWtfLocked: Boolean(input.priceWtfLocked),
     priceScoreLocked: Boolean(input.priceScoreLocked),
     sortOrder: input.sortOrder ?? input.id,
+    createdAt: input.createdAt ?? "2026-05-08T00:00:00.000Z",
     updatedAt: "2026-05-08T00:00:00.000Z",
   };
 }
@@ -1400,9 +1402,22 @@ function serializeHarnessSaleForItem(sale, item) {
 
 function serializeHarnessMarketItem(item, { admin = false } = {}) {
   const sale = serializeHarnessSaleForItem(bestHarnessSaleForItem(item), item);
+  const creatorSubmission = item.metadata?.source === "trusted_creator"
+    ? {
+        creatorUserId: Number(item.metadata.creatorUserId || 0),
+        creatorUsername: String(item.metadata.creatorUsername || "unknown"),
+        status: String(item.metadata.submissionStatus || "submitted"),
+        submittedAt: item.metadata.submittedAt || null,
+        reviewedAt: item.metadata.reviewedAt || null,
+        reviewedByUserId: item.metadata.reviewedByUserId || null,
+        reviewedByUsername: item.metadata.reviewedByUsername || null,
+        reviewNote: item.metadata.reviewNote || null,
+      }
+    : null;
   const publicItem = {
     ...item,
     sale,
+    creatorSubmission,
   };
   if (!admin) return publicItem;
   return {
@@ -3285,10 +3300,53 @@ function apiMock(req, res) {
           : undefined,
     });
   }
+  if (pathName === "/api/in-app-market/creator-items/mine" && req.method === "GET") {
+    const authUser = currentAuthUser();
+    if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+    const items = marketState.items
+      .filter((item) => Number(item.metadata?.creatorUserId || 0) === authUser.id)
+      .map((item) => serializeHarnessMarketItem(item));
+    return res.json({ items });
+  }
+  if (pathName === "/api/in-app-market/creator-items" && req.method === "POST") {
+    const authUser = currentAuthUser();
+    if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+    const canSubmit = state.userRole === "admin" || state.userRole === COBWEBSAINTS_FULL_USER_ROLE;
+    if (!canSubmit) return res.status(403).json({ error: "Trusted market creator permission required" });
+    const now = nowIso();
+    const item = makeHarnessMarketItem({
+      id: Math.max(0, ...marketState.items.map((candidate) => candidate.id)) + 1,
+      sku: `creator-${authUser.id}-${String(req.body?.name || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`,
+      name: String(req.body?.name || "Creator item"),
+      description: String(req.body?.description || ""),
+      category: String(req.body?.category || "desktop_fun"),
+      kind: String(req.body?.kind || "creator-item"),
+      priceWtfWhole: 0,
+      priceExp: Math.max(1, Number(req.body?.priceExp) || 100),
+      stockQuantity: Math.max(1, Number(req.body?.stockQuantity) || 25),
+      rarityTier: 1,
+      priceScore: 1,
+      active: false,
+      createdAt: now,
+      metadata: {
+        kind: String(req.body?.kind || "creator-item"),
+        source: "trusted_creator",
+        creatorUserId: authUser.id,
+        creatorUsername: authUser.username,
+        currency: "exp",
+        submissionStatus: "submitted",
+        submittedAt: now,
+      },
+    });
+    marketState.items.push(item);
+    recordHarnessInteraction("wtfiam.creator_item.created", { itemId: item.id, sku: item.sku }, "in-app-market");
+    return res.status(201).json({ ok: true, item: serializeHarnessMarketItem(item) });
+  }
   if (pathName === "/api/in-app-market/intents" && req.method === "POST") {
     const authUser = currentAuthUser() || { id: 1 };
     const cartItems = Array.isArray(req.body?.items) ? req.body.items : [];
     let subtotalWtf = 0n;
+    let subtotalExp = 0;
     for (const cartItem of cartItems) {
       const appEntry = harnessWtfOsAppListings.find(
         (candidate) => harnessAppUnlockSku(candidate.key) === cartItem?.sku
@@ -3315,20 +3373,29 @@ function apiMock(req, res) {
       const quantity = Math.max(1, Math.min(99, Number(cartItem.quantity) || 1));
       const sale = bestHarnessSaleForItem(item);
       subtotalWtf += applyHarnessDiscount(BigInt(item.priceWtfUnits) * BigInt(quantity), sale?.discountPercent ?? 0);
+      subtotalExp += Number(item.priceExp || 0) * quantity;
     }
     subtotalWtf = ceilHarnessWholeWtf(subtotalWtf);
+    const purchaseRef = `cart:inventory:${Date.now()}`;
+    marketState.lastIntent = {
+      userId: authUser.id,
+      purchaseRef,
+      currency: req.body?.currency ?? "wtf",
+      items: cartItems,
+    };
+    recordHarnessInteraction("wtfiam.cart_intent.created", { purchaseRef, currency: req.body?.currency ?? "wtf" }, "in-app-market");
     return res.json({
       ok: true,
       intent: {
         id: 1,
-        purchaseRef: "cart:inventory:harness",
+        purchaseRef,
         currency: req.body?.currency ?? "wtf",
         status: "pending",
         walletAddress: req.body?.walletAddress ?? null,
         items: cartItems,
         subtotalWtfUnits: subtotalWtf.toString(),
         subtotalWtfFormatted: formatHarnessWtf(subtotalWtf.toString()),
-        subtotalExp: 0,
+        subtotalExp,
         estimatedFeeMutez: 70000,
         estimatedFeeTez: "0.07",
         contractAddress: null,
@@ -3336,6 +3403,24 @@ function apiMock(req, res) {
         expiresAt: "2026-05-08T00:30:00.000Z",
       },
     });
+  }
+  if (pathName === "/api/in-app-market/checkout-exp" && req.method === "POST") {
+    const authUser = currentAuthUser();
+    const intent = marketState.lastIntent;
+    if (!authUser || !intent || intent.userId !== authUser.id || intent.purchaseRef !== req.body?.purchaseRef) {
+      return res.status(404).json({ error: "EXP checkout intent not found" });
+    }
+    for (const line of intent.items) {
+      const quantity = Math.max(1, Number(line.quantity) || 1);
+      setHarnessInventoryQuantity(
+        authUser.id,
+        String(line.sku),
+        harnessInventoryQuantity(authUser.id, String(line.sku)) + quantity
+      );
+    }
+    recordHarnessInteraction("wtfiam.exp_checkout.completed", { purchaseRef: intent.purchaseRef, items: intent.items }, "in-app-market");
+    marketState.lastIntent = null;
+    return res.json({ ok: true, purchaseRef: req.body.purchaseRef });
   }
   if (pathName === "/api/in-app-market/tips" && req.method === "POST") {
     const sender = currentAuthUser();
@@ -4916,6 +5001,32 @@ function apiMock(req, res) {
     });
   }
   if (pathName === "/api/admin/in-app-market/items" && req.method === "GET") {
+    return res.json(harnessMarketAdminPayload());
+  }
+  const marketItemMatch = pathName.match(/^\/api\/admin\/in-app-market\/items\/(\d+)$/);
+  if (marketItemMatch && req.method === "PATCH") {
+    const item = marketState.items.find((candidate) => candidate.id === Number(marketItemMatch[1]));
+    if (!item) return res.status(404).json({ error: "In-app market item not found" });
+    if (req.body?.reviewStatus) {
+      if (item.metadata?.source !== "trusted_creator") {
+        return res.status(400).json({ error: "Item is not a creator submission" });
+      }
+      item.active = req.body.reviewStatus === "approved";
+      item.metadata = {
+        ...item.metadata,
+        submissionStatus: String(req.body.reviewStatus),
+        reviewedAt: nowIso(),
+        reviewedByUserId: currentAuthUser()?.id ?? 1,
+        reviewedByUsername: currentAuthUser()?.username ?? "wtf-admin",
+        reviewNote: String(req.body?.reviewNote || ""),
+      };
+      recordHarnessInteraction(
+        "wtfiam.creator_item.reviewed",
+        { itemId: item.id, status: req.body.reviewStatus },
+        "admin/in-app-market"
+      );
+    }
+    item.updatedAt = nowIso();
     return res.json(harnessMarketAdminPayload());
   }
   if (pathName === "/api/admin/in-app-market/reprice" && req.method === "POST") {
