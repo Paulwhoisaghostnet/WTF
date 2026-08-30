@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-636 | Verified | Codex main commission integration | 2026-08-30 | Release governance / environment inventory | P1 | 9 | 9 | 1 | 4 | 0 | The merged commission tree changed scanned sources and environment references without regenerating the deterministic inventory, stopping main Quality Gates before typecheck, build, or inventory smoke |
 | WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
 | WTF-BB-629 | Verified | Codex commission fulfillment | 2026-08-29 | Media / durable mint receipt ownership and recovery | P1 | 13 | 6 | 4 | 5 | 0 | Mint receipts are now ownership-bound durable records verified from explicit-network TzKT evidence and recoverable from the same owned media across browser sessions |
@@ -12940,3 +12941,25 @@ Copy this when adding a new issue:
   - Preserve old evidence as append-only history while recording supersession explicitly instead of editing incompatible snapshots by hand.
 - Verification idea:
   - Run the policy against failing fixtures for every mismatch class and against the reconciled board; require the release command to consume the same authoritative scoped acceptance ledger rather than infer readiness from board row counts.
+
+### WTF-BB-636 - Merged commission tree left the generated environment inventory stale
+
+- Category: Release governance / environment inventory
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex main commission integration
+- Last touched: 2026-08-30
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - Main Quality Gates run `33328113215` failed at `npm run env:inventory:check` with `Environment inventory is stale` and skipped every later gate in that job.
+  - Regeneration showed that the integrated tree increased scanned source files from 2,200 to 2,219, added two `DATABASE_URL` references, and made the existing `SHADOWNET_TZKT_API_URL` validation detectable.
+- Why it matters:
+  - Production deployment succeeded, but the repository's independent quality signal was red and could not prove the later typecheck, build, inventory, or external-link gates on `main`.
+- Correction direction:
+  - Regenerate the deterministic environment inventory from the exact integrated tree and make the generated file part of the same commit as the source changes that affect it.
+- Verification idea:
+  - Run `npm run env:inventory:check` locally, push the correction, and require the replacement main Quality Gates run to complete successfully.
+- Correction:
+  - Regenerated `docs/reference/environment-variables.md` from the exact merged `main` tree.
+- Verification:
+  - Local `npm run env:inventory:check` reports `Environment inventory is current` from the exact merged tree; the replacement main Quality Gates run remains the independent remote confirmation.

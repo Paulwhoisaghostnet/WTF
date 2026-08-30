@@ -10959,3 +10959,13 @@
 **Rule**: Before running browser verification from a parallel worktree, derive an available `HARNESS_PORT` and pass it explicitly. Never terminate another task's harness merely to reclaim the default port.
 
 ---
+
+## 2026-08-30 — Integrated trees must regenerate source-derived inventories
+
+**What happened**: The commission branch had valid feature changes, but merging it with the current main tree changed the set of scanned source files and environment references without regenerating the deterministic environment inventory. Main deployed successfully while Quality Gates stopped at the stale-inventory check.
+
+**Why it mattered**: Branch-local typecheck, build, and browser success did not prove that generated repository evidence still described the exact merged tree, and the early failure prevented CI from running its later gates.
+
+**Rule**: After resolving or completing an integration merge, regenerate and check every source-derived inventory from the final merged tree before committing. Do not rely on the generated artifact from either parent branch.
+
+---
