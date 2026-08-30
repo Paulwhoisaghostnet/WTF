@@ -224,6 +224,8 @@ export function useAdminDataQueries({
     xpLog: xpLogQuery.data,
     rewardLedger: rewardLedgerQuery.data,
     desktopApps: desktopAppsQuery.data,
+    desktopAppsError: desktopAppsQuery.isError,
+    retryDesktopApps: desktopAppsQuery.refetch,
     inAppMarketItems: inAppMarketQuery.data?.items,
     inAppMarketSales: inAppMarketQuery.data?.sales,
     inAppMarketPricing: inAppMarketQuery.data?.pricing,

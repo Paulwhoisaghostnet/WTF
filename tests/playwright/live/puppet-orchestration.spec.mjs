@@ -314,6 +314,28 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("a witness puppet sees Contact Admin but cannot discover or open Admin", async ({
+    browser,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "witness");
+    const { context, page } = await actorPage(browser, baseURL, actor);
+    try {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      const contactAdmin = page.locator('[data-desktop-icon-key="admin-inbox"]');
+      await expect(contactAdmin).toBeVisible({ timeout: 15_000 });
+      await contactAdmin.click();
+      await expect(page.getByRole("heading", { name: "Contact an admin" })).toBeVisible();
+
+      await page.goto("/admin", { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(/\/$/);
+      await expect(page.locator('[data-admin-surface="control-suite"]')).toHaveCount(0);
+      await expect(page.getByText("Admin Panel").first()).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("platform-keyring wallets can sign wallet-login challenges for every puppet", async ({
     request,
   }) => {

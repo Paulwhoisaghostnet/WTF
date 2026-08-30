@@ -5,6 +5,7 @@ import { test } from "node:test";
 const page = readFileSync("client/src/pages/AdminInbox.tsx", "utf8");
 const mail = readFileSync("client/src/pages/Mail.tsx", "utf8");
 const icons = readFileSync("client/src/features/desktop/DesktopIcons.tsx", "utf8");
+const desktopShell = readFileSync("client/src/components/layout/Desktop.tsx", "utf8");
 
 test("Contact Admin uses one desktop app with role-aware compose and inbox surfaces", () => {
   assert.match(page, /data-admin-inbox-surface=\{isAdmin \? "inbox" : "compose"\}/);
@@ -17,6 +18,11 @@ test("Contact Admin uses one desktop app with role-aware compose and inbox surfa
   assert.match(icons, /key: "admin-inbox"/);
   assert.match(icons, /label: "Contact Admin"/);
   assert.match(icons, /openPath: "\/admin-inbox"/);
+  assert.match(
+    desktopShell,
+    /buildDesktopIconDefs\(sourceApps,/,
+    "the desktop shell must pass the canonical app availability map intact"
+  );
 });
 
 test("Inbox provides a secondary admin-contact conversation and unread path", () => {

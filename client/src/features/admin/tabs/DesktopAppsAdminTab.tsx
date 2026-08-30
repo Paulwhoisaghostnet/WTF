@@ -20,6 +20,8 @@ type AdminMutation<TPayload> = {
 
 type DesktopAppsAdminTabProps = {
   desktopApps: DesktopAppsResponse | undefined;
+  desktopAppsError: boolean;
+  retryDesktopApps: () => void;
   updateDesktopAppMutation: AdminMutation<DesktopAppUpdatePayload>;
   refreshAllDesktopAppsMutation: {
     mutate: () => void;
@@ -76,8 +78,21 @@ const StatusMessage = styled.span`
   font-size: var(--wtf-type-caption, 13px);
 `;
 
+const ErrorPanel = styled.div`
+  border: 1px solid #8a1f1f;
+  background: #fff1f1;
+  color: #5f1111;
+  padding: var(--wtf-space-3, 12px);
+  display: flex;
+  align-items: center;
+  gap: var(--wtf-space-2, 8px);
+  flex-wrap: wrap;
+`;
+
 export function DesktopAppsAdminTab({
   desktopApps,
+  desktopAppsError,
+  retryDesktopApps,
   updateDesktopAppMutation,
   refreshAllDesktopAppsMutation,
 }: DesktopAppsAdminTabProps) {
@@ -108,7 +123,12 @@ export function DesktopAppsAdminTab({
               : "Refreshes docs and issues a new install key for every app without changing launcher visibility."}
         </StatusMessage>
       </BulkToolbar>
-      {!desktopApps ? (
+      {desktopAppsError ? (
+        <ErrorPanel role="alert">
+          <span>Could not load app registrations. Check database migration status, then try again.</span>
+          <UiButton onClick={retryDesktopApps}>Retry app registrations</UiButton>
+        </ErrorPanel>
+      ) : !desktopApps ? (
         <Hourglass size={32} />
       ) : (
         <TableWrap>

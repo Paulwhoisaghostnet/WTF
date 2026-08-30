@@ -802,11 +802,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Administration, Governance, and Operations",
     ownerSurfaceIds: ["admin-panel"],
     ownerSpec:
-      "server/lib/desktop-app-registration-policy.test.ts; server/routes/desktop-apps-resilience-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+      "client/src/features/admin/admin-control-suite-policy.test.ts; server/lib/desktop-app-registration-policy.test.ts; server/routes/desktop-apps-resilience-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
     verificationCommand:
-      "npx tsx --test server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"app registrations permanent\"",
+      "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"app registrations\"",
     userVisibleAssertion:
-      "An admin can mark each app license, docs, and install key as non-expiring and can refresh every app registration from one clearly labeled action without changing launcher visibility.",
+      "An admin can mark each app license, docs, and install key as non-expiring and can refresh every app registration from one clearly labeled action without changing launcher visibility; a failed registration query becomes a terminal migration-aware error with an explicit retry action instead of an endless loader.",
     durableSideEffectAssertion:
       "The permanent policy is stored per desktop app, timed expiry is ignored only for permanent registrations, manual stale/revoked/disabled states remain authoritative, and bulk refresh rotates all install keys in one database transaction while preserving enabled flags.",
   },
@@ -815,11 +815,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Administration, Governance, and Operations",
     ownerSurfaceIds: ["admin-panel"],
     ownerSpec:
-      "client/src/features/admin/admin-control-suite-policy.test.ts; server/features/admin/help-index-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+      "client/src/features/admin/admin-control-suite-policy.test.ts; client/src/features/admin-os/admin-surface-registry.test.ts; shared/wtf-browser-route-access.test.ts; shared/role-system.test.ts; server/features/admin/help-index-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs; tests/playwright/inventory/system-integration.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs",
+      "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-browser-route-access.test.ts shared/role-system.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs tests/playwright/inventory/system-integration.spec.mjs",
     userVisibleAssertion:
-      "An admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
+      "Only a strict admin can discover or open the Admin Panel; an admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
     durableSideEffectAssertion:
       "The focused source and browser harness assert the user Passport composes canonical roles, permissions, curses, wtfOS access, desktop settings, wallets, domains, and EXP activity; desktop settings saves use optimistic concurrency and audited admin routes; role and curse handoffs preserve the selected user context.",
   },
@@ -1309,9 +1309,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["admin-inbox", "mail"],
     ownerSpec:
-      "client/src/pages/admin-inbox-presentation-policy.test.ts; server/routes/admin-inbox-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+      "client/src/pages/admin-inbox-presentation-policy.test.ts; client/src/features/desktop/DesktopIcons.test.tsx; server/routes/admin-inbox-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs; tests/playwright/inventory/system-integration.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      "npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage",
+      "npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts client/src/features/desktop/DesktopIcons.test.tsx server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/system-integration.spec.mjs -g \"fresh witness\"",
     userVisibleAssertion:
       "Contact Admin is a separate core desktop app on every default desktop: non-admin users receive an evidence-oriented compose form with screenshot prompts, while admin-role users receive the inbox, raw field table, email rendering, agent-ready Markdown, screenshot viewer, and reply composer. Inbox also exposes the same conversations under an Admin contact tab.",
     durableSideEffectAssertion:

@@ -176,6 +176,29 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
     await expect(duesRow).toContainText("Hidden");
   });
 
+  test("shows a retryable error when app registrations cannot load", async ({ page }) => {
+    let failRegistrationRead = true;
+    await page.route("**/api/admin/apps/desktop", async (route) => {
+      if (route.request().method() === "GET" && failRegistrationRead) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Database schema missing" }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await openAdmin(page, "/admin?section=desktop-apps");
+    await expect(page.getByRole("alert")).toContainText("Could not load app registrations");
+
+    failRegistrationRead = false;
+    await page.getByRole("button", { name: "Retry app registrations" }).click();
+    await expect(page.getByRole("row").filter({ hasText: "admin-inbox" })).toContainText("Shown");
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+
   test("keeps master-detail controls usable at a narrow viewport", async ({ page }) => {
     await page.setViewportSize({ width: 430, height: 740 });
     await openAdmin(page, "/admin?section=users");

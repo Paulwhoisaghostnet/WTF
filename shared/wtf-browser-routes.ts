@@ -122,5 +122,11 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/browser", auth: true, title: "Browser" },
   { pattern: "/music", auth: true, title: "TezosBeats" },
   { pattern: "/task-manager", auth: true, title: "Task Manager" },
-  { pattern: "/dev/ux-lab", auth: true, roles: ["admin"], title: "UX Lab" },
+  {
+    pattern: "/dev/ux-lab",
+    auth: true,
+    roles: ["admin"],
+    surfaceGrantMaySatisfyRoles: true,
+    title: "UX Lab",
+  },
 ] as const;

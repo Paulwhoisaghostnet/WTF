@@ -1384,7 +1384,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Social",
     subdomain: "Marketplace promotion",
     kind: "tool",
-    routePatterns: ["/admin"],
+    routePatterns: [],
     adminRoutes: ["/api/social-automation/promoter/status", "/api/social-automation/weekly"],
     adminPanelTabs: ["Social", "Automation", "System Logs"],
     nativeSettings: ["promoter toggle", "tweet approval queue", "weekly thread schedule", "opt-in policy"],

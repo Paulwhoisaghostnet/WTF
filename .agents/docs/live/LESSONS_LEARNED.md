@@ -10700,3 +10700,43 @@
 **Rule**: Normalize desktop roles once and derive every adjacent role-gated launcher decision from the shared value. Run the focused shell-modularity policy and aggregate unit suite whenever a desktop app adds authentication or role wiring; never relax the enforced boundary to admit duplicated shell logic.
 
 ---
+
+## 2026-08-29 — Admin loaders must distinguish query failure from pending data
+
+**What happened**: The configured local `desktop_app_settings` table had not received migration `0116`, so its app-registration query failed on the missing `registration_never_expires` column with PostgreSQL `42703`. App Gates consumed only the query data and rendered an hourglass whenever that data was absent, making a terminal 500 look like an endless request. The focused browser fixture stayed green because it stubbed a complete response instead of crossing the database boundary.
+
+**Why it mattered**: A real schema prerequisite failure became indistinguishable from ordinary network latency, and the nominal E2E proof could not detect the drift. Operators saw a frozen admin surface even though the server already had a precise actionable error.
+
+**Rule**: Database-backed admin queries must expose loading and error as separate states with a retryable terminal message. Any browser proof for a schema-dependent control must be paired with a real database contract or migration-completion check that exercises every selected column; a successful stub is presentation evidence, not schema evidence.
+
+---
+
+## 2026-08-29 — Surface grants must never bypass stricter route roles
+
+**What happened**: `/admin` was registered both to the ordinary `social-automation` surface and the strict `admin-panel` surface. First-match resolution selected `social-automation`, which default new-user roles can access, and the route evaluator accepted that surface grant before checking the route's explicit `admin` role requirement. Tests used empty or simplified surface grants, so they never exercised the production collision with a real default-role matrix.
+
+**Why it mattered**: Generic accounts could discover and mount an administrator-only application even though its canonical route metadata was correct and its individual APIs remained permission-gated. Registry order silently became authorization policy, while downstream request failures looked like a broken admin UI rather than an access-control defect.
+
+**Rule**: An explicit route role list is a non-bypassable ceiling; surface access may narrow eligibility within that list but cannot override it. Authorization-sensitive browser routes must have one unambiguous registry owner, and route-access tests must combine the real registry with real default-role access objects, including a fresh-account actor.
+
+---
+
+## 2026-08-29 — Default-app tests must cross the shell's availability adapter
+
+**What happened**: Contact Admin was correctly registered as an enabled core default app and had a complete desktop icon definition, but the desktop shell manually projected the server app map and omitted `admin-inbox`. The builder therefore received `undefined` and disabled the icon. Catalog tests supplied every app as enabled, while presentation tests only proved the icon definition existed, so both stayed green without crossing the broken handoff.
+
+**Why it mattered**: The private feedback and role-recovery channel disappeared from every ordinary default desktop even though all of its individual registrations looked correct. A new user was pushed toward an improperly exposed Admin Panel to understand the missing support application.
+
+**Rule**: Pass canonical typed availability maps through launcher layers intact whenever possible. If a shell adapter is necessary, make it exhaustive over the canonical app-key union and test every default app from the real server-shaped response through that adapter to its rendered launcher; builder-only and source-presence checks do not prove integration.
+
+---
+
+## 2026-08-29 — Route-role exceptions must be explicit in the route contract
+
+**What happened**: The first authorization repair correctly stopped ordinary surface grants from bypassing `/admin`, but it also blocked the intentionally grantable UX Lab route because both routes expressed an `admin` role list with no metadata distinguishing a hard role boundary from an experimental entitlement fallback.
+
+**Why it mattered**: A blanket evaluator change fixed the security defect while silently revoking a supported access path. Inferring exceptions from a surface name or registry order would have recreated the same hidden authorization coupling that exposed Admin.
+
+**Rule**: Treat explicit route roles as strict by default. If a surface grant is intentionally allowed to satisfy a route's role requirement, declare that exception on the canonical route metadata and prove both the strict default and the named exception in the shared role matrix.
+
+---

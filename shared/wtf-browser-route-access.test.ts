@@ -40,6 +40,17 @@ test("evaluateBrowserRouteAccess denies admin routes for contestants", () => {
   if (!state.allowed) assert.equal(state.reason, "role-denied");
 });
 
+test("explicit route roles cannot be bypassed by a granted surface", () => {
+  const state = evaluateBrowserRouteAccess("/admin", BROWSER_ROUTE_META, {
+    role: "witness",
+    accessSurfaceIds: ["social-automation"],
+    apps: {},
+    findSurfaceForPath: () => ({ id: "social-automation", desktopAppKey: undefined }),
+  });
+  assert.equal(state.allowed, false);
+  if (!state.allowed) assert.equal(state.reason, "role-denied");
+});
+
 test("evaluateBrowserRouteAccess honors disabled desktop apps", () => {
   const state = evaluateBrowserRouteAccess("/arcade", BROWSER_ROUTE_META, {
     role: "contestant",

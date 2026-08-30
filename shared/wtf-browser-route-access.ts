@@ -15,6 +15,7 @@ export type BrowserRouteMeta = {
   pattern: string;
   auth: boolean;
   roles?: UserRole[];
+  surfaceGrantMaySatisfyRoles?: boolean;
   title?: string;
 };
 
@@ -99,6 +100,9 @@ export function evaluateBrowserRouteAccess(
   const surface = input.findSurfaceForPath(cleanPath);
   const surfaceId = surface?.id ?? null;
   const appKey = surface?.desktopAppKey ?? null;
+  const hasSurfaceAccess = Boolean(
+    surfaceId && input.accessSurfaceIds.includes(surfaceId)
+  );
 
   if (!canOpenAppsForRole(roles)) {
     return {
@@ -161,23 +165,27 @@ export function evaluateBrowserRouteAccess(
     };
   }
 
-  if (surfaceId && input.accessSurfaceIds.includes(surfaceId)) {
+  if (
+    route.roles &&
+    !route.roles.some((required) => roles.includes(required)) &&
+    !(route.surfaceGrantMaySatisfyRoles && hasSurfaceAccess)
+  ) {
     return {
-      allowed: true,
+      allowed: false,
       path: cleanPath,
       pattern: route.pattern,
+      reason: "role-denied",
       surfaceId,
       appKey,
       title: route.title,
     };
   }
 
-  if (route.roles && !route.roles.some((required) => roles.includes(required))) {
+  if (hasSurfaceAccess) {
     return {
-      allowed: false,
+      allowed: true,
       path: cleanPath,
       pattern: route.pattern,
-      reason: "role-denied",
       surfaceId,
       appKey,
       title: route.title,

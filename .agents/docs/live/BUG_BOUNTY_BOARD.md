@@ -50,6 +50,9 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
+| WTF-BB-621 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / default support launcher | P1 | 9 | 9 | 1 | 4 | 0 | The desktop shell drops the Contact Admin app gate from its projection, hiding the core feedback icon from every ordinary default desktop |
+| WTF-BB-619 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Local DB / admin app-gate schema parity | P1 | 10 | 10 | 2 | 4 | 0 | A missed desktop-app registration migration makes App Gates return 500 while the UI displays an endless loading hourglass |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 12 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-614 | Verified | Codex Payroll full-send | 2026-08-18 | Client wallet / release integration | P1 | 12 | 7 | 2 | 4 | 2 | Payroll must explicitly bind permissions and the active signer to mainnet, emit its registered audit handles, and use the canonical safe new-tab boundary |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 13 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
@@ -12370,3 +12373,91 @@ Copy this when adding a new issue:
 - Local verification:
   - Focused desktop shell and icon-gate tests pass 9/9, including the strict-admin Payroll launcher assertion.
   - Aggregate unit passes 2,455 with twelve explicit fixture skips, and complete inventory Playwright passes 683/683.
+
+### WTF-BB-619 - App Gates hides a missed database migration behind an endless loader
+
+- Category: Local DB / admin app-gate schema parity
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - The database configured by the workspace `.env` is local Postgres at `localhost:5432/wtf`; its `desktop_app_settings` table does not contain `registration_never_expires`.
+  - A direct read through `getDesktopAppRegistrations()` reproducibly fails with PostgreSQL `42703`: `column "registration_never_expires" does not exist`.
+  - Tracked migration `drizzle/0116_desktop_app_registration_resilience.sql` adds that exact column, but it has not been applied to the configured database.
+  - `DesktopAppsAdminTab` renders its hourglass whenever query data is absent and receives no query error state, so the 500 response is presented indefinitely as loading.
+  - The focused Playwright fixture passes because its harness stubs a complete app-registration response; the public production app-registration endpoint is healthy and includes all 31 current apps, so this reproduction is specifically the configured local database boundary.
+- Why it matters:
+  - The App Gates admin surface is unusable against a partially migrated database, and its error presentation sends operators toward client/network debugging instead of the failed schema prerequisite.
+  - The existing browser proof cannot detect production-shaped schema drift because it never exercises the real registration query.
+- Correction direction:
+  - Apply the tracked schema migration to the intended local database through the repository's reviewed local schema path, then make the App Gates query expose a terminal error/retry state instead of treating every absent payload as loading.
+  - Add a database-backed contract check for `getDesktopAppRegistrations()` or an equivalent migration-completion gate so a missing selected column fails before the admin UI is exercised.
+- Verification idea:
+  - Before repair, require the real query to reproduce PostgreSQL `42703` and the browser to show a bounded error state rather than an endless loader.
+  - After applying the schema migration and UI error handling, require the real query to return all canonical app registrations, the App Gates table to render, and the existing focused admin Playwright workflow to remain green.
+- Correction:
+  - Applied the existing additive migrations `0116_desktop_app_registration_resilience.sql` and `0118_admin_inbox.sql` to the configured local database; no migration source was rewritten or invented.
+  - Passed the registration query's error and refetch state into App Gates so a terminal failure renders a migration-aware alert and an explicit retry action instead of the loading hourglass.
+- Verification:
+  - The real `getDesktopAppRegistrations()` call now returns all 31 canonical registrations, including enabled `admin-inbox` and the permanent-registration field.
+  - Focused App Gates browser coverage proves both the healthy table and the 500-to-retry recovery path; repository TypeScript, production build, inventory coverage, and the complete 685-test UI inventory pass.
+
+### WTF-BB-620 - A surface collision bypasses the Admin Panel's strict role gate
+
+- Category: Desktop OS / admin route authorization
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C2 + F5 + S4 + P0(5) = 16
+- Evidence:
+  - The canonical page definition and shared browser-route metadata both declare `/admin` as authenticated and restricted to `roles: ["admin"]`.
+  - The admin-surface registry registers `/admin` twice: first for the non-admin `social-automation` tool and later for the strict `admin-panel` tool. `findAdminSurfaceForPath()` uses first-match lookup, so `/admin` resolves to `social-automation`.
+  - Default wtfOS roles such as `witness`, `contestant`, `host`, `cohost`, and `trusted_creator` receive access to non-admin tool surfaces. The shared route evaluator returns allowed as soon as the resolved surface id is granted, before it checks the route's explicit role list.
+  - A direct reproduction using the real local `witness` access matrix returned `allowed: true`, `surfaceId: "social-automation"` for `/admin`; the same result reproduced for every other tested default non-admin role. The newest local account is a `witness` with no additional role assignment.
+  - Other tested strict-admin routes remained denied. Inspected Admin Panel API routes retain permission middleware, and this pass found no privileged data or write API bypass; the confirmed defect is that unauthorized users can discover and mount the Admin application shell.
+  - Existing route tests pass an empty surface-id set or a simplified surface resolver, while the browser fixture supplies a simplified wtfOS-access payload. Neither combines the production registry's duplicate route with the real default-role access matrix.
+- Why it matters:
+  - A generic new account can see, launch, and directly navigate to an application whose published contract is administrator-only. Individual admin requests may fail afterward, but their failures are then presented inside an application the user should never have been able to discover or mount.
+  - The collision turns registry order into an authorization decision and permits a broad surface grant to override a narrower explicit route-role boundary.
+- Correction direction:
+  - Remove `/admin` as the user-facing route pattern for `social-automation`; represent its Admin Panel tab and server endpoints without claiming the parent application's route.
+  - Treat an explicit route role list as a non-bypassable ceiling: a granted surface may further narrow access but must never override the route's role requirement.
+  - Add registry validation that rejects duplicate ownership of authorization-sensitive browser routes, or require an explicit unique owner and deterministic precedence where aliases are intentional.
+- Verification idea:
+  - With the real registry and role access matrix, prove fresh `witness` and `contestant` accounts do not see Admin in Start Menu or command discovery, cannot list or open it through browser/CLI access helpers, and are denied on direct `/admin` navigation; prove an admin still sees and opens it.
+  - Exercise representative Admin Panel APIs as a generic user and require authorization failures, then add a registry invariant that makes the duplicated `/admin` ownership fail at test time.
+- Correction:
+  - Removed `/admin` from the ordinary `social-automation` surface so the route has one authorization owner: `admin-panel`.
+  - Made route-role requirements strict by default before surface grants are considered. The one supported grantable exception, UX Lab, is now declared explicitly in canonical route metadata instead of being inferred from registry order.
+- Verification:
+  - The real local matrix denies `/admin` to `witness`, allows it to `admin`, and still allows the witness support route `/admin-inbox`; focused registry, route, role, API-policy, and presentation tests pass 48/48.
+  - A seeded witness puppet proves the real desktop shows no Admin Panel on direct navigation while Contact Admin remains usable; the same scenario and the entire 685-test UI inventory pass.
+
+### WTF-BB-621 - The desktop shell drops the Contact Admin availability flag
+
+- Category: Desktop OS / default support launcher
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - `admin-inbox` is enabled in `DEFAULT_DESKTOP_APP_CONFIG`, classified as a free core `default-desktop` application, declared with `desktopIcon: true`, and defined as a Contact Admin icon whose enabled state reads `apps["admin-inbox"]`.
+  - The desktop shell manually copies the server's app availability object into an intermediate `apps` object before calling `buildDesktopIconDefs()`. That projection includes `mail`, `objkt-operator`, and later-added `payroll`, but omits `admin-inbox`; its memo dependency list omits the same key.
+  - A direct reproduction with the enabled default config produced `serverDefault: true` and a Contact Admin icon with `enabled: false` after the shell-shaped projection omitted `admin-inbox`. The route and `openPath` still exist.
+  - Commit `23ec064b` added the icon, default app config, catalog entry, route, and feature tests, but its only change to the shell component added the unread-count response field; it never wired the app availability flag through the shell projection.
+  - The focused catalog, icon, and presentation tests all pass: icon tests supply an artificially complete all-enabled map directly to the builder, while the presentation test only searches the icon-definition source for its key, label, and route. Neither exercises the real server-response-to-desktop handoff.
+  - The Start Menu consumes the server availability object directly, so this deterministic omission is specific to the native desktop icon. A separate missed local database migration can additionally make the whole app-registration request fail, but is not required to reproduce this icon defect.
+- Why it matters:
+  - Contact Admin is the documented private feedback and access-recovery path for every ordinary user. Hiding its promised first-entry icon makes the support channel difficult to discover and pushed a new user toward an Admin Panel they should never see.
+  - The shell accepts a partial app map, so newly registered apps can silently disappear when one manually maintained projection is not updated even though every canonical registry and feature-level test is green.
+- Correction direction:
+  - Pass the canonical server app-availability object to the icon builder without reconstructing it, keeping only explicit derived overrides for truly role/private launchers.
+  - If a projection remains necessary, make it exhaustive over `DesktopAppKey` so omissions are compile-time failures rather than falsey runtime gates.
+  - Add an integration-level policy test that starts from `DEFAULT_DESKTOP_APP_CONFIG` through the actual shell adapter and proves every catalog `default-desktop` app produces an enabled native icon.
+- Verification idea:
+  - With a fresh `witness` actor and a healthy real app-registration response, require a visible, usable Contact Admin icon at the declared default position, open it, submit a feedback thread, and prove the user can see the conversation afterward.
+  - Retain the existing Start Menu/direct-route access, rerun default-app/catalog/icon policy tests, inventory coverage, and actor-backed live puppet coverage for the new-user desktop.
+- Correction:
+  - Removed the desktop shell's hand-maintained partial availability projection and now pass the canonical server-shaped app map directly into the icon builder.
+  - Added server-shaped launcher coverage and both inventory-harness and actor-backed witness journeys so future default-app omissions fail across the actual handoff.
+- Verification:
+  - A fresh witness in the inventory harness and a seeded local witness puppet both see the Contact Admin desktop icon, open the evidence-oriented compose form, and remain unable to discover or mount Admin.
+  - Focused icon/presentation/API tests, production build, repository TypeScript, inventory coverage, and the complete 685-test UI inventory pass.
