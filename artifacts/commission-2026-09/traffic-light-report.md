@@ -1,6 +1,6 @@
 # WTF commission traffic-light report
 
-Candidate commit: `SELF` (the commit containing this report)
+Candidate commit: `486309db`
 Source: `artifacts/commission-2026-09/release-evidence.md`
 
 Green: 11 · Amber: 1 · Red: 0

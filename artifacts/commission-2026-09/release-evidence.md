@@ -1,8 +1,8 @@
 # WTF commission release evidence
 
-Candidate commit: SELF
+Candidate commit: `486309db`
 Live commit: `be912715` at baseline capture
-Status: ready for the final candidate gate, then the reserved focused test week
+Status: READY FOR TEST — reserved focused test week begins 2026-08-31
 
 | Journey | Status | Actor/environment | Automated proof | Durable result | Visual/trace evidence | Defect or blocker |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ Status: ready for the final candidate gate, then the reserved focused test week
 - TypeScript and production build pass.
 - Inventory coverage accepts 237 rows, 973 handles, 118 routes, 125 behavior assertions, 182 app-owned bindings, 16 workflows, and 73 admin surfaces.
 - The production-shaped actor-backed suite passes 178/178 after applying migrations through `0123_media_mint_receipts.sql`.
-- The first complete inventory attempt passed 698/699 and exposed a late-night fixture that placed its Calendar event in the next week; the corrected Calendar journey passes focused and the final clean 699-journey candidate rerun is the remaining freeze command.
+- The first complete inventory attempt passed 698/699 and exposed a late-night fixture that placed its Calendar event in the next week; after the correction, frozen candidate `486309db` passes the complete inventory 699/699.
 - Focused release-harness and traffic-light policy tests pass 5/5.
 - Desktop and mobile evidence capture passes 2/2 and produces 24 screenshots under `screenshots/`.
 - The selected Spaghetti receipt SHA-256 is `526ab3c761c9d3149d3c0e7a69b1c58b4f0c4a07e4912dc1fa5ac68edbab3a2d`.

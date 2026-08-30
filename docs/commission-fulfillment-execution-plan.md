@@ -717,7 +717,7 @@ If the live-puppet suite is blocked by external infrastructure, the release ledg
 - [x] Apply migrations through `0123` to the production-shaped puppet database and document the non-destructive binary rollback plus backup/restore recovery procedure in `artifacts/commission-2026-09/migration-recovery.md`.
 - [x] Seed required FAQ/help content and app documentation registrations idempotently through migration `0119`.
 - [x] Enable commissioned apps through the authoritative desktop app registry and verify role-specific responses.
-- [x] Build once; freeze the `SELF` candidate for the focused test week.
+- [x] Build once; freeze candidate `486309db` for the focused test week.
 - [x] Capture desktop and mobile screenshots for all J-journeys: 24 files under `artifacts/commission-2026-09/screenshots/`.
 - [x] Run typecheck, build, focused domain tests, inventory coverage, full inventory Playwright, live puppets, and the selected fresh Shadownet proof.
 - [x] Generate the deterministic traffic-light report from the J-01 through J-12 ledger; red journeys fail the command.
@@ -739,6 +739,8 @@ git diff --check
 Additional contract/Shadownet commands from WP-02 and WP-07 are required when those paths are included in the candidate.
 
 **Exit gate:** all J-journeys are at least `READY FOR TEST`; production-shaped app registry contains no unexplained commissioned-app disablement; candidate commit is frozen.
+
+**Completion evidence (2026-08-30 UTC):** frozen candidate `486309db` passes TypeScript, production build, all 16 creation-tool asset checks, inventory coverage, the complete browser inventory 699/699, and the production-shaped live actor suite 178/178. Its deterministic traffic-light report contains 11 green, one amber, and zero red journeys. The amber J-12 item is the intentionally unperformed production promotion and post-deploy smoke, not an implementation defect.
 
 ## 7. Executed candidate runbook: 2026-08-29 through 2026-08-30
 
@@ -927,7 +929,7 @@ This table is updated during implementation. `DONE` requires the exit gate named
 | WP-06 Messaging | DONE | WP-01 | WTF-BB-628: unread/read, recipient report, operator disposition, and privacy-safe audit proof; inventory passed 692/692 |
 | WP-07 Creation/mint | DONE | WP-00, WP-01, D-004 | J-10 fresh Spaghetti UI-live mint/index/collector proof + durable owned-media receipt; inventory passed 697/697 |
 | WP-08 Operator/integration | DONE | WP-02–WP-07 | J-11 strict-admin queue + member 403 + four owner handoffs; inventory coverage and live suite 178/178 |
-| WP-09 Release candidate | READY FOR TEST | WP-01–WP-08 | `SELF` candidate; J-01–J-11 PASS, J-12 READY FOR TEST; 24 desktop/mobile captures; deterministic traffic-light gate |
+| WP-09 Release candidate | READY FOR TEST | WP-01–WP-08 | Frozen candidate `486309db`; J-01–J-11 PASS, J-12 READY FOR TEST; inventory 699/699; live actors 178/178; 24 desktop/mobile captures |
 | TW-01 Focused test week | RESERVED: 2026-08-31–2026-09-06 | WP-09 | Signed release ledger |
 | PR-01 Presentation | RESERVED: 2026-09-07 | TW-01 | Customer demonstration on tested build |
 | CX-01 Cushion/accessibility | NOT STARTED | PR-01 | Accepted corrections + Beta/Gamma accessibility plan/evidence |
@@ -936,7 +938,7 @@ This table is updated during implementation. `DONE` requires the exit gate named
 
 The implementation packages are complete. The remaining sequence is intentionally time-based and must use the frozen candidate:
 
-1. Run TW-01 from August 31 through September 6 with fresh participants and the actor/device matrix above.
+1. Run TW-01 from August 31 through September 6 against frozen candidate `486309db` with fresh participants and the actor/device matrix above.
 2. Accept a candidate change only when a reproducible defect leaves a J-journey unmet or unproven; rerun the complete affected journey after correction.
 3. Sign the release ledger on September 6 and use that exact candidate for the September 7 customer presentation.
 4. Reserve September 8–30 for accepted corrections and the Beta/Gamma accessibility package; do not replace Classic as the canonical commissioned OS.
