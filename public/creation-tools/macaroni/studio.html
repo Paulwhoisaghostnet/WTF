@@ -298,7 +298,11 @@
         <div id="codeStatus" class="muted" style="margin-top:6px"></div>
         <div class="row" style="margin-top:14px">
           <button class="btn" id="btnExport">Export website</button>
-          <button class="btn ghost" id="btnPublishWtfOS" hidden>Publish to wtfOS</button>
+          <span class="publish-access-gate" id="publishWtfOSGate" hidden>
+            <button class="btn ghost" id="btnPublishWtfOS" disabled>Publish to wtfOS</button>
+            <button class="publish-access-help" id="publishWtfOSRoleHelp" type="button" aria-label="Why is Publish to wtfOS unavailable?" aria-controls="publishWtfOSRoleTooltip" aria-describedby="publishWtfOSRoleTooltip" aria-expanded="false" hidden>?</button>
+            <span class="publish-access-tooltip" id="publishWtfOSRoleTooltip" role="tooltip" hidden>wtfOS restricts hosted publishing to the Trusted Market Creator role to prevent abuse. Contact an admin through the Contact Admin app to request access.</span>
+          </span>
           <button class="btn ghost" id="btnConfigOnly">Download site package</button>
         </div>
         <div id="exportStatus" class="muted" style="margin-top:8px"></div>

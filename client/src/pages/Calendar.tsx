@@ -20,6 +20,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { usePresentationShell } from "../lib/presentation-shell";
 import { CALENDAR_PERSONAL_EVENTS_CHANGED, takeCalendarHandoff } from "../features/calendar/calendar-handoff";
+import { calendarEventKey } from "../features/calendar/calendar-reminders";
 
 const TTC_SUBMIT_URL = "https://thetezos.com/submit-event/";
 const TTC_CALENDAR_URL = "https://thetezos.com/calendar-view/";
@@ -59,6 +60,7 @@ const CalendarSurface = styled.div`
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="personal-form"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="submit-form"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="tickets-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="plans-panel"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="loading"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="empty"],
   &[data-calendar-presentation-host="gamma"] fieldset {
@@ -74,6 +76,7 @@ const CalendarSurface = styled.div`
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="personal-form"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="submit-form"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="tickets-panel"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="plans-panel"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="loading"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="empty"] {
     padding: 10px;
@@ -92,6 +95,8 @@ const CalendarSurface = styled.div`
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-detail"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="plan-card"],
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="participation-controls"],
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"] {
     margin-bottom: 10px;
   }
@@ -105,6 +110,7 @@ const CalendarSurface = styled.div`
 
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="event-card"] > div,
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="ticket-card"] > div,
+  &[data-calendar-presentation-host="gamma"] [data-calendar-region="plan-card"] > div,
   &[data-calendar-presentation-host="gamma"] [data-calendar-region="source-panel"] > div,
   &[data-calendar-presentation-host="gamma"] fieldset > div {
     background: transparent !important;
@@ -542,6 +548,20 @@ interface MyTicket {
   createdAt: string;
 }
 
+interface CalendarParticipation {
+  id: number;
+  eventKey: string;
+  sourceProvider: "wtf" | "ttc";
+  sourceEventId: number | null;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+  allDay: boolean;
+  status: "interested" | "going";
+  reminderEnabled: boolean;
+  updatedAt: string;
+}
+
 type CalendarView = "day" | "week" | "month" | "agenda";
 
 function toIsoLocal(d: Date): string {
@@ -759,7 +779,7 @@ export function Calendar() {
   const qc = useQueryClient();
   const [view, setView] = useState<CalendarView>("week");
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date()));
-  const [tab, setTab] = useState<"browse" | "personal" | "submit" | "mine">("browse");
+  const [tab, setTab] = useState<"browse" | "plans" | "personal" | "submit" | "mine">("browse");
   const [showTtcSubmit, setShowTtcSubmit] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
@@ -801,6 +821,12 @@ export function Calendar() {
   const myTicketsQuery = useQuery<MyTicket[]>({
     queryKey: ["calendar-tickets-mine"],
     queryFn: () => api.get<MyTicket[]>("/api/calendar/tickets/mine"),
+    enabled: Boolean(user),
+  });
+
+  const participationsQuery = useQuery<CalendarParticipation[]>({
+    queryKey: ["calendar-participations-mine"],
+    queryFn: () => api.get<CalendarParticipation[]>("/api/calendar/participations/mine"),
     enabled: Boolean(user),
   });
 
@@ -874,6 +900,42 @@ export function Calendar() {
     onError: (err: Error) => setSubmitError(err.message),
   });
 
+  const participationMutation = useMutation({
+    mutationFn: ({
+      event,
+      status,
+      reminderEnabled,
+    }: {
+      event: CalendarEvent;
+      status: "interested" | "going" | "none";
+      reminderEnabled: boolean;
+    }) =>
+      api.put("/api/calendar/participations", {
+        eventKey: calendarEventKey(event),
+        sourceProvider: event.sourceProvider,
+        sourceEventId:
+          event.sourceProvider === "wtf" && typeof event.id === "number"
+            ? event.id
+            : null,
+        title: event.title,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        allDay: event.allDay,
+        status,
+        reminderEnabled,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar-participations-mine"] });
+      qc.invalidateQueries({ queryKey: ["calendar-tray-participations"] });
+    },
+  });
+
+  const selectedParticipation = selectedEvent
+    ? (participationsQuery.data ?? []).find(
+        (item) => item.eventKey === calendarEventKey(selectedEvent)
+      ) ?? null
+    : null;
+
   function savePersonalEvent() {
     if (!personalTitle || !personalStartsAt) return;
     setPersonalEvents((events) => [
@@ -938,6 +1000,7 @@ export function Calendar() {
         <div data-calendar-region="tabs">
           <Tabs value={tab} onChange={(v: any) => setTab(v)}>
             <Tab value="browse">Browse</Tab>
+            <Tab value="plans">My plans</Tab>
             <Tab value="personal">Add personal</Tab>
             <Tab value="submit">Submit to WTF</Tab>
             <Tab value="mine">My tickets</Tab>
@@ -1127,7 +1190,95 @@ export function Calendar() {
                         </a>
                       </p>
                     ) : null}
-                    {selectedEvent.sourceProvider === "personal" ? <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>Remove personal event</Button> : null}
+                    {Array.isArray(selectedEvent.linksJson) && selectedEvent.linksJson.length ? (
+                      <Row data-calendar-region="event-links">
+                        {selectedEvent.linksJson.map((link) => (
+                          link && typeof link === "object" && "url" in link && "label" in link ? (
+                            <a
+                              key={String(link.url)}
+                              href={String(link.url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {String(link.label)}
+                            </a>
+                          ) : null
+                        ))}
+                      </Row>
+                    ) : null}
+                    {selectedEvent.sourceProvider === "personal" ? (
+                      <Button size="sm" onClick={() => removePersonalEvent(String(selectedEvent.id))}>
+                        Remove personal event
+                      </Button>
+                    ) : !user ? (
+                      <Muted data-calendar-region="participation-help">
+                        Sign in to mark yourself Interested or Going and choose a task-tray reminder.
+                      </Muted>
+                    ) : (
+                      <Stack data-calendar-region="participation-controls">
+                        <strong>Your plan</strong>
+                        <Muted data-calendar-region="meta">
+                          {selectedParticipation
+                            ? `You are ${selectedParticipation.status}. ${selectedParticipation.reminderEnabled ? "Task-tray reminders are on." : "Task-tray reminders are off."}`
+                            : "Choose how you plan to participate. Nothing is shared until you choose."}
+                        </Muted>
+                        <Row>
+                          <Button
+                            aria-pressed={selectedParticipation?.status === "interested"}
+                            primary={selectedParticipation?.status === "interested"}
+                            disabled={participationMutation.isPending}
+                            onClick={() => participationMutation.mutate({
+                              event: selectedEvent,
+                              status: "interested",
+                              reminderEnabled: selectedParticipation?.reminderEnabled ?? true,
+                            })}
+                          >
+                            Interested
+                          </Button>
+                          <Button
+                            aria-pressed={selectedParticipation?.status === "going"}
+                            primary={selectedParticipation?.status === "going"}
+                            disabled={participationMutation.isPending}
+                            onClick={() => participationMutation.mutate({
+                              event: selectedEvent,
+                              status: "going",
+                              reminderEnabled: selectedParticipation?.reminderEnabled ?? true,
+                            })}
+                          >
+                            Going
+                          </Button>
+                          {selectedParticipation ? (
+                            <Button
+                              disabled={participationMutation.isPending}
+                              onClick={() => participationMutation.mutate({
+                                event: selectedEvent,
+                                status: selectedParticipation.status,
+                                reminderEnabled: !selectedParticipation.reminderEnabled,
+                              })}
+                            >
+                              {selectedParticipation.reminderEnabled ? "Turn reminder off" : "Turn reminder on"}
+                            </Button>
+                          ) : null}
+                          {selectedParticipation ? (
+                            <Button
+                              disabled={participationMutation.isPending}
+                              onClick={() => participationMutation.mutate({
+                                event: selectedEvent,
+                                status: "none",
+                                reminderEnabled: false,
+                              })}
+                            >
+                              Clear my plan
+                            </Button>
+                          ) : null}
+                        </Row>
+                        {participationMutation.isError ? (
+                          <ErrorText data-calendar-region="error">
+                            {(participationMutation.error as Error).message}
+                          </ErrorText>
+                        ) : null}
+                      </Stack>
+                    )}
                   </EventDetail>
                 ) : null}
               </Stack>
@@ -1146,6 +1297,32 @@ export function Calendar() {
                 </SourcePanel>
               </div>
             </Split>
+          ) : null}
+
+          {tab === "plans" ? (
+            <Stack data-calendar-region="plans-panel">
+              <Muted data-calendar-region="meta">
+                Events you mark Interested or Going are saved to your WTF account. Only plans with reminders on appear in the task tray.
+              </Muted>
+              {!user ? (
+                <Muted data-calendar-region="empty">Sign in to save plans across browser sessions.</Muted>
+              ) : participationsQuery.isLoading ? (
+                <div data-calendar-region="loading"><Hourglass size={24} /></div>
+              ) : (participationsQuery.data ?? []).length === 0 ? (
+                <Muted data-calendar-region="empty">You have no saved plans. Open an event in Browse and choose Interested or Going.</Muted>
+              ) : (
+                (participationsQuery.data ?? []).map((plan) => (
+                  <EventCard key={plan.id} label={`${plan.title} — ${plan.status}`} data-calendar-region="plan-card">
+                    <Stack>
+                      <Muted data-calendar-region="meta">{new Date(plan.startsAt).toLocaleString()}</Muted>
+                      <Muted data-calendar-region="meta">
+                        {plan.sourceProvider.toUpperCase()} · {plan.reminderEnabled ? "Task-tray reminder on" : "Task-tray reminder off"}
+                      </Muted>
+                    </Stack>
+                  </EventCard>
+                ))
+              )}
+            </Stack>
           ) : null}
 
           {tab === "personal" ? (

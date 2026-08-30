@@ -10701,6 +10701,36 @@
 
 ---
 
+## 2026-08-19 — Export E2E must validate the artifact and keep collecting after interaction failures
+
+**What happened**: PixAlerce's existing browser coverage proved route loading and local project persistence but never exercised its visible floating controls or downloaded exports. A real creation-to-export journey found two controls whose higher-z-index neighbors intercepted pointer events, while the OBJKT ZIP downloaded and rendered successfully but still made an undeclared favicon request. The first diagnostic test also stopped at its default timeout before later encoders could report their state.
+
+**Why it mattered**: A download event alone cannot prove that an exported file is valid, portable, or network-independent, and an early failed control must not hide the status of later formats in a multi-feature audit. Partial E2E evidence would have missed both the packaging leak and the fact that PNG, GIF, MP4, WebM, persistence, and most editor controls were already healthy.
+
+**Rule**: For multi-format creation tools, use one soft-failure browser journey that records every feature result, validates each downloaded artifact's contents, boots portable web packages from their extracted files, and asserts the request ledger. Derive enough test time from a measured diagnostic pass so an early failure cannot prevent the remaining encoders from running, then rerun the identical journey after the fix.
+
+---
+
+## 2026-08-19 — Content-hashed module chunks are one build ABI, not interchangeable patches
+
+**What happened**: A rebuilt PixAlerce export chunk was initially placed beside the older hardened entry bundle and its filename was rewired by hand. The UI rendered, but production export stalled because Rollup's minified named-export aliases are private to one complete build. The first browser rerun also served the root application's stale `dist/public` copy, hiding the newly added destination controls.
+
+**Why it mattered**: A visually healthy page can still contain a broken module contract, and testing a stale staged copy can falsely attribute that break to current source. Both mistakes weakened evidence around large GPU-backed exports.
+
+**Rule**: Never mix content-hashed JavaScript chunks from separate builds. Rebuild and copy the complete internally consistent asset graph from the exact hardened source, refresh the host distribution before browser verification, and confirm the loaded hashed entry names match provenance before interpreting E2E results.
+
+---
+
+## 2026-08-20 — Media minting needs one destination router, not contract-specific shortcuts
+
+**What happened**: PixAlerce's first wtfOS Media integration added a direct HEN action to each media surface. That closed one creator path but coupled Media to one contract and left Objkt-ready collections, wallet-associated contracts, and Pasta origination workflows as separate manual journeys.
+
+**Why it mattered**: Token metadata, supported entrypoints, network policy, and completion evidence belong to the selected destination. Repeating contract-specific buttons across creation and library surfaces makes those rules drift and encourages a pasted operation hash to be treated as proof of a minted token.
+
+**Rule**: Owned media exposes one resumable Mint Manager. It selects and inspects the destination first, persists no credentials, delegates specialized contract forms and signatures to the owning publisher, and accepts completion only after exact linked-wallet operation plus indexed mint-transfer verification.
+
+---
+
 ## 2026-08-29 — Admin loaders must distinguish query failure from pending data
 
 **What happened**: The configured local `desktop_app_settings` table had not received migration `0116`, so its app-registration query failed on the missing `registration_never_expires` column with PostgreSQL `42703`. App Gates consumed only the query data and rendered an hourglass whenever that data was absent, making a terminal 500 look like an endless request. The focused browser fixture stayed green because it stubbed a complete response instead of crossing the database boundary.
@@ -10708,6 +10738,26 @@
 **Why it mattered**: A real schema prerequisite failure became indistinguishable from ordinary network latency, and the nominal E2E proof could not detect the drift. Operators saw a frozen admin surface even though the server already had a precise actionable error.
 
 **Rule**: Database-backed admin queries must expose loading and error as separate states with a retryable terminal message. Any browser proof for a schema-dependent control must be paired with a real database contract or migration-completion check that exercises every selected column; a successful stub is presentation evidence, not schema evidence.
+
+---
+
+## 2026-08-29 — A disabled role gate needs a separate explanation owner
+
+**What happened**: Macaroni used one false boolean for access loading, native Desktop, request failure, and confirmed role denial, then hid its disabled wtfOS publish button. The control gave ordinary creators no reason or recovery path, and a tooltip attached directly to a disabled button would not have been reliably hoverable or keyboard-focusable.
+
+**Why it mattered**: A user who can still build and self-host a drop could mistake the missing hosted-publish action for a broken app. Reusing the denial explanation for loading or request failure would also falsely tell an approved creator that their role was missing.
+
+**Rule**: Model unresolved, unavailable, denied, and granted access separately. For confirmed denial, keep the action genuinely disabled and give its surrounding focusable element ownership of the hover/focus explanation and recovery path; keep the explanation outside hover as persistent nearby copy, and retain the server-side permission check as authority.
+
+---
+
+## 2026-08-29 — Never disable the help control with the action it explains
+
+**What happened**: Macaroni's first controlled role-tooltip pass put `aria-disabled="true"` on the group containing both the disabled publish action and its new `?` help button. Browsers propagated that disabled state to the help button, so Playwright correctly refused to click or tap it even though the HTML button itself had no `disabled` attribute.
+
+**Why it mattered**: The explanation existed but inherited the exact inoperability it was meant to solve. Desktop click and real mobile WebKit touch both stalled, leaving non-pointer users without a reliable way to summon or dismiss the role guidance.
+
+**Rule**: Put disabled semantics only on the unavailable action. Keep its explanatory trigger enabled, test that it is enabled in the accessibility tree, and verify hover persistence, keyboard/Escape dismissal, outside dismissal, and real touch activation before claiming a tooltip is cross-input accessible.
 
 ---
 
@@ -10738,5 +10788,174 @@
 **Why it mattered**: A blanket evaluator change fixed the security defect while silently revoking a supported access path. Inferring exceptions from a surface name or registry order would have recreated the same hidden authorization coupling that exposed Admin.
 
 **Rule**: Treat explicit route roles as strict by default. If a surface grant is intentionally allowed to satisfy a route's role requirement, declare that exception on the canonical route metadata and prove both the strict default and the named exception in the shared role matrix.
+
+---
+
+## 2026-08-29 — Stateful endpoint harnesses must mirror the production side effect
+
+**What happened**: The first-run browser journey correctly completed the welcome request and routed to Game Studio, but its event assertion failed. Production persists `welcomedToWtfOs` and emits `auth.welcome.completed`; the inventory harness returned a welcomed user object while leaving its own `welcomePending` state true and emitting no matching server event.
+
+**Why it mattered**: A presentation-only stub could make the one-time welcome appear complete in the current React cache while showing it again after a reload. It also prevented the harness from proving the durable side effect it claimed to represent.
+
+**Rule**: When a browser harness replaces a state-changing production endpoint, it must update its authoritative harness state and mirror the production event or audit boundary before returning the response. A response-shaped mock proves rendering; it does not prove persistence.
+
+---
+
+## 2026-08-29 — Desktop E2E locators must be scoped to the active application surface
+
+**What happened**: The Store contribution journey opened Admin and then returned to WTFIAM. The classic desktop kept both application windows mounted, so broad role locators for `Add` and `EXP` matched controls in the active Store plus similarly named controls in the background Admin window. Playwright correctly rejected the ambiguous actions.
+
+**Why it mattered**: The customer could use the active window normally, but an unscoped test could click the wrong mounted application or fail for reasons unrelated to the workflow. Prefix matching also made `Add` match both the primary action and `Add ticket` stepper.
+
+**Rule**: In classic desktop browser tests, scope interactions to the owning application surface or active window before selecting controls, and use exact accessible names when a primary action shares a prefix with secondary controls. Global locators are appropriate only for truly shell-global UI.
+
+---
+
+## 2026-08-29 — Creator provenance must survive the publish-to-catalog read boundary
+
+**What happened**: Game Studio correctly stored its project/build source in the Arcade version metadata, and the submitted game retained the creator name, but public Arcade catalog/detail reads reconstructed cartridges using only token provenance. Game Studio publications therefore returned a null provenance field and no visible source label even though the authoritative version row identified their origin.
+
+**Why it mattered**: A creator could publish successfully yet see an unexplained public game card, while the customer could not distinguish a native Game Studio contribution from an arbitrary uploaded bundle. Testing only project build persistence would have missed the loss at the public read boundary.
+
+**Rule**: Cross-app publishing tests must follow persisted origin and creator attribution through the destination's public catalog and detail DTOs. When the origin is workflow provenance rather than token provenance, expose a truthful plain-language source label instead of coercing it into an unrelated chain-provenance type.
+
+---
+
+## 2026-08-29 — Community Casino creation needs a separate no-value data contract
+
+**What happened**: The Casino offered three carefully fail-closed staff-authored simulations, but fulfilling the creator requirement by adding user games to the same wager-oriented registry would have made practice content inherit house-take, wager-asset, and future settlement semantics it did not own.
+
+**Why it mattered**: A label saying “wagering disabled” is weaker than a data model that cannot represent a wager or reward. Mixing creator content with future wager sessions would make the customer-facing boundary ambiguous and increase the chance that a later live-value change accidentally reaches unreviewed community games.
+
+**Rule**: Persist community Casino practice games, moderation, and play results separately from wager sessions. The public DTO and audit event must state the no-value boundary, the UI must explain it before play, and actor tests must assert null wager/reward values as well as operator review and creator attribution.
+
+---
+
+## 2026-08-29 — Navigation-label changes must update shell breadcrumb proofs
+
+**What happened**: The canonical `/faq` route and rendered Gamma breadcrumb were correctly renamed from “FAQ” to the more useful “Help & Start Here,” but a broad Gamma route-containment test retained the old hard-coded title. Focused first-run and help tests passed, while the full interaction suite failed only when it audited static nested routes.
+
+**Why it mattered**: The product behavior was correct, but a stale alternate-shell expectation made the release suite appear regressed and could encourage reverting clearer customer language instead of correcting the proof.
+
+**Rule**: When a registered route title changes, update every shell-owned breadcrumb, launcher, and route-containment assertion in the same pass. Focused content checks do not replace the broad proof that Classic, Beta, and Gamma all present the canonical route label.
+
+---
+
+## 2026-08-29 — Calendar reminders must follow explicit user intent
+
+**What happened**: The task tray loaded every shared event visible to a signed-in account, even though Calendar had no RSVP or reminder preference. As the feed grew, merely having permission to see an event silently enrolled the user in its reminder thresholds.
+
+**Why it mattered**: A community calendar becomes difficult to navigate when discovery and commitment are treated as the same action. Users could neither explain why a reminder appeared nor review and reverse a durable choice because no choice had been recorded.
+
+**Rule**: Keep event discovery separate from participation. Persist Interested or Going and reminder preference per account/event, show those decisions in a My plans surface, build tray candidates only from reminder-enabled plans plus explicitly created personal entries, and prove save, reload, reminder-off, and clear against the real database.
+
+---
+
+## 2026-08-29 — Browser proofs that serve build output must not overlap a build
+
+**What happened**: A Gamma Calendar browser smoke ran in parallel with the production build. The build temporarily replaced `dist/public`, so the browser server logged missing `index.html` reads even though it eventually loaded the rebuilt output and the assertion passed.
+
+**Why it mattered**: The product behavior was healthy, but sharing a mutable build directory made the proof nondeterministic and polluted otherwise clean evidence with transient server errors.
+
+**Rule**: Finish the production build before starting any browser proof whose harness serves `dist/public`, or give the proof an isolated immutable build directory. Parallelize read-only gates, not a build writer with its build-output consumer.
+
+---
+
+## 2026-08-29 — Classify database errors at the library boundary
+
+**What happened**: The direct-message report endpoint intended to return a conflict for a duplicate recipient/message report, but Drizzle wrapped PostgreSQL's `23505` error under `cause`. The route inspected only the outer error, logged a known duplicate as an unexpected failure, and returned 500 instead of the self-explanatory 409 response.
+
+**Why it mattered**: The uniqueness constraint protected the data correctly while the user-facing contract still failed. A recipient retry looked like a broken safety tool rather than a report that had already been received.
+
+**Rule**: When translating an expected database constraint into an API response, inspect the error shape produced by the active query library, including its wrapped cause, and prove the exact duplicate path against the real database rather than only a browser harness.
+
+---
+
+## 2026-08-29 — DM message and read timestamps must share one clock
+
+**What happened**: Direct-message rows used database-generated timestamps while read markers used application `Date` values written into PostgreSQL columns without timezone information. In a non-UTC database session, the application values landed hours ahead of database-created messages, so a newly received message could report zero unread items until that future marker elapsed.
+
+**Why it mattered**: Sending and reading both appeared to work, but the Inbox could silently suppress real unread messages. The defect survived simulated UI testing and emerged only when the same actor-backed conversation was reused against PostgreSQL.
+
+**Rule**: Generate DM message timestamps and read markers from the database clock, clamp semantically impossible future read markers during migration, and rerun the same sender/recipient journey against a real database to prove unread-before-read and zero-after-read behavior.
+
+---
+
+## 2026-08-30 — Restart proof must distinguish state present at open from state created now
+
+**What happened**: A fresh guarded Spaghetti run completed its bridge pins, then treated those just-completed effects as restart evidence and rejected the following origination. During recovery, submitted operations were queried through an unsupported collection filter, semantically identical Michelson was compared by raw JSON order, and a submitted-at-open effect that reconciled to applied was omitted from the replay prefix. The collector page also depended on a public IPFS gateway response that lacked browser CORS headers.
+
+**Why it mattered**: The duplicate-write guard was fail-closed, but it could not complete or reliably resume the commissioned Shadownet presentation. Weakening the comparisons would have traded the false positive for a real duplicate-signing risk.
+
+**Rule**: Freeze restart candidates from all prepared/submitted/applied effects present when the journal opens; reconcile exact submitted hashes before deciding which effects can replay; compare contract scripts semantically while normalizing only top-level section order; and use a byte-verified browser-readable gateway for proof UI while preserving canonical/public evidence in the receipt.
+
+---
+
+## 2026-08-30 — End-to-end proofs must authenticate writes and scope repeated OS labels
+
+**What happened**: The first real Mint Manager actor test attempted a state-changing request without the authenticated session's CSRF token. Separately, the commissioned Create destination introduced several legitimate desktop controls containing the word “Create,” so a global help-page locator became ambiguous after the Create window had opened.
+
+**Why it mattered**: A test could fail before exercising ownership-bound persistence, or select a background window control instead of the visible task map. Neither failure described the customer journey accurately.
+
+**Rule**: Real actor API proofs must obtain and send the session CSRF token for every protected write. Browser assertions in the operating-system shell must scope repeated labels to their owning window, dialog, or content region and use exact accessible names where actions share a prefix.
+
+---
+
+## 2026-08-30 — Access proofs must not depend on a decorated desktop's hit-test layer
+
+**What happened**: The witness access test found the Contact Admin desktop icon, then tried to open it through a pointer gesture. The seeded account's intentionally chaotic desktop had many movable decorations overlapping the icon, so Playwright correctly waited for actionability until the test timed out even though the route was permitted and visible. The same release run also retained a Club Dues v1 compile assertion after the compiler advanced to the authoritative v2 template.
+
+**Why it mattered**: An authorization proof became coupled to desktop decoration placement, and a version assertion described a historical seeded contract instead of the current compiler response. Both obscured the access and contract facts the tests were meant to prove.
+
+**Rule**: When a test proves route authorization, assert launcher visibility separately and open the canonical route directly; reserve pointer-hit testing for dedicated desktop interaction coverage with controlled geometry. Assert compiler versions from the current authoritative template constant, while allowing explicitly seeded historical contracts to retain their recorded version.
+
+---
+
+## 2026-08-30 — Release commands are contracts and their targets must exist
+
+**What happened**: The package manifest exposed a traffic-light report command whose generator had never been committed and a phased live command naming eleven spec files that had never existed. The maintained live suite was healthy, but the two release-facing entry points failed before they could evaluate it.
+
+**Why it mattered**: A human-readable plan can appear executable while its named evidence commands are dead links. That leaves the candidate decision irreproducible and encourages substituting informal test recollection for the repository-owned gate.
+
+**Rule**: Every release-facing package command must have a policy test proving its target exists or delegates to a maintained lane. Evidence generators must read an authoritative ledger, reject missing or duplicate acceptance rows, produce deterministic output, and fail closed when a required journey is below the release threshold.
+
+---
+
+## 2026-08-30 — Calendar fixtures must be stable across day and week boundaries
+
+**What happened**: The Calendar participation browser proof created an event two hours after the current time and expected it in the week initially displayed by Calendar. A late-night run on the last day of that week pushed the fixture past midnight into the next week, so the rendered calendar correctly contained no matching event.
+
+**Why it mattered**: A fully working participation flow appeared broken only because the evidence moved outside its own viewport. Retrying earlier in the day would hide the defect without making the release gate reproducible.
+
+**Rule**: Date-sensitive UI fixtures must be anchored to a known time inside the initially rendered calendar period, with explicit boundary cases tested separately. Do not use rolling offsets when locator reachability depends on the day, week, month, or timezone boundary.
+
+---
+
+## 2026-08-30 — Visible labels need geometry proof, not only locator proof
+
+**What happened**: The first-run and Help tests found all five task buttons by accessible name and successfully followed their routes, but a later global button rule overrode the component minimum height. The labels remained in the accessibility tree while their rendered controls collapsed, and mobile Help descriptions overlapped neighboring buttons.
+
+**Why it mattered**: Semantic reachability passed while the customer-facing navigation was visibly unclear at the exact entry and recovery points intended to make the operating-system platform self-explanatory.
+
+**Rule**: For high-value navigation controls, pair accessible-name and route assertions with rendered geometry at default and narrow viewports. When a styled wrapper must beat global control rules, use deliberate component specificity and verify computed size plus screenshot containment after the production build.
+
+---
+## 2026-08-30 — Bug-board closure needs evidence, not only a status word
+
+**What happened**: Four old Ravioli findings had working fixes and focused regressions in the release tree, but an uncommitted cleanup changed only their `Status` fields from `Claimed` to `Verified`. Their entries still read like open defects and contained no resolution, verification command, target date, or commit linkage.
+
+**Why it mattered**: A bare status change cannot distinguish a genuinely closed production risk from optimistic bookkeeping. It also makes an append-only board look internally contradictory and prevents a release reviewer from reproducing the closure claim.
+
+**Rule**: Never promote a bounty item to `Verified` by status alone. Record the resolving commit or exact correction, add dated reproducible verification evidence that satisfies the item's own verification idea, and confirm generated artifacts remain byte-stable before committing the board transition.
+
+---
+
+## 2026-08-30 — Parallel worktrees need isolated browser-harness ports
+
+**What happened**: The merged commission candidate's full inventory run stopped before testing because another active workspace was already using the default browser-harness port. The application and tests were healthy; the collision was between two legitimate verification sessions.
+
+**Why it mattered**: Treating the collision as a product failure—or killing the other process—would either misreport release evidence or disrupt unrelated in-progress work.
+
+**Rule**: Before running browser verification from a parallel worktree, derive an available `HARNESS_PORT` and pass it explicitly. Never terminate another task's harness merely to reclaim the default port.
 
 ---

@@ -65,7 +65,7 @@ test("Start Menu groups keep ungated entries and drop empty gated groups", () =>
   );
 });
 
-test("Start Menu model uses requested Win95 sections", () => {
+test("Start Menu model leads with the five commissioned tasks", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
     casinoMembershipActive: true,
   });
@@ -78,13 +78,13 @@ test("Start Menu model uses requested Win95 sections", () => {
   );
 
   assert.deepEqual(signature.slice(0, 8), [
-    "Apps",
+    "Play",
+    "Create",
+    "Shop",
+    "Events",
+    "Talk",
     "|",
-    "Gameshow",
-    "CREATE!",
-    "Social",
-    "On Chain",
-    "Gaming",
+    "Apps",
     "My Media",
   ]);
   assert(signature.includes("Account"));
@@ -93,7 +93,7 @@ test("Start Menu model uses requested Win95 sections", () => {
   assert(signature.includes("Browse"));
 });
 
-test("Start Menu model houses registered creation apps under CREATE!", () => {
+test("Start Menu model houses registered creation apps under Create", () => {
   const groups = buildStartMenuGroups(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
@@ -114,7 +114,7 @@ test("Start Menu model houses registered creation apps under CREATE!", () => {
   for (const tool of contestantVisibleTools) {
     assert(
       createPaths.includes(tool.routePath),
-      `${tool.title} should be listed in CREATE!`
+      `${tool.title} should be listed in Create`
     );
     assert(
       !myMediaPaths.includes(tool.routePath),
@@ -123,10 +123,10 @@ test("Start Menu model houses registered creation apps under CREATE!", () => {
   }
   assert(createPaths.includes("/tools/spaghetti"), "Spaghetti should be visible to signed-in users");
   assert(createPaths.includes("/tools/penne"), "Penne should be visible to signed-in users");
-  assert(!createPaths.includes("/tools/macaroni"), "Macaroni should stay hidden from contestant CREATE!");
+  assert(!createPaths.includes("/tools/macaroni"), "Macaroni should stay hidden from contestant Create");
 });
 
-test("Start Menu shows Macaroni to trusted creators under CREATE!", () => {
+test("Start Menu shows Macaroni to trusted creators under Create", () => {
   const groups = buildStartMenuGroups(PAGE_DEFS, {}, "trusted_creator", {
     casinoMembershipActive: false,
   });
@@ -134,23 +134,23 @@ test("Start Menu shows Macaroni to trusted creators under CREATE!", () => {
 
   assert(
     create.items.some((item) => item.path === "/tools/macaroni" && item.label === "Macaroni"),
-    "Macaroni should be listed in CREATE! for trusted creators"
+    "Macaroni should be listed in Create for trusted creators"
   );
 });
 
-test("Start Menu model keeps Casino in Gaming and My Games in My Media", () => {
+test("Start Menu model keeps Casino in Play and My Games in My Media", () => {
   const groups = buildStartMenuGroups(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
   const byKey = new Map(groups.map((group) => [group.key, group]));
-  const gaming = byKey.get("gaming")!;
+  const play = byKey.get("gaming")!;
   const myMedia = byKey.get("my-media")!;
 
   assert.deepEqual(
-    gaming.items.map((item) => item.label),
+    play.items.map((item) => item.label),
     ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]
   );
-  assert.equal(gaming.items.find((item) => item.path === "/casino")?.disabled, true);
+  assert.equal(play.items.find((item) => item.path === "/casino")?.disabled, true);
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
 });
 
@@ -245,7 +245,7 @@ test("Start Menu only exposes private Objkt Operator after the owner probe", () 
   assert(visibleAdmin?.items.some((item) => item.path === "/objkt-operator"));
 });
 
-test("Start Menu first-class app rail only contains ranked default desktop apps", () => {
+test("Start Menu first-class app rail includes commissioned core apps", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "admin", {
     casinoMembershipActive: true,
   });
@@ -255,15 +255,22 @@ test("Start Menu first-class app rail only contains ranked default desktop apps"
   assert(appsGroup && appsGroup.kind === "group");
   const appPaths = appsGroup.group.items.map((item) => item.path);
 
-  for (const corePath of ["/wtfiam", "/wim", "/w", "/mail", "/admin-inbox", "/my-gallery"]) {
+  for (const corePath of [
+    "/wtfiam",
+    "/wim",
+    "/w",
+    "/mail",
+    "/admin-inbox",
+    "/my-gallery",
+    "/arcade",
+    "/studio",
+    "/game-studio",
+  ]) {
     assert(appPaths.includes(corePath), `${corePath} should stay in the first app rail`);
   }
   for (const optionalPath of [
-    "/arcade",
     "/casino",
     "/console",
-    "/studio",
-    "/game-studio",
     "/skywire",
     "/live",
     "/agent",
@@ -312,7 +319,7 @@ test("Start Menu search filters across grouped apps without flattening the menu"
   const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
 
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].label, "Gameshow");
+  assert.equal(groups[0].label, "Events");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
     ["Side Quests"]
@@ -323,10 +330,10 @@ test("Start Menu search can open a whole category by group name", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
-  const filtered = filterStartMenuEntriesByQuery(entries, "gaming");
+  const filtered = filterStartMenuEntriesByQuery(entries, "play");
   const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
 
-  assert.equal(groups[0].label, "Gaming");
+  assert.equal(groups[0].label, "Play");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
     ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]

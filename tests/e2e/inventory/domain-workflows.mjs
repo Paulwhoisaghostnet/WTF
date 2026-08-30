@@ -2,7 +2,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "entry auth identity loop",
     domain: "Entry, Authentication, and Account Identity",
-    routes: ["/", "/login", "/register", "/profile", "/user/wtf-admin"],
+    routes: ["/", "/login", "/register", "/profile", "/faq", "/user/wtf-admin"],
     eventHandles: [
       "public.route.viewed",
       "auth.login.succeeded",
@@ -18,6 +18,10 @@ export const DOMAIN_WORKFLOWS = [
       "profile.social.link_blocked",
       "profile.avatar_media.saved",
       "notification.viewed",
+    ],
+    behaviorAssertionIds: [
+      "auth.classic-first-run-task-wayfinder",
+      "auth.stale-session-welcome-recovery",
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },
@@ -183,6 +187,8 @@ export const DOMAIN_WORKFLOWS = [
       "calendar.ttc_feed_pulled",
       "calendar.personal_entry_created",
       "calendar.ttc_submit_opened",
+      "calendar.participation.updated",
+      "calendar.participation.cleared",
       "admin.challenge_automation.updated",
       "reggie.checkpoint.reached",
       "reggie.quest.completed",
@@ -201,6 +207,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "POST", path: "/api/rewards/cashouts/1/confirm", body: { opHash: "invalid" }, expectedStatuses: [400, 401] },
       { method: "GET", path: "/api/calendar/events?includeExternal=0" },
       { method: "GET", path: "/api/calendar/feed.ics" },
+      { method: "GET", path: "/api/calendar/participations/mine", expectedStatuses: [200, 401] },
+      { method: "GET", path: "/api/calendar/participations/mine?reminders=1", expectedStatuses: [200, 401] },
       { method: "GET", path: "/api/admin/challenge-automation/registry" },
     ],
   },
@@ -332,6 +340,8 @@ export const DOMAIN_WORKFLOWS = [
       "mcp.crp.read",
       "mcp.crp.nomination_submitted",
       "dm.message.sent",
+      "dm.message.reported",
+      "dm.message.report_reviewed",
       "diary.index.viewed",
       "diary.entry.created",
       "diary.entry.updated",
@@ -665,6 +675,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/crp-nominations/share?uri=at%3A%2F%2Fdid%3Aweb%3Awtfos.me%2Fapp.wtfos.liveops.crpNomination%2Ftest&platform=x", expectedStatuses: [200, 401, 404] },
       { method: "GET", path: "/api/messages/dms" },
       { method: "GET", path: "/api/messages/users?limit=100&excludeSelf=1" },
+      { method: "GET", path: "/api/messages/dm-reports?status=open", expectedStatuses: [200, 401, 403] },
       { method: "GET", path: "/api/comms/sources" },
       { method: "GET", path: "/api/comms/items" },
       { method: "GET", path: "/api/comms/unread-count" },
@@ -796,6 +807,8 @@ export const DOMAIN_WORKFLOWS = [
       "wtfiam.cart_intent.created",
       "wtfiam.admin.price_rebalanced",
       "wtfiam.admin.sale_updated",
+      "wtfiam.creator_item.created",
+      "wtfiam.creator_item.reviewed",
       "inventory.item.consumed",
       "inventory.item.transferred",
       "reward.market_spent",
@@ -814,10 +827,20 @@ export const DOMAIN_WORKFLOWS = [
       "trade_board.offer_accept_terms_previewed",
       "swap.confirmed",
     ],
+    behaviorAssertionIds: [
+      "wtfiam.creator-store-moderation-purchase",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/in-app-market?category=apps" },
       { method: "GET", path: "/api/in-app-market?category=desktop_pet" },
       { method: "GET", path: "/api/in-app-market?category=wtf_live" },
+      { method: "GET", path: "/api/in-app-market/creator-items/mine" },
+      {
+        method: "POST",
+        path: "/api/in-app-market/creator-items",
+        body: { name: "E2E Creator Item", category: "desktop_fun", kind: "creator-item", priceExp: 100, stockQuantity: 1 },
+        expectedStatuses: [201, 400, 401, 403, 500],
+      },
       {
         method: "POST",
         path: "/api/in-app-market/intents",
@@ -902,6 +925,10 @@ export const DOMAIN_WORKFLOWS = [
       "macaroni.drop_published",
       "arcade.game.submitted",
     ],
+    behaviorAssertionIds: [
+      "media.creation-gallery-preservation-proof",
+      "arcade.creator-build-publish-discover",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
       { method: "GET", path: "/api/cockpit/project-bundles" },
@@ -957,6 +984,10 @@ export const DOMAIN_WORKFLOWS = [
       "game_sdk.avatar_loaded",
       "game_sdk.game_over",
     ],
+    behaviorAssertionIds: [
+      "arcade-console.sessions-and-scores",
+      "arcade.creator-build-publish-discover",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/arcade/stats" },
       { method: "GET", path: "/api/arcade/play-fee" },
@@ -986,6 +1017,9 @@ export const DOMAIN_WORKFLOWS = [
       "casino.entry.rejected",
       "casino.wager_session.rejected",
       "casino.audit.event_recorded",
+      "casino.practice_game.submitted",
+      "casino.practice_game.reviewed",
+      "casino.practice_game.played",
       "wtf_button.lobby.viewed",
       "wtf_button.table.viewed",
       "wtf_button.quote.created",
@@ -1027,9 +1061,14 @@ export const DOMAIN_WORKFLOWS = [
       "guinea_pig_raceway.audit.event_recorded",
       "guinea_pig_raceway.wager.rejected",
     ],
+    behaviorAssertionIds: [
+      "casino.access-game-apis",
+      "casino.community-practice-create-moderate-play",
+    ],
     apiProbes: [
       { method: "GET", path: "/api/casino/status" },
       { method: "GET", path: "/api/casino/games" },
+      { method: "GET", path: "/api/casino/practice-games" },
       { method: "GET", path: "/api/casino/wtf-button/state", expectedStatuses: [200, 402] },
       { method: "POST", path: "/api/casino/wtf-button/quote", body: { buttonId: "red", priceProtectionMode: "strict", toleranceMutez: "0" }, expectedStatuses: [200, 402] },
       { method: "GET", path: "/api/in-app-market?category=casino" },
@@ -1099,6 +1138,7 @@ export const DOMAIN_WORKFLOWS = [
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     routes: ["/links", "/faq", "/leaderboard", "/gallery", "/arcade"],
     eventHandles: [
+      "faq.viewed",
       "api.public.read",
       "public_data.viewed",
       "mcp.tool.called",

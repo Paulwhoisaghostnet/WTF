@@ -164,6 +164,16 @@ export type InAppMarketAdminItem = {
   active: boolean;
   stockQuantity: number;
   metadata: Record<string, unknown>;
+  creatorSubmission: {
+    creatorUserId: number;
+    creatorUsername: string;
+    status: "submitted" | "approved" | "rejected" | string;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    reviewedByUserId: number | null;
+    reviewedByUsername: string | null;
+    reviewNote: string | null;
+  } | null;
   sortOrder: number;
   sale: {
     id: number;
@@ -486,6 +496,8 @@ export type UpdateInAppMarketItemPayload = {
   priceScoreLocked?: boolean;
   sortOrder?: number;
   rebalance?: boolean;
+  reviewStatus?: "approved" | "rejected";
+  reviewNote?: string;
 };
 
 export type CreateInAppMarketItemPayload = {

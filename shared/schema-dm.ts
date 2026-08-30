@@ -25,6 +25,12 @@ export const dmMessageTypeEnum = pgEnum("dm_message_type", [
   "studio_event",
 ]);
 
+export const dmMessageReportStatusEnum = pgEnum("dm_message_report_status", [
+  "open",
+  "reviewed",
+  "dismissed",
+]);
+
 // ─── Direct Messages ─────────────────────────────────────
 
 export const dmConversations = pgTable(
@@ -108,6 +114,38 @@ export const dmMessages = pgTable(
   ]
 );
 
+export const dmMessageReports = pgTable(
+  "dm_message_reports",
+  {
+    id: serial("id").primaryKey(),
+    messageId: integer("message_id")
+      .references(() => dmMessages.id, { onDelete: "cascade" })
+      .notNull(),
+    reporterUserId: integer("reporter_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    reason: text("reason").notNull(),
+    status: dmMessageReportStatusEnum("status").default("open").notNull(),
+    reviewerUserId: integer("reviewer_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewNote: text("review_note"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("dm_message_reports_reporter_message_unique").on(
+      table.reporterUserId,
+      table.messageId
+    ),
+    index("dm_message_reports_status_created_idx").on(
+      table.status,
+      table.createdAt
+    ),
+  ]
+);
+
 export const dmConversationsRelations = relations(
   dmConversations,
   ({ many, one }) => ({
@@ -134,7 +172,7 @@ export const dmConversationParticipantsRelations = relations(
   })
 );
 
-export const dmMessagesRelations = relations(dmMessages, ({ one }) => ({
+export const dmMessagesRelations = relations(dmMessages, ({ many, one }) => ({
   conversation: one(dmConversations, {
     fields: [dmMessages.conversationId],
     references: [dmConversations.id],
@@ -142,5 +180,23 @@ export const dmMessagesRelations = relations(dmMessages, ({ one }) => ({
   sender: one(users, {
     fields: [dmMessages.senderId],
     references: [users.id],
+  }),
+  reports: many(dmMessageReports),
+}));
+
+export const dmMessageReportsRelations = relations(dmMessageReports, ({ one }) => ({
+  message: one(dmMessages, {
+    fields: [dmMessageReports.messageId],
+    references: [dmMessages.id],
+  }),
+  reporter: one(users, {
+    fields: [dmMessageReports.reporterUserId],
+    references: [users.id],
+    relationName: "dmMessageReportReporter",
+  }),
+  reviewer: one(users, {
+    fields: [dmMessageReports.reviewerUserId],
+    references: [users.id],
+    relationName: "dmMessageReportReviewer",
   }),
 }));

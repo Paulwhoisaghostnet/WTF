@@ -1,0 +1,40 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "buy from creator primary sale",
+  "stageOrdinal": 11,
+  "stageName": "collector purchase confirmed",
+  "url": "http://127.0.0.1:52347/creation-tools/spaghetti/site.html",
+  "timestampUtc": "2026-08-30T04:02:46.502Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "cfc067faf4c06dcc77c4ab267a4cb2e5fbfcb942527879f4729f83e76364b253",
+  "byteCount": 262075,
+  "domEvidence": [
+    {
+      "selector": "#appLabel",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti · Pasta Protocol"
+    },
+    {
+      "selector": "#status",
+      "name": "collector status",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Confirmed on Tezos. On-chain state refreshed."
+    },
+    {
+      "selector": "#chainState",
+      "name": "on-chain sale state",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Sold out"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -14,9 +14,10 @@
 
 import { Router } from "express";
 import { z } from "zod";
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
 import {
+  calendarParticipations,
   calendarTickets,
   gameshowEvents,
   users,
@@ -28,6 +29,7 @@ import {
 import { hasAtLeastRole, type UserRole } from "@shared/types";
 import { runCalendarMaterialization } from "../lib/calendar-sync";
 import { loadTtcCalendarEvents } from "../lib/ttc-calendar";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
 
@@ -113,6 +115,181 @@ router.get(
     } catch (err) {
       console.error("[calendar] mine tickets failed:", err);
       res.status(500).json({ error: "Failed to load your tickets" });
+    }
+  }
+);
+
+const participationSchema = z.object({
+  eventKey: z.string().min(1).max(500),
+  sourceProvider: z.enum(["wtf", "ttc"]),
+  sourceEventId: z.number().int().positive().optional().nullable(),
+  title: z.string().min(1).max(300),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().optional().nullable(),
+  allDay: z.boolean().optional(),
+  status: z.enum(["interested", "going", "none"]),
+  reminderEnabled: z.boolean().default(true),
+});
+
+router.get(
+  "/api/calendar/participations/mine",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const actor = req.user as { id: number };
+      const remindersOnly = String(req.query.reminders ?? "0") === "1";
+      const rows = await db
+        .select()
+        .from(calendarParticipations)
+        .where(
+          remindersOnly
+            ? and(
+                eq(calendarParticipations.userId, actor.id),
+                eq(calendarParticipations.reminderEnabled, true)
+              )
+            : eq(calendarParticipations.userId, actor.id)
+        )
+        .orderBy(asc(calendarParticipations.startsAt));
+      res.json(rows);
+    } catch (err) {
+      console.error("[calendar] participation list failed:", err);
+      res.status(500).json({ error: "Failed to load your calendar plans" });
+    }
+  }
+);
+
+router.put(
+  "/api/calendar/participations",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const parsed = participationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Choose Interested or Going and provide a valid calendar event.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const actor = req.user as { id: number; role: UserRole };
+      const input = parsed.data;
+      const existing = await db
+        .select()
+        .from(calendarParticipations)
+        .where(
+          and(
+            eq(calendarParticipations.userId, actor.id),
+            eq(calendarParticipations.eventKey, input.eventKey)
+          )
+        )
+        .limit(1);
+
+      if (input.status === "none") {
+        if (existing[0]) {
+          await db
+            .delete(calendarParticipations)
+            .where(eq(calendarParticipations.id, existing[0].id));
+          await ingestSystemEvent({
+            eventId: `calendar.participation.cleared:${existing[0].id}:${Date.now()}`,
+            eventType: "calendar.participation.cleared",
+            userId: actor.id,
+            source: "calendar",
+            sourceModule: "calendar-participation",
+            rawRefType: "calendar_event",
+            rawRefId: input.eventKey,
+            metadata: { sourceProvider: input.sourceProvider },
+          });
+        }
+        return res.json({ ok: true, participation: null });
+      }
+
+      let snapshot = {
+        title: input.title,
+        startsAt: new Date(input.startsAt),
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        allDay: input.allDay ?? false,
+        sourceEventId: input.sourceEventId ?? null,
+      };
+
+      if (input.sourceProvider === "wtf") {
+        if (!input.sourceEventId) {
+          return res.status(400).json({ error: "WTF event id is required." });
+        }
+        const { allowed } = visibilityFilterForRole(actor.role);
+        const [event] = await db
+          .select()
+          .from(gameshowEvents)
+          .where(
+            and(
+              eq(gameshowEvents.id, input.sourceEventId),
+              eq(gameshowEvents.status, "published"),
+              inArray(gameshowEvents.visibility, allowed)
+            )
+          )
+          .limit(1);
+        if (!event) {
+          return res.status(404).json({ error: "That WTF event is not available to your account." });
+        }
+        snapshot = {
+          title: event.title,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+          allDay: event.allDay,
+          sourceEventId: event.id,
+        };
+      }
+
+      const now = new Date();
+      const [participation] = await db
+        .insert(calendarParticipations)
+        .values({
+          userId: actor.id,
+          eventKey: input.eventKey,
+          sourceProvider: input.sourceProvider,
+          sourceEventId: snapshot.sourceEventId,
+          title: snapshot.title,
+          startsAt: snapshot.startsAt,
+          endsAt: snapshot.endsAt,
+          allDay: snapshot.allDay,
+          status: input.status,
+          reminderEnabled: input.reminderEnabled,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [calendarParticipations.userId, calendarParticipations.eventKey],
+          set: {
+            sourceProvider: input.sourceProvider,
+            sourceEventId: snapshot.sourceEventId,
+            title: snapshot.title,
+            startsAt: snapshot.startsAt,
+            endsAt: snapshot.endsAt,
+            allDay: snapshot.allDay,
+            status: input.status,
+            reminderEnabled: input.reminderEnabled,
+            updatedAt: now,
+          },
+        })
+        .returning();
+
+      await ingestSystemEvent({
+        eventId: `calendar.participation.updated:${participation.id}:${now.toISOString()}`,
+        eventType: "calendar.participation.updated",
+        userId: actor.id,
+        source: "calendar",
+        sourceModule: "calendar-participation",
+        rawRefType: "calendar_participation",
+        rawRefId: participation.id,
+        metadata: {
+          eventKey: participation.eventKey,
+          sourceProvider: participation.sourceProvider,
+          status: participation.status,
+          reminderEnabled: participation.reminderEnabled,
+        },
+      });
+      res.json({ ok: true, participation });
+    } catch (err) {
+      console.error("[calendar] participation update failed:", err);
+      res.status(500).json({ error: "Failed to save your calendar plan" });
     }
   }
 );

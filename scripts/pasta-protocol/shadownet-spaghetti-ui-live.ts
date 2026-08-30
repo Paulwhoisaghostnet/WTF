@@ -44,6 +44,7 @@ import {
   assertPastaProofRestartTransaction,
   authenticatePastaProofRestartInitialCounters,
   capturePastaProofRestartInitialCounters,
+  projectPastaProofRestartScript,
   readPastaProofRestartActorState,
   reconcilePastaProofRestartOperation,
   reconcilePastaProofRestartPin,
@@ -623,14 +624,18 @@ async function assertSpaghettiRestartApplied(input: {
   pending: PastaProofRestartPendingOperation;
   signerAddress: string;
   tezos: ReturnType<typeof buildToolkit>;
-  expectedCodeHash: string;
+  expectedCode: unknown[];
 }): Promise<{ contractAddress: string; entrypoints: string[] }> {
   if (input.pending.step.action !== "originate") {
     return assertPastaProofRestartTransaction(input);
   }
   const resolved = assertPastaProofRestartOrigination(input);
   const descriptor = projectedRecord(input.pending.descriptor, "Spaghetti restart origination descriptor");
-  assert.equal(hashJsonForBridge(descriptor.code), input.expectedCodeHash, "Spaghetti restart artifact identity differs");
+  assert.deepEqual(
+    projectPastaProofRestartScript(descriptor.code),
+    projectPastaProofRestartScript(input.expectedCode),
+    "Spaghetti restart artifact identity differs",
+  );
   const requestedStorage = projectedRecord(descriptor.storage, "Spaghetti restart origination storage");
   assert.equal(requestedStorage.administrator, input.signerAddress);
   assert.equal(requestedStorage.pending_administrator, null);
@@ -647,7 +652,11 @@ async function assertSpaghettiRestartApplied(input: {
   assert.equal(rowStorage.pending_administrator, null);
   assert.equal(Number(rowStorage.next_token_id), 0);
   const script = await input.tezos.rpc.getScript(resolved.contractAddress);
-  assert.equal(hashJsonForBridge(script.code), input.expectedCodeHash, "Spaghetti recovered on-chain code differs");
+  assert.deepEqual(
+    projectPastaProofRestartScript(script.code),
+    projectPastaProofRestartScript(input.expectedCode),
+    "Spaghetti recovered on-chain code differs",
+  );
   const contract = await input.tezos.contract.at(resolved.contractAddress);
   const storage = await contract.storage() as { metadata: { get(key: string): Promise<unknown> } };
   assert.equal(await storage.metadata.get(""), expectedMetadataHex, "Spaghetti recovered collection metadata URI differs");
@@ -833,7 +842,7 @@ async function prepareSpaghettiRestartJournal(input: {
       pending,
       signerAddress: actorAddress(pending.step.actor),
       tezos: actorToolkit(pending.step.actor),
-      expectedCodeHash,
+      expectedCode: input.code,
     }),
   });
   await journal.reconcile(reconcile);
@@ -865,7 +874,7 @@ async function prepareSpaghettiRestartJournal(input: {
         pending,
         signerAddress: actorAddress(applied.step.actor),
         tezos: actorToolkit(applied.step.actor),
-        expectedCodeHash,
+        expectedCode: input.code,
       }),
     });
     assert.equal(resolution.status, "applied", `Spaghetti applied-prefix ${applied.step.id} is no longer applied`);
@@ -1355,7 +1364,7 @@ export async function runSpaghettiUiLive(): Promise<SpaghettiUiLiveResult> {
       contract: identifiers.contractAddress,
       tokenId: 0,
       network: "shadownet",
-      ipfsGateway: "https://ipfs.io/ipfs/",
+      ipfsGateway: `${normalizeBase(ipfs.localGatewayUrl)}/`,
     };
     await opened.page.route("**/creation-tools/spaghetti/pasta.config.js", async (route) => {
       await route.fulfill({

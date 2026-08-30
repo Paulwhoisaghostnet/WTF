@@ -126,6 +126,9 @@ const WtfMapLabPage = lazy(() =>
 const GameStudioPage = lazy(() =>
   import("../pages/GameStudio").then((m) => ({ default: m.GameStudio }))
 );
+const CreatePage = lazy(() =>
+  import("../pages/Create").then((m) => ({ default: m.Create }))
+);
 const DedRoomsPage = lazy(() =>
   import("../pages/DedRooms").then((m) => ({ default: m.DedRooms }))
 );
@@ -522,6 +525,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/dues", component: DuesManagerPage, auth: false, title: "Club Dues Manager", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/console", component: ConsolePage, auth: true, title: "WTF Console", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/game-studio", component: GameStudioPage, auth: true, title: "Game Studio", group: "gaming", startMenu: true, desktopIcon: true },
+  { pattern: "/create", component: CreatePage, auth: true, title: "Create", group: "create", startMenu: true },
   { pattern: "/dedrooms", component: DedRoomsPage, auth: true, title: "DedRooms", group: "gameshow", startMenu: true, desktopIcon: true },
   {
     pattern: "/tools/ch-ease",
@@ -602,7 +606,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/wtf-subdomains/setup", component: WtfSubdomainSetupPage, auth: true, title: "Subdomain Setup", group: "social" },
   { pattern: "/wtf-subdomains", component: WtfSubdomainsPage, auth: true, title: "WTF Domains", group: "social", startMenu: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
-  { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
+  { pattern: "/faq", component: FaqPage, auth: false, title: "Help & Start Here", group: "public", startMenu: true },
   { pattern: "/discord/terms", component: DiscordTermsPage, auth: false, title: "Discord Terms", group: "public" },
   { pattern: "/discord/privacy", component: DiscordPrivacyPage, auth: false, title: "Discord Privacy", group: "public" },
   { pattern: "/discord/linked-roles", component: DiscordLinkedRolesPage, auth: false, title: "Discord Linked Roles", group: "public" },

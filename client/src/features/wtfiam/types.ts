@@ -170,3 +170,25 @@ export type WtfIamCartEntry = {
   item: WtfIamListing;
   quantity: number;
 };
+
+export type CreatorStoreSubmission = {
+  id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string;
+  kind: string | null;
+  priceExp: number;
+  active: boolean;
+  stockQuantity: number;
+  creatorSubmission: {
+    creatorUserId: number;
+    creatorUsername: string;
+    status: "submitted" | "approved" | "rejected" | string;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    reviewedByUserId: number | null;
+    reviewedByUsername: string | null;
+    reviewNote: string | null;
+  } | null;
+};

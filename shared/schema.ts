@@ -16,6 +16,7 @@ import {
 } from "./schema-desktop";
 import {
   dmConversationParticipants,
+  dmMessageReports,
   dmMessages,
 } from "./schema-dm";
 import { diaryEntries } from "./schema-diary";
@@ -38,8 +39,13 @@ import {
   challengeSystemEvents,
 } from "./schema-challenge-automation";
 import {
+  calendarParticipations,
+} from "./schema-liveops";
+import {
   casinoMembershipIntents,
   casinoMemberships,
+  casinoPracticeGames,
+  casinoPracticePlays,
   casinoWagerSessions,
 } from "./schema-casino";
 import {
@@ -117,6 +123,12 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   submissions: many(challengeSubmissions),
   dmParticipants: many(dmConversationParticipants),
   dmSentMessages: many(dmMessages),
+  dmMessageReportsFiled: many(dmMessageReports, {
+    relationName: "dmMessageReportReporter",
+  }),
+  dmMessageReportsReviewed: many(dmMessageReports, {
+    relationName: "dmMessageReportReviewer",
+  }),
   diaryEntries: many(diaryEntries),
   boardThreads: many(boardThreads),
   boardThreadReplies: many(boardThreadReplies),
@@ -162,8 +174,11 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   challengeAutomationCompletions: many(challengeAutomationCompletions),
   challengeAutomationActionLogs: many(challengeAutomationActionLogs),
   challengeAutomationAuditLogs: many(challengeAutomationAuditLogs),
+  calendarParticipations: many(calendarParticipations),
   casinoMembershipIntents: many(casinoMembershipIntents),
   casinoMemberships: many(casinoMemberships),
+  casinoPracticeGames: many(casinoPracticeGames),
+  casinoPracticePlays: many(casinoPracticePlays),
   casinoWagerSessions: many(casinoWagerSessions),
   clubDuesContractsDeployed: many(clubDuesContracts),
   clubDuesDeploymentRuns: many(clubDuesDeploymentRuns),

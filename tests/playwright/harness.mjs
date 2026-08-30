@@ -41,6 +41,14 @@ const state = {
   macaroniPackages: [],
   macaroniNextPackageId: 1,
   macaroniNextItemId: 1,
+  casinoCanEnter: false,
+  casinoPracticeGames: [],
+  casinoNextPracticeGameId: 1,
+  casinoNextPracticePlayId: 1,
+  calendarParticipations: [],
+  calendarNextParticipationId: 1,
+  dmMessageReports: [],
+  dmNextMessageReportId: 1,
   wtfUserSiteClaimed: false,
   wtfUserSiteStatus: "draft",
   wtfUserSitePages: [],
@@ -528,6 +536,10 @@ app.post("/__test/state", (req, res) => {
   state.macaroniPackages = [];
   state.macaroniNextPackageId = 1;
   state.macaroniNextItemId = 1;
+  state.casinoCanEnter = Boolean(req.body?.casinoCanEnter);
+  state.casinoPracticeGames = [];
+  state.casinoNextPracticeGameId = 1;
+  state.casinoNextPracticePlayId = 1;
   state.wtfUserSiteClaimed = Boolean(req.body?.wtfUserSiteClaimed);
   state.wtfUserSiteStatus = String(req.body?.wtfUserSiteStatus || "draft");
   state.wtfUserSitePages = normalizeHarnessWtfUserSitePages(req.body?.wtfUserSitePages);
@@ -543,6 +555,10 @@ app.post("/__test/state", (req, res) => {
   state.wtfLivePrivateMembers = [];
   state.wtfLiveOwnedStage = { id: "my-stage", title: "My Stage", kind: "stage", description: "Owned stage", liveUrl: "/live", source: "user", ownerUserId: 1, isPublic: true };
   state.wtfLiveStageMembers = [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }];
+  state.calendarParticipations = [];
+  state.calendarNextParticipationId = 1;
+  state.dmMessageReports = [];
+  state.dmNextMessageReportId = 1;
   Object.assign(
     desktopLocalization,
     req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
@@ -569,6 +585,7 @@ app.post("/__test/state", (req, res) => {
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
       wtfUserSiteStatus: state.wtfUserSiteStatus,
       wtfUserSitePages: state.wtfUserSitePages,
+      casinoCanEnter: state.casinoCanEnter,
       ownedAppPasses,
     },
   });
@@ -594,6 +611,9 @@ app.get("/__test/state", (_req, res) => {
     wtfUserSiteClaimed: state.wtfUserSiteClaimed,
     wtfUserSiteStatus: state.wtfUserSiteStatus,
     wtfUserSitePages: state.wtfUserSitePages,
+    casinoPracticeGames: state.casinoPracticeGames,
+    calendarParticipations: state.calendarParticipations,
+    dmMessageReports: state.dmMessageReports,
   });
 });
 
@@ -665,6 +685,7 @@ app.get("/api/auth/user", (_req, res) => {
             manage_desktop_apps: true,
             manage_gameshow: true,
             manage_rewards: true,
+            trusted_market_creator: true,
           }
         : state.userRole === COBWEBSAINTS_FULL_USER_ROLE
           ? {
@@ -699,6 +720,12 @@ app.post("/api/auth/welcome/complete", (_req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
   const authUser = currentAuthUser() || defaultAuthUserForRole("admin");
+  state.welcomePending = false;
+  recordHarnessInteraction(
+    "auth.welcome.completed",
+    { method: "acknowledge", username: authUser.username },
+    "auth"
+  );
   res.json({
     id: authUser.id,
     username: authUser.username,
@@ -1066,13 +1093,14 @@ function makeHarnessMarketItem(input) {
     metadata: input.metadata ?? { kind: input.kind },
     stockQuantity: input.stockQuantity ?? 1000,
     quantityOwned: 0,
-    active: true,
+    active: input.active !== false,
     rarityTier: input.rarityTier,
     rarityLabel: pricingTiers.find((tier) => tier.tier === input.rarityTier)?.label ?? "Common",
     priceScore: input.priceScore,
     priceWtfLocked: Boolean(input.priceWtfLocked),
     priceScoreLocked: Boolean(input.priceScoreLocked),
     sortOrder: input.sortOrder ?? input.id,
+    createdAt: input.createdAt ?? "2026-05-08T00:00:00.000Z",
     updatedAt: "2026-05-08T00:00:00.000Z",
   };
 }
@@ -1394,9 +1422,22 @@ function serializeHarnessSaleForItem(sale, item) {
 
 function serializeHarnessMarketItem(item, { admin = false } = {}) {
   const sale = serializeHarnessSaleForItem(bestHarnessSaleForItem(item), item);
+  const creatorSubmission = item.metadata?.source === "trusted_creator"
+    ? {
+        creatorUserId: Number(item.metadata.creatorUserId || 0),
+        creatorUsername: String(item.metadata.creatorUsername || "unknown"),
+        status: String(item.metadata.submissionStatus || "submitted"),
+        submittedAt: item.metadata.submittedAt || null,
+        reviewedAt: item.metadata.reviewedAt || null,
+        reviewedByUserId: item.metadata.reviewedByUserId || null,
+        reviewedByUsername: item.metadata.reviewedByUsername || null,
+        reviewNote: item.metadata.reviewNote || null,
+      }
+    : null;
   const publicItem = {
     ...item,
     sale,
+    creatorSubmission,
   };
   if (!admin) return publicItem;
   return {
@@ -3279,10 +3320,53 @@ function apiMock(req, res) {
           : undefined,
     });
   }
+  if (pathName === "/api/in-app-market/creator-items/mine" && req.method === "GET") {
+    const authUser = currentAuthUser();
+    if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+    const items = marketState.items
+      .filter((item) => Number(item.metadata?.creatorUserId || 0) === authUser.id)
+      .map((item) => serializeHarnessMarketItem(item));
+    return res.json({ items });
+  }
+  if (pathName === "/api/in-app-market/creator-items" && req.method === "POST") {
+    const authUser = currentAuthUser();
+    if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+    const canSubmit = state.userRole === "admin" || state.userRole === COBWEBSAINTS_FULL_USER_ROLE;
+    if (!canSubmit) return res.status(403).json({ error: "Trusted market creator permission required" });
+    const now = nowIso();
+    const item = makeHarnessMarketItem({
+      id: Math.max(0, ...marketState.items.map((candidate) => candidate.id)) + 1,
+      sku: `creator-${authUser.id}-${String(req.body?.name || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`,
+      name: String(req.body?.name || "Creator item"),
+      description: String(req.body?.description || ""),
+      category: String(req.body?.category || "desktop_fun"),
+      kind: String(req.body?.kind || "creator-item"),
+      priceWtfWhole: 0,
+      priceExp: Math.max(1, Number(req.body?.priceExp) || 100),
+      stockQuantity: Math.max(1, Number(req.body?.stockQuantity) || 25),
+      rarityTier: 1,
+      priceScore: 1,
+      active: false,
+      createdAt: now,
+      metadata: {
+        kind: String(req.body?.kind || "creator-item"),
+        source: "trusted_creator",
+        creatorUserId: authUser.id,
+        creatorUsername: authUser.username,
+        currency: "exp",
+        submissionStatus: "submitted",
+        submittedAt: now,
+      },
+    });
+    marketState.items.push(item);
+    recordHarnessInteraction("wtfiam.creator_item.created", { itemId: item.id, sku: item.sku }, "in-app-market");
+    return res.status(201).json({ ok: true, item: serializeHarnessMarketItem(item) });
+  }
   if (pathName === "/api/in-app-market/intents" && req.method === "POST") {
     const authUser = currentAuthUser() || { id: 1 };
     const cartItems = Array.isArray(req.body?.items) ? req.body.items : [];
     let subtotalWtf = 0n;
+    let subtotalExp = 0;
     for (const cartItem of cartItems) {
       const appEntry = harnessWtfOsAppListings.find(
         (candidate) => harnessAppUnlockSku(candidate.key) === cartItem?.sku
@@ -3309,20 +3393,29 @@ function apiMock(req, res) {
       const quantity = Math.max(1, Math.min(99, Number(cartItem.quantity) || 1));
       const sale = bestHarnessSaleForItem(item);
       subtotalWtf += applyHarnessDiscount(BigInt(item.priceWtfUnits) * BigInt(quantity), sale?.discountPercent ?? 0);
+      subtotalExp += Number(item.priceExp || 0) * quantity;
     }
     subtotalWtf = ceilHarnessWholeWtf(subtotalWtf);
+    const purchaseRef = `cart:inventory:${Date.now()}`;
+    marketState.lastIntent = {
+      userId: authUser.id,
+      purchaseRef,
+      currency: req.body?.currency ?? "wtf",
+      items: cartItems,
+    };
+    recordHarnessInteraction("wtfiam.cart_intent.created", { purchaseRef, currency: req.body?.currency ?? "wtf" }, "in-app-market");
     return res.json({
       ok: true,
       intent: {
         id: 1,
-        purchaseRef: "cart:inventory:harness",
+        purchaseRef,
         currency: req.body?.currency ?? "wtf",
         status: "pending",
         walletAddress: req.body?.walletAddress ?? null,
         items: cartItems,
         subtotalWtfUnits: subtotalWtf.toString(),
         subtotalWtfFormatted: formatHarnessWtf(subtotalWtf.toString()),
-        subtotalExp: 0,
+        subtotalExp,
         estimatedFeeMutez: 70000,
         estimatedFeeTez: "0.07",
         contractAddress: null,
@@ -3330,6 +3423,24 @@ function apiMock(req, res) {
         expiresAt: "2026-05-08T00:30:00.000Z",
       },
     });
+  }
+  if (pathName === "/api/in-app-market/checkout-exp" && req.method === "POST") {
+    const authUser = currentAuthUser();
+    const intent = marketState.lastIntent;
+    if (!authUser || !intent || intent.userId !== authUser.id || intent.purchaseRef !== req.body?.purchaseRef) {
+      return res.status(404).json({ error: "EXP checkout intent not found" });
+    }
+    for (const line of intent.items) {
+      const quantity = Math.max(1, Number(line.quantity) || 1);
+      setHarnessInventoryQuantity(
+        authUser.id,
+        String(line.sku),
+        harnessInventoryQuantity(authUser.id, String(line.sku)) + quantity
+      );
+    }
+    recordHarnessInteraction("wtfiam.exp_checkout.completed", { purchaseRef: intent.purchaseRef, items: intent.items }, "in-app-market");
+    marketState.lastIntent = null;
+    return res.json({ ok: true, purchaseRef: req.body.purchaseRef });
   }
   if (pathName === "/api/in-app-market/tips" && req.method === "POST") {
     const sender = currentAuthUser();
@@ -3468,6 +3579,39 @@ function apiMock(req, res) {
       wallet: { count: 0, addresses: [] },
     });
   }
+  if (pathName === "/api/calendar/participations/mine" && req.method === "GET") {
+    const remindersOnly = url.searchParams.get("reminders") === "1";
+    return res.json(
+      state.calendarParticipations.filter((plan) => !remindersOnly || plan.reminderEnabled)
+    );
+  }
+  if (pathName === "/api/calendar/participations" && req.method === "PUT") {
+    const eventKey = String(req.body?.eventKey || "");
+    const existingIndex = state.calendarParticipations.findIndex((plan) => plan.eventKey === eventKey);
+    if (req.body?.status === "none") {
+      if (existingIndex >= 0) state.calendarParticipations.splice(existingIndex, 1);
+      recordHarnessInteraction("calendar.participation.cleared", { eventKey }, "calendar");
+      return res.json({ ok: true, participation: null });
+    }
+    const existing = existingIndex >= 0 ? state.calendarParticipations[existingIndex] : null;
+    const participation = {
+      id: existing?.id ?? state.calendarNextParticipationId++,
+      eventKey,
+      sourceProvider: String(req.body?.sourceProvider || "wtf"),
+      sourceEventId: req.body?.sourceEventId ?? null,
+      title: String(req.body?.title || "Calendar event"),
+      startsAt: String(req.body?.startsAt || nowIso()),
+      endsAt: req.body?.endsAt ?? null,
+      allDay: Boolean(req.body?.allDay),
+      status: req.body?.status === "going" ? "going" : "interested",
+      reminderEnabled: req.body?.reminderEnabled !== false,
+      updatedAt: nowIso(),
+    };
+    if (existingIndex >= 0) state.calendarParticipations[existingIndex] = participation;
+    else state.calendarParticipations.push(participation);
+    recordHarnessInteraction("calendar.participation.updated", participation, "calendar");
+    return res.json({ ok: true, participation });
+  }
   if (pathName === "/api/calendar/events") return res.json([]);
   if (pathName === "/api/calendar/tickets/mine") return res.json([]);
   if (pathName === "/api/buyback-windows/active") return res.json({ window: null, leaderboard: [], auctions: [] });
@@ -3540,6 +3684,50 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/messages/dms" && req.method === "POST") {
     return res.status(201).json({ id: 101, existed: false });
+  }
+  const dmReportMatch = pathName.match(
+    /^\/api\/messages\/dms\/(\d+)\/messages\/(\d+)\/report$/
+  );
+  if (dmReportMatch && req.method === "POST") {
+    const messageId = Number(dmReportMatch[2]);
+    if (state.dmMessageReports.some((report) => report.messageId === messageId)) {
+      return res.status(409).json({ error: "You already reported this message." });
+    }
+    const report = {
+      id: state.dmNextMessageReportId++,
+      messageId,
+      reporterUserId: currentAuthUser()?.id ?? 1,
+      conversationId: Number(dmReportMatch[1]),
+      senderUserId: 3,
+      sender: { username: "wim-away", displayName: "WIM Away" },
+      reporter: {
+        username: currentAuthUser()?.username ?? "wtf-admin",
+        displayName: currentAuthUser()?.displayName ?? "WTF Admin",
+      },
+      messageContent: "Queued WIM ping from the harness.",
+      messageCreatedAt: nowIso(),
+      reason: String(req.body?.reason || "Safety review requested."),
+      status: "open",
+      reviewNote: null,
+      createdAt: nowIso(),
+    };
+    state.dmMessageReports.push(report);
+    recordHarnessInteraction("dm.message.reported", { reportId: report.id, messageId }, "messages");
+    return res.status(201).json({ ok: true, report });
+  }
+  if (pathName === "/api/messages/dm-reports" && req.method === "GET") {
+    const status = url.searchParams.get("status") || "open";
+    return res.json(state.dmMessageReports.filter((report) => report.status === status));
+  }
+  const dmReportReviewMatch = pathName.match(/^\/api\/messages\/dm-reports\/(\d+)\/review$/);
+  if (dmReportReviewMatch && req.method === "POST") {
+    const report = state.dmMessageReports.find((candidate) => candidate.id === Number(dmReportReviewMatch[1]));
+    if (!report) return res.status(404).json({ error: "Message report not found." });
+    report.status = req.body?.status === "dismissed" ? "dismissed" : "reviewed";
+    report.reviewNote = String(req.body?.note || "Reviewed in harness.");
+    report.reviewedAt = nowIso();
+    recordHarnessInteraction("dm.message.report_reviewed", { reportId: report.id, status: report.status }, "messages");
+    return res.json({ ok: true, report });
   }
   if (pathName === "/api/messages/dms") {
     return res.json([
@@ -3973,9 +4161,9 @@ function apiMock(req, res) {
   if (pathName === "/api/casino/status") {
     return res.json({
       userId: 1,
-      appPass: { sku: "casino-app-pass", owned: false, quantity: 0, marketCategory: "casino" },
-      membership: { active: false, expiresAt: null, walletAddress: null, purchaseRef: null },
-      canEnter: false,
+      appPass: { sku: "casino-app-pass", owned: state.casinoCanEnter, quantity: state.casinoCanEnter ? 1 : 0, marketCategory: "casino" },
+      membership: { active: state.casinoCanEnter, expiresAt: state.casinoCanEnter ? nowIso() : null, walletAddress: null, purchaseRef: null },
+      canEnter: state.casinoCanEnter,
       wageringEnabled: false,
       config: {
         network: "inventory-harness",
@@ -4059,8 +4247,90 @@ function apiMock(req, res) {
           },
         },
       ],
-      canEnter: false,
+      canEnter: state.casinoCanEnter,
       wageringEnabled: false,
+    });
+  }
+  if (pathName === "/api/casino/practice-games" && req.method === "GET") {
+    const user = currentAuthUser();
+    const canModerate = state.userRole === "admin";
+    return res.json({
+      games: state.casinoPracticeGames.filter((game) => game.status === "approved" && game.active),
+      mine: state.casinoPracticeGames.filter((game) => game.creatorUserId === user?.id),
+      moderationQueue: canModerate
+        ? state.casinoPracticeGames.filter((game) => game.status === "submitted")
+        : [],
+      canModerate,
+      practiceOnly: true,
+      wageringEnabled: false,
+      rewardsEnabled: false,
+    });
+  }
+  if (pathName === "/api/casino/practice-games" && req.method === "POST") {
+    const user = currentAuthUser();
+    const game = {
+      id: state.casinoNextPracticeGameId++,
+      slug: `practice-${state.casinoNextPracticeGameId}-${String(req.body?.title || "table").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      creatorUserId: user?.id ?? 1,
+      creatorName: user?.displayName || user?.username || "Creator",
+      title: String(req.body?.title || "Practice Table"),
+      summary: String(req.body?.summary || ""),
+      instructions: String(req.body?.instructions || ""),
+      outcomes: Array.isArray(req.body?.outcomes) ? req.body.outcomes : [],
+      status: "submitted",
+      active: false,
+      moderationNote: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      playCount: 0,
+      practiceOnly: true,
+      wageringEnabled: false,
+      rewardsEnabled: false,
+      currency: null,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    state.casinoPracticeGames.unshift(game);
+    state.interactionLog.push({ eventType: "casino.practice_game.submitted" });
+    return res.status(201).json({ ok: true, game });
+  }
+  const practiceReviewMatch = pathName.match(/^\/api\/casino\/practice-games\/(\d+)\/review$/);
+  if (practiceReviewMatch && req.method === "POST") {
+    if (state.userRole !== "admin") return res.status(403).json({ error: "Operator required" });
+    const game = state.casinoPracticeGames.find((entry) => entry.id === Number(practiceReviewMatch[1]));
+    if (!game) return res.status(404).json({ error: "Practice table not found" });
+    game.status = req.body?.action === "approve" ? "approved" : "rejected";
+    game.active = game.status === "approved";
+    game.moderationNote = String(req.body?.note || "");
+    game.reviewedBy = currentAuthUser()?.id ?? 1;
+    game.reviewedAt = nowIso();
+    game.updatedAt = nowIso();
+    state.interactionLog.push({ eventType: "casino.practice_game.reviewed" });
+    return res.json({ ok: true, game });
+  }
+  const practicePlayMatch = pathName.match(/^\/api\/casino\/practice-games\/([^/]+)\/play$/);
+  if (practicePlayMatch && req.method === "POST") {
+    if (!state.casinoCanEnter) return res.status(402).json({ error: "Casino entry required" });
+    const game = state.casinoPracticeGames.find(
+      (entry) => entry.slug === practicePlayMatch[1] && entry.status === "approved" && entry.active
+    );
+    if (!game) return res.status(404).json({ error: "Practice table not found" });
+    game.playCount += 1;
+    game.updatedAt = nowIso();
+    const playId = state.casinoNextPracticePlayId++;
+    state.interactionLog.push({ eventType: "casino.practice_game.played" });
+    return res.status(201).json({
+      ok: true,
+      game,
+      result: {
+        playId,
+        outcomeIndex: 0,
+        outcomeLabel: game.outcomes[0],
+        practiceOnly: true,
+        wager: null,
+        reward: null,
+        createdAt: nowIso(),
+      },
     });
   }
   if (pathName === "/api/casino/wtf-button/state") {
@@ -4907,9 +5177,41 @@ function apiMock(req, res) {
       sideQuests: 1,
       rewardLedger: 0,
       storage: { usedBytes: 0 },
+      commissionQueue: [
+        { id: "store", label: "Store", pending: 2, owner: "WTFIAM Market", destination: { kind: "admin-section", value: "in-app-market" } },
+        { id: "arcade", label: "Arcade", pending: 1, owner: "Arcade moderation", destination: { kind: "admin-section", value: "arcade" } },
+        { id: "casino", label: "Casino", pending: 3, owner: "Casino practice tables", destination: { kind: "route", value: "/casino" } },
+        { id: "calendar", label: "Calendar", pending: 1, owner: "Control Board tickets", destination: { kind: "route", value: "/control-board" } },
+      ],
     });
   }
   if (pathName === "/api/admin/in-app-market/items" && req.method === "GET") {
+    return res.json(harnessMarketAdminPayload());
+  }
+  const marketItemMatch = pathName.match(/^\/api\/admin\/in-app-market\/items\/(\d+)$/);
+  if (marketItemMatch && req.method === "PATCH") {
+    const item = marketState.items.find((candidate) => candidate.id === Number(marketItemMatch[1]));
+    if (!item) return res.status(404).json({ error: "In-app market item not found" });
+    if (req.body?.reviewStatus) {
+      if (item.metadata?.source !== "trusted_creator") {
+        return res.status(400).json({ error: "Item is not a creator submission" });
+      }
+      item.active = req.body.reviewStatus === "approved";
+      item.metadata = {
+        ...item.metadata,
+        submissionStatus: String(req.body.reviewStatus),
+        reviewedAt: nowIso(),
+        reviewedByUserId: currentAuthUser()?.id ?? 1,
+        reviewedByUsername: currentAuthUser()?.username ?? "wtf-admin",
+        reviewNote: String(req.body?.reviewNote || ""),
+      };
+      recordHarnessInteraction(
+        "wtfiam.creator_item.reviewed",
+        { itemId: item.id, status: req.body.reviewStatus },
+        "admin/in-app-market"
+      );
+    }
+    item.updatedAt = nowIso();
     return res.json(harnessMarketAdminPayload());
   }
   if (pathName === "/api/admin/in-app-market/reprice" && req.method === "POST") {

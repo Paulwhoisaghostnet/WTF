@@ -199,6 +199,7 @@ export function InAppMarketAdminTab({
   const [expInputs, setExpInputs] = useState<Record<number, string>>({});
   const [tierInputs, setTierInputs] = useState<Record<number, string>>({});
   const [scoreInputs, setScoreInputs] = useState<Record<number, string>>({});
+  const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
   const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [saleForm, setSaleForm] = useState(defaultSaleForm);
 
@@ -391,6 +392,16 @@ export function InAppMarketAdminTab({
                     <Muted>{item.sku}</Muted>
                     <br />
                     <Muted>{item.category} / {item.kind ?? "item"}</Muted>
+                    {item.creatorSubmission ? (
+                      <>
+                        <br />
+                        <Chip $tone={item.creatorSubmission.status === "submitted" ? "sale" : undefined}>
+                          creator {item.creatorSubmission.status}
+                        </Chip>
+                        <br />
+                        <Muted>by {item.creatorSubmission.creatorUsername}</Muted>
+                      </>
+                    ) : null}
                   </td>
                   <td>
                     <label>Tier<select aria-label={`Rarity tier for ${item.name}`} value={tierInputs[item.id] ?? item.rarityTier} onChange={(event) => setTierInputs((prev) => ({ ...prev, [item.id]: event.target.value }))}>{tierOptions()}</select></label>
@@ -423,6 +434,40 @@ export function InAppMarketAdminTab({
                     )}
                   </td>
                   <ActionCell>
+                    {item.creatorSubmission?.status === "submitted" ? (
+                      <>
+                        <label>
+                          Review note
+                          <input
+                            aria-label={`Review note for ${item.name}`}
+                            value={reviewNotes[item.id] ?? ""}
+                            onChange={(event) => setReviewNotes((notes) => ({ ...notes, [item.id]: event.target.value }))}
+                          />
+                        </label>
+                        <UiButton
+                          compact
+                          disabled={updateInAppMarketItemMutation.isPending}
+                          onClick={() => updateInAppMarketItemMutation.mutate({
+                            id: item.id,
+                            reviewStatus: "approved",
+                            reviewNote: reviewNotes[item.id] ?? "",
+                          })}
+                        >
+                          Approve creator item
+                        </UiButton>
+                        <UiButton
+                          compact
+                          disabled={updateInAppMarketItemMutation.isPending}
+                          onClick={() => updateInAppMarketItemMutation.mutate({
+                            id: item.id,
+                            reviewStatus: "rejected",
+                            reviewNote: reviewNotes[item.id] ?? "",
+                          })}
+                        >
+                          Reject creator item
+                        </UiButton>
+                      </>
+                    ) : null}
                     <UiButton compact disabled={updateInAppMarketItemMutation.isPending} onClick={() => saveItem(item)}>
                       Save item pricing
                     </UiButton>

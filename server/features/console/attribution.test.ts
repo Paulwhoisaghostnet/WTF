@@ -30,3 +30,17 @@ test("console attribution preserves creator source links without inventing a lic
     }
   );
 });
+
+test("console attribution identifies Game Studio publications in plain language", () => {
+  assert.deepEqual(
+    getConsoleSourceAttribution({
+      storageMode: "console_bundle",
+      creationSource: "game_studio_project",
+    }),
+    {
+      sourceUrl: null,
+      sourceLabel: "Built with WTF Game Studio",
+      licenseName: null,
+    }
+  );
+});

@@ -324,7 +324,7 @@ test.describe("live E2E puppet orchestration", () => {
       await page.goto("/", { waitUntil: "domcontentloaded" });
       const contactAdmin = page.locator('[data-desktop-icon-key="admin-inbox"]');
       await expect(contactAdmin).toBeVisible({ timeout: 15_000 });
-      await contactAdmin.click();
+      await page.goto("/admin-inbox", { waitUntil: "domcontentloaded" });
       await expect(page.getByRole("heading", { name: "Contact an admin" })).toBeVisible();
 
       await page.goto("/admin", { waitUntil: "domcontentloaded" });
@@ -507,6 +507,422 @@ test.describe("live E2E puppet orchestration", () => {
       expect([200, 409], `Raceway bet HTTP ${bet.status()}`).toContain(bet.status());
     } finally {
       await request.dispose();
+    }
+  });
+
+  test("community Casino practice tables submit, moderate, publish, and play without value", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const creator = actorByRole(puppetCredentials, "trusted_creator");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const player = actorByRole(puppetCredentials, "contestant");
+    const creatorRequest = await actorRequestContext(playwright, baseURL, creator);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const playerRequest = await actorRequestContext(playwright, baseURL, player);
+    const testRunId = `live-puppet-casino-practice-${Date.now().toString(36)}`;
+
+    try {
+      const creatorHeaders = await csrfHeaders(creatorRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const playerHeaders = await csrfHeaders(playerRequest);
+
+      const submitted = await expectOkJson(
+        await creatorRequest.post("/api/casino/practice-games", {
+          headers: creatorHeaders,
+          data: {
+            title: `Practice Stars ${testRunId}`,
+            summary: "A creator-authored equal-chance practice table.",
+            instructions: "Start a practice round and read the stored result.",
+            outcomes: ["Sun", "Moon", "Star"],
+          },
+        }),
+        "submit community Casino practice table"
+      );
+      expect(submitted.game.status).toBe("submitted");
+      expect(submitted.game.active).toBe(false);
+      expect(submitted.game.practiceOnly).toBe(true);
+      expect(submitted.game.wageringEnabled).toBe(false);
+      expect(submitted.game.rewardsEnabled).toBe(false);
+      expect(submitted.game.currency).toBeNull();
+
+      const creatorView = await expectOkJson(
+        await creatorRequest.get("/api/casino/practice-games"),
+        "creator practice table status"
+      );
+      expect(
+        creatorView.mine.some((game) => game.id === submitted.game.id),
+        "creator can see submitted status"
+      ).toBe(true);
+      expect(
+        creatorView.games.some((game) => game.id === submitted.game.id),
+        "unreviewed table remains hidden from practice floor"
+      ).toBe(false);
+
+      const unauthorizedReview = await creatorRequest.post(
+        `/api/casino/practice-games/${submitted.game.id}/review`,
+        {
+          headers: creatorHeaders,
+          data: { action: "approve", note: "Creator cannot self-approve." },
+        }
+      );
+      expect(unauthorizedReview.status()).toBe(403);
+
+      const adminQueue = await expectOkJson(
+        await adminRequest.get("/api/casino/practice-games"),
+        "Casino operator practice queue"
+      );
+      expect(adminQueue.canModerate).toBe(true);
+      expect(
+        adminQueue.moderationQueue.some((game) => game.id === submitted.game.id),
+        "submitted table reaches operator queue"
+      ).toBe(true);
+
+      const approved = await expectOkJson(
+        await adminRequest.post(`/api/casino/practice-games/${submitted.game.id}/review`, {
+          headers: adminHeaders,
+          data: { action: "approve", note: "Approved for no-wager community practice." },
+        }),
+        "approve community Casino practice table"
+      );
+      expect(approved.game.status).toBe("approved");
+      expect(approved.game.active).toBe(true);
+      expect(approved.game.moderationNote).toBe("Approved for no-wager community practice.");
+
+      const playerFloor = await expectOkJson(
+        await playerRequest.get("/api/casino/practice-games"),
+        "member community Casino practice floor"
+      );
+      const published = playerFloor.games.find((game) => game.id === submitted.game.id);
+      expect(published, "approved table is discoverable").toBeTruthy();
+      expect(published.creatorName).toBe(creator.displayName || creator.username);
+      expect(published.practiceOnly).toBe(true);
+
+      const played = await expectOkJson(
+        await playerRequest.post(`/api/casino/practice-games/${published.slug}/play`, {
+          headers: playerHeaders,
+          data: {},
+        }),
+        "play community Casino practice table"
+      );
+      expect(["Sun", "Moon", "Star"]).toContain(played.result.outcomeLabel);
+      expect(played.result.practiceOnly).toBe(true);
+      expect(played.result.wager).toBeNull();
+      expect(played.result.reward).toBeNull();
+      expect(played.game.playCount).toBeGreaterThan(published.playCount);
+
+      const events = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=casino.practice_game.played&limit=20"
+        ),
+        "Casino practice play audit events"
+      );
+      expect(
+        events.events.some(
+          (event) =>
+            String(event.rawRefId) === String(played.result.playId) &&
+            event.metadata?.practiceOnly === true &&
+            event.metadata?.wager === null &&
+            event.metadata?.reward === null
+        ),
+        "practice play event records no-value boundary"
+      ).toBe(true);
+    } finally {
+      await creatorRequest.dispose();
+      await adminRequest.dispose();
+      await playerRequest.dispose();
+    }
+  });
+
+  test("Calendar participation persists Going, chosen reminders, audit, and clear", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const admin = actorByRole(puppetCredentials, "admin");
+    const member = actorByRole(puppetCredentials, "contestant");
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const memberRequest = await actorRequestContext(playwright, baseURL, member);
+    const runId = `live-puppet-calendar-${Date.now().toString(36)}`;
+    const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    let eventId = null;
+
+    try {
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const memberHeaders = await csrfHeaders(memberRequest);
+      const created = await expectOkJson(
+        await adminRequest.post("/api/calendar/events", {
+          headers: adminHeaders,
+          data: {
+            title: `Calendar participation ${runId}`,
+            description: "A disposable event for account-backed participation proof.",
+            startsAt: startsAt.toISOString(),
+            endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
+            allDay: false,
+            kind: "custom",
+            visibility: "public",
+            status: "published",
+            links: [{ label: "Participation room", url: "https://example.com/calendar-live-proof" }],
+          },
+        }),
+        "create Calendar participation fixture"
+      );
+      eventId = created.id;
+      const eventKey = `wtf:${created.id}:${new Date(created.startsAt).toISOString()}`;
+
+      const saved = await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "going",
+            reminderEnabled: true,
+          },
+        }),
+        "save Calendar Going plan"
+      );
+      expect(saved.participation.status).toBe("going");
+      expect(saved.participation.reminderEnabled).toBe(true);
+      expect(saved.participation.title).toBe(created.title);
+
+      const persisted = await expectOkJson(
+        await memberRequest.get("/api/calendar/participations/mine"),
+        "reload Calendar plans"
+      );
+      expect(persisted.some((plan) => plan.id === saved.participation.id)).toBe(true);
+
+      const reminderPlans = await expectOkJson(
+        await memberRequest.get("/api/calendar/participations/mine?reminders=1"),
+        "load chosen Calendar reminders"
+      );
+      expect(reminderPlans.map((plan) => plan.id)).toContain(saved.participation.id);
+
+      const reminderOff = await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "going",
+            reminderEnabled: false,
+          },
+        }),
+        "turn Calendar reminder off"
+      );
+      expect(reminderOff.participation.reminderEnabled).toBe(false);
+      const remindersAfterOff = await memberRequest
+        .get("/api/calendar/participations/mine?reminders=1")
+        .then((response) => response.json());
+      expect(remindersAfterOff.some((plan) => plan.eventKey === eventKey)).toBe(false);
+
+      await expectOkJson(
+        await memberRequest.put("/api/calendar/participations", {
+          headers: memberHeaders,
+          data: {
+            eventKey,
+            sourceProvider: "wtf",
+            sourceEventId: created.id,
+            title: created.title,
+            startsAt: new Date(created.startsAt).toISOString(),
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
+            allDay: created.allDay,
+            status: "none",
+            reminderEnabled: false,
+          },
+        }),
+        "clear Calendar plan"
+      );
+      const plansAfterClear = await memberRequest
+        .get("/api/calendar/participations/mine")
+        .then((response) => response.json());
+      expect(plansAfterClear.some((plan) => plan.eventKey === eventKey)).toBe(false);
+
+      const updatedEvents = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.updated&limit=20"
+        ),
+        "Calendar participation update audit events"
+      );
+      expect(
+        updatedEvents.events.some(
+          (event) =>
+            String(event.rawRefId) === String(saved.participation.id) &&
+            event.metadata?.eventKey === eventKey &&
+            event.metadata?.status === "going"
+        )
+      ).toBe(true);
+
+      const clearedEvents = await expectOkJson(
+        await adminRequest.get(
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.cleared&limit=20"
+        ),
+        "Calendar participation clear audit events"
+      );
+      expect(clearedEvents.events.some((event) => event.rawRefId === eventKey)).toBe(true);
+    } finally {
+      if (eventId) {
+        const adminHeaders = await csrfHeaders(adminRequest).catch(() => ({}));
+        await adminRequest.patch(`/api/calendar/events/${eventId}`, {
+          headers: adminHeaders,
+          data: { status: "cancelled" },
+        }).catch(() => undefined);
+      }
+      await adminRequest.dispose();
+      await memberRequest.dispose();
+    }
+  });
+
+  test("recipient reports a direct message and an operator records a private safety disposition", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestants = puppetCredentials.actors.filter((actor) => actor.role === "contestant");
+    expect(contestants.length, "two account-backed contestants are available").toBeGreaterThanOrEqual(2);
+    const sender = contestants[0];
+    const recipient = contestants[1];
+    const outsider = actorByRole(puppetCredentials, "witness");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const senderRequest = await actorRequestContext(playwright, baseURL, sender);
+    const recipientRequest = await actorRequestContext(playwright, baseURL, recipient);
+    const outsiderRequest = await actorRequestContext(playwright, baseURL, outsider);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const runId = `live-puppet-dm-safety-${Date.now().toString(36)}`;
+    const messageContent = `Private safety test message ${runId}`;
+    const reportReason = `Recipient safety concern for ${runId}`;
+    const reviewNote = `Reviewed account-backed conversation context for ${runId}.`;
+
+    try {
+      const senderHeaders = await csrfHeaders(senderRequest);
+      const recipientHeaders = await csrfHeaders(recipientRequest);
+      const outsiderHeaders = await csrfHeaders(outsiderRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const recipientUserId = sessionFor(recipient).user.id;
+
+      const conversation = await expectOkJson(
+        await senderRequest.post("/api/messages/dms", {
+          headers: senderHeaders,
+          data: { targetUserId: recipientUserId },
+        }),
+        "open direct-message safety conversation"
+      );
+      const sent = await expectOkJson(
+        await senderRequest.post(`/api/messages/dms/${conversation.id}/messages`, {
+          headers: senderHeaders,
+          data: { content: messageContent },
+        }),
+        "send direct-message safety fixture"
+      );
+      expect(sent.senderId).toBe(sessionFor(sender).user.id);
+
+      const beforeRead = await expectOkJson(
+        await recipientRequest.get("/api/messages/dms"),
+        "recipient unread direct messages"
+      );
+      expect(
+        beforeRead.find((item) => item.id === conversation.id)?.unreadCount,
+        "new received message is visibly unread"
+      ).toBeGreaterThan(0);
+
+      const receivedMessages = await expectOkJson(
+        await recipientRequest.get(`/api/messages/dms/${conversation.id}/messages?limit=100`),
+        "recipient reads direct-message conversation"
+      );
+      expect(receivedMessages.find((message) => message.id === sent.id)?.content).toBe(messageContent);
+      const afterRead = await expectOkJson(
+        await recipientRequest.get("/api/messages/dms"),
+        "recipient read-state persistence"
+      );
+      expect(afterRead.find((item) => item.id === conversation.id)?.unreadCount).toBe(0);
+
+      const reported = await expectOkJson(
+        await recipientRequest.post(
+          `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+          {
+            headers: recipientHeaders,
+            data: { reason: reportReason },
+          }
+        ),
+        "recipient privately reports received message"
+      );
+      expect(reported.report.status).toBe("open");
+      expect(reported.report.reason).toBe(reportReason);
+
+      const duplicateReport = await recipientRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: recipientHeaders, data: { reason: `${reportReason} duplicate` } }
+      );
+      expect(duplicateReport.status()).toBe(409);
+
+      const ownReport = await senderRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: senderHeaders, data: { reason: `${reportReason} own message` } }
+      );
+      expect(ownReport.status()).toBe(400);
+
+      const outsiderReport = await outsiderRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: outsiderHeaders, data: { reason: `${reportReason} outsider` } }
+      );
+      expect(outsiderReport.status()).toBe(403);
+
+      const queue = await expectOkJson(
+        await adminRequest.get("/api/messages/dm-reports?status=open"),
+        "operator direct-message safety queue"
+      );
+      const queued = queue.find((report) => report.id === reported.report.id);
+      expect(queued, "reported message reaches the operator queue").toBeTruthy();
+      expect(queued.messageContent).toBe(messageContent);
+      expect(queued.reason).toBe(reportReason);
+      expect(queued.senderUserId).toBe(sessionFor(sender).user.id);
+      expect(queued.reporterUserId).toBe(recipientUserId);
+
+      const reviewed = await expectOkJson(
+        await adminRequest.post(`/api/messages/dm-reports/${reported.report.id}/review`, {
+          headers: adminHeaders,
+          data: { status: "reviewed", note: reviewNote },
+        }),
+        "operator reviews direct-message safety report"
+      );
+      expect(reviewed.report.status).toBe("reviewed");
+      expect(reviewed.report.reviewNote).toBe(reviewNote);
+      expect(reviewed.report.reviewerUserId).toBe(sessionFor(admin).user.id);
+
+      const queueAfterReview = await expectOkJson(
+        await adminRequest.get("/api/messages/dm-reports?status=open"),
+        "operator queue after review"
+      );
+      expect(queueAfterReview.some((report) => report.id === reported.report.id)).toBe(false);
+
+      for (const eventType of ["dm.message.reported", "dm.message.report_reviewed"]) {
+        const eventPayload = await expectOkJson(
+          await adminRequest.get(
+            `/api/admin/challenge-automation/events?eventType=${eventType}&limit=20`
+          ),
+          `${eventType} private audit events`
+        );
+        const auditEvent = eventPayload.events.find(
+          (event) => String(event.rawRefId) === String(reported.report.id)
+        );
+        expect(auditEvent, `${eventType} audit event exists`).toBeTruthy();
+        expect(auditEvent.metadata?.contentIncluded).toBe(false);
+        expect(JSON.stringify(auditEvent.metadata)).not.toContain(messageContent);
+        expect(JSON.stringify(auditEvent.metadata)).not.toContain(reportReason);
+      }
+    } finally {
+      await senderRequest.dispose();
+      await recipientRequest.dispose();
+      await outsiderRequest.dispose();
+      await adminRequest.dispose();
     }
   });
 
@@ -1457,7 +1873,7 @@ test.describe("live E2E puppet orchestration", () => {
         "Club Dues template compile"
       );
       expect(compile.ok).toBe(true);
-      expect(compile.templateVersion).toBe("wtf-club-dues-v1");
+      expect(compile.templateVersion).toBe("wtf-club-dues-v2");
       expect(compile.sourcePath).toContain("WtfClubDues.py");
       expect(compile.code, "compiled Michelson code").toContain("parameter");
       expect(compile.initialStorage, "compiled initial storage").toBeTruthy();
@@ -1504,13 +1920,14 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
-  test("media upload, project bundles, and Game Studio builds preserve creator work", async ({
+  test("media upload, Game Studio builds, and Arcade publication preserve creator work", async ({
     playwright,
     baseURL,
   }) => {
-    const creator =
-      puppetCredentials.actors.find((actor) => actor.role === "trusted_creator") ||
-      actorByRole(puppetCredentials, "contestant");
+    const creator = puppetCredentials.actors.find(
+      (actor) => actor.role === "trusted_creator"
+    );
+    expect(creator, "trusted creator puppet is seeded").toBeTruthy();
     const request = await actorRequestContext(playwright, baseURL, creator);
     const testRunId = `live-puppet-media-${Date.now().toString(36)}`;
     let mediaId = null;
@@ -1629,6 +2046,48 @@ test.describe("live E2E puppet orchestration", () => {
         builds.builds.some((entry) => entry.id === build.build.id),
         "Game Studio build persists in build history"
       ).toBe(true);
+
+      const submitted = await expectOkJson(
+        await request.post(`/api/game-studio/projects/${project.project.id}/submit`, {
+          headers,
+          data: {
+            title: `Live Puppet Game ${testRunId}`,
+            description: "Creator-built Arcade publication proof.",
+            category: "arcade",
+          },
+        }),
+        "submit Game Studio project to Arcade"
+      );
+      expect(submitted.game?.status).toBe("active");
+      expect(submitted.project?.status).toBe("published");
+      expect(submitted.game?.builderName).toBe(creator.displayName || creator.username);
+      expect(submitted.game?.sourceLabel).toBe("Built with WTF Game Studio");
+      expect(submitted.game?.slug, "published Arcade slug").toBeTruthy();
+
+      const arcadeCatalog = await expectOkJson(
+        await request.get("/api/arcade/games"),
+        "public Arcade catalog"
+      );
+      const publishedGame = arcadeCatalog.all?.find(
+        (game) => game.slug === submitted.game.slug
+      );
+      expect(publishedGame, "creator game is publicly discoverable").toBeTruthy();
+      expect(publishedGame.builderName).toBe(creator.displayName || creator.username);
+      expect(publishedGame.sourceLabel).toBe("Built with WTF Game Studio");
+
+      const arcadeDetail = await expectOkJson(
+        await request.get(`/api/arcade/games/${submitted.game.slug}`),
+        "published Arcade game detail"
+      );
+      expect(arcadeDetail.game?.builderName).toBe(creator.displayName || creator.username);
+      expect(arcadeDetail.game?.sourceLabel).toBe("Built with WTF Game Studio");
+
+      const arcadeStats = await expectOkJson(
+        await request.get("/api/arcade/stats"),
+        "Arcade creator statistics"
+      );
+      expect(arcadeStats.creatorGames, "Arcade creator game count").toBeGreaterThan(0);
+      expect(arcadeStats.gameStudioGames, "Game Studio Arcade game count").toBeGreaterThan(0);
     } finally {
       if (mediaId) {
         const headers = await csrfHeaders(request).catch(() => null);

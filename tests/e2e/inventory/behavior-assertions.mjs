@@ -56,6 +56,32 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
   },
   {
+    id: "auth.classic-first-run-task-wayfinder",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "client/src/features/onboarding/classic-task-wayfinder.test.ts; client/src/components/layout/start-menu-app-gates.test.ts; tests/playwright/inventory/auth-session.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
+    userVisibleAssertion:
+      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices, keep their icon/label/description text contained at desktop and mobile widths, and route each choice to its commissioned application.",
+    durableSideEffectAssertion:
+      "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
+  },
+  {
+    id: "wtfiam.creator-store-moderation-purchase",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    ownerSurfaceIds: ["wtfiam"],
+    ownerSpec:
+      "server/features/in-app-market/creator-items-policy.test.ts; tests/playwright/inventory/wtfiam-creator-store.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/in-app-market/creator-items-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/wtfiam-creator-store.spec.mjs",
+    userVisibleAssertion:
+      "A trusted creator can submit an item from the Store, see its review status and operator note, and only after operator approval can a shopper find and purchase the attributed item.",
+    durableSideEffectAssertion:
+      "Creator attribution and submitted status are persisted on a hidden market row; operator review records approver, timestamp, status, and note while controlling visibility; the browser harness proves the approved item enters checkout and the EXP purchase grants owned inventory with normalized create, review, intent, and completion events.",
+  },
+  {
     id: "gamma.login-daily-return-strip",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],
@@ -301,6 +327,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused adapter tests prove backward recurrence restoration, TTC WordPress creator enrichment, email-shaped creator-name redaction, and canonical source URLs; browser coverage proves TTC creator and source provenance are visible from an activated event without changing calendar state.",
   },
   {
+    id: "calendar.account-participation-and-chosen-reminders",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["calendar"],
+    ownerSpec:
+      "tests/playwright/inventory/calendar-participation.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/calendar-participation.spec.mjs --project=chromium --reporter=list && WTF_E2E_ACTOR_FILTER=admin,contestant npx playwright test tests/playwright/live/puppet-orchestration.spec.mjs -g \"Calendar participation\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "A signed-in member can open a WTF or TTC event, choose Interested or Going, explicitly toggle its task-tray reminder, find the saved choice in My plans after reload, follow the event link, and clear the plan.",
+    durableSideEffectAssertion:
+      "One user/event participation row is upserted with an account-backed status and reminder preference; tray reminders load only reminder-enabled plans plus explicitly created personal entries; clear removes the row; normalized update and clear events retain the event reference and choice without creating attendance or reward claims.",
+  },
+  {
     id: "gamma.auth-return-continuity",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],
@@ -411,16 +450,40 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness derives WTF Domains and IPFS Pinning identity from the signed-in username, mutates the mocked wtfOS site claim state for cobwebsaints, verifies the pinning policy queue success against the same host, and asserts Macaroni's iframe enables hosted pin/publish access for the cobwebsaints_full_user role.",
   },
   {
-    id: "pixalerce.local-project-persistence",
+    id: "pixalerce.media-export-and-mint-manager",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],
     ownerSpec: "tests/playwright/inventory/pixalerce.spec.mjs",
     verificationCommand:
       "npx playwright test tests/playwright/inventory/pixalerce.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "PixAlerce opens from `/tools/pixalerce` inside the wtfOS creation-tool shell, creates a blank 3D pixel canvas, exposes the editor, and saves a named project without blocked sandbox-native dialogs.",
+      "PixAlerce opens from `/tools/pixalerce` inside the wtfOS creation-tool shell, creates and edits a blank 3D pixel canvas with every top-level tool, uses stamps and motion, opens and closes the FX library and inspector without overlap, previews full screen, exports PNG, GIF, MP4, WebM, and OBJKT ZIP artifacts, and exposes explicit wtfOS Media, device-download, and Media + Mint Manager destinations.",
     durableSideEffectAssertion:
-      "The focused browser proof saves a PixAlerce project through localForage/IndexedDB, reloads the wtfOS route, reopens My projects, and verifies the saved project name survives the reload while all PixAlerce assets remain under `/creation-tools/pixalerce/`.",
+      "One soft-failure browser journey validates the downloaded PNG pixels, GIF/MP4/WebM signatures, and self-contained OBJKT package; saves generated bytes through the owned wtfOS Media upload API; opens Mint Manager without signing; proves the saved upload exposes the same manager from My Photos and File Manager; exercises HEN metadata plus new Pasta contract/network destination choices; then saves through localForage/IndexedDB, reloads, and verifies the named project survives while all PixAlerce assets remain under `/creation-tools/pixalerce/`. The separate durable-receipt story clears browser-local workflow state and proves the same owned media recovers its server-backed Shadownet operation, signing wallet, contract, token, and TzKT link on another session.",
+  },
+  {
+    id: "media.mint-manager-durable-receipt",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["file-manager", "creation-tools"],
+    ownerSpec: "tests/playwright/inventory/mint-manager-durable-receipt.spec.mjs",
+    verificationCommand:
+      "npx playwright test tests/playwright/inventory/mint-manager-durable-receipt.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Opening Mint Manager from owned media automatically shows a previously verified receipt with the explicit Tezos network, operation, signing wallet, contract, token, indexer status, and safe explorer links; a delayed indexer asks the artist to check again without signing twice.",
+    durableSideEffectAssertion:
+      "The receipt is account-backed and media-owned rather than trusted from localStorage. The browser proof erases all local Mint Manager workflow keys, opens a fresh page session, and recovers the same Shadownet receipt from `/api/mint-manager/receipts/:mediaItemId`.",
+  },
+  {
+    id: "creation.outcome-led-runway",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools"],
+    ownerSpec: "tests/playwright/inventory/create-runway.spec.mjs",
+    verificationCommand:
+      "npx playwright test tests/playwright/inventory/create-runway.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Classic Create opens `/create` with image, animation, 3D, and game outcomes first, followed by continue, preserve/export, general mint/publish, and challenge-minting choices. All sixteen specialist tools state what they make and at least one real export destination before launch.",
+    durableSideEffectAssertion:
+      "The runway is generated from the canonical typed creation-tool registry, and its browser story opens both an image tool and an on-chain publisher through their canonical routes without duplicating or hiding any registered tool.",
   },
   {
     id: "broot.media-open-import",
@@ -473,9 +536,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs",
     verificationCommand: "npm run test:e2e:macaroni:shadownet",
     userVisibleAssertion:
-      "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
+      "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider but does see a greyed, disabled wtfOS publish control whose mouse-hover and keyboard-focus tooltip explains the Trusted Market Creator requirement and directs them to the Contact Admin app; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
     durableSideEffectAssertion:
-      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves the hosted publisher is enabled without a permission tooltip for a trusted creator and remains genuinely disabled with hover/focus recovery guidance for a regular account, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
     id: "macaroni.wtfos-package-source",
@@ -737,6 +800,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The harness exercises entry, quote, join, and bet-intent endpoints while preserving fail-closed response contracts.",
   },
   {
+    id: "casino.community-practice-create-moderate-play",
+    domain: "WTF Casino, Membership, and Wagered Games",
+    ownerSurfaceIds: ["casino"],
+    ownerSpec:
+      "server/features/casino/practice-games.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      'npx tsx --test server/features/casino/practice-games.test.ts && WTF_E2E_ACTOR_FILTER=cookiemonster,thecount,bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "community Casino practice tables"',
+    userVisibleAssertion:
+      "A creator can define a clearly labeled no-wager practice table, see its private review status, and after operator approval members can discover the attributed table and play a stored equal-chance result.",
+    durableSideEffectAssertion:
+      "The real-database actor harness proves hidden submitted state, blocked creator self-approval, operator attribution and note, approved public state, durable play count/result, normalized audit events, and null wager/reward fields.",
+  },
+  {
     id: "arcade-console.sessions-and-scores",
     domain: "WTF Arcade, WTF Console, and Game Studio SDK",
     ownerSurfaceIds: ["arcade", "console", "game-studio"],
@@ -745,6 +821,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion: "Every Console and Arcade catalog game can start a playable session.",
     durableSideEffectAssertion:
       "The harness posts score submissions using run tickets for every catalog slug that exposes a score path.",
+  },
+  {
+    id: "arcade.creator-build-publish-discover",
+    domain: "WTF Arcade, WTF Console, and Game Studio SDK",
+    ownerSurfaceIds: ["arcade", "game-studio"],
+    ownerSpec:
+      "server/features/arcade/stats-policy.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      'npx tsx --test server/features/arcade/stats-policy.test.ts && WTF_E2E_ACTOR_FILTER=cookiemonster npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "Arcade publication preserve creator work"',
+    userVisibleAssertion:
+      "A trusted creator can create and build a Game Studio project, publish it into the public Arcade, and find the game there with their creator name and a clear Built with WTF Game Studio source label.",
+    durableSideEffectAssertion:
+      "The live harness proves the project and ZIP build persist, submission changes the project to published, the public Arcade catalog and detail return the attributed game, and persisted creator/Game Studio games contribute to Arcade statistics.",
   },
   {
     id: "desktop.settings-events-pet",
@@ -796,6 +885,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
       "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
+    id: "admin.commission-operator-queue-summary",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel", "control-board", "wtfiam", "arcade", "casino", "calendar"],
+    ownerSpec:
+      "server/features/admin/stats-routes.ts; tests/playwright/inventory/operator-commission-queue.spec.mjs; tests/playwright/live/operator-commission-queue.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/operator-commission-queue.spec.mjs && WTF_E2E_START_SERVER=1 npx playwright test --config=playwright.live.config.mjs tests/playwright/live/operator-commission-queue.spec.mjs",
+    userVisibleAssertion:
+      "A strict operator starts from one plain-language Store, Arcade, Casino, and Calendar queue summary, sees how many submissions are waiting, and opens the existing domain-owned review surface from each card.",
+    durableSideEffectAssertion:
+      "The summary counts the four canonical submitted/pending records from the real database without implementing review mutations; the live actor proof verifies exact counts for seeded rows, denies the same admin summary to an ordinary member, and the browser proof routes review to WTFIAM Market, Arcade moderation, Casino practice tables, and Control Board calendar tickets.",
   },
   {
     id: "admin.desktop-app-registration-resilience",
@@ -1303,6 +1405,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Inbox exposes explicit New message and New mail controls, selected mail reader Reply/Forward actions, and an inline WIM/Studio conversation reply composer so message cards and conversation tabs are not read-only dead ends.",
     durableSideEffectAssertion:
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
+  },
+  {
+    id: "messages.dm-report-review-safety-loop",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["messages"],
+    ownerSpec:
+      "tests/playwright/inventory/messages-safety.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs; tests/e2e/inventory/domain-workflows.mjs",
+    verificationCommand:
+      'npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/messages-safety.spec.mjs --project=chromium --reporter=list && npm run test:e2e:live:puppets -- -g "recipient reports a direct message"',
+    userVisibleAssertion:
+      "A recipient can report a specific received message from the conversation, understands that the report is private, receives clear confirmation, and an authorized operator can see the sender, message, recipient reason, and record a reviewed or dismissed disposition note.",
+    durableSideEffectAssertion:
+      "The server persists one report per reporter/message, rejects self-reports and non-participants, restricts the safety queue and dispositions to manage_users permission, stores reviewer identity and note, and emits report/review audit events without copying private message content into normalized metadata.",
   },
   {
     id: "admin-inbox.role-aware-feedback",

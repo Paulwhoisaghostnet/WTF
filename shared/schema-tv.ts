@@ -302,6 +302,16 @@ export const mediaCacheStatusEnum = pgEnum("tv_media_cache_status", [
   "needs_repair",
 ]);
 
+export const mediaMintNetworkEnum = pgEnum("media_mint_network", [
+  "mainnet",
+  "shadownet",
+]);
+
+export const mediaMintReceiptStatusEnum = pgEnum("media_mint_receipt_status", [
+  "pending",
+  "applied",
+]);
+
 export const userMediaLibrary = pgTable(
   "user_media_library",
   {
@@ -356,12 +366,59 @@ export const userMediaLibrary = pgTable(
   ]
 );
 
+export const mediaMintReceipts = pgTable(
+  "media_mint_receipts",
+  {
+    id: serial("id").primaryKey(),
+    mediaItemId: integer("media_item_id")
+      .references(() => userMediaLibrary.id, { onDelete: "cascade" })
+      .notNull(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    network: mediaMintNetworkEnum("network").notNull(),
+    opHash: varchar("op_hash", { length: 51 }).notNull(),
+    minterWallet: varchar("minter_wallet", { length: 36 }).notNull(),
+    contract: varchar("contract", { length: 36 }),
+    tokenId: text("token_id"),
+    amount: text("amount"),
+    artifactUri: text("artifact_uri"),
+    status: mediaMintReceiptStatusEnum("status").default("pending").notNull(),
+    verifiedAt: timestamp("verified_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("media_mint_receipts_media_op_unique").on(
+      table.mediaItemId,
+      table.opHash,
+    ),
+    index("media_mint_receipts_owner_media_idx").on(
+      table.ownerUserId,
+      table.mediaItemId,
+      table.updatedAt,
+    ),
+  ],
+);
+
 export const userMediaLibraryRelations = relations(userMediaLibrary, ({ one, many }) => ({
   owner: one(users, {
     fields: [userMediaLibrary.ownerUserId],
     references: [users.id],
   }),
   scheduleEntries: many(tvScheduleEntries),
+  mintReceipts: many(mediaMintReceipts),
+}));
+
+export const mediaMintReceiptsRelations = relations(mediaMintReceipts, ({ one }) => ({
+  mediaItem: one(userMediaLibrary, {
+    fields: [mediaMintReceipts.mediaItemId],
+    references: [userMediaLibrary.id],
+  }),
+  owner: one(users, {
+    fields: [mediaMintReceipts.ownerUserId],
+    references: [users.id],
+  }),
 }));
 
 // ─── TV Schedule Entries (recurring daily time-slot per channel) ────────

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { CREATION_TOOLS } from "./tool-registry";
 
 const frameSource = readFileSync("client/src/features/creation-tools/CreationToolFrame.tsx", "utf8");
 
@@ -34,4 +35,14 @@ test("creation tool presentation shell keeps shared static and external behavior
   assert.doesNotMatch(frameSource, /presentationRouteHref/);
   assert.match(frameSource, /target="_blank"/);
   assert.match(frameSource, /rel="noopener noreferrer"/);
+});
+
+test("the outcome-led catalog names all sixteen tools and an honest export before launch", () => {
+  assert.equal(CREATION_TOOLS.length, 16);
+  assert.equal(new Set(CREATION_TOOLS.map((tool) => tool.id)).size, 16);
+  for (const tool of CREATION_TOOLS) {
+    assert.ok(tool.makes.trim(), `${tool.id} must describe what it makes`);
+    assert.ok(tool.exportDestinations.length > 0, `${tool.id} must declare an export`);
+    assert.ok(tool.exportDestinations.every((destination) => destination.trim()), `${tool.id} has an empty export label`);
+  }
 });

@@ -1,11 +1,13 @@
 import {
   bigint,
+  boolean,
   index,
   integer,
   jsonb,
   numeric,
   pgTable,
   serial,
+  text,
   timestamp,
   uniqueIndex,
   varchar,
@@ -86,6 +88,56 @@ export const casinoWagerSessions = pgTable(
   ]
 );
 
+export const casinoPracticeGames = pgTable(
+  "casino_practice_games",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 200 }).unique().notNull(),
+    creatorUserId: integer("creator_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    creatorName: varchar("creator_name", { length: 200 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    summary: text("summary").notNull(),
+    instructions: text("instructions").notNull(),
+    outcomes: jsonb("outcomes").default(sql`'[]'::jsonb`).notNull(),
+    status: varchar("status", { length: 24 }).default("submitted").notNull(),
+    active: boolean("active").default(false).notNull(),
+    moderationNote: text("moderation_note"),
+    reviewedBy: integer("reviewed_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    playCount: integer("play_count").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("casino_practice_games_status_idx").on(table.status, table.updatedAt),
+    index("casino_practice_games_creator_idx").on(table.creatorUserId, table.updatedAt),
+  ]
+);
+
+export const casinoPracticePlays = pgTable(
+  "casino_practice_plays",
+  {
+    id: serial("id").primaryKey(),
+    gameId: integer("game_id")
+      .references(() => casinoPracticeGames.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    outcomeIndex: integer("outcome_index").notNull(),
+    outcomeLabel: text("outcome_label").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("casino_practice_plays_game_idx").on(table.gameId, table.createdAt),
+    index("casino_practice_plays_user_idx").on(table.userId, table.createdAt),
+  ]
+);
+
 export const casinoMembershipIntentsRelations = relations(
   casinoMembershipIntents,
   ({ one }) => ({
@@ -108,6 +160,35 @@ export const casinoWagerSessionsRelations = relations(
   ({ one }) => ({
     user: one(users, {
       fields: [casinoWagerSessions.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const casinoPracticeGamesRelations = relations(
+  casinoPracticeGames,
+  ({ one, many }) => ({
+    creator: one(users, {
+      fields: [casinoPracticeGames.creatorUserId],
+      references: [users.id],
+    }),
+    reviewer: one(users, {
+      fields: [casinoPracticeGames.reviewedBy],
+      references: [users.id],
+    }),
+    plays: many(casinoPracticePlays),
+  })
+);
+
+export const casinoPracticePlaysRelations = relations(
+  casinoPracticePlays,
+  ({ one }) => ({
+    game: one(casinoPracticeGames, {
+      fields: [casinoPracticePlays.gameId],
+      references: [casinoPracticeGames.id],
+    }),
+    user: one(users, {
+      fields: [casinoPracticePlays.userId],
       references: [users.id],
     }),
   })

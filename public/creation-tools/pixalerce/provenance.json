@@ -5,7 +5,7 @@
   "sourceRepository": "https://github.com/NikoAlerce/3dpixelstudio",
   "sourceCommit": "99e243a34a509477e203a6dd7a5a1d18ed83f9fa",
   "integrationDate": "2026-08-18",
-  "sourcePatchSha256": "39f01a17f9689dc7cf24ba09cd78cb905cba4865648870e74557017485a88225",
+  "sourcePatchSha256": "18ef8b5abbf8ed0f496070f22c795b3ccfaaaf8fdee303f1b5e0e04a5f29ba6c",
   "packageLockSha256": "4264398a1562666611265e4a43588445a5e778d9c083bdd58c85b753ad1b1149",
   "buildCommand": "VITE_PIXALERCE_PWA=false PIXALERCE_BASE_PATH=/creation-tools/pixalerce/ npm run build",
   "distributionStatus": "alpha-test-only-pending-creator-license-and-complete-asset-provenance",
@@ -16,6 +16,19 @@
     "native browser modals replaced with sandbox-safe in-page dialogs",
     "unconfigured Google Drive UI and code removed from the embedded bundle",
     "remote default sprite dependency replaced with self-contained SVG data",
-    "unused vulnerable dependency removed and dependency audit resolved"
-  ]
+    "unused vulnerable dependency removed and dependency audit resolved",
+    "visible FX and inspector controls raised above overlapping editor chrome",
+    "generated OBJKT ZIP declares an inline favicon and makes no implicit icon request",
+    "exports can be delivered to authenticated wtfOS Media, downloaded to the device, or saved before opening the destination-aware wtfOS Mint Manager"
+  ],
+  "wtfOsIntegrationOverlay": [
+    "/creation-tools/pixalerce/wtfos-integration-fixes.css",
+    "/creation-tools/pixalerce/assets/ExportModal-DRp6uzBK.js"
+  ],
+  "exportIntegration": {
+    "protocol": "source-and-origin-verified same-origin postMessage bridge",
+    "parentUploadEndpoint": "/api/media/upload",
+    "exportModalAssetSha256": "1db921cfacdedbbeb24a5c00ca6b420f1778917821933fe436a44eb4220d04a6",
+    "entryAssetSha256": "834ef395dfe7adaa7a51e1bd35dc7d1f44d580fcad10a17ea35ec14e13a5b101"
+  }
 }

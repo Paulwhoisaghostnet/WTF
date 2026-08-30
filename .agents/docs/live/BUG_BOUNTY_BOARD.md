@@ -50,9 +50,22 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
+| WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
+| WTF-BB-629 | Verified | Codex commission fulfillment | 2026-08-29 | Media / durable mint receipt ownership and recovery | P1 | 13 | 6 | 4 | 5 | 0 | Mint receipts are now ownership-bound durable records verified from explicit-network TzKT evidence and recoverable from the same owned media across browser sessions |
+| WTF-BB-628 | Verified | Codex commission fulfillment | 2026-08-29 | Messaging / recipient reporting and operator review | P1 | 12 | 7 | 3 | 4 | 1 | Messages now supports private recipient reports, permission-gated operator review/disposition, privacy-safe audit events, and database-clock-consistent unread state |
+| WTF-BB-627 | Verified | Codex commission fulfillment | 2026-08-29 | Calendar / durable participation and reminders | P1 | 11 | 8 | 3 | 4 | 0 | Calendar supports browsing and event submissions but has no persistent RSVP/My plans loop, while tray reminders target every visible event instead of a user's chosen events |
+| WTF-BB-626 | Verified | Codex commission fulfillment | 2026-08-29 | Casino / community practice-game creation | P1 | 12 | 7 | 3 | 4 | 1 | Casino has staff-authored mocked tables but no user builder, submission status, moderation, public attribution, or durable practice-play path |
+| WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
+| WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
+| WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
+| WTF-BB-623 | Verified | Codex commission fulfillment | 2026-08-30 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The phased command now delegates to the maintained actor-backed live suite, and repository policy proves the target cannot drift back to missing specs |
 | WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
 | WTF-BB-621 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / default support launcher | P1 | 9 | 9 | 1 | 4 | 0 | The desktop shell drops the Contact Admin app gate from its projection, hiding the core feedback icon from every ordinary default desktop |
 | WTF-BB-619 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Local DB / admin app-gate schema parity | P1 | 10 | 10 | 2 | 4 | 0 | A missed desktop-app registration migration makes App Gates return 500 while the UI displays an endless loading hourglass |
+| WTF-BB-618 | Verified | Codex Macaroni publish-role tooltip pass | 2026-08-29 | Macaroni / hosted-publish access-gate UX | P1 | 9 | 9 | 1 | 4 | 0 | Non-trusted creators now see a disabled hosted-publish control with role and Contact Admin recovery guidance on hover and keyboard focus |
+| WTF-BB-616 | Verified | Codex PixAlerce export E2E pass | 2026-08-19 | PixAlerce / export readiness | P1 | 10 | 10 | 2 | 4 | 0 | Floating PixAlerce controls block visible close/inspector actions and exported OBJKT ZIPs make an undeclared favicon request |
+| WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 14 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 12 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-614 | Verified | Codex Payroll full-send | 2026-08-18 | Client wallet / release integration | P1 | 12 | 7 | 2 | 4 | 2 | Payroll must explicitly bind permissions and the active signer to mainnet, emit its registered audit handles, and use the canonical safe new-tab boundary |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 13 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
@@ -9846,7 +9859,7 @@ Priority labels:
 ### WTF-BB-469 - Ravioli's child-expiry guarantee is bypassable outside the Studio
 
 - Category: Pasta Protocol / cross-contract issuance invariant
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli on-chain LE guard
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
@@ -9866,7 +9879,7 @@ Priority labels:
 ### WTF-BB-470 - Ravioli rejects legitimate Gnocchi policy shapes and mixed allocation packs
 
 - Category: Pasta Protocol / allocation policy composition
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Evidence:
@@ -9883,8 +9896,9 @@ Priority labels:
 ### WTF-BB-471 - Exported Ravioli pages cannot discover the creator's public open kit
 
 - Category: Pasta Protocol / portable holder fulfillment
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
   - The generic site exporter writes contract, token id, title, description, and network but omits `openKit`.
@@ -9895,12 +9909,17 @@ Priority labels:
   - Publish a bounded versioned reveal document containing the exact v3 kit at the creator's one-time reveal boundary, store its URI in the pack, and let the portable page validate and load it through its configured IPFS gateway without wtfOS.
 - Verification idea:
   - Export a clean site with no localStorage, reveal the kit, reload through only contract storage plus pinned bytes, and open each recipe class; reject wrong schema, contract, token, oversized payload, and mismatched recipe count.
+- Resolution:
+  - Commit `8b096897` publishes a bounded versioned reveal document, binds its URI to router state, and makes the portable page validate and discover the kit from that on-chain URI without wtfOS or preseeded browser storage.
+- Verification evidence:
+  - On 2026-08-30 the focused real-browser five-mode Studio/holder fixture passed. It opened clean exported pages, discovered deterministic and authenticated blind kits from immutable state plus pinned bytes, exercised separate collectors, and rejected malformed reveal identities. The complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-472 - Ravioli recipe nonces are persisted after their irreversible commitments
 
 - Category: Pasta Protocol / creator recovery
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
   - Studio generates each random recipe nonce immediately before `commit_recipe`, but writes the open kit to localStorage and downloads it only after every commitment, finalization, issuance, and sale step succeeds.
@@ -9911,12 +9930,17 @@ Priority labels:
   - Generate and persist the complete recovery kit before the first commitment can be submitted; append operation-stage checkpoints and hashes after each confirmation; expose explicit resume/cancel guidance without blindly resubmitting an uncertain operation.
 - Verification idea:
   - Inject failures before send, after send, after confirmation, and during later commitments; reload with empty memory; prove every applied commitment retains its exact nonce/actions and that recovery never duplicates a submitted operation.
+- Resolution:
+  - Commit `8b096897` generates the complete kit before commitment, saves it to the private recovery record and browser storage, verifies the stored bytes, downloads the kit, and only then permits the first irreversible contract call.
+- Verification evidence:
+  - On 2026-08-30 the focused private-journal/recovery-kit browser proof and the real five-mode Studio fixture passed. The tests prove durable material exists before chain writes, survives later failure reporting, and remains bound to the exact publication plan; the complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-473 - Funded escrow assets inherit an irrelevant historical mint-window gate
 
 - Category: Pasta Protocol / established bundle compatibility
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C3 + F5 + S2 + P0(5) = 15
 - Evidence:
   - Studio resolves edition policy for every escrow action and rejects an expired capped-and-timed token even though the exact FA2 token is already minted, transferred into router escrow during commitment, and needs no future child mint.
@@ -9927,12 +9951,17 @@ Priority labels:
   - Apply inherited child-expiry policy only to reservations that still require a future mint; keep escrow metadata available for disclosure/audit, but treat successful funding as the terminal delivery guarantee.
 - Verification idea:
   - Package and open an expired, inactive, already-minted LE escrow token; prove it is funded before issuance and delivered atomically, while an expired unminted allocation remains rejected.
+- Resolution:
+  - Commit `8b096897` limits child-expiry enforcement to allocation/reservation actions that still require a future mint; already-minted escrow inventory is instead checked for ownership, operator authority, and complete pre-issuance funding.
+- Verification evidence:
+  - On 2026-08-30 the focused real-browser expired already-minted escrow fixture passed, while its paired expired capped-and-timed allocation regression remains fail-closed before pins or writes. The complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-474 - Mutable helper authorization can strand sold reserved packs
 
 - Category: Pasta Protocol / reservation fulfillment authority
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
   - Gnocchi `mint_reserved` and `release_mint_capacity` recheck current minter membership even though exact sender-owned reservation balances already exist, and Rotini does the same for `mint_pack_iteration` and `release_pack_capacity`.
@@ -9943,6 +9972,10 @@ Priority labels:
   - Require mutable authorization only when creating new reservations. Let fulfillment and release consume only an exact pre-existing sender-owned reservation key, so revocation stops future commitments without invalidating outstanding obligations.
 - Verification idea:
   - Reserve Gnocchi and Rotini capacity, revoke adapter/minter/router roles, and prove exact fulfillment plus cancellation release still work; prove a removed or never-authorized caller with no reservation cannot mint or release anything.
+- Resolution:
+  - Commit `8b096897` keeps mutable authorization on new reservations but permits fulfill/release only against the caller's exact positive reservation key, preserving existing obligations after role revocation without granting new capacity.
+- Verification evidence:
+  - On 2026-08-30 the complete Ravioli SmartPy suite passed the Gnocchi and Rotini revocation lifecycle: revoked actors cannot reserve again, exact outstanding reservations can be fulfilled or released, and callers without a funded reservation fail closed. Contract compilation, origination-size checks, artifact rebuilds, and deployment-certificate regeneration also passed without changing tracked bytes.
 
 ### WTF-BB-475 - Ravioli recovery hashes silently drop Michelson-map entries
 
@@ -10863,8 +10896,8 @@ Copy this when adding a new issue:
 ### WTF-BB-523 - Live puppet database missed the Studio workflow migration
 
 - Category: E2E infrastructure / Studio persistence
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
 - Score: C3 + F3 + S3 + P1(3) = 12
 - Evidence:
   - During the July 23 actor-backed media-creation workflow, PostgreSQL rejected the Studio project query because `studio_projects.workflow` did not exist.
@@ -10875,6 +10908,10 @@ Copy this when adding a new issue:
   - Apply the migration as part of live-puppet database setup and make the workflow assertion fail on any non-2xx update or missing persisted workflow state.
 - Verification idea:
   - Start from the supported isolated E2E database bootstrap, prove migration 0115 is present, patch and reload a Studio workflow, and assert the durable row before allowing the media-creation workflow to pass.
+- Correction:
+  - Added Studio workflow migration `0115` and the subsequent additive app-registration, retired-app, Admin Inbox, and commission-wayfinding migrations through `0119` to the live-puppet database bootstrap.
+- Verification:
+  - The guarded preparation command identified the configured target as local `localhost:5432/wtf`, applied every required migration successfully, and a direct information-schema read confirmed `studio_projects.workflow` exists.
 
 ### WTF-BB-524 - Ravioli recovery confused exact Studio download bytes with canonical JSON bytes
 
@@ -12374,6 +12411,94 @@ Copy this when adding a new issue:
   - Focused desktop shell and icon-gate tests pass 9/9, including the strict-admin Payroll launcher assertion.
   - Aggregate unit passes 2,455 with twelve explicit fixture skips, and complete inventory Playwright passes 683/683.
 
+### WTF-BB-616 - PixAlerce export readiness has blocked controls and an undeclared OBJKT request
+
+- Category: PixAlerce / export readiness
+- Status: Verified
+- Owner/Session: Codex PixAlerce export E2E pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - In the real `/tools/pixalerce` wtfOS iframe at the standard desktop viewport, Playwright resolves the visible `Close FX Library` button but cannot click it because the higher-z-index tool strip intercepts the pointer at the same coordinates. The side collapse control is a workaround, not a repair for the advertised close action.
+  - The visible `Open inspector` action is likewise unclickable while the palette is open because the higher-z-index palette panel covers the button's click target.
+  - PNG, GIF, MP4, WebM, and OBJKT ZIP downloads all produce valid signatures from a decorated project, but loading the exported OBJKT package makes an undeclared `/favicon.ico` request and returns 404 because its generated `index.html` declares no self-contained icon.
+- Why it matters:
+  - The blocked close and inspector actions break the detailed creation-to-export workflow and make visible controls nonfunctional.
+  - PixAlerce describes the OBJKT ZIP as self-contained and ready to mint; an implicit network request violates that portability contract even though the interactive canvas itself renders.
+- Correction direction:
+  - Keep the open FX Library above the floating tool strip, or move its close action outside the overlap, and keep the inspector opener above the palette while preserving the existing collapse controls and tool access.
+  - Give generated OBJKT HTML a data-URL favicon so a standalone package has no undeclared resource request.
+- Verification idea:
+  - Run one soft-failure Playwright scenario that creates and edits a project, exercises every top-level tool and library/inspector/project control, exports and validates PNG/GIF/MP4/WebM/OBJKT artifacts, loads the extracted OBJKT package under HTTP, and continues collecting results after individual failures. Rerun the same scenario after the repair and require a clean request/error ledger.
+- Correction:
+  - Added a registered wtfOS integration stylesheet that raises the open FX library and inspector opener above the adjacent floating editor chrome without changing PixAlerce's pinned upstream bundle behavior.
+  - Added an inline data-URL favicon to generated OBJKT HTML so the exported package no longer asks its host for an undeclared `/favicon.ico`.
+  - Replaced the narrow PixAlerce smoke with one soft-failure journey covering canvas creation, every top-level tool, painting, undo/redo, FX stamps and motion, palette, inspector, full-screen preview, five export formats, artifact contents, standalone OBJKT boot, local project save, reload, and reopen.
+- Local verification:
+  - The unfixed baseline completed the whole journey and reported exactly three product failures: FX close interception, inspector interception, and the missing inline favicon.
+  - The repaired focused Playwright journey passes 1/1, including valid PNG/GIF/MP4/WebM signatures and a standalone OBJKT page with no favicon or external request.
+  - `npm run build`, `npm run check`, `npm run creation-tools:check`, `npm run env:inventory:check`, and `npm run test:e2e:inventory:coverage` pass.
+  - Complete inventory Playwright passes 683/683 in 12.6 minutes.
+
+### WTF-BB-617 - PixAlerce exports bypass wtfOS Media and destination-aware mint workflows
+
+- Category: PixAlerce / media and mint workflow
+- Status: Verified
+- Owner/Session: Codex Media Mint Manager integration
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - PixAlerce's five export formats always create a browser download and do not create an owned `user_media_library` row.
+  - My Photos and My Videos can display uploaded media but expose no direct HEN mint action for a saved item.
+  - Particle Painter has an app-local HEN/Teia flow, but PixAlerce has no equivalent and should not instantiate a second wallet client when the wtfOS parent already owns the singleton wallet session.
+- Why it matters:
+  - Users cannot keep PixAlerce output inside wtfOS for later discovery and minting without manually downloading and re-uploading the file.
+  - A copied iframe wallet would risk duplicate connector sessions and bypass the shared wallet/network preflight contract.
+- Correction direction:
+  - Add explicit wtfOS Media, device-download, and Media + Mint Manager export destinations to PixAlerce.
+  - Transfer generated Blobs through a source-verified same-origin iframe bridge; let the authenticated parent upload them through the canonical media endpoint.
+  - Add one reusable destination-aware manager to the immediate PixAlerce handoff and persisted My Photos/My Videos/File Manager surfaces. Keep HEN on the shared wallet singleton and explicit Mainnet preflight, and delegate Pasta-specific contract forms/signatures to their owning publisher apps.
+  - Verify completion from the exact applied operation and indexed token transfer for a wallet linked to the signed-in account rather than trusting pasted receipt fields.
+- Verification idea:
+  - Extend the single PixAlerce Playwright journey to prove device downloads still work, Media persistence survives route/reload, and immediate/My Photos/File Manager entry points expose the same HEN and Pasta destination choices without signing early.
+  - Add unit proof for the HEN minter/Mainnet/CIDv0/single-send boundary, Pasta contract discovery plus CH-EASE handoff, and exact linked-wallet token-receipt matching; rerun inventory coverage and the full browser inventory.
+- Correction:
+  - Added explicit wtfOS Media, device download, and Media + Mint Manager destinations to the rebuilt PixAlerce export dialog for PNG, GIF, MP4, WebM, and OBJKT ZIP.
+  - Added a source/origin/tool-verified iframe bridge whose authenticated parent persists the generated Blob through canonical `/api/media/upload` ownership.
+  - Added one reusable Mint Manager to the immediate export handoff, My Photos, My Videos, and File Manager. It offers HEN/Teia, Objkt-ready standard collection, compatible wallet/Colander-associated contract, and new Pasta standard/open-edition destinations with resumable non-secret state.
+  - HEN preparation identifies the creator from the shared wallet session but cannot sign; the separate signature step fails closed unless wallet and RPC prove Tezos Mainnet. Pasta destinations pin the media once and use the existing expiring CH-EASE handoff into the destination publisher for specialized contract, supply, sale, and signature steps.
+  - Added authenticated `/api/mint-manager/receipt` verification that matches an applied operation from a linked wallet to its indexed mint transfer on the selected network and returns Objkt/TzKT receipt links.
+- Verification:
+  - Focused mint tests pass 8/8: three HEN CIDv0/Mainnet/single-send cases, three Pasta discovery/package/handoff cases, and two linked-wallet receipt matcher cases.
+  - The expanded PixAlerce Playwright journey passes 1/1 in 1.5 minutes and validates all five device artifacts, owned Media persistence, immediate/later Mint Manager entry, HEN metadata, and new Pasta workflow/network choices without an early signature.
+  - `npm run check`, `npm run build`, `npm run creation-tools:check`, environment inventory generation/check/policy, and `npm run test:e2e:inventory:coverage` pass. Complete inventory Playwright passes 683/683 in 12.6 minutes.
+
+### WTF-BB-618 - Macaroni's disabled wtfOS publish gate gives no recovery guidance
+
+- Category: Macaroni / hosted-publish access-gate UX
+- Status: Verified
+- Owner/Session: Codex Macaroni publish-role tooltip pass
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - Macaroni's access renderer disabled and then hid the Page Designer's `Publish to wtfOS` action when the signed-in account lacked the trusted hosted-publishing role.
+  - Because the disabled visual state was hidden, it could not explain why the action was unavailable or tell the creator how to request access.
+  - A native disabled button does not reliably receive pointer or keyboard events, so attaching hover copy only to the button would leave the explanation inaccessible.
+- Why it matters:
+  - Ordinary creators can mistake the role boundary for a broken publisher, especially because contract deployment and self-hosted export remain intentionally available.
+  - The user has no visible recovery path from the exact control where the permission requirement becomes relevant.
+- Correction direction:
+  - Preserve the actual disabled button and server-side role enforcement, but place it in a focusable explanatory wrapper that exposes the same tooltip on hover and keyboard focus.
+  - State that wtfOS-hosted publishing requires an approved creator role and direct the user to contact a wtfOS administrator to request access; do not expose the tooltip for accounts that already have access.
+- Verification idea:
+  - In the real Macaroni Studio, prove a non-trusted account sees a greyed-out, non-clickable publish action whose wrapper reveals the explanation on pointer hover and keyboard focus, while a trusted creator gets the enabled action without the permission tooltip.
+  - Run focused Macaroni policy/browser tests plus interaction-inventory coverage.
+- Correction:
+  - Kept the native publish button visibly disabled for confirmed role denial and grouped it with an enabled `?` help control; the same tooltip opens from wrapper hover, help focus, click, or touch, remains open while hovered, and dismisses with Escape, a second activation, focus departure, or an outside pointer action.
+  - Split loading, granted, denied, unavailable, and native-desktop access states so the role explanation is never shown during access loading, after an authentication failure, or in standalone Macaroni Desktop.
+  - Named the required Trusted Market Creator role, directed the user to the Contact Admin app, and repeated that recovery path in the persistent Page Designer hint while preserving own-host export and server-side permission enforcement.
+- Verification:
+  - Macaroni source policy passes 21/21; Macaroni Desktop package policy passes 4/4; JavaScript syntax, repository TypeScript, diff whitespace, and interaction-inventory coverage pass.
+  - Focused access-boundary browser proof passes 3/3: trusted Chromium, regular-user Chromium, and a real mobile WebKit context. It proves visible/disabled styling, an enabled help trigger, no publish action, exact hover/focus/touch guidance, pointer travel into the tooltip, click toggle, Escape/outside dismissal, and the persistent Contact Admin recovery copy.
+  - A preceding broad Macaroni run's only failures ended on its fatal-console ledger because the configured local database lacks newer unrelated `desktop_app_settings` and Admin Inbox migrations; the access-boundary assertions run independently of that documented local schema blocker.
+
 ### WTF-BB-619 - App Gates hides a missed database migration behind an endless loader
 
 - Category: Local DB / admin app-gate schema parity
@@ -12461,3 +12586,357 @@ Copy this when adding a new issue:
 - Verification:
   - A fresh witness in the inventory harness and a seeded local witness puppet both see the Contact Admin desktop icon, open the evidence-oriented compose form, and remain unable to discover or mount Admin.
   - Focused icon/presentation/API tests, production build, repository TypeScript, inventory coverage, and the complete 685-test UI inventory pass.
+
+### WTF-BB-622 - Commissioned apps are disabled and first-run navigation does not describe the commissioned task model
+
+- Category: Desktop OS / commissioned app wayfinding and runtime state
+- Status: Fixed
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Production `GET /api/apps/desktop` on 2026-08-29 returned `false` for Arcade, Casino, Console, Game Studio, Studio, IPFS Pinning, Pasta Protocol, and other creator services even though the source defaults enable most of them.
+  - The production FAQ returned an empty list.
+  - `WelcomeMessage.tsx` tells a new user only that the account is ready and offers acknowledgement, Profile, or a novelty Diary path; it does not identify the commissioned Play, Create, Shop, Events, and Talk tasks.
+  - The Start Menu uses internal product-domain labels such as Gameshow, On Chain, and Gaming and duplicates several destinations across groups without one first-run task map.
+  - Production Arcade data has eight published games but zero creator games and zero Game Studio games, while the app itself is disabled.
+- Why it matters:
+  - The customer cannot treat the platform as self-explanatory while commissioned capabilities are unreachable or require an operator to explain internal app names and entitlement history.
+  - Source defaults do not repair existing production registration rows; release evidence must cover the authoritative database-backed app response.
+- Correction direction:
+  - Make the Classic OS the primary shell and expose stable Play, Create, Shop, Events, and Talk entry groups.
+  - Turn the first-run welcome into a task chooser and make the same guide recoverable through Help.
+  - Seed commission help content idempotently and migrate the authoritative desktop registrations for approved commissioned apps without conflating docs freshness with enablement.
+  - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
+- Verification idea:
+  - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
+- Correction:
+  - Added one shared Classic task map for Play, Create, Shop, Events, and Talk and used it in the welcome event, Help & Start Here, and the leading Start Menu groups.
+  - Reclassified Arcade, Studio, and Game Studio as free core desktop applications and replaced Casino's wagering claim with explicit practice-sandbox language while preserving its membership gate.
+  - Added an idempotent migration that restores commissioned app registrations as enabled/permanent and seeds plain-language FAQ guidance without overwriting operator content.
+  - Updated the live-puppet database preparation, route inventory, behavior registry, and browser harness so first-run completion is persistent and observable.
+- Verification:
+  - Focused wayfinding/catalog tests pass 20/20; the two-scenario browser journey proves task-map agreement, chosen-route launch, persisted welcome completion, public Help recovery, and stale-session recovery.
+  - Production build and inventory coverage pass. The guarded local migration applied successfully; direct reads confirm Arcade, Casino, Game Studio, Studio, WTFIAM, and Mail enabled/registered/permanent, the help seed present, and the Studio workflow column installed.
+  - Production verification remains pending deployment, so this bounty is Fixed rather than Verified.
+
+### WTF-BB-623 - Declared live phase test command references missing specs
+
+- Category: E2E / declared live phase harness
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Last touched: 2026-08-30
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `package.json` names ten phase specs in `test:e2e:live:phases`, including `tests/playwright/live/phase7-arcade-casino.spec.mjs`.
+  - The audited `tests/playwright/live/` directory contains only `gamma-puppet-board.spec.mjs`, `macaroni-shadownet.spec.mjs`, `marketplace-shadownet.spec.mjs`, and `puppet-orchestration.spec.mjs`.
+  - A successful `test:e2e:live:puppets` run therefore cannot be assumed to provide the absent domain-phase evidence.
+- Why it matters:
+  - A release command whose declared owners do not exist creates false confidence about actor-backed Store, Arcade, Casino, Calendar, Messaging, and creator coverage.
+- Likely correction direction:
+  - Restore domain-owned phase specs from an authoritative source or replace the stale script with real, present domain specs that prove the same actor and durable-state contracts.
+- Verification idea:
+  - Require every file named by the script to exist, collect in Playwright, and run against the isolated production-shaped puppet database; bind each commission journey to the exact live spec that proves it.
+- Correction:
+  - Replaced the dead per-phase file list with delegation to the maintained actor-backed `test:e2e:live:puppets` suite and added a repository policy assertion that fixes that ownership boundary.
+- Verification:
+  - The production-shaped actor-backed release suite passes 178/178 across the commissioned journeys. On 2026-08-30 the focused harness and deterministic release-report policies passed 5/5, including exact proof that the phased command delegates to the maintained suite.
+
+### WTF-BB-624 - Creator Store submissions bypass moderation and have no customer-facing workflow
+
+- Category: Store / creator contribution and moderation
+- Status: Fixed
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F5 + S0 + P1(4) = 12
+- Evidence:
+  - `POST /api/in-app-market/creator-items` requires the intended `trusted_market_creator` permission but inserts the item with `active: true`, making it public immediately.
+  - WTFIAM has browse, cart, checkout, inventory, sale, and tip-ledger UI but no creator submission form or status history.
+  - The Admin in-app market tab can generically hide/show items but does not identify creator submissions or record an approve/reject decision and review note.
+- Why it matters:
+  - The commissioned community-driven shop cannot be used without a private API or MCP client, and operator moderation can be bypassed by every trusted submission.
+  - Creators receive no confirmation, status, attribution, or recovery path, while operators cannot distinguish a reviewed listing from an arbitrary hidden catalog row.
+- Correction direction:
+  - Persist trusted creator items hidden with submitted status and immutable creator attribution.
+  - Add a first-class Store contribution form and creator-owned status history, with a Contact Admin recovery path for accounts missing the permission.
+  - Add explicit operator approve/reject actions, review notes, audit handles, and approved-only public listing behavior.
+- Verification idea:
+  - Prove a trusted creator submits an item that remains absent from public browse, an operator sees attribution and approves it, the creator sees approved status, and a buyer purchases the now-visible item with inventory/purchase persistence.
+- Correction:
+  - Trusted creator submissions now persist as hidden Store items with creator identity, submitted status, and submission time; creator-owned status history is available from the Store.
+  - Added the Store's Creator Submission Desk, including category, type, EXP price, stock, description, status, operator note, and an explained Contact Admin recovery route for members without permission.
+  - Added explicit approve/reject controls to the operator market table. Review records status, reviewer identity, timestamp, and note; only approval activates the public listing.
+  - Added normalized create/review events and inventory-owned behavior coverage for submission, moderation, public visibility, EXP checkout, and purchase inventory.
+- Verification:
+  - Creator moderation policy tests pass 2/2; production build and interaction-inventory coverage pass.
+  - Focused browser coverage passes 2/2: the complete submit-hidden/approve-visible/EXP-purchase journey and the ordinary-member permission explanation/Contact Admin recovery journey.
+  - Real database and production verification remain part of the actor-backed release pass, so this bounty is Fixed rather than Verified.
+
+### WTF-BB-625 - Arcade reports zero Game Studio output and does not prove creator publication
+
+- Category: Arcade / creator publication evidence
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Last touched: 2026-08-30
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - `getArcadeStats()` returns literal `pendingGames: 0` and `gameStudioGames: 0` despite persisted `console_games` moderation state and `console_game_versions.bundle_metadata.source = game_studio_project`.
+  - Production consequently reported zero Game Studio games, which cannot distinguish an empty community from a broken statistic.
+  - The actor-backed Game Studio scenario creates and builds a durable project but never calls its submit endpoint or proves the result appears in public Arcade discovery with builder attribution.
+- Why it matters:
+  - The commission requires users to build games for the Arcade; a build that never reaches Arcade is incomplete customer evidence.
+  - Operators and the customer cannot use a hardcoded zero to judge creator adoption or a moderation backlog.
+- Correction direction:
+  - Derive pending and Game Studio counts from authoritative Arcade game/version rows.
+  - Extend the actor-backed creator journey through submit, persisted project publication state, public Arcade detail/catalog, creator attribution, and corrected stats.
+- Verification idea:
+  - Build and submit a unique Game Studio project with a real creator actor, assert its public Arcade slug and builder, verify its project/build linkage and stats, then retain the existing all-catalog play/session/score proof.
+- Correction:
+  - Replaced literal pending and Game Studio counts with queries against active Arcade games, pending moderation rows, and persisted Game Studio version metadata.
+  - Public Arcade catalog/detail entries now expose a plain-language `Built with WTF Game Studio` source label while retaining the creator's display name.
+  - Extended the signed-in trusted-creator journey through project creation, durable ZIP build history, submit, published project state, public catalog/detail discovery, source attribution, and nonzero creator/Game Studio statistics.
+- Verification:
+  - Focused source/attribution tests pass 4/4; TypeScript, production build, and inventory coverage pass.
+  - Real local database actor proof passes 1/1 with the seeded `cookiemonster` trusted creator and a production server process.
+
+### WTF-BB-626 - Casino has no community practice-game creation loop
+
+- Category: Casino / community practice-game creation
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - The Casino game registry contains three staff-authored mocked-playable games and no persistent creator-game model.
+  - `/api/casino/games` can list built-in tables, but there is no creator submission, personal status, operator review, public creator attribution, or generic safe-play endpoint.
+  - The Casino page describes disabled wagers and house take but offers no visible route for a community member to build a game.
+- Why it matters:
+  - The commission explicitly requires community members to build games for the Casino, while the platform must keep wagering fail-closed until its compliance and settlement requirements are met.
+  - Without an explicit practice-only boundary, either the creator requirement stays unmet or user content risks being confused with real-value wagering.
+- Correction direction:
+  - Add a persistent no-wager practice-table specification with equal-chance outcomes, creator attribution, submitted/approved/rejected moderation state, and durable play results.
+  - Expose a plain-language creator desk and operator review controls inside the Casino, while keeping all currency, rewards, house take, and live wagering absent from community tables.
+  - Emit normalized create/review/play events and preserve the existing app-pass plus membership entry gate for play.
+- Verification idea:
+  - Use a creator actor to submit a unique practice table and see pending status; prove it is absent from the playable floor; use an admin actor to approve it with an audit note; use a member actor to play it and persist a result with no wager/reward fields.
+- Correction:
+  - Added a persistent creator practice-table specification with title, description, instructions, equal-chance result labels, creator attribution, review state/note/reviewer, and durable play results.
+  - Added a plain-language Casino creator desk, personal status history, operator review queue, approved community floor, and explicit practice/no-wager/no-reward language throughout the lobby.
+  - Preserved the existing app-pass plus active-membership play gate and kept community play records structurally separate from wager sessions.
+- Verification:
+  - Practice outcome tests pass 2/2, inventory coverage passes, TypeScript passes, and the production build succeeds.
+  - Focused browser presentation proof passes 1/1 through submit, hidden state, approval, public creator card, and practice result.
+  - Real local PostgreSQL actor proof passes 1/1 with trusted creator, admin, and contestant sessions; the existing built-in Casino API proof also passes, for 2/2 focused live tests.
+
+### WTF-BB-627 - Calendar has no durable RSVP or chosen-reminder loop
+
+- Category: Calendar / durable participation and reminders
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - Calendar browsing, personal browser entries, community ticket submission, and operator publication already exist.
+  - Published event details expose no Interested, Going, reminder, or clear-plan action, and there is no account-backed participation table or endpoint.
+  - The task tray loads every visible calendar event into its reminder selector, so a signed-in user receives reminders without choosing to follow the event.
+- Why it matters:
+  - The commission requires users to participate in the community calendar, not only read it or submit listings.
+  - An unrequested global reminder stream is difficult to understand and becomes noisy as the community calendar grows.
+- Correction direction:
+  - Persist one account-backed participation record per user/event reference with Interested or Going status and an explicit reminder preference.
+  - Add self-explanatory controls to event details plus a My plans view that survives another browser session.
+  - Filter the task-tray reminder candidates to followed events and retain personal browser entries as the clearly labeled local-only path.
+- Verification idea:
+  - Use one member actor to mark a published event Going with reminders enabled, reload through a fresh request, see it in My plans, turn reminders off, and clear the plan; verify normalized participation events and no remaining durable record.
+- Correction:
+  - Added one account-backed participation record per user/event with Interested or Going status, explicit task-tray reminder preference, event snapshot, and normalized update/clear events.
+  - Added plain-language participation controls, event-room links, durable My plans cards, guest guidance, and clear-plan feedback to Calendar event details.
+  - Changed task-tray reminder candidates from every visible shared event to reminder-enabled saved plans plus browser-only personal entries the user explicitly created.
+- Verification:
+  - TypeScript, production build, public API contract, and interaction inventory coverage pass; Calendar reminder/presentation policy passes 8/8 and TTC source behavior passes 5/5.
+  - Focused browser proof passes 1/1 through Going, reload, My plans, reminder-off filtering, and clear.
+  - Real local PostgreSQL actor proof passes 1/1 through operator event creation, contestant persistence, selected reminders, audit events, and durable removal.
+  - The complete inventory browser suite passes 691/691 after the Calendar integration.
+
+### WTF-BB-628 - Direct messages have no recipient reporting or operator review loop
+
+- Category: Messaging / recipient reporting and operator review
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Direct messages persist conversations, content, membership, sender read timestamps, recipient unread counts, and canonical communication items.
+  - Messages renders sender, time, content, and send controls, but no message row offers Report, safety guidance, or report status.
+  - The messages API verifies conversation participants but has no report table, recipient report endpoint, operator report queue, or reviewed/dismissed disposition.
+- Why it matters:
+  - A community messaging app is not commission-ready when a recipient must leave the conversation and manually explain which message caused a safety concern.
+  - Without a message-bound audit record, operators cannot distinguish a reviewed report from an ignored or duplicated complaint.
+- Correction direction:
+  - Persist one report per recipient/message with a reason, open/reviewed/dismissed state, reviewer, note, and timestamps.
+  - Add an inline, plain-language Report action for received messages and an admin-only Safety reports tab with required disposition notes.
+  - Emit normalized report-submitted and report-reviewed events without publishing private message content into event metadata.
+- Verification idea:
+  - Use one actor to send a unique DM, prove the recipient sees one unread conversation, read it to zero, report the exact received message, prove duplicate/self/nonparticipant reporting fails, and use an admin actor to review it with a retained note and audit event.
+- Correction:
+  - Added a durable message-bound report record with one report per reporter/message, open/reviewed/dismissed state, reviewer identity, required note, and timestamps.
+  - Added a received-message Report action with private-report guidance and confirmation plus a strict-admin Safety reports tab containing the original message, reporter reason, and reviewed/dismissed disposition controls.
+  - Added participant, self-report, duplicate, and operator-permission enforcement; normalized report/review audit events deliberately omit private content.
+  - Unified DM read-marker writes on the database clock and clamped impossible future legacy markers so new messages cannot be hidden by application/database timezone skew.
+- Verification:
+  - TypeScript, production build, interaction inventory coverage, and the focused simulated browser story pass.
+  - Real local PostgreSQL actor proof passes with separate sender, recipient, outsider, and admin accounts through unread delivery, read-to-zero, private reporting, duplicate/self/outsider rejection, operator review, persisted note, queue removal, and content-free audit metadata.
+  - The complete inventory browser suite passes 692/692, including the new recipient-to-operator Messages safety story.
+
+### WTF-BB-629 - Verified mint receipts are browser-local instead of durable owned-media records
+
+- Category: Media / durable mint receipt ownership and recovery
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Authenticated `POST /api/mint-manager/receipt` verifies that an applied operation came from one of the current user's linked wallets and finds the exact indexed mint transfer, but it returns the result without storing it.
+  - Mint Manager snapshots are stored only in browser `localStorage`; reopening the same owned-media item in another session or device cannot recover its verified operation, contract, token, network, or indexer status.
+  - The success message says the receipt is saved with the media workflow even though no server-owned media/receipt relationship exists.
+- Why it matters:
+  - The commissioned artist journey is incomplete if a successful mint cannot be recovered from the artwork the user owns in WTF Media.
+  - A local draft is useful for resuming unsigned work, but it is not durable evidence of a wallet operation or indexed token and must not be presented as one.
+- Correction direction:
+  - Persist linked-wallet mint receipts against an owned media item with explicit network, operation, signer/minter, contract, token, amount, artifact URI, and pending/applied indexer state.
+  - Make verification idempotent, reject media the current user does not own, and recover durable receipts when Mint Manager reopens without trusting browser-local proof.
+  - Emit the authoritative verification event from the server and retain safe retry guidance for delayed indexers without asking the artist to sign twice.
+- Verification idea:
+  - Prove ownership and linked-wallet enforcement, pending-to-applied idempotence, cross-session receipt recovery from the same media item, exact explorer/indexer references, Shadownet network labeling, and no second wallet submission during indexer delay.
+- Correction:
+  - Added an ownership-bound `media_mint_receipts` record and migration with explicit network, operation, signer/minter, contract, token, amount, artifact URI, and pending/applied verification state.
+  - Made receipt submission idempotent and owner-only, required a linked signer wallet, and verified the exact operation and mint transfer against the explicitly selected Mainnet or Shadownet TzKT indexer before accepting proof.
+  - Mint Manager now loads durable receipts when owned Media reopens, distinguishes resumable local preparation from server-verified evidence, and offers indexer retry without requesting a second wallet signature.
+- Verification:
+  - Unit and policy verification passes 22/22 for creation, Mint Manager, HEN, Mint Portal, IPFS record, and Pasta proof behavior.
+  - A real local PostgreSQL/live-browser actor proof links the fresh Shadownet creator, submits exact operation `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, proves the indexed mint into token `0` on `KT1Ww8CpKRS5ffVd51vWNxJ6EBxEhCj7BhtN`, recovers it from a clean browser context, confirms idempotence and the content-safe audit event, then cleans up the fixture.
+  - Inventory coverage passes and the complete inventory browser suite passes 697/697, including cross-session durable receipt recovery.
+
+### WTF-BB-630 - Fresh guarded Pasta runs replay steps completed in the current process
+
+- Category: Pasta Protocol / fresh-run restart replay boundary
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S1 + P0(5) = 15
+- Evidence:
+  - A newly created Spaghetti Shadownet UI-LIVE journal pinned the direct media and bridge collection metadata, then rejected the following origination with `restart replay request differs from completed step collection-metadata`.
+  - `replayOrHandle` recalculates its replay candidates from the journal's current applied state on every request, so an effect completed moments earlier is indistinguishable from durable evidence loaded at process start.
+  - After the replay-boundary correction, the exact origination `onujEhx1fJggD1VEdj7zJ641fnd8CUZwCEf9e7kX7sbnqyiZtQs` applied at Shadownet level 4,842,102, but the journal rejected its receipt because it compared the session-wide receipt sequence with the separate signer-operation sequence.
+  - Restart reconciliation then queried the TzKT origination collection with unsupported sender/counter filtering; Shadownet TzKT returned the oldest ten originations while its exact-hash endpoint returned the applied operation, causing a false consumed-counter failure.
+  - Exact-hash reconciliation then compared the journal's key-sorted descriptor with the source contract's insertion-ordered JSON hash; the same Michelson code produced different byte-order hashes and a false artifact-identity failure.
+  - The Shadownet RPC also returned the exact script sections in a different top-level order from the source artifact; raw array comparison rejected the same parameter, storage, code, and views despite preserving their contents.
+  - After the submitted origination reconciled to APPLIED during journal open, the frozen replay prefix still omitted it because only effects already APPLIED before reconciliation were captured; the browser therefore tried to delegate origination again, which the semantic journal correctly blocked before signing.
+  - After creator minting and sale completion, the collector proof page read the pinned token metadata from `ipfs.io`; that gateway response omitted CORS headers, so the evidence monitor blocked the sale screenshot before any collector buy.
+  - The restart-boundary tests exercise reopened journals but do not prove that a fresh journal delegates the semantic action immediately after a newly completed bridge step.
+- Why it matters:
+  - The guard prevents duplicate chain writes correctly, but its fresh-run false positive makes a clean presentation mint impossible and leaves a partially pinned proof.
+  - Weakening the request comparison would risk replaying a different operation; the fix must preserve exact authenticated replay while separating prior-run evidence from current-run progress.
+- Correction direction:
+  - Freeze the replayable bridge prefix when a journal is opened from disk; a newly created journal must begin with no replay candidates.
+  - Keep exact action, actor, pin-byte, operation-descriptor, and semantic-order matching for that frozen prefix.
+  - Validate the public receipt sequence as a positive session sequence while retaining the separately authenticated operation sequence from PREPARED/SUBMITTED events.
+  - Resolve SUBMITTED operations through the exact family/hash TzKT endpoint, retaining the counter scan only for the pre-submit PREPARED recovery case where no operation hash exists.
+  - Compare journal, source artifact, and recovered on-chain Michelson through the shared semantic restart projection while retaining the immutable source-byte hash in the journal intent.
+  - Canonicalize only the order-insensitive top-level Michelson script sections; preserve all nested instruction and type order so behavior drift still fails closed.
+  - Freeze all preexisting prepared/submitted/applied bridge steps at open, then replay them only if reconciliation leaves them applied; an abandoned pre-submit effect delegates its single safe retry instead of becoming replay evidence.
+  - Serve proof-browser IPFS reads through the configured, already byte-verified local gateway while keeping the canonical `ipfs://` URI and independently verified public-gateway evidence in the receipt.
+  - Add a regression proving that a fresh bridge pin followed by origination delegates both effects exactly once, while an opened journal still replays its authenticated completed prefix without side effects.
+- Verification idea:
+  - Run the restart boundary suite, then resume the preserved Spaghetti checkpoint and verify that it replays the exact collection pin, originates only once, completes mint/sale/buy, and publishes indexed receipts.
+- Correction:
+  - Froze the restart replay prefix from effects present when a journal opens, separating prior authenticated evidence from effects completed in the current process while retaining exact action, actor, bytes, descriptor, and semantic-order matching.
+  - Reconciled submitted operations by exact family/hash endpoint, separated session receipt sequence from signer-operation sequence, and compared recovered Michelson through a projection that normalizes only top-level script-section order.
+  - Included prepared/submitted effects present at open in the frozen prefix, replayed them only after applied reconciliation, and preserved one safe retry for abandoned pre-submit effects.
+  - Routed proof-browser IPFS reads through the configured byte-verified local gateway while preserving canonical `ipfs://` and public-gateway evidence in the receipt.
+- Verification:
+  - Restart/journal/chain regressions pass 42/42, including fresh delegation after a newly completed bridge pin and authenticated resumed replay without duplicate effects.
+  - A fresh checkpointed Shadownet Spaghetti UI-LIVE proof completed origination `onujEhx1fJggD1VEdj7zJ641fnd8CUZwCEf9e7kX7sbnqyiZtQs`, token creation, two-edition mint `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, sale, and separate-collector buy `opKnTjwXeQHv11UFhTFo9YCRfSY5rokXFLJZ3aJuUZ5muEJBZRN` without duplicate signing.
+  - The archived UI-LIVE receipt under `artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260829-commission/` has SHA-256 `526ab3c761c9d3149d3c0e7a69b1c58b4f0c4a07e4912dc1fa5ac68edbab3a2d`, with eleven screenshots/sidecars and indexed TzKT evidence.
+
+### WTF-BB-631 - Commission release commands referenced files that never existed
+
+- Category: Release engineering / evidence harness
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `test:e2e:traffic-light:report` referenced `scripts/generate-traffic-light-report.mjs`, but the target file was absent from the introducing commit and every reachable revision.
+  - `test:e2e:live:phases` named eleven `tests/playwright/live/phase*.spec.mjs` files that were likewise never committed, even though the maintained `test:e2e:live:puppets` lane discovers the actual live directory.
+- Why it matters:
+  - A release plan could cite commands that fail before evaluating any journey, leaving the customer without a reproducible candidate decision or a trustworthy test-week entry gate.
+- Correction direction:
+  - Make the historical phased command delegate to the maintained actor-backed suite.
+  - Generate a deterministic traffic-light report directly from the authoritative J-01 through J-12 release ledger and fail when any journey is below READY FOR TEST.
+- Verification idea:
+  - Prove the command wiring with a policy test; prove complete-ledger parsing, PASS/READY/blocked classification, deterministic output, and nonzero red status with focused unit tests; run the report through the package command.
+- Correction:
+  - Rewired `test:e2e:live:phases` to the maintained `test:e2e:live:puppets` command.
+  - Added a deterministic report generator that requires exactly J-01 through J-12, treats PASS as green and exact READY FOR TEST as amber, renders all blockers, and exits nonzero for red journeys.
+- Verification:
+  - Focused release-harness policy and report tests pass 5/5; the maintained actor-backed suite passes 178/178.
+
+### WTF-BB-632 - Calendar participation proof disappears after a late-night run
+
+- Category: Test infrastructure / Calendar
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - The inventory fixture scheduled its event two hours after the wall clock while Calendar opened the week containing the current day.
+  - At 10:16 PM on the last day of that displayed week, the fixture crossed midnight into the next week, leaving all seven rendered day regions empty and the event button absent.
+- Why it matters:
+  - The complete interaction inventory could fail based only on execution time, obscuring a healthy durable Calendar journey during candidate qualification.
+- Correction direction:
+  - Anchor the synthetic event to a fixed hour on the current local calendar day so it remains in the initially displayed week at every run time.
+- Verification idea:
+  - Run the focused Calendar browser story after the late-night boundary, then rerun the complete inventory.
+- Correction:
+  - Replaced the rolling two-hour offset with noon on the current local day while preserving the one-hour event duration.
+- Verification:
+  - Focused and complete-suite rerun evidence is recorded in the commission release ledger.
+
+### WTF-BB-633 - First-run and mobile Help task labels are visually clipped
+
+- Category: UX / first-run navigation
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P0(5) = 14
+- Evidence:
+  - Candidate screenshots showed all five welcome buttons collapsing from their intended 78px height to 36px, clipping the icon and label inside each control.
+  - At 390px, Help rendered two columns of collapsed task cards, allowing descriptions to overlap adjacent controls and making the commissioned navigation choices difficult to read.
+  - Computed styles confirmed the later global button minimum overrode the styled-component minimum because its selector had higher specificity.
+- Why it matters:
+  - The customer identified self-explanatory navigation as the commission's primary acceptance concern; the first interaction and persistent recovery map were visibly ambiguous even though route assertions passed.
+- Correction direction:
+  - Give the task controls explicit component-level specificity and automatic height; use one readable Help column on narrow screens; make computed geometry part of the browser contract.
+- Verification idea:
+  - Assert the five welcome controls are at least 78px tall, the five mobile Help cards exceed 300px width and retain at least 92px height, then inspect recaptured desktop/mobile evidence.
+- Correction:
+  - Protected the welcome and Help task-card height rules from the global control minimum, allowed content-driven height, and switched mobile Help to one column.
+  - Extended the first-run behavior assertion and inventory contract to include unclipped desktop/mobile geometry.
+- Verification:
+  - Focused first-run browser proof passes; 24 candidate screenshots were regenerated and the desktop welcome plus mobile Help map were visually inspected with all labels and descriptions contained.
+
+### WTF-BB-634 - Bug-board summary and detailed records disagree on release status
+
+- Category: Release governance / bug-board status integrity
+- Priority: P1
+- Status: Open
+- Owner/Session: -
+- Last touched: 2026-08-30
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - A deterministic comparison of the 468-row summary table against the first detailed record for each matching ID found 53 status disagreements.
+  - Contradictions run in both directions: the summary marks some records `Verified` while their detail remains `Open`, `Claimed`, or `Fixed`, and marks others actionable while their detail says `Verified`.
+  - The detail section also contains records not represented in the summary and legacy duplicate IDs, so neither raw row count is a reliable release decision by itself.
+- Why it matters:
+  - A reviewer can reach opposite conclusions about the same P0/P1 risk depending on which board section they read.
+  - This can hide unresolved production verification or keep completed work indefinitely classified as a blocker, making “ready to ship” neither reproducible nor auditable from the board.
+- Likely correction direction:
+  - Make one structured record authoritative and generate the summary from it.
+  - Add a deterministic policy check that rejects duplicate IDs, missing summary/detail counterparts, unsupported status values, and status/date/owner disagreement.
+  - Preserve old evidence as append-only history while recording supersession explicitly instead of editing incompatible snapshots by hand.
+- Verification idea:
+  - Run the policy against failing fixtures for every mismatch class and against the reconciled board; require the release command to consume the same authoritative scoped acceptance ledger rather than infer readiness from board row counts.

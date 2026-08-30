@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
+import { isAdmin } from "@shared/types";
 import { isAuthenticated } from "../auth/passport";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 import type { ConsoleAuthUser } from "../features/console/types";
 import {
   CASINO_GAME_REGISTRY,
@@ -35,6 +37,14 @@ import type {
 } from "../features/casino/games/wtf-button/rules";
 import type { RacewayEffectKey } from "../features/casino/games/guinea-pig-raceway/rules";
 import type { RacewayWagerType } from "../features/casino/games/guinea-pig-raceway/tote";
+import {
+  createCasinoPracticeGame,
+  listCasinoPracticeGamesForCreator,
+  listCasinoPracticeModerationQueue,
+  listPublishedCasinoPracticeGames,
+  playCasinoPracticeGame,
+  reviewCasinoPracticeGame,
+} from "../features/casino/practice-games";
 
 const router = Router();
 
@@ -84,6 +94,20 @@ const racewayEffectPayload = z.object({
     "confetti_pop",
   ]),
 });
+const practiceGameCreatePayload = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    summary: z.string().trim().min(1),
+    instructions: z.string().trim().min(1),
+    outcomes: z.array(z.string().trim().min(1)).min(2),
+  })
+  .strict();
+const practiceGameReviewPayload = z
+  .object({
+    action: z.enum(["approve", "reject"]),
+    note: z.string().trim().min(1),
+  })
+  .strict();
 
 function authUser(req: Request): ConsoleAuthUser {
   const user = req.user as any;
@@ -94,6 +118,10 @@ function authUser(req: Request): ConsoleAuthUser {
     avatarUrl: user.avatarUrl || user.pfpImageUrl || null,
     role: user.role ?? null,
   };
+}
+
+function canModerateCasino(user: any): boolean {
+  return isAdmin(user?.roles ?? user?.role);
 }
 
 function sendCasinoError(res: Response, err: unknown, fallback: string) {
@@ -150,6 +178,122 @@ router.get("/api/casino/games", isAuthenticated, async (req, res) => {
     });
   } catch (err) {
     sendCasinoError(res, err, "Failed to fetch WTF Casino games");
+  }
+});
+
+router.get("/api/casino/practice-games", isAuthenticated, async (req, res) => {
+  try {
+    const user = authUser(req);
+    const canModerate = canModerateCasino(req.user);
+    const [games, mine, moderationQueue] = await Promise.all([
+      listPublishedCasinoPracticeGames(),
+      listCasinoPracticeGamesForCreator(user.id),
+      canModerate ? listCasinoPracticeModerationQueue() : Promise.resolve([]),
+    ]);
+    res.json({
+      games,
+      mine,
+      moderationQueue,
+      canModerate,
+      practiceOnly: true,
+      wageringEnabled: false,
+      rewardsEnabled: false,
+    });
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to fetch community practice tables");
+  }
+});
+
+router.post("/api/casino/practice-games", isAuthenticated, async (req, res) => {
+  try {
+    const parsed = practiceGameCreatePayload.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Add a title, summary, instructions, and at least two possible results.",
+      });
+    }
+    const creator = authUser(req);
+    const game = await createCasinoPracticeGame({ creator, ...parsed.data });
+    await ingestSystemEvent({
+      eventId: `casino.practice_game.submitted:${game.id}`,
+      eventType: "casino.practice_game.submitted",
+      userId: creator.id,
+      source: "casino",
+      sourceModule: "casino-practice-games",
+      rawRefType: "casino_practice_game",
+      rawRefId: game.id,
+      metadata: { slug: game.slug, outcomeCount: game.outcomes.length },
+    });
+    res.status(201).json({ ok: true, game });
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to submit community practice table");
+  }
+});
+
+router.post("/api/casino/practice-games/:id/review", isAuthenticated, async (req, res) => {
+  if (!canModerateCasino(req.user)) {
+    return res.status(403).json({ error: "Casino practice-table review requires an operator." });
+  }
+  try {
+    const gameId = Number(req.params.id);
+    const parsed = practiceGameReviewPayload.safeParse(req.body ?? {});
+    if (!Number.isInteger(gameId) || gameId <= 0 || !parsed.success) {
+      return res.status(400).json({ error: "Choose approve or reject and add a review note." });
+    }
+    const reviewer = authUser(req);
+    const game = await reviewCasinoPracticeGame({
+      gameId,
+      reviewerUserId: reviewer.id,
+      ...parsed.data,
+    });
+    await ingestSystemEvent({
+      eventId: `casino.practice_game.reviewed:${game.id}:${game.status}`,
+      eventType: "casino.practice_game.reviewed",
+      userId: reviewer.id,
+      source: "casino",
+      sourceModule: "casino-practice-games",
+      rawRefType: "casino_practice_game",
+      rawRefId: game.id,
+      metadata: {
+        creatorUserId: game.creatorUserId,
+        status: game.status,
+        note: parsed.data.note,
+      },
+    });
+    res.json({ ok: true, game });
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to review community practice table");
+  }
+});
+
+router.post("/api/casino/practice-games/:slug/play", isAuthenticated, async (req, res) => {
+  try {
+    const access = await requireCasinoEntry(req, res);
+    if (!access) return;
+    const player = authUser(req);
+    const play = await playCasinoPracticeGame({
+      slug: String(req.params.slug || ""),
+      userId: player.id,
+    });
+    await ingestSystemEvent({
+      eventId: `casino.practice_game.played:${play.result.playId}`,
+      eventType: "casino.practice_game.played",
+      userId: player.id,
+      source: "casino",
+      sourceModule: "casino-practice-games",
+      rawRefType: "casino_practice_play",
+      rawRefId: play.result.playId,
+      metadata: {
+        gameId: play.game.id,
+        slug: play.game.slug,
+        practiceOnly: true,
+        wager: null,
+        reward: null,
+      },
+    });
+    res.status(201).json(play);
+  } catch (err) {
+    sendCasinoError(res, err, "Failed to play community practice table");
   }
 });
 

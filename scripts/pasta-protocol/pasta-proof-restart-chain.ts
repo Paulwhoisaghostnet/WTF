@@ -243,6 +243,13 @@ export function projectPastaProofRestartValue(value: unknown): unknown {
   );
 }
 
+export function projectPastaProofRestartScript(value: unknown): unknown[] {
+  assert.ok(Array.isArray(value) && value.length > 0, "restart Michelson script must contain sections");
+  return value
+    .map(projectPastaProofRestartValue)
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
 export function assertPastaProofRestartTransaction(input: {
   row: unknown;
   pending: PastaProofRestartPendingOperation;
@@ -322,8 +329,10 @@ export async function reconcilePastaProofRestartOperation(input: {
 }): Promise<PastaProofRestartResolution> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const family = input.pending.step.action === "originate" ? "originations" : "transactions";
-  const url = `${normalizeBase(input.tzktApiUrl ?? SHADOWNET_TZKT_API)}/operations/${family}` +
-    `?sender=${encodeURIComponent(input.signerAddress)}&counter=${input.pending.expectedCounter}&limit=10`;
+  const operationBase = `${normalizeBase(input.tzktApiUrl ?? SHADOWNET_TZKT_API)}/operations/${family}`;
+  const url = input.pending.operationHash
+    ? `${operationBase}/${encodeURIComponent(input.pending.operationHash)}`
+    : `${operationBase}?sender=${encodeURIComponent(input.signerAddress)}&counter=${input.pending.expectedCounter}&limit=10`;
   const [rowsValue, state] = await Promise.all([
     readJson(`${input.label} indexed manager operation`, url, fetchImpl),
     input.actorState

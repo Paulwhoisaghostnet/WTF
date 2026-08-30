@@ -284,6 +284,7 @@ async function applyOperation(
   fixture: Fixture,
   step: PastaProofRestartStep,
   onSend: () => void = () => undefined,
+  receiptSequence?: number,
 ): Promise<void> {
   const prepared = preparedOperation(journal, fixture, step);
   await journal.beforeOperationSubmit(step.actor, prepared);
@@ -297,7 +298,7 @@ async function applyOperation(
   await journal.onOperationSubmitted(step.actor, submitted);
   const receipt: PastaUiLivePublicReceipt = {
     schema: PASTA_UI_LIVE_RECEIPT_SCHEMA,
-    sequence: prepared.operationSequence,
+    sequence: receiptSequence ?? prepared.operationSequence,
     timestampUtc: CREATED_AT,
     action: step.action!,
     chainId: SHADOWNET_CHAIN_ID,
@@ -351,6 +352,33 @@ async function assertRecoveredWithoutReplay(
 }
 
 for (const fixture of FIXTURES) {
+  test(`${fixture.app} fresh bridge progress is never mistaken for restart replay`, async () => {
+    await withHarness(fixture, async (journal) => {
+      const directPrefix = fixture.plan.filter((step) => step.transport === "direct");
+      for (const step of directPrefix) {
+        assert.equal(step.kind, "pin");
+        await applyPin(journal, fixture, step);
+      }
+
+      const bridgeSteps = fixture.plan.filter((step) => step.actor === "creator" && step.transport === "bridge").slice(0, 2);
+      let delegated = 0;
+      for (const [index, step] of bridgeSteps.entries()) {
+        await journal.replayOrHandle(
+          "creator",
+          requestForStep(fixture, step, `${fixture.app}-fresh-${index}`),
+          async () => {
+            delegated += 1;
+            if (step.kind === "pin") await applyPin(journal, fixture, step);
+            else await applyOperation(journal, fixture, step, () => undefined, 7 + index);
+            return { delegated: step.id };
+          },
+        );
+      }
+
+      assert.equal(delegated, bridgeSteps.length, "fresh semantic steps must delegate exactly once");
+    });
+  });
+
   for (const [boundary, step] of fixture.plan.entries()) {
     test(`${fixture.app} ${step.id} survives every durable ${step.kind} interruption boundary`, async () => {
       if (step.kind === "pin") {
@@ -443,6 +471,7 @@ for (const fixture of FIXTURES) {
         });
         assert.equal(sends, 0, "SUBMITTED operation must reconcile its exact hash without another send");
 
+        await assertRecoveredWithoutReplay(journal, fixture, boundary);
         journal = await reopen(harness);
         await assertRecoveredWithoutReplay(journal, fixture, boundary);
       });

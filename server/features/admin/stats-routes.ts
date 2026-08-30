@@ -1,11 +1,15 @@
 import type { Router } from "express";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requirePermission } from "../../auth/passport";
 import { db } from "../../db";
 import {
   boardThreads,
+  calendarTickets,
+  casinoPracticeGames,
   challenges,
+  consoleGames,
   faqItems,
+  inAppMarketItems,
   links,
   marketplaceListings,
   rounds,
@@ -30,6 +34,10 @@ export function registerAdminStatsRoutes(router: Router) {
           [threadCount],
           [linkCount],
           [faqCount],
+          [storePendingCount],
+          [arcadePendingCount],
+          [casinoPendingCount],
+          [calendarPendingCount],
         ] = await Promise.all([
           db.select({ count: sql<number>`count(*)::int` }).from(users),
           db.select({ count: sql<number>`count(*)::int` }).from(seasons),
@@ -42,6 +50,22 @@ export function registerAdminStatsRoutes(router: Router) {
           db.select({ count: sql<number>`count(*)::int` }).from(boardThreads),
           db.select({ count: sql<number>`count(*)::int` }).from(links),
           db.select({ count: sql<number>`count(*)::int` }).from(faqItems),
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(inAppMarketItems)
+            .where(sql`${inAppMarketItems.metadata}->>'source' = 'trusted_creator' AND COALESCE(${inAppMarketItems.metadata}->>'submissionStatus', 'submitted') = 'submitted'`),
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(consoleGames)
+            .where(eq(consoleGames.status, "pending")),
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(casinoPracticeGames)
+            .where(eq(casinoPracticeGames.status, "submitted")),
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(calendarTickets)
+            .where(eq(calendarTickets.status, "submitted")),
         ]);
 
         res.json({
@@ -54,6 +78,36 @@ export function registerAdminStatsRoutes(router: Router) {
           threads: threadCount.count,
           links: linkCount.count,
           faq: faqCount.count,
+          commissionQueue: [
+            {
+              id: "store",
+              label: "Store",
+              pending: storePendingCount.count,
+              owner: "WTFIAM Market",
+              destination: { kind: "admin-section", value: "in-app-market" },
+            },
+            {
+              id: "arcade",
+              label: "Arcade",
+              pending: arcadePendingCount.count,
+              owner: "Arcade moderation",
+              destination: { kind: "admin-section", value: "arcade" },
+            },
+            {
+              id: "casino",
+              label: "Casino",
+              pending: casinoPendingCount.count,
+              owner: "Casino practice tables",
+              destination: { kind: "route", value: "/casino" },
+            },
+            {
+              id: "calendar",
+              label: "Calendar",
+              pending: calendarPendingCount.count,
+              owner: "Control Board tickets",
+              destination: { kind: "route", value: "/control-board" },
+            },
+          ],
         });
       } catch (err) {
         res.status(500).json({ error: "Failed to fetch stats" });

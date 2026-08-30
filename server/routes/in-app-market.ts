@@ -38,7 +38,11 @@ import {
   lockPetBallAccountCap,
   petBallAccountCapDecision,
 } from "../lib/pet-ball-account-cap";
-import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
+import {
+  createTrustedCreatorMarketItem,
+  creatorSubmissionFromMetadata,
+  serializeInAppMarketItem,
+} from "../features/in-app-market/creator-items";
 import { ensureArcadePlayTicketItem } from "../features/arcade/payment";
 import { ensureCasinoAppPassItem } from "../features/casino/access";
 import {
@@ -561,6 +565,14 @@ router.post("/api/in-app-market/creator-items", isAuthenticated, async (req, res
       },
       parsed.data
     );
+    logSystemEvent({
+      source: "in-app-market",
+      eventType: "wtfiam.creator_item.created",
+      severity: "info",
+      userId: Number(user.id),
+      message: "Trusted creator submitted an item for Store review",
+      metadata: { itemId: item.id, sku: item.sku, category: item.category },
+    });
     res.status(201).json({ ok: true, item });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create creator item";
@@ -569,6 +581,23 @@ router.post("/api/in-app-market/creator-items", isAuthenticated, async (req, res
     }
     console.error("POST /api/in-app-market/creator-items error:", err);
     res.status(/required|invalid/i.test(message) ? 400 : 500).json({ error: message });
+  }
+});
+
+router.get("/api/in-app-market/creator-items/mine", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const rows = await db
+      .select()
+      .from(inAppMarketItems)
+      .orderBy(desc(inAppMarketItems.createdAt), desc(inAppMarketItems.id));
+    const items = rows
+      .filter((item) => creatorSubmissionFromMetadata(item.metadata)?.creatorUserId === Number(user.id))
+      .map(serializeInAppMarketItem);
+    res.json({ items });
+  } catch (err) {
+    console.error("GET /api/in-app-market/creator-items/mine error:", err);
+    res.status(500).json({ error: "Failed to fetch creator Store submissions" });
   }
 });
 

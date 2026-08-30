@@ -222,7 +222,7 @@
     "test:e2e:live:puppets": "npm run test:e2e:puppets:seed && WTF_E2E_START_SERVER=1 WTF_E2E_REUSE_SERVER=0 PORT=${PORT:-3307} playwright test --config=playwright.live.config.mjs tests/playwright/live",
     "test:e2e:marketplace:shadownet": "node scripts/marketplace-v2/run-local-shadownet-puppet-e2e.mjs",
     "test:e2e:macaroni:shadownet": "node scripts/macaroni/run-local-shadownet-puppet-e2e.mjs",
-    "test:e2e:live:phases": "npm run test:e2e:puppets:seed && WTF_E2E_START_SERVER=1 WTF_E2E_REUSE_SERVER=0 PORT=${PORT:-3307} playwright test --config=playwright.live.config.mjs tests/playwright/live/phase0-bootstrap.spec.mjs tests/playwright/live/phase1-onchain.spec.mjs tests/playwright/live/phase-tezos-domains.spec.mjs tests/playwright/live/phase2-auth-identity.spec.mjs tests/playwright/live/phase3-desktop-os.spec.mjs tests/playwright/live/phase4-gameshow.spec.mjs tests/playwright/live/phase5-social.spec.mjs tests/playwright/live/phase6-media-creation.spec.mjs tests/playwright/live/phase7-arcade-casino.spec.mjs tests/playwright/live/phase8-admin.spec.mjs tests/playwright/live/phase9-public-agents.spec.mjs tests/playwright/live/puppet-orchestration.spec.mjs",
+    "test:e2e:live:phases": "npm run test:e2e:live:puppets",
     "test:e2e:traffic-light:report": "node scripts/generate-traffic-light-report.mjs",
     "test:e2e:full": "npm run test:e2e:inventory:coverage && npm run test:e2e",
     "collekt:dev": "npm --prefix apps/collekt run dev",

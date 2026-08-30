@@ -58,6 +58,53 @@ const TaskGrid = styled.div`
   gap: var(--wtf-space-3, 12px);
 `;
 
+const QueueGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--wtf-space-2, 8px);
+`;
+
+const QueueCard = styled.button`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--wtf-space-2, 8px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #fff);
+  color: var(--wtf-app-text, #111);
+  padding: 10px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--wtf-app-info-bg, #eef6ff);
+    box-shadow: inset 3px 0 0 var(--wtf-app-link, #000080);
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  small {
+    margin-top: 3px;
+    color: var(--wtf-app-muted-text, #444);
+  }
+`;
+
+const PendingCount = styled.span`
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-task-bg, #e8edf2);
+  font-weight: 800;
+  font-size: 18px;
+`;
+
 const TaskButton = styled.button`
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -133,9 +180,22 @@ const COMMON_TASKS = [
 export function AdminOverviewTab({
   stats,
   onNavigate,
+  onOpenRoute,
 }: {
-  stats: Record<string, number> | undefined;
+  stats: (Record<string, unknown> & {
+    users?: number;
+    challenges?: number;
+    threads?: number;
+    commissionQueue?: Array<{
+      id: "store" | "arcade" | "casino" | "calendar";
+      label: string;
+      pending: number;
+      owner: string;
+      destination: { kind: "admin-section" | "route"; value: string };
+    }>;
+  }) | undefined;
   onNavigate: (sectionSlug: string) => void;
+  onOpenRoute: (route: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const results = useMemo(() => query.trim() ? searchAdminHelpTopics(query).slice(0, 7) : [], [query]);
@@ -161,6 +221,31 @@ export function AdminOverviewTab({
           <AdminScopeMetric><strong>{ADMIN_SECTION_CATALOG.length}</strong><span>Admin scopes</span></AdminScopeMetric>
         </AdminScopeSummaryGrid>
       </Hero>
+
+      <UiPanel compact title="Commission moderation queue" tone="warning">
+        <UiNotice tone="info">
+          Review decisions stay in the app that owns the submission. This summary only shows what is waiting and takes you there.
+        </UiNotice>
+        <QueueGrid data-admin-commission-queue>
+          {(stats?.commissionQueue ?? []).map((queue) => (
+            <QueueCard
+              key={queue.id}
+              type="button"
+              aria-label={`Review ${queue.label} submissions`}
+              data-admin-commission-queue-domain={queue.id}
+              onClick={() => queue.destination.kind === "admin-section"
+                ? onNavigate(queue.destination.value)
+                : onOpenRoute(queue.destination.value)}
+            >
+              <span>
+                <strong>{queue.label}</strong>
+                <small>{queue.owner}</small>
+              </span>
+              <PendingCount aria-label={`${queue.pending} pending`}>{queue.pending}</PendingCount>
+            </QueueCard>
+          ))}
+        </QueueGrid>
+      </UiPanel>
 
       <UiPanel compact title="Describe the issue" tone="info" actions={<UiButton compact onClick={() => onNavigate("help")}>Open full Help index</UiButton>}>
         <AdminScopeSearch label="Search the admin task index" placeholder="Example: user screen is green, cannot open Studio, payout missing…" value={query} onChange={setQuery} />

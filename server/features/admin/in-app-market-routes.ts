@@ -6,6 +6,8 @@ import { db } from "../../db";
 import { inAppMarketItems, inAppMarketSales } from "@shared/schema";
 import { formatWtf } from "@shared/types";
 import { itemMetadataKind } from "../../lib/pet-ball-account-cap";
+import { logSystemEvent } from "../../lib/system-log";
+import { creatorSubmissionFromMetadata } from "../in-app-market/creator-items";
 import {
   buildPricingBands,
   IN_APP_MARKET_PRICING_TIERS,
@@ -36,6 +38,8 @@ const updateMarketItemPayload = z.object({
   priceScoreLocked: z.boolean().optional(),
   sortOrder: z.coerce.number().int().min(0).max(999_999).optional(),
   rebalance: z.boolean().optional(),
+  reviewStatus: z.enum(["approved", "rejected"]).optional(),
+  reviewNote: z.string().trim().max(800).optional(),
 });
 
 const createMarketItemPayload = z.object({
@@ -112,6 +116,7 @@ function serializeMarketItem(
     active: item.active,
     stockQuantity: item.stockQuantity ?? 0,
     metadata: item.metadata,
+    creatorSubmission: creatorSubmissionFromMetadata(item.metadata),
     sortOrder: item.sortOrder,
     sale: serializeSaleForItem(sale, item.priceWtfUnits),
     updatedAt: item.updatedAt,
@@ -317,17 +322,37 @@ export function registerAdminInAppMarketRoutes(router: Router) {
           updates.priceScoreLocked = parsed.data.priceScoreLocked;
         }
         if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
-        if (parsed.data.kind !== undefined) {
+        let currentMetadata: Record<string, unknown> | null = null;
+        if (parsed.data.kind !== undefined || parsed.data.reviewStatus !== undefined) {
           const [item] = await db
             .select({ metadata: inAppMarketItems.metadata })
             .from(inAppMarketItems)
             .where(eq(inAppMarketItems.id, id))
             .limit(1);
+          currentMetadata = (item?.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+            ? item.metadata
+            : {}) as Record<string, unknown>;
+        }
+        if (parsed.data.kind !== undefined) {
           updates.metadata = {
-            ...((item?.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
-              ? item.metadata
-              : {}) as Record<string, unknown>),
+            ...(currentMetadata ?? {}),
             kind: normalizeKind(parsed.data.kind),
+          };
+        }
+        if (parsed.data.reviewStatus !== undefined) {
+          if (!creatorSubmissionFromMetadata(currentMetadata)) {
+            return res.status(400).json({ error: "Item is not a creator submission" });
+          }
+          const reviewer = req.user as any;
+          updates.active = parsed.data.reviewStatus === "approved";
+          updates.metadata = {
+            ...(currentMetadata ?? {}),
+            ...(updates.metadata ?? {}),
+            submissionStatus: parsed.data.reviewStatus,
+            reviewedAt: new Date().toISOString(),
+            reviewedByUserId: Number(reviewer?.id || 0),
+            reviewedByUsername: String(reviewer?.username || "operator"),
+            reviewNote: parsed.data.reviewNote || null,
           };
         }
         const changedKeys = Object.keys(updates).filter((key) => key !== "updatedAt");
@@ -342,6 +367,22 @@ export function registerAdminInAppMarketRoutes(router: Router) {
           .returning();
         if (!updated) {
           return res.status(404).json({ error: "In-app market item not found" });
+        }
+
+        if (parsed.data.reviewStatus !== undefined) {
+          const reviewer = req.user as any;
+          logSystemEvent({
+            source: "admin/in-app-market",
+            eventType: "wtfiam.creator_item.reviewed",
+            severity: "info",
+            userId: Number(reviewer?.id || 0),
+            message: `Creator Store submission ${parsed.data.reviewStatus}`,
+            metadata: {
+              itemId: id,
+              status: parsed.data.reviewStatus,
+              reviewNote: parsed.data.reviewNote || null,
+            },
+          });
         }
 
         if (

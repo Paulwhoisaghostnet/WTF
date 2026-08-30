@@ -347,6 +347,21 @@ const SystemMessageRow = styled.div`
   }
 `;
 
+const SafetyPanel = styled.div`
+  margin-top: 6px;
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-warning-bg, #fff7df);
+  color: var(--wtf-app-text, #111);
+
+  ${gammaMessagesScope} & {
+    background: rgba(255, 170, 50, 0.08);
+    border-color: rgba(255, 170, 50, 0.35);
+    border-radius: 6px;
+    color: #f2ead9;
+  }
+`;
+
 const NotificationTitle = styled.div`
   font-size: var(--wtf-type-caption, 13px);
   font-weight: bold;
@@ -482,6 +497,22 @@ interface DmMessage {
   pinned?: boolean;
 }
 
+interface DmMessageReport {
+  id: number;
+  messageId: number;
+  reporterUserId: number;
+  conversationId: number;
+  senderUserId: number;
+  sender: { username: string; displayName?: string | null } | null;
+  reporter: { username: string; displayName?: string | null } | null;
+  messageContent: string;
+  messageCreatedAt: string;
+  reason: string;
+  status: "open" | "reviewed" | "dismissed";
+  reviewNote: string | null;
+  createdAt: string;
+}
+
 interface NotificationPreferenceDefinition {
   key: string;
   label: string;
@@ -585,6 +616,10 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   >({});
   const [notificationPrefsDirty, setNotificationPrefsDirty] = useState(false);
   const [showDmEmoji, setShowDmEmoji] = useState(false);
+  const [reportingMessageId, setReportingMessageId] = useState<number | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportFeedback, setReportFeedback] = useState<string | null>(null);
+  const [reportReviewNotes, setReportReviewNotes] = useState<Record<number, string>>({});
 
   const getAdaptiveInterval = (activeMs: number, idleMs: number) =>
     typeof document !== "undefined" && document.visibilityState === "visible"
@@ -629,6 +664,13 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
     enabled: !!user,
     refetchInterval: () => getAdaptiveInterval(12_000, 45_000),
     refetchIntervalInBackground: false,
+  });
+
+  const canReviewDmReports = user?.role === "admin";
+  const { data: dmReports, isLoading: dmReportsLoading } = useQuery({
+    queryKey: ["messages", "dm-reports", "open"],
+    queryFn: () => api.get<DmMessageReport[]>("/api/messages/dm-reports?status=open"),
+    enabled: canReviewDmReports,
   });
 
   useEffect(() => {
@@ -680,6 +722,41 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
       qc.invalidateQueries({ queryKey: ["messages", "dms", activeConversationId] });
       qc.invalidateQueries({ queryKey: ["messages", "dms"] });
       setDmInput("");
+    },
+  });
+
+  const reportDmMutation = useMutation({
+    mutationFn: ({ messageId, reason }: { messageId: number; reason: string }) =>
+      api.post(
+        `/api/messages/dms/${activeConversationId}/messages/${messageId}/report`,
+        { reason }
+      ),
+    onSuccess: () => {
+      setReportFeedback("Report sent for moderator review.");
+      setReportingMessageId(null);
+      setReportReason("");
+      qc.invalidateQueries({ queryKey: ["messages", "dm-reports"] });
+    },
+    onError: (error: Error) => setReportFeedback(error.message),
+  });
+
+  const reviewDmReportMutation = useMutation({
+    mutationFn: ({
+      reportId,
+      status,
+      note,
+    }: {
+      reportId: number;
+      status: "reviewed" | "dismissed";
+      note: string;
+    }) => api.post(`/api/messages/dm-reports/${reportId}/review`, { status, note }),
+    onSuccess: (_data, variables) => {
+      setReportReviewNotes((notes) => {
+        const next = { ...notes };
+        delete next[variables.reportId];
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ["messages", "dm-reports"] });
     },
   });
 
@@ -850,6 +927,9 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
         <Tab value={1}>
           Notifications{unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
         </Tab>
+        {canReviewDmReports ? (
+          <Tab value={2}>Safety reports{(dmReports?.length ?? 0) > 0 ? ` (${dmReports?.length})` : ""}</Tab>
+        ) : null}
       </Tabs>
 
       <TabBody data-messages-region="tab-body">
@@ -998,6 +1078,57 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                         {message.pinned ? " · 📌" : ""}
                       </Meta>
                       <Body>{message.content}</Body>
+                      {message.senderId !== user?.id ? (
+                        <div data-messages-region="message-safety-actions" style={{ marginTop: 4 }}>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setReportFeedback(null);
+                              setReportReason("");
+                              setReportingMessageId(message.id);
+                            }}
+                          >
+                            Report
+                          </Button>
+                        </div>
+                      ) : null}
+                      {reportingMessageId === message.id ? (
+                        <SafetyPanel data-messages-region="message-report-form">
+                          <strong>Report this message to WTF moderators</strong>
+                          <Meta>
+                            Explain the safety concern. The report is private; this screen does not notify the sender.
+                          </Meta>
+                          <TextInput
+                            aria-label="Why are you reporting this message?"
+                            multiline
+                            fullWidth
+                            value={reportReason}
+                            onChange={(event: any) => setReportReason(event.target.value)}
+                            placeholder="Describe what happened and why a moderator should review it."
+                          />
+                          <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                            <Button
+                              primary
+                              disabled={reportReason.trim().length < 10 || reportDmMutation.isPending}
+                              onClick={() => reportDmMutation.mutate({
+                                messageId: message.id,
+                                reason: reportReason.trim(),
+                              })}
+                            >
+                              {reportDmMutation.isPending ? "Sending report..." : "Send private report"}
+                            </Button>
+                            <Button
+                              disabled={reportDmMutation.isPending}
+                              onClick={() => {
+                                setReportingMessageId(null);
+                                setReportReason("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </SafetyPanel>
+                      ) : null}
                     </MessageRow>
                   );
                 })}
@@ -1083,6 +1214,11 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                   Send message
                 </Button>
               </InputRow>
+              {reportFeedback ? (
+                <Meta role="status" data-messages-region="message-report-feedback">
+                  {reportFeedback}
+                </Meta>
+              ) : null}
             </Main>
           </Layout>
         )}
@@ -1244,6 +1380,73 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
             </GroupBox>
           </div>
         )}
+
+        {inboxTab === 2 && canReviewDmReports ? (
+          <div data-messages-region="safety-report-pane" style={{ display: "grid", gap: 8 }}>
+            <GroupBox label="Open direct-message safety reports">
+              <Meta>
+                Review the reported message and recipient explanation. Add a note before recording a disposition.
+              </Meta>
+            </GroupBox>
+            {dmReportsLoading ? (
+              <Hourglass size={24} />
+            ) : (dmReports ?? []).length === 0 ? (
+              <UiEmptyState title="No open safety reports">
+                New recipient reports will appear here for operator review.
+              </UiEmptyState>
+            ) : (
+              (dmReports ?? []).map((report) => {
+                const note = reportReviewNotes[report.id] ?? "";
+                return (
+                  <SafetyPanel key={report.id} data-messages-region="safety-report-card">
+                    <strong>
+                      Report #{report.id} · {(report.reporter?.displayName || report.reporter?.username || "WTF user")} reported {(report.sender?.displayName || report.sender?.username || "a sender")}
+                    </strong>
+                    <Meta>Reported message · {new Date(report.messageCreatedAt).toLocaleString()}</Meta>
+                    <Body>“{report.messageContent}”</Body>
+                    <Meta>Recipient explanation: {report.reason}</Meta>
+                    <TextInput
+                      aria-label={`Review note for report ${report.id}`}
+                      multiline
+                      fullWidth
+                      value={note}
+                      onChange={(event: any) =>
+                        setReportReviewNotes((notes) => ({
+                          ...notes,
+                          [report.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="Record what you checked and why you chose this disposition."
+                    />
+                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      <Button
+                        primary
+                        disabled={note.trim().length < 3 || reviewDmReportMutation.isPending}
+                        onClick={() => reviewDmReportMutation.mutate({
+                          reportId: report.id,
+                          status: "reviewed",
+                          note: note.trim(),
+                        })}
+                      >
+                        Mark reviewed
+                      </Button>
+                      <Button
+                        disabled={note.trim().length < 3 || reviewDmReportMutation.isPending}
+                        onClick={() => reviewDmReportMutation.mutate({
+                          reportId: report.id,
+                          status: "dismissed",
+                          note: note.trim(),
+                        })}
+                      >
+                        Dismiss report
+                      </Button>
+                    </div>
+                  </SafetyPanel>
+                );
+              })
+            )}
+          </div>
+        ) : null}
       </TabBody>
       </MessagesSurface>
     </AppWindow>

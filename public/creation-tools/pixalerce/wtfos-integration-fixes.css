@@ -1,0 +1,12 @@
+/*
+ * wtfOS iframe integration fixes for the pinned PixAlerce build.
+ * Keep visible panel controls above adjacent floating editor chrome so their
+ * real pointer targets match what users see.
+ */
+main > div.pointer-events-none.absolute.left-3.top-2.bottom-2.z-30 {
+  z-index: 50 !important;
+}
+
+button[aria-label="Open inspector"] {
+  z-index: 50 !important;
+}

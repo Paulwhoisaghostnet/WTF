@@ -37,6 +37,7 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const themeCss = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
 
   assert.match(commonSource, /\/api\/auth\/csrf-token/);
   assert.match(commonSource, /X-CSRF-Token/);
@@ -50,7 +51,15 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.doesNotMatch(studioSource, /wtf_pin_collector/);
   assert.match(studioSource, /pin:\s*\{ kind: "pinata"/);
   assert.match(studioSource, /addPinKindOption\("wtfos"/);
-  assert.match(studioSource, /btn\.hidden = !canUseWtfosPinning/);
+  assert.match(studioSource, /wtfosAccessState = canUseWtfosPinning \? "granted" : "denied"/);
+  assert.match(studioSource, /const confirmedRoleDenial = wtfosAccessState === "denied"/);
+  assert.match(studioSource, /function setupWtfosRoleTooltip\(\)/);
+  assert.match(studioSource, /gate\.addEventListener\("pointerenter"/);
+  assert.match(studioSource, /event\.key !== "Escape"/);
+  assert.match(studioSource, /document\.addEventListener\("pointerdown"/);
+  assert.doesNotMatch(studioSource, /gate\.setAttribute\("aria-disabled"/);
+  assert.match(studioSource, /btn\.disabled = !accessGranted/);
+  assert.doesNotMatch(studioSource, /btn\.hidden = !canUseWtfosPinning/);
   assert.match(studioSource, /Export the site package for your own host/);
   assert.match(studioSource, /\/api\/macaroni\/installers/);
   assert.match(studioSource, /function shortSha256\(value\)/);
@@ -59,7 +68,15 @@ test("Macaroni static API calls use the wtfOS CSRF boundary and do not embed pin
   assert.equal(commonSource.includes("VITE_PINATA_JWT"), false);
   assert.equal(studioSource.includes("VITE_PINATA_JWT"), false);
   assert.equal(studioHtml.includes('<option value="wtfos">'), false);
-  assert.match(studioHtml, /id="btnPublishWtfOS" hidden/);
+  assert.match(studioHtml, /id="publishWtfOSGate" hidden/);
+  assert.match(studioHtml, /id="btnPublishWtfOS" disabled/);
+  assert.match(studioHtml, /id="publishWtfOSRoleHelp"[\s\S]*aria-controls="publishWtfOSRoleTooltip"[\s\S]*aria-expanded="false"[\s\S]*hidden/);
+  assert.match(studioHtml, /id="publishWtfOSRoleTooltip" role="tooltip" hidden/);
+  assert.match(studioHtml, /Trusted Market Creator role to prevent abuse[\s\S]*Contact Admin app/);
+  assert.match(themeCss, /\.publish-access-gate\[data-role-locked="true"\]\[data-tooltip-open="true"\] \.publish-access-tooltip/);
+  assert.match(themeCss, /\.publish-access-tooltip::after/);
+  assert.match(themeCss, /pointer-events: auto/);
+  assert.match(themeCss, /\.btn:not\(:disabled\):hover/);
   assert.match(studioHtml, /id="installerMacos"/);
   assert.match(studioHtml, /id="installerWindows"/);
   assert.match(studioHtml, /id="installerRaspberryPi"/);

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
-import { usePresentationShell } from "../../lib/presentation-shell";
+import { useAuth } from "../../lib/auth-context";
+import { presentationRouteHref, usePresentationShell } from "../../lib/presentation-shell";
 import {
   approveInAppMarketForWtf,
   ensureWalletProviderForSend,
@@ -15,7 +16,7 @@ import { WtfIamCartPanel } from "./WtfIamCartPanel";
 import { WtfIamItemCard } from "./WtfIamItemCard";
 import { WtfIamTabs } from "./WtfIamTabs";
 import { useWtfIamMarket } from "./useWtfIamMarket";
-import type { InAppMarketIntentResponse, InAppMarketTipTransfer, WtfIamCategoryKey } from "./types";
+import type { CreatorStoreSubmission, InAppMarketIntentResponse, InAppMarketTipTransfer, WtfIamCategoryKey } from "./types";
 
 const gammaWtfIamScope = `[data-wtfiam-presentation-host="gamma"]`;
 
@@ -192,6 +193,80 @@ const Layout = styled.div`
   }
 `;
 
+const ContributionBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 8px;
+  border: 2px inset #fff;
+  background: #f5edc8;
+
+  ${gammaWtfIamScope} & {
+    margin: 0;
+    border: 1px solid rgba(0, 210, 255, 0.32);
+    background: #11110f;
+    color: #f2ead9;
+  }
+`;
+
+const ContributionPanel = styled(GroupBox)`
+  margin-bottom: 10px;
+`;
+
+const ContributionForm = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+
+  label {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-width: 0;
+  }
+
+  textarea {
+    min-height: 72px;
+    resize: vertical;
+  }
+`;
+
+const SubmissionList = styled.div`
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+`;
+
+const SubmissionRow = styled.div`
+  border: 1px solid #808080;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+
+  ${gammaWtfIamScope} & {
+    background: #070706;
+    color: #f2ead9;
+    border-color: rgba(242, 234, 217, 0.18);
+  }
+`;
+
+const ContributionMessage = styled.p<{ $error?: boolean }>`
+  margin: 8px 0 0;
+  color: ${(p) => (p.$error ? "#b00000" : "#176b38")};
+  font-size: 13px;
+`;
+
 const ListingsBox = styled(GroupBox)`
   min-width: 0;
 
@@ -329,13 +404,59 @@ const TipLedgerRow = styled.div`
 
 export function WtfIamShell() {
   const presentation = usePresentationShell();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] =
     useState<WtfIamCategoryKey>(initialCategoryFromUrl);
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
+  const [contributionOpen, setContributionOpen] = useState(false);
+  const [contributionMessage, setContributionMessage] = useState("");
+  const [contributionError, setContributionError] = useState("");
+  const [contributionForm, setContributionForm] = useState({
+    name: "",
+    description: "",
+    category: "desktop_fun",
+    kind: "creator-item",
+    priceExp: "100",
+    stockQuantity: "25",
+  });
   const qc = useQueryClient();
   const wallet = useWallet();
   const market = useWtfIamMarket(activeCategory);
+  const canSubmitCreatorItem = user?.effectivePermissions?.trusted_market_creator === true;
+  const creatorItemsQuery = useQuery({
+    queryKey: ["wtfiam", "creator-items", "mine"],
+    queryFn: () =>
+      api.get<{ items: CreatorStoreSubmission[] }>(
+        "/api/in-app-market/creator-items/mine"
+      ),
+    enabled: Boolean(user),
+  });
+  const creatorItemMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/in-app-market/creator-items", {
+        ...contributionForm,
+        priceExp: Number(contributionForm.priceExp),
+        stockQuantity: Number(contributionForm.stockQuantity),
+      }),
+    onSuccess: () => {
+      setContributionError("");
+      setContributionMessage("Submitted for operator review. It will not appear in the Store until approved.");
+      setContributionForm({
+        name: "",
+        description: "",
+        category: "desktop_fun",
+        kind: "creator-item",
+        priceExp: "100",
+        stockQuantity: "25",
+      });
+      qc.invalidateQueries({ queryKey: ["wtfiam", "creator-items", "mine"] });
+    },
+    onError: (err: unknown) => {
+      setContributionMessage("");
+      setContributionError(err instanceof Error ? err.message : "Could not submit this item.");
+    },
+  });
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (market.cartEntries.length === 0) {
@@ -463,6 +584,127 @@ export function WtfIamShell() {
           <div>Staged: {market.stagedCount}</div>
         </Meter>
       </Header>
+
+      <ContributionBar data-wtfiam-region="creator-contribution-bar">
+        <span>
+          <strong>Community shop:</strong> creators can propose items for operator review.
+        </span>
+        <Button type="button" onClick={() => setContributionOpen((open) => !open)}>
+          {contributionOpen ? "Close creator desk" : "Sell something"}
+        </Button>
+      </ContributionBar>
+
+      {contributionOpen ? (
+        <ContributionPanel label="Creator submission desk" data-wtfiam-region="creator-contribution-panel">
+          {!canSubmitCreatorItem ? (
+            <div>
+              <p>
+                Store submissions require the Trusted Market Creator permission. Your other
+                Store and creation tools remain available.
+              </p>
+              <Button type="button" onClick={() => { window.location.href = presentationRouteHref("/admin-inbox", presentation.host); }}>
+                Contact Admin to request access
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p>
+                Submit an item for review. It stays private until an operator approves it.
+              </p>
+              <ContributionForm>
+                <label>
+                  Item name
+                  <input
+                    aria-label="Creator item name"
+                    value={contributionForm.name}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, name: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Category
+                  <select
+                    aria-label="Creator item category"
+                    value={contributionForm.category}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, category: event.target.value }))}
+                  >
+                    <option value="desktop_fun">Desktop item</option>
+                    <option value="desktop_pet">Desktop pet</option>
+                    <option value="system_appearance">System appearance</option>
+                    <option value="tv">WTF TV</option>
+                    <option value="arcade">Arcade</option>
+                    <option value="studio">Studio</option>
+                    <option value="preservation">Preservation</option>
+                  </select>
+                </label>
+                <label>
+                  Item type
+                  <input
+                    aria-label="Creator item type"
+                    value={contributionForm.kind}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, kind: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  EXP price
+                  <input
+                    aria-label="Creator item EXP price"
+                    type="number"
+                    min={1}
+                    value={contributionForm.priceExp}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, priceExp: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Available quantity
+                  <input
+                    aria-label="Creator item available quantity"
+                    type="number"
+                    min={1}
+                    value={contributionForm.stockQuantity}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, stockQuantity: event.target.value }))}
+                  />
+                </label>
+                <label style={{ gridColumn: "1 / -1" }}>
+                  Description
+                  <textarea
+                    aria-label="Creator item description"
+                    value={contributionForm.description}
+                    onChange={(event) => setContributionForm((form) => ({ ...form, description: event.target.value }))}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  disabled={creatorItemMutation.isPending || !contributionForm.name.trim()}
+                  onClick={() => creatorItemMutation.mutate()}
+                >
+                  {creatorItemMutation.isPending ? "Submitting..." : "Submit for review"}
+                </Button>
+              </ContributionForm>
+            </>
+          )}
+          {contributionMessage ? <ContributionMessage>{contributionMessage}</ContributionMessage> : null}
+          {contributionError ? <ContributionMessage $error>{contributionError}</ContributionMessage> : null}
+          {user ? (
+            <SubmissionList aria-label="My Store submissions">
+              {(creatorItemsQuery.data?.items ?? []).map((item) => (
+                <SubmissionRow key={item.id}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <div>{item.category} · {item.priceExp} EXP · {item.stockQuantity} available</div>
+                    {item.creatorSubmission?.reviewNote ? (
+                      <div>Operator note: {item.creatorSubmission.reviewNote}</div>
+                    ) : null}
+                  </div>
+                  <strong>{item.creatorSubmission?.status ?? "submitted"}</strong>
+                </SubmissionRow>
+              ))}
+              {!creatorItemsQuery.isLoading && (creatorItemsQuery.data?.items.length ?? 0) === 0 ? (
+                <span>No Store submissions yet.</span>
+              ) : null}
+            </SubmissionList>
+          ) : null}
+        </ContributionPanel>
+      ) : null}
 
       <WtfIamTabs activeKey={activeCategory} onChange={setActiveCategory} />
 

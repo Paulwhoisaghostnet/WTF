@@ -33,6 +33,7 @@ export type TrustedCreatorMarketItemInput = {
 };
 
 export function serializeInAppMarketItem(item: typeof inAppMarketItems.$inferSelect) {
+  const creatorSubmission = creatorSubmissionFromMetadata(item.metadata);
   return {
     id: item.id,
     sku: item.sku,
@@ -48,6 +49,7 @@ export function serializeInAppMarketItem(item: typeof inAppMarketItems.$inferSel
     active: item.active,
     stockQuantity: item.stockQuantity ?? 0,
     metadata: item.metadata,
+    creatorSubmission,
     sortOrder: item.sortOrder,
     updatedAt: item.updatedAt,
   };
@@ -83,7 +85,7 @@ export async function createTrustedCreatorMarketItem(
       category,
       priceWtfUnits: "0",
       priceExp,
-      active: true,
+      active: false,
       stockQuantity,
       contractAddress: null,
       contractListingId: null,
@@ -95,12 +97,31 @@ export async function createTrustedCreatorMarketItem(
         creatorUserId: user.id,
         creatorUsername: user.username,
         currency: "exp",
+        submissionStatus: "submitted",
+        submittedAt: new Date().toISOString(),
       },
       updatedAt: new Date(),
     })
     .returning();
 
   return serializeInAppMarketItem(item);
+}
+
+export function creatorSubmissionFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const row = metadata as Record<string, unknown>;
+  if (row.source !== "trusted_creator") return null;
+  return {
+    creatorUserId: Number(row.creatorUserId || 0),
+    creatorUsername: String(row.creatorUsername || "unknown"),
+    status: String(row.submissionStatus || "submitted"),
+    submittedAt: typeof row.submittedAt === "string" ? row.submittedAt : null,
+    reviewedAt: typeof row.reviewedAt === "string" ? row.reviewedAt : null,
+    reviewedByUserId: row.reviewedByUserId ? Number(row.reviewedByUserId) : null,
+    reviewedByUsername:
+      typeof row.reviewedByUsername === "string" ? row.reviewedByUsername : null,
+    reviewNote: typeof row.reviewNote === "string" ? row.reviewNote : null,
+  };
 }
 
 async function nextCreatorMarketSku(userId: number, value: string): Promise<string> {

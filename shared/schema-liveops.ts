@@ -46,6 +46,44 @@ export const calendarTickets = pgTable("calendar_tickets", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const calendarParticipationStatusEnum = pgEnum(
+  "calendar_participation_status",
+  ["interested", "going"]
+);
+
+export const calendarParticipations = pgTable(
+  "calendar_participations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    eventKey: varchar("event_key", { length: 500 }).notNull(),
+    sourceProvider: varchar("source_provider", { length: 20 }).notNull(),
+    sourceEventId: integer("source_event_id").references(() => gameshowEvents.id, {
+      onDelete: "cascade",
+    }),
+    title: varchar("title", { length: 300 }).notNull(),
+    startsAt: timestamp("starts_at").notNull(),
+    endsAt: timestamp("ends_at"),
+    allDay: boolean("all_day").default(false).notNull(),
+    status: calendarParticipationStatusEnum("status").notNull(),
+    reminderEnabled: boolean("reminder_enabled").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("calendar_participations_user_event_unique").on(
+      table.userId,
+      table.eventKey
+    ),
+    index("calendar_participations_user_start_idx").on(
+      table.userId,
+      table.startsAt
+    ),
+  ]
+);
+
 export const attendanceSourceEnum = pgEnum("attendance_source", [
   "discord_voice",
   "discord_stage",

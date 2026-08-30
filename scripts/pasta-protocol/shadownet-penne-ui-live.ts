@@ -44,6 +44,7 @@ import {
   assertPastaProofRestartTransaction,
   authenticatePastaProofRestartInitialCounters,
   capturePastaProofRestartInitialCounters,
+  projectPastaProofRestartScript,
   readPastaProofRestartActorState,
   reconcilePastaProofRestartOperation,
   reconcilePastaProofRestartPin,
@@ -705,14 +706,18 @@ async function assertPenneRestartApplied(input: {
   pending: PastaProofRestartPendingOperation;
   signerAddress: string;
   tezos: TezosToolkit;
-  expectedCodeHash: string;
+  expectedCode: unknown[];
 }): Promise<{ contractAddress: string; entrypoints: string[] }> {
   if (input.pending.step.action !== "originate") {
     return assertPastaProofRestartTransaction(input);
   }
   const resolved = assertPastaProofRestartOrigination(input);
   const descriptor = projectedRecord(input.pending.descriptor, "Penne restart origination descriptor");
-  assert.equal(hashJsonForBridge(descriptor.code), input.expectedCodeHash, "Penne restart artifact identity differs");
+  assert.deepEqual(
+    projectPastaProofRestartScript(descriptor.code),
+    projectPastaProofRestartScript(input.expectedCode),
+    "Penne restart artifact identity differs",
+  );
   const requestedStorage = projectedRecord(descriptor.storage, "Penne restart origination storage");
   assert.equal(requestedStorage.administrator, input.signerAddress);
   assert.equal(requestedStorage.pending_administrator, null);
@@ -735,7 +740,11 @@ async function assertPenneRestartApplied(input: {
   assert.equal(rowStorage.claim_start, null);
   assert.equal(rowStorage.claim_end, null);
   const script = await input.tezos.rpc.getScript(resolved.contractAddress);
-  assert.equal(hashJsonForBridge(script.code), input.expectedCodeHash, "Penne recovered on-chain code differs");
+  assert.deepEqual(
+    projectPastaProofRestartScript(script.code),
+    projectPastaProofRestartScript(input.expectedCode),
+    "Penne recovered on-chain code differs",
+  );
   const contract = await input.tezos.contract.at(resolved.contractAddress);
   const storage = await contract.storage() as { metadata: { get(key: string): Promise<unknown> } };
   assert.equal(await storage.metadata.get(""), expectedMetadataHex, "Penne recovered collection metadata URI differs");
@@ -912,7 +921,7 @@ async function preparePenneRestartJournal(input: {
       pending,
       signerAddress: actorAddress(pending.step.actor),
       tezos: actorToolkit(pending.step.actor),
-      expectedCodeHash,
+      expectedCode: input.code,
     }),
   });
   await journal.reconcile(reconcile);
@@ -944,7 +953,7 @@ async function preparePenneRestartJournal(input: {
         pending,
         signerAddress: actorAddress(applied.step.actor),
         tezos: actorToolkit(applied.step.actor),
-        expectedCodeHash,
+        expectedCode: input.code,
       }),
     });
     assert.equal(resolution.status, "applied", `Penne applied-prefix ${applied.step.id} is no longer applied`);

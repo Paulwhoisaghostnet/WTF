@@ -43,11 +43,11 @@ export type StartMenuCategoryKey =
 
 const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string }> = {
   apps: { label: "Apps", icon: "💿" },
-  gameshow: { label: "Gameshow", icon: "🎪" },
-  create: { label: "CREATE!", icon: "✦" },
-  social: { label: "Social", icon: "🐦‍⬛" },
-  "on-chain": { label: "On Chain", icon: "🏴‍☠️" },
-  gaming: { label: "Gaming", icon: "🎮" },
+  gameshow: { label: "Events", icon: "📅" },
+  create: { label: "Create", icon: "✦" },
+  social: { label: "Talk", icon: "✉️" },
+  "on-chain": { label: "Shop", icon: "🛍️" },
+  gaming: { label: "Play", icon: "🕹️" },
   "my-media": { label: "My Media", icon: "📂" },
   browse: { label: "Browse", icon: "🕸️" },
   account: { label: "Account", icon: "👤" },
@@ -150,6 +150,7 @@ const ICONS: Record<string, string> = {
 
 const LABEL_OVERRIDES: Record<string, string> = {
   "/console": "Game Console",
+  "/faq": "Help & Start Here",
   "/side-quests": "Side Quests",
 };
 
@@ -307,18 +308,8 @@ export function buildStartMenuEntries(
   const casinoLocked = Boolean(role) && options.casinoMembershipActive === false;
   const entries: StartMenuEntry[] = [];
 
-  const nativeAppPaths = pageDefs
-    .filter((def) => def.startMenu && !hasRouteParams(def.pattern) && isDefaultDesktopAppRoute(def))
-    .map((def) => def.pattern);
   pushSection(entries, [
-    groupFor("apps", itemsForPaths(nativeAppPaths, pages, apps, role, {
-      casinoLocked,
-      accessSurfaceIds: options.accessSurfaceIds,
-    })),
-  ]);
-
-  pushSection(entries, [
-    groupFor("gameshow", itemsForPaths(CATEGORY_ITEMS.gameshow, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("gaming", itemsForPaths(CATEGORY_ITEMS.gaming, pages, apps, role, { casinoLocked, accessSurfaceIds: options.accessSurfaceIds })),
     groupFor(
       "create",
       itemsForPaths(
@@ -329,9 +320,19 @@ export function buildStartMenuEntries(
         { accessSurfaceIds: options.accessSurfaceIds }
       )
     ),
-    groupFor("social", itemsForPaths(CATEGORY_ITEMS.social, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
     groupFor("on-chain", itemsForPaths(CATEGORY_ITEMS["on-chain"], pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
-    groupFor("gaming", itemsForPaths(CATEGORY_ITEMS.gaming, pages, apps, role, { casinoLocked, accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("gameshow", itemsForPaths(CATEGORY_ITEMS.gameshow, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+    groupFor("social", itemsForPaths(CATEGORY_ITEMS.social, pages, apps, role, { accessSurfaceIds: options.accessSurfaceIds })),
+  ]);
+
+  const nativeAppPaths = pageDefs
+    .filter((def) => def.startMenu && !hasRouteParams(def.pattern) && isDefaultDesktopAppRoute(def))
+    .map((def) => def.pattern);
+  pushSection(entries, [
+    groupFor("apps", itemsForPaths(nativeAppPaths, pages, apps, role, {
+      casinoLocked,
+      accessSurfaceIds: options.accessSurfaceIds,
+    })),
     groupFor(
       "my-media",
       itemsForPaths(CATEGORY_ITEMS["my-media"], pages, apps, role, {

@@ -33,6 +33,7 @@ import {
   type MyVideoChannelVideo,
   type MyVideoMediaItem,
 } from "../features/media-library/MyVideoChannelBuckets";
+import { MintManagerDialog, type MintManagerArtifact } from "../features/media-library/MintManagerDialog";
 
 /**
  * Trimmed TV-channel type: only the fields My Videos needs to let
@@ -444,6 +445,7 @@ export function MyVideos() {
   const [editTitle, setEditTitle] = useState("");
   const [editCreatorName, setEditCreatorName] = useState("");
   const [bumperErrors, setBumperErrors] = useState<Record<number, string>>({});
+  const [mintArtifact, setMintArtifact] = useState<MintManagerArtifact | null>(null);
 
   const myMediaQuery = useQuery({
     queryKey: ["media-library", "video"],
@@ -845,6 +847,19 @@ export function MyVideos() {
                             </MediaMeta>
                           )}
                           <CardActions data-my-videos-region="card-actions">
+                            {item.sourceType === "upload" && item.status === "ready" && (
+                              <Button
+                                size="sm"
+                                onClick={() => setMintArtifact({
+                                  mediaItemId: item.id,
+                                  title: item.title,
+                                  fileName: item.title,
+                                  mimeType: item.mimeType,
+                                })}
+                              >
+                                Mint this media
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               disabled={!canAdd}
@@ -1241,6 +1256,9 @@ export function MyVideos() {
             onClose={() => setDetailToken(null)}
             actions={tokenActions(detailToken)}
           />
+        )}
+        {mintArtifact && (
+          <MintManagerDialog artifact={mintArtifact} onClose={() => setMintArtifact(null)} />
         )}
       </Content>
     </AppWindow>
