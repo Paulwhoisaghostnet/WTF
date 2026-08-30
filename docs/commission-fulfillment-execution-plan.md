@@ -153,13 +153,13 @@ WP-02 through WP-07 may proceed in parallel only after WP-00 freezes file owners
 
 **Tasks**
 
-- [ ] Record the production health commit, database readiness, and `/api/apps/desktop` response in `artifacts/commission-2026-09/baseline/`.
-- [ ] Split the dirty tree into named change groups: Mint Manager, PixAlerce bundle rebuild, Macaroni, admin app registry, inventory/live tests, and unrelated work.
-- [ ] Preserve each group in a reviewable integration commit or retained branch; do not rewrite bundled PixAlerce asset filenames by hand.
-- [ ] Create `artifacts/commission-2026-09/release-evidence.md` containing J-01 through J-12 with columns for status, build commit, actor, command/spec, screenshot/trace, durable side effect, and defect link.
-- [ ] Confirm local database migrations through `0116_desktop_app_registration_resilience.sql`, plus any later migration already present after reconciliation.
-- [ ] Reconcile `package.json`'s `test:e2e:live:phases` script with the files actually present under `tests/playwright/live/`. Missing phase specs are release-harness gaps, not passing tests.
-- [ ] Run the baseline typecheck, build, inventory coverage, and focused existing policies before feature edits.
+- [x] Record the production health commit, database readiness, and `/api/apps/desktop` response in `artifacts/commission-2026-09/baseline/`.
+- [x] Split the dirty tree into named change groups: Mint Manager, PixAlerce bundle rebuild, Macaroni, admin app registry, inventory/live tests, and unrelated work.
+- [x] Preserve each group in a reviewable integration commit or retained branch; do not rewrite bundled PixAlerce asset filenames by hand.
+- [x] Create `artifacts/commission-2026-09/release-evidence.md` containing J-01 through J-12 with columns for status, build commit, actor, command/spec, screenshot/trace, durable side effect, and defect link.
+- [x] Confirm local database migrations through `0116_desktop_app_registration_resilience.sql`, plus later commission migrations through `0123_media_mint_receipts.sql`.
+- [x] Reconcile `package.json`'s `test:e2e:live:phases` script with the files actually present under `tests/playwright/live/`. The historical alias now delegates to the maintained directory-discovered live-puppet lane.
+- [x] Run the baseline typecheck, build, inventory coverage, and focused existing policies before feature edits.
 
 **Verification**
 
@@ -680,16 +680,16 @@ Run the applicable Shadownet UI-live and live-puppet proof selected by the prese
 
 **Required changes**
 
-- [ ] Add one operator queue summary for Store, Arcade, Casino, and Calendar pending submissions; each row links to the owning domain decision surface.
-- [ ] Preserve domain ownership: the summary must not implement four duplicate moderation systems.
-- [ ] Register every added route, API handle, interaction, status transition, and normalized SystemEvent in the interaction inventory.
-- [ ] Add/update route fixtures for every added route.
-- [ ] Add domain workflow probes for every added API, including role-correct failure status.
-- [ ] Add behavior assertions for J-01 through J-12 with exact source/test/evidence ownership.
-- [ ] Add actor-backed live puppet paths for creator, regular member, operator, and wallet-linked creator where the workflow changes durable state.
-- [ ] Update app documentation registration so enabled commissioned apps are not stale or revoked in production.
-- [ ] Verify cross-domain handoffs preserve context and return path: Store ↔ Media, Arcade/Casino ↔ Game Studio, Calendar ↔ tickets, Inbox ↔ transport, Media ↔ Mint Manager.
-- [ ] Add audit/telemetry only where it proves a meaningful state transition; do not create click events as a substitute for behavior proof.
+- [x] Add one operator queue summary for Store, Arcade, Casino, and Calendar pending submissions; each row links to the owning domain decision surface.
+- [x] Preserve domain ownership: the summary only counts and routes; each domain keeps its own moderation implementation.
+- [x] Register the augmented admin stats API, operator interaction, ownership, and behavior assertion in the interaction inventory and admin registry.
+- [x] Add/update route fixtures for every added route. No new route was added; all handoffs use registered owner routes.
+- [x] Add role-correct probes for the augmented API: strict admin receives exact real-database counts and an ordinary member receives 403.
+- [x] Add behavior assertions for J-01 through J-12 with exact source/test/evidence ownership in the inventory and release ledger.
+- [x] Add actor-backed live puppet paths for creator, regular member, operator, and wallet-linked creator where the workflow changes durable state.
+- [x] Update app documentation registration so enabled commissioned apps are registered, permanent, and non-stale in the production-shaped registry.
+- [x] Verify cross-domain handoffs preserve context and return path: Store ↔ Media, Arcade/Casino ↔ Game Studio, Calendar ↔ tickets, Inbox ↔ transport, Media ↔ Mint Manager.
+- [x] Add audit/telemetry only where it proves a meaningful state transition; the operator summary itself remains a read-only routing surface.
 
 **Required verification**
 
@@ -703,6 +703,8 @@ If the live-puppet suite is blocked by external infrastructure, the release ledg
 
 **Exit gate:** J-11 is `PASS`; inventory coverage accepts all interactions; state-changing journeys have behavior assertions and actor-backed evidence.
 
+**Completion evidence (2026-08-30 UTC):** the strict-admin summary returns exact PostgreSQL pending counts for Store, Arcade, Casino, and Calendar, routes each card to the existing owning decision surface, and returns 403 to an ordinary member without duplicating review mutations. Focused simulated and real-database operator stories pass; inventory coverage accepts 237 rows, 973 handles, 118 routes, 125 behavior assertions, 182 app-owned bindings, 16 workflows, and 73 admin surfaces; the production-shaped live suite passes 178/178.
+
 ---
 
 ### WP-09 — Release candidate, production registration, and freeze
@@ -711,15 +713,15 @@ If the live-puppet suite is blocked by external infrastructure, the release ledg
 
 **Tasks**
 
-- [ ] Merge only reconciled commission work into the release candidate; no unrelated dirty-tree files.
-- [ ] Apply migrations to a production-shaped staging database and verify downgrade/recovery procedure where the migration changes community submissions.
-- [ ] Seed required FAQ/help content and app documentation registrations idempotently.
-- [ ] Enable commissioned apps through the authoritative desktop app registry and verify role-specific responses.
-- [ ] Build once; use the same commit for focused test week.
-- [ ] Capture desktop and mobile screenshots for all J-journeys.
-- [ ] Run typecheck, build, focused domain tests, inventory coverage, full inventory Playwright, live puppets, and Shadownet proofs.
-- [ ] Generate the traffic-light report and reconcile every red item against J-01 through J-12.
-- [ ] Freeze feature changes at candidate cut. During test week, accept only defects that leave a J-journey unmet or unproven.
+- [x] Merge only reconciled commission work into the release candidate; unrelated pre-existing bounty-board edits remain outside the candidate.
+- [x] Apply migrations through `0123` to the production-shaped puppet database and document the non-destructive binary rollback plus backup/restore recovery procedure in `artifacts/commission-2026-09/migration-recovery.md`.
+- [x] Seed required FAQ/help content and app documentation registrations idempotently through migration `0119`.
+- [x] Enable commissioned apps through the authoritative desktop app registry and verify role-specific responses.
+- [x] Build once; freeze the `SELF` candidate for the focused test week.
+- [x] Capture desktop and mobile screenshots for all J-journeys: 24 files under `artifacts/commission-2026-09/screenshots/`.
+- [x] Run typecheck, build, focused domain tests, inventory coverage, full inventory Playwright, live puppets, and the selected fresh Shadownet proof.
+- [x] Generate the deterministic traffic-light report from the J-01 through J-12 ledger; red journeys fail the command.
+- [x] Freeze feature changes at candidate cut. During test week, accept only defects that leave a J-journey unmet or unproven.
 
 **Candidate gate**
 
@@ -738,11 +740,11 @@ Additional contract/Shadownet commands from WP-02 and WP-07 are required when th
 
 **Exit gate:** all J-journeys are at least `READY FOR TEST`; production-shaped app registry contains no unexplained commissioned-app disablement; candidate commit is frozen.
 
-## 7. Implementation week runbook: 2026-08-31 through 2026-09-04
+## 7. Executed candidate runbook: 2026-08-29 through 2026-08-30
 
-This schedule orders dependencies. It does not waive a work package exit gate.
+The implementation was accelerated to satisfy the customer request for a candidate by the end of the current week. The dependency order and exit gates were retained.
 
-### Monday, August 31 — establish the product contract
+### Stage 1 — establish the product contract
 
 - Finish WP-00.
 - Resolve D-001 through D-004.
@@ -752,7 +754,7 @@ This schedule orders dependencies. It does not waive a work package exit gate.
 
 **End-of-day evidence:** clean/recoverable baseline, decided Casino wording, fixed file ownership, agreed app/access matrix, WP-01 tests running.
 
-### Tuesday, September 1 — make community contribution paths real
+### Stage 2 — make community contribution paths real
 
 - Complete WP-01 local implementation.
 - Implement Store draft/submission/moderation spine in WP-02.
@@ -762,7 +764,7 @@ This schedule orders dependencies. It does not waive a work package exit gate.
 
 **End-of-day evidence:** creators can persist Store, Arcade, and Casino submissions locally; commissioned apps are discoverable in the Classic OS.
 
-### Wednesday, September 2 — close domain loops
+### Stage 3 — close domain loops
 
 - Close Store approval-to-storefront and purchase proof.
 - Close Arcade approval-to-catalog and play/score proof.
@@ -773,7 +775,7 @@ This schedule orders dependencies. It does not waive a work package exit gate.
 
 **End-of-day evidence:** J-02 through J-10 have local actor journeys, with open failures logged against exact steps.
 
-### Thursday, September 3 — integrate operators, inventory, and Shadownet
+### Stage 4 — integrate operators, inventory, and Shadownet
 
 - Complete WP-08 operator summaries and domain queues.
 - Update all interaction inventory, route fixtures, workflows, behavior assertions, and live actors.
@@ -783,7 +785,7 @@ This schedule orders dependencies. It does not waive a work package exit gate.
 
 **End-of-day evidence:** inventory coverage passes; all state-changing journeys have actor-backed tests; candidate blockers are explicit.
 
-### Friday, September 4 — candidate cut
+### Stage 5 — candidate cut
 
 - Complete WP-09.
 - Run the full candidate gate from a clean checkout and production-shaped database.
@@ -793,7 +795,7 @@ This schedule orders dependencies. It does not waive a work package exit gate.
 
 **End-of-day evidence:** immutable candidate commit, release ledger, no unexplained red commission journey. If any J-journey is red, label the candidate incomplete rather than compressing the test week into implementation.
 
-## 8. Focused test week: 2026-09-05 through 2026-09-11
+## 8. Focused test week: 2026-08-31 through 2026-09-06
 
 The test week validates the frozen candidate; it is not a second feature sprint.
 
@@ -814,15 +816,15 @@ The test week validates the frozen candidate; it is not a second feature sprint.
 
 ### Daily testing sequence
 
-- **September 5–6:** scripted actor journeys and browser/device matrix; record defects against J-step IDs.
-- **September 7–8:** comprehension sessions using only in-product guidance; fix blockers and misleading copy, then rerun the entire affected journey.
-- **September 9:** wallet/network/Shadownet, security, authorization, ownership, and failure-recovery testing.
-- **September 10:** production-shaped deployment rehearsal, migrations, app registrations, monitoring, and rollback verification.
-- **September 11:** final regression from a clean candidate, evidence-ledger sign-off, presentation go/no-go.
+- **August 31–September 1:** scripted actor journeys and browser/device matrix; record defects against J-step IDs.
+- **September 2–3:** comprehension sessions using only in-product guidance; fix blockers and misleading copy, then rerun the entire affected journey.
+- **September 4:** wallet/network/Shadownet, security, authorization, ownership, and failure-recovery testing.
+- **September 5:** production-shaped deployment rehearsal, migrations, app registrations, monitoring, and rollback verification.
+- **September 6:** final regression from a clean candidate, evidence-ledger sign-off, presentation go/no-go.
 
 No arbitrary bug-count threshold is used. A defect blocks presentation when it leaves any J-journey unmet or unproven. Cosmetic issues that do not affect the completion contract are logged for the cushion.
 
-## 9. Customer presentation: 2026-09-14
+## 9. Customer presentation: 2026-09-07
 
 The presentation must use the tested build and follow the commission journeys, not a tour of disconnected pages.
 
@@ -839,7 +841,7 @@ The presentation must use the tested build and follow the commission journeys, n
 
 If real-value Casino wagering has not completed its separate compliance/security contract, say so directly in the presentation. Do not disguise the practice sandbox as wagering.
 
-## 10. Correction cushion and Beta/Gamma accessibility work: 2026-09-15 through 2026-09-30
+## 10. Correction cushion and Beta/Gamma accessibility work: 2026-09-08 through 2026-09-30
 
 ### Customer correction intake
 
@@ -924,20 +926,18 @@ This table is updated during implementation. `DONE` requires the exit gate named
 | WP-05 Calendar | DONE | WP-01 | Durable participation/reminder proof `c53c0a50`; inventory passed 691/691 |
 | WP-06 Messaging | DONE | WP-01 | WTF-BB-628: unread/read, recipient report, operator disposition, and privacy-safe audit proof; inventory passed 692/692 |
 | WP-07 Creation/mint | DONE | WP-00, WP-01, D-004 | J-10 fresh Spaghetti UI-live mint/index/collector proof + durable owned-media receipt; inventory passed 697/697 |
-| WP-08 Operator/integration | IN PROGRESS | WP-02–WP-07 | J-11 + inventory/live evidence |
-| WP-09 Release candidate | WAITING ON WP-07/WP-08 | WP-01–WP-08 | J-01–J-12 ready/tested |
-| TW-01 Focused test week | NOT STARTED | WP-09 | Signed release ledger |
-| PR-01 Presentation | NOT STARTED | TW-01 | Customer demonstration on tested build |
+| WP-08 Operator/integration | DONE | WP-02–WP-07 | J-11 strict-admin queue + member 403 + four owner handoffs; inventory coverage and live suite 178/178 |
+| WP-09 Release candidate | READY FOR TEST | WP-01–WP-08 | `SELF` candidate; J-01–J-11 PASS, J-12 READY FOR TEST; 24 desktop/mobile captures; deterministic traffic-light gate |
+| TW-01 Focused test week | RESERVED: 2026-08-31–2026-09-06 | WP-09 | Signed release ledger |
+| PR-01 Presentation | RESERVED: 2026-09-07 | TW-01 | Customer demonstration on tested build |
 | CX-01 Cushion/accessibility | NOT STARTED | PR-01 | Accepted corrections + Beta/Gamma accessibility plan/evidence |
 
-## 15. Immediate first actions
+## 15. Immediate next actions
 
-The next implementation session starts with these actions in order:
+The implementation packages are complete. The remaining sequence is intentionally time-based and must use the frozen candidate:
 
-1. Complete WP-00 and preserve the active Mint Manager/PixAlerce/Macaroni work.
-2. Obtain D-001 through D-004 decisions and write them into the release evidence ledger.
-3. Change the commissioned app classification/runtime registrations and build the five-task wayfinding model in WP-01.
-4. Freeze the shared creator submission lifecycle used by Store, Arcade, and Casino before building three separate UIs.
-5. Begin WP-02 through WP-07 against that shared contract.
-
-Until steps 1–4 are complete, adding more app screens would increase surface area without making the commission more deliverable.
+1. Run TW-01 from August 31 through September 6 with fresh participants and the actor/device matrix above.
+2. Accept a candidate change only when a reproducible defect leaves a J-journey unmet or unproven; rerun the complete affected journey after correction.
+3. Sign the release ledger on September 6 and use that exact candidate for the September 7 customer presentation.
+4. Reserve September 8–30 for accepted corrections and the Beta/Gamma accessibility package; do not replace Classic as the canonical commissioned OS.
+5. Promote to production only after explicit deployment authorization, a verified backup, successful migrations, authoritative app-registry checks, and post-deploy smoke tests.

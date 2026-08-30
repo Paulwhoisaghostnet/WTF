@@ -36,3 +36,4 @@ The pre-existing dirty tree was moved intact from `main` to the execution branch
 
 `package.json` declares `test:e2e:live:phases`, but the audited worktree does not contain most referenced `tests/playwright/live/phase*.spec.mjs` files. The working live directory currently contains only Gamma board, Macaroni Shadownet, Marketplace Shadownet, and puppet orchestration specs. The phased command cannot be cited as commission evidence until its references are restored or corrected.
 
+**Resolved in the candidate:** the historical phased command now delegates to the maintained directory-discovered `test:e2e:live:puppets` lane, and a policy test prevents the dead file list from returning.

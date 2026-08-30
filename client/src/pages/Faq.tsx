@@ -24,17 +24,24 @@ const TaskGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
+
+  @media (max-width: 620px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TaskCard = styled(Button)`
-  min-height: 92px;
-  padding: 10px;
-  display: grid;
-  align-content: center;
-  justify-items: start;
-  gap: 4px;
-  text-align: left;
-  white-space: normal;
+  && {
+    min-height: 92px;
+    height: auto;
+    padding: 10px;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: 4px;
+    text-align: left;
+    white-space: normal;
+  }
 
   strong {
     font-size: 14px;

@@ -12824,3 +12824,70 @@ Copy this when adding a new issue:
   - Restart/journal/chain regressions pass 42/42, including fresh delegation after a newly completed bridge pin and authenticated resumed replay without duplicate effects.
   - A fresh checkpointed Shadownet Spaghetti UI-LIVE proof completed origination `onujEhx1fJggD1VEdj7zJ641fnd8CUZwCEf9e7kX7sbnqyiZtQs`, token creation, two-edition mint `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, sale, and separate-collector buy `opKnTjwXeQHv11UFhTFo9YCRfSY5rokXFLJZ3aJuUZ5muEJBZRN` without duplicate signing.
   - The archived UI-LIVE receipt under `artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260829-commission/` has SHA-256 `526ab3c761c9d3149d3c0e7a69b1c58b4f0c4a07e4912dc1fa5ac68edbab3a2d`, with eleven screenshots/sidecars and indexed TzKT evidence.
+
+### WTF-BB-631 - Commission release commands referenced files that never existed
+
+- Category: Release engineering / evidence harness
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S0 + P1(4) = 11
+- Evidence:
+  - `test:e2e:traffic-light:report` referenced `scripts/generate-traffic-light-report.mjs`, but the target file was absent from the introducing commit and every reachable revision.
+  - `test:e2e:live:phases` named eleven `tests/playwright/live/phase*.spec.mjs` files that were likewise never committed, even though the maintained `test:e2e:live:puppets` lane discovers the actual live directory.
+- Why it matters:
+  - A release plan could cite commands that fail before evaluating any journey, leaving the customer without a reproducible candidate decision or a trustworthy test-week entry gate.
+- Correction direction:
+  - Make the historical phased command delegate to the maintained actor-backed suite.
+  - Generate a deterministic traffic-light report directly from the authoritative J-01 through J-12 release ledger and fail when any journey is below READY FOR TEST.
+- Verification idea:
+  - Prove the command wiring with a policy test; prove complete-ledger parsing, PASS/READY/blocked classification, deterministic output, and nonzero red status with focused unit tests; run the report through the package command.
+- Correction:
+  - Rewired `test:e2e:live:phases` to the maintained `test:e2e:live:puppets` command.
+  - Added a deterministic report generator that requires exactly J-01 through J-12, treats PASS as green and exact READY FOR TEST as amber, renders all blockers, and exits nonzero for red journeys.
+- Verification:
+  - Focused release-harness policy and report tests pass 5/5; the maintained actor-backed suite passes 178/178.
+
+### WTF-BB-632 - Calendar participation proof disappears after a late-night run
+
+- Category: Test infrastructure / Calendar
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence:
+  - The inventory fixture scheduled its event two hours after the wall clock while Calendar opened the week containing the current day.
+  - At 10:16 PM on the last day of that displayed week, the fixture crossed midnight into the next week, leaving all seven rendered day regions empty and the event button absent.
+- Why it matters:
+  - The complete interaction inventory could fail based only on execution time, obscuring a healthy durable Calendar journey during candidate qualification.
+- Correction direction:
+  - Anchor the synthetic event to a fixed hour on the current local calendar day so it remains in the initially displayed week at every run time.
+- Verification idea:
+  - Run the focused Calendar browser story after the late-night boundary, then rerun the complete inventory.
+- Correction:
+  - Replaced the rolling two-hour offset with noon on the current local day while preserving the one-hour event duration.
+- Verification:
+  - Focused and complete-suite rerun evidence is recorded in the commission release ledger.
+
+### WTF-BB-633 - First-run and mobile Help task labels are visually clipped
+
+- Category: UX / first-run navigation
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P0(5) = 14
+- Evidence:
+  - Candidate screenshots showed all five welcome buttons collapsing from their intended 78px height to 36px, clipping the icon and label inside each control.
+  - At 390px, Help rendered two columns of collapsed task cards, allowing descriptions to overlap adjacent controls and making the commissioned navigation choices difficult to read.
+  - Computed styles confirmed the later global button minimum overrode the styled-component minimum because its selector had higher specificity.
+- Why it matters:
+  - The customer identified self-explanatory navigation as the commission's primary acceptance concern; the first interaction and persistent recovery map were visibly ambiguous even though route assertions passed.
+- Correction direction:
+  - Give the task controls explicit component-level specificity and automatic height; use one readable Help column on narrow screens; make computed geometry part of the browser contract.
+- Verification idea:
+  - Assert the five welcome controls are at least 78px tall, the five mobile Help cards exceed 300px width and retain at least 92px height, then inspect recaptured desktop/mobile evidence.
+- Correction:
+  - Protected the welcome and Help task-card height rules from the global control minimum, allowed content-driven height, and switched mobile Help to one column.
+  - Extended the first-run behavior assertion and inventory contract to include unclipped desktop/mobile geometry.
+- Verification:
+  - Focused first-run browser proof passes; 24 candidate screenshots were regenerated and the desktop welcome plus mobile Help map were visually inspected with all labels and descriptions contained.

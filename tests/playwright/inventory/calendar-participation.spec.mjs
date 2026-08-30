@@ -9,7 +9,8 @@ test("Calendar saves Going, chosen reminders, My plans, and clear", async ({ pag
     },
   });
 
-  const startsAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const startsAt = new Date();
+  startsAt.setHours(12, 0, 0, 0);
   const event = {
     id: 627,
     kind: "x_space",

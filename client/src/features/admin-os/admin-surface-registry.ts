@@ -271,6 +271,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "app.interaction.tracked",
     ],
     behaviorAssertionIds: [
+      "admin.commission-operator-queue-summary",
       "calendar.tray-reminders-cross-app-handoffs",
       "calendar.ttc-source-parity-and-event-details",
       "calendar.account-participation-and-chosen-reminders",
@@ -993,6 +994,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "reward.ledger.created",
     ],
     behaviorAssertionIds: [
+      "admin.commission-operator-queue-summary",
       "desktop.app-store-ranked-unlocks",
       "wallet.checkout-intent-bound-to-signed-session",
       "inventory.temporary-grants-unlock-apps",
@@ -1430,6 +1432,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: ["game moderation", "play tickets", "score caps", "creator reward triggers"],
     automationHandles: ["arcade.session.created", "arcade.score.accepted", "xp.awarded"],
     behaviorAssertionIds: [
+      "admin.commission-operator-queue-summary",
       "inventory.temporary-grants-unlock-apps",
       "arcade-console.sessions-and-scores",
       "arcade.creator-build-publish-discover",
@@ -1520,6 +1523,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "guinea_pig_raceway.wager.rejected",
     ],
     behaviorAssertionIds: [
+      "admin.commission-operator-queue-summary",
       "inventory.temporary-grants-unlock-apps",
       "casino.access-game-apis",
       "casino.community-practice-create-moderate-play",
@@ -1571,6 +1575,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["OS Admin", "Automation", "Users", "Roles", "Rewards"],
     nativeSettings: [
       "task-first admin overview",
+      "Store, Arcade, Casino, and Calendar moderation queue summary",
       "searchable URL-backed admin navigation",
       "sortable user highest-role and level review",
       "user WTF Passport acute account controls",
@@ -1585,6 +1590,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "audit coverage",
     ],
     adminRoutes: [
+      "/api/admin/stats",
       "/api/admin/users",
       "/api/admin/users/:id/passport",
       "/api/admin/users/:id/passport/desktop-settings",
@@ -1604,6 +1610,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "admin.help.topic.opened",
     ],
     behaviorAssertionIds: [
+      "admin.commission-operator-queue-summary",
       "admin.desktop-app-registration-resilience",
       "admin.broad-acute-control-suite",
       "admin.help-index-coverage",
@@ -1624,6 +1631,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminRoutes: ["/control-board"],
     nativeSettings: ["round operations", "contestant state", "host actions"],
     automationHandles: ["control_board.action_applied", "gameshow.round.joined"],
+    behaviorAssertionIds: ["admin.commission-operator-queue-summary"],
   },
   {
     id: "operator-tools",

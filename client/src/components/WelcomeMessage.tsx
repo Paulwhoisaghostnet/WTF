@@ -51,14 +51,17 @@ const TaskGrid = styled.div`
 `;
 
 const TaskButton = styled(Button)`
-  min-height: 78px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 4px;
-  padding: 8px 4px;
-  text-align: center;
-  white-space: normal;
+  && {
+    min-height: 78px;
+    height: auto;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 4px;
+    padding: 8px 4px;
+    text-align: center;
+    white-space: normal;
+  }
 `;
 
 const TaskIcon = styled.span`

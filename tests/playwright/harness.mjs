@@ -5177,6 +5177,12 @@ function apiMock(req, res) {
       sideQuests: 1,
       rewardLedger: 0,
       storage: { usedBytes: 0 },
+      commissionQueue: [
+        { id: "store", label: "Store", pending: 2, owner: "WTFIAM Market", destination: { kind: "admin-section", value: "in-app-market" } },
+        { id: "arcade", label: "Arcade", pending: 1, owner: "Arcade moderation", destination: { kind: "admin-section", value: "arcade" } },
+        { id: "casino", label: "Casino", pending: 3, owner: "Casino practice tables", destination: { kind: "route", value: "/casino" } },
+        { id: "calendar", label: "Calendar", pending: 1, owner: "Control Board tickets", destination: { kind: "route", value: "/control-board" } },
+      ],
     });
   }
   if (pathName === "/api/admin/in-app-market/items" && req.method === "GET") {

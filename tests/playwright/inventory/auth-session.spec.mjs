@@ -25,7 +25,10 @@ test.describe("interaction inventory - auth session recovery", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const welcome = page.getByRole("dialog");
     for (const label of ["Play", "Create", "Shop", "Events", "Talk"]) {
-      await expect(welcome.getByRole("button", { name: label })).toBeVisible();
+      const taskButton = welcome.getByRole("button", { name: label });
+      await expect(taskButton).toBeVisible();
+      const taskBox = await taskButton.boundingBox();
+      expect(taskBox?.height).toBeGreaterThanOrEqual(78);
     }
 
     await welcome.getByRole("button", { name: "Create" }).click();
@@ -33,13 +36,18 @@ test.describe("interaction inventory - auth session recovery", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect.poll(() => harnessEventTypes(request)).toContain("auth.welcome.completed");
 
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/faq", { waitUntil: "domcontentloaded" });
     const helpTaskMap = page
       .getByRole("heading", { name: "What do you want to do?" })
       .locator("..");
     await expect(helpTaskMap).toBeVisible();
     for (const label of ["Play", "Create", "Shop", "Events", "Talk"]) {
-      await expect(helpTaskMap.getByRole("button", { name: new RegExp(label) })).toBeVisible();
+      const taskButton = helpTaskMap.getByRole("button", { name: new RegExp(label) });
+      await expect(taskButton).toBeVisible();
+      const taskBox = await taskButton.boundingBox();
+      expect(taskBox?.width).toBeGreaterThan(300);
+      expect(taskBox?.height).toBeGreaterThanOrEqual(92);
     }
   });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import styled from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { usePresentationShell } from "../lib/presentation-shell";
@@ -546,6 +547,7 @@ function ConfirmButton({
 
 export function Admin() {
   const presentation = usePresentationShell();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState(adminTabFromLocation);
   const [navSearch, setNavSearch] = useState("");
 
@@ -963,7 +965,11 @@ export function Admin() {
           </ActivePanelHeader>
         {/* ═══ TAB 20: TASK-FIRST OVERVIEW ═══ */}
         {activeTab === 20 && (
-          <AdminOverviewTab stats={stats} onNavigate={navigateAdminSlug} />
+          <AdminOverviewTab
+            stats={stats}
+            onNavigate={navigateAdminSlug}
+            onOpenRoute={setLocation}
+          />
         )}
 
         {/* ═══ TAB 0: USERS ═══ */}

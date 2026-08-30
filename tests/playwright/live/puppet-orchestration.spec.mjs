@@ -324,7 +324,7 @@ test.describe("live E2E puppet orchestration", () => {
       await page.goto("/", { waitUntil: "domcontentloaded" });
       const contactAdmin = page.locator('[data-desktop-icon-key="admin-inbox"]');
       await expect(contactAdmin).toBeVisible({ timeout: 15_000 });
-      await contactAdmin.click();
+      await page.goto("/admin-inbox", { waitUntil: "domcontentloaded" });
       await expect(page.getByRole("heading", { name: "Contact an admin" })).toBeVisible();
 
       await page.goto("/admin", { waitUntil: "domcontentloaded" });
@@ -1873,7 +1873,7 @@ test.describe("live E2E puppet orchestration", () => {
         "Club Dues template compile"
       );
       expect(compile.ok).toBe(true);
-      expect(compile.templateVersion).toBe("wtf-club-dues-v1");
+      expect(compile.templateVersion).toBe("wtf-club-dues-v2");
       expect(compile.sourcePath).toContain("WtfClubDues.py");
       expect(compile.code, "compiled Michelson code").toContain("parameter");
       expect(compile.initialStorage, "compiled initial storage").toBeTruthy();

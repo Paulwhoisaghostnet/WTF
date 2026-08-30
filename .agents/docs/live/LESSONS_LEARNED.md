@@ -10900,3 +10900,43 @@
 **Rule**: Real actor API proofs must obtain and send the session CSRF token for every protected write. Browser assertions in the operating-system shell must scope repeated labels to their owning window, dialog, or content region and use exact accessible names where actions share a prefix.
 
 ---
+
+## 2026-08-30 — Access proofs must not depend on a decorated desktop's hit-test layer
+
+**What happened**: The witness access test found the Contact Admin desktop icon, then tried to open it through a pointer gesture. The seeded account's intentionally chaotic desktop had many movable decorations overlapping the icon, so Playwright correctly waited for actionability until the test timed out even though the route was permitted and visible. The same release run also retained a Club Dues v1 compile assertion after the compiler advanced to the authoritative v2 template.
+
+**Why it mattered**: An authorization proof became coupled to desktop decoration placement, and a version assertion described a historical seeded contract instead of the current compiler response. Both obscured the access and contract facts the tests were meant to prove.
+
+**Rule**: When a test proves route authorization, assert launcher visibility separately and open the canonical route directly; reserve pointer-hit testing for dedicated desktop interaction coverage with controlled geometry. Assert compiler versions from the current authoritative template constant, while allowing explicitly seeded historical contracts to retain their recorded version.
+
+---
+
+## 2026-08-30 — Release commands are contracts and their targets must exist
+
+**What happened**: The package manifest exposed a traffic-light report command whose generator had never been committed and a phased live command naming eleven spec files that had never existed. The maintained live suite was healthy, but the two release-facing entry points failed before they could evaluate it.
+
+**Why it mattered**: A human-readable plan can appear executable while its named evidence commands are dead links. That leaves the candidate decision irreproducible and encourages substituting informal test recollection for the repository-owned gate.
+
+**Rule**: Every release-facing package command must have a policy test proving its target exists or delegates to a maintained lane. Evidence generators must read an authoritative ledger, reject missing or duplicate acceptance rows, produce deterministic output, and fail closed when a required journey is below the release threshold.
+
+---
+
+## 2026-08-30 — Calendar fixtures must be stable across day and week boundaries
+
+**What happened**: The Calendar participation browser proof created an event two hours after the current time and expected it in the week initially displayed by Calendar. A late-night run on the last day of that week pushed the fixture past midnight into the next week, so the rendered calendar correctly contained no matching event.
+
+**Why it mattered**: A fully working participation flow appeared broken only because the evidence moved outside its own viewport. Retrying earlier in the day would hide the defect without making the release gate reproducible.
+
+**Rule**: Date-sensitive UI fixtures must be anchored to a known time inside the initially rendered calendar period, with explicit boundary cases tested separately. Do not use rolling offsets when locator reachability depends on the day, week, month, or timezone boundary.
+
+---
+
+## 2026-08-30 — Visible labels need geometry proof, not only locator proof
+
+**What happened**: The first-run and Help tests found all five task buttons by accessible name and successfully followed their routes, but a later global button rule overrode the component minimum height. The labels remained in the accessibility tree while their rendered controls collapsed, and mobile Help descriptions overlapped neighboring buttons.
+
+**Why it mattered**: Semantic reachability passed while the customer-facing navigation was visibly unclear at the exact entry and recovery points intended to make the operating-system platform self-explanatory.
+
+**Rule**: For high-value navigation controls, pair accessible-name and route assertions with rendered geometry at default and narrow viewports. When a styled wrapper must beat global control rules, use deliberate component specificity and verify computed size plus screenshot containment after the production build.
+
+---

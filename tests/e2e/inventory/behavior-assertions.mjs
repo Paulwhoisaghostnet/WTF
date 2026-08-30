@@ -64,9 +64,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
     userVisibleAssertion:
-      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices and route each choice to its commissioned application.",
+      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices, keep their icon/label/description text contained at desktop and mobile widths, and route each choice to its commissioned application.",
     durableSideEffectAssertion:
-      "The shared wayfinder regression locks the five route mappings; the browser harness completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the public help route exposes the same task map.",
+      "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
   },
   {
     id: "wtfiam.creator-store-moderation-purchase",
@@ -885,6 +885,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A signed-in user opens Remote Applications into a managed wtfOS play window, sees remote video render before any gesture with the game's native cursor trapped by pointer lock (Esc releases), and can send remote input only after joining the matching apphost session room without gameplay traffic 429ing unrelated API calls.",
     durableSideEffectAssertion:
       "Source and apphost policy tests prove the Applications route uses the window manager instead of browser tabs, apphost WebSocket input rejects pre-join or mismatched app ids, apphost session traffic runs under a dedicated per-user rate limiter exempt from the generic /api/* quota, the session page starts video muted and self-heals zero-frame streams, and normal hosted-app launches require a remembered provider session instead of reusing stored provider passwords.",
+  },
+  {
+    id: "admin.commission-operator-queue-summary",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel", "control-board", "wtfiam", "arcade", "casino", "calendar"],
+    ownerSpec:
+      "server/features/admin/stats-routes.ts; tests/playwright/inventory/operator-commission-queue.spec.mjs; tests/playwright/live/operator-commission-queue.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/operator-commission-queue.spec.mjs && WTF_E2E_START_SERVER=1 npx playwright test --config=playwright.live.config.mjs tests/playwright/live/operator-commission-queue.spec.mjs",
+    userVisibleAssertion:
+      "A strict operator starts from one plain-language Store, Arcade, Casino, and Calendar queue summary, sees how many submissions are waiting, and opens the existing domain-owned review surface from each card.",
+    durableSideEffectAssertion:
+      "The summary counts the four canonical submitted/pending records from the real database without implementing review mutations; the live actor proof verifies exact counts for seeded rows, denies the same admin summary to an ordinary member, and the browser proof routes review to WTFIAM Market, Arcade moderation, Casino practice tables, and Control Board calendar tickets.",
   },
   {
     id: "admin.desktop-app-registration-resilience",
