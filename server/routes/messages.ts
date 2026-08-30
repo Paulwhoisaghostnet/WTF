@@ -6,6 +6,7 @@ import {
   channels,
   dmConversationParticipants,
   dmConversations,
+  dmMessageReports,
   dmMessages,
   messages,
   sessions,
@@ -34,6 +35,7 @@ import { broadcastStudioEvent } from "../websocket";
 import { z } from "zod";
 import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
 import { emitPrivateDmToSpine } from "../features/atproto-spine/private-emit";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 
 const router = Router();
 
@@ -507,7 +509,7 @@ router.post("/api/messages/dms", isAuthenticated, async (req, res) => {
         {
           conversationId: created.id,
           userId: user.id,
-          lastReadAt: now,
+          lastReadAt: sql`CURRENT_TIMESTAMP`,
         },
         {
           conversationId: created.id,
@@ -574,7 +576,7 @@ router.get("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) =
 
     await db
       .update(dmConversationParticipants)
-      .set({ lastReadAt: new Date() })
+      .set({ lastReadAt: sql`CURRENT_TIMESTAMP` })
       .where(
         and(
           eq(dmConversationParticipants.conversationId, conversationId),
@@ -670,7 +672,7 @@ router.post("/api/messages/dms/:id/messages", isAuthenticated, async (req, res) 
 
     await db
       .update(dmConversationParticipants)
-      .set({ lastReadAt: now })
+      .set({ lastReadAt: sql`CURRENT_TIMESTAMP` })
       .where(
         and(
           eq(dmConversationParticipants.conversationId, conversationId),
@@ -932,7 +934,7 @@ router.put("/api/messages/dms/:id/read", isAuthenticated, async (req, res) => {
 
     await db
       .update(dmConversationParticipants)
-      .set({ lastReadAt: new Date() })
+      .set({ lastReadAt: sql`CURRENT_TIMESTAMP` })
       .where(
         and(
           eq(dmConversationParticipants.conversationId, conversationId),
@@ -945,6 +947,223 @@ router.put("/api/messages/dms/:id/read", isAuthenticated, async (req, res) => {
     res.status(500).json({ error: "Failed to mark DM as read" });
   }
 });
+
+const dmReportSchema = z
+  .object({
+    reason: z.string().trim().min(10).max(2_000),
+  })
+  .strict();
+
+router.post(
+  "/api/messages/dms/:conversationId/messages/:messageId/report",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const user = req.user as { id: number };
+      const conversationId = Number(req.params.conversationId);
+      const messageId = Number(req.params.messageId);
+      const parsed = dmReportSchema.safeParse(req.body);
+      if (
+        !Number.isInteger(conversationId) ||
+        conversationId <= 0 ||
+        !Number.isInteger(messageId) ||
+        messageId <= 0 ||
+        !parsed.success
+      ) {
+        return res.status(400).json({
+          error: "Explain the safety concern in at least 10 characters.",
+        });
+      }
+
+      const participant = await ensureDmParticipant(conversationId, user.id);
+      if (!participant) {
+        return res.status(403).json({ error: "Only conversation participants can report a message." });
+      }
+
+      const [message] = await db
+        .select({
+          id: dmMessages.id,
+          conversationId: dmMessages.conversationId,
+          senderId: dmMessages.senderId,
+        })
+        .from(dmMessages)
+        .where(eq(dmMessages.id, messageId))
+        .limit(1);
+      if (!message || message.conversationId !== conversationId) {
+        return res.status(404).json({ error: "Message not found in this conversation." });
+      }
+      if (message.senderId === user.id) {
+        return res.status(400).json({ error: "You cannot report your own message." });
+      }
+
+      const [report] = await db
+        .insert(dmMessageReports)
+        .values({
+          messageId,
+          reporterUserId: user.id,
+          reason: parsed.data.reason,
+        })
+        .returning();
+
+      await ingestSystemEvent({
+        eventId: `dm.message.reported:${report.id}`,
+        eventType: "dm.message.reported",
+        userId: user.id,
+        source: "messages",
+        sourceModule: "dm-safety",
+        rawRefType: "dm_message_report",
+        rawRefId: report.id,
+        metadata: {
+          conversationId,
+          messageId,
+          senderUserId: message.senderId,
+          contentIncluded: false,
+        },
+      });
+      res.status(201).json({ ok: true, report });
+    } catch (err: any) {
+      const databaseCode = err?.code ?? err?.cause?.code;
+      if (databaseCode === "23505") {
+        return res.status(409).json({ error: "You already reported this message." });
+      }
+      console.error("[messages] report DM failed:", err);
+      res.status(500).json({ error: "Failed to submit the message report" });
+    }
+  }
+);
+
+router.get(
+  "/api/messages/dm-reports",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const requestedStatus = String(req.query.status ?? "open");
+      const status = ["open", "reviewed", "dismissed"].includes(requestedStatus)
+        ? (requestedStatus as "open" | "reviewed" | "dismissed")
+        : "open";
+      const rows = await db
+        .select({
+          report: dmMessageReports,
+          conversationId: dmMessages.conversationId,
+          senderUserId: dmMessages.senderId,
+          messageContent: dmMessages.content,
+          messageCreatedAt: dmMessages.createdAt,
+        })
+        .from(dmMessageReports)
+        .innerJoin(dmMessages, eq(dmMessages.id, dmMessageReports.messageId))
+        .where(eq(dmMessageReports.status, status))
+        .orderBy(desc(dmMessageReports.createdAt));
+
+      const userIds = Array.from(
+        new Set(
+          rows.flatMap((row) => [
+            row.report.reporterUserId,
+            row.senderUserId,
+            row.report.reviewerUserId,
+          ]).filter((id): id is number => Number.isInteger(id))
+        )
+      );
+      const people = userIds.length
+        ? await db
+            .select({ id: users.id, username: users.username, displayName: users.displayName })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+      const peopleById = new Map(people.map((person) => [person.id, person]));
+
+      res.json(
+        rows.map((row) => ({
+          ...row.report,
+          conversationId: row.conversationId,
+          senderUserId: row.senderUserId,
+          sender: peopleById.get(row.senderUserId) ?? null,
+          reporter: peopleById.get(row.report.reporterUserId) ?? null,
+          reviewer: row.report.reviewerUserId
+            ? peopleById.get(row.report.reviewerUserId) ?? null
+            : null,
+          messageContent: row.messageContent,
+          messageCreatedAt: row.messageCreatedAt,
+        }))
+      );
+    } catch (err) {
+      console.error("[messages] report queue failed:", err);
+      res.status(500).json({ error: "Failed to load message safety reports" });
+    }
+  }
+);
+
+const dmReportReviewSchema = z
+  .object({
+    status: z.enum(["reviewed", "dismissed"]),
+    note: z.string().trim().min(3).max(2_000),
+  })
+  .strict();
+
+router.post(
+  "/api/messages/dm-reports/:id/review",
+  requirePermission("manage_users"),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const parsed = dmReportReviewSchema.safeParse(req.body);
+      if (!Number.isInteger(id) || id <= 0 || !parsed.success) {
+        return res.status(400).json({ error: "Choose a disposition and add a review note." });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(dmMessageReports)
+        .where(eq(dmMessageReports.id, id))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Message report not found." });
+      if (existing.status !== "open") {
+        return res.status(409).json({ error: "This message report has already been reviewed." });
+      }
+
+      const reviewer = req.user as { id: number };
+      const now = new Date();
+      const [report] = await db
+        .update(dmMessageReports)
+        .set({
+          status: parsed.data.status,
+          reviewerUserId: reviewer.id,
+          reviewNote: parsed.data.note,
+          reviewedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(dmMessageReports.id, id),
+            eq(dmMessageReports.status, "open")
+          )
+        )
+        .returning();
+      if (!report) {
+        return res.status(409).json({ error: "This message report was reviewed by another operator." });
+      }
+
+      await ingestSystemEvent({
+        eventId: `dm.message.report_reviewed:${report.id}:${report.status}`,
+        eventType: "dm.message.report_reviewed",
+        userId: reviewer.id,
+        source: "messages",
+        sourceModule: "dm-safety",
+        rawRefType: "dm_message_report",
+        rawRefId: report.id,
+        metadata: {
+          messageId: report.messageId,
+          reporterUserId: report.reporterUserId,
+          status: report.status,
+          contentIncluded: false,
+        },
+      });
+      res.json({ ok: true, report });
+    } catch (err) {
+      console.error("[messages] report review failed:", err);
+      res.status(500).json({ error: "Failed to review message report" });
+    }
+  }
+);
 
 // ───────────────────────────────────────────────────────────
 // Public role-gated threads

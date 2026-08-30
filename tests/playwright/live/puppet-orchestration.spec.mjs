@@ -782,6 +782,150 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
+  test("recipient reports a direct message and an operator records a private safety disposition", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestants = puppetCredentials.actors.filter((actor) => actor.role === "contestant");
+    expect(contestants.length, "two account-backed contestants are available").toBeGreaterThanOrEqual(2);
+    const sender = contestants[0];
+    const recipient = contestants[1];
+    const outsider = actorByRole(puppetCredentials, "witness");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const senderRequest = await actorRequestContext(playwright, baseURL, sender);
+    const recipientRequest = await actorRequestContext(playwright, baseURL, recipient);
+    const outsiderRequest = await actorRequestContext(playwright, baseURL, outsider);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const runId = `live-puppet-dm-safety-${Date.now().toString(36)}`;
+    const messageContent = `Private safety test message ${runId}`;
+    const reportReason = `Recipient safety concern for ${runId}`;
+    const reviewNote = `Reviewed account-backed conversation context for ${runId}.`;
+
+    try {
+      const senderHeaders = await csrfHeaders(senderRequest);
+      const recipientHeaders = await csrfHeaders(recipientRequest);
+      const outsiderHeaders = await csrfHeaders(outsiderRequest);
+      const adminHeaders = await csrfHeaders(adminRequest);
+      const recipientUserId = sessionFor(recipient).user.id;
+
+      const conversation = await expectOkJson(
+        await senderRequest.post("/api/messages/dms", {
+          headers: senderHeaders,
+          data: { targetUserId: recipientUserId },
+        }),
+        "open direct-message safety conversation"
+      );
+      const sent = await expectOkJson(
+        await senderRequest.post(`/api/messages/dms/${conversation.id}/messages`, {
+          headers: senderHeaders,
+          data: { content: messageContent },
+        }),
+        "send direct-message safety fixture"
+      );
+      expect(sent.senderId).toBe(sessionFor(sender).user.id);
+
+      const beforeRead = await expectOkJson(
+        await recipientRequest.get("/api/messages/dms"),
+        "recipient unread direct messages"
+      );
+      expect(
+        beforeRead.find((item) => item.id === conversation.id)?.unreadCount,
+        "new received message is visibly unread"
+      ).toBeGreaterThan(0);
+
+      const receivedMessages = await expectOkJson(
+        await recipientRequest.get(`/api/messages/dms/${conversation.id}/messages?limit=100`),
+        "recipient reads direct-message conversation"
+      );
+      expect(receivedMessages.find((message) => message.id === sent.id)?.content).toBe(messageContent);
+      const afterRead = await expectOkJson(
+        await recipientRequest.get("/api/messages/dms"),
+        "recipient read-state persistence"
+      );
+      expect(afterRead.find((item) => item.id === conversation.id)?.unreadCount).toBe(0);
+
+      const reported = await expectOkJson(
+        await recipientRequest.post(
+          `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+          {
+            headers: recipientHeaders,
+            data: { reason: reportReason },
+          }
+        ),
+        "recipient privately reports received message"
+      );
+      expect(reported.report.status).toBe("open");
+      expect(reported.report.reason).toBe(reportReason);
+
+      const duplicateReport = await recipientRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: recipientHeaders, data: { reason: `${reportReason} duplicate` } }
+      );
+      expect(duplicateReport.status()).toBe(409);
+
+      const ownReport = await senderRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: senderHeaders, data: { reason: `${reportReason} own message` } }
+      );
+      expect(ownReport.status()).toBe(400);
+
+      const outsiderReport = await outsiderRequest.post(
+        `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
+        { headers: outsiderHeaders, data: { reason: `${reportReason} outsider` } }
+      );
+      expect(outsiderReport.status()).toBe(403);
+
+      const queue = await expectOkJson(
+        await adminRequest.get("/api/messages/dm-reports?status=open"),
+        "operator direct-message safety queue"
+      );
+      const queued = queue.find((report) => report.id === reported.report.id);
+      expect(queued, "reported message reaches the operator queue").toBeTruthy();
+      expect(queued.messageContent).toBe(messageContent);
+      expect(queued.reason).toBe(reportReason);
+      expect(queued.senderUserId).toBe(sessionFor(sender).user.id);
+      expect(queued.reporterUserId).toBe(recipientUserId);
+
+      const reviewed = await expectOkJson(
+        await adminRequest.post(`/api/messages/dm-reports/${reported.report.id}/review`, {
+          headers: adminHeaders,
+          data: { status: "reviewed", note: reviewNote },
+        }),
+        "operator reviews direct-message safety report"
+      );
+      expect(reviewed.report.status).toBe("reviewed");
+      expect(reviewed.report.reviewNote).toBe(reviewNote);
+      expect(reviewed.report.reviewerUserId).toBe(sessionFor(admin).user.id);
+
+      const queueAfterReview = await expectOkJson(
+        await adminRequest.get("/api/messages/dm-reports?status=open"),
+        "operator queue after review"
+      );
+      expect(queueAfterReview.some((report) => report.id === reported.report.id)).toBe(false);
+
+      for (const eventType of ["dm.message.reported", "dm.message.report_reviewed"]) {
+        const eventPayload = await expectOkJson(
+          await adminRequest.get(
+            `/api/admin/challenge-automation/events?eventType=${eventType}&limit=20`
+          ),
+          `${eventType} private audit events`
+        );
+        const auditEvent = eventPayload.events.find(
+          (event) => String(event.rawRefId) === String(reported.report.id)
+        );
+        expect(auditEvent, `${eventType} audit event exists`).toBeTruthy();
+        expect(auditEvent.metadata?.contentIncluded).toBe(false);
+        expect(JSON.stringify(auditEvent.metadata)).not.toContain(messageContent);
+        expect(JSON.stringify(auditEvent.metadata)).not.toContain(reportReason);
+      }
+    } finally {
+      await senderRequest.dispose();
+      await recipientRequest.dispose();
+      await outsiderRequest.dispose();
+      await adminRequest.dispose();
+    }
+  });
+
   test("every Console and Arcade catalog game can start a play session", async ({
     playwright,
     baseURL,

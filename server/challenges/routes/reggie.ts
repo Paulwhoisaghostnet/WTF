@@ -148,7 +148,7 @@ async function writeReggieWimMessage(input: {
         {
           conversationId,
           userId: reggieUserId,
-          lastReadAt: now,
+          lastReadAt: sql`CURRENT_TIMESTAMP`,
         },
         {
           conversationId,
@@ -181,7 +181,7 @@ async function writeReggieWimMessage(input: {
 
     await tx
       .update(dmConversationParticipants)
-      .set({ lastReadAt: now })
+      .set({ lastReadAt: sql`CURRENT_TIMESTAMP` })
       .where(
         and(
           eq(dmConversationParticipants.conversationId, conversationId),

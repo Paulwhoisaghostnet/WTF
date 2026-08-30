@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-628 | Verified | Codex commission fulfillment | 2026-08-29 | Messaging / recipient reporting and operator review | P1 | 12 | 7 | 3 | 4 | 1 | Messages now supports private recipient reports, permission-gated operator review/disposition, privacy-safe audit events, and database-clock-consistent unread state |
 | WTF-BB-627 | Verified | Codex commission fulfillment | 2026-08-29 | Calendar / durable participation and reminders | P1 | 11 | 8 | 3 | 4 | 0 | Calendar supports browsing and event submissions but has no persistent RSVP/My plans loop, while tray reminders target every visible event instead of a user's chosen events |
 | WTF-BB-626 | Verified | Codex commission fulfillment | 2026-08-29 | Casino / community practice-game creation | P1 | 12 | 7 | 3 | 4 | 1 | Casino has staff-authored mocked tables but no user builder, submission status, moderation, public attribution, or durable practice-play path |
 | WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
@@ -12723,3 +12724,32 @@ Copy this when adding a new issue:
   - Focused browser proof passes 1/1 through Going, reload, My plans, reminder-off filtering, and clear.
   - Real local PostgreSQL actor proof passes 1/1 through operator event creation, contestant persistence, selected reminders, audit events, and durable removal.
   - The complete inventory browser suite passes 691/691 after the Calendar integration.
+
+### WTF-BB-628 - Direct messages have no recipient reporting or operator review loop
+
+- Category: Messaging / recipient reporting and operator review
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - Direct messages persist conversations, content, membership, sender read timestamps, recipient unread counts, and canonical communication items.
+  - Messages renders sender, time, content, and send controls, but no message row offers Report, safety guidance, or report status.
+  - The messages API verifies conversation participants but has no report table, recipient report endpoint, operator report queue, or reviewed/dismissed disposition.
+- Why it matters:
+  - A community messaging app is not commission-ready when a recipient must leave the conversation and manually explain which message caused a safety concern.
+  - Without a message-bound audit record, operators cannot distinguish a reviewed report from an ignored or duplicated complaint.
+- Correction direction:
+  - Persist one report per recipient/message with a reason, open/reviewed/dismissed state, reviewer, note, and timestamps.
+  - Add an inline, plain-language Report action for received messages and an admin-only Safety reports tab with required disposition notes.
+  - Emit normalized report-submitted and report-reviewed events without publishing private message content into event metadata.
+- Verification idea:
+  - Use one actor to send a unique DM, prove the recipient sees one unread conversation, read it to zero, report the exact received message, prove duplicate/self/nonparticipant reporting fails, and use an admin actor to review it with a retained note and audit event.
+- Correction:
+  - Added a durable message-bound report record with one report per reporter/message, open/reviewed/dismissed state, reviewer identity, required note, and timestamps.
+  - Added a received-message Report action with private-report guidance and confirmation plus a strict-admin Safety reports tab containing the original message, reporter reason, and reviewed/dismissed disposition controls.
+  - Added participant, self-report, duplicate, and operator-permission enforcement; normalized report/review audit events deliberately omit private content.
+  - Unified DM read-marker writes on the database clock and clamped impossible future legacy markers so new messages cannot be hidden by application/database timezone skew.
+- Verification:
+  - TypeScript, production build, interaction inventory coverage, and the focused simulated browser story pass.
+  - Real local PostgreSQL actor proof passes with separate sender, recipient, outsider, and admin accounts through unread delivery, read-to-zero, private reporting, duplicate/self/outsider rejection, operator review, persisted note, queue removal, and content-free audit metadata.
+  - The complete inventory browser suite passes 692/692, including the new recipient-to-operator Messages safety story.

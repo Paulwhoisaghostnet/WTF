@@ -16,6 +16,7 @@ import {
 } from "./schema-desktop";
 import {
   dmConversationParticipants,
+  dmMessageReports,
   dmMessages,
 } from "./schema-dm";
 import { diaryEntries } from "./schema-diary";
@@ -122,6 +123,12 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   submissions: many(challengeSubmissions),
   dmParticipants: many(dmConversationParticipants),
   dmSentMessages: many(dmMessages),
+  dmMessageReportsFiled: many(dmMessageReports, {
+    relationName: "dmMessageReportReporter",
+  }),
+  dmMessageReportsReviewed: many(dmMessageReports, {
+    relationName: "dmMessageReportReviewer",
+  }),
   diaryEntries: many(diaryEntries),
   boardThreads: many(boardThreads),
   boardThreadReplies: many(boardThreadReplies),

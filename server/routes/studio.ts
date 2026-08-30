@@ -545,7 +545,7 @@ router.post(
         await tx.insert(dmConversationParticipants).values({
           conversationId: conversation.id,
           userId: user.id,
-          lastReadAt: new Date(),
+          lastReadAt: sql`CURRENT_TIMESTAMP`,
         });
 
         const inviteUserIds = invites.map((i) => i.userId).filter((id) => id !== user.id);

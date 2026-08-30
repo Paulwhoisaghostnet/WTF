@@ -47,6 +47,8 @@ const state = {
   casinoNextPracticePlayId: 1,
   calendarParticipations: [],
   calendarNextParticipationId: 1,
+  dmMessageReports: [],
+  dmNextMessageReportId: 1,
   wtfUserSiteClaimed: false,
   wtfUserSiteStatus: "draft",
   wtfUserSitePages: [],
@@ -555,6 +557,8 @@ app.post("/__test/state", (req, res) => {
   state.wtfLiveStageMembers = [{ userId: 2, username: "wtf-user", displayName: "WTF User", role: "speaker" }];
   state.calendarParticipations = [];
   state.calendarNextParticipationId = 1;
+  state.dmMessageReports = [];
+  state.dmNextMessageReportId = 1;
   Object.assign(
     desktopLocalization,
     req.body?.desktopLocalization ?? { locale: "en-US", region: "US" }
@@ -609,6 +613,7 @@ app.get("/__test/state", (_req, res) => {
     wtfUserSitePages: state.wtfUserSitePages,
     casinoPracticeGames: state.casinoPracticeGames,
     calendarParticipations: state.calendarParticipations,
+    dmMessageReports: state.dmMessageReports,
   });
 });
 
@@ -3679,6 +3684,50 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/messages/dms" && req.method === "POST") {
     return res.status(201).json({ id: 101, existed: false });
+  }
+  const dmReportMatch = pathName.match(
+    /^\/api\/messages\/dms\/(\d+)\/messages\/(\d+)\/report$/
+  );
+  if (dmReportMatch && req.method === "POST") {
+    const messageId = Number(dmReportMatch[2]);
+    if (state.dmMessageReports.some((report) => report.messageId === messageId)) {
+      return res.status(409).json({ error: "You already reported this message." });
+    }
+    const report = {
+      id: state.dmNextMessageReportId++,
+      messageId,
+      reporterUserId: currentAuthUser()?.id ?? 1,
+      conversationId: Number(dmReportMatch[1]),
+      senderUserId: 3,
+      sender: { username: "wim-away", displayName: "WIM Away" },
+      reporter: {
+        username: currentAuthUser()?.username ?? "wtf-admin",
+        displayName: currentAuthUser()?.displayName ?? "WTF Admin",
+      },
+      messageContent: "Queued WIM ping from the harness.",
+      messageCreatedAt: nowIso(),
+      reason: String(req.body?.reason || "Safety review requested."),
+      status: "open",
+      reviewNote: null,
+      createdAt: nowIso(),
+    };
+    state.dmMessageReports.push(report);
+    recordHarnessInteraction("dm.message.reported", { reportId: report.id, messageId }, "messages");
+    return res.status(201).json({ ok: true, report });
+  }
+  if (pathName === "/api/messages/dm-reports" && req.method === "GET") {
+    const status = url.searchParams.get("status") || "open";
+    return res.json(state.dmMessageReports.filter((report) => report.status === status));
+  }
+  const dmReportReviewMatch = pathName.match(/^\/api\/messages\/dm-reports\/(\d+)\/review$/);
+  if (dmReportReviewMatch && req.method === "POST") {
+    const report = state.dmMessageReports.find((candidate) => candidate.id === Number(dmReportReviewMatch[1]));
+    if (!report) return res.status(404).json({ error: "Message report not found." });
+    report.status = req.body?.status === "dismissed" ? "dismissed" : "reviewed";
+    report.reviewNote = String(req.body?.note || "Reviewed in harness.");
+    report.reviewedAt = nowIso();
+    recordHarnessInteraction("dm.message.report_reviewed", { reportId: report.id, status: report.status }, "messages");
+    return res.json({ ok: true, report });
   }
   if (pathName === "/api/messages/dms") {
     return res.json([

@@ -1370,6 +1370,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "Source policy keeps Inbox sends on /api/mail/send, /api/messages/dms, and /api/messages/dms/:id/messages while the inventory workflow probes both mail send and DM send paths with bounded expected outcomes.",
   },
   {
+    id: "messages.dm-report-review-safety-loop",
+    domain: "Community, Social, Messaging, and Discord",
+    ownerSurfaceIds: ["messages"],
+    ownerSpec:
+      "tests/playwright/inventory/messages-safety.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs; tests/e2e/inventory/domain-workflows.mjs",
+    verificationCommand:
+      'npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/messages-safety.spec.mjs --project=chromium --reporter=list && npm run test:e2e:live:puppets -- -g "recipient reports a direct message"',
+    userVisibleAssertion:
+      "A recipient can report a specific received message from the conversation, understands that the report is private, receives clear confirmation, and an authorized operator can see the sender, message, recipient reason, and record a reviewed or dismissed disposition note.",
+    durableSideEffectAssertion:
+      "The server persists one report per reporter/message, rejects self-reports and non-participants, restricts the safety queue and dispositions to manage_users permission, stores reviewer identity and note, and emits report/review audit events without copying private message content into normalized metadata.",
+  },
+  {
     id: "admin-inbox.role-aware-feedback",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["admin-inbox", "mail"],

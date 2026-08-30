@@ -10860,3 +10860,23 @@
 **Rule**: Finish the production build before starting any browser proof whose harness serves `dist/public`, or give the proof an isolated immutable build directory. Parallelize read-only gates, not a build writer with its build-output consumer.
 
 ---
+
+## 2026-08-29 — Classify database errors at the library boundary
+
+**What happened**: The direct-message report endpoint intended to return a conflict for a duplicate recipient/message report, but Drizzle wrapped PostgreSQL's `23505` error under `cause`. The route inspected only the outer error, logged a known duplicate as an unexpected failure, and returned 500 instead of the self-explanatory 409 response.
+
+**Why it mattered**: The uniqueness constraint protected the data correctly while the user-facing contract still failed. A recipient retry looked like a broken safety tool rather than a report that had already been received.
+
+**Rule**: When translating an expected database constraint into an API response, inspect the error shape produced by the active query library, including its wrapped cause, and prove the exact duplicate path against the real database rather than only a browser harness.
+
+---
+
+## 2026-08-29 — DM message and read timestamps must share one clock
+
+**What happened**: Direct-message rows used database-generated timestamps while read markers used application `Date` values written into PostgreSQL columns without timezone information. In a non-UTC database session, the application values landed hours ahead of database-created messages, so a newly received message could report zero unread items until that future marker elapsed.
+
+**Why it mattered**: Sending and reading both appeared to work, but the Inbox could silently suppress real unread messages. The defect survived simulated UI testing and emerged only when the same actor-backed conversation was reused against PostgreSQL.
+
+**Rule**: Generate DM message timestamps and read markers from the database clock, clamp semantically impossible future read markers during migration, and rerun the same sender/recipient journey against a real database to prove unread-before-read and zero-after-read behavior.
+
+---

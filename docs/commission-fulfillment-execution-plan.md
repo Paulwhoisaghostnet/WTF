@@ -2,6 +2,7 @@
 
 **Plan status:** Controlling implementation plan  
 **Baseline audited:** 2026-08-29  
+**Execution updated:** 2026-08-29 — WP-00 through WP-06 complete; WP-07 active
 **Implementation candidate due:** 2026-09-04  
 **Focused test week:** 2026-09-05 through 2026-09-11  
 **Customer presentation:** 2026-09-14  
@@ -913,16 +914,16 @@ This table is updated during implementation. `DONE` requires the exit gate named
 
 | Package | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
-| WP-00 Baseline/worktree | NOT STARTED | — | Reconciled baseline + release ledger |
-| WP-01 OS/wayfinding | NOT STARTED | WP-00, D-003, D-004 | J-01 + local J-12 pass |
-| WP-02 Store | NOT STARTED | WP-01, D-002 | J-02/J-03 pass |
-| WP-03 Arcade | NOT STARTED | WP-01 | J-04/J-05 pass |
-| WP-04 Casino sandbox | BLOCKED ON DECISION | WP-01, D-001 | J-06/J-07 pass |
-| WP-05 Calendar | NOT STARTED | WP-01 | J-08 pass |
-| WP-06 Messaging | NOT STARTED | WP-01 | J-09 pass |
-| WP-07 Creation/mint | BLOCKED ON RECONCILIATION | WP-00, WP-01, D-004 | J-10 pass |
-| WP-08 Operator/integration | NOT STARTED | WP-02–WP-07 | J-11 + inventory/live evidence |
-| WP-09 Release candidate | NOT STARTED | WP-01–WP-08 | J-01–J-12 ready/tested |
+| WP-00 Baseline/worktree | DONE | — | Reconciled baseline commit `c5375cd8` |
+| WP-01 OS/wayfinding | DONE | WP-00, D-003, D-004 | J-01/local J-12 implementation `1a6ad919`; Classic is canonical and Beta/Gamma remain alternate views |
+| WP-02 Store | DONE | WP-01, D-002 | Moderated contribution and purchase proof `f32e3059` |
+| WP-03 Arcade | DONE | WP-01 | Game Studio-to-Arcade publication proof `517b5afa` |
+| WP-04 Casino sandbox | DONE | WP-01, D-001 | No-value community table creation/moderation/play proof `d3ac7433` |
+| WP-05 Calendar | DONE | WP-01 | Durable participation/reminder proof `c53c0a50`; inventory passed 691/691 |
+| WP-06 Messaging | DONE | WP-01 | WTF-BB-628: unread/read, recipient report, operator disposition, and privacy-safe audit proof; inventory passed 692/692 |
+| WP-07 Creation/mint | IN PROGRESS | WP-00, WP-01, D-004 | J-10 creator artifact-to-indexed-receipt proof |
+| WP-08 Operator/integration | WAITING ON WP-07 | WP-02–WP-07 | J-11 + inventory/live evidence |
+| WP-09 Release candidate | WAITING ON WP-07/WP-08 | WP-01–WP-08 | J-01–J-12 ready/tested |
 | TW-01 Focused test week | NOT STARTED | WP-09 | Signed release ledger |
 | PR-01 Presentation | NOT STARTED | TW-01 | Customer demonstration on tested build |
 | CX-01 Cushion/accessibility | NOT STARTED | PR-01 | Accepted corrections + Beta/Gamma accessibility plan/evidence |
