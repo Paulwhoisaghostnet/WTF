@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
 | WTF-BB-629 | Verified | Codex commission fulfillment | 2026-08-29 | Media / durable mint receipt ownership and recovery | P1 | 13 | 6 | 4 | 5 | 0 | Mint receipts are now ownership-bound durable records verified from explicit-network TzKT evidence and recoverable from the same owned media across browser sessions |
 | WTF-BB-628 | Verified | Codex commission fulfillment | 2026-08-29 | Messaging / recipient reporting and operator review | P1 | 12 | 7 | 3 | 4 | 1 | Messages now supports private recipient reports, permission-gated operator review/disposition, privacy-safe audit events, and database-clock-consistent unread state |
@@ -58,7 +59,7 @@ Priority labels:
 | WTF-BB-625 | Verified | Codex commission fulfillment | 2026-08-29 | Arcade / creator publication evidence | P1 | 9 | 9 | 2 | 3 | 0 | Arcade stats hardcode pending and Game Studio games to zero while actor-backed Game Studio proof stops before submission, public discovery, and attribution |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 7 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
-| WTF-BB-623 | Open | - | 2026-08-29 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The declared phased live-puppet command references missing phase specs, including Arcade/Casino, so it cannot prove the release journeys it names |
+| WTF-BB-623 | Verified | Codex commission fulfillment | 2026-08-30 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The phased command now delegates to the maintained actor-backed live suite, and repository policy proves the target cannot drift back to missing specs |
 | WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
 | WTF-BB-621 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / default support launcher | P1 | 9 | 9 | 1 | 4 | 0 | The desktop shell drops the Contact Admin app gate from its projection, hiding the core feedback icon from every ordinary default desktop |
 | WTF-BB-619 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Local DB / admin app-gate schema parity | P1 | 10 | 10 | 2 | 4 | 0 | A missed desktop-app registration migration makes App Gates return 500 while the UI displays an endless loading hourglass |
@@ -9895,8 +9896,9 @@ Priority labels:
 ### WTF-BB-471 - Exported Ravioli pages cannot discover the creator's public open kit
 
 - Category: Pasta Protocol / portable holder fulfillment
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
   - The generic site exporter writes contract, token id, title, description, and network but omits `openKit`.
@@ -9907,12 +9909,17 @@ Priority labels:
   - Publish a bounded versioned reveal document containing the exact v3 kit at the creator's one-time reveal boundary, store its URI in the pack, and let the portable page validate and load it through its configured IPFS gateway without wtfOS.
 - Verification idea:
   - Export a clean site with no localStorage, reveal the kit, reload through only contract storage plus pinned bytes, and open each recipe class; reject wrong schema, contract, token, oversized payload, and mismatched recipe count.
+- Resolution:
+  - Commit `8b096897` publishes a bounded versioned reveal document, binds its URI to router state, and makes the portable page validate and discover the kit from that on-chain URI without wtfOS or preseeded browser storage.
+- Verification evidence:
+  - On 2026-08-30 the focused real-browser five-mode Studio/holder fixture passed. It opened clean exported pages, discovered deterministic and authenticated blind kits from immutable state plus pinned bytes, exercised separate collectors, and rejected malformed reveal identities. The complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-472 - Ravioli recipe nonces are persisted after their irreversible commitments
 
 - Category: Pasta Protocol / creator recovery
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
   - Studio generates each random recipe nonce immediately before `commit_recipe`, but writes the open kit to localStorage and downloads it only after every commitment, finalization, issuance, and sale step succeeds.
@@ -9923,12 +9930,17 @@ Priority labels:
   - Generate and persist the complete recovery kit before the first commitment can be submitted; append operation-stage checkpoints and hashes after each confirmation; expose explicit resume/cancel guidance without blindly resubmitting an uncertain operation.
 - Verification idea:
   - Inject failures before send, after send, after confirmation, and during later commitments; reload with empty memory; prove every applied commitment retains its exact nonce/actions and that recovery never duplicates a submitted operation.
+- Resolution:
+  - Commit `8b096897` generates the complete kit before commitment, saves it to the private recovery record and browser storage, verifies the stored bytes, downloads the kit, and only then permits the first irreversible contract call.
+- Verification evidence:
+  - On 2026-08-30 the focused private-journal/recovery-kit browser proof and the real five-mode Studio fixture passed. The tests prove durable material exists before chain writes, survives later failure reporting, and remains bound to the exact publication plan; the complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-473 - Funded escrow assets inherit an irrelevant historical mint-window gate
 
 - Category: Pasta Protocol / established bundle compatibility
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C3 + F5 + S2 + P0(5) = 15
 - Evidence:
   - Studio resolves edition policy for every escrow action and rejects an expired capped-and-timed token even though the exact FA2 token is already minted, transferred into router escrow during commitment, and needs no future child mint.
@@ -9939,12 +9951,17 @@ Priority labels:
   - Apply inherited child-expiry policy only to reservations that still require a future mint; keep escrow metadata available for disclosure/audit, but treat successful funding as the terminal delivery guarantee.
 - Verification idea:
   - Package and open an expired, inactive, already-minted LE escrow token; prove it is funded before issuance and delivered atomically, while an expired unminted allocation remains rejected.
+- Resolution:
+  - Commit `8b096897` limits child-expiry enforcement to allocation/reservation actions that still require a future mint; already-minted escrow inventory is instead checked for ownership, operator authority, and complete pre-issuance funding.
+- Verification evidence:
+  - On 2026-08-30 the focused real-browser expired already-minted escrow fixture passed, while its paired expired capped-and-timed allocation regression remains fail-closed before pins or writes. The complete Ravioli SmartPy integration/compile/artifact-certification gate also passed.
 
 ### WTF-BB-474 - Mutable helper authorization can strand sold reserved packs
 
 - Category: Pasta Protocol / reservation fulfillment authority
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli production audit
+- Last touched: 2026-08-30
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
   - Gnocchi `mint_reserved` and `release_mint_capacity` recheck current minter membership even though exact sender-owned reservation balances already exist, and Rotini does the same for `mint_pack_iteration` and `release_pack_capacity`.
@@ -9955,6 +9972,10 @@ Priority labels:
   - Require mutable authorization only when creating new reservations. Let fulfillment and release consume only an exact pre-existing sender-owned reservation key, so revocation stops future commitments without invalidating outstanding obligations.
 - Verification idea:
   - Reserve Gnocchi and Rotini capacity, revoke adapter/minter/router roles, and prove exact fulfillment plus cancellation release still work; prove a removed or never-authorized caller with no reservation cannot mint or release anything.
+- Resolution:
+  - Commit `8b096897` keeps mutable authorization on new reservations but permits fulfill/release only against the caller's exact positive reservation key, preserving existing obligations after role revocation without granting new capacity.
+- Verification evidence:
+  - On 2026-08-30 the complete Ravioli SmartPy suite passed the Gnocchi and Rotini revocation lifecycle: revoked actors cannot reserve again, exact outstanding reservations can be fulfilled or released, and callers without a funded reservation fail closed. Contract compilation, origination-size checks, artifact rebuilds, and deployment-certificate regeneration also passed without changing tracked bytes.
 
 ### WTF-BB-475 - Ravioli recovery hashes silently drop Michelson-map entries
 
@@ -12601,8 +12622,9 @@ Copy this when adding a new issue:
 ### WTF-BB-623 - Declared live phase test command references missing specs
 
 - Category: E2E / declared live phase harness
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Last touched: 2026-08-30
 - Score: C2 + F4 + S0 + P1(4) = 10
 - Evidence:
   - `package.json` names ten phase specs in `test:e2e:live:phases`, including `tests/playwright/live/phase7-arcade-casino.spec.mjs`.
@@ -12614,6 +12636,10 @@ Copy this when adding a new issue:
   - Restore domain-owned phase specs from an authoritative source or replace the stale script with real, present domain specs that prove the same actor and durable-state contracts.
 - Verification idea:
   - Require every file named by the script to exist, collect in Playwright, and run against the isolated production-shaped puppet database; bind each commission journey to the exact live spec that proves it.
+- Correction:
+  - Replaced the dead per-phase file list with delegation to the maintained actor-backed `test:e2e:live:puppets` suite and added a repository policy assertion that fixes that ownership boundary.
+- Verification:
+  - The production-shaped actor-backed release suite passes 178/178 across the commissioned journeys. On 2026-08-30 the focused harness and deterministic release-report policies passed 5/5, including exact proof that the phased command delegates to the maintained suite.
 
 ### WTF-BB-624 - Creator Store submissions bypass moderation and have no customer-facing workflow
 
@@ -12647,8 +12673,9 @@ Copy this when adding a new issue:
 ### WTF-BB-625 - Arcade reports zero Game Studio output and does not prove creator publication
 
 - Category: Arcade / creator publication evidence
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex commission fulfillment
+- Last touched: 2026-08-30
 - Score: C2 + F3 + S0 + P1(4) = 9
 - Evidence:
   - `getArcadeStats()` returns literal `pendingGames: 0` and `gameStudioGames: 0` despite persisted `console_games` moderation state and `console_game_versions.bundle_metadata.source = game_studio_project`.
@@ -12891,3 +12918,25 @@ Copy this when adding a new issue:
   - Extended the first-run behavior assertion and inventory contract to include unclipped desktop/mobile geometry.
 - Verification:
   - Focused first-run browser proof passes; 24 candidate screenshots were regenerated and the desktop welcome plus mobile Help map were visually inspected with all labels and descriptions contained.
+
+### WTF-BB-634 - Bug-board summary and detailed records disagree on release status
+
+- Category: Release governance / bug-board status integrity
+- Priority: P1
+- Status: Open
+- Owner/Session: -
+- Last touched: 2026-08-30
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Evidence:
+  - A deterministic comparison of the 468-row summary table against the first detailed record for each matching ID found 53 status disagreements.
+  - Contradictions run in both directions: the summary marks some records `Verified` while their detail remains `Open`, `Claimed`, or `Fixed`, and marks others actionable while their detail says `Verified`.
+  - The detail section also contains records not represented in the summary and legacy duplicate IDs, so neither raw row count is a reliable release decision by itself.
+- Why it matters:
+  - A reviewer can reach opposite conclusions about the same P0/P1 risk depending on which board section they read.
+  - This can hide unresolved production verification or keep completed work indefinitely classified as a blocker, making “ready to ship” neither reproducible nor auditable from the board.
+- Likely correction direction:
+  - Make one structured record authoritative and generate the summary from it.
+  - Add a deterministic policy check that rejects duplicate IDs, missing summary/detail counterparts, unsupported status values, and status/date/owner disagreement.
+  - Preserve old evidence as append-only history while recording supersession explicitly instead of editing incompatible snapshots by hand.
+- Verification idea:
+  - Run the policy against failing fixtures for every mismatch class and against the reconciled board; require the release command to consume the same authoritative scoped acceptance ledger rather than infer readiness from board row counts.

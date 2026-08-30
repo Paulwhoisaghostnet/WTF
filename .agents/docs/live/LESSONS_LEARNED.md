@@ -10940,3 +10940,12 @@
 **Rule**: For high-value navigation controls, pair accessible-name and route assertions with rendered geometry at default and narrow viewports. When a styled wrapper must beat global control rules, use deliberate component specificity and verify computed size plus screenshot containment after the production build.
 
 ---
+## 2026-08-30 — Bug-board closure needs evidence, not only a status word
+
+**What happened**: Four old Ravioli findings had working fixes and focused regressions in the release tree, but an uncommitted cleanup changed only their `Status` fields from `Claimed` to `Verified`. Their entries still read like open defects and contained no resolution, verification command, target date, or commit linkage.
+
+**Why it mattered**: A bare status change cannot distinguish a genuinely closed production risk from optimistic bookkeeping. It also makes an append-only board look internally contradictory and prevents a release reviewer from reproducing the closure claim.
+
+**Rule**: Never promote a bounty item to `Verified` by status alone. Record the resolving commit or exact correction, add dated reproducible verification evidence that satisfies the item's own verification idea, and confirm generated artifacts remain byte-stable before committing the board transition.
+
+---
