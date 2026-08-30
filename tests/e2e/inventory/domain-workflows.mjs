@@ -2,7 +2,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "entry auth identity loop",
     domain: "Entry, Authentication, and Account Identity",
-    routes: ["/", "/login", "/register", "/profile", "/user/wtf-admin"],
+    routes: ["/", "/login", "/register", "/profile", "/faq", "/user/wtf-admin"],
     eventHandles: [
       "public.route.viewed",
       "auth.login.succeeded",
@@ -18,6 +18,10 @@ export const DOMAIN_WORKFLOWS = [
       "profile.social.link_blocked",
       "profile.avatar_media.saved",
       "notification.viewed",
+    ],
+    behaviorAssertionIds: [
+      "auth.classic-first-run-task-wayfinder",
+      "auth.stale-session-welcome-recovery",
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },
@@ -1099,6 +1103,7 @@ export const DOMAIN_WORKFLOWS = [
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     routes: ["/links", "/faq", "/leaderboard", "/gallery", "/arcade"],
     eventHandles: [
+      "faq.viewed",
       "api.public.read",
       "public_data.viewed",
       "mcp.tool.called",

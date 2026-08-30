@@ -699,6 +699,12 @@ app.post("/api/auth/welcome/complete", (_req, res) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
   const authUser = currentAuthUser() || defaultAuthUserForRole("admin");
+  state.welcomePending = false;
+  recordHarnessInteraction(
+    "auth.welcome.completed",
+    { method: "acknowledge", username: authUser.username },
+    "auth"
+  );
   res.json({
     id: authUser.id,
     username: authUser.username,

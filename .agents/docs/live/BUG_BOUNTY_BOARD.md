@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-622 | Claimed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
+| WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-623 | Open | - | 2026-08-29 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The declared phased live-puppet command references missing phase specs, including Arcade/Casino, so it cannot prove the release journeys it names |
 | WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
 | WTF-BB-621 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / default support launcher | P1 | 9 | 9 | 1 | 4 | 0 | The desktop shell drops the Contact Admin app gate from its projection, hiding the core feedback icon from every ordinary default desktop |
@@ -10868,8 +10868,8 @@ Copy this when adding a new issue:
 ### WTF-BB-523 - Live puppet database missed the Studio workflow migration
 
 - Category: E2E infrastructure / Studio persistence
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
 - Score: C3 + F3 + S3 + P1(3) = 12
 - Evidence:
   - During the July 23 actor-backed media-creation workflow, PostgreSQL rejected the Studio project query because `studio_projects.workflow` did not exist.
@@ -10880,6 +10880,10 @@ Copy this when adding a new issue:
   - Apply the migration as part of live-puppet database setup and make the workflow assertion fail on any non-2xx update or missing persisted workflow state.
 - Verification idea:
   - Start from the supported isolated E2E database bootstrap, prove migration 0115 is present, patch and reload a Studio workflow, and assert the durable row before allowing the media-creation workflow to pass.
+- Correction:
+  - Added Studio workflow migration `0115` and the subsequent additive app-registration, retired-app, Admin Inbox, and commission-wayfinding migrations through `0119` to the live-puppet database bootstrap.
+- Verification:
+  - The guarded preparation command identified the configured target as local `localhost:5432/wtf`, applied every required migration successfully, and a direct information-schema read confirmed `studio_projects.workflow` exists.
 
 ### WTF-BB-524 - Ravioli recovery confused exact Studio download bytes with canonical JSON bytes
 
@@ -12558,7 +12562,7 @@ Copy this when adding a new issue:
 ### WTF-BB-622 - Commissioned apps are disabled and first-run navigation does not describe the commissioned task model
 
 - Category: Desktop OS / commissioned app wayfinding and runtime state
-- Status: Claimed
+- Status: Fixed
 - Owner/Session: Codex commission fulfillment
 - Score: C4 + F5 + S0 + P1(4) = 13
 - Evidence:
@@ -12577,6 +12581,15 @@ Copy this when adding a new issue:
   - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
 - Verification idea:
   - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
+- Correction:
+  - Added one shared Classic task map for Play, Create, Shop, Events, and Talk and used it in the welcome event, Help & Start Here, and the leading Start Menu groups.
+  - Reclassified Arcade, Studio, and Game Studio as free core desktop applications and replaced Casino's wagering claim with explicit practice-sandbox language while preserving its membership gate.
+  - Added an idempotent migration that restores commissioned app registrations as enabled/permanent and seeds plain-language FAQ guidance without overwriting operator content.
+  - Updated the live-puppet database preparation, route inventory, behavior registry, and browser harness so first-run completion is persistent and observable.
+- Verification:
+  - Focused wayfinding/catalog tests pass 20/20; the two-scenario browser journey proves task-map agreement, chosen-route launch, persisted welcome completion, public Help recovery, and stale-session recovery.
+  - Production build and inventory coverage pass. The guarded local migration applied successfully; direct reads confirm Arcade, Casino, Game Studio, Studio, WTFIAM, and Mail enabled/registered/permanent, the help seed present, and the Studio workflow column installed.
+  - Production verification remains pending deployment, so this bounty is Fixed rather than Verified.
 
 ### WTF-BB-623 - Declared live phase test command references missing specs
 

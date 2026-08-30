@@ -56,6 +56,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
   },
   {
+    id: "auth.classic-first-run-task-wayfinder",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "client/src/features/onboarding/classic-task-wayfinder.test.ts; client/src/components/layout/start-menu-app-gates.test.ts; tests/playwright/inventory/auth-session.spec.mjs",
+    verificationCommand:
+      "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
+    userVisibleAssertion:
+      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices and route each choice to its commissioned application.",
+    durableSideEffectAssertion:
+      "The shared wayfinder regression locks the five route mappings; the browser harness completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the public help route exposes the same task map.",
+  },
+  {
     id: "gamma.login-daily-return-strip",
     domain: "Entry, Authentication, and Account Identity",
     ownerSurfaceIds: ["gamma-shell"],

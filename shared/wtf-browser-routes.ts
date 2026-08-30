@@ -96,7 +96,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/wtf-subdomains/setup", auth: true, title: "Subdomain Setup" },
   { pattern: "/wtf-subdomains", auth: true, title: "WTF Domains" },
   { pattern: "/links", auth: false, title: "Links" },
-  { pattern: "/faq", auth: false, title: "FAQ" },
+  { pattern: "/faq", auth: false, title: "Help & Start Here" },
   { pattern: "/discord/terms", auth: false, title: "Discord Terms" },
   { pattern: "/discord/privacy", auth: false, title: "Discord Privacy" },
   { pattern: "/discord/linked-roles", auth: false, title: "Discord Linked Roles" },

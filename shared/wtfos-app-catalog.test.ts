@@ -33,6 +33,9 @@ test("core apps and private role-gated apps keep their intended wtfOS placement"
     "wtfiam",
     "wim",
     "w",
+    "arcade",
+    "game-studio",
+    "studio",
     "gallery",
     "mail",
     "admin-inbox",
@@ -97,7 +100,7 @@ test("role and prerequisite gated apps fail closed before purchase", () => {
 });
 
 test("owned app unlocks cannot be purchased again", () => {
-  const appKey: DesktopAppKey = "arcade";
+  const appKey: DesktopAppKey = "console";
   const result = evaluateWtfOsAppPurchaseEligibility(
     WTFOS_APP_CATALOG[appKey],
     "contestant",

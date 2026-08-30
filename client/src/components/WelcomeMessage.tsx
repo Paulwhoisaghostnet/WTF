@@ -3,8 +3,7 @@ import styled from "styled-components";
 import { Button, Window, WindowContent, WindowHeader } from "react95";
 import { useLocation } from "wouter";
 import { useAuth } from "../lib/auth-context";
-
-const WELCOME_DIARY_COMPOSE_KEY = "wtf.dearDiary.compose";
+import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
 
 const Backdrop = styled.div`
   position: fixed;
@@ -30,6 +29,47 @@ const Body = styled.div`
 const Title = styled.div`
   font-size: 18px;
   font-weight: 700;
+`;
+
+const Intro = styled.p`
+  margin: 0;
+`;
+
+const TaskPrompt = styled.p`
+  margin: 0;
+  font-weight: 700;
+`;
+
+const TaskGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 620px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const TaskButton = styled(Button)`
+  min-height: 78px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  text-align: center;
+  white-space: normal;
+`;
+
+const TaskIcon = styled.span`
+  font-size: 21px;
+  line-height: 1;
+`;
+
+const HelpText = styled.p`
+  margin: 0;
+  color: #333;
+  font-size: 12px;
 `;
 
 const GmFrame = styled.figure`
@@ -95,7 +135,7 @@ export function WelcomeMessage() {
 
   const chosenUsername = user.username;
 
-  const acknowledge = async (action: "close" | "profile" | "diary" = "close") => {
+  const acknowledge = async (route?: string) => {
     setSaving(true);
     setError("");
     try {
@@ -106,12 +146,7 @@ export function WelcomeMessage() {
         await completeGmWelcome();
       }
       setHiddenForUserId(user.id);
-      if (action === "profile") {
-        setLocation("/profile");
-      } else if (action === "diary") {
-        window.sessionStorage.setItem(WELCOME_DIARY_COMPOSE_KEY, "tony-danza");
-        setLocation("/dear-diary");
-      }
+      if (route) setLocation(route);
     } catch (err: any) {
       setError(err.message || "Could not save welcome state");
     } finally {
@@ -133,11 +168,31 @@ export function WelcomeMessage() {
                 : `GM, ${chosenUsername}`}
             </Title>
             {needsWtfWelcome && (
-              <p>
-                Your account is ready. Link your wallet and set up your
-                profile when you are ready for a more customized WTF
-                experience.
-              </p>
+              <>
+                <Intro>
+                  This is your community desktop. Choose what you want to do first;
+                  every destination is also available from the Start menu.
+                </Intro>
+                <TaskPrompt>What do you want to do?</TaskPrompt>
+                <TaskGrid aria-label="Choose your first task">
+                  {CLASSIC_TASK_WAYFINDER.map((task) => (
+                    <TaskButton
+                      key={task.id}
+                      type="button"
+                      title={task.description}
+                      onClick={() => acknowledge(task.route)}
+                      disabled={saving}
+                    >
+                      <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
+                      <strong>{task.label}</strong>
+                    </TaskButton>
+                  ))}
+                </TaskGrid>
+                <HelpText>
+                  Not sure yet? Open Help &amp; Start Here at any time, or personalize
+                  your account from Profile.
+                </HelpText>
+              </>
             )}
             {gmWelcome && (
               <GmFrame>
@@ -164,18 +219,18 @@ export function WelcomeMessage() {
             <Footer>
               {needsWtfWelcome ? (
                 <>
-                  <Button type="button" onClick={() => acknowledge("close")} disabled={saving}>
-                    {saving ? "Saving..." : "Thanks, I got it"}
+                  <Button type="button" onClick={() => acknowledge()} disabled={saving}>
+                    {saving ? "Saving..." : "Explore Desktop"}
                   </Button>
-                  <Button type="button" onClick={() => acknowledge("profile")} disabled={saving}>
-                    View Profile
+                  <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving}>
+                    Help &amp; Start Here
                   </Button>
-                  <Button type="button" onClick={() => acknowledge("diary")} disabled={saving}>
-                    You can't tell me what to do, you arent my real dad!
+                  <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving}>
+                    Profile
                   </Button>
                 </>
               ) : (
-                <Button type="button" onClick={() => acknowledge("close")} disabled={saving}>
+                <Button type="button" onClick={() => acknowledge()} disabled={saving}>
                   {saving ? "Saving..." : "Thanks, I got it"}
                 </Button>
               )}

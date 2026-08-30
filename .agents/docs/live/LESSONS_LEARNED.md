@@ -10790,3 +10790,13 @@
 **Rule**: Treat explicit route roles as strict by default. If a surface grant is intentionally allowed to satisfy a route's role requirement, declare that exception on the canonical route metadata and prove both the strict default and the named exception in the shared role matrix.
 
 ---
+
+## 2026-08-29 — Stateful endpoint harnesses must mirror the production side effect
+
+**What happened**: The first-run browser journey correctly completed the welcome request and routed to Game Studio, but its event assertion failed. Production persists `welcomedToWtfOs` and emits `auth.welcome.completed`; the inventory harness returned a welcomed user object while leaving its own `welcomePending` state true and emitting no matching server event.
+
+**Why it mattered**: A presentation-only stub could make the one-time welcome appear complete in the current React cache while showing it again after a reload. It also prevented the harness from proving the durable side effect it claimed to represent.
+
+**Rule**: When a browser harness replaces a state-changing production endpoint, it must update its authoritative harness state and mirror the production event or audit boundary before returning the response. A response-shaped mock proves rendering; it does not prove persistence.
+
+---

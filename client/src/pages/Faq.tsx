@@ -1,9 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { GroupBox, Hourglass, Button } from "react95";
 import styled from "styled-components";
+import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
+import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
 import { api } from "../lib/api";
+import { logClientSystemEvent } from "../lib/system-log";
+
+const StartPanel = styled.section`
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 2px inset #fff;
+  background: #e7f5ff;
+
+  h2,
+  p {
+    margin: 0 0 8px;
+  }
+`;
+
+const TaskGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+`;
+
+const TaskCard = styled(Button)`
+  min-height: 92px;
+  padding: 10px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+  text-align: left;
+  white-space: normal;
+
+  strong {
+    font-size: 14px;
+  }
+
+  small {
+    line-height: 1.35;
+  }
+`;
 
 const FaqItem = styled.div`
   margin-bottom: 4px;
@@ -26,7 +66,12 @@ const Answer = styled.div`
 `;
 
 export function Faq() {
+  const [, setLocation] = useLocation();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    void logClientSystemEvent({ eventType: "faq.viewed" });
+  }, []);
 
   const { data: faqItems, isLoading } = useQuery({
     queryKey: ["faq"],
@@ -35,7 +80,7 @@ export function Faq() {
 
   if (isLoading)
     return (
-      <AppWindow title="FAQ">
+      <AppWindow title="Help & Start Here">
         <Hourglass size={32} />
       </AppWindow>
     );
@@ -61,7 +106,19 @@ export function Faq() {
     ));
 
   return (
-    <AppWindow title="FAQ - Frequently Asked Questions">
+    <AppWindow title="Help & Start Here">
+      <StartPanel aria-labelledby="start-here-title">
+        <h2 id="start-here-title">What do you want to do?</h2>
+        <p>Choose a task. The same five choices stay available in the Start menu.</p>
+        <TaskGrid>
+          {CLASSIC_TASK_WAYFINDER.map((task) => (
+            <TaskCard key={task.id} type="button" onClick={() => setLocation(task.route)}>
+              <strong>{task.icon} {task.label}</strong>
+              <small>{task.description}</small>
+            </TaskCard>
+          ))}
+        </TaskGrid>
+      </StartPanel>
       {categories.length > 0
         ? categories.map((cat) => (
             <GroupBox
@@ -76,7 +133,9 @@ export function Faq() {
           ))
         : renderItems(faqItems || [])}
 
-      {(!faqItems || faqItems.length === 0) && <p>No FAQ items yet.</p>}
+      {(!faqItems || faqItems.length === 0) && (
+        <p>More help articles are being prepared. The task buttons above are ready now.</p>
+      )}
     </AppWindow>
   );
 }

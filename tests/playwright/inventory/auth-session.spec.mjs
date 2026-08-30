@@ -11,6 +11,35 @@ async function harnessEventTypes(request) {
 }
 
 test.describe("interaction inventory - auth session recovery", () => {
+  test("classic welcome and help expose the same commissioned task map", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "contestant",
+      username: "firsttimer",
+      displayName: "First Timer",
+      welcomePending: true,
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const welcome = page.getByRole("dialog");
+    for (const label of ["Play", "Create", "Shop", "Events", "Talk"]) {
+      await expect(welcome.getByRole("button", { name: label })).toBeVisible();
+    }
+
+    await welcome.getByRole("button", { name: "Create" }).click();
+    await expect(page).toHaveURL(/\/game-studio$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect.poll(() => harnessEventTypes(request)).toContain("auth.welcome.completed");
+
+    await page.goto("/faq", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "What do you want to do?" })).toBeVisible();
+    for (const label of ["Play", "Create", "Shop", "Events", "Talk"]) {
+      await expect(page.getByRole("button", { name: new RegExp(label) })).toBeVisible();
+    }
+  });
+
   test("welcome 401 clears stale cached user instead of trapping the modal", async ({
     page,
     request,
@@ -36,7 +65,13 @@ test.describe("interaction inventory - auth session recovery", () => {
     const welcome = page.getByRole("dialog");
     await expect(welcome).toContainText("Welcome to wtfOS, cobwebsaints");
 
-    await welcome.getByRole("button", { name: "Thanks, I got it" }).click();
+    await expect(welcome.getByRole("button", { name: "Play" })).toBeVisible();
+    await expect(welcome.getByRole("button", { name: "Create" })).toBeVisible();
+    await expect(welcome.getByRole("button", { name: "Shop" })).toBeVisible();
+    await expect(welcome.getByRole("button", { name: "Events" })).toBeVisible();
+    await expect(welcome.getByRole("button", { name: "Talk" })).toBeVisible();
+
+    await welcome.getByRole("button", { name: "Explore Desktop" }).click();
 
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Log In" })).toBeVisible();

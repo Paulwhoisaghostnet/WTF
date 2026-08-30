@@ -102,7 +102,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/wtf-subdomains/setup", path: "/wtf-subdomains/setup", title: "Subdomain Setup", domain: "wallet", subdomain: "WTF Domains setup", auth: true },
   { pattern: "/wtf-subdomains", path: "/wtf-subdomains", title: "WTF Domains", domain: "wallet", subdomain: "WTF Domains", auth: true },
   { pattern: "/links", path: "/links", title: "Links", domain: "public", subdomain: "Public entry", auth: false },
-  { pattern: "/faq", path: "/faq", title: "FAQ", domain: "public", subdomain: "Public entry", auth: false },
+  { pattern: "/faq", path: "/faq", title: "Help & Start Here", domain: "public", subdomain: "Public entry", auth: false },
   { pattern: "/discord/terms", path: "/discord/terms", title: "Discord Terms", domain: "social", subdomain: "Dicksword/Discord", auth: false },
   { pattern: "/discord/privacy", path: "/discord/privacy", title: "Discord Privacy", domain: "social", subdomain: "Dicksword/Discord", auth: false },
   { pattern: "/discord/linked-roles", path: "/discord/linked-roles", title: "Discord Linked Roles", domain: "social", subdomain: "Dicksword/Discord", auth: false },

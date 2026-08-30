@@ -602,7 +602,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/wtf-subdomains/setup", component: WtfSubdomainSetupPage, auth: true, title: "Subdomain Setup", group: "social" },
   { pattern: "/wtf-subdomains", component: WtfSubdomainsPage, auth: true, title: "WTF Domains", group: "social", startMenu: true },
   { pattern: "/links", component: LinksPage, auth: false, title: "Links", group: "public", startMenu: true },
-  { pattern: "/faq", component: FaqPage, auth: false, title: "FAQ", group: "public", startMenu: true },
+  { pattern: "/faq", component: FaqPage, auth: false, title: "Help & Start Here", group: "public", startMenu: true },
   { pattern: "/discord/terms", component: DiscordTermsPage, auth: false, title: "Discord Terms", group: "public" },
   { pattern: "/discord/privacy", component: DiscordPrivacyPage, auth: false, title: "Discord Privacy", group: "public" },
   { pattern: "/discord/linked-roles", component: DiscordLinkedRolesPage, auth: false, title: "Discord Linked Roles", group: "public" },
