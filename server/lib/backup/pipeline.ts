@@ -11,6 +11,7 @@ import {
   type BackupRestoreProof,
 } from "./restore-proof";
 import { localTarget, sweepLocalBackups } from "./targets/local";
+import { immutableObjectStorageTarget } from "./targets/object-storage";
 import { supabaseTarget } from "./targets/supabase";
 import type { BackupProducer, BackupTargetResult } from "./targets/base";
 
@@ -159,12 +160,10 @@ export async function runBackupPipeline(): Promise<JobResult & { skipped?: boole
     throw error;
   }
 
-  const settled = await Promise.allSettled([
-    localTarget.run(artifact),
-    supabaseTarget.run(artifact),
-  ]);
+  const configuredTargets = [localTarget, supabaseTarget, immutableObjectStorageTarget];
+  const settled = await Promise.allSettled(configuredTargets.map((target) => target.run(artifact)));
   const targets = settled.map((result, index): BackupTargetResult => {
-    const name = index === 0 ? "local" : "supabase";
+    const name = configuredTargets[index].name;
     if (result.status === "fulfilled") return result.value;
     return {
       name,

@@ -40,7 +40,13 @@ test("backup restore proof requires matching row counts and a checked media mani
     backup: successfulBackup,
     targets: [
       { name: "local", status: "ok", bytes: 4096, sha256Match: true },
-      { name: "supabase", status: "ok", bytes: 512, sha256Match: true },
+      {
+        name: "object-storage-immutable",
+        status: "ok",
+        bytes: 4096,
+        sha256Match: true,
+        metadata: { durableDump: true, immutable: true },
+      },
     ],
     restoreDrill: {
       status: "passed",
@@ -125,7 +131,13 @@ test("stored restore proof is re-derived instead of trusting a canClaimSafety fl
 test("stored restore proof remains safe only when all evidence revalidates", () => {
   const proof = normalizeBackupRestoreProof({
     backup: successfulBackup,
-    targets: [{ name: "local", status: "ok", bytes: 4096, sha256Match: true }],
+    targets: [{
+      name: "object-storage-immutable",
+      status: "ok",
+      bytes: 4096,
+      sha256Match: true,
+      metadata: { durableDump: true, immutable: true },
+    }],
     restoreDrill: {
       status: "passed",
       restoredAt: "2026-05-11T09:20:00.000Z",
@@ -143,6 +155,39 @@ test("stored restore proof remains safe only when all evidence revalidates", () 
 
   assert.equal(proof?.status, "safe_to_claim");
   assert.equal(proof?.canClaimSafety, true);
+});
+
+test("local copies and remote manifests cannot masquerade as off-host dump uploads", () => {
+  const proof = buildBackupRestoreProof({
+    backup: successfulBackup,
+    targets: [
+      { name: "local", status: "ok", bytes: 4096, sha256Match: true },
+      {
+        name: "supabase",
+        status: "ok",
+        bytes: 512,
+        sha256Match: true,
+        metadata: { mode: "manifest", durableDump: false, immutable: false },
+      },
+    ],
+    restoreDrill: {
+      status: "passed",
+      rowCounts: [{ table: "users", backupRows: 12, restoredRows: 12 }],
+      mediaManifest: {
+        status: "passed",
+        expectedRows: 4,
+        restoredRows: 4,
+        checksumSha256: "b".repeat(64),
+        checkedObjects: 4,
+        missingObjects: 0,
+      },
+    },
+  });
+  assert.equal(proof.status, "not_proven");
+  assert.equal(
+    proof.requirements.find((requirement) => requirement.key === "upload_recorded")?.ok,
+    false,
+  );
 });
 
 test("restore drill proof reader fails closed when the operator proof file is missing", async () => {

@@ -188,6 +188,8 @@ export const supabaseTarget: BackupTarget = {
           bucket: BUCKET_NAME,
           remoteName: manifestName,
           mode: "manifest",
+          durableDump: false,
+          immutable: false,
           usedBytes,
           remainingBytes,
           dumpBytes: artifact.bytes,

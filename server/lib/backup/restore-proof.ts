@@ -44,7 +44,7 @@ export type BackupRestoreProofInput = {
     sha256?: string | null;
     createdAt?: string | null;
   } | null;
-  targets?: Array<Pick<BackupTargetResult, "name" | "status" | "bytes" | "sha256Match">>;
+  targets?: Array<Pick<BackupTargetResult, "name" | "status" | "bytes" | "sha256Match" | "metadata">>;
   restoreDrill?: BackupRestoreDrillProof | null;
 };
 
@@ -114,7 +114,12 @@ export function buildBackupRestoreProof(input: BackupRestoreProofInput): BackupR
       backup.createdAt
   );
   const uploadRecorded = targets.some(
-    (target) => target.status === "ok" && positiveNumber(target.bytes) && target.sha256Match !== false
+    (target) =>
+      target.status === "ok" &&
+      positiveNumber(target.bytes) &&
+      target.sha256Match === true &&
+      target.metadata?.durableDump === true &&
+      target.metadata?.immutable === true
   );
   const restoreDrillPassed = restoreDrill.status === "passed";
   const countsMatch = rowCountsMatch(restoreDrill.rowCounts);
@@ -132,8 +137,8 @@ export function buildBackupRestoreProof(input: BackupRestoreProofInput): BackupR
       key: "upload_recorded",
       ok: uploadRecorded,
       detail: uploadRecorded
-        ? "At least one backup target recorded a verified upload or local retention copy."
-        : "No successful backup target with bytes and matching checksum was recorded.",
+        ? "At least one off-host backup target recorded exact dump bytes, checksum proof, and immutable retention."
+        : "No off-host immutable dump with exact bytes and matching checksum was recorded.",
     },
     {
       key: "restore_drill_passed",
@@ -199,6 +204,7 @@ export function normalizeBackupRestoreProof(input: unknown): BackupRestoreProof 
             status: row?.status === "ok" ? "ok" : "error",
             bytes: typeof row?.bytes === "number" ? row.bytes : 0,
             sha256Match: row?.sha256Match === false ? false : row?.sha256Match === true ? true : undefined,
+            metadata: objectOrNull(row?.metadata) ?? undefined,
           };
         })
       : [],

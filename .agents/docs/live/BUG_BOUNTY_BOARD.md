@@ -23,17 +23,12 @@
 
 ## Canonical Counts
 
-Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Blocked: **1** · Fixed: **140** · Verified: **379** · Archived: **3**
+Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **141** · Verified: **382** · Archived: **3**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-371 | Open | - | 2026-07-14 | Secrets / git history | P0 | 17 | 37 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
-| WTF-BB-645 | Open | - | - | Authorization / background jobs | P1 | 15 | 90 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
-| WTF-BB-082 | Open | - | - | Backup / disaster recovery | P1 | 15 | 90 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
-| WTF-BB-057 | Open | - | 2026-04-27 | Security / command safety | P1 | 15 | 90 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
-| WTF-BB-049 | Open | - | 2026-04-27 | Dependencies / supply chain | P1 | 15 | 90 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
 | WTF-BB-647 | Open | - | - | Authorization / message board | P1 | 14 | 123 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
 | WTF-BB-126 | Open | - | 2026-05-08 | Tezos recapture / settlement | P1 | 14 | 123 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
 | WTF-BB-050 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 123 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
@@ -130,6 +125,7 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 361 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 361 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 441 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
+| WTF-BB-371 | Blocked | Repository owner / Twitter developer account | 2026-08-30 | Secrets / git history | P0 | 17 | 37 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
 | WTF-BB-313 | Blocked | Codex live user-story gap loop | 2026-06-22 | Skywire / live AT puppet coverage | P1 | 11 | 361 | 2 | 4 | 1 | Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential |
 | WTF-BB-568 | Fixed | Codex human-alpha release completion | - | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-527 | Fixed | Codex Ravioli boundary-40 recovery | - | Pasta Protocol / blind-pack cryptographic portability | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli encrypted non-canonical AAD but pinned a canonical envelope |
@@ -178,6 +174,7 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-574 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / strict proof packaging | P0 | 12 | 263 | 2 | 5 | 0 | Macaroni recovery capability omits visual evidence |
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 361 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 90 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
+| WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 90 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
 | WTF-BB-649 | Fixed | Codex Tezos identity resolver pass | - | Tezos identity / token display | P1 | 14 | 123 | 5 | 4 | 1 | Tezos creator and collection displays fall back to raw addresses |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 123 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 123 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
@@ -347,6 +344,9 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-261 | Verified | Codex Macaroni live snapshot pass | - | Macaroni / user-site runtime compatibility | P0 | 9 | 500 | 1 | 2 | 1 | Published Macaroni snapshots keep stale inline runtime |
 | WTF-BB-259 | Verified | Codex Macaroni owned-mints/share pass | - | Macaroni / generated mint page UX | P0 | 9 | 500 | 1 | 2 | 1 | Macaroni owned-mints copy and social sharing feel mechanical |
 | WTF-BB-258 | Verified | Codex Macaroni stage copy pass | - | Macaroni / generated mint page UX | P0 | 9 | 500 | 1 | 2 | 1 | Single-stage Macaroni drops imply extra sale stages |
+| WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 90 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
+| WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 90 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
+| WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 90 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
 | WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 123 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-564 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / Ravioli recovery identity | P1 | 14 | 123 | 3 | 5 | 2 | Active Ravioli recovery accepts only enumerated schemas and exact opened identity, while the retired current-v4 executable fixture is quarantined behind its fail-closed retirement boundary |
 | WTF-BB-541 | Verified | Codex Ravioli event-86 continuation | - | Pasta Protocol / Ravioli live dependency expectation mapping | P1 | 14 | 123 | 4 | 4 | 2 | Ravioli derived a collection counter from a project identifier |
@@ -655,106 +655,6 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 441 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-371 - A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite
-
-- Category: Secrets / git history
-- Priority: P0
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-07-14
-- Score: C4 + F3 + S5 + P0(5) = 17
-- Evidence:
-  - A redacted full-history secret scan matched a likely Twitter API credential in a deleted tracked `.env.public` at commit `47323ae...`.
-  - The credential value is intentionally omitted from this board and operator output.
-- Why it matters:
-  - Deletion from the current tree does not revoke a credential recoverable from public Git history, forks, caches, or clones.
-- Likely correction direction:
-  - Rotate or revoke the credential at the provider first, inventory deploy consumers and public forks, then perform a coordinated history rewrite only with explicit owner authorization.
-- Verification idea:
-  - Confirm at the provider that the historic credential is invalid, run a redacted full-history scan against the rewritten mirror, and smoke-test every authorized deploy consumer with replacement credentials.
-
-### WTF-BB-645 - Any authenticated user can force-run registered cockpit jobs
-
-- Category: Authorization / background jobs
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C4 + F4 + S3 + P1(4) = 15
-- Legacy identity: this distinct record formerly reused WTF-BB-076; it was assigned WTF-BB-645 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `server/routes/cockpit.ts:361-365` exposes `POST /api/cockpit/sync/run/:jobName` with only `isAuthenticated`.
-  - The route passes the path parameter directly to `runJob(name)`.
-  - Registered jobs include expensive or sensitive jobs such as `supabase-backup`, `tv-cache-warm`, `tv-transcode-sweep`, `portfolio-sync`, `x-dm-sync`, wallet/event sync workers, and recapture watchers.
-- Why it matters:
-  - Any logged-in account can trigger costly jobs, upstream API calls, media cache fetches, backup work, or privileged maintenance paths. Combined with cookie CSRF this becomes a broad cross-site trigger surface.
-- Likely correction direction:
-  - Require a privileged permission such as `manage_settings` or a dedicated `manage_background_jobs` permission, and allowlist only safe manually-runnable job names.
-- Verification idea:
-  - As a contestant/witness, the forced-run route should return 403 for every job name; staff-only job runs should be audited.
-
-### WTF-BB-082 - Backup pipeline defaults do not create an immutable off-host dump
-
-- Category: Backup / disaster recovery
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C5 + F3 + S3 + P1(4) = 15
-- Evidence:
-  - `server/lib/backup/targets/local.ts:10-24` keeps local dump artifacts for only `BACKUP_LOCAL_KEEP_DAYS`, defaulting to 2 days.
-  - `server/lib/backup/targets/supabase.ts:126-181` defaults `SUPABASE_BACKUP_MODE` to `manifest`, uploading JSON metadata while leaving dump bytes local.
-  - `server/lib/backup/pipeline.ts:151-154` treats local and Supabase target completion as the available backup target set.
-- Why it matters:
-  - If the host volume is deleted or corrupted, the default configured "off-site" target may contain only a manifest and hash, not restorable database bytes.
-- Likely correction direction:
-  - Add at least one immutable/off-host dump target (Drive/S3/B2/restic/borg) with retention, restore drills, and deletion protection. Make launch fail or alert when only manifest-mode remote backup is configured.
-- Verification idea:
-  - Restore a fresh database from the remote-only artifact after deleting local `/app/backups`; document RPO/RTO and require a passing restore drill before public launch.
-
-### WTF-BB-057 - Supabase backup command builder interpolates DB URL into a shell command
-
-- Category: Security / command safety
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C4 + F4 + S3 + P1(4) = 15
-- Evidence:
-  - `server/lib/supabase-backup.ts:338` executes `pg_dump` with `execAsync` and a string template:
-    - ``pg_dump --format=custom --no-owner --file="${filepath}" "${dbUrl}"``.
-  - `dbUrl` comes from runtime environment through `getDatabaseUrl()` and is interpolated into shell command text.
-- Why it matters:
-  - Even though DB credentials are usually server-managed secrets, shell interpolation of a URL turns the backup path into a command-injection sink if env config is ever compromised or misconfigured.
-  - It increases the blast radius of any config handling mistake in backup scheduling paths.
-- Likely correction direction:
-  - Switch to `execFile` with argument arrays (or spawn-safe helpers), or move to a backup library/driver path that avoids shell interpretation.
-- Verification idea:
-  - Add a regression test that ensures unusual URL characters are escaped safely without command parsing side effects.
-
-### WTF-BB-049 - js-dos assets and fallback runtime fetch from CDN are unpinned and uncached
-
-- Category: Dependencies / supply chain
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C2 + F4 + S5 + P1(4) = 15
-- Evidence:
-  - `WTF/scripts/install-games.mjs:65-86` defines `JSDOS_ASSETS` with hardcoded `https://v8.js-dos.com/latest/...` URLs.
-  - The same file downloads each asset with `fetch(asset.url)` and no checksum/integrity validation.
-  - The script comments explicitly describe those fetches as “no external runtime dependencies after the initial download.”
-- Why it matters:
-  - Any compromise of that CDN path (or upstream tampering/misconfiguration) can inject unreviewed JS/WASM into all game installs.
-  - `latest` paths can silently move forward, so installs are not reproducible in time.
-- Likely correction direction:
-  - Pin js-dos assets to immutable versioned URLs and verify integrity before writing files.
-  - Preload these versioned assets into repo artifacts or a private cache/CDN under repo governance.
-  - Add an allowlist/checksum file and automate updates through PRs rather than live fetch at install time.
-- Verification idea:
-  - Force a mocked CDN response and confirm install fails closed.
-  - Re-run install twice with same lockfile and confirm zero diffs in `public/games/_vendor/js-dos`.
 
 ### WTF-BB-647 - Legacy channel message endpoints bypass board channel permissions
 
@@ -2775,6 +2675,27 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
 - Verification idea:
   - After enabling, run a dry-run on known wallets and check `collection_items` for non-empty expected listing snapshots.
 
+### WTF-BB-371 - A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite
+
+- Category: Secrets / git history
+- Priority: P0
+- Status: Blocked
+- Owner/Session: Repository owner / Twitter developer account
+- Last touched: 2026-08-30
+- Score: C4 + F3 + S5 + P0(5) = 17
+- Evidence:
+  - A redacted full-history secret scan matched a likely Twitter API credential in a deleted tracked `.env.public` at commit `47323ae...`.
+  - The credential value is intentionally omitted from this board and operator output.
+- Why it matters:
+  - Deletion from the current tree does not revoke a credential recoverable from public Git history, forks, caches, or clones.
+- Blocker (2026-08-30):
+  - The repository cannot revoke a Twitter provider credential. The repository owner must invalidate it in the owning Twitter developer account and identify replacement consumers before any history rewrite.
+  - `config/public-release-boundary.json` records that the full-history scan found high-confidence historic credentials and explicitly records `rewritePerformed: false`; no rewrite authority has been granted.
+- Required owner action:
+  - Revoke/rotate the historic Twitter credential at the provider and provide non-secret confirmation that it is invalid. Then inventory authorized deploy consumers and explicitly authorize a coordinated rewrite if desired.
+- Verification after unblock:
+  - Confirm at the provider that the historic credential is invalid, run a redacted full-history scan against any rewritten mirror, and smoke-test every authorized deploy consumer with replacement credentials.
+
 ### WTF-BB-313 - Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential
 
 - Category: Skywire / live AT puppet coverage
@@ -3836,6 +3757,29 @@ Total: **624** · Open: **47** · Claimed: **41** · In Progress: **13** · Bloc
   - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
 - Verification idea:
   - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
+
+### WTF-BB-082 - Backup pipeline defaults do not create an immutable off-host dump
+
+- Category: Backup / disaster recovery
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex immutable off-host backup pass
+- Last touched: 2026-08-30
+- Score: C5 + F3 + S3 + P1(4) = 15
+- Evidence:
+  - `server/lib/backup/targets/local.ts` retains dump bytes only on the host volume.
+  - `server/lib/backup/targets/supabase.ts` intentionally uploads a small manifest, not the database dump.
+  - The former restore-safety proof accepted any successful target, so a local copy or remote manifest could satisfy `upload_recorded`.
+- Correction:
+  - Added `server/lib/backup/targets/object-storage.ts`, a dedicated S3-compatible dump target that activates only when `BACKUP_S3_BUCKET` names an Object-Lock-enabled backup bucket.
+  - Each dump uses a unique date-scoped key, `If-None-Match: *`, SHA-256 metadata/checksum, and GOVERNANCE retention through `BACKUP_S3_OBJECT_LOCK_DAYS`. A post-upload HEAD must match exact size, digest, lock mode, and retention deadline.
+  - The backup pipeline now runs local, Supabase manifest, and immutable object-storage targets; a missing locked bucket yields a degraded warning rather than a false remote-backup success.
+  - Restore safety now requires a successful target explicitly proving `durableDump: true`, `immutable: true`, exact bytes, and checksum match. Local copies and Supabase manifests cannot satisfy it.
+- Verification:
+  - `npx tsx --test server/lib/backup/targets/object-storage.test.ts server/lib/backup/restore-proof.test.ts server/lib/backup/restore-drill.test.ts` passed 18/18, including missing-config, prefix traversal, remote digest drift, and manifest/local false-claim regressions.
+  - `npm run check -- --pretty false` passed.
+- Remaining target-environment proof before Verified:
+  - Configure a dedicated production bucket with Object Lock enabled, run the pipeline, delete the local dump in a controlled drill, restore from the remote-only object, and record row-count/media-manifest proof plus the actual RPO/RTO.
 
 ### WTF-BB-649 - Tezos creator and collection displays fall back to raw addresses
 
@@ -7601,6 +7545,58 @@ Copy this when adding a new issue:
   - `npx tsx --test server/routes/macaroni-policy.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-645 - Any authenticated user can force-run registered cockpit jobs
+
+- Category: Authorization / background jobs
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex bounty-board reconciliation
+- Last touched: 2026-08-30
+- Score: C4 + F4 + S3 + P1(4) = 15
+- Legacy identity: this distinct record formerly reused WTF-BB-076; it was assigned WTF-BB-645 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Original evidence:
+  - The former route exposed `POST /api/cockpit/sync/run/:jobName` with only `isAuthenticated` and passed arbitrary registered names to `runJob(name)`.
+- Correction:
+  - Commit `26a9b128a3ac8176364d623ea4a05dc9be29b06d` (`Harden cockpit manual job runs`, 2026-05-15) replaced authenticated-only access with `requirePermission("manage_settings")`.
+  - The route now rejects every name outside `MANUAL_RUN_JOB_NAMES`; only `nonce-cleanup`, `system-event-log-prune`, and `tv-cache-evict` are manually runnable. Expensive backups, external API workers, wallet sync, and transcode jobs are excluded.
+- Verification (2026-08-30):
+  - `npx tsx --test server/cockpit-sync-visibility-policy.test.ts` passed 3/3. The focused regression asserts the permission middleware, safe allowlist, and `manual_run_not_allowed` rejection.
+  - `git blame -L 507,530 server/routes/cockpit.ts` binds the current correction to commit `26a9b128`.
+
+### WTF-BB-057 - Supabase backup command builder interpolates DB URL into a shell command
+
+- Category: Security / command safety
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex bounty-board reconciliation
+- Last touched: 2026-08-30
+- Score: C4 + F4 + S3 + P1(4) = 15
+- Original evidence:
+  - The former backup implementation interpolated the database URL into shell command text for `pg_dump`.
+- Correction:
+  - Commit `38f806e3` (`fix: restart law delivered phase 0`, 2026-05-10) changed `server/lib/supabase-backup.ts` to `execFileAsync("pg_dump", buildPgDumpArgs(filepath, dbUrl), ...)`, keeping the URL and output path in isolated argv elements.
+  - The current modular producer in `server/lib/backup/producer.ts` independently uses `execFileAsync` with a literal argument array.
+- Verification (2026-08-30):
+  - `npx tsx --test server/lib/supabase-backup.test.ts` passed 2/2. Its command regression uses a URL containing `;touch /tmp/pwned` and proves the entire value remains one inert argument.
+  - `git blame` binds the active legacy-path correction to `38f806e3` and the modular producer boundary to `47c3e846`.
+
+### WTF-BB-049 - js-dos assets and fallback runtime fetch from CDN are unpinned and uncached
+
+- Category: Dependencies / supply chain
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex bounty-board reconciliation
+- Last touched: 2026-08-30
+- Score: C2 + F4 + S5 + P1(4) = 15
+- Original evidence:
+  - The installer formerly downloaded js-dos from a moving `latest` URL without content verification.
+- Correction:
+  - Commit `38f806e3` pinned js-dos to version `8.3.20`, declared immutable versioned URLs and SHA-256 digests in `scripts/jsdos-vendor.mjs`, and made `scripts/install-games.mjs` verify both checked-in and newly fetched bytes before use or write.
+  - The seven required runtime assets are checked into `public/games/_vendor/js-dos`, so normal installs do not depend on a live CDN fetch.
+- Verification (2026-08-30):
+  - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
+  - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
 
 ### WTF-BB-617 - Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification
 

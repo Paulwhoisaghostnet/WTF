@@ -10979,3 +10979,13 @@
 **Rule**: Keep one validated structured record per issue and generate every human-facing queue view from it. CI must reject duplicate IDs, unsupported states, missing mirrored records, score/rank drift, stale generated output, and disagreement in every mirrored field; preserve the former representation as immutable historical evidence.
 
 ---
+
+## 2026-08-30 — A remote manifest is not an off-host backup
+
+**What happened**: The backup pipeline retained dump bytes on the application volume and uploaded only metadata to Supabase, while its restore-safety proof treated any successful target—including the local copy or remote manifest—as a verified upload.
+
+**Why it mattered**: The system could label backup evidence safe even though loss of the host volume would leave no restorable database bytes. A checksum written into a manifest proves identity, not durable possession or deletion protection.
+
+**Rule**: Off-host backup proof must bind the exact dump bytes to an independent target, verify size and digest after upload, prove enforced retention/immutability, and complete a remote-only restore drill. Local retention and metadata-only targets must never satisfy the off-host-upload requirement.
+
+---
