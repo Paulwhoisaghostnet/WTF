@@ -52,6 +52,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/dues", auth: false, title: "Club Dues Manager" },
   { pattern: "/console", auth: true, title: "WTF Console" },
   { pattern: "/game-studio", auth: true, title: "Game Studio" },
+  { pattern: "/create", auth: true, title: "Create" },
   { pattern: "/dedrooms", auth: true, title: "DedRooms" },
   { pattern: "/tools/ch-ease", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "CH-EASE" },
   { pattern: "/tools/macaroni-packager", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "CH-EASE" },

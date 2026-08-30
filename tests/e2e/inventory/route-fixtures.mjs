@@ -57,6 +57,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/dues", path: "/dues", title: "Club Dues Manager", domain: "club-dues", subdomain: "Memberships and subscription access", auth: false },
   { pattern: "/console", path: "/console", title: "WTF Console", domain: "arcade-console", subdomain: "WTF Console catalog", auth: true },
   { pattern: "/game-studio", path: "/game-studio", title: "Game Studio", domain: "media", subdomain: "Game Studio projects", auth: true },
+  { pattern: "/create", path: "/create", title: "Create", domain: "media", subdomain: "Outcome-led creator runway", auth: true },
   { pattern: "/tools/broot", path: "/tools/broot", title: "Broot", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/particle-painter", path: "/tools/particle-painter", title: "PArticle Painter", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/pixalerce", path: "/tools/pixalerce", title: "PixAlerce", domain: "media", subdomain: "Creation tools", auth: true },

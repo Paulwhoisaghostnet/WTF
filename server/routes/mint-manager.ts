@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { userWallets } from "@shared/schema";
+import { mediaMintReceipts, userMediaLibrary, userWallets } from "@shared/schema";
 import { isAuthenticated } from "../auth/passport";
+import { ingestSystemEvent } from "../challenges/events/ingest";
 import { db } from "../db";
 import { fetchTransactionsByHash, isValidOpHash } from "../lib/tzkt-ops";
 import { tzkt, UpstreamClient } from "../lib/upstream";
@@ -19,11 +20,15 @@ const shadownetTzkt = new UpstreamClient({
 });
 
 const receiptSchema = z.object({
+  mediaItemId: z.coerce.number().int().positive(),
   opHash: z.string().trim().refine(isValidOpHash, "Invalid Tezos operation hash"),
   contract: z.string().trim().regex(KT1_PATTERN).optional(),
   tokenId: z.string().trim().regex(/^(0|[1-9][0-9]*)$/).optional(),
   network: z.enum(["mainnet", "shadownet"]).default("mainnet"),
+  artifactUri: z.string().trim().max(2_000).optional(),
 });
+
+const mediaItemParamSchema = z.coerce.number().int().positive();
 
 type IndexedTransfer = {
   id?: number;
@@ -62,11 +67,72 @@ export function findLinkedMintTransfer(
   }) ?? null;
 }
 
+function explorerUrl(network: "mainnet" | "shadownet", opHash: string) {
+  return network === "shadownet"
+    ? `https://shadownet.tzkt.io/${opHash}`
+    : `https://tzkt.io/${opHash}`;
+}
+
+function publicReceipt(receipt: typeof mediaMintReceipts.$inferSelect) {
+  return {
+    id: receipt.id,
+    mediaItemId: receipt.mediaItemId,
+    status: receipt.status,
+    network: receipt.network,
+    opHash: receipt.opHash,
+    minterWallet: receipt.minterWallet,
+    contract: receipt.contract ?? undefined,
+    tokenId: receipt.tokenId ?? undefined,
+    amount: receipt.amount ?? undefined,
+    artifactUri: receipt.artifactUri ?? undefined,
+    explorerUrl: explorerUrl(receipt.network, receipt.opHash),
+    ...(receipt.network === "mainnet" && receipt.contract && receipt.tokenId
+      ? { objktUrl: `https://objkt.com/tokens/${receipt.contract}/${receipt.tokenId}` }
+      : {}),
+    verifiedAt: receipt.verifiedAt?.toISOString() ?? undefined,
+    createdAt: receipt.createdAt.toISOString(),
+    updatedAt: receipt.updatedAt.toISOString(),
+  };
+}
+
+router.get("/api/mint-manager/receipts/:mediaItemId", isAuthenticated, async (req, res) => {
+  const mediaItemId = mediaItemParamSchema.safeParse(req.params.mediaItemId);
+  if (!mediaItemId.success) return res.status(400).json({ error: "Choose a valid owned media item." });
+  const user = req.user as any;
+  const [media] = await db
+    .select({ id: userMediaLibrary.id })
+    .from(userMediaLibrary)
+    .where(and(
+      eq(userMediaLibrary.id, mediaItemId.data),
+      eq(userMediaLibrary.ownerUserId, user.id),
+    ))
+    .limit(1);
+  if (!media) return res.status(404).json({ error: "That media item is not in your library." });
+  const receipts = await db
+    .select()
+    .from(mediaMintReceipts)
+    .where(and(
+      eq(mediaMintReceipts.mediaItemId, media.id),
+      eq(mediaMintReceipts.ownerUserId, user.id),
+    ))
+    .orderBy(desc(mediaMintReceipts.updatedAt), desc(mediaMintReceipts.id));
+  return res.json(receipts.map(publicReceipt));
+});
+
 router.post("/api/mint-manager/receipt", isAuthenticated, async (req, res) => {
   try {
     const parsed = receiptSchema.safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid receipt request" });
     const user = req.user as any;
+    const [media] = await db
+      .select({ id: userMediaLibrary.id })
+      .from(userMediaLibrary)
+      .where(and(
+        eq(userMediaLibrary.id, parsed.data.mediaItemId),
+        eq(userMediaLibrary.ownerUserId, user.id),
+      ))
+      .limit(1);
+    if (!media) return res.status(404).json({ error: "That media item is not in your library." });
     const linkedRows = await db
       .select({ walletAddress: userWallets.walletAddress })
       .from(userWallets)
@@ -79,10 +145,11 @@ router.post("/api/mint-manager/receipt", isAuthenticated, async (req, res) => {
     if (operations.length === 0) {
       return res.status(202).json({
         status: "pending",
+        mediaItemId: media.id,
+        network: parsed.data.network,
         opHash: parsed.data.opHash,
-        explorerUrl: parsed.data.network === "shadownet"
-          ? `https://shadownet.tzkt.io/${parsed.data.opHash}`
-          : `https://tzkt.io/${parsed.data.opHash}`,
+        explorerUrl: explorerUrl(parsed.data.network, parsed.data.opHash),
+        persistence: "awaiting_linked_wallet_operation",
       });
     }
 
@@ -107,30 +174,62 @@ router.post("/api/mint-manager/receipt", isAuthenticated, async (req, res) => {
         })
       : [];
     const transfer = findLinkedMintTransfer(transfers, linkedWallets, parsed.data);
-    const explorerUrl = parsed.data.network === "shadownet"
-      ? `https://shadownet.tzkt.io/${parsed.data.opHash}`
-      : `https://tzkt.io/${parsed.data.opHash}`;
-    if (!transfer) {
-      return res.status(202).json({
-        status: "pending",
+    const minterWallet = String(appliedByLinkedWallet[0]?.sender?.address || "");
+    const contract = transfer ? tokenContractAddress(transfer) : parsed.data.contract;
+    const tokenId = transfer ? String(transfer.token?.tokenId ?? "") : parsed.data.tokenId;
+    const status = transfer ? "applied" : "pending";
+    const [saved] = await db
+      .insert(mediaMintReceipts)
+      .values({
+        mediaItemId: media.id,
+        ownerUserId: user.id,
+        network: parsed.data.network,
         opHash: parsed.data.opHash,
-        contract: parsed.data.contract,
-        tokenId: parsed.data.tokenId,
-        explorerUrl,
+        minterWallet,
+        contract: contract || null,
+        tokenId: tokenId || null,
+        amount: transfer ? String(transfer.amount ?? "") : null,
+        artifactUri: parsed.data.artifactUri || null,
+        status,
+        verifiedAt: transfer ? new Date() : null,
+      })
+      .onConflictDoUpdate({
+        target: [mediaMintReceipts.mediaItemId, mediaMintReceipts.opHash],
+        set: {
+          network: parsed.data.network,
+          minterWallet,
+          contract: contract || null,
+          tokenId: tokenId || null,
+          amount: transfer ? String(transfer.amount ?? "") : null,
+          artifactUri: parsed.data.artifactUri || null,
+          status,
+          verifiedAt: transfer ? new Date() : null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    if (status === "applied") {
+      await ingestSystemEvent({
+        eventId: `media.mint_manager.receipt_verified:${saved.id}`,
+        eventType: "media.mint_manager.receipt_verified",
+        userId: user.id,
+        walletAddress: minterWallet,
+        source: "media",
+        sourceModule: "mint-manager",
+        rawRefType: "media_mint_receipt",
+        rawRefId: saved.id,
+        metadata: {
+          mediaItemId: media.id,
+          network: parsed.data.network,
+          opHash: parsed.data.opHash,
+          contract,
+          tokenId,
+        },
       });
     }
 
-    const contract = tokenContractAddress(transfer);
-    const tokenId = String(transfer.token?.tokenId ?? "");
-    return res.json({
-      status: "applied",
-      opHash: parsed.data.opHash,
-      contract,
-      tokenId,
-      amount: String(transfer.amount ?? ""),
-      explorerUrl,
-      ...(parsed.data.network === "mainnet" ? { objktUrl: `https://objkt.com/tokens/${contract}/${tokenId}` } : {}),
-    });
+    return res.status(transfer ? 200 : 202).json(publicReceipt(saved));
   } catch (error) {
     console.error("[mint-manager] receipt verification failed:", error);
     res.status(502).json({ error: "Mint receipt verification is temporarily unavailable. Keep the operation hash and retry without signing again." });

@@ -1,0 +1,33 @@
+{
+  "schema": "pastaprotocol-screenshot-evidence@1",
+  "app": "spaghetti",
+  "capability": "originate standard collection",
+  "stageOrdinal": 4,
+  "stageName": "contract originated",
+  "url": "http://127.0.0.1:52338/creation-tools/spaghetti/index.html?handoff=chease-package&handoffKey=wtfos.pasta.handoff.v1%3Aspaghetti-ui-live-proof",
+  "timestampUtc": "2026-08-30T04:02:27.021Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "sha256": "912f01e4de2807367022c11ebe1bf966eb3b625641cbd30774a65a05adf71414",
+  "byteCount": 123523,
+  "domEvidence": [
+    {
+      "selector": "h1",
+      "name": "application",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "Spaghetti"
+    },
+    {
+      "selector": "#log",
+      "name": "stage log",
+      "matchCount": 1,
+      "selectedIndex": 0,
+      "text": "4:02:25 AM imported 1 token(s) from CH-EASE handoff 4:02:26 AM connected tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM on shadownet 4:02:26 AM pinning collection metadata… 4:02:26 AM originating collection contract (sign in wallet)… 4:02:26 AM collection deployed: KT1Ww8CpKRS5ffVd51vWNxJ6EBxEhCj7BhtN 4:02:26 AM explorer: https://shadownet.tzkt.io/KT1Ww8CpKRS5ffVd51vWNxJ6EBxEhCj7BhtN"
+    }
+  ],
+  "classification": "UI-LIVE"
+}

@@ -308,8 +308,18 @@ export async function readPastaProofRestartRpcSnapshot(
 export class PastaProofRestartJournal {
   private queue: Promise<void> = Promise.resolve();
   private replayCursor = new Map<PastaProofRestartActor, number>();
+  private replaySteps = new Map<PastaProofRestartActor, readonly PastaProofRestartStep[]>();
 
-  private constructor(readonly filePath: string, private state: JournalFile) {}
+  private constructor(readonly filePath: string, private state: JournalFile, replayExisting: boolean) {
+    if (!replayExisting) return;
+    const effects = this.effectState();
+    for (const actor of ["creator", "curator", "collector"] as const) {
+      this.replaySteps.set(actor, this.state.plan.filter((step) =>
+        step.actor === actor
+        && step.transport !== "direct"
+        && Boolean(effects.get(step.id)?.prepared)));
+    }
+  }
 
   static async create(input: {
     filePath: string;
@@ -349,7 +359,7 @@ export class PastaProofRestartJournal {
     } as const;
     const state: JournalFile = { ...base, intentSha256: sha256(deterministicJsonBytes(intentCore(base))), events: [] };
     await atomicWrite(input.filePath, state);
-    return new PastaProofRestartJournal(input.filePath, state);
+    return new PastaProofRestartJournal(input.filePath, state, false);
   }
 
   static async open(filePath: string, expected: {
@@ -393,7 +403,7 @@ export class PastaProofRestartJournal {
       if (sha256(deterministicJsonBytes(unsigned)) !== digest) throw new Error("restart journal event digest differs");
       previous = digest;
     });
-    const journal = new PastaProofRestartJournal(filePath, state);
+    const journal = new PastaProofRestartJournal(filePath, state, true);
     journal.validatePrefix();
     return journal;
   }
@@ -721,7 +731,8 @@ export class PastaProofRestartJournal {
       const expectedEntrypoints = pending.step.entrypoints ?? (pending.step.entrypoint ? [pending.step.entrypoint] : []);
       if (
         receipt.schema !== PASTA_UI_LIVE_RECEIPT_SCHEMA
-        || receipt.sequence !== pending.operationSequence
+        || !Number.isSafeInteger(receipt.sequence)
+        || receipt.sequence < 1
         || receipt.action !== pending.step.action
         || receipt.chainId !== SHADOWNET_CHAIN_ID
         || receipt.signerAddress !== this.state.actors[actor]
@@ -791,14 +802,15 @@ export class PastaProofRestartJournal {
 
   async replayOrHandle(actor: PastaProofRestartActor, request: PastaUiLiveBridgeRequest, handle: () => Promise<unknown>): Promise<unknown> {
     if (request.action !== "pin_json" && request.action !== "pin_blob" && request.action !== "originate" && request.action !== "call" && request.action !== "batch") return handle();
-    const completed = this.state.plan.filter((step) =>
-      step.actor === actor
-      && step.transport !== "direct"
-      && this.effectState().get(step.id)?.applied);
+    const completed = this.replaySteps.get(actor) ?? [];
     const cursor = this.replayCursor.get(actor) ?? 0;
     const step = completed[cursor];
     if (!step) return handle();
     const effect = this.effectState().get(step.id)!;
+    if (!effect.applied) {
+      this.replayCursor.set(actor, cursor + 1);
+      return handle();
+    }
     const pinIdentity = request.action === "pin_json" || request.action === "pin_blob" ? requestPinIdentity(request) : undefined;
     const matches = step.kind === "pin"
       ? Boolean(
@@ -816,7 +828,7 @@ export class PastaProofRestartJournal {
         );
     if (!matches) throw new Error(`restart replay request differs from completed step ${step.id}`);
     this.replayCursor.set(actor, cursor + 1);
-    const applied = effect.applied!;
+    const applied = effect.applied;
     if (step.kind === "pin") return { pin: applied.payload.proof, receipt: applied.payload.receipt };
     const receipt = applied.payload.receipt as PastaUiLivePublicReceipt;
     return { contractAddress: receipt.contractAddress, operationHash: receipt.operationHash, confirmationLevel: 1, receipt };

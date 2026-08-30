@@ -29,14 +29,17 @@ test.describe("interaction inventory - auth session recovery", () => {
     }
 
     await welcome.getByRole("button", { name: "Create" }).click();
-    await expect(page).toHaveURL(/\/game-studio$/);
+    await expect(page).toHaveURL(/\/create$/);
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect.poll(() => harnessEventTypes(request)).toContain("auth.welcome.completed");
 
     await page.goto("/faq", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "What do you want to do?" })).toBeVisible();
+    const helpTaskMap = page
+      .getByRole("heading", { name: "What do you want to do?" })
+      .locator("..");
+    await expect(helpTaskMap).toBeVisible();
     for (const label of ["Play", "Create", "Shop", "Events", "Talk"]) {
-      await expect(page.getByRole("button", { name: new RegExp(label) })).toBeVisible();
+      await expect(helpTaskMap.getByRole("button", { name: new RegExp(label) })).toBeVisible();
     }
   });
 

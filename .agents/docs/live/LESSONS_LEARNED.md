@@ -10880,3 +10880,23 @@
 **Rule**: Generate DM message timestamps and read markers from the database clock, clamp semantically impossible future read markers during migration, and rerun the same sender/recipient journey against a real database to prove unread-before-read and zero-after-read behavior.
 
 ---
+
+## 2026-08-30 — Restart proof must distinguish state present at open from state created now
+
+**What happened**: A fresh guarded Spaghetti run completed its bridge pins, then treated those just-completed effects as restart evidence and rejected the following origination. During recovery, submitted operations were queried through an unsupported collection filter, semantically identical Michelson was compared by raw JSON order, and a submitted-at-open effect that reconciled to applied was omitted from the replay prefix. The collector page also depended on a public IPFS gateway response that lacked browser CORS headers.
+
+**Why it mattered**: The duplicate-write guard was fail-closed, but it could not complete or reliably resume the commissioned Shadownet presentation. Weakening the comparisons would have traded the false positive for a real duplicate-signing risk.
+
+**Rule**: Freeze restart candidates from all prepared/submitted/applied effects present when the journal opens; reconcile exact submitted hashes before deciding which effects can replay; compare contract scripts semantically while normalizing only top-level section order; and use a byte-verified browser-readable gateway for proof UI while preserving canonical/public evidence in the receipt.
+
+---
+
+## 2026-08-30 — End-to-end proofs must authenticate writes and scope repeated OS labels
+
+**What happened**: The first real Mint Manager actor test attempted a state-changing request without the authenticated session's CSRF token. Separately, the commissioned Create destination introduced several legitimate desktop controls containing the word “Create,” so a global help-page locator became ambiguous after the Create window had opened.
+
+**Why it mattered**: A test could fail before exercising ownership-bound persistence, or select a background window control instead of the visible task map. Neither failure described the customer journey accurately.
+
+**Rule**: Real actor API proofs must obtain and send the session CSRF token for every protected write. Browser assertions in the operating-system shell must scope repeated labels to their owning window, dialog, or content region and use exact accessible names where actions share a prefix.
+
+---

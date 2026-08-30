@@ -7,7 +7,7 @@ test("classic OS wayfinder exposes one stable destination for each commissioned 
     CLASSIC_TASK_WAYFINDER.map(({ id, label, route }) => ({ id, label, route })),
     [
       { id: "play", label: "Play", route: "/arcade" },
-      { id: "create", label: "Create", route: "/game-studio" },
+      { id: "create", label: "Create", route: "/create" },
       { id: "shop", label: "Shop", route: "/wtfiam" },
       { id: "events", label: "Events", route: "/calendar" },
       { id: "talk", label: "Talk", route: "/mail" },

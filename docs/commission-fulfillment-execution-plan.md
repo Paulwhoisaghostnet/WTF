@@ -612,28 +612,28 @@ Extend the existing communications workflow with actor-to-actor send/read assert
 
 **Required changes**
 
-- [ ] Preserve and integrate the current Mint Manager/PixAlerce/Macaroni work after WP-00.
-- [ ] Make **Create** begin with outcomes, not tool names: make image/animation/3D/game; continue a project; preserve/export; mint/publish.
-- [ ] Keep all sixteen creation tools discoverable through descriptions of what they make and their supported export destinations.
-- [ ] Require every commissioned creation tool to provide at least one honest export: owned Media, device download, or project handoff. A tool that cannot export must say so before work begins.
-- [ ] Standardize the export bridge into owned Media plus an optional immediate Mint Manager handoff.
-- [ ] Use Mint Manager as the destination chooser for HEN/Teia, Objkt-ready standard collection, compatible associated contract, and new Pasta contract workflows already represented by the active work.
-- [ ] Keep wallet signing late: prepare metadata/media/contract choice first; require linked-wallet/network preflight immediately before the operation.
-- [ ] Persist resumable non-secret mint state and never persist seed phrases/private keys.
-- [ ] Record operation hash, network, contract, token id when indexed, artifact reference, minter, and verification status through the receipt route.
-- [ ] Expose a human-readable receipt with explorer link and recovery/retry state.
-- [ ] Keep challenge-specific Mint Portal functions available, but do not make challenge language the only way a general artist discovers minting.
-- [ ] Complete fresh aggregate Shadownet proof required by `WTF-BB-422` for any Pasta path used in the presentation.
+- [x] Preserve and integrate the current Mint Manager/PixAlerce/Macaroni work after WP-00.
+- [x] Make **Create** begin with outcomes, not tool names: make image/animation/3D/game; continue a project; preserve/export; mint/publish.
+- [x] Keep all sixteen creation tools discoverable through descriptions of what they make and their supported export destinations.
+- [x] Require every commissioned creation tool to provide at least one honest export: owned Media, device download, or project handoff. A tool that cannot export must say so before work begins.
+- [x] Standardize the export bridge into owned Media plus an optional immediate Mint Manager handoff.
+- [x] Use Mint Manager as the destination chooser for HEN/Teia, Objkt-ready standard collection, compatible associated contract, and new Pasta contract workflows already represented by the active work.
+- [x] Keep wallet signing late: prepare metadata/media/contract choice first; require linked-wallet/network preflight immediately before the operation.
+- [x] Persist resumable non-secret mint state and never persist seed phrases/private keys.
+- [x] Record operation hash, network, contract, token id when indexed, artifact reference, minter, and verification status through the receipt route.
+- [x] Expose a human-readable receipt with explorer link and recovery/retry state.
+- [x] Keep challenge-specific Mint Portal functions available, but do not make challenge language the only way a general artist discovers minting.
+- [x] Complete fresh Shadownet proof for the Spaghetti Pasta path selected for the commission presentation. `WTF-BB-422` remains in progress for its broader all-Pasta aggregate scope and is not represented as closed by this package.
 
 **Behavior proof**
 
-- [ ] Creator opens at least one image tool and one generative/contract tool from Create, understands the output before launch, and produces an artifact.
-- [ ] Artifact appears in owned Media and can reopen Mint Manager later.
-- [ ] Linked-wallet and selected-network identity are shown immediately before signing.
-- [ ] A Shadownet mint succeeds through the UI and returns an indexed receipt.
-- [ ] Reopening the media item shows the same receipt and mint destination.
-- [ ] Wrong network, unlinked wallet, failed pin, rejected signature, and indexer delay each show a safe recovery action.
-- [ ] Mainnet is never silently substituted for Shadownet or vice versa.
+- [x] Creator opens at least one image tool and one generative/contract tool from Create, understands the output before launch, and produces an artifact.
+- [x] Artifact appears in owned Media and can reopen Mint Manager later.
+- [x] Linked-wallet and selected-network identity are shown immediately before signing.
+- [x] A Shadownet mint succeeds through the UI and returns an indexed receipt.
+- [x] Reopening the media item shows the same receipt and mint destination.
+- [x] Wrong network, unlinked wallet, failed pin, rejected signature, and indexer delay each show a safe recovery action.
+- [x] Mainnet is never silently substituted for Shadownet or vice versa.
 
 **Focused tests**
 
@@ -650,6 +650,8 @@ npx playwright test tests/playwright/inventory/pixalerce.spec.mjs tests/playwrig
 Run the applicable Shadownet UI-live and live-puppet proof selected by the presentation mint destination; archive operation/indexer evidence in the release ledger.
 
 **Exit gate:** J-10 is `PASS`; no presentation mint path depends on unverified or stale proof.
+
+**Completion evidence (2026-08-30 UTC):** the selected Spaghetti presentation path originated `KT1Ww8CpKRS5ffVd51vWNxJ6EBxEhCj7BhtN`, created token `0`, minted two editions in `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, opened a sale, and completed a separate-collector buy on Shadownet. The fresh UI-LIVE receipt is archived under `artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260829-commission/` with receipt SHA-256 `526ab3c761c9d3149d3c0e7a69b1c58b4f0c4a07e4912dc1fa5ac68edbab3a2d`. A real PostgreSQL/live-browser actor proof bound that exact mint to owned Media and recovered the same server-verified receipt without browser-local state. Focused creation/mint tests pass 22/22, Spaghetti UI-live checks pass 6/6, TypeScript passes, inventory coverage passes, and the complete browser inventory passes 697/697.
 
 ---
 
@@ -921,8 +923,8 @@ This table is updated during implementation. `DONE` requires the exit gate named
 | WP-04 Casino sandbox | DONE | WP-01, D-001 | No-value community table creation/moderation/play proof `d3ac7433` |
 | WP-05 Calendar | DONE | WP-01 | Durable participation/reminder proof `c53c0a50`; inventory passed 691/691 |
 | WP-06 Messaging | DONE | WP-01 | WTF-BB-628: unread/read, recipient report, operator disposition, and privacy-safe audit proof; inventory passed 692/692 |
-| WP-07 Creation/mint | IN PROGRESS | WP-00, WP-01, D-004 | J-10 creator artifact-to-indexed-receipt proof |
-| WP-08 Operator/integration | WAITING ON WP-07 | WP-02–WP-07 | J-11 + inventory/live evidence |
+| WP-07 Creation/mint | DONE | WP-00, WP-01, D-004 | J-10 fresh Spaghetti UI-live mint/index/collector proof + durable owned-media receipt; inventory passed 697/697 |
+| WP-08 Operator/integration | IN PROGRESS | WP-02–WP-07 | J-11 + inventory/live evidence |
 | WP-09 Release candidate | WAITING ON WP-07/WP-08 | WP-01–WP-08 | J-01–J-12 ready/tested |
 | TW-01 Focused test week | NOT STARTED | WP-09 | Signed release ledger |
 | PR-01 Presentation | NOT STARTED | TW-01 | Customer demonstration on tested build |

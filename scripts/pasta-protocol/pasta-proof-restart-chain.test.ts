@@ -9,6 +9,7 @@ import {
   assertPastaProofRestartTransaction,
   authenticatePastaProofRestartInitialCounters,
   capturePastaProofRestartInitialCounters,
+  projectPastaProofRestartScript,
   projectPastaProofRestartValue,
   readPastaProofRestartActorState,
   reconcilePastaProofRestartOperation,
@@ -62,7 +63,10 @@ function chainFetch(input: {
     if (url.pathname.endsWith("/mempool/pending_operations")) {
       return json(mempool({ active: input.active, rejected: input.rejected }));
     }
-    if (url.origin === new URL(SHADOWNET_TZKT_API).origin && /\/operations\/(?:transactions|originations)$/.test(url.pathname)) {
+    if (url.origin === new URL(SHADOWNET_TZKT_API).origin && /\/operations\/(?:transactions|originations)(?:\/[A-Za-z0-9]+)?$/.test(url.pathname)) {
+      if (/\/operations\/(?:transactions|originations)\//.test(url.pathname)) {
+        assert.equal(url.pathname.split("/").at(-1), OPERATION_HASH);
+      }
       return json(input.rows ?? []);
     }
     throw new Error(`unexpected read ${url}`);
@@ -173,6 +177,20 @@ test("restart payload comparison normalizes projected maps and nat representatio
       signerAddress: CREATOR,
     }),
     /payload differs/,
+  );
+});
+
+test("restart Michelson script comparison ignores section order but preserves section contents", () => {
+  const parameter = { prim: "parameter", args: [{ prim: "unit" }] };
+  const storage = { prim: "storage", args: [{ prim: "nat" }] };
+  const code = { prim: "code", args: [[{ prim: "CAR" }, { prim: "NIL", args: [{ prim: "operation" }] }]] };
+  assert.deepEqual(
+    projectPastaProofRestartScript([parameter, storage, code]),
+    projectPastaProofRestartScript([code, parameter, storage]),
+  );
+  assert.notDeepEqual(
+    projectPastaProofRestartScript([parameter, storage, code]),
+    projectPastaProofRestartScript([parameter, storage, { ...code, args: [[{ prim: "CDR" }]] }]),
   );
 });
 

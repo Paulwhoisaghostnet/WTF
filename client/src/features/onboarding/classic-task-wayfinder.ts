@@ -17,9 +17,9 @@ export const CLASSIC_TASK_WAYFINDER = Object.freeze([
   {
     id: "create",
     label: "Create",
-    route: "/game-studio",
+    route: "/create",
     icon: "✦",
-    description: "Build, test, and publish your own games.",
+    description: "Make art, animation, 3D work, games, and Tezos releases.",
   },
   {
     id: "shop",

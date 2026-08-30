@@ -1298,6 +1298,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     subdomain: "Particle, art, and drop tools",
     kind: "tool",
     routePatterns: [
+      "/create",
       "/tools/broot",
       "/tools/particle-painter",
       "/tools/pixalerce",
@@ -1311,13 +1312,16 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
     adminPanelTabs: ["Content", "Automation"],
     nativeSettings: ["tool availability", "export rules", "Broot local draft and file export policy", "contract origination roles", "Mint Manager destinations", "IPFS pinning", "mint receipt verification", "drop page publishing", "wtfOS package sources", "mint challenge triggers"],
-    automationHandles: ["creation_tool.opened", "media.mint_manager.opened", "media.mint_manager.destination_selected", "media.mint_manager.media_pinned", "media.mint_manager.publisher_handoff_opened", "media.mint_manager.receipt_verified", "macaroni.package_finalized", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
+    adminRoutes: ["/api/mint-manager/receipt", "/api/mint-manager/receipts/:mediaItemId"],
+    automationHandles: ["creation.runway.viewed", "creation_tool.opened", "media.mint_manager.opened", "media.mint_manager.destination_selected", "media.mint_manager.media_pinned", "media.mint_manager.publisher_handoff_opened", "media.mint_manager.receipt_verified", "macaroni.package_finalized", "macaroni.drop_published", "mint_submission.created", "app.interaction.tracked"],
     behaviorAssertionIds: [
       "broot.media-open-import",
       "broot.project-file-vanity-extension",
       "broot.ffmpeg-glfx-layer-ops",
       "broot.wallet-hen-mint",
       "pixalerce.media-export-and-mint-manager",
+      "media.mint-manager-durable-receipt",
+      "creation.outcome-led-runway",
       "ipfs-pinning.pds-backed-wallet-backup",
       "account.cobwebsaints-domain-advanced-readiness",
       "skullzarmy.fafolab-integration-contracts",
@@ -1897,6 +1901,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Desktop Apps", "Media Storage", "Studio", "System Logs"],
     nativeSettings: ["dwelling routes", "media counts", "project counts", "archive proof links"],
     automationHandles: ["file_manager.viewed", "file_manager.opened", "app.interaction.tracked"],
+    behaviorAssertionIds: ["media.mint-manager-durable-receipt"],
   },
 ];
 

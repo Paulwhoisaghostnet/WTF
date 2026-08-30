@@ -50,6 +50,8 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
+| WTF-BB-629 | Verified | Codex commission fulfillment | 2026-08-29 | Media / durable mint receipt ownership and recovery | P1 | 13 | 6 | 4 | 5 | 0 | Mint receipts are now ownership-bound durable records verified from explicit-network TzKT evidence and recoverable from the same owned media across browser sessions |
 | WTF-BB-628 | Verified | Codex commission fulfillment | 2026-08-29 | Messaging / recipient reporting and operator review | P1 | 12 | 7 | 3 | 4 | 1 | Messages now supports private recipient reports, permission-gated operator review/disposition, privacy-safe audit events, and database-clock-consistent unread state |
 | WTF-BB-627 | Verified | Codex commission fulfillment | 2026-08-29 | Calendar / durable participation and reminders | P1 | 11 | 8 | 3 | 4 | 0 | Calendar supports browsing and event submissions but has no persistent RSVP/My plans loop, while tray reminders target every visible event instead of a user's chosen events |
 | WTF-BB-626 | Verified | Codex commission fulfillment | 2026-08-29 | Casino / community practice-game creation | P1 | 12 | 7 | 3 | 4 | 1 | Casino has staff-authored mocked tables but no user builder, submission status, moderation, public attribution, or durable practice-play path |
@@ -12753,3 +12755,72 @@ Copy this when adding a new issue:
   - TypeScript, production build, interaction inventory coverage, and the focused simulated browser story pass.
   - Real local PostgreSQL actor proof passes with separate sender, recipient, outsider, and admin accounts through unread delivery, read-to-zero, private reporting, duplicate/self/outsider rejection, operator review, persisted note, queue removal, and content-free audit metadata.
   - The complete inventory browser suite passes 692/692, including the new recipient-to-operator Messages safety story.
+
+### WTF-BB-629 - Verified mint receipts are browser-local instead of durable owned-media records
+
+- Category: Media / durable mint receipt ownership and recovery
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Authenticated `POST /api/mint-manager/receipt` verifies that an applied operation came from one of the current user's linked wallets and finds the exact indexed mint transfer, but it returns the result without storing it.
+  - Mint Manager snapshots are stored only in browser `localStorage`; reopening the same owned-media item in another session or device cannot recover its verified operation, contract, token, network, or indexer status.
+  - The success message says the receipt is saved with the media workflow even though no server-owned media/receipt relationship exists.
+- Why it matters:
+  - The commissioned artist journey is incomplete if a successful mint cannot be recovered from the artwork the user owns in WTF Media.
+  - A local draft is useful for resuming unsigned work, but it is not durable evidence of a wallet operation or indexed token and must not be presented as one.
+- Correction direction:
+  - Persist linked-wallet mint receipts against an owned media item with explicit network, operation, signer/minter, contract, token, amount, artifact URI, and pending/applied indexer state.
+  - Make verification idempotent, reject media the current user does not own, and recover durable receipts when Mint Manager reopens without trusting browser-local proof.
+  - Emit the authoritative verification event from the server and retain safe retry guidance for delayed indexers without asking the artist to sign twice.
+- Verification idea:
+  - Prove ownership and linked-wallet enforcement, pending-to-applied idempotence, cross-session receipt recovery from the same media item, exact explorer/indexer references, Shadownet network labeling, and no second wallet submission during indexer delay.
+- Correction:
+  - Added an ownership-bound `media_mint_receipts` record and migration with explicit network, operation, signer/minter, contract, token, amount, artifact URI, and pending/applied verification state.
+  - Made receipt submission idempotent and owner-only, required a linked signer wallet, and verified the exact operation and mint transfer against the explicitly selected Mainnet or Shadownet TzKT indexer before accepting proof.
+  - Mint Manager now loads durable receipts when owned Media reopens, distinguishes resumable local preparation from server-verified evidence, and offers indexer retry without requesting a second wallet signature.
+- Verification:
+  - Unit and policy verification passes 22/22 for creation, Mint Manager, HEN, Mint Portal, IPFS record, and Pasta proof behavior.
+  - A real local PostgreSQL/live-browser actor proof links the fresh Shadownet creator, submits exact operation `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, proves the indexed mint into token `0` on `KT1Ww8CpKRS5ffVd51vWNxJ6EBxEhCj7BhtN`, recovers it from a clean browser context, confirms idempotence and the content-safe audit event, then cleans up the fixture.
+  - Inventory coverage passes and the complete inventory browser suite passes 697/697, including cross-session durable receipt recovery.
+
+### WTF-BB-630 - Fresh guarded Pasta runs replay steps completed in the current process
+
+- Category: Pasta Protocol / fresh-run restart replay boundary
+- Status: Verified
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S1 + P0(5) = 15
+- Evidence:
+  - A newly created Spaghetti Shadownet UI-LIVE journal pinned the direct media and bridge collection metadata, then rejected the following origination with `restart replay request differs from completed step collection-metadata`.
+  - `replayOrHandle` recalculates its replay candidates from the journal's current applied state on every request, so an effect completed moments earlier is indistinguishable from durable evidence loaded at process start.
+  - After the replay-boundary correction, the exact origination `onujEhx1fJggD1VEdj7zJ641fnd8CUZwCEf9e7kX7sbnqyiZtQs` applied at Shadownet level 4,842,102, but the journal rejected its receipt because it compared the session-wide receipt sequence with the separate signer-operation sequence.
+  - Restart reconciliation then queried the TzKT origination collection with unsupported sender/counter filtering; Shadownet TzKT returned the oldest ten originations while its exact-hash endpoint returned the applied operation, causing a false consumed-counter failure.
+  - Exact-hash reconciliation then compared the journal's key-sorted descriptor with the source contract's insertion-ordered JSON hash; the same Michelson code produced different byte-order hashes and a false artifact-identity failure.
+  - The Shadownet RPC also returned the exact script sections in a different top-level order from the source artifact; raw array comparison rejected the same parameter, storage, code, and views despite preserving their contents.
+  - After the submitted origination reconciled to APPLIED during journal open, the frozen replay prefix still omitted it because only effects already APPLIED before reconciliation were captured; the browser therefore tried to delegate origination again, which the semantic journal correctly blocked before signing.
+  - After creator minting and sale completion, the collector proof page read the pinned token metadata from `ipfs.io`; that gateway response omitted CORS headers, so the evidence monitor blocked the sale screenshot before any collector buy.
+  - The restart-boundary tests exercise reopened journals but do not prove that a fresh journal delegates the semantic action immediately after a newly completed bridge step.
+- Why it matters:
+  - The guard prevents duplicate chain writes correctly, but its fresh-run false positive makes a clean presentation mint impossible and leaves a partially pinned proof.
+  - Weakening the request comparison would risk replaying a different operation; the fix must preserve exact authenticated replay while separating prior-run evidence from current-run progress.
+- Correction direction:
+  - Freeze the replayable bridge prefix when a journal is opened from disk; a newly created journal must begin with no replay candidates.
+  - Keep exact action, actor, pin-byte, operation-descriptor, and semantic-order matching for that frozen prefix.
+  - Validate the public receipt sequence as a positive session sequence while retaining the separately authenticated operation sequence from PREPARED/SUBMITTED events.
+  - Resolve SUBMITTED operations through the exact family/hash TzKT endpoint, retaining the counter scan only for the pre-submit PREPARED recovery case where no operation hash exists.
+  - Compare journal, source artifact, and recovered on-chain Michelson through the shared semantic restart projection while retaining the immutable source-byte hash in the journal intent.
+  - Canonicalize only the order-insensitive top-level Michelson script sections; preserve all nested instruction and type order so behavior drift still fails closed.
+  - Freeze all preexisting prepared/submitted/applied bridge steps at open, then replay them only if reconciliation leaves them applied; an abandoned pre-submit effect delegates its single safe retry instead of becoming replay evidence.
+  - Serve proof-browser IPFS reads through the configured, already byte-verified local gateway while keeping the canonical `ipfs://` URI and independently verified public-gateway evidence in the receipt.
+  - Add a regression proving that a fresh bridge pin followed by origination delegates both effects exactly once, while an opened journal still replays its authenticated completed prefix without side effects.
+- Verification idea:
+  - Run the restart boundary suite, then resume the preserved Spaghetti checkpoint and verify that it replays the exact collection pin, originates only once, completes mint/sale/buy, and publishes indexed receipts.
+- Correction:
+  - Froze the restart replay prefix from effects present when a journal opens, separating prior authenticated evidence from effects completed in the current process while retaining exact action, actor, bytes, descriptor, and semantic-order matching.
+  - Reconciled submitted operations by exact family/hash endpoint, separated session receipt sequence from signer-operation sequence, and compared recovered Michelson through a projection that normalizes only top-level script-section order.
+  - Included prepared/submitted effects present at open in the frozen prefix, replayed them only after applied reconciliation, and preserved one safe retry for abandoned pre-submit effects.
+  - Routed proof-browser IPFS reads through the configured byte-verified local gateway while preserving canonical `ipfs://` and public-gateway evidence in the receipt.
+- Verification:
+  - Restart/journal/chain regressions pass 42/42, including fresh delegation after a newly completed bridge pin and authenticated resumed replay without duplicate effects.
+  - A fresh checkpointed Shadownet Spaghetti UI-LIVE proof completed origination `onujEhx1fJggD1VEdj7zJ641fnd8CUZwCEf9e7kX7sbnqyiZtQs`, token creation, two-edition mint `oomCgp54okowgvWTc8fD4AkbaVYnj2Kch6NtxmknWz4UQjXA3NL`, sale, and separate-collector buy `opKnTjwXeQHv11UFhTFo9YCRfSY5rokXFLJZ3aJuUZ5muEJBZRN` without duplicate signing.
+  - The archived UI-LIVE receipt under `artifacts/pasta-protocol-proof-runs/pasta-alpha-proof-20260829-commission/` has SHA-256 `526ab3c761c9d3149d3c0e7a69b1c58b4f0c4a07e4912dc1fa5ac68edbab3a2d`, with eleven screenshots/sidecars and indexed TzKT evidence.

@@ -41,13 +41,19 @@ export interface MintManagerArtifact {
 }
 
 type MintReceipt = {
+  id?: number;
+  mediaItemId: number;
   status: "applied" | "pending";
+  network: "mainnet" | "shadownet";
   opHash: string;
+  minterWallet?: string;
   contract?: string;
   tokenId?: string;
   amount?: string;
   explorerUrl: string;
   objktUrl?: string;
+  artifactUri?: string;
+  verifiedAt?: string;
 };
 
 const PASTA_LABELS: Record<PastaPublisherId, string> = {
@@ -101,6 +107,11 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
     queryKey: ["mint-manager", "profile-dossier"],
     queryFn: () => api.get<WalletDossierLike>("/api/profile/dossier?limit=500"),
   });
+  const receiptsQuery = useQuery({
+    queryKey: ["mint-manager", "receipts", artifact.mediaItemId],
+    queryFn: () => api.get<MintReceipt[]>(`/api/mint-manager/receipts/${artifact.mediaItemId}`),
+    enabled: Boolean(artifact.mediaItemId),
+  });
   const knownContracts = useMemo(
     () => readKnownMintContracts(dossierQuery.data),
     [dossierQuery.data],
@@ -117,6 +128,22 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
   }, [artifact.mediaItemId, artifact.mimeType]);
 
   useEffect(() => () => setPinataJwt(""), []);
+
+  useEffect(() => {
+    const durable = receiptsQuery.data?.[0];
+    if (!durable) return;
+    setReceipt(durable);
+    setNetwork(durable.network);
+    setCompletionOpHash(durable.opHash);
+    setCompletionContract(durable.contract ?? "");
+    setCompletionTokenId(durable.tokenId ?? "");
+    setResult({
+      opHash: durable.opHash,
+      contract: durable.contract,
+      tokenId: durable.tokenId,
+    });
+    setStage("complete");
+  }, [receiptsQuery.data]);
 
   useEffect(() => {
     if (destinationKind !== "known_contract" || stage === "destination" || inspectedContract || !selectedContract) return;
@@ -314,11 +341,14 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
     setError("");
     setProgress("Checking the exact operation and token transfer in TzKT…");
     try {
+      if (!artifact.mediaItemId) throw new Error("Save this artwork to wtfOS Media before verifying its mint receipt.");
       const verified = await api.post<MintReceipt>("/api/mint-manager/receipt", {
+        mediaItemId: artifact.mediaItemId,
         opHash: completionOpHash.trim(),
         contract: completionContract.trim() || undefined,
         tokenId: completionTokenId.trim() || undefined,
         network,
+        artifactUri: artifactUri || (preparedHen ? `ipfs://${preparedHen.artifactCid}` : undefined),
       });
       setReceipt(verified);
       setResult({
@@ -328,11 +358,8 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
       });
       if (verified.status === "applied") {
         setStage("complete");
-        logClientSystemEvent({
-          eventType: "media.mint_manager.receipt_verified",
-          metadata: { contract: verified.contract, tokenId: verified.tokenId, opHash: verified.opHash },
-        });
       }
+      await receiptsQuery.refetch();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify the mint receipt.");
     } finally {
@@ -360,6 +387,8 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
           ))}
         </Stepper>
         <MediaSummary><strong>{artifact.title}</strong><span>{artifact.fileName} · {artifact.mimeType}</span></MediaSummary>
+        {receiptsQuery.isLoading && artifact.mediaItemId && <DurableReceiptNotice>Checking this owned media item for saved mint receipts…</DurableReceiptNotice>}
+        {receiptsQuery.isError && artifact.mediaItemId && <DurableReceiptWarning>Saved mint receipts could not be loaded. You can retry without signing another wallet operation.</DurableReceiptWarning>}
 
         {stage === "destination" && (
           <Body>
@@ -452,11 +481,14 @@ export function MintManagerDialog({ artifact, onClose }: { artifact: MintManager
 
         {stage === "complete" && (
           <Body>
-            <SectionTitle>{receipt?.status === "applied" ? "Token verified and indexed" : "Mint confirmed on Tezos"}</SectionTitle>
-            <Success>The wallet operation was submitted successfully. Mint Manager saved this receipt with the media workflow.</Success>
-            <Review><dt>Operation</dt><dd><code>{receipt?.opHash || result?.opHash}</code></dd><dt>Contract</dt><dd><code>{receipt?.contract || result?.contract || HEN_MINTER_CONTRACT}</code></dd>{(receipt?.tokenId || result?.tokenId) && <><dt>Token ID</dt><dd>{receipt?.tokenId || result?.tokenId}</dd></>}<dt>Indexer</dt><dd>{receipt?.status === "applied" ? "TzKT token transfer verified" : "Confirmation complete; token indexing may still be catching up"}</dd></Review>
-            <LinkRow><a href={receipt?.explorerUrl || `https://tzkt.io/${result?.opHash}`} target="_blank" rel="noopener noreferrer">View operation on TzKT</a>{receipt?.objktUrl && <a href={receipt.objktUrl} target="_blank" rel="noopener noreferrer">View token on Objkt</a>}</LinkRow>
-            {!receipt && <Button disabled={busy} onClick={() => void checkReceipt()}>Check token indexing</Button>}
+            <SectionTitle>{receipt?.status === "applied" ? "Token verified, indexed, and saved" : receipt?.status === "pending" ? "Mint saved; token indexing is catching up" : "Mint confirmed on Tezos"}</SectionTitle>
+            {receipt?.id
+              ? <Success>This receipt is stored with your owned media and will return on another signed-in session or device.</Success>
+              : <Notice>The wallet operation is confirmed locally. Verify it below to save an account-backed receipt with this owned media.</Notice>}
+            {receipt?.status === "pending" && <Warning>TzKT has the linked-wallet operation but not its mint transfer yet. Check again later; do not sign a duplicate mint.</Warning>}
+            <Review><dt>Network</dt><dd>{network === "shadownet" ? "Tezos Shadownet" : "Tezos Mainnet"}</dd><dt>Operation</dt><dd><code>{receipt?.opHash || result?.opHash}</code></dd><dt>Contract</dt><dd><code>{receipt?.contract || result?.contract || HEN_MINTER_CONTRACT}</code></dd>{(receipt?.tokenId || result?.tokenId) && <><dt>Token ID</dt><dd>{receipt?.tokenId || result?.tokenId}</dd></>}<dt>Indexer</dt><dd>{receipt?.status === "applied" ? "TzKT token transfer verified" : "Operation confirmed; token transfer pending"}</dd>{receipt?.minterWallet && <><dt>Signing wallet</dt><dd><code>{receipt.minterWallet}</code></dd></>}</Review>
+            <LinkRow><a href={receipt?.explorerUrl || `${network === "shadownet" ? "https://shadownet.tzkt.io" : "https://tzkt.io"}/${result?.opHash}`} target="_blank" rel="noopener noreferrer">View operation on TzKT</a>{receipt?.objktUrl && <a href={receipt.objktUrl} target="_blank" rel="noopener noreferrer">View token on Objkt</a>}</LinkRow>
+            {(!receipt || receipt.status === "pending") && <Button disabled={busy} onClick={() => void checkReceipt()}>{receipt?.status === "pending" ? "Check TzKT again" : "Verify & save receipt"}</Button>}
             {error && <ErrorText role="alert">{error}</ErrorText>}{progress && <Progress><Hourglass size={18} /> {progress}</Progress>}
             <Actions><Button onClick={onClose}>Done</Button></Actions>
           </Body>
@@ -474,6 +506,8 @@ const Eyebrow = styled.div`font-size:10px;text-transform:uppercase;letter-spacin
 const Stepper = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border-bottom:1px solid #777;background:#aaa;@media(max-width:640px){grid-template-columns:1fr;}`;
 const Step = styled.div<{ $active: boolean; $done: boolean }>`padding:7px 8px;font-size:11px;border-right:1px solid #777;background:${({$active,$done})=>$active?"#fff":"#d5d5d5"};font-weight:${({$active})=>$active?700:400};color:${({$done})=>$done?"#175b28":"inherit"};`;
 const MediaSummary = styled.div`display:flex;justify-content:space-between;gap:12px;padding:10px 14px;background:#efefef;border-bottom:1px solid #888;span{font-size:12px;color:#444;overflow-wrap:anywhere;}@media(max-width:560px){flex-direction:column;}`;
+const DurableReceiptNotice = styled.div`padding:8px 14px;border-bottom:1px solid #777;background:#eef0ff;font-size:12px;`;
+const DurableReceiptWarning = styled(DurableReceiptNotice)`background:#fff4cc;color:#633f00;`;
 const Body = styled.div`display:grid;gap:13px;padding:16px;a{color:#0000aa;}code{overflow-wrap:anywhere;}`;
 const SectionTitle = styled.h3`margin:0;font-size:17px;`;
 const DestinationGrid = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:10px;@media(max-width:640px){grid-template-columns:1fr;}`;

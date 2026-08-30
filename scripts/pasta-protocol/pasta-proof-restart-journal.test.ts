@@ -83,6 +83,22 @@ async function createJournal(plan = LASAGNA_PLAN): Promise<PastaProofRestartJour
   });
 }
 
+async function reopenJournal(
+  journal: PastaProofRestartJournal,
+  plan = LASAGNA_PLAN,
+): Promise<PastaProofRestartJournal> {
+  return PastaProofRestartJournal.open(journal.filePath, {
+    app: plan === LASAGNA_PLAN ? "lasagna" : "colander",
+    runId: "pasta-alpha-proof-test",
+    actors: { creator: CREATOR, curator: CURATOR },
+    plan,
+    intent: { contractArtifactSha256: "a".repeat(64), mediaSha256: "b".repeat(64) },
+    authenticateInitialCounters(counters) {
+      assert.deepEqual(counters, { creator: 100, curator: 200 });
+    },
+  });
+}
+
 async function applyPin(
   journal: PastaProofRestartJournal,
   step: PastaProofRestartStep,
@@ -198,11 +214,12 @@ for (const [operationIndex, step] of LASAGNA_PLAN.filter((candidate) => candidat
     const appliedJournal = await createJournal();
     await applyPrefix(appliedJournal, boundary);
     await applyOperation(appliedJournal, step, HASHES[operationIndex]);
+    const replayJournal = await reopenJournal(appliedJournal);
     let delegated = 0;
     let replay: unknown;
     for (const [index, completed] of LASAGNA_PLAN.slice(0, boundary + 1).entries()) {
       if (completed.actor !== step.actor || completed.transport === "direct") continue;
-      replay = await appliedJournal.replayOrHandle(
+      replay = await replayJournal.replayOrHandle(
         step.actor,
         requestForStep(completed, `request-${operationIndex}-${index}`),
         async () => { delegated += 1; return null; },
@@ -223,9 +240,10 @@ test("applied pin replay returns the durable proof without calling the pinner an
   await applyPin(journal, plan[1]);
   assert.ok(journal.appliedPin("media"));
   assert.equal(journal.pinRecords()[0].value, undefined);
+  const replayJournal = await reopenJournal(journal, plan);
   let delegated = 0;
   await assert.rejects(
-    journal.replayOrHandle("creator", {
+    replayJournal.replayOrHandle("creator", {
       schema: PASTA_UI_LIVE_BRIDGE_SCHEMA,
       id: "pin-replay-drift",
       action: "pin_json",
@@ -233,7 +251,7 @@ test("applied pin replay returns the durable proof without calling the pinner an
     }, async () => { delegated += 1; return null; }),
     /differs from completed step/,
   );
-  const replay = await journal.replayOrHandle("creator", {
+  const replay = await replayJournal.replayOrHandle("creator", {
     schema: PASTA_UI_LIVE_BRIDGE_SCHEMA,
     id: "pin-replay",
     action: "pin_json",
@@ -302,8 +320,9 @@ test("Colander replays an already-applied management call without delegating a s
   ];
   const journal = await createJournal(plan);
   await applyOperation(journal, plan[0], HASHES[0]);
+  const replayJournal = await reopenJournal(journal, plan);
   let delegated = 0;
-  const replay = await journal.replayOrHandle("creator", requestForStep(plan[0], "colander-replay"), async () => {
+  const replay = await replayJournal.replayOrHandle("creator", requestForStep(plan[0], "colander-replay"), async () => {
     delegated += 1;
     return null;
   });

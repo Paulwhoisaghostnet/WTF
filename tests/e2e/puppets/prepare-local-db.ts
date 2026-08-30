@@ -59,6 +59,7 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0120_casino_community_practice_games.sql",
   "drizzle/0121_calendar_participation.sql",
   "drizzle/0122_dm_message_reports.sql",
+  "drizzle/0123_media_mint_receipts.sql",
   "supabase/migrations/20260531120000_enable_skywire_desktop_app.sql",
   "supabase/migrations/20260531220000_wtf_live_app_registry.sql",
 ];
