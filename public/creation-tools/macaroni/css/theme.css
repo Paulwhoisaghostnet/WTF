@@ -261,11 +261,75 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   cursor: pointer;
   text-decoration: none;
 }
-.btn:hover { filter: brightness(1.08); }
+.btn:not(:disabled):hover { filter: brightness(1.08); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .btn.danger { background: var(--danger); color: #fff; }
 .btn.small { padding: 6px 12px; font-size: 0.85rem; }
+
+.publish-access-gate {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: calc(var(--radius) / 2);
+}
+.publish-access-gate[hidden],
+.publish-access-help[hidden],
+.publish-access-tooltip[hidden] { display: none; }
+.publish-access-help {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: help;
+}
+.publish-access-tooltip {
+  position: absolute;
+  z-index: 80;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: min(330px, calc(100vw - 48px));
+  padding: 10px 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) / 2);
+  background: var(--bg-soft);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: auto;
+}
+.publish-access-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 10px;
+}
+.publish-access-gate[data-role-locked="true"][data-tooltip-open="true"] .publish-access-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 520px) {
+  .publish-access-tooltip {
+    left: 0;
+    transform: none;
+  }
+}
 
 .pill {
   display: inline-block;

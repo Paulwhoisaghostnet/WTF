@@ -10700,3 +10700,93 @@
 **Rule**: Normalize desktop roles once and derive every adjacent role-gated launcher decision from the shared value. Run the focused shell-modularity policy and aggregate unit suite whenever a desktop app adds authentication or role wiring; never relax the enforced boundary to admit duplicated shell logic.
 
 ---
+
+## 2026-08-19 — Export E2E must validate the artifact and keep collecting after interaction failures
+
+**What happened**: PixAlerce's existing browser coverage proved route loading and local project persistence but never exercised its visible floating controls or downloaded exports. A real creation-to-export journey found two controls whose higher-z-index neighbors intercepted pointer events, while the OBJKT ZIP downloaded and rendered successfully but still made an undeclared favicon request. The first diagnostic test also stopped at its default timeout before later encoders could report their state.
+
+**Why it mattered**: A download event alone cannot prove that an exported file is valid, portable, or network-independent, and an early failed control must not hide the status of later formats in a multi-feature audit. Partial E2E evidence would have missed both the packaging leak and the fact that PNG, GIF, MP4, WebM, persistence, and most editor controls were already healthy.
+
+**Rule**: For multi-format creation tools, use one soft-failure browser journey that records every feature result, validates each downloaded artifact's contents, boots portable web packages from their extracted files, and asserts the request ledger. Derive enough test time from a measured diagnostic pass so an early failure cannot prevent the remaining encoders from running, then rerun the identical journey after the fix.
+
+---
+
+## 2026-08-19 — Content-hashed module chunks are one build ABI, not interchangeable patches
+
+**What happened**: A rebuilt PixAlerce export chunk was initially placed beside the older hardened entry bundle and its filename was rewired by hand. The UI rendered, but production export stalled because Rollup's minified named-export aliases are private to one complete build. The first browser rerun also served the root application's stale `dist/public` copy, hiding the newly added destination controls.
+
+**Why it mattered**: A visually healthy page can still contain a broken module contract, and testing a stale staged copy can falsely attribute that break to current source. Both mistakes weakened evidence around large GPU-backed exports.
+
+**Rule**: Never mix content-hashed JavaScript chunks from separate builds. Rebuild and copy the complete internally consistent asset graph from the exact hardened source, refresh the host distribution before browser verification, and confirm the loaded hashed entry names match provenance before interpreting E2E results.
+
+---
+
+## 2026-08-20 — Media minting needs one destination router, not contract-specific shortcuts
+
+**What happened**: PixAlerce's first wtfOS Media integration added a direct HEN action to each media surface. That closed one creator path but coupled Media to one contract and left Objkt-ready collections, wallet-associated contracts, and Pasta origination workflows as separate manual journeys.
+
+**Why it mattered**: Token metadata, supported entrypoints, network policy, and completion evidence belong to the selected destination. Repeating contract-specific buttons across creation and library surfaces makes those rules drift and encourages a pasted operation hash to be treated as proof of a minted token.
+
+**Rule**: Owned media exposes one resumable Mint Manager. It selects and inspects the destination first, persists no credentials, delegates specialized contract forms and signatures to the owning publisher, and accepts completion only after exact linked-wallet operation plus indexed mint-transfer verification.
+
+---
+
+## 2026-08-29 — Admin loaders must distinguish query failure from pending data
+
+**What happened**: The configured local `desktop_app_settings` table had not received migration `0116`, so its app-registration query failed on the missing `registration_never_expires` column with PostgreSQL `42703`. App Gates consumed only the query data and rendered an hourglass whenever that data was absent, making a terminal 500 look like an endless request. The focused browser fixture stayed green because it stubbed a complete response instead of crossing the database boundary.
+
+**Why it mattered**: A real schema prerequisite failure became indistinguishable from ordinary network latency, and the nominal E2E proof could not detect the drift. Operators saw a frozen admin surface even though the server already had a precise actionable error.
+
+**Rule**: Database-backed admin queries must expose loading and error as separate states with a retryable terminal message. Any browser proof for a schema-dependent control must be paired with a real database contract or migration-completion check that exercises every selected column; a successful stub is presentation evidence, not schema evidence.
+
+---
+
+## 2026-08-29 — A disabled role gate needs a separate explanation owner
+
+**What happened**: Macaroni used one false boolean for access loading, native Desktop, request failure, and confirmed role denial, then hid its disabled wtfOS publish button. The control gave ordinary creators no reason or recovery path, and a tooltip attached directly to a disabled button would not have been reliably hoverable or keyboard-focusable.
+
+**Why it mattered**: A user who can still build and self-host a drop could mistake the missing hosted-publish action for a broken app. Reusing the denial explanation for loading or request failure would also falsely tell an approved creator that their role was missing.
+
+**Rule**: Model unresolved, unavailable, denied, and granted access separately. For confirmed denial, keep the action genuinely disabled and give its surrounding focusable element ownership of the hover/focus explanation and recovery path; keep the explanation outside hover as persistent nearby copy, and retain the server-side permission check as authority.
+
+---
+
+## 2026-08-29 — Never disable the help control with the action it explains
+
+**What happened**: Macaroni's first controlled role-tooltip pass put `aria-disabled="true"` on the group containing both the disabled publish action and its new `?` help button. Browsers propagated that disabled state to the help button, so Playwright correctly refused to click or tap it even though the HTML button itself had no `disabled` attribute.
+
+**Why it mattered**: The explanation existed but inherited the exact inoperability it was meant to solve. Desktop click and real mobile WebKit touch both stalled, leaving non-pointer users without a reliable way to summon or dismiss the role guidance.
+
+**Rule**: Put disabled semantics only on the unavailable action. Keep its explanatory trigger enabled, test that it is enabled in the accessibility tree, and verify hover persistence, keyboard/Escape dismissal, outside dismissal, and real touch activation before claiming a tooltip is cross-input accessible.
+
+---
+
+## 2026-08-29 — Surface grants must never bypass stricter route roles
+
+**What happened**: `/admin` was registered both to the ordinary `social-automation` surface and the strict `admin-panel` surface. First-match resolution selected `social-automation`, which default new-user roles can access, and the route evaluator accepted that surface grant before checking the route's explicit `admin` role requirement. Tests used empty or simplified surface grants, so they never exercised the production collision with a real default-role matrix.
+
+**Why it mattered**: Generic accounts could discover and mount an administrator-only application even though its canonical route metadata was correct and its individual APIs remained permission-gated. Registry order silently became authorization policy, while downstream request failures looked like a broken admin UI rather than an access-control defect.
+
+**Rule**: An explicit route role list is a non-bypassable ceiling; surface access may narrow eligibility within that list but cannot override it. Authorization-sensitive browser routes must have one unambiguous registry owner, and route-access tests must combine the real registry with real default-role access objects, including a fresh-account actor.
+
+---
+
+## 2026-08-29 — Default-app tests must cross the shell's availability adapter
+
+**What happened**: Contact Admin was correctly registered as an enabled core default app and had a complete desktop icon definition, but the desktop shell manually projected the server app map and omitted `admin-inbox`. The builder therefore received `undefined` and disabled the icon. Catalog tests supplied every app as enabled, while presentation tests only proved the icon definition existed, so both stayed green without crossing the broken handoff.
+
+**Why it mattered**: The private feedback and role-recovery channel disappeared from every ordinary default desktop even though all of its individual registrations looked correct. A new user was pushed toward an improperly exposed Admin Panel to understand the missing support application.
+
+**Rule**: Pass canonical typed availability maps through launcher layers intact whenever possible. If a shell adapter is necessary, make it exhaustive over the canonical app-key union and test every default app from the real server-shaped response through that adapter to its rendered launcher; builder-only and source-presence checks do not prove integration.
+
+---
+
+## 2026-08-29 — Route-role exceptions must be explicit in the route contract
+
+**What happened**: The first authorization repair correctly stopped ordinary surface grants from bypassing `/admin`, but it also blocked the intentionally grantable UX Lab route because both routes expressed an `admin` role list with no metadata distinguishing a hard role boundary from an experimental entitlement fallback.
+
+**Why it mattered**: A blanket evaluator change fixed the security defect while silently revoking a supported access path. Inferring exceptions from a surface name or registry order would have recreated the same hidden authorization coupling that exposed Admin.
+
+**Rule**: Treat explicit route roles as strict by default. If a surface grant is intentionally allowed to satisfy a route's role requirement, declare that exception on the canonical route metadata and prove both the strict default and the named exception in the shared role matrix.
+
+---

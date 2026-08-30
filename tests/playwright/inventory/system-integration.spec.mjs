@@ -41,6 +41,24 @@ test.describe("interaction inventory — system integration", () => {
     await expect(page.getByTitle("OS Admin").first()).toHaveCount(0);
   });
 
+  test("a fresh witness sees Contact Admin but cannot discover or open Admin", async ({
+    page,
+    request,
+  }) => {
+    await setRole(request, "witness");
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const contactAdmin = page.locator('[data-desktop-icon-key="admin-inbox"]');
+    await expect(contactAdmin).toBeVisible({ timeout: 15_000 });
+    await contactAdmin.click();
+    await expect(page.getByRole("heading", { name: "Contact an admin" })).toBeVisible();
+
+    await page.goto("/admin", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('[data-admin-surface="control-suite"]')).toHaveCount(0);
+    await expect(page.getByText("Admin Panel").first()).toHaveCount(0);
+  });
+
   test("every inventory handle can be represented by the normalized event spine", async ({
     request,
   }) => {

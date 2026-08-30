@@ -66,3 +66,19 @@ test("admin help is exhaustive, human-readable, agent-readable, and deep-linkabl
   assert.match(nativePanel, /Find in Help/);
   assert.match(nativePanel, /Open Automation/);
 });
+
+test("App Gates distinguishes a failed registration query from loading and can retry", async () => {
+  const [queries, appGates, page] = await Promise.all([
+    readFile(new URL("./useAdminDataQueries.ts", import.meta.url), "utf8"),
+    readFile(new URL("./tabs/DesktopAppsAdminTab.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../pages/Admin.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(queries, /desktopAppsError: desktopAppsQuery\.isError/);
+  assert.match(queries, /retryDesktopApps: desktopAppsQuery\.refetch/);
+  assert.match(appGates, /desktopAppsError: boolean/);
+  assert.match(appGates, /Could not load app registrations/);
+  assert.match(appGates, /onClick=\{retryDesktopApps\}/);
+  assert.match(page, /desktopAppsError=\{desktopAppsError\}/);
+  assert.match(page, /retryDesktopApps=\{retryDesktopApps\}/);
+});

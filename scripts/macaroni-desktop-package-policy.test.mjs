@@ -60,6 +60,8 @@ test("Macaroni desktop runtime serves local assets and blocks wtfOS hosted APIs"
   assert.match(prepareSource, /contract\/mydrop\.contract\.json/);
   assert.match(studioSource, /IS_NATIVE_APP/);
   assert.match(studioSource, /Macaroni Desktop uses your own Pinata JWT or IPFS node/);
+  assert.match(studioSource, /wtfosAccessState = "native"/);
+  assert.match(studioSource, /gate\.hidden = !showHostedPublish/);
   assert.match(studioSource, /section\.hidden = true/);
 });
 

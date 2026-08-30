@@ -679,6 +679,15 @@ app.get("/api/auth/user", (_req, res) => {
               manage_roles: false,
             }
         : {},
+    wtfOsAccess: {
+      surfaceIds:
+        state.userRole === "admin"
+          ? ["admin-panel", "admin-inbox", "social-automation"]
+          : ["admin-inbox", "social-automation"],
+      routePatterns: state.userRole === "admin" ? ["/admin", "/admin-inbox"] : ["/admin-inbox"],
+      adminPanelTabs: state.userRole === "admin" ? ["OS Admin", "Automation"] : [],
+      automationHandles: ["admin_inbox.message.created", "app.interaction.tracked"],
+    },
   });
 });
 
@@ -807,6 +816,7 @@ const desktopApps = {
   agent: true,
   applications: true,
   mail: true,
+  "admin-inbox": true,
 };
 
 const permanentDesktopAppRegistrations = new Set();

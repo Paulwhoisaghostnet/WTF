@@ -20,6 +20,7 @@ import {
   provenanceSupportLinks,
   readEmbeddedProvenance,
 } from "../lib/provenance";
+import { MintManagerDialog, type MintManagerArtifact } from "../features/media-library/MintManagerDialog";
 
 /* ─── Types ──────────────────────────────────────────── */
 
@@ -276,6 +277,7 @@ export function MyPhotos() {
   const [search, setSearch] = useState("");
   const [detailToken, setDetailToken] = useState<TokenCardData | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
+  const [mintArtifact, setMintArtifact] = useState<MintManagerArtifact | null>(null);
 
   const myMediaQuery = useQuery({
     queryKey: ["media-library", "image"],
@@ -460,6 +462,19 @@ export function MyPhotos() {
                             </PhotoMeta>
                           )}
                           <CardActions data-my-photos-region="card-actions">
+                            {item.sourceType === "upload" && item.status === "ready" && (
+                              <Button
+                                size="sm"
+                                onClick={() => setMintArtifact({
+                                  mediaItemId: item.id,
+                                  title: item.title,
+                                  fileName: item.title,
+                                  mimeType: item.mimeType,
+                                })}
+                              >
+                                Mint this media
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               disabled={deleteMutation.isPending}
@@ -565,6 +580,9 @@ export function MyPhotos() {
             onClose={() => setDetailToken(null)}
             actions={tokenActions(detailToken)}
           />
+        )}
+        {mintArtifact && (
+          <MintManagerDialog artifact={mintArtifact} onClose={() => setMintArtifact(null)} />
         )}
       </Content>
     </AppWindow>

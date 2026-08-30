@@ -241,6 +241,8 @@ const mediaFiles = new Map();
 let coverFile = null;
 let placeholderFiles = [];
 let canUseWtfosPinning = false;
+let wtfosAccessState = IS_NATIVE_APP ? "native" : "loading";
+let wtfosRoleTooltipPinned = false;
 
 function sanitizeThemeName(value) {
   const theme = String(value || "").trim();
@@ -492,16 +494,82 @@ function renderPinKindOptions() {
   togglePinFields();
 }
 
+function setWtfosRoleTooltipOpen(open) {
+  const gate = $("publishWtfOSGate");
+  const help = $("publishWtfOSRoleHelp");
+  const tooltip = $("publishWtfOSRoleTooltip");
+  const nextOpen = Boolean(open && wtfosAccessState === "denied" && gate && !gate.hidden);
+  if (gate) gate.dataset.tooltipOpen = String(nextOpen);
+  if (help) help.setAttribute("aria-expanded", String(nextOpen));
+  if (tooltip) tooltip.hidden = !nextOpen;
+}
+
+function closeWtfosRoleTooltip() {
+  wtfosRoleTooltipPinned = false;
+  setWtfosRoleTooltipOpen(false);
+}
+
+function setupWtfosRoleTooltip() {
+  const gate = $("publishWtfOSGate");
+  const help = $("publishWtfOSRoleHelp");
+  if (!gate || !help) return;
+
+  gate.addEventListener("pointerenter", () => setWtfosRoleTooltipOpen(true));
+  gate.addEventListener("pointerleave", () => {
+    if (!wtfosRoleTooltipPinned && !gate.contains(document.activeElement)) {
+      setWtfosRoleTooltipOpen(false);
+    }
+  });
+  gate.addEventListener("focusin", () => setWtfosRoleTooltipOpen(true));
+  gate.addEventListener("focusout", (event) => {
+    if (event.relatedTarget && gate.contains(event.relatedTarget)) return;
+    closeWtfosRoleTooltip();
+  });
+  help.addEventListener("click", () => {
+    wtfosRoleTooltipPinned = !wtfosRoleTooltipPinned;
+    setWtfosRoleTooltipOpen(wtfosRoleTooltipPinned);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || gate.dataset.tooltipOpen !== "true") return;
+    event.preventDefault();
+    closeWtfosRoleTooltip();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!gate.contains(event.target)) closeWtfosRoleTooltip();
+  });
+}
+
 function renderPublishAccess() {
   const btn = $("btnPublishWtfOS");
-  if (btn) {
-    btn.hidden = !canUseWtfosPinning;
-    btn.disabled = !canUseWtfosPinning;
+  const gate = $("publishWtfOSGate");
+  const help = $("publishWtfOSRoleHelp");
+  const confirmedRoleDenial = wtfosAccessState === "denied";
+  const accessGranted = wtfosAccessState === "granted";
+  const showHostedPublish = confirmedRoleDenial || accessGranted;
+  if (gate) {
+    gate.hidden = !showHostedPublish;
+    gate.dataset.roleLocked = String(confirmedRoleDenial);
+    if (confirmedRoleDenial) {
+      gate.setAttribute("role", "group");
+      gate.setAttribute("aria-label", "Publish to wtfOS unavailable");
+    } else {
+      gate.removeAttribute("role");
+      gate.removeAttribute("aria-label");
+    }
   }
+  if (btn) {
+    btn.disabled = !accessGranted;
+    if (confirmedRoleDenial) btn.setAttribute("aria-describedby", "publishWtfOSRoleTooltip");
+    else btn.removeAttribute("aria-describedby");
+  }
+  if (help) help.hidden = !confirmedRoleDenial;
+  closeWtfosRoleTooltip();
   const hint = $("publishPathHint");
   if (hint) {
-    hint.innerHTML = canUseWtfosPinning
+    hint.innerHTML = accessGranted
       ? '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for self-hosting. <strong>Publish to wtfOS</strong> requires a deployed or resumed <code>KT1...</code> contract and saves the mint page to your <code>username.wtfos.me/drop-title</code> site path. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.'
+      : confirmedRoleDenial
+      ? '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for installing the mint site on your own website. <strong>Publish to wtfOS</strong> is restricted to Trusted Market Creators to prevent abuse; contact an admin through the Contact Admin app to request access. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.'
       : '<strong>Export website</strong> downloads <code>macaroni-site.zip</code> for installing the mint site on your own website. <strong>Download site package</strong> includes a separate <code>drop.config.js</code> for quick config swaps on an existing host.';
   }
 }
@@ -509,15 +577,22 @@ function renderPublishAccess() {
 async function refreshPinningAccess() {
   if (IS_NATIVE_APP) {
     canUseWtfosPinning = false;
+    wtfosAccessState = "native";
     renderPinKindOptions();
     return;
   }
   try {
     const res = await MD.apiFetch("/api/auth/user");
-    if (res.ok) canUseWtfosPinning = hasWtfosPinningAccess(await res.json());
-    else canUseWtfosPinning = false;
+    if (res.ok) {
+      canUseWtfosPinning = hasWtfosPinningAccess(await res.json());
+      wtfosAccessState = canUseWtfosPinning ? "granted" : "denied";
+    } else {
+      canUseWtfosPinning = false;
+      wtfosAccessState = "unavailable";
+    }
   } catch (_) {
     canUseWtfosPinning = false;
+    wtfosAccessState = "unavailable";
   }
   renderPinKindOptions();
 }
@@ -2423,6 +2498,7 @@ async function refreshResumeStatusIfNeeded() {
 }
 
 // ---------- wire up ----------
+setupWtfosRoleTooltip();
 load();
 fillForm();
 refreshPinningAccess();

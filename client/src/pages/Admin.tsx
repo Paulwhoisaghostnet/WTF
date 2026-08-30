@@ -685,6 +685,8 @@ export function Admin() {
     xpLog,
     rewardLedger,
     desktopApps,
+    desktopAppsError,
+    retryDesktopApps,
     inAppMarketItems,
     inAppMarketSales,
     inAppMarketPricing,
@@ -1115,6 +1117,8 @@ export function Admin() {
         {activeTab === 9 && (
           <DesktopAppsAdminTab
             desktopApps={desktopApps}
+            desktopAppsError={desktopAppsError}
+            retryDesktopApps={retryDesktopApps}
             updateDesktopAppMutation={updateDesktopAppMutation}
             refreshAllDesktopAppsMutation={refreshAllDesktopAppsMutation}
           />

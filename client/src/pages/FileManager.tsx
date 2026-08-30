@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Hourglass, Separator } from "react95";
 import {
@@ -34,6 +34,7 @@ import {
 import { api } from "../lib/api";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
+import { MintManagerDialog, type MintManagerArtifact } from "../features/media-library/MintManagerDialog";
 import {
   asFileManagerArray,
   resolveIpfsGatewayPolicy,
@@ -48,6 +49,9 @@ type MediaItem = {
   fileSize?: number | null;
   fileSizeBytes?: number | null;
   updatedAt?: string | null;
+  sourceType?: string | null;
+  status?: string | null;
+  mimeType?: string | null;
 };
 
 type StudioProject = {
@@ -380,6 +384,7 @@ const DWELLING_ICONS: Record<WtfDwellingKey, typeof Folder> = {
 };
 
 export function FileManager() {
+  const [mintArtifact, setMintArtifact] = useState<MintManagerArtifact | null>(null);
   const presentation = usePresentationShell();
   const [, setLocation] = useLocation();
 
@@ -514,9 +519,8 @@ export function FileManager() {
   }
 
   const loading = mediaQuery.isLoading || studioQuery.isLoading;
-  const recentMedia = [...mediaItems]
-    .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")))
-    .slice(0, 5);
+  const mediaFolderItems = [...mediaItems]
+    .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
 
   return (
     <AppWindow title="File Manager">
@@ -662,27 +666,53 @@ export function FileManager() {
           </RecentList>
         </UiPanel>
 
-        <UiPanel title="Recent media" compact data-gamma-utility-region="panel">
+        <UiPanel title="Media folder" compact data-gamma-utility-region="panel">
           <RecentList>
-            {recentMedia.length === 0 ? (
+            {mediaFolderItems.length === 0 ? (
               <UiEmptyState title="No recent media">
                 {mediaQuery.isError
                   ? "Media rows are unavailable right now."
                   : "Uploaded and imported media will appear here after your library syncs."}
               </UiEmptyState>
             ) : (
-              recentMedia.map((item) => (
+              mediaFolderItems.map((item) => (
                 <RecentRow key={item.id} data-gamma-utility-region="recent-row">
                   <span>{item.title}</span>
-                  <span>
+                  <RecentActions>
+                    <span>
                     {item.mediaCategory} · {formatBytes(itemBytes(item))}
-                  </span>
+                    </span>
+                    {item.sourceType === "upload" && item.status === "ready" && item.mimeType && (
+                      <OpenButton
+                        data-gamma-utility-region="button"
+                        onClick={() => setMintArtifact({
+                          mediaItemId: item.id,
+                          title: item.title,
+                          fileName: item.title,
+                          mimeType: item.mimeType || "application/octet-stream",
+                        })}
+                      >
+                        Mint this media
+                      </OpenButton>
+                    )}
+                  </RecentActions>
                 </RecentRow>
               ))
             )}
           </RecentList>
         </UiPanel>
+        {mintArtifact && (
+          <MintManagerDialog artifact={mintArtifact} onClose={() => setMintArtifact(null)} />
+        )}
       </Shell>
     </AppWindow>
   );
 }
+
+const RecentActions = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+`;

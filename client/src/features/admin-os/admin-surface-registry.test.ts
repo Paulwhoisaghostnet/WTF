@@ -76,6 +76,14 @@ test("admin panel registry exposes the broad-to-acute suite and help contracts",
   assert(surface?.behaviorAssertionIds?.includes("admin.help-index-coverage"));
 });
 
+test("the strict Admin Panel is the only surface that owns /admin", () => {
+  const owners = ADMIN_SURFACES.filter((surface) =>
+    surface.routePatterns.includes("/admin")
+  ).map((surface) => surface.id);
+  assert.deepEqual(owners, ["admin-panel"]);
+  assert.equal(findAdminSurfaceForPath("/admin")?.id, "admin-panel");
+});
+
 test("admin registry covers every desktop app key", () => {
   for (const appKey of DESKTOP_APPS) {
     const surface = ALL_ADMIN_SURFACES.find((candidate) => candidate.desktopAppKey === appKey);

@@ -30,6 +30,10 @@ The initial six-file base-path diff is retained as `docs/domains/pixalerce-wtfos
 
 The existing `CreationToolFrame` sandbox remains intact. PixAlerce alone receives an explicit iframe Permissions Policy allowlist for camera, microphone, fullscreen, and clipboard; no `allow-modals` sandbox exception was added. Native alert/confirm/prompt call sites were replaced with accessible in-page dialogs.
 
+PixAlerce exports now have three explicit destinations. The embedded editor sends the generated Blob to its authenticated same-origin parent for wtfOS Media storage, preserves a direct device download option, and can save to Media before opening the built-in Mint Manager. The parent accepts messages only from the registered iframe window and exact tool origin. Saved images and videos remain mintable from My Photos/My Videos, while every uploaded export category remains available from File Manager.
+
+Mint Manager asks where the artwork should live before collecting destination-specific metadata. It supports the HEN/Teia shared contract, an Objkt-ready creator-owned Pasta collection, a compatible contract associated through the wallet dossier or Colander workspace, and a new Pasta standard/open-edition contract. HEN remains a direct prepare/review/sign path. Pasta destinations pin the media, transfer a CH-EASE package into the owning publisher, guide the remaining contract/supply/sale steps there, and return to exact linked-wallet operation and indexed-token verification instead of trusting an operation hash alone.
+
 ## Proof collected
 
 Unmodified upstream snapshot:
@@ -58,6 +62,9 @@ Integrated alpha build:
 - output contains no `sw.js`, PWA manifest, registration script, Google API loader, remote DiceBear sprite dependency, or PixAlerce service-worker updater call.
 - unconfigured Google Drive controls and implementation are eliminated from the embedded bundle; the core editor remains local-first.
 - wtfOS route, launcher, creation-tool registry, package acceptance, admin ownership, inventory route/workflow, and focused persistence assertion are registered.
+- one browser journey validates PNG, GIF, MP4, WebM, and OBJKT ZIP device artifacts, saves exports through the canonical owned-media endpoint, reloads the saved item, and proves that immediate and later actions open the same destination-aware Mint Manager without signing.
+- HEN preparation may establish the shared wallet session to identify the creator, then pins CIDv0 artifact and metadata without a transaction signature; the separate send step uses the shared wallet singleton, independently proves Tezos Mainnet, calls `mint_OBJKT` on `KT1Hkg5qeNhfwpKW4fXvq7HGZB9z2EnmCCA9`, and sends exactly once.
+- Pasta handoffs reuse the existing expiring CH-EASE envelope and destination publisher rather than duplicating origination or mint logic inside Media. Completed workflows are accepted only when `/api/mint-manager/receipt` finds an applied operation from a wallet linked to the signed-in account and its matching indexed mint transfer.
 
 ## Remaining gates
 
@@ -102,4 +109,5 @@ PixAlerce is ready for public release when all of the following are true:
 - no PixAlerce asset or service worker escapes that subpath.
 - dependency, typecheck, lint, build, and embedded-host isolation checks remain green.
 - the editor opens from the wtfOS launcher, creates and edits a project, persists/reopens local work, imports media, and exports an artifact inside the real wtfOS shell.
+- exports can be saved to the user's wtfOS Media folder without a device download, can still be downloaded directly when selected, and can enter the destination-aware Mint Manager either immediately or later from persisted media.
 - route, registry, package, admin, inventory, and E2E ownership agree.

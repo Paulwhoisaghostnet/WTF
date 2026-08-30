@@ -12,6 +12,7 @@
 import { tzkt } from "./upstream";
 
 export interface TzktTransactionOp {
+  id?: number;
   type?: string;
   hash?: string;
   level?: number;
@@ -40,7 +41,11 @@ export function isValidOpHash(value: unknown): value is string {
  */
 export async function fetchTransactionsByHash(
   opHash: string,
-  opts: { retries?: number; retryDelayMs?: number } = {}
+  opts: {
+    retries?: number;
+    retryDelayMs?: number;
+    client?: { getJson<T>(path: string): Promise<T> };
+  } = {}
 ): Promise<TzktTransactionOp[]> {
   if (!isValidOpHash(opHash)) return [];
 
@@ -50,7 +55,7 @@ export async function fetchTransactionsByHash(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const rows = await tzkt.getJson<TzktTransactionOp[]>(path);
+      const rows = await (opts.client ?? tzkt).getJson<TzktTransactionOp[]>(path);
       if (Array.isArray(rows) && rows.length > 0) return rows;
     } catch (err) {
       if (attempt === retries) {

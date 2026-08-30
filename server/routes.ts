@@ -38,6 +38,7 @@ import adminInboxRoutes from "./routes/admin-inbox";
 import browserRoutes from "./routes/browser";
 import appHostRoutes from "./routes/apphost";
 import mediaLibraryRoutes from "./routes/media-library";
+import mintManagerRoutes from "./routes/mint-manager";
 import arcadeRoutes from "./routes/arcade";
 import casinoRoutes from "./routes/casino";
 import clubDuesRoutes from "./routes/club-dues";
@@ -381,6 +382,7 @@ export function registerRoutes(app: Express) {
   app.use(browserRoutes);
   app.use(appHostRoutes);
   app.use(mediaLibraryRoutes);
+  app.use(mintManagerRoutes);
   app.use(arcadeRoutes);
   app.use(casinoRoutes);
   app.use(clubDuesRoutes);

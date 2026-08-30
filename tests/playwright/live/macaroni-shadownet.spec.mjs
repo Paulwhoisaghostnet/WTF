@@ -1,6 +1,6 @@
 import { access, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { test, expect } from "@playwright/test";
+import { devices, expect, test, webkit } from "@playwright/test";
 import {
   actorById,
   readPuppetCredentials,
@@ -385,7 +385,31 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     }
   });
 
-  test("regular signed-in users do not see the wtfOS IPFS provider", async ({
+  test("trusted signed-in users see the enabled wtfOS publisher without role guidance", async ({
+    browser,
+    baseURL,
+  }) => {
+    const actor = actorById(puppetCredentials, "cookiemonster");
+    const context = await browser.newContext({
+      baseURL,
+      storageState: sessionFor(actor).storageState,
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
+      await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
+      await page.locator("#tabPage").click();
+      await expect(page.locator("#publishWtfOSGate")).toBeVisible();
+      await expect(page.locator("#publishWtfOSGate")).toHaveAttribute("data-role-locked", "false");
+      await expect(page.locator("#btnPublishWtfOS")).toBeEnabled();
+      await expect(page.locator("#publishWtfOSRoleHelp")).toBeHidden();
+      await expect(page.locator("#publishWtfOSRoleTooltip")).toBeHidden();
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("regular signed-in users see the role-gated wtfOS publisher with recovery guidance", async ({
     browser,
     baseURL,
   }) => {
@@ -401,9 +425,42 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(0);
       await expect(page.locator("#pinKind")).toHaveValue("pinata");
       await expect(page.locator("#pinJwtWrap")).toBeVisible();
-      await expect(page.locator("#btnPublishWtfOS")).toBeHidden();
-      await expect(page.locator("#publishPathHint")).toContainText("own website");
       await page.locator("#tabPage").click();
+      const publishGate = page.locator("#publishWtfOSGate");
+      const publishButton = page.locator("#btnPublishWtfOS");
+      const roleHelp = page.locator("#publishWtfOSRoleHelp");
+      const roleTooltip = page.locator("#publishWtfOSRoleTooltip");
+      await expect(publishGate).toBeVisible();
+      await expect(publishButton).toBeVisible();
+      await expect(publishButton).toBeDisabled();
+      await expect(roleHelp).toBeVisible();
+      await expect(roleHelp).toBeEnabled();
+      await expect(roleHelp).toHaveAttribute("aria-controls", "publishWtfOSRoleTooltip");
+      await expect(roleHelp).toHaveAttribute("aria-expanded", "false");
+      await expect(roleTooltip).toBeHidden();
+      await publishGate.hover();
+      await expect(roleTooltip).toBeVisible();
+      await expect(roleTooltip).toContainText("restricts hosted publishing to the Trusted Market Creator role to prevent abuse");
+      await expect(roleTooltip).toContainText("Contact an admin through the Contact Admin app");
+      await roleTooltip.hover();
+      await expect(roleTooltip).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(roleTooltip).toBeHidden();
+      await roleHelp.focus();
+      await expect(roleHelp).toBeFocused();
+      await expect(roleTooltip).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(roleTooltip).toBeHidden();
+      await expect(roleHelp).toBeFocused();
+      await roleHelp.click();
+      await expect(roleTooltip).toBeVisible();
+      await expect(roleHelp).toHaveAttribute("aria-expanded", "true");
+      await roleHelp.click();
+      await expect(roleTooltip).toBeHidden();
+      await expect(roleHelp).toHaveAttribute("aria-expanded", "false");
+      await expect(page.locator("#publishPathHint")).toContainText("contact an admin through the Contact Admin app");
+      await publishButton.evaluate((button) => button.click());
+      await expect(page.locator("#exportStatus")).toBeEmpty();
       await expect(page.locator("#installerGrid")).toBeVisible();
       await expect(page.locator("#installerMacos")).toHaveAttribute("aria-disabled", "true");
       await expect(page.locator("#installerStatus")).toContainText(/not published|unavailable/i);
@@ -411,6 +468,43 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.getByText("Custom CSS")).toHaveCount(0);
     } finally {
       await context.close();
+    }
+  });
+
+  test("regular-user role guidance opens and dismisses by touch in mobile WebKit", async ({
+    baseURL,
+  }) => {
+    const actor = actorById(puppetCredentials, "bert");
+    const { defaultBrowserType: _defaultBrowserType, ...iphone } = devices["iPhone 13"];
+    const mobileBrowser = await webkit.launch();
+    try {
+      const context = await mobileBrowser.newContext({
+        ...iphone,
+        baseURL,
+        storageState: sessionFor(actor).storageState,
+      });
+      const page = await context.newPage();
+      try {
+        await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
+        await page.locator("#tabPage").tap();
+        const roleHelp = page.locator("#publishWtfOSRoleHelp");
+        const roleTooltip = page.locator("#publishWtfOSRoleTooltip");
+        await expect(roleHelp).toBeVisible();
+        await expect(roleHelp).toBeEnabled();
+        await roleHelp.tap();
+        await expect(roleTooltip).toBeVisible();
+        await expect(roleHelp).toHaveAttribute("aria-expanded", "true");
+        await page.keyboard.press("Escape");
+        await expect(roleTooltip).toBeHidden();
+        await roleHelp.tap();
+        await expect(roleTooltip).toBeVisible();
+        await page.locator("#pageCode").tap({ position: { x: 12, y: 12 } });
+        await expect(roleTooltip).toBeHidden();
+      } finally {
+        await context.close();
+      }
+    } finally {
+      await mobileBrowser.close();
     }
   });
 

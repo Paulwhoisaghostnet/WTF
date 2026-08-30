@@ -50,6 +50,14 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-622 | Claimed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 6 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
+| WTF-BB-623 | Open | - | 2026-08-29 | E2E / declared live phase harness | P1 | 10 | 10 | 2 | 4 | 0 | The declared phased live-puppet command references missing phase specs, including Arcade/Casino, so it cannot prove the release journeys it names |
+| WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 1 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
+| WTF-BB-621 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / default support launcher | P1 | 9 | 9 | 1 | 4 | 0 | The desktop shell drops the Contact Admin app gate from its projection, hiding the core feedback icon from every ordinary default desktop |
+| WTF-BB-619 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Local DB / admin app-gate schema parity | P1 | 10 | 10 | 2 | 4 | 0 | A missed desktop-app registration migration makes App Gates return 500 while the UI displays an endless loading hourglass |
+| WTF-BB-618 | Verified | Codex Macaroni publish-role tooltip pass | 2026-08-29 | Macaroni / hosted-publish access-gate UX | P1 | 9 | 9 | 1 | 4 | 0 | Non-trusted creators now see a disabled hosted-publish control with role and Contact Admin recovery guidance on hover and keyboard focus |
+| WTF-BB-616 | Verified | Codex PixAlerce export E2E pass | 2026-08-19 | PixAlerce / export readiness | P1 | 10 | 10 | 2 | 4 | 0 | Floating PixAlerce controls block visible close/inspector actions and exported OBJKT ZIPs make an undeclared favicon request |
+| WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 14 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 12 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-614 | Verified | Codex Payroll full-send | 2026-08-18 | Client wallet / release integration | P1 | 12 | 7 | 2 | 4 | 2 | Payroll must explicitly bind permissions and the active signer to mainnet, emit its registered audit handles, and use the canonical safe new-tab boundary |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 13 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
@@ -9843,7 +9851,7 @@ Priority labels:
 ### WTF-BB-469 - Ravioli's child-expiry guarantee is bypassable outside the Studio
 
 - Category: Pasta Protocol / cross-contract issuance invariant
-- Status: Claimed
+- Status: Verified
 - Owner/Session: Codex Ravioli on-chain LE guard
 - Score: C5 + F5 + S3 + P0(5) = 18
 - Evidence:
@@ -12370,3 +12378,219 @@ Copy this when adding a new issue:
 - Local verification:
   - Focused desktop shell and icon-gate tests pass 9/9, including the strict-admin Payroll launcher assertion.
   - Aggregate unit passes 2,455 with twelve explicit fixture skips, and complete inventory Playwright passes 683/683.
+
+### WTF-BB-616 - PixAlerce export readiness has blocked controls and an undeclared OBJKT request
+
+- Category: PixAlerce / export readiness
+- Status: Verified
+- Owner/Session: Codex PixAlerce export E2E pass
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - In the real `/tools/pixalerce` wtfOS iframe at the standard desktop viewport, Playwright resolves the visible `Close FX Library` button but cannot click it because the higher-z-index tool strip intercepts the pointer at the same coordinates. The side collapse control is a workaround, not a repair for the advertised close action.
+  - The visible `Open inspector` action is likewise unclickable while the palette is open because the higher-z-index palette panel covers the button's click target.
+  - PNG, GIF, MP4, WebM, and OBJKT ZIP downloads all produce valid signatures from a decorated project, but loading the exported OBJKT package makes an undeclared `/favicon.ico` request and returns 404 because its generated `index.html` declares no self-contained icon.
+- Why it matters:
+  - The blocked close and inspector actions break the detailed creation-to-export workflow and make visible controls nonfunctional.
+  - PixAlerce describes the OBJKT ZIP as self-contained and ready to mint; an implicit network request violates that portability contract even though the interactive canvas itself renders.
+- Correction direction:
+  - Keep the open FX Library above the floating tool strip, or move its close action outside the overlap, and keep the inspector opener above the palette while preserving the existing collapse controls and tool access.
+  - Give generated OBJKT HTML a data-URL favicon so a standalone package has no undeclared resource request.
+- Verification idea:
+  - Run one soft-failure Playwright scenario that creates and edits a project, exercises every top-level tool and library/inspector/project control, exports and validates PNG/GIF/MP4/WebM/OBJKT artifacts, loads the extracted OBJKT package under HTTP, and continues collecting results after individual failures. Rerun the same scenario after the repair and require a clean request/error ledger.
+- Correction:
+  - Added a registered wtfOS integration stylesheet that raises the open FX library and inspector opener above the adjacent floating editor chrome without changing PixAlerce's pinned upstream bundle behavior.
+  - Added an inline data-URL favicon to generated OBJKT HTML so the exported package no longer asks its host for an undeclared `/favicon.ico`.
+  - Replaced the narrow PixAlerce smoke with one soft-failure journey covering canvas creation, every top-level tool, painting, undo/redo, FX stamps and motion, palette, inspector, full-screen preview, five export formats, artifact contents, standalone OBJKT boot, local project save, reload, and reopen.
+- Local verification:
+  - The unfixed baseline completed the whole journey and reported exactly three product failures: FX close interception, inspector interception, and the missing inline favicon.
+  - The repaired focused Playwright journey passes 1/1, including valid PNG/GIF/MP4/WebM signatures and a standalone OBJKT page with no favicon or external request.
+  - `npm run build`, `npm run check`, `npm run creation-tools:check`, `npm run env:inventory:check`, and `npm run test:e2e:inventory:coverage` pass.
+  - Complete inventory Playwright passes 683/683 in 12.6 minutes.
+
+### WTF-BB-617 - PixAlerce exports bypass wtfOS Media and destination-aware mint workflows
+
+- Category: PixAlerce / media and mint workflow
+- Status: Verified
+- Owner/Session: Codex Media Mint Manager integration
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - PixAlerce's five export formats always create a browser download and do not create an owned `user_media_library` row.
+  - My Photos and My Videos can display uploaded media but expose no direct HEN mint action for a saved item.
+  - Particle Painter has an app-local HEN/Teia flow, but PixAlerce has no equivalent and should not instantiate a second wallet client when the wtfOS parent already owns the singleton wallet session.
+- Why it matters:
+  - Users cannot keep PixAlerce output inside wtfOS for later discovery and minting without manually downloading and re-uploading the file.
+  - A copied iframe wallet would risk duplicate connector sessions and bypass the shared wallet/network preflight contract.
+- Correction direction:
+  - Add explicit wtfOS Media, device-download, and Media + Mint Manager export destinations to PixAlerce.
+  - Transfer generated Blobs through a source-verified same-origin iframe bridge; let the authenticated parent upload them through the canonical media endpoint.
+  - Add one reusable destination-aware manager to the immediate PixAlerce handoff and persisted My Photos/My Videos/File Manager surfaces. Keep HEN on the shared wallet singleton and explicit Mainnet preflight, and delegate Pasta-specific contract forms/signatures to their owning publisher apps.
+  - Verify completion from the exact applied operation and indexed token transfer for a wallet linked to the signed-in account rather than trusting pasted receipt fields.
+- Verification idea:
+  - Extend the single PixAlerce Playwright journey to prove device downloads still work, Media persistence survives route/reload, and immediate/My Photos/File Manager entry points expose the same HEN and Pasta destination choices without signing early.
+  - Add unit proof for the HEN minter/Mainnet/CIDv0/single-send boundary, Pasta contract discovery plus CH-EASE handoff, and exact linked-wallet token-receipt matching; rerun inventory coverage and the full browser inventory.
+- Correction:
+  - Added explicit wtfOS Media, device download, and Media + Mint Manager destinations to the rebuilt PixAlerce export dialog for PNG, GIF, MP4, WebM, and OBJKT ZIP.
+  - Added a source/origin/tool-verified iframe bridge whose authenticated parent persists the generated Blob through canonical `/api/media/upload` ownership.
+  - Added one reusable Mint Manager to the immediate export handoff, My Photos, My Videos, and File Manager. It offers HEN/Teia, Objkt-ready standard collection, compatible wallet/Colander-associated contract, and new Pasta standard/open-edition destinations with resumable non-secret state.
+  - HEN preparation identifies the creator from the shared wallet session but cannot sign; the separate signature step fails closed unless wallet and RPC prove Tezos Mainnet. Pasta destinations pin the media once and use the existing expiring CH-EASE handoff into the destination publisher for specialized contract, supply, sale, and signature steps.
+  - Added authenticated `/api/mint-manager/receipt` verification that matches an applied operation from a linked wallet to its indexed mint transfer on the selected network and returns Objkt/TzKT receipt links.
+- Verification:
+  - Focused mint tests pass 8/8: three HEN CIDv0/Mainnet/single-send cases, three Pasta discovery/package/handoff cases, and two linked-wallet receipt matcher cases.
+  - The expanded PixAlerce Playwright journey passes 1/1 in 1.5 minutes and validates all five device artifacts, owned Media persistence, immediate/later Mint Manager entry, HEN metadata, and new Pasta workflow/network choices without an early signature.
+  - `npm run check`, `npm run build`, `npm run creation-tools:check`, environment inventory generation/check/policy, and `npm run test:e2e:inventory:coverage` pass. Complete inventory Playwright passes 683/683 in 12.6 minutes.
+
+### WTF-BB-618 - Macaroni's disabled wtfOS publish gate gives no recovery guidance
+
+- Category: Macaroni / hosted-publish access-gate UX
+- Status: Verified
+- Owner/Session: Codex Macaroni publish-role tooltip pass
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - Macaroni's access renderer disabled and then hid the Page Designer's `Publish to wtfOS` action when the signed-in account lacked the trusted hosted-publishing role.
+  - Because the disabled visual state was hidden, it could not explain why the action was unavailable or tell the creator how to request access.
+  - A native disabled button does not reliably receive pointer or keyboard events, so attaching hover copy only to the button would leave the explanation inaccessible.
+- Why it matters:
+  - Ordinary creators can mistake the role boundary for a broken publisher, especially because contract deployment and self-hosted export remain intentionally available.
+  - The user has no visible recovery path from the exact control where the permission requirement becomes relevant.
+- Correction direction:
+  - Preserve the actual disabled button and server-side role enforcement, but place it in a focusable explanatory wrapper that exposes the same tooltip on hover and keyboard focus.
+  - State that wtfOS-hosted publishing requires an approved creator role and direct the user to contact a wtfOS administrator to request access; do not expose the tooltip for accounts that already have access.
+- Verification idea:
+  - In the real Macaroni Studio, prove a non-trusted account sees a greyed-out, non-clickable publish action whose wrapper reveals the explanation on pointer hover and keyboard focus, while a trusted creator gets the enabled action without the permission tooltip.
+  - Run focused Macaroni policy/browser tests plus interaction-inventory coverage.
+- Correction:
+  - Kept the native publish button visibly disabled for confirmed role denial and grouped it with an enabled `?` help control; the same tooltip opens from wrapper hover, help focus, click, or touch, remains open while hovered, and dismisses with Escape, a second activation, focus departure, or an outside pointer action.
+  - Split loading, granted, denied, unavailable, and native-desktop access states so the role explanation is never shown during access loading, after an authentication failure, or in standalone Macaroni Desktop.
+  - Named the required Trusted Market Creator role, directed the user to the Contact Admin app, and repeated that recovery path in the persistent Page Designer hint while preserving own-host export and server-side permission enforcement.
+- Verification:
+  - Macaroni source policy passes 21/21; Macaroni Desktop package policy passes 4/4; JavaScript syntax, repository TypeScript, diff whitespace, and interaction-inventory coverage pass.
+  - Focused access-boundary browser proof passes 3/3: trusted Chromium, regular-user Chromium, and a real mobile WebKit context. It proves visible/disabled styling, an enabled help trigger, no publish action, exact hover/focus/touch guidance, pointer travel into the tooltip, click toggle, Escape/outside dismissal, and the persistent Contact Admin recovery copy.
+  - A preceding broad Macaroni run's only failures ended on its fatal-console ledger because the configured local database lacks newer unrelated `desktop_app_settings` and Admin Inbox migrations; the access-boundary assertions run independently of that documented local schema blocker.
+
+### WTF-BB-619 - App Gates hides a missed database migration behind an endless loader
+
+- Category: Local DB / admin app-gate schema parity
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - The database configured by the workspace `.env` is local Postgres at `localhost:5432/wtf`; its `desktop_app_settings` table does not contain `registration_never_expires`.
+  - A direct read through `getDesktopAppRegistrations()` reproducibly fails with PostgreSQL `42703`: `column "registration_never_expires" does not exist`.
+  - Tracked migration `drizzle/0116_desktop_app_registration_resilience.sql` adds that exact column, but it has not been applied to the configured database.
+  - `DesktopAppsAdminTab` renders its hourglass whenever query data is absent and receives no query error state, so the 500 response is presented indefinitely as loading.
+  - The focused Playwright fixture passes because its harness stubs a complete app-registration response; the public production app-registration endpoint is healthy and includes all 31 current apps, so this reproduction is specifically the configured local database boundary.
+- Why it matters:
+  - The App Gates admin surface is unusable against a partially migrated database, and its error presentation sends operators toward client/network debugging instead of the failed schema prerequisite.
+  - The existing browser proof cannot detect production-shaped schema drift because it never exercises the real registration query.
+- Correction direction:
+  - Apply the tracked schema migration to the intended local database through the repository's reviewed local schema path, then make the App Gates query expose a terminal error/retry state instead of treating every absent payload as loading.
+  - Add a database-backed contract check for `getDesktopAppRegistrations()` or an equivalent migration-completion gate so a missing selected column fails before the admin UI is exercised.
+- Verification idea:
+  - Before repair, require the real query to reproduce PostgreSQL `42703` and the browser to show a bounded error state rather than an endless loader.
+  - After applying the schema migration and UI error handling, require the real query to return all canonical app registrations, the App Gates table to render, and the existing focused admin Playwright workflow to remain green.
+- Correction:
+  - Applied the existing additive migrations `0116_desktop_app_registration_resilience.sql` and `0118_admin_inbox.sql` to the configured local database; no migration source was rewritten or invented.
+  - Passed the registration query's error and refetch state into App Gates so a terminal failure renders a migration-aware alert and an explicit retry action instead of the loading hourglass.
+- Verification:
+  - The real `getDesktopAppRegistrations()` call now returns all 31 canonical registrations, including enabled `admin-inbox` and the permanent-registration field.
+  - Focused App Gates browser coverage proves both the healthy table and the 500-to-retry recovery path; repository TypeScript, production build, inventory coverage, and the complete 685-test UI inventory pass.
+
+### WTF-BB-620 - A surface collision bypasses the Admin Panel's strict role gate
+
+- Category: Desktop OS / admin route authorization
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C2 + F5 + S4 + P0(5) = 16
+- Evidence:
+  - The canonical page definition and shared browser-route metadata both declare `/admin` as authenticated and restricted to `roles: ["admin"]`.
+  - The admin-surface registry registers `/admin` twice: first for the non-admin `social-automation` tool and later for the strict `admin-panel` tool. `findAdminSurfaceForPath()` uses first-match lookup, so `/admin` resolves to `social-automation`.
+  - Default wtfOS roles such as `witness`, `contestant`, `host`, `cohost`, and `trusted_creator` receive access to non-admin tool surfaces. The shared route evaluator returns allowed as soon as the resolved surface id is granted, before it checks the route's explicit role list.
+  - A direct reproduction using the real local `witness` access matrix returned `allowed: true`, `surfaceId: "social-automation"` for `/admin`; the same result reproduced for every other tested default non-admin role. The newest local account is a `witness` with no additional role assignment.
+  - Other tested strict-admin routes remained denied. Inspected Admin Panel API routes retain permission middleware, and this pass found no privileged data or write API bypass; the confirmed defect is that unauthorized users can discover and mount the Admin application shell.
+  - Existing route tests pass an empty surface-id set or a simplified surface resolver, while the browser fixture supplies a simplified wtfOS-access payload. Neither combines the production registry's duplicate route with the real default-role access matrix.
+- Why it matters:
+  - A generic new account can see, launch, and directly navigate to an application whose published contract is administrator-only. Individual admin requests may fail afterward, but their failures are then presented inside an application the user should never have been able to discover or mount.
+  - The collision turns registry order into an authorization decision and permits a broad surface grant to override a narrower explicit route-role boundary.
+- Correction direction:
+  - Remove `/admin` as the user-facing route pattern for `social-automation`; represent its Admin Panel tab and server endpoints without claiming the parent application's route.
+  - Treat an explicit route role list as a non-bypassable ceiling: a granted surface may further narrow access but must never override the route's role requirement.
+  - Add registry validation that rejects duplicate ownership of authorization-sensitive browser routes, or require an explicit unique owner and deterministic precedence where aliases are intentional.
+- Verification idea:
+  - With the real registry and role access matrix, prove fresh `witness` and `contestant` accounts do not see Admin in Start Menu or command discovery, cannot list or open it through browser/CLI access helpers, and are denied on direct `/admin` navigation; prove an admin still sees and opens it.
+  - Exercise representative Admin Panel APIs as a generic user and require authorization failures, then add a registry invariant that makes the duplicated `/admin` ownership fail at test time.
+- Correction:
+  - Removed `/admin` from the ordinary `social-automation` surface so the route has one authorization owner: `admin-panel`.
+  - Made route-role requirements strict by default before surface grants are considered. The one supported grantable exception, UX Lab, is now declared explicitly in canonical route metadata instead of being inferred from registry order.
+- Verification:
+  - The real local matrix denies `/admin` to `witness`, allows it to `admin`, and still allows the witness support route `/admin-inbox`; focused registry, route, role, API-policy, and presentation tests pass 48/48.
+  - A seeded witness puppet proves the real desktop shows no Admin Panel on direct navigation while Contact Admin remains usable; the same scenario and the entire 685-test UI inventory pass.
+
+### WTF-BB-621 - The desktop shell drops the Contact Admin availability flag
+
+- Category: Desktop OS / default support launcher
+- Status: Verified
+- Owner/Session: Codex admin access and support launcher repair
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence:
+  - `admin-inbox` is enabled in `DEFAULT_DESKTOP_APP_CONFIG`, classified as a free core `default-desktop` application, declared with `desktopIcon: true`, and defined as a Contact Admin icon whose enabled state reads `apps["admin-inbox"]`.
+  - The desktop shell manually copies the server's app availability object into an intermediate `apps` object before calling `buildDesktopIconDefs()`. That projection includes `mail`, `objkt-operator`, and later-added `payroll`, but omits `admin-inbox`; its memo dependency list omits the same key.
+  - A direct reproduction with the enabled default config produced `serverDefault: true` and a Contact Admin icon with `enabled: false` after the shell-shaped projection omitted `admin-inbox`. The route and `openPath` still exist.
+  - Commit `23ec064b` added the icon, default app config, catalog entry, route, and feature tests, but its only change to the shell component added the unread-count response field; it never wired the app availability flag through the shell projection.
+  - The focused catalog, icon, and presentation tests all pass: icon tests supply an artificially complete all-enabled map directly to the builder, while the presentation test only searches the icon-definition source for its key, label, and route. Neither exercises the real server-response-to-desktop handoff.
+  - The Start Menu consumes the server availability object directly, so this deterministic omission is specific to the native desktop icon. A separate missed local database migration can additionally make the whole app-registration request fail, but is not required to reproduce this icon defect.
+- Why it matters:
+  - Contact Admin is the documented private feedback and access-recovery path for every ordinary user. Hiding its promised first-entry icon makes the support channel difficult to discover and pushed a new user toward an Admin Panel they should never see.
+  - The shell accepts a partial app map, so newly registered apps can silently disappear when one manually maintained projection is not updated even though every canonical registry and feature-level test is green.
+- Correction direction:
+  - Pass the canonical server app-availability object to the icon builder without reconstructing it, keeping only explicit derived overrides for truly role/private launchers.
+  - If a projection remains necessary, make it exhaustive over `DesktopAppKey` so omissions are compile-time failures rather than falsey runtime gates.
+  - Add an integration-level policy test that starts from `DEFAULT_DESKTOP_APP_CONFIG` through the actual shell adapter and proves every catalog `default-desktop` app produces an enabled native icon.
+- Verification idea:
+  - With a fresh `witness` actor and a healthy real app-registration response, require a visible, usable Contact Admin icon at the declared default position, open it, submit a feedback thread, and prove the user can see the conversation afterward.
+  - Retain the existing Start Menu/direct-route access, rerun default-app/catalog/icon policy tests, inventory coverage, and actor-backed live puppet coverage for the new-user desktop.
+- Correction:
+  - Removed the desktop shell's hand-maintained partial availability projection and now pass the canonical server-shaped app map directly into the icon builder.
+  - Added server-shaped launcher coverage and both inventory-harness and actor-backed witness journeys so future default-app omissions fail across the actual handoff.
+- Verification:
+  - A fresh witness in the inventory harness and a seeded local witness puppet both see the Contact Admin desktop icon, open the evidence-oriented compose form, and remain unable to discover or mount Admin.
+  - Focused icon/presentation/API tests, production build, repository TypeScript, inventory coverage, and the complete 685-test UI inventory pass.
+
+### WTF-BB-622 - Commissioned apps are disabled and first-run navigation does not describe the commissioned task model
+
+- Category: Desktop OS / commissioned app wayfinding and runtime state
+- Status: Claimed
+- Owner/Session: Codex commission fulfillment
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Production `GET /api/apps/desktop` on 2026-08-29 returned `false` for Arcade, Casino, Console, Game Studio, Studio, IPFS Pinning, Pasta Protocol, and other creator services even though the source defaults enable most of them.
+  - The production FAQ returned an empty list.
+  - `WelcomeMessage.tsx` tells a new user only that the account is ready and offers acknowledgement, Profile, or a novelty Diary path; it does not identify the commissioned Play, Create, Shop, Events, and Talk tasks.
+  - The Start Menu uses internal product-domain labels such as Gameshow, On Chain, and Gaming and duplicates several destinations across groups without one first-run task map.
+  - Production Arcade data has eight published games but zero creator games and zero Game Studio games, while the app itself is disabled.
+- Why it matters:
+  - The customer cannot treat the platform as self-explanatory while commissioned capabilities are unreachable or require an operator to explain internal app names and entitlement history.
+  - Source defaults do not repair existing production registration rows; release evidence must cover the authoritative database-backed app response.
+- Correction direction:
+  - Make the Classic OS the primary shell and expose stable Play, Create, Shop, Events, and Talk entry groups.
+  - Turn the first-run welcome into a task chooser and make the same guide recoverable through Help.
+  - Seed commission help content idempotently and migrate the authoritative desktop registrations for approved commissioned apps without conflating docs freshness with enablement.
+  - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
+- Verification idea:
+  - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
+
+### WTF-BB-623 - Declared live phase test command references missing specs
+
+- Category: E2E / declared live phase harness
+- Status: Open
+- Owner/Session: -
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `package.json` names ten phase specs in `test:e2e:live:phases`, including `tests/playwright/live/phase7-arcade-casino.spec.mjs`.
+  - The audited `tests/playwright/live/` directory contains only `gamma-puppet-board.spec.mjs`, `macaroni-shadownet.spec.mjs`, `marketplace-shadownet.spec.mjs`, and `puppet-orchestration.spec.mjs`.
+  - A successful `test:e2e:live:puppets` run therefore cannot be assumed to provide the absent domain-phase evidence.
+- Why it matters:
+  - A release command whose declared owners do not exist creates false confidence about actor-backed Store, Arcade, Casino, Calendar, Messaging, and creator coverage.
+- Likely correction direction:
+  - Restore domain-owned phase specs from an authoritative source or replace the stale script with real, present domain specs that prove the same actor and durable-state contracts.
+- Verification idea:
+  - Require every file named by the script to exist, collect in Playwright, and run against the isolated production-shaped puppet database; bind each commission journey to the exact live spec that proves it.

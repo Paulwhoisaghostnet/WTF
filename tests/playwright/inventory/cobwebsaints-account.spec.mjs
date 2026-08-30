@@ -98,6 +98,10 @@ test.describe("interaction inventory - cobwebsaints account readiness", () => {
       "wtfOS pinning and wtfOS subdomain publishing are enabled",
     );
     await macaroniFrame.getByRole("tab", { name: "Drop Page Designer" }).click();
+    await expect(macaroniFrame.locator("#publishWtfOSGate")).toBeVisible();
     await expect(macaroniFrame.locator("#btnPublishWtfOS")).toBeVisible();
+    await expect(macaroniFrame.locator("#btnPublishWtfOS")).toBeEnabled();
+    await expect(macaroniFrame.locator("#publishWtfOSRoleHelp")).toBeHidden();
+    await expect(macaroniFrame.locator("#publishWtfOSRoleTooltip")).toBeHidden();
   });
 });

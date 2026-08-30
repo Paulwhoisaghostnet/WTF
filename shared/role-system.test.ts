@@ -42,6 +42,13 @@ test("cobwebsaints full user is a primary non-admin creator route role", () => {
   assert.equal(canOpenPageDef(macaroni, COBWEBSAINTS_FULL_USER_ROLE, []), true);
 });
 
+test("a non-admin surface grant cannot unlock the strict Admin Panel route", () => {
+  const admin = PAGE_DEFS.find((def) => def.pattern === "/admin");
+  assert.ok(admin);
+  assert.equal(canOpenPageDef(admin, "witness", ["social-automation"]), false);
+  assert.equal(canOpenPageDef(admin, "admin", ["admin-panel"]), true);
+});
+
 test("WTF OS surface grants can unlock registered experimental routes", () => {
   const uxLab = PAGE_DEFS.find((def) => def.pattern === "/dev/ux-lab");
   assert.ok(uxLab);
