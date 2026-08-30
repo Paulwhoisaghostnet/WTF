@@ -39,6 +39,9 @@ jobs:
       - name: Environment inventory
         run: npm run env:inventory:check
 
+      - name: Bug bounty board integrity
+        run: npm run bounty:board:check
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 

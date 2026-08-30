@@ -10969,3 +10969,13 @@
 **Rule**: After resolving or completing an integration merge, regenerate and check every source-derived inventory from the final merged tree before committing. Do not rely on the generated artifact from either parent branch.
 
 ---
+
+## 2026-08-30 — A release queue cannot have two manually maintained truths
+
+**What happened**: The bug board kept a hand-edited summary table and hand-edited detailed records in the same Markdown file. Over time, distinct findings reused IDs, records appeared in only one section, status and owner fields diverged, stored scores stopped matching the board's own formula, and an unescaped table separator made a summary row structurally invalid.
+
+**Why it mattered**: Counting rows produced an alarming number without answering which risks were actually open, and the same ID could tell a reviewer both “verified” and “open.” Shipping decisions based on that file were neither deterministic nor auditable.
+
+**Rule**: Keep one validated structured record per issue and generate every human-facing queue view from it. CI must reject duplicate IDs, unsupported states, missing mirrored records, score/rank drift, stale generated output, and disagreement in every mirrored field; preserve the former representation as immutable historical evidence.
+
+---

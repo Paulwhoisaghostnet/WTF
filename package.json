@@ -264,6 +264,8 @@
     "check:vite-env": "node --test scripts/vite-env-policy.test.mjs",
     "env:inventory": "node scripts/generate-environment-inventory.mjs",
     "env:inventory:check": "node scripts/generate-environment-inventory.mjs --check",
+    "bounty:board": "node scripts/generate-bug-bounty-board.mjs",
+    "bounty:board:check": "node scripts/generate-bug-bounty-board.mjs --check",
     "check:external-links": "node scripts/check-external-links.mjs",
     "db:backup": "bash scripts/backup-db.sh",
     "load:test": "npx tsx tests/load/run-load.mjs",
