@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-636 | Open | - | 2026-08-31 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 1 | 4 | 5 | 3 | V3 derives every draw from public block level and mint count, while commitments and inventory remain mutable until sellout and post-mint additions corrupt the packed shuffle table |
 | WTF-BB-635 | Fixed | Codex Macaroni V3 commitment repair | 2026-08-30 | Macaroni / premint metadata confidentiality and provenance | P0 | 17 | 1 | 4 | 5 | 3 | V3 keeps final metadata sealed before mint and provides automatic post-confirmation instant reveal or contract-timed delayed reveal; fresh-chain and production-operator verification remain before `Verified` |
 | WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
@@ -12976,3 +12977,28 @@ Copy this when adding a new issue:
   - `node --test scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs`, both desktop package checks, the production build, repository-wide TypeScript check, environment-inventory check, and `npm run test:e2e:inventory:coverage` passed.
   - A direct Shadownet-configured Studio Playwright check passed and proves that creators can select V3 instant or delayed automatic reveal while the manual reveal control stays hidden.
   - The complete inventory browser run passed 292 scenarios, including Macaroni/Pasta/Colander flows, before stalling in an unrelated later media/integration scenario and being stopped; 408 scenarios did not run. A fresh V3 Shadownet origination/reveal is still required before promoting this item to `Verified`.
+
+### WTF-BB-636 - Macaroni allocation is predictable and sale inventory remains mutable
+
+- Category: Macaroni / predictable allocation and mutable sale inventory
+- Priority: P0
+- Status: Open
+- Owner/Session: -
+- Last touched: 2026-08-31
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - V3 selects each slot with `draw = (sp.level + minted) mod remaining`. All inputs are public and the sender, operation hash, private commitment, and future entropy have no effect on the draw.
+  - A 10,000-state property test covered 1,297,912 remaining targets and proved that, from any fixed public state with `R` slots, the next `R` consecutive levels enumerate every remaining slot exactly once.
+  - Focused SmartPy scenarios proved identical state and level select the same token for different callers, while changing only the level selects a different known token.
+  - The administrator can replace the commitment of any unminted token and can add token rows after the first public mint because `locked` is set only at sellout.
+  - Adding a token after a partial mint writes it at the historical supply index instead of the compact remaining-pool boundary. The resulting slot map has a missing index inside the next draw range, so every subsequent mint path can attempt to read the missing slot and fail.
+- Why it matters:
+  - A collector who knows a token ID can target it by submitting for its favorable future block level; an ordering baker or collaborator has stronger control over inclusion and transaction order.
+  - Sealed commitments limit artwork identification for unrevealed one-of-ones, but editions become targetable after their first reveal while further copies remain, and any off-chain mapping leak makes all corresponding token IDs targetable.
+  - Editable commitments weaken the claim that the artwork-to-token assignment was fixed before sale, and post-mint additions can halt the remaining sale.
+- Likely correction direction:
+  - Add an explicit inventory finalization boundary before any sale stage can become active or any mint can occur; reject token additions and commitment replacements after finalization.
+  - Replace level-only allocation with an audited two-phase assignment whose entropy is unknown and not biasable when a collector submits the mint, such as a verifiable commit-reveal construction or an appropriate oracle.
+  - Do not treat hashing the current level, timestamp, sender, or operation data—alone or in combination—as unpredictable randomness.
+- Verification idea:
+  - Re-run the fixed-state all-target reachability property, same-block ordering and baker-influence cases, edition targeting after first reveal, inventory-finalization invariants, and post-finalization administrator rejection against the revised design.
