@@ -9987,8 +9987,8 @@
     },
     {
       "id": "WTF-BB-658",
-      "status": "Open",
-      "owner": "-",
+      "status": "Verified",
+      "owner": "Codex PixAlerce timeout pass",
       "lastTouched": "2026-08-30",
       "category": "E2E reliability / PixAlerce",
       "priority": "P2",
@@ -9998,7 +9998,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "PixAlerce inventory journey can wait forever after disabling every test and action timeout",
-      "body": "- Evidence:\n  - `tests/playwright/inventory/pixalerce.spec.mjs` calls `test.setTimeout(0)` for its encoder-heavy journey while the Playwright project also leaves action timeouts at zero.\n  - During `npm run test:e2e:inventory` on 2026-08-30, all five export artifacts completed, then the live trace stopped at `Frame.click` for the second PNG format selection with `timeout: 0`; no `after` event followed and the worker continued indefinitely.\n  - The run was terminated only after the trace proved that no repository-defined timeout or forward-progress condition remained.\n- Why it matters:\n  - One stalled UI action prevents the entire 699-check interaction suite from ever reporting a verdict, hiding later failures and blocking release evidence.\n- Likely correction direction:\n  - Keep a measured encoder allowance, but give every UI action and the overall journey an explicit authoritative bound or split the encoding and Media/Mint Manager phases into separately bounded tests with durable intermediate artifacts.\n- Verification idea:\n  - Force the second PNG selector to remain non-actionable and prove the test exits with a named step failure; then run the successful path twice and confirm it completes through My Photos, File Manager, and Mint Manager without indefinite waits."
+      "body": "- Root cause:\n  - The encoder-heavy PixAlerce inventory journey disabled its overall Playwright timeout with `test.setTimeout(0)`, and Playwright action timeouts defaulted to zero. A stalled selector therefore had no repository-defined termination condition.\n- Correction:\n  - The journey now has the same 30-minute ceiling imposed on the complete inventory step by `.github/workflows/quality-gates.yml`.\n  - Every PixAlerce action and navigation now has the repository's existing 60-second Playwright ceiling, so a stuck control reports a named step failure instead of consuming the entire journey allowance.\n  - `tests/e2e/inventory/pixalerce-timeout-policy.test.mjs` prevents either ceiling from returning to zero and binds both values to their authoritative repository contracts.\n- Verification (2026-08-30):\n  - The timeout policy test passed 1/1.\n  - The complete PixAlerce browser journey passed twice independently in 2.5 minutes per run, including canvas editing, PNG/GIF/MP4/WebM/OBJKT ZIP validation, wtfOS Media upload, Mint Manager, saved-project reload, My Photos, and File Manager.\n  - The previously stalled second PNG-format selection completed in both runs; if it stalls again, its browser action now exits after the configured 60-second action contract rather than waiting forever."
     }
   ]
 }

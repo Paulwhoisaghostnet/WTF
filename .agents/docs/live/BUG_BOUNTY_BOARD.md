@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **625** · Open: **42** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **141** · Verified: **383** · Archived: **3**
+Total: **625** · Open: **41** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **141** · Verified: **384** · Archived: **3**
 
 ## Canonical Board
 
@@ -67,7 +67,6 @@ Total: **625** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 9 | 500 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 9 | 500 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 500 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
-| WTF-BB-658 | Open | - | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 561 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 561 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-043 | Open | - | 2026-04-27 | TV microapp / refresh scale | P2 | 8 | 561 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
 | WTF-BB-317 | Open | - | 2026-06-27 | E2E / Playwright harness parity | P3 | 7 | 596 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
@@ -594,6 +593,7 @@ Total: **625** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 500 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-134 | Verified | Codex desktop wiring pass | 2026-05-08 | Desktop OS / event and route wiring | P2 | 9 | 500 | 3 | 3 | 0 | Desktop icon/item automation and route wiring drifted after restructuring |
 | WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 500 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
+| WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 561 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 561 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
 | WTF-BB-566 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Release governance / environment inventory | P2 | 8 | 561 | 1 | 3 | 1 | The deterministic environment inventory has been regenerated from the integrated release tree and passes source equality, safety, and coverage policy |
 | WTF-BB-563 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / portable-site generation | P2 | 8 | 561 | 2 | 3 | 0 | The canonical Pasta site-kit now derives self-contained app-specific favicon data for all six byte-identical portable publisher outputs |
@@ -1360,25 +1360,6 @@ Total: **625** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 - Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.
 - Likely correction direction: Fail fast if region is required and absent, and pin the exact production connection target via validated environment configuration.
 - Verification idea: Remove `SUPABASE_REGION` in a non-`us-west-2` test setup and verify the script refuses to run rather than connecting to an unintended host.
-
-### WTF-BB-658 - PixAlerce inventory journey can wait forever after disabling every test and action timeout
-
-- Category: E2E reliability / PixAlerce
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-08-30
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence:
-  - `tests/playwright/inventory/pixalerce.spec.mjs` calls `test.setTimeout(0)` for its encoder-heavy journey while the Playwright project also leaves action timeouts at zero.
-  - During `npm run test:e2e:inventory` on 2026-08-30, all five export artifacts completed, then the live trace stopped at `Frame.click` for the second PNG format selection with `timeout: 0`; no `after` event followed and the worker continued indefinitely.
-  - The run was terminated only after the trace proved that no repository-defined timeout or forward-progress condition remained.
-- Why it matters:
-  - One stalled UI action prevents the entire 699-check interaction suite from ever reporting a verdict, hiding later failures and blocking release evidence.
-- Likely correction direction:
-  - Keep a measured encoder allowance, but give every UI action and the overall journey an explicit authoritative bound or split the encoding and Media/Mint Manager phases into separately bounded tests with durable intermediate artifacts.
-- Verification idea:
-  - Force the second PNG selector to remain non-actionable and prove the test exits with a named step failure; then run the successful path twice and confirm it completes through My Photos, File Manager, and Mint Manager without indefinite waits.
 
 ### WTF-BB-238 - Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run
 
@@ -13474,6 +13455,25 @@ Copy this when adding a new issue:
 - Local fix note: Updated the reported provenance, marketplace, media, and Game Studio external anchors to `rel="noopener noreferrer"`.
 - Verification: `npm run check:external-links` passed locally after the fix.
 - Verification idea: Keep the external-link safety check in the standard quality gate whenever new external links are added.
+
+### WTF-BB-658 - PixAlerce inventory journey can wait forever after disabling every test and action timeout
+
+- Category: E2E reliability / PixAlerce
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex PixAlerce timeout pass
+- Last touched: 2026-08-30
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Root cause:
+  - The encoder-heavy PixAlerce inventory journey disabled its overall Playwright timeout with `test.setTimeout(0)`, and Playwright action timeouts defaulted to zero. A stalled selector therefore had no repository-defined termination condition.
+- Correction:
+  - The journey now has the same 30-minute ceiling imposed on the complete inventory step by `.github/workflows/quality-gates.yml`.
+  - Every PixAlerce action and navigation now has the repository's existing 60-second Playwright ceiling, so a stuck control reports a named step failure instead of consuming the entire journey allowance.
+  - `tests/e2e/inventory/pixalerce-timeout-policy.test.mjs` prevents either ceiling from returning to zero and binds both values to their authoritative repository contracts.
+- Verification (2026-08-30):
+  - The timeout policy test passed 1/1.
+  - The complete PixAlerce browser journey passed twice independently in 2.5 minutes per run, including canvas editing, PNG/GIF/MP4/WebM/OBJKT ZIP validation, wtfOS Media upload, Mint Manager, saved-project reload, My Photos, and File Manager.
+  - The previously stalled second PNG-format selection completed in both runs; if it stalls again, its browser action now exits after the configured 60-second action contract rather than waiting forever.
 
 ### WTF-BB-638 - Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`)
 

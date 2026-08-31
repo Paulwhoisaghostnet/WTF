@@ -6,6 +6,14 @@ import { strFromU8, unzipSync } from "fflate";
 
 const { PNG } = pngjs;
 
+// These ceilings come from the existing Playwright and CI contracts:
+// playwright.config.mjs gives tests 60 seconds, while quality-gates.yml gives
+// the complete inventory browser step 30 minutes. PixAlerce needs the longer
+// journey allowance for its real encoders, but no single browser action may
+// consume that allowance or wait forever.
+const PIXALERCE_ACTION_TIMEOUT_MS = 60_000;
+const PIXALERCE_JOURNEY_TIMEOUT_MS = 30 * 60_000;
+
 async function setHarnessRole(request, role) {
   const response = await request.post("/__test/state", { data: { userRole: role } });
   expect(response.ok()).toBeTruthy();
@@ -34,10 +42,9 @@ function pngColorSummary(buffer) {
 
 test.describe("interaction inventory - PixAlerce", () => {
   test("completes one creation, editing, persistence, and five-format export journey", async ({ page, request }, testInfo) => {
-    // This inventory journey must continue through every real encoder and every
-    // later cross-app assertion. Disable Playwright's per-test ceiling because
-    // measured 120s and 180s ceilings both expired before the Media/Mint Manager phase.
-    test.setTimeout(0);
+    test.setTimeout(PIXALERCE_JOURNEY_TIMEOUT_MS);
+    page.setDefaultTimeout(PIXALERCE_ACTION_TIMEOUT_MS);
+    page.setDefaultNavigationTimeout(PIXALERCE_ACTION_TIMEOUT_MS);
     await setHarnessRole(request, "admin");
     const failures = [];
     const results = [];

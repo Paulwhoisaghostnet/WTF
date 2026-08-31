@@ -10999,3 +10999,13 @@
 **Rule**: Prove which persistence model a compatibility route owns before reusing another domain's authorization helper. Enforce the source schema's audience, the platform permission, resource existence, and parent-resource scope together; make unknown legacy policy values fail closed.
 
 ---
+
+## 2026-08-30 — Slow encoders still need bounded browser actions
+
+**What happened**: The PixAlerce inventory journey disabled its overall Playwright timeout so five real encoders could finish, but it also inherited zero action timeouts. After the exports completed, a later PNG selector stalled with no deadline and prevented the full inventory suite from ever producing a verdict.
+
+**Why it mattered**: Accommodating measured encoder time accidentally removed the failure boundary from ordinary controls. A healthy long-running export path and a dead browser action became indistinguishable to CI.
+
+**Rule**: Give encoder-heavy journeys an explicit overall ceiling from the owning workflow contract, and retain a shorter repository-defined action/navigation ceiling inside that allowance. Never use an infinite test timeout unless every awaited operation has its own proven finite termination condition.
+
+---
