@@ -36,6 +36,7 @@ const tools = [
       "vendor/tezos.js",
       "vendor/octez-connect.js",
       "contract/mydrop.contract.json",
+      "contract/macaroni-v3.contract.json",
     ],
   },
   {

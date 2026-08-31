@@ -64,6 +64,7 @@
     "contract:e2e:wtf-xtz:shadownet:taquito": "tsx scripts/wtf-xtz-exchange/e2e-shadownet.ts",
     "contract:prepare:wtf-xtz:mainnet": "tsx scripts/wtf-xtz-exchange/prepare-mainnet-artifact.ts",
     "contract:macaroni-v2:compile": "node scripts/macaroni/compile-v2-contract-template.mjs",
+    "contract:macaroni-v3:compile": "node scripts/macaroni/compile-v3-contract-template.mjs",
     "install-games": "node scripts/install-games.mjs",
     "install-games:force": "node scripts/install-games.mjs --force",
     "casino:wtf-button:simulation": "tsx scripts/run-wtf-button-simulation.ts",

@@ -87,6 +87,7 @@ const suiteAssetPaths = [
   "/creation-tools/macaroni/studio.html",
   "/creation-tools/macaroni/drop.html",
   "/creation-tools/macaroni/contract/mydrop.contract.json",
+  "/creation-tools/macaroni/contract/macaroni-v3.contract.json",
   ...Object.entries(publisherAssets).flatMap(([app, paths]) =>
     prefixedAssets(`/creation-tools/${app}`, paths),
   ),
@@ -136,6 +137,7 @@ export const PRODUCTS = Object.freeze({
       "/js/studio.js",
       "/js/site-bundle.js",
       "/contract/mydrop.contract.json",
+      "/contract/macaroni-v3.contract.json",
     ],
   },
   spaghetti: {

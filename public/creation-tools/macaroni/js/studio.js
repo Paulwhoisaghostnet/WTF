@@ -60,11 +60,13 @@ const OBJKT_TOKEN_PREVIEW_MAX_BYTES = 2 * MB;
 const OBJKT_TOKEN_PREVIEW_MAX_SIDE = 800;
 const OBJKT_TOKEN_PREVIEW_LABEL = "2 MB token preview";
 const KT1_CONTRACT_ADDRESS = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
-const MACARONI_CONTRACT_VERSIONS = new Set(["macaroni-v1", "macaroni-editions-v2"]);
+const MACARONI_CONTRACT_VERSIONS = new Set(["macaroni-v1", "macaroni-editions-v2", "macaroni-commitment-v3"]);
 const MINTER_ROYALTY_MODES = new Set(["first_minter", "rolling_pool"]);
 const MACARONI_LEGACY_ARTIFACT = "contract/mydrop.contract.json";
 const MACARONI_V2_ARTIFACT = "contract/macaroni-v2.contract.json";
+const MACARONI_V3_ARTIFACT = "contract/macaroni-v3.contract.json";
 const IS_NATIVE_APP = Boolean(window.MACARONI_DESKTOP && window.MACARONI_DESKTOP.native);
+const MACARONI_REVEAL_SERVICE_ORIGIN = IS_NATIVE_APP ? "https://wtfos.app" : "";
 const INSTALLER_PLATFORMS = [
   { key: "macos", id: "installerMacos", label: "macOS" },
   { key: "windows", id: "installerWindows", label: "Windows" },
@@ -123,6 +125,47 @@ function normalizeContractVersion(value) {
   return MACARONI_CONTRACT_VERSIONS.has(version) ? version : "macaroni-v1";
 }
 
+function bytesToHex(bytes) {
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(hex) {
+  const clean = String(hex || "").replace(/^0x/i, "");
+  if (!/^[0-9a-f]*$/i.test(clean) || clean.length % 2) throw new Error("invalid commitment nonce");
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  return bytes;
+}
+
+async function metadataCommitment(metadataCid, nonceHex) {
+  const uri = new TextEncoder().encode("ipfs://" + metadataCid);
+  const nonce = hexToBytes(nonceHex);
+  if (nonce.length !== 32) throw new Error("metadata commitment nonce must be 32 bytes");
+  const payload = new Uint8Array(uri.length + nonce.length);
+  payload.set(uri, 0);
+  payload.set(nonce, uri.length);
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", payload)));
+}
+
+async function ensureTokenCommitment(token) {
+  if (!token.metadataCid) throw new Error(`token ${token.id} metadata is not pinned`);
+  if (
+    token.commitmentMetadataCid === token.metadataCid &&
+    /^[0-9a-f]{64}$/i.test(token.metadataNonce || "") &&
+    /^[0-9a-f]{64}$/i.test(token.metadataCommitment || "")
+  ) return token.metadataCommitment;
+  const nonce = crypto.getRandomValues(new Uint8Array(32));
+  token.metadataNonce = bytesToHex(nonce);
+  token.metadataCommitment = await metadataCommitment(token.metadataCid, token.metadataNonce);
+  token.commitmentMetadataCid = token.metadataCid;
+  save();
+  return token.metadataCommitment;
+}
+
+async function ensureV3Commitments() {
+  for (const token of state.tokens) await ensureTokenCommitment(token);
+}
+
 function minterRoyaltyBps() {
   return Math.round(Number(state.drop.minterRoyaltyPct || 0) * 100);
 }
@@ -157,13 +200,17 @@ function dropRequiresMacaroniV2() {
 function macaroniContractProfile() {
   const selected = normalizeContractVersion(state.drop.contractVersion);
   const usesV2 = selected === "macaroni-editions-v2";
+  const usesV3 = selected === "macaroni-commitment-v3";
+  const usesEditionStorage = usesV2 || usesV3;
   return {
-    id: usesV2 ? "macaroni-editions-v2" : "macaroni-v1",
-    artifact: usesV2 ? MACARONI_V2_ARTIFACT : MACARONI_LEGACY_ARTIFACT,
+    id: selected,
+    artifact: usesV3 ? MACARONI_V3_ARTIFACT : usesV2 ? MACARONI_V2_ARTIFACT : MACARONI_LEGACY_ARTIFACT,
     selected,
     usesV2,
+    usesV3,
+    usesEditionStorage,
     requiresV2: dropRequiresMacaroniV2(),
-    incompatible: !usesV2 && dropRequiresMacaroniV2(),
+    incompatible: !usesEditionStorage && dropRequiresMacaroniV2(),
   };
 }
 
@@ -180,10 +227,10 @@ async function loadContractCodeForDraft() {
   const profile = macaroniContractProfile();
   const res = await fetch(profile.artifact);
   if (!res.ok) {
-    if (profile.usesV2) {
+    if (profile.usesEditionStorage) {
       throw new Error(
-        `Macaroni V2 was selected, but ${MACARONI_V2_ARTIFACT} is not present in this build. ` +
-        "Run scripts/macaroni/compile-v2-contract-template.mjs after installing SmartPy, then deploy again."
+        `${profile.id} was selected, but ${profile.artifact} is not present in this build. ` +
+        `Compile the selected Macaroni contract template after installing SmartPy, then deploy again.`
       );
     }
     throw new Error(`Could not load ${profile.artifact}`);
@@ -208,6 +255,7 @@ function freshDropState() {
       contractMetaCid: "",
       revealMode: "instant", // instant | delayed
       revealDelayDays: 7, // auto-reveal window (delayed mode), 0–30
+      revealOperator: "",
       placeholderCid: "", // pinned pre-reveal metadata (delayed mode)
       placeholderPool: [], // [{name, mime, cid, metadataCid}]
       minterRoyaltiesEnabled: false,
@@ -217,7 +265,7 @@ function freshDropState() {
       royaltyUpdateEndpoint: "",
     },
     pin: { kind: "pinata", jwt: "", url: "", gateway: MD.DEFAULT_GATEWAY },
-    tokens: [], // {id, quantity, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid}
+    tokens: [], // {id, quantity, name, description, attributes, tags, fileName, mediaBytes, mediaCid, mediaMime, previewCid, previewMime, previewBytes, metadataCid, metadataNonce, metadataCommitment, commitmentMetadataCid}
     stages: [], // {start, price, useAllowlist, maxPerWallet, allowlist:[{address,capacity}]}
     contract: "",
     page: {
@@ -647,6 +695,7 @@ function normalizeState() {
   state.drop.minterRoyaltyMode = normalizeMinterRoyaltyMode(state.drop.minterRoyaltyMode);
   state.drop.royaltyUpdaterAddr = normalizeOptionalAddress(state.drop.royaltyUpdaterAddr);
   state.drop.royaltyUpdateEndpoint = normalizeOptionalHttpUrl(state.drop.royaltyUpdateEndpoint);
+  state.drop.revealOperator = normalizeOptionalAddress(state.drop.revealOperator);
   if (!state.pin || typeof state.pin !== "object") state.pin = freshDropState().pin;
   if (!state.pin.gateway) state.pin.gateway = MD.DEFAULT_GATEWAY;
   if (!Array.isArray(state.tokens)) state.tokens = [];
@@ -656,7 +705,15 @@ function normalizeState() {
     t.previewCid = t.previewCid || "";
     t.previewMime = t.previewMime || "";
     t.previewBytes = Number(t.previewBytes || 0);
+    t.metadataNonce = t.metadataNonce || "";
+    t.metadataCommitment = t.metadataCommitment || "";
+    t.commitmentMetadataCid = t.commitmentMetadataCid || "";
     if (tokenNeedsMediaPreview(t) && !t.previewCid) t.metadataCid = "";
+    if (!t.metadataCid || t.commitmentMetadataCid !== t.metadataCid) {
+      t.metadataNonce = "";
+      t.metadataCommitment = "";
+      t.commitmentMetadataCid = "";
+    }
   });
   if (!Array.isArray(state.stages)) state.stages = [];
   if (!state.page || typeof state.page !== "object") state.page = freshDropState().page;
@@ -810,6 +867,9 @@ function matchMedia_() {
         t.previewMime = "";
         t.previewBytes = 0;
         t.metadataCid = "";
+        t.metadataNonce = "";
+        t.metadataCommitment = "";
+        t.commitmentMetadataCid = "";
       }
       t.fileName = f.name;
       t.mediaBytes = f.size;
@@ -1059,6 +1119,9 @@ async function pinMediaPreview(provider, token, file, indexLabel) {
   token.previewMime = preview.mime || preview.blob.type || "image/gif";
   token.previewBytes = preview.blob.size;
   token.metadataCid = "";
+  token.metadataNonce = "";
+  token.metadataCommitment = "";
+  token.commitmentMetadataCid = "";
   save();
 }
 
@@ -1252,6 +1315,7 @@ async function pinAll() {
       }
       $("pinStatus").textContent = `pinning metadata ${t.id} (${done + 1}/${todo.length})…`;
       t.metadataCid = await MD.pinJson(provider, buildTokenMetadata(t), `${t.id}.json`);
+      if (macaroniContractProfile().usesV3) await ensureTokenCommitment(t);
       save();
       done++;
       $("pinBar").style.width = Math.round((done / todo.length) * 100) + "%";
@@ -1418,6 +1482,56 @@ function tokenInfoUri(tokenInfo) {
   }
 }
 
+function revealServiceFetch(path, options) {
+  const url = MACARONI_REVEAL_SERVICE_ORIGIN + path;
+  return IS_NATIVE_APP
+    ? fetch(url, { ...(options || {}), credentials: "omit" })
+    : MD.apiFetch(url, options);
+}
+
+function automaticRevealRequestUrl() {
+  return `${MACARONI_REVEAL_SERVICE_ORIGIN || location.origin}/api/macaroni/reveal-request`;
+}
+
+async function automaticRevealOperator() {
+  const res = await revealServiceFetch(`/api/macaroni/reveal-operator?network=${encodeURIComponent(state.network)}`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.enabled || !MD.isAddress(body.address)) {
+    throw new Error(body.error || `Automatic V3 reveal is not configured for ${state.network}.`);
+  }
+  state.drop.revealOperator = body.address;
+  save();
+  return body.address;
+}
+
+async function registerAutomaticV3Reveal(contractAddress) {
+  const delaySeconds = state.drop.revealMode === "delayed"
+    ? Math.round(Number(state.drop.revealDelayDays) * 86400)
+    : 0;
+  const res = await revealServiceFetch("/api/macaroni/reveal-automation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      network: state.network,
+      contract: contractAddress,
+      administrator: MD.getAccount(),
+      mode: state.drop.revealMode,
+      revealDelaySeconds: delaySeconds,
+      tokens: state.tokens.map((token) => ({
+        tokenId: token.id - 1,
+        metadataUri: "ipfs://" + token.metadataCid,
+        nonce: token.metadataNonce,
+        commitment: token.metadataCommitment,
+      })),
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "Could not register automatic V3 reveal");
+  state.drop.revealOperator = body.revealOperator || state.drop.revealOperator;
+  save();
+  return body;
+}
+
 async function buildContractMetadataCid() {
   const provider = pinProvider();
   const meta = {
@@ -1468,6 +1582,9 @@ async function deploy() {
         return notify("Creator royalties plus the minter royalty pool cannot exceed 100%.", "err", "deployStatus");
     }
     const stages = stageRecords(); // validates
+    const revealOperator = macaroniContractProfile().usesV3
+      ? await automaticRevealOperator()
+      : "";
 
     // Hard guard: RPC chain id + wallet session must both match the selected
     // network before anything signs.
@@ -1495,7 +1612,7 @@ async function deploy() {
       placeholderMap.set("", MD.utf8ToHex("ipfs://" + state.drop.placeholderCid));
 
     let storage;
-    if (profile.usesV2) {
+    if (profile.usesEditionStorage) {
       const placeholderPoolMap = new M();
       const pool = placeholderPool().length ? placeholderPool() : [{ metadataCid: state.drop.placeholderCid }];
       pool.forEach((p, i) => {
@@ -1506,12 +1623,15 @@ async function deploy() {
       storage = {
         administrator: me,
         pending_administrator: null,
+        ...(profile.usesV3 ? { reveal_operator: revealOperator } : {}),
         treasury: state.drop.treasuryAddr || me,
         metadata: metadataMap,
         ledger: new M(),
         operators: new M(),
         token_metadata: new M(),
-        pending_tokens: new M(),
+        ...(profile.usesV3
+          ? { token_commitments: new M(), revealed_tokens: new M() }
+          : { pending_tokens: new M() }),
         token_supply: new M(),
         token_minted: new M(),
         slots: new M(),
@@ -1530,7 +1650,7 @@ async function deploy() {
         reveal_queue: new M(),
         reveal_cursor: 0,
         reveal_tail: 0,
-        reveal_delay: delayed ? Math.round(delayDays * 86400) : 604800,
+        reveal_delay: delayed ? Math.round(delayDays * 86400) : 0,
         unrevealed_since: null,
         revealed: 0,
         minter_royalty_config: {
@@ -1616,6 +1736,7 @@ async function sync() {
     save();
     if (state.tokens.length && state.tokens.some((t) => !t.metadataCid))
       return notify("Pin all local token metadata before syncing token changes.", "err", "deployStatus");
+    if (profile.usesV3 && state.tokens.length) await ensureV3Commitments();
     if (state.tokens.length) {
       try {
         assertArtifactSizePolicy({ requireKnownSizes: true });
@@ -1624,27 +1745,56 @@ async function sync() {
       }
     }
 
+    const configuredRevealOperator = profile.usesV3
+      ? await automaticRevealOperator()
+      : "";
+
     await MD.assertOperationSafety();
     const tezos = MD.getToolkit();
     const c = await tezos.wallet.at(kt);
     const st = await (await tezos.contract.at(kt)).storage();
-    const contractIsV2 = st.token_supply != null && st.token_minted != null && st.minter_royalty_config != null;
-    if (profile.usesV2 && !contractIsV2) {
+    const contractIsV3 = st.token_commitments != null && st.revealed_tokens != null;
+    const contractIsV2 = !contractIsV3 && st.token_supply != null && st.token_minted != null && st.minter_royalty_config != null;
+    const contractUsesEditionStorage = contractIsV2 || contractIsV3;
+    if (profile.usesV3 && !contractIsV3) {
       return notify(
-        "Macaroni V2 is selected, but the selected contract is the legacy Macaroni artifact. " +
-        "Deploy or resume a V2 contract for this draft.",
+        "Macaroni V3 is selected, but the selected contract is not a V3 commitment contract. " +
+        "Deploy or resume a V3 contract for this draft.",
         "err",
         "deployStatus"
       );
     }
-    if (!profile.usesV2 && contractIsV2)
-      return notify("This contract is Macaroni V2. Select Macaroni V2 in Drop details before syncing it.", "err", "deployStatus");
-    const already = contractIsV2 ? Number(st.token_count || 0) : Number(st.supply);
+    if (contractIsV3 && String(st.reveal_operator || "") !== configuredRevealOperator) {
+      return notify(
+        "This V3 contract does not authorize the current automatic reveal operator. Deploy a current V3 contract before opening the sale.",
+        "err",
+        "deployStatus"
+      );
+    }
+    if (contractIsV3 && !state.tokens.length) {
+      return notify(
+        "Restore the V3 Studio backup containing the private metadata CIDs and nonces before syncing automatic reveal.",
+        "err",
+        "deployStatus"
+      );
+    }
+    if (profile.usesV2 && !contractIsV2)
+      return notify("Macaroni V2 is selected, but the selected contract is not V2.", "err", "deployStatus");
+    if (!profile.usesEditionStorage && contractUsesEditionStorage)
+      return notify(`This contract is Macaroni ${contractIsV3 ? "V3" : "V2"}. Select its matching version before syncing.`, "err", "deployStatus");
+    const already = contractUsesEditionStorage ? Number(st.token_count || 0) : Number(st.supply);
     const editionTotal = tokenEditionTotal();
     log(`sync: contract has ${already}/${state.tokens.length} token row(s) loaded (${editionTotal} edition(s) in draft)`);
 
     const M = TZ.MichelsonMap;
     const batchify = (t) => {
+      if (contractIsV3) {
+        return {
+          token_id: t.id - 1,
+          metadata_commitment: t.metadataCommitment,
+          quantity: normalizeTokenQuantity(t.quantity),
+        };
+      }
       const info = new M();
       info.set("", MD.utf8ToHex("ipfs://" + t.metadataCid));
       const entry = { token_id: t.id - 1, token_info: info };
@@ -1664,9 +1814,14 @@ async function sync() {
     if (state.tokens.length && !st.locked) {
       const existing = state.tokens.filter((t) => t.id - 1 < already);
       for (const t of existing) {
-        const desired = "ipfs://" + t.metadataCid;
-        const current = tokenInfoUri(await st.pending_tokens.get(t.id - 1));
-        if (current !== desired) replaceTodo.push(t);
+        if (contractIsV3) {
+          const current = String((await st.token_commitments.get(t.id - 1)) || "").replace(/^0x/i, "").toLowerCase();
+          if (current !== String(t.metadataCommitment || "").toLowerCase()) replaceTodo.push(t);
+        } else {
+          const desired = "ipfs://" + t.metadataCid;
+          const current = tokenInfoUri(await st.pending_tokens.get(t.id - 1));
+          if (current !== desired) replaceTodo.push(t);
+        }
       }
     } else if (state.tokens.length && st.locked) {
       log("sync: sale is locked; existing token metadata cannot be replaced");
@@ -1691,7 +1846,7 @@ async function sync() {
 
     for (let i = 0; i < replaceTodo.length; i += CHUNK) {
       const chunk = replaceTodo.slice(i, i + CHUNK).map(batchify);
-      const ep = contractIsV2 ? "replace_tokens_v2" : "replace_tokens";
+      const ep = contractIsV3 ? "replace_tokens_v3" : contractIsV2 ? "replace_tokens_v2" : "replace_tokens";
       log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
       const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, {
         ...STORAGE_PROFILE.inventory,
@@ -1705,7 +1860,7 @@ async function sync() {
 
     for (let i = 0; i < todo.length; i += CHUNK) {
       const chunk = todo.slice(i, i + CHUNK).map(batchify);
-      const ep = contractIsV2 ? "add_tokens_v2" : "add_tokens";
+      const ep = contractIsV3 ? "add_tokens_v3" : contractIsV2 ? "add_tokens_v2" : "add_tokens";
       log(`${ep} ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length}) — approve in wallet`);
       const op = await MD.sendWalletOp(c.methodsObject[ep](chunk), {}, {
         ...STORAGE_PROFILE.inventory,
@@ -1745,9 +1900,16 @@ async function sync() {
     } else {
       bump();
     }
+    if (contractIsV3) {
+      $("deployStatus").textContent = "registering automatic reveal…";
+      await registerAutomaticV3Reveal(kt);
+      log(`${state.drop.revealMode} reveal automation registered for ${kt}`);
+    }
     $("syncBar").style.width = "100%";
-    $("deployStatus").textContent = "in sync ✓";
-    log("sync complete — your drop is live on-chain.");
+    $("deployStatus").textContent = contractIsV3 ? "in sync · automatic reveal active ✓" : "in sync ✓";
+    log(contractIsV3
+      ? "sync complete — your drop is live on-chain and automatic reveal is active."
+      : "sync complete — your drop is live on-chain.");
     log("objkt collection (mainnet only): " + MD.objktUrl(state.network, kt));
     log("tip: Save studio backup (Resume panel) so you can restore this draft later.");
   } catch (e) {
@@ -1768,6 +1930,45 @@ async function revealMinted() {
     btn.disabled = true;
     const tezos = MD.getToolkit();
     const c = await tezos.wallet.at(kt);
+    const initial = await (await tezos.contract.at(kt)).storage();
+    if (initial.token_commitments != null && initial.revealed_tokens != null) {
+      const pendingItems = [];
+      for (const token of state.tokens) {
+        const tokenId = token.id - 1;
+        if (tokenId >= Number(initial.token_count || 0)) continue;
+        const minted = Number((await initial.token_minted.get(tokenId)) || 0);
+        const revealed = await initial.revealed_tokens.get(tokenId);
+        if (minted <= 0 || revealed != null) continue;
+        if (!token.metadataCid || !/^[0-9a-f]{64}$/i.test(token.metadataNonce || "")) {
+          throw new Error(`token ${token.id} reveal secret is missing from this Studio draft`);
+        }
+        const committed = String((await initial.token_commitments.get(tokenId)) || "").replace(/^0x/i, "").toLowerCase();
+        const localCommitment = await metadataCommitment(token.metadataCid, token.metadataNonce);
+        if (localCommitment !== committed) {
+          throw new Error(`token ${token.id} reveal secret does not match its on-chain commitment; restore the Studio backup used for sync`);
+        }
+        pendingItems.push({
+          token_id: tokenId,
+          metadata_uri: MD.utf8ToHex("ipfs://" + token.metadataCid),
+          nonce: token.metadataNonce,
+        });
+      }
+      for (let i = 0; i < pendingItems.length; i += CHUNK) {
+        const chunk = pendingItems.slice(i, i + CHUNK);
+        $("deployStatus").textContent = `revealing ${i + 1}–${i + chunk.length} of ${pendingItems.length} committed token(s)…`;
+        log(`reveal_tokens_v3 ${chunk[0].token_id}…${chunk[chunk.length - 1].token_id} (${chunk.length})`);
+        const op = await MD.sendWalletOp(c.methodsObject.reveal_tokens_v3(chunk), {}, {
+          ...STORAGE_PROFILE.reveal,
+          gasPerUnit: 50_000,
+          units: chunk.length,
+        });
+        await op.confirmation(1);
+        await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: "reveal_tokens_v3" });
+      }
+      $("deployStatus").textContent = pendingItems.length ? "all minted commitments revealed ✓" : "no minted commitments awaiting reveal";
+      log(pendingItems.length ? "V3 reveal complete — every minted token has verified metadata." : "V3 reveal: nothing pending.");
+      return;
+    }
     for (;;) {
       const st = await (await tezos.contract.at(kt)).storage();
       const pending = Number(st.minted) - Number(st.revealed);
@@ -1820,19 +2021,26 @@ function buildConfig() {
       editionCount: tokenEditionTotal(),
       hasMultiEditions: state.tokens.some((t) => normalizeTokenQuantity(t.quantity) > 1),
     },
-    tokens: state.tokens.map((t) => ({
-      id: t.id - 1,
-      displayId: t.id,
-      quantity: normalizeTokenQuantity(t.quantity),
-      name: t.name,
-      metadata: t.metadataCid ? "ipfs://" + t.metadataCid : "",
-      artifact: t.mediaCid ? "ipfs://" + t.mediaCid : "",
-      mime: t.mediaMime || "",
-    })),
+    tokens: state.tokens.map((t) => profile.usesV3
+      ? {
+          id: t.id - 1,
+          displayId: t.id,
+          quantity: normalizeTokenQuantity(t.quantity),
+        }
+      : {
+          id: t.id - 1,
+          displayId: t.id,
+          quantity: normalizeTokenQuantity(t.quantity),
+          name: t.name,
+          metadata: t.metadataCid ? "ipfs://" + t.metadataCid : "",
+          artifact: t.mediaCid ? "ipfs://" + t.mediaCid : "",
+          mime: t.mediaMime || "",
+        }),
     reveal: {
       mode: state.drop.revealMode,
       delayDays: Number(state.drop.revealDelayDays || 0),
       placeholderPool: pool,
+      serviceUrl: profile.usesV3 ? automaticRevealRequestUrl() : "",
     },
     minterRoyalties: {
       enabled: minterRoyaltiesEnabled(),
@@ -2201,10 +2409,14 @@ function readForm() {
 
 function toggleRevealFields() {
   const delayed = state.drop.revealMode === "delayed";
+  const automaticV3 = macaroniContractProfile().usesV3;
+  $("revealHint").innerHTML = automaticV3
+    ? "Delayed V3 mints show your placeholder until the window expires. The authorized wtfOS revealer then publishes the already-committed metadata automatically; the creator wallet remains a recovery path, not a required step."
+    : "Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.";
   $("revealDelayWrap").style.display = delayed ? "" : "none";
   $("revealHint").style.display = delayed ? "" : "none";
   $("placeholderPoolWrap").style.display = delayed ? "" : "none";
-  $("btnReveal").style.display = delayed ? "" : "none";
+  $("btnReveal").style.display = delayed && !automaticV3 ? "" : "none";
 }
 
 function toggleMinterRoyaltyFields() {
@@ -2223,6 +2435,12 @@ function renderContractVersionHint() {
   } else if (profile.usesV2) {
     el.textContent =
       "V2 supports shared-token editions, delayed placeholder pools, and minter royalty metadata revisions.";
+    el.className = "muted";
+  } else if (profile.usesV3) {
+    el.textContent =
+      state.drop.revealMode === "instant"
+        ? "V3 stores only nonce-backed commitments before mint; wtfOS reveals each token automatically after its mint confirms."
+        : "V3 stores only nonce-backed commitments before mint; wtfOS reveals automatically when the configured delay expires.";
     el.className = "muted";
   } else {
     el.textContent = "V1 is for classic 1/1 blind drops with the existing Macaroni contract.";
@@ -2369,6 +2587,7 @@ async function loadFromChain(kt) {
     if (metadata?.name) state.drop.title = metadata.name;
     if (metadata?.description) state.drop.description = metadata.description;
     state.drop.revealMode = storage.delayed_reveal ? "delayed" : "instant";
+    if (storage.reveal_operator) state.drop.revealOperator = normalizeOptionalAddress(String(storage.reveal_operator));
     if (storage.reveal_delay != null)
       state.drop.revealDelayDays = Math.round(Number(storage.reveal_delay) / 86400);
     const loaded = Number(storage.supply || 0);

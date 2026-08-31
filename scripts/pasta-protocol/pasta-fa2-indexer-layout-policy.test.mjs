@@ -5,6 +5,7 @@ import test from "node:test";
 const CANONICAL = "public/creation-tools/spaghetti/contract/pasta-standard-collection.contract.json";
 const FA2_ARTIFACTS = [
   ["Macaroni V2", "public/creation-tools/macaroni/contract/macaroni-v2.contract.json"],
+  ["Macaroni V3", "public/creation-tools/macaroni/contract/macaroni-v3.contract.json"],
   ["Spaghetti", CANONICAL],
   ["Gnocchi", "public/creation-tools/gnocchi/contract/pasta-open-edition.contract.json"],
   ["Ravioli", "public/creation-tools/ravioli/contract/pasta-bundle.contract.json"],

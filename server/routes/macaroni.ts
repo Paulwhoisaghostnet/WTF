@@ -29,6 +29,11 @@ import {
   macaroniIpfsMaxBytes,
   uploadLimitLabel,
 } from "../features/macaroni/upload-limits";
+import {
+  getMacaroniRevealOperator,
+  requestMacaroniReveal,
+  registerMacaroniRevealAutomation,
+} from "../features/macaroni/reveal-automation";
 import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 import {
   listWtfosOutboxForSource,
@@ -83,6 +88,25 @@ const INSTALLER_PLATFORMS = [
 const publishSchema = z.object({
   config: z.object({}).passthrough(),
   slug: z.string().trim().min(1).max(80).optional(),
+});
+
+const revealNetworkSchema = z.enum(["mainnet", "shadownet"]);
+const revealRegistrationSchema = z.object({
+  network: revealNetworkSchema,
+  contract: z.string().regex(KT1_CONTRACT_ADDRESS),
+  administrator: z.string().regex(/^(tz1|tz2|tz3|tz4)[1-9A-HJ-NP-Za-km-z]{33}$/),
+  mode: z.enum(["instant", "delayed"]),
+  revealDelaySeconds: z.number().int().nonnegative(),
+  tokens: z.array(z.object({
+    tokenId: z.number().int().nonnegative(),
+    metadataUri: z.string().regex(/^ipfs:\/\/[^\s]+$/),
+    nonce: z.string().regex(/^[0-9a-f]{64}$/i),
+    commitment: z.string().regex(/^[0-9a-f]{64}$/i),
+  })).nonempty(),
+});
+const revealRequestSchema = z.object({
+  network: revealNetworkSchema,
+  contract: z.string().regex(KT1_CONTRACT_ADDRESS),
 });
 
 const uploadTicketSchema = z.object({
@@ -650,6 +674,57 @@ router.get("/api/macaroni/installers", isAuthenticated, (_req, res) => {
       };
     }),
   });
+});
+
+router.get("/api/macaroni/reveal-operator", async (req, res) => {
+  const parsed = revealNetworkSchema.safeParse(req.query.network);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Tezos network" });
+  try {
+    const operator = await getMacaroniRevealOperator(parsed.data);
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(operator);
+  } catch (err) {
+    return handleMacaroniSiteError(res, err);
+  }
+});
+
+router.post(
+  "/api/macaroni/reveal-automation",
+  async (req, res) => {
+    const parsed = revealRegistrationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid Macaroni reveal registration" });
+    }
+    try {
+      const user = req.user as { id?: number } | undefined;
+      const job = await registerMacaroniRevealAutomation({
+        ownerUserId: Number.isInteger(user?.id) ? Number(user?.id) : null,
+        ...parsed.data,
+      });
+      return res.status(201).json({
+        ok: true,
+        mode: job.mode,
+        status: job.status,
+        contract: job.contract,
+        revealOperator: job.revealOperator,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not register automatic reveal";
+      return res.status(409).json({ error: message });
+    }
+  }
+);
+
+router.post("/api/macaroni/reveal-request", async (req, res) => {
+  const parsed = revealRequestSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Macaroni reveal request" });
+  try {
+    const result = await requestMacaroniReveal(parsed.data.network, parsed.data.contract);
+    return res.status(result.registered ? 200 : 404).json({ ok: result.registered, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Automatic reveal request failed";
+    return res.status(503).json({ error: message });
+  }
 });
 
 router.post(

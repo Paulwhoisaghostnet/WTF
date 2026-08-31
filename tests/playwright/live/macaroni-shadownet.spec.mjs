@@ -352,6 +352,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(frame.locator("#network")).toHaveValue("shadownet");
       await expect(frame.locator("#contractVersion")).toHaveValue("macaroni-v1");
       await expect(frame.locator('#contractVersion option[value="macaroni-editions-v2"]')).toHaveCount(1);
+      await expect(frame.locator('#contractVersion option[value="macaroni-commitment-v3"]')).toHaveCount(1);
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await expect(frame.locator("#pinKind")).toHaveValue("pinata");
@@ -397,6 +398,15 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     const page = await context.newPage();
     try {
       await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#contractVersion");
+      await expect(page.locator('#contractVersion option[value="macaroni-commitment-v3"]')).toHaveCount(1);
+      await page.locator("#contractVersion").selectOption("macaroni-commitment-v3");
+      await page.locator("#revealMode").selectOption("instant");
+      await expect(page.locator("#contractVersionHint")).toContainText("reveals each token automatically after its mint confirms");
+      await expect(page.locator("#contractVersionHint")).not.toHaveClass(/err/);
+      await page.locator("#revealMode").selectOption("delayed");
+      await expect(page.locator("#contractVersionHint")).toContainText("reveals automatically when the configured delay expires");
+      await expect(page.locator("#btnReveal")).toBeHidden();
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await page.locator("#tabPage").click();
       await expect(page.locator("#publishWtfOSGate")).toBeVisible();

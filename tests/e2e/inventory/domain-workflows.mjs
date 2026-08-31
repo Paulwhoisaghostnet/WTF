@@ -931,6 +931,7 @@ export const DOMAIN_WORKFLOWS = [
     behaviorAssertionIds: [
       "media.creation-gallery-preservation-proof",
       "arcade.creator-build-publish-discover",
+      "macaroni.v3-commitment-reveal",
     ],
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
@@ -944,6 +945,9 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/macaroni/packages", expectedStatuses: [200, 401, 403, 404, 500, 503] },
       { method: "POST", path: "/api/macaroni/packages", body: { title: "E2E Macaroni Package" }, expectedStatuses: [201, 400, 401, 403, 404, 500, 503] },
       { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [400, 401, 403, 404, 423, 500, 503] },
+      { method: "GET", path: "/api/macaroni/reveal-operator?network=shadownet", expectedStatuses: [200, 400, 404, 500, 503] },
+      { method: "POST", path: "/api/macaroni/reveal-automation", body: {}, expectedStatuses: [400, 401, 403, 404, 409, 500, 503] },
+      { method: "POST", path: "/api/macaroni/reveal-request", body: {}, expectedStatuses: [400, 404, 500, 503] },
       { method: "GET", path: "/api/arcade/my-games" },
     ],
   },
@@ -1319,6 +1323,7 @@ export const DOMAIN_WORKFLOWS = [
       "wtf_site.public.viewed",
     ],
     behaviorAssertionIds: [
+      "macaroni.v3-commitment-reveal",
       "pasta-protocol.gnocchi-multi-edition-collection",
       "pasta-protocol.ravioli-limited-edition-expiry-deconfliction",
       "pasta-protocol.ravioli-rotini-generated-at-open",

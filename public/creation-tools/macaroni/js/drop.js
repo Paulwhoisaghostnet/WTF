@@ -1157,9 +1157,15 @@ const MINT_QTY_UI_CAP = 10;
 const RECENT_MINT_LIMIT = 8;
 const CUSTOM_RECENT_MINT_LIMIT = 10;
 
+function isCommitmentV3() {
+  return CFG.contractVersion === "macaroni-commitment-v3" || storage?.token_commitments != null;
+}
+
 function revealState() {
   if (!storage) return null;
-  const queuePending =
+  const queuePending = isCommitmentV3()
+    ? Math.max(0, Number(storage.reveal_tail || 0) - Number(storage.revealed || 0))
+    :
     storage.reveal_tail != null && storage.reveal_cursor != null
       ? Math.max(0, Number(storage.reveal_tail) - Number(storage.reveal_cursor))
       : null;
@@ -1536,11 +1542,12 @@ function render() {
   if (rs && rs.delayed) {
     note.style.display = "";
     const days = Math.round((rs.delayMs / 86400000) * 10) / 10;
-    note.textContent =
-      "Sealed drop — every mint starts sealed and is assigned a random artwork at reveal." +
-      (days > 0
-        ? ` If the creator hasn't revealed within ${days} day(s), anyone can trigger the reveal right here.`
-        : " Anyone can trigger the reveal at any time.");
+    note.textContent = isCommitmentV3()
+      ? "Sealed V3 drop — final metadata was hash-committed before sale and remains private until the creator submits its verified post-mint reveal."
+      : "Sealed drop — every mint starts sealed and is assigned a random artwork at reveal." +
+        (days > 0
+          ? ` If the creator hasn't revealed within ${days} day(s), anyone can trigger the reveal right here.`
+          : " Anyone can trigger the reveal at any time.");
   } else {
     note.style.display = "none";
   }
@@ -1623,6 +1630,11 @@ function renderRevealPanel(now) {
     return;
   }
   panel.style.display = "";
+  if (isCommitmentV3()) {
+    $("revealInfo").textContent = `${countLabel(rs.pending, "sealed token", "sealed tokens")} awaiting the creator's commitment-verified reveal.`;
+    $("btnReveal").style.display = "none";
+    return;
+  }
   const openAt = rs.since ? new Date(rs.since.getTime() + rs.delayMs) : null;
   const open = openAt && now >= openAt;
   if (open) {
@@ -1830,6 +1842,7 @@ async function confirmWalletOperation(op, entrypoint, statusId, actionLabel) {
 }
 
 async function publicReveal() {
+  if (isCommitmentV3()) return;
   const rs = revealState();
   if (!rs || rs.pending <= 0) return;
   const btn = $("btnReveal");
@@ -1964,6 +1977,25 @@ async function maybeSyncMinterRoyalties(ids) {
   );
 }
 
+async function requestAutomaticV3Reveal() {
+  const serviceUrl = String(CFG.reveal?.serviceUrl || "").trim();
+  if (!isCommitmentV3() || !serviceUrl) return false;
+  try {
+    const res = await fetch(serviceUrl, {
+      method: "POST",
+      credentials: "omit",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        network: CFG.network || "mainnet",
+        contract: CFG.contract,
+      }),
+    });
+    return res.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function mint() {
   const me = MD.getAccount();
   if (!me) return;
@@ -1984,7 +2016,10 @@ async function mint() {
     const ids = await mintBatch(c, stage.priceMutez, qty);
     sessionIds.push(...ids);
     walletStatusCache = { key: "", status: null };
-    $("mintStatus").textContent = "confirmed! revealing…";
+    $("mintStatus").textContent = isCommitmentV3()
+      ? "confirmed! requesting automatic reveal…"
+      : "confirmed! revealing…";
+    await requestAutomaticV3Reveal();
     await refreshBalance("checked after mint");
     // Read the post-mint chain state before rendering ownership or declaring
     // success. A confirmed operation can otherwise leave the old allowance in

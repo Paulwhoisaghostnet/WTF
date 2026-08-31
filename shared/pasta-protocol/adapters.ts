@@ -299,6 +299,24 @@ export const BLIND_MINT_COLLECTION_ADAPTER: PastaContractAdapter = {
   ],
 };
 
+export const BLIND_MINT_V3_COLLECTION_ADAPTER: PastaContractAdapter = {
+  ...BLIND_MINT_COLLECTION_ADAPTER,
+  description: "Macaroni V3 commitment-sealed blind-mint collection with automatic operator reveal and creator recovery.",
+  signature: ["mint", "reveal_tokens_v3", "set_stages", "set_allowlist"],
+  specificity: 5,
+  actions: BLIND_MINT_COLLECTION_ADAPTER.actions.map((action) =>
+    action.id === "reveal"
+      ? {
+          ...action,
+          label: "Emergency reveal minted tokens",
+          entrypoint: "reveal_tokens_v3",
+          access: "admin",
+          description: "Automatic reveal is the normal path. Open Macaroni only to recover a minted token whose metadata matches its sealed pre-sale commitment.",
+        }
+      : action,
+  ),
+};
+
 export const GENERATIVE_COLLECTION_ADAPTER: PastaContractAdapter = {
   kind: "generative_collection",
   label: "Generative collection",
@@ -575,6 +593,7 @@ export const GENERIC_FA2_ADAPTER: PastaContractAdapter = {
 /** Registry of every known Pasta contract adapter, plus the generic FA2 fallback. */
 export const PASTA_ADAPTERS: PastaContractAdapter[] = [
   GENERATIVE_COLLECTION_ADAPTER,
+  BLIND_MINT_V3_COLLECTION_ADAPTER,
   BLIND_MINT_COLLECTION_ADAPTER,
   STANDARD_COLLECTION_ADAPTER,
   OPEN_EDITION_ADAPTER,

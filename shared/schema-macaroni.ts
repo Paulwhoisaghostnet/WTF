@@ -28,6 +28,22 @@ export const macaroniPackageItemStatusEnum = pgEnum("macaroni_package_item_statu
   "failed",
 ]);
 
+export const macaroniRevealNetworkEnum = pgEnum("macaroni_reveal_network", [
+  "mainnet",
+  "shadownet",
+]);
+
+export const macaroniRevealModeEnum = pgEnum("macaroni_reveal_mode", [
+  "instant",
+  "delayed",
+]);
+
+export const macaroniRevealStatusEnum = pgEnum("macaroni_reveal_status", [
+  "active",
+  "completed",
+  "paused",
+]);
+
 export type MacaroniPackageAttribute = {
   name: string;
   value: string;
@@ -46,8 +62,7 @@ export const macaroniPackages = pgTable(
   {
     id: serial("id").primaryKey(),
     ownerUserId: integer("owner_user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
+      .references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description").default("").notNull(),
     schemaVersion: varchar("schema_version", { length: 80 })
@@ -129,5 +144,33 @@ export const macaroniPackageItems = pgTable(
     uniqueIndex("macaroni_package_items_token_unique_idx").on(table.packageId, table.tokenId),
     index("macaroni_package_items_package_idx").on(table.packageId),
     index("macaroni_package_items_media_cid_idx").on(table.mediaCid),
+  ]
+);
+
+export const macaroniRevealJobs = pgTable(
+  "macaroni_reveal_jobs",
+  {
+    id: serial("id").primaryKey(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => users.id, { onDelete: "cascade" }),
+    network: macaroniRevealNetworkEnum("network").notNull(),
+    contract: varchar("contract", { length: 36 }).notNull(),
+    administrator: varchar("administrator", { length: 36 }).notNull(),
+    revealOperator: varchar("reveal_operator", { length: 36 }).notNull(),
+    mode: macaroniRevealModeEnum("mode").notNull(),
+    revealDelaySeconds: integer("reveal_delay_seconds").default(0).notNull(),
+    encryptedManifest: text("encrypted_manifest").notNull(),
+    status: macaroniRevealStatusEnum("status").default("active").notNull(),
+    nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+    lastOperationHash: varchar("last_operation_hash", { length: 51 }),
+    lastError: text("last_error"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("macaroni_reveal_jobs_network_contract_unique_idx").on(table.network, table.contract),
+    index("macaroni_reveal_jobs_due_idx").on(table.status, table.nextAttemptAt),
+    index("macaroni_reveal_jobs_owner_idx").on(table.ownerUserId, table.updatedAt),
   ]
 );
