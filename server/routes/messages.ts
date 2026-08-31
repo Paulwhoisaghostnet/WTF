@@ -36,6 +36,8 @@ import { z } from "zod";
 import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
 import { emitPrivateDmToSpine } from "../features/atproto-spine/private-emit";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import { canAccessLegacyChannel } from "../lib/legacy-channel-permissions";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
 
 const router = Router();
 
@@ -1627,14 +1629,18 @@ router.delete(
 // Legacy channel endpoints (kept for compatibility)
 // ───────────────────────────────────────────────────────────
 
-router.get("/api/channels", isAuthenticated, async (_req, res) => {
+router.get("/api/channels", isAuthenticated, async (req, res) => {
   try {
+    const roles = await listRolesForUserSnapshot(req.user as any);
+    if (!(await hasPermission(roles, "read_message_board"))) {
+      return res.status(403).json({ error: "Not allowed to view channels" });
+    }
     const allChannels = await db
       .select()
       .from(channels)
       .where(isNull(channels.parentMessageId))
       .orderBy(channels.createdAt);
-    res.json(allChannels);
+    res.json(allChannels.filter((channel) => canAccessLegacyChannel(channel.accessLevel, roles)));
   } catch {
     res.status(500).json({ error: "Failed to fetch channels" });
   }
@@ -1673,8 +1679,26 @@ router.post(
 router.get("/api/channels/:id/messages", isAuthenticated, async (req, res) => {
   try {
     const channelId = parseInt(req.params.id as string, 10);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
+    }
     const limit = Math.min(parseInt(String(req.query.limit || "50"), 10), 100);
     const before = req.query.before ? parseInt(String(req.query.before), 10) : undefined;
+
+    const [channel] = await db
+      .select()
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+    const roles = await listRolesForUserSnapshot(req.user as any);
+    if (
+      !canAccessLegacyChannel(channel.accessLevel, roles)
+      || !(await hasPermission(roles, "read_message_board"))
+    ) {
+      return res.status(403).json({ error: "Not allowed to view channel" });
+    }
 
     const rows = await db
       .select({
@@ -1711,9 +1735,41 @@ router.post("/api/channels/:id/messages", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const channelId = parseInt(req.params.id as string, 10);
+    if (!Number.isInteger(channelId) || channelId <= 0) {
+      return res.status(400).json({ error: "Invalid channel id" });
+    }
     const parsed = legacyChannelMessageCreateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid message payload" });
+    }
+
+    const [channel] = await db
+      .select()
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+    const roles = await listRolesForUserSnapshot(user);
+    if (
+      !canAccessLegacyChannel(channel.accessLevel, roles)
+      || !(await hasPermission(roles, "post_message_board"))
+    ) {
+      return res.status(403).json({ error: "Not allowed to post in channel" });
+    }
+
+    if (parsed.data.threadParentId) {
+      const [parent] = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.id, parsed.data.threadParentId),
+            eq(messages.channelId, channelId),
+          ),
+        )
+        .limit(1);
+      if (!parent) return res.status(400).json({ error: "Parent message not found" });
     }
 
     const [message] = await db

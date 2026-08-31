@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **141** · Verified: **382** · Archived: **3**
+Total: **625** · Open: **42** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **141** · Verified: **383** · Archived: **3**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-647 | Open | - | - | Authorization / message board | P1 | 14 | 123 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
 | WTF-BB-126 | Open | - | 2026-05-08 | Tezos recapture / settlement | P1 | 14 | 123 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
 | WTF-BB-050 | Open | - | 2026-04-27 | Dependencies / security | P1 | 14 | 123 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
 | WTF-BB-648 | Open | - | - | Tezos / reward integrity | P1 | 13 | 179 | 4 | 3 | 2 | Buyback swap intent is trusted before on-chain confirmation |
@@ -68,9 +67,10 @@ Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 9 | 500 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 9 | 500 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 500 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
+| WTF-BB-658 | Open | - | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 561 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 561 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-043 | Open | - | 2026-04-27 | TV microapp / refresh scale | P2 | 8 | 561 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
-| WTF-BB-317 | Open | - | 2026-06-27 | E2E / Playwright harness parity | P3 | 7 | 595 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
+| WTF-BB-317 | Open | - | 2026-06-27 | E2E / Playwright harness parity | P3 | 7 | 596 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-500 | Claimed | Codex Ravioli v3 contract hardening | - | Pasta Protocol / buyer funds and fulfillment solvency | P0 | 20 | 1 | 5 | 5 | 5 | Ravioli released blind-sale proceeds before child delivery |
 | WTF-BB-545 | Claimed | Codex Ravioli authenticated post-event-86 correction | - | Pasta Protocol / Ravioli recovery plan and proof finality | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli's post-event-86 plan and terminal model cannot complete truthfully |
 | WTF-BB-507 | Claimed | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / live proof dependency identity | P0 | 19 | 3 | 5 | 5 | 4 | The accepted Rotini proof contract predates Ravioli's recipient-independent seed ABI |
@@ -347,6 +347,7 @@ Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 90 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 90 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 90 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-647 | Verified | Codex legacy board authorization pass | 2026-08-30 | Authorization / message board | P1 | 14 | 123 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
 | WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 123 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-564 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / Ravioli recovery identity | P1 | 14 | 123 | 3 | 5 | 2 | Active Ravioli recovery accepts only enumerated schemas and exact opened identity, while the retired current-v4 executable fixture is quarantined behind its fail-closed retirement boundary |
 | WTF-BB-541 | Verified | Codex Ravioli event-86 continuation | - | Pasta Protocol / Ravioli live dependency expectation mapping | P1 | 14 | 123 | 4 | 4 | 2 | Ravioli derived a collection counter from a project identifier |
@@ -558,7 +559,7 @@ Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 500 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 561 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 561 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
-| WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 595 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
+| WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 596 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-014 | Verified | Codex security hardening pass | 2026-05-30 | Auth / CSRF | P2 | 13 | 179 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
 | WTF-BB-514 | Verified | Codex wtfOS contract release | - | E2E isolation / production data | P2 | 11 | 361 | 3 | 3 | 2 | Production contained a fake live Club Dues puppet row |
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 361 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
@@ -620,62 +621,41 @@ Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-115 | Verified | Codex arcade/console split pass | 2026-05-08 | MCP / agent discoverability | P2 | 8 | 561 | 1 | 3 | 1 | Arcade MCP tools drifted from capabilities and scopes |
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 561 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 561 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
-| WTF-BB-589 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Frontend security / tabnabbing link safety | P2 | 7 | 595 | 1 | 2 | 1 | Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes |
-| WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 595 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
-| WTF-BB-562 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Beta wtfOS / route catalog ownership | P2 | 7 | 595 | 1 | 3 | 0 | Dashboard is the unique session-owned Beta replacement for retired Hoard, with route, access, stage, persona, relationship, and browser coverage green |
-| WTF-BB-552 | Verified | Codex MSW platform refinement | 2026-08-06 | Shared kernel / scheduler observability | P2 | 7 | 595 | 1 | 3 | 0 | Routine scheduler starts/successes stay in canonical `sync_runs` plus the rotating file trace instead of adding 28,174 redundant master-log rows per production day |
-| WTF-BB-551 | Verified | Codex MSW platform refinement | 2026-08-06 | Mission Control and Dashboard / query ownership | P2 | 7 | 595 | 2 | 2 | 0 | Dashboard and Mission Control now share canonical challenge/sync queries and one ref-counted sync polling timer per QueryClient |
-| WTF-BB-550 | Verified | Codex MSW usage audit | 2026-08-06 | Desktop OS / launch gesture accounting | P2 | 7 | 595 | 1 | 3 | 0 | Shared icons now activate from click-count policy rather than pointer-up plus double-click; a focused browser proof records exactly one launch for a real double-click |
-| WTF-BB-549 | Verified | Codex MSW usage audit | 2026-08-06 | Desktop OS / normalized launch telemetry | P2 | 7 | 595 | 1 | 3 | 0 | Declared shortcut and context-menu events now survive server normalization; focused policy tests and the canonical inventory registry prove parity, while 19 historical shortcut opens remain recoverable from their generic-click shape |
-| WTF-BB-381 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Marketplace cold route loading | P2 | 7 | 595 | 2 | 2 | 0 | Marketplace browser proof waits on its canonical route surface with a bounded cold-start allowance; focused cold-server proof and the complete live actor suite pass |
-| WTF-BB-380 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / health diagnostics contract | P2 | 7 | 595 | 2 | 2 | 0 | The authenticated admin diagnostics probe admits the route's designed 503 degraded result; the focused admin actor workflow passes |
-| WTF-BB-376 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / contract configuration precedence | P2 | 7 | 595 | 2 | 2 | 0 | Marketplace Shadownet proof now derives the expected in-app market address with the same env precedence as server diagnostics; the focused Marketplace/WTF LIVE run and complete actor suite reached and passed the configured Marketplace state assertions |
-| WTF-BB-374 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Macaroni RPC fallback signal | P2 | 7 | 595 | 2 | 2 | 0 | Macaroni live proof now exercises the configured browser RPC fallback instead of bypassing it with a raw toolkit call, while classifying only the recovered primary's exact CORS pair as non-fatal |
-| WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 595 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
-| WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 595 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
-| WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 595 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
-| WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 595 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
-| WTF-BB-143 | Verified | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 595 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
-| WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 595 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
-| WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 595 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
-| WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 595 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
-| WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 595 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
-| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 617 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
-| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 617 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
-| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 617 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
-| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 617 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 617 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-589 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Frontend security / tabnabbing link safety | P2 | 7 | 596 | 1 | 2 | 1 | Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes |
+| WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 596 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
+| WTF-BB-562 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Beta wtfOS / route catalog ownership | P2 | 7 | 596 | 1 | 3 | 0 | Dashboard is the unique session-owned Beta replacement for retired Hoard, with route, access, stage, persona, relationship, and browser coverage green |
+| WTF-BB-552 | Verified | Codex MSW platform refinement | 2026-08-06 | Shared kernel / scheduler observability | P2 | 7 | 596 | 1 | 3 | 0 | Routine scheduler starts/successes stay in canonical `sync_runs` plus the rotating file trace instead of adding 28,174 redundant master-log rows per production day |
+| WTF-BB-551 | Verified | Codex MSW platform refinement | 2026-08-06 | Mission Control and Dashboard / query ownership | P2 | 7 | 596 | 2 | 2 | 0 | Dashboard and Mission Control now share canonical challenge/sync queries and one ref-counted sync polling timer per QueryClient |
+| WTF-BB-550 | Verified | Codex MSW usage audit | 2026-08-06 | Desktop OS / launch gesture accounting | P2 | 7 | 596 | 1 | 3 | 0 | Shared icons now activate from click-count policy rather than pointer-up plus double-click; a focused browser proof records exactly one launch for a real double-click |
+| WTF-BB-549 | Verified | Codex MSW usage audit | 2026-08-06 | Desktop OS / normalized launch telemetry | P2 | 7 | 596 | 1 | 3 | 0 | Declared shortcut and context-menu events now survive server normalization; focused policy tests and the canonical inventory registry prove parity, while 19 historical shortcut opens remain recoverable from their generic-click shape |
+| WTF-BB-381 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Marketplace cold route loading | P2 | 7 | 596 | 2 | 2 | 0 | Marketplace browser proof waits on its canonical route surface with a bounded cold-start allowance; focused cold-server proof and the complete live actor suite pass |
+| WTF-BB-380 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / health diagnostics contract | P2 | 7 | 596 | 2 | 2 | 0 | The authenticated admin diagnostics probe admits the route's designed 503 degraded result; the focused admin actor workflow passes |
+| WTF-BB-376 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / contract configuration precedence | P2 | 7 | 596 | 2 | 2 | 0 | Marketplace Shadownet proof now derives the expected in-app market address with the same env precedence as server diagnostics; the focused Marketplace/WTF LIVE run and complete actor suite reached and passed the configured Marketplace state assertions |
+| WTF-BB-374 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Macaroni RPC fallback signal | P2 | 7 | 596 | 2 | 2 | 0 | Macaroni live proof now exercises the configured browser RPC fallback instead of bypassing it with a raw toolkit call, while classifying only the recovered primary's exact CORS pair as non-fatal |
+| WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 596 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
+| WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 596 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
+| WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 596 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
+| WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 596 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
+| WTF-BB-143 | Verified | Codex post-send deploy polish | 2026-05-09 | CI / deploy workflow | P2 | 7 | 596 | 1 | 3 | 0 | Hetzner deploy workflow uses a deprecated GitHub Actions Node runtime |
+| WTF-BB-136 | Verified | Codex inventory depth pass | 2026-05-08 | E2E / coverage claims | P2 | 7 | 596 | 1 | 3 | 0 | Inventory E2E skeleton could be mistaken for full feature behavior coverage |
+| WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 596 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
+| WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 596 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
+| WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 596 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
+| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 618 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 618 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 618 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 618 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 618 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 361 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
-| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 617 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 623 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 623 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 618 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 624 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 624 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 179 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 361 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
 | WTF-BB-075 | Archived | Operator review 2026-05-30 | 2026-05-30 | Kiln integration / public test infrastructure | P2 | 10 | 441 | 2 | 3 | 2 | Accepted: open Shadownet puppet wallets are intentional faucet-funded builder convenience |
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 441 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-647 - Legacy channel message endpoints bypass board channel permissions
-
-- Category: Authorization / message board
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C4 + F4 + S2 + P1(4) = 14
-- Legacy identity: this distinct record formerly reused WTF-BB-078; it was assigned WTF-BB-647 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `server/routes.ts:97` mounts `messagesRoutes` before `boardRoutes`.
-  - `server/routes/messages.ts:1311-1342` reads legacy channel messages for any authenticated user without checking `canViewChannel`.
-  - `server/routes/messages.ts:1348-1366` inserts a message into any numeric `channelId` for any authenticated user without checking channel existence, `canPostInChannel`, locked state, slow mode, or role permissions.
-  - The newer board implementation has the needed channel permission helpers in `server/lib/board-channel-permissions.ts`.
-- Why it matters:
-  - Restricted/locked board channels can be read or posted to through older compatibility routes if a caller knows or guesses the channel id.
-- Likely correction direction:
-  - Either remove the legacy `/api/channels/*` message endpoints or adapt them to load the board channel and enforce the same `canViewChannel`/`canPostInChannel` checks as `server/routes/board.ts`.
-- Verification idea:
-  - Create a locked/staff-only channel; a witness/contestant should receive 403 from both legacy and new board endpoints for reads and writes.
 
 ### WTF-BB-126 - Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends
 
@@ -1380,6 +1360,25 @@ Total: **624** · Open: **42** · Claimed: **41** · In Progress: **13** · Bloc
 - Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.
 - Likely correction direction: Fail fast if region is required and absent, and pin the exact production connection target via validated environment configuration.
 - Verification idea: Remove `SUPABASE_REGION` in a non-`us-west-2` test setup and verify the script refuses to run rather than connecting to an unintended host.
+
+### WTF-BB-658 - PixAlerce inventory journey can wait forever after disabling every test and action timeout
+
+- Category: E2E reliability / PixAlerce
+- Priority: P2
+- Status: Open
+- Owner/Session: -
+- Last touched: 2026-08-30
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence:
+  - `tests/playwright/inventory/pixalerce.spec.mjs` calls `test.setTimeout(0)` for its encoder-heavy journey while the Playwright project also leaves action timeouts at zero.
+  - During `npm run test:e2e:inventory` on 2026-08-30, all five export artifacts completed, then the live trace stopped at `Frame.click` for the second PNG format selection with `timeout: 0`; no `after` event followed and the worker continued indefinitely.
+  - The run was terminated only after the trace proved that no repository-defined timeout or forward-progress condition remained.
+- Why it matters:
+  - One stalled UI action prevents the entire 699-check interaction suite from ever reporting a verdict, hiding later failures and blocking release evidence.
+- Likely correction direction:
+  - Keep a measured encoder allowance, but give every UI action and the overall journey an explicit authoritative bound or split the encoding and Media/Mint Manager phases into separately bounded tests with durable intermediate artifacts.
+- Verification idea:
+  - Force the second PNG selector to remain non-actionable and prove the test exits with a named step failure; then run the successful path twice and confirm it completes through My Photos, File Manager, and Mint Manager without indefinite waits.
 
 ### WTF-BB-238 - Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run
 
@@ -7597,6 +7596,28 @@ Copy this when adding a new issue:
 - Verification (2026-08-30):
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
+
+### WTF-BB-647 - Legacy channel message endpoints bypass board channel permissions
+
+- Category: Authorization / message board
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex legacy board authorization pass
+- Last touched: 2026-08-30
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Legacy identity: this distinct record formerly reused WTF-BB-078; it was assigned WTF-BB-647 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Root cause:
+  - The old `/api/channels/*` routes use the separate legacy `channels` and `messages` tables, not canonical `board_threads`; overlapping numeric IDs therefore cannot expose canonical board rows.
+  - The real authorization defect was still valid: legacy list/read/write routes ignored their own `channels.access_level` and the user's effective `read_message_board` / `post_message_board` permissions. Writes also relied on a foreign-key error instead of checking channel existence and accepted a reply parent from another channel.
+- Correction:
+  - `server/lib/legacy-channel-permissions.ts` now fails closed on unknown audiences and maps contestant, host, and witness legacy audiences while retaining staff access.
+  - Legacy channel listing filters inaccessible channels. Read and write routes load the actual legacy channel, combine its audience with effective multi-role message-board permissions, return explicit 403/404 results, and reject cross-channel reply parents.
+  - The canonical interaction inventory and social-domain API probes now cover legacy list/read/write reachability without changing the OS-default presentation.
+- Verification (2026-08-30):
+  - `npx tsx --test server/lib/legacy-channel-permissions.test.ts server/routes/messages-legacy-channel-policy.test.ts` passed 5/5 audience, permission-wiring, missing-channel, and cross-channel-parent policy checks.
+  - `npm run check -- --pretty false` passed.
+  - `npm run test:e2e:inventory:coverage` passed all inventory layers; the full browser run passed the updated social interoperability workflow, including the three legacy probes.
+  - The aggregate browser run could not produce a final verdict because the unrelated PixAlerce journey has an unbounded action wait; that newly discovered defect is cataloged as WTF-BB-658. Its unrelated Broot timeout passed alone in 8.1 seconds.
 
 ### WTF-BB-617 - Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification
 

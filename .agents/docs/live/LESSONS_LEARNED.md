@@ -10989,3 +10989,13 @@
 **Rule**: Off-host backup proof must bind the exact dump bytes to an independent target, verify size and digest after upload, prove enforced retention/immutability, and complete a remote-only restore drill. Local retention and metadata-only targets must never satisfy the off-host-upload requirement.
 
 ---
+
+## 2026-08-30 — Parallel legacy schemas need their own authorization boundary
+
+**What happened**: Legacy `/api/channels/*` routes were described as bypassing canonical board-channel permissions, but they query separate legacy `channels` and `messages` tables. The cross-schema ID claim was inaccurate; the real defect was that the legacy routes ignored their own audience field and the user's effective message-board permissions.
+
+**Why it mattered**: Treating two schemas as one obscured the actual leak and encouraged an unsafe adapter between unrelated IDs. Any authenticated account could list, read, or post in legacy channels outside its intended audience, and cross-channel reply parents were accepted.
+
+**Rule**: Prove which persistence model a compatibility route owns before reusing another domain's authorization helper. Enforce the source schema's audience, the platform permission, resource existence, and parent-resource scope together; make unknown legacy policy values fail closed.
+
+---

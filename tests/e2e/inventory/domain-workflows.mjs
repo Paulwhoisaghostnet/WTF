@@ -373,6 +373,9 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/board/categories" },
       { method: "GET", path: "/api/board/channels" },
+      { method: "GET", path: "/api/channels", expectedStatuses: [200, 401, 403] },
+      { method: "GET", path: "/api/channels/1/messages", expectedStatuses: [200, 401, 403, 404] },
+      { method: "POST", path: "/api/channels/1/messages", body: { content: "inventory probe" }, expectedStatuses: [201, 401, 403, 404] },
       { method: "GET", path: "/api/w/capabilities" },
       { method: "GET", path: "/api/w/timeline" },
       { method: "GET", path: "/api/w/admin/digest-handles", expectedStatuses: [200, 403] },
