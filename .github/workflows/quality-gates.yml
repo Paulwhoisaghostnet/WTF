@@ -123,3 +123,8 @@ jobs:
         run: |
           bash scripts/test-marketplace-contract.sh
           bash scripts/test-wtf-buyback-contract.sh
+          npm run contract:macaroni-v3:compile
+          git diff --exit-code -- \
+            public/creation-tools/macaroni/contract/macaroni-v3.contract.json \
+            public/creation-tools/macaroni/contract/macaroni-v3.storage.tz \
+            public/creation-tools/macaroni/contract/macaroni-v3.template.json

@@ -34,6 +34,10 @@ import {
   requestMacaroniReveal,
   registerMacaroniRevealAutomation,
 } from "../features/macaroni/reveal-automation";
+import {
+  createMacaroniRevealRegistrationChallenge,
+  verifyMacaroniRevealRegistrationProof,
+} from "../features/macaroni/reveal-auth";
 import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 import {
   listWtfosOutboxForSource,
@@ -91,10 +95,13 @@ const publishSchema = z.object({
 });
 
 const revealNetworkSchema = z.enum(["mainnet", "shadownet"]);
-const revealRegistrationSchema = z.object({
+const revealIdentitySchema = z.object({
   network: revealNetworkSchema,
   contract: z.string().regex(KT1_CONTRACT_ADDRESS),
   administrator: z.string().regex(/^(tz1|tz2|tz3|tz4)[1-9A-HJ-NP-Za-km-z]{33}$/),
+});
+const revealRegistrationSchema = z.object({
+  ...revealIdentitySchema.shape,
   mode: z.enum(["instant", "delayed"]),
   revealDelaySeconds: z.number().int().nonnegative(),
   tokens: z.array(z.object({
@@ -103,6 +110,11 @@ const revealRegistrationSchema = z.object({
     nonce: z.string().regex(/^[0-9a-f]{64}$/i),
     commitment: z.string().regex(/^[0-9a-f]{64}$/i),
   })).nonempty(),
+  proof: z.object({
+    nonce: z.string().regex(/^[0-9a-f]{64}$/i),
+    publicKey: z.string().trim().min(1).max(128),
+    signature: z.string().trim().min(1).max(256),
+  }),
 });
 const revealRequestSchema = z.object({
   network: revealNetworkSchema,
@@ -688,6 +700,20 @@ router.get("/api/macaroni/reveal-operator", async (req, res) => {
   }
 });
 
+router.post("/api/macaroni/reveal-automation/challenge", async (req, res) => {
+  const parsed = revealIdentitySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid Macaroni reveal registration identity" });
+  }
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(await createMacaroniRevealRegistrationChallenge(parsed.data));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not create reveal registration challenge";
+    return res.status(503).json({ error: message });
+  }
+});
+
 router.post(
   "/api/macaroni/reveal-automation",
   async (req, res) => {
@@ -696,10 +722,17 @@ router.post(
       return res.status(400).json({ error: "Invalid Macaroni reveal registration" });
     }
     try {
+      const { proof, ...registration } = parsed.data;
+      try {
+        await verifyMacaroniRevealRegistrationProof(registration, proof);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Reveal registration proof failed";
+        return res.status(401).json({ error: message });
+      }
       const user = req.user as { id?: number } | undefined;
       const job = await registerMacaroniRevealAutomation({
         ownerUserId: Number.isInteger(user?.id) ? Number(user?.id) : null,
-        ...parsed.data,
+        ...registration,
       });
       return res.status(201).json({
         ok: true,

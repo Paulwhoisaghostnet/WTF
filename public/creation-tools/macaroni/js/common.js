@@ -320,6 +320,27 @@ const MD = (() => {
     return addr;
   }
 
+  async function signMessage(message) {
+    await assertOperationSafety();
+    if (!wallet || !wallet.client || typeof wallet.client.requestSignPayload !== "function") {
+      throw new Error("connected wallet cannot sign the reveal registration");
+    }
+    const bytes = new TextEncoder().encode(String(message || ""));
+    const hex = Array.from(bytes)
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+    const result = await wallet.client.requestSignPayload({
+      signingType: "micheline",
+      payload: "0501" + bytes.length.toString(16).padStart(8, "0") + hex,
+    });
+    const account = await wallet.client.getActiveAccount();
+    const publicKey = account?.publicKey || (typeof wallet.getPK === "function" ? await wallet.getPK() : "");
+    if (!result?.signature || !publicKey) {
+      throw new Error("wallet did not return the signature and public key required for reveal registration");
+    }
+    return { signature: result.signature, publicKey };
+  }
+
   function beaconNetworkSpec() {
     const net = NETWORKS[netKey];
     return net.beaconNetwork === "custom"
@@ -1128,6 +1149,7 @@ const MD = (() => {
     restoreWallet,
     ensureSessionNetwork,
     assertOperationSafety,
+    signMessage,
     getAccount,
     getBalanceMutez,
     isAddress,

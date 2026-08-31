@@ -946,6 +946,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "POST", path: "/api/macaroni/packages", body: { title: "E2E Macaroni Package" }, expectedStatuses: [201, 400, 401, 403, 404, 500, 503] },
       { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [400, 401, 403, 404, 423, 500, 503] },
       { method: "GET", path: "/api/macaroni/reveal-operator?network=shadownet", expectedStatuses: [200, 400, 404, 500, 503] },
+      { method: "POST", path: "/api/macaroni/reveal-automation/challenge", body: {}, expectedStatuses: [400, 401, 403, 404, 429, 500, 503] },
       { method: "POST", path: "/api/macaroni/reveal-automation", body: {}, expectedStatuses: [400, 401, 403, 404, 409, 500, 503] },
       { method: "POST", path: "/api/macaroni/reveal-request", body: {}, expectedStatuses: [400, 404, 500, 503] },
       { method: "GET", path: "/api/arcade/my-games" },

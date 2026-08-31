@@ -687,6 +687,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   const contractSource = readFileSync("contracts/wtf-collections/MacaroniBlindMintFA2V3.py", "utf8");
   const compileSource = readFileSync("scripts/macaroni/compile-v3-contract-template.mjs", "utf8");
   const revealServiceSource = readFileSync("server/features/macaroni/reveal-automation.ts", "utf8");
+  const revealAuthSource = readFileSync("server/features/macaroni/reveal-auth.ts", "utf8");
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const schemaSource = readFileSync("shared/schema-macaroni.ts", "utf8");
   const appSource = readFileSync("server/app.ts", "utf8");
@@ -734,14 +735,26 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.doesNotMatch(contractSource, /pending_tokens/);
 
   assert.match(routeSource, /router\.get\("\/api\/macaroni\/reveal-operator"/);
+  assert.match(routeSource, /router\.post\("\/api\/macaroni\/reveal-automation\/challenge"/);
+  assert.match(routeSource, /await verifyMacaroniRevealRegistrationProof\(registration, proof\)/);
   assert.match(routeSource, /"\/api\/macaroni\/reveal-automation",\s*async \(req, res\)/s);
   assert.match(routeSource, /router\.post\("\/api\/macaroni\/reveal-request"/);
   assert.match(studioSource, /MACARONI_REVEAL_SERVICE_ORIGIN = IS_NATIVE_APP \? "https:\/\/wtfos\.app" : ""/);
   assert.match(studioSource, /credentials: "omit"/);
+  assert.match(studioSource, /await MD\.signMessage\(challenge\.message\)/);
+  assert.match(studioSource, /This does not send a transaction or charge tez/);
+  assert.match(studioSource, /one free signature proving control of the contract/);
+  assert.match(studioSource, /proof:\s*\{[\s\S]*nonce: challenge\.nonce,[\s\S]*publicKey: signed\.publicKey,[\s\S]*signature: signed\.signature/s);
+  assert.match(revealAuthSource, /MACARONI_REVEAL_REGISTRATION_VERSION/);
+  assert.match(revealAuthSource, /verifyPublicKeyOwnership/);
+  assert.match(revealAuthSource, /consumeWalletAuthNonce/);
+  assert.match(revealAuthSource, /verifyWalletSignature/);
   assert.match(revealServiceSource, /MACARONI_REVEAL_OPERATOR_MAINNET_SECRET_KEY/);
   assert.match(revealServiceSource, /MACARONI_REVEAL_OPERATOR_SHADOWNET_SECRET_KEY/);
   assert.match(revealServiceSource, /MACARONI_REVEAL_ENCRYPTION_KEY/);
   assert.match(revealServiceSource, /createCipheriv\("aes-256-gcm"/);
+  assert.match(revealServiceSource, /V3 reveal manifest must contain every token id exactly once/);
+  assert.match(revealServiceSource, /Number\(storage\.token_count\) !== tokens\.length/);
   assert.match(revealServiceSource, /contract\.methodsObject\.reveal_tokens_v3\(batch\)\.send\(\)/);
   assert.match(revealServiceSource, /export async function requestMacaroniReveal/);
   assert.match(schemaSource, /export const macaroniRevealJobs = pgTable/);

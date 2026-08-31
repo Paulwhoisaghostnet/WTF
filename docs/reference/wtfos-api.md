@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **901 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **915 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 901 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 915 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -106,8 +106,8 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `browser` | 2 | Server-assisted browser/session tooling. |
 | `buyback-windows` | 7 | Operations for the buyback windows domain. |
 | `cache` | 1 | Operations for the cache domain. |
-| `calendar` | 9 | Calendar sources, events, subscriptions, and synchronization. |
-| `casino` | 17 | Casino catalogue, game sessions, balances, wagers, and leaderboards. |
+| `calendar` | 11 | Calendar sources, events, subscriptions, and synchronization. |
+| `casino` | 21 | Casino catalogue, game sessions, balances, wagers, and leaderboards. |
 | `ch-ease` | 1 | Operations for the ch ease domain. |
 | `challenges` | 8 | Challenge catalogue, progress, completions, and reward automation. |
 | `channels` | 4 | Operations for the channels domain. |
@@ -141,15 +141,15 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `lasagna` | 1 | Operations for the lasagna domain. |
 | `leaderboard` | 6 | Platform leaderboards and ranking data. |
 | `links` | 4 | User and platform link records. |
-| `macaroni` | 15 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
+| `macaroni` | 19 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
 | `mail` | 8 | Mailbox, aliases, messages, attachments, and delivery administration. |
 | `marketplace` | 10 | NFT marketplace listings, offers, purchases, and chain synchronization. |
 | `mastodon` | 6 | Mastodon connection, timelines, identity, and posting. |
 | `mcp` | 3 | MCP pairing-token management; the root `/mcp` endpoint carries Streamable HTTP MCP traffic. |
 | `media` | 8 | Media library metadata, uploads, imports, files, and lifecycle management. |
-| `messages` | 18 | Direct-message conversations, messages, participants, and read state. |
+| `messages` | 21 | Direct-message conversations, messages, participants, and read state. |
 | `mint` | 4 | Mint portal configuration and minting workflows. |
-| `mint-manager` | 1 | Operations for the mint manager domain. |
+| `mint-manager` | 2 | Operations for the mint manager domain. |
 | `music` | 5 | Music catalogue, playback metadata, and library actions. |
 | `notifications` | 6 | Notification feeds, preferences, and read state. |
 | `objkt-operator` | 11 | Operations for the objkt operator domain. |
@@ -192,7 +192,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 437**, **PATCH 36**, **POST 307**, **PUT 63**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 135**, **Public/handler 207**, **Session 455**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 442**, **PATCH 36**, **POST 315**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 137**, **Public/handler 211**, **Session 463**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -267,7 +267,7 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | POST | `/api/admin/role-access/reset` | Create, submit, or run admin role access reset. | Admin | `server/features/admin/role-access-routes.ts:153` |
 | GET | `/api/admin/roles` | Read or list admin roles. | Admin | `server/features/admin/role-access-routes.ts:52` |
 | POST | `/api/admin/roles` | Create, submit, or run admin roles. | Admin | `server/features/admin/role-access-routes.ts:64` |
-| GET | `/api/admin/stats` | Read or list admin stats. | Admin | `server/features/admin/stats-routes.ts:18` |
+| GET | `/api/admin/stats` | Read or list admin stats. | Admin | `server/features/admin/stats-routes.ts:22` |
 | POST | `/api/admin/storage/object-usage-check` | Create, submit, or run admin storage object usage check. | Admin | `server/features/admin/media-storage-routes.ts:136` |
 | GET | `/api/admin/storage/status` | Read or list admin storage status. | Admin | `server/features/admin/media-storage-routes.ts:102` |
 | GET | `/api/admin/users` | Read or list admin users. | Admin | `server/features/admin/users/identity-profile-routes.ts:43` |
@@ -532,13 +532,13 @@ Operations for the buyback windows domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/buyback-windows` | Read or list buyback windows. | Permission | `server/routes/buyback-windows.ts:146` |
-| POST | `/api/buyback-windows` | Create, submit, or run buyback windows. | Permission | `server/routes/buyback-windows.ts:95` |
-| POST | `/api/buyback-windows/:id/allowlist` | Create, submit, or run buyback windows id allowlist. | Permission | `server/routes/buyback-windows.ts:164` |
-| GET | `/api/buyback-windows/:id/eligibility` | Read or list buyback windows id eligibility. | Session | `server/routes/buyback-windows.ts:383` |
-| POST | `/api/buyback-windows/:id/swap-intent` | Create, submit, or run buyback windows id swap intent. | Session | `server/routes/buyback-windows.ts:446` |
-| POST | `/api/buyback-windows/:id/transition` | Create, submit, or run buyback windows id transition. | Permission | `server/routes/buyback-windows.ts:275` |
-| GET | `/api/buyback-windows/active` | Read or list buyback windows active. | Public/handler | `server/routes/buyback-windows.ts:351` |
+| GET | `/api/buyback-windows` | Read or list buyback windows. | Permission | `server/routes/buyback-windows.ts:155` |
+| POST | `/api/buyback-windows` | Create, submit, or run buyback windows. | Permission | `server/routes/buyback-windows.ts:104` |
+| POST | `/api/buyback-windows/:id/allowlist` | Create, submit, or run buyback windows id allowlist. | Permission | `server/routes/buyback-windows.ts:173` |
+| GET | `/api/buyback-windows/:id/eligibility` | Read or list buyback windows id eligibility. | Session | `server/routes/buyback-windows.ts:442` |
+| POST | `/api/buyback-windows/:id/swap-intent` | Create, submit, or run buyback windows id swap intent. | Session | `server/routes/buyback-windows.ts:519` |
+| POST | `/api/buyback-windows/:id/transition` | Create, submit, or run buyback windows id transition. | Permission | `server/routes/buyback-windows.ts:299` |
+| GET | `/api/buyback-windows/active` | Read or list buyback windows active. | Public/handler | `server/routes/buyback-windows.ts:410` |
 
 </details>
 
@@ -554,48 +554,54 @@ Operations for the cache domain.
 </details>
 
 <details>
-<summary><code>calendar</code> — 9 operations</summary>
+<summary><code>calendar</code> — 11 operations</summary>
 
 Calendar sources, events, subscriptions, and synchronization.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/calendar/events` | Read or list calendar events. | Public/handler | `server/routes/calendar.ts:319` |
-| POST | `/api/calendar/events` | Create, submit, or run calendar events. | Permission | `server/routes/calendar.ts:401` |
-| PATCH | `/api/calendar/events/:id` | Partially update calendar events id. | Permission | `server/routes/calendar.ts:448` |
-| GET | `/api/calendar/feed.ics` | Read or list calendar feed.ics. | Public/handler | `server/routes/calendar.ts:534` |
-| POST | `/api/calendar/sync` | Create, submit, or run calendar sync. | Permission | `server/routes/calendar.ts:498` |
-| POST | `/api/calendar/tickets` | Create, submit, or run calendar tickets. | Session | `server/routes/calendar.ts:64` |
-| POST | `/api/calendar/tickets/:id/decide` | Create, submit, or run calendar tickets id decide. | Permission | `server/routes/calendar.ts:180` |
-| GET | `/api/calendar/tickets/mine` | Read or list calendar tickets mine. | Session | `server/routes/calendar.ts:100` |
-| GET | `/api/calendar/tickets/queue` | Read or list calendar tickets queue. | Permission | `server/routes/calendar.ts:120` |
+| GET | `/api/calendar/events` | Read or list calendar events. | Public/handler | `server/routes/calendar.ts:496` |
+| POST | `/api/calendar/events` | Create, submit, or run calendar events. | Permission | `server/routes/calendar.ts:578` |
+| PATCH | `/api/calendar/events/:id` | Partially update calendar events id. | Permission | `server/routes/calendar.ts:625` |
+| GET | `/api/calendar/feed.ics` | Read or list calendar feed.ics. | Public/handler | `server/routes/calendar.ts:711` |
+| PUT | `/api/calendar/participations` | Replace or set calendar participations. | Session | `server/routes/calendar.ts:161` |
+| GET | `/api/calendar/participations/mine` | Read or list calendar participations mine. | Session | `server/routes/calendar.ts:134` |
+| POST | `/api/calendar/sync` | Create, submit, or run calendar sync. | Permission | `server/routes/calendar.ts:675` |
+| POST | `/api/calendar/tickets` | Create, submit, or run calendar tickets. | Session | `server/routes/calendar.ts:66` |
+| POST | `/api/calendar/tickets/:id/decide` | Create, submit, or run calendar tickets id decide. | Permission | `server/routes/calendar.ts:357` |
+| GET | `/api/calendar/tickets/mine` | Read or list calendar tickets mine. | Session | `server/routes/calendar.ts:102` |
+| GET | `/api/calendar/tickets/queue` | Read or list calendar tickets queue. | Permission | `server/routes/calendar.ts:297` |
 
 </details>
 
 <details>
-<summary><code>casino</code> — 17 operations</summary>
+<summary><code>casino</code> — 21 operations</summary>
 
 Casino catalogue, game sessions, balances, wagers, and leaderboards.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/casino/entry` | Create, submit, or run casino entry. | Session | `server/routes/casino.ts:195` |
-| GET | `/api/casino/games` | Read or list casino games. | Session | `server/routes/casino.ts:142` |
-| POST | `/api/casino/guinea-pig-raceway/bet` | Create, submit, or run casino guinea pig raceway bet. | Session | `server/routes/casino.ts:347` |
-| POST | `/api/casino/guinea-pig-raceway/effect` | Create, submit, or run casino guinea pig raceway effect. | Session | `server/routes/casino.ts:367` |
-| GET | `/api/casino/guinea-pig-raceway/state` | Read or list casino guinea pig raceway state. | Session | `server/routes/casino.ts:337` |
-| POST | `/api/casino/membership-intents` | Create, submit, or run casino membership intents. | Session | `server/routes/casino.ts:156` |
-| POST | `/api/casino/membership-verify` | Create, submit, or run casino membership verify. | Session | `server/routes/casino.ts:176` |
-| POST | `/api/casino/rug-pull/delay` | Create, submit, or run casino rug pull delay. | Session | `server/routes/casino.ts:291` |
-| POST | `/api/casino/rug-pull/join` | Create, submit, or run casino rug pull join. | Session | `server/routes/casino.ts:280` |
-| POST | `/api/casino/rug-pull/press` | Create, submit, or run casino rug pull press. | Session | `server/routes/casino.ts:302` |
-| GET | `/api/casino/rug-pull/state` | Read or list casino rug pull state. | Session | `server/routes/casino.ts:270` |
-| POST | `/api/casino/rug-pull/vote` | Create, submit, or run casino rug pull vote. | Session | `server/routes/casino.ts:324` |
-| POST | `/api/casino/rug-pull/witness` | Create, submit, or run casino rug pull witness. | Session | `server/routes/casino.ts:313` |
-| GET | `/api/casino/status` | Read or list casino status. | Session | `server/routes/casino.ts:134` |
-| POST | `/api/casino/wtf-button/press` | Create, submit, or run casino wtf button press. | Session | `server/routes/casino.ts:248` |
-| POST | `/api/casino/wtf-button/quote` | Create, submit, or run casino wtf button quote. | Session | `server/routes/casino.ts:228` |
-| GET | `/api/casino/wtf-button/state` | Read or list casino wtf button state. | Session | `server/routes/casino.ts:218` |
+| POST | `/api/casino/entry` | Create, submit, or run casino entry. | Session | `server/routes/casino.ts:339` |
+| GET | `/api/casino/games` | Read or list casino games. | Session | `server/routes/casino.ts:170` |
+| POST | `/api/casino/guinea-pig-raceway/bet` | Create, submit, or run casino guinea pig raceway bet. | Session | `server/routes/casino.ts:491` |
+| POST | `/api/casino/guinea-pig-raceway/effect` | Create, submit, or run casino guinea pig raceway effect. | Session | `server/routes/casino.ts:511` |
+| GET | `/api/casino/guinea-pig-raceway/state` | Read or list casino guinea pig raceway state. | Session | `server/routes/casino.ts:481` |
+| POST | `/api/casino/membership-intents` | Create, submit, or run casino membership intents. | Session | `server/routes/casino.ts:300` |
+| POST | `/api/casino/membership-verify` | Create, submit, or run casino membership verify. | Session | `server/routes/casino.ts:320` |
+| GET | `/api/casino/practice-games` | Read or list casino practice games. | Session | `server/routes/casino.ts:184` |
+| POST | `/api/casino/practice-games` | Create, submit, or run casino practice games. | Session | `server/routes/casino.ts:207` |
+| POST | `/api/casino/practice-games/:id/review` | Create, submit, or run casino practice games id review. | Session | `server/routes/casino.ts:233` |
+| POST | `/api/casino/practice-games/:slug/play` | Create, submit, or run casino practice games slug play. | Session | `server/routes/casino.ts:269` |
+| POST | `/api/casino/rug-pull/delay` | Create, submit, or run casino rug pull delay. | Session | `server/routes/casino.ts:435` |
+| POST | `/api/casino/rug-pull/join` | Create, submit, or run casino rug pull join. | Session | `server/routes/casino.ts:424` |
+| POST | `/api/casino/rug-pull/press` | Create, submit, or run casino rug pull press. | Session | `server/routes/casino.ts:446` |
+| GET | `/api/casino/rug-pull/state` | Read or list casino rug pull state. | Session | `server/routes/casino.ts:414` |
+| POST | `/api/casino/rug-pull/vote` | Create, submit, or run casino rug pull vote. | Session | `server/routes/casino.ts:468` |
+| POST | `/api/casino/rug-pull/witness` | Create, submit, or run casino rug pull witness. | Session | `server/routes/casino.ts:457` |
+| GET | `/api/casino/status` | Read or list casino status. | Session | `server/routes/casino.ts:162` |
+| POST | `/api/casino/wtf-button/press` | Create, submit, or run casino wtf button press. | Session | `server/routes/casino.ts:392` |
+| POST | `/api/casino/wtf-button/quote` | Create, submit, or run casino wtf button quote. | Session | `server/routes/casino.ts:372` |
+| GET | `/api/casino/wtf-button/state` | Read or list casino wtf button state. | Session | `server/routes/casino.ts:362` |
 
 </details>
 
@@ -635,10 +641,10 @@ Operations for the channels domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/channels` | Read or list channels. | Session | `server/routes/messages.ts:1411` |
-| POST | `/api/channels` | Create, submit, or run channels. | Permission | `server/routes/messages.ts:1424` |
-| GET | `/api/channels/:id/messages` | Read or list channels id messages. | Session | `server/routes/messages.ts:1454` |
-| POST | `/api/channels/:id/messages` | Create, submit, or run channels id messages. | Session | `server/routes/messages.ts:1491` |
+| GET | `/api/channels` | Read or list channels. | Session | `server/routes/messages.ts:1632` |
+| POST | `/api/channels` | Create, submit, or run channels. | Permission | `server/routes/messages.ts:1649` |
+| GET | `/api/channels/:id/messages` | Read or list channels id messages. | Session | `server/routes/messages.ts:1679` |
+| POST | `/api/channels/:id/messages` | Create, submit, or run channels id messages. | Session | `server/routes/messages.ts:1734` |
 
 </details>
 
@@ -1136,17 +1142,17 @@ User and platform link records.
 </details>
 
 <details>
-<summary><code>macaroni</code> — 15 operations</summary>
+<summary><code>macaroni</code> — 19 operations</summary>
 
 Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:635` |
-| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:571` |
-| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:538` |
-| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:504` |
-| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:600` |
+| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:671` |
+| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:607` |
+| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:574` |
+| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:540` |
+| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:636` |
 | GET | `/api/macaroni/packages` | Read or list macaroni packages. | Permission | `server/routes/macaroni-packages.ts:282` |
 | POST | `/api/macaroni/packages` | Create, submit, or run macaroni packages. | Permission | `server/routes/macaroni-packages.ts:305` |
 | GET | `/api/macaroni/packages/:packageId` | Read or list macaroni packages packageId. | Permission | `server/routes/macaroni-packages.ts:398` |
@@ -1156,7 +1162,11 @@ Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploa
 | POST | `/api/macaroni/packages/:packageId/items` | Create, submit, or run macaroni packages packageId items. | Permission | `server/routes/macaroni-packages.ts:420` |
 | PATCH | `/api/macaroni/packages/:packageId/items/:itemId` | Partially update macaroni packages packageId items itemId. | Permission | `server/routes/macaroni-packages.ts:541` |
 | GET | `/api/macaroni/packages/:packageId/source` | Read or list macaroni packages packageId source. | Permission | `server/routes/macaroni-packages.ts:773` |
-| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:655` |
+| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:763` |
+| POST | `/api/macaroni/reveal-automation` | Create, submit, or run macaroni reveal automation. | Public/handler | `server/routes/macaroni.ts:717` |
+| POST | `/api/macaroni/reveal-automation/challenge` | Create, submit, or run macaroni reveal automation challenge. | Public/handler | `server/routes/macaroni.ts:703` |
+| GET | `/api/macaroni/reveal-operator` | Read or list macaroni reveal operator. | Public/handler | `server/routes/macaroni.ts:691` |
+| POST | `/api/macaroni/reveal-request` | Create, submit, or run macaroni reveal request. | Public/handler | `server/routes/macaroni.ts:751` |
 
 </details>
 
@@ -1246,30 +1256,33 @@ Media library metadata, uploads, imports, files, and lifecycle management.
 </details>
 
 <details>
-<summary><code>messages</code> — 18 operations</summary>
+<summary><code>messages</code> — 21 operations</summary>
 
 Direct-message conversations, messages, participants, and read state.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| DELETE | `/api/messages/:id` | Delete, revoke, or stop messages id. | Session | `server/routes/messages.ts:1563` |
-| PUT | `/api/messages/:id` | Replace or set messages id. | Session | `server/routes/messages.ts:1528` |
-| PUT | `/api/messages/:id/pin` | Replace or set messages id pin. | Permission | `server/routes/messages.ts:1589` |
-| GET | `/api/messages/dms` | Read or list messages dms. | Session | `server/routes/messages.ts:279` |
-| POST | `/api/messages/dms` | Create, submit, or run messages dms. | Session | `server/routes/messages.ts:424` |
-| GET | `/api/messages/dms/:id/messages` | Read or list messages dms id messages. | Session | `server/routes/messages.ts:532` |
-| POST | `/api/messages/dms/:id/messages` | Create, submit, or run messages dms id messages. | Session | `server/routes/messages.ts:599` |
-| PUT | `/api/messages/dms/:id/messages/:messageId/pin` | Replace or set messages dms id messages messageId pin. | Session | `server/routes/messages.ts:791` |
-| GET | `/api/messages/dms/:id/pins` | Read or list messages dms id pins. | Session | `server/routes/messages.ts:868` |
-| PUT | `/api/messages/dms/:id/read` | Replace or set messages dms id read. | Session | `server/routes/messages.ts:919` |
-| GET | `/api/messages/threads` | Read or list messages threads. | Public/handler | `server/routes/messages.ts:953` |
-| POST | `/api/messages/threads` | Create, submit, or run messages threads. | Permission | `server/routes/messages.ts:1019` |
-| DELETE | `/api/messages/threads/:id` | Delete, revoke, or stop messages threads id. | Permission | `server/routes/messages.ts:1369` |
-| GET | `/api/messages/threads/:id` | Read or list messages threads id. | Public/handler | `server/routes/messages.ts:1085` |
-| PUT | `/api/messages/threads/:id` | Replace or set messages threads id. | Permission | `server/routes/messages.ts:1270` |
-| POST | `/api/messages/threads/:id/replies` | Create, submit, or run messages threads id replies. | Session | `server/routes/messages.ts:1160` |
-| DELETE | `/api/messages/threads/:threadId/replies/:replyId` | Delete, revoke, or stop messages threads threadId replies replyId. | Session | `server/routes/messages.ts:1230` |
-| GET | `/api/messages/users` | Read or list messages users. | Session | `server/routes/messages.ts:173` |
+| DELETE | `/api/messages/:id` | Delete, revoke, or stop messages id. | Session | `server/routes/messages.ts:1838` |
+| PUT | `/api/messages/:id` | Replace or set messages id. | Session | `server/routes/messages.ts:1803` |
+| PUT | `/api/messages/:id/pin` | Replace or set messages id pin. | Permission | `server/routes/messages.ts:1864` |
+| GET | `/api/messages/dm-reports` | Read or list messages dm reports. | Permission | `server/routes/messages.ts:1037` |
+| POST | `/api/messages/dm-reports/:id/review` | Create, submit, or run messages dm reports id review. | Permission | `server/routes/messages.ts:1104` |
+| GET | `/api/messages/dms` | Read or list messages dms. | Session | `server/routes/messages.ts:283` |
+| POST | `/api/messages/dms` | Create, submit, or run messages dms. | Session | `server/routes/messages.ts:428` |
+| POST | `/api/messages/dms/:conversationId/messages/:messageId/report` | Create, submit, or run messages dms conversationId messages messageId report. | Session | `server/routes/messages.ts:959` |
+| GET | `/api/messages/dms/:id/messages` | Read or list messages dms id messages. | Session | `server/routes/messages.ts:536` |
+| POST | `/api/messages/dms/:id/messages` | Create, submit, or run messages dms id messages. | Session | `server/routes/messages.ts:603` |
+| PUT | `/api/messages/dms/:id/messages/:messageId/pin` | Replace or set messages dms id messages messageId pin. | Session | `server/routes/messages.ts:795` |
+| GET | `/api/messages/dms/:id/pins` | Read or list messages dms id pins. | Session | `server/routes/messages.ts:872` |
+| PUT | `/api/messages/dms/:id/read` | Replace or set messages dms id read. | Session | `server/routes/messages.ts:923` |
+| GET | `/api/messages/threads` | Read or list messages threads. | Public/handler | `server/routes/messages.ts:1174` |
+| POST | `/api/messages/threads` | Create, submit, or run messages threads. | Permission | `server/routes/messages.ts:1240` |
+| DELETE | `/api/messages/threads/:id` | Delete, revoke, or stop messages threads id. | Permission | `server/routes/messages.ts:1590` |
+| GET | `/api/messages/threads/:id` | Read or list messages threads id. | Public/handler | `server/routes/messages.ts:1306` |
+| PUT | `/api/messages/threads/:id` | Replace or set messages threads id. | Permission | `server/routes/messages.ts:1491` |
+| POST | `/api/messages/threads/:id/replies` | Create, submit, or run messages threads id replies. | Session | `server/routes/messages.ts:1381` |
+| DELETE | `/api/messages/threads/:threadId/replies/:replyId` | Delete, revoke, or stop messages threads threadId replies replyId. | Session | `server/routes/messages.ts:1451` |
+| GET | `/api/messages/users` | Read or list messages users. | Session | `server/routes/messages.ts:177` |
 
 </details>
 
@@ -1288,13 +1301,14 @@ Mint portal configuration and minting workflows.
 </details>
 
 <details>
-<summary><code>mint-manager</code> — 1 operations</summary>
+<summary><code>mint-manager</code> — 2 operations</summary>
 
 Operations for the mint manager domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/mint-manager/receipt` | Create, submit, or run mint manager receipt. | Session | `server/routes/mint-manager.ts:65` |
+| POST | `/api/mint-manager/receipt` | Create, submit, or run mint manager receipt. | Session | `server/routes/mint-manager.ts:122` |
+| GET | `/api/mint-manager/receipts/:mediaItemId` | Read or list mint manager receipts mediaItemId. | Session | `server/routes/mint-manager.ts:98` |
 
 </details>
 
@@ -1584,7 +1598,7 @@ Season catalogue and active-season state.
 | DELETE | `/api/seasons/:id` | Delete, revoke, or stop seasons id. | Permission | `server/routes/seasons.ts:275` |
 | GET | `/api/seasons/:id` | Read or list seasons id. | Public/handler | `server/routes/seasons.ts:186` |
 | PUT | `/api/seasons/:id` | Replace or set seasons id. | Permission | `server/routes/seasons.ts:236` |
-| POST | `/api/seasons/:id/ante/attest` | Create, submit, or run seasons id ante attest. | Session | `server/routes/wtf-recapture.ts:105` |
+| POST | `/api/seasons/:id/ante/attest` | Create, submit, or run seasons id ante attest. | Session | `server/routes/wtf-recapture.ts:106` |
 | GET | `/api/seasons/:id/contestants` | Read or list seasons id contestants. | Permission | `server/routes/control-board.ts:313` |
 
 </details>
@@ -1601,8 +1615,8 @@ Side-quest catalogue, progress, and completion.
 | GET | `/api/side-quests/:id` | Read or list side quests id. | Session | `server/routes/side-quests.ts:422` |
 | PUT | `/api/side-quests/:id` | Replace or set side quests id. | Permission | `server/routes/side-quests.ts:525` |
 | POST | `/api/side-quests/:id/complete` | Create, submit, or run side quests id complete. | Session | `server/routes/side-quests.ts:584` |
-| POST | `/api/side-quests/:id/entry-fee/:feeId/confirm` | Create, submit, or run side quests id entry fee feeId confirm. | Permission | `server/routes/wtf-recapture.ts:287` |
-| POST | `/api/side-quests/:id/entry-fee/attest` | Create, submit, or run side quests id entry fee attest. | Session | `server/routes/wtf-recapture.ts:194` |
+| POST | `/api/side-quests/:id/entry-fee/:feeId/confirm` | Create, submit, or run side quests id entry fee feeId confirm. | Permission | `server/routes/wtf-recapture.ts:288` |
+| POST | `/api/side-quests/:id/entry-fee/attest` | Create, submit, or run side quests id entry fee attest. | Session | `server/routes/wtf-recapture.ts:195` |
 | GET | `/api/side-quests/my/completions` | Read or list side quests my completions. | Session | `server/routes/side-quests.ts:469` |
 
 </details>
@@ -1974,12 +1988,12 @@ WTF auction creation, bidding, state transitions, and settlement.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/wtf-auctions` | Read or list wtf auctions. | Public/handler | `server/routes/wtf-auctions.ts:263` |
-| POST | `/api/wtf-auctions` | Create, submit, or run wtf auctions. | Permission | `server/routes/wtf-auctions.ts:79` |
-| GET | `/api/wtf-auctions/:id` | Read or list wtf auctions id. | Public/handler | `server/routes/wtf-auctions.ts:277` |
-| POST | `/api/wtf-auctions/:id/bids` | Create, submit, or run wtf auctions id bids. | Session | `server/routes/wtf-auctions.ts:311` |
-| POST | `/api/wtf-auctions/:id/settle` | Create, submit, or run wtf auctions id settle. | Permission | `server/routes/wtf-auctions.ts:182` |
-| POST | `/api/wtf-auctions/:id/transition` | Create, submit, or run wtf auctions id transition. | Permission | `server/routes/wtf-auctions.ts:129` |
+| GET | `/api/wtf-auctions` | Read or list wtf auctions. | Public/handler | `server/routes/wtf-auctions.ts:266` |
+| POST | `/api/wtf-auctions` | Create, submit, or run wtf auctions. | Permission | `server/routes/wtf-auctions.ts:82` |
+| GET | `/api/wtf-auctions/:id` | Read or list wtf auctions id. | Public/handler | `server/routes/wtf-auctions.ts:280` |
+| POST | `/api/wtf-auctions/:id/bids` | Create, submit, or run wtf auctions id bids. | Session | `server/routes/wtf-auctions.ts:314` |
+| POST | `/api/wtf-auctions/:id/settle` | Create, submit, or run wtf auctions id settle. | Permission | `server/routes/wtf-auctions.ts:185` |
+| POST | `/api/wtf-auctions/:id/transition` | Create, submit, or run wtf auctions id transition. | Permission | `server/routes/wtf-auctions.ts:132` |
 
 </details>
 
@@ -2034,8 +2048,8 @@ WTF Recapture personal state and leaderboard.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/wtf-recapture/leaderboard` | Read or list wtf recapture leaderboard. | Public/handler | `server/routes/wtf-recapture.ts:33` |
-| GET | `/api/wtf-recapture/mine` | Read or list wtf recapture mine. | Session | `server/routes/wtf-recapture.ts:81` |
+| GET | `/api/wtf-recapture/leaderboard` | Read or list wtf recapture leaderboard. | Public/handler | `server/routes/wtf-recapture.ts:34` |
+| GET | `/api/wtf-recapture/mine` | Read or list wtf recapture mine. | Session | `server/routes/wtf-recapture.ts:82` |
 
 </details>
 

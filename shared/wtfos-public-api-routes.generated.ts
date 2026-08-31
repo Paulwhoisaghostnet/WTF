@@ -610,7 +610,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list admin stats.",
     "declaredAccess": "Admin",
     "sources": [
-      "server/features/admin/stats-routes.ts:18"
+      "server/features/admin/stats-routes.ts:22"
     ]
   },
   {
@@ -1865,7 +1865,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list buyback windows.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/buyback-windows.ts:146"
+      "server/routes/buyback-windows.ts:155"
     ]
   },
   {
@@ -1874,7 +1874,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run buyback windows.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/buyback-windows.ts:95"
+      "server/routes/buyback-windows.ts:104"
     ]
   },
   {
@@ -1883,7 +1883,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run buyback windows id allowlist.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/buyback-windows.ts:164"
+      "server/routes/buyback-windows.ts:173"
     ]
   },
   {
@@ -1892,7 +1892,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list buyback windows id eligibility.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/buyback-windows.ts:383"
+      "server/routes/buyback-windows.ts:442"
     ]
   },
   {
@@ -1901,7 +1901,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run buyback windows id swap intent.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/buyback-windows.ts:446"
+      "server/routes/buyback-windows.ts:519"
     ]
   },
   {
@@ -1910,7 +1910,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run buyback windows id transition.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/buyback-windows.ts:275"
+      "server/routes/buyback-windows.ts:299"
     ]
   },
   {
@@ -1919,7 +1919,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list buyback windows active.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/buyback-windows.ts:351"
+      "server/routes/buyback-windows.ts:410"
     ]
   },
   {
@@ -1937,7 +1937,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list calendar events.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/calendar.ts:319"
+      "server/routes/calendar.ts:496"
     ]
   },
   {
@@ -1946,7 +1946,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run calendar events.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/calendar.ts:401"
+      "server/routes/calendar.ts:578"
     ]
   },
   {
@@ -1955,7 +1955,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Partially update calendar events id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/calendar.ts:448"
+      "server/routes/calendar.ts:625"
     ]
   },
   {
@@ -1964,7 +1964,25 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list calendar feed.ics.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/calendar.ts:534"
+      "server/routes/calendar.ts:711"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/calendar/participations",
+    "purpose": "Replace or set calendar participations.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/calendar.ts:161"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/calendar/participations/mine",
+    "purpose": "Read or list calendar participations mine.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/calendar.ts:134"
     ]
   },
   {
@@ -1973,7 +1991,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run calendar sync.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/calendar.ts:498"
+      "server/routes/calendar.ts:675"
     ]
   },
   {
@@ -1982,7 +2000,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run calendar tickets.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/calendar.ts:64"
+      "server/routes/calendar.ts:66"
     ]
   },
   {
@@ -1991,7 +2009,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run calendar tickets id decide.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/calendar.ts:180"
+      "server/routes/calendar.ts:357"
     ]
   },
   {
@@ -2000,7 +2018,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list calendar tickets mine.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/calendar.ts:100"
+      "server/routes/calendar.ts:102"
     ]
   },
   {
@@ -2009,7 +2027,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list calendar tickets queue.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/calendar.ts:120"
+      "server/routes/calendar.ts:297"
     ]
   },
   {
@@ -2018,7 +2036,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino entry.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:195"
+      "server/routes/casino.ts:339"
     ]
   },
   {
@@ -2027,7 +2045,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list casino games.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:142"
+      "server/routes/casino.ts:170"
     ]
   },
   {
@@ -2036,7 +2054,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino guinea pig raceway bet.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:347"
+      "server/routes/casino.ts:491"
     ]
   },
   {
@@ -2045,7 +2063,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino guinea pig raceway effect.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:367"
+      "server/routes/casino.ts:511"
     ]
   },
   {
@@ -2054,7 +2072,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list casino guinea pig raceway state.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:337"
+      "server/routes/casino.ts:481"
     ]
   },
   {
@@ -2063,7 +2081,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino membership intents.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:156"
+      "server/routes/casino.ts:300"
     ]
   },
   {
@@ -2072,7 +2090,43 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino membership verify.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:176"
+      "server/routes/casino.ts:320"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/casino/practice-games",
+    "purpose": "Read or list casino practice games.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/casino.ts:184"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/casino/practice-games",
+    "purpose": "Create, submit, or run casino practice games.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/casino.ts:207"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/casino/practice-games/:id/review",
+    "purpose": "Create, submit, or run casino practice games id review.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/casino.ts:233"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/casino/practice-games/:slug/play",
+    "purpose": "Create, submit, or run casino practice games slug play.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/casino.ts:269"
     ]
   },
   {
@@ -2081,7 +2135,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino rug pull delay.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:291"
+      "server/routes/casino.ts:435"
     ]
   },
   {
@@ -2090,7 +2144,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino rug pull join.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:280"
+      "server/routes/casino.ts:424"
     ]
   },
   {
@@ -2099,7 +2153,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino rug pull press.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:302"
+      "server/routes/casino.ts:446"
     ]
   },
   {
@@ -2108,7 +2162,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list casino rug pull state.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:270"
+      "server/routes/casino.ts:414"
     ]
   },
   {
@@ -2117,7 +2171,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino rug pull vote.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:324"
+      "server/routes/casino.ts:468"
     ]
   },
   {
@@ -2126,7 +2180,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino rug pull witness.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:313"
+      "server/routes/casino.ts:457"
     ]
   },
   {
@@ -2135,7 +2189,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list casino status.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:134"
+      "server/routes/casino.ts:162"
     ]
   },
   {
@@ -2144,7 +2198,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino wtf button press.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:248"
+      "server/routes/casino.ts:392"
     ]
   },
   {
@@ -2153,7 +2207,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run casino wtf button quote.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:228"
+      "server/routes/casino.ts:372"
     ]
   },
   {
@@ -2162,7 +2216,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list casino wtf button state.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/casino.ts:218"
+      "server/routes/casino.ts:362"
     ]
   },
   {
@@ -2252,7 +2306,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list channels.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1411"
+      "server/routes/messages.ts:1632"
     ]
   },
   {
@@ -2261,7 +2315,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run channels.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/messages.ts:1424"
+      "server/routes/messages.ts:1649"
     ]
   },
   {
@@ -2270,7 +2324,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list channels id messages.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1454"
+      "server/routes/messages.ts:1679"
     ]
   },
   {
@@ -2279,7 +2333,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run channels id messages.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1491"
+      "server/routes/messages.ts:1734"
     ]
   },
   {
@@ -4016,7 +4070,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni installers.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:635"
+      "server/routes/macaroni.ts:671"
     ]
   },
   {
@@ -4025,7 +4079,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs pin.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:571"
+      "server/routes/macaroni.ts:607"
     ]
   },
   {
@@ -4034,7 +4088,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:538"
+      "server/routes/macaroni.ts:574"
     ]
   },
   {
@@ -4043,7 +4097,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload ticket.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:504"
+      "server/routes/macaroni.ts:540"
     ]
   },
   {
@@ -4052,7 +4106,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni media preview.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:600"
+      "server/routes/macaroni.ts:636"
     ]
   },
   {
@@ -4142,7 +4196,43 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni publish.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:655"
+      "server/routes/macaroni.ts:763"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/reveal-automation",
+    "purpose": "Create, submit, or run macaroni reveal automation.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:717"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/reveal-automation/challenge",
+    "purpose": "Create, submit, or run macaroni reveal automation challenge.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:703"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/reveal-operator",
+    "purpose": "Read or list macaroni reveal operator.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:691"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/reveal-request",
+    "purpose": "Create, submit, or run macaroni reveal request.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:751"
     ]
   },
   {
@@ -4466,7 +4556,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop messages id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1563"
+      "server/routes/messages.ts:1838"
     ]
   },
   {
@@ -4475,7 +4565,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set messages id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1528"
+      "server/routes/messages.ts:1803"
     ]
   },
   {
@@ -4484,7 +4574,25 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set messages id pin.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/messages.ts:1589"
+      "server/routes/messages.ts:1864"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/messages/dm-reports",
+    "purpose": "Read or list messages dm reports.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/routes/messages.ts:1037"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/messages/dm-reports/:id/review",
+    "purpose": "Create, submit, or run messages dm reports id review.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/routes/messages.ts:1104"
     ]
   },
   {
@@ -4493,7 +4601,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages dms.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:279"
+      "server/routes/messages.ts:283"
     ]
   },
   {
@@ -4502,7 +4610,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run messages dms.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:424"
+      "server/routes/messages.ts:428"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/messages/dms/:conversationId/messages/:messageId/report",
+    "purpose": "Create, submit, or run messages dms conversationId messages messageId report.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/messages.ts:959"
     ]
   },
   {
@@ -4511,7 +4628,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages dms id messages.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:532"
+      "server/routes/messages.ts:536"
     ]
   },
   {
@@ -4520,7 +4637,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run messages dms id messages.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:599"
+      "server/routes/messages.ts:603"
     ]
   },
   {
@@ -4529,7 +4646,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set messages dms id messages messageId pin.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:791"
+      "server/routes/messages.ts:795"
     ]
   },
   {
@@ -4538,7 +4655,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages dms id pins.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:868"
+      "server/routes/messages.ts:872"
     ]
   },
   {
@@ -4547,7 +4664,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set messages dms id read.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:919"
+      "server/routes/messages.ts:923"
     ]
   },
   {
@@ -4556,7 +4673,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages threads.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/messages.ts:953"
+      "server/routes/messages.ts:1174"
     ]
   },
   {
@@ -4565,7 +4682,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run messages threads.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/messages.ts:1019"
+      "server/routes/messages.ts:1240"
     ]
   },
   {
@@ -4574,7 +4691,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop messages threads id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/messages.ts:1369"
+      "server/routes/messages.ts:1590"
     ]
   },
   {
@@ -4583,7 +4700,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages threads id.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/messages.ts:1085"
+      "server/routes/messages.ts:1306"
     ]
   },
   {
@@ -4592,7 +4709,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set messages threads id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/messages.ts:1270"
+      "server/routes/messages.ts:1491"
     ]
   },
   {
@@ -4601,7 +4718,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run messages threads id replies.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1160"
+      "server/routes/messages.ts:1381"
     ]
   },
   {
@@ -4610,7 +4727,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop messages threads threadId replies replyId.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:1230"
+      "server/routes/messages.ts:1451"
     ]
   },
   {
@@ -4619,7 +4736,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list messages users.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/messages.ts:173"
+      "server/routes/messages.ts:177"
     ]
   },
   {
@@ -4637,7 +4754,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run mint manager receipt.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mint-manager.ts:65"
+      "server/routes/mint-manager.ts:122"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/mint-manager/receipts/:mediaItemId",
+    "purpose": "Read or list mint manager receipts mediaItemId.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/mint-manager.ts:98"
     ]
   },
   {
@@ -5483,7 +5609,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run seasons id ante attest.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-recapture.ts:105"
+      "server/routes/wtf-recapture.ts:106"
     ]
   },
   {
@@ -5555,7 +5681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run side quests id entry fee feeId confirm.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/wtf-recapture.ts:287"
+      "server/routes/wtf-recapture.ts:288"
     ]
   },
   {
@@ -5564,7 +5690,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run side quests id entry fee attest.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-recapture.ts:194"
+      "server/routes/wtf-recapture.ts:195"
     ]
   },
   {
@@ -7555,7 +7681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wtf auctions.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/wtf-auctions.ts:263"
+      "server/routes/wtf-auctions.ts:266"
     ]
   },
   {
@@ -7564,7 +7690,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf auctions.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/wtf-auctions.ts:79"
+      "server/routes/wtf-auctions.ts:82"
     ]
   },
   {
@@ -7573,7 +7699,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wtf auctions id.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/wtf-auctions.ts:277"
+      "server/routes/wtf-auctions.ts:280"
     ]
   },
   {
@@ -7582,7 +7708,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf auctions id bids.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-auctions.ts:311"
+      "server/routes/wtf-auctions.ts:314"
     ]
   },
   {
@@ -7591,7 +7717,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf auctions id settle.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/wtf-auctions.ts:182"
+      "server/routes/wtf-auctions.ts:185"
     ]
   },
   {
@@ -7600,7 +7726,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf auctions id transition.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/wtf-auctions.ts:129"
+      "server/routes/wtf-auctions.ts:132"
     ]
   },
   {
@@ -7915,7 +8041,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wtf recapture leaderboard.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/wtf-recapture.ts:33"
+      "server/routes/wtf-recapture.ts:34"
     ]
   },
   {
@@ -7924,7 +8050,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wtf recapture mine.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-recapture.ts:81"
+      "server/routes/wtf-recapture.ts:82"
     ]
   },
   {

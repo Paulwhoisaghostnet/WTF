@@ -135,6 +135,7 @@ function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: strin
   if (!origin || ![
     "/api/macaroni/reveal-operator",
     "/api/macaroni/reveal-automation",
+    "/api/macaroni/reveal-automation/challenge",
   ].includes(path)) return false;
   try {
     const url = new URL(origin);
@@ -432,7 +433,13 @@ export async function createApp() {
   );
 
   app.use(
-    ["/api/auth/wallet/challenge", "/api/auth/wallet/verify", "/api/auth/wallet/register"],
+    [
+      "/api/auth/wallet/challenge",
+      "/api/auth/wallet/verify",
+      "/api/auth/wallet/register",
+      "/api/macaroni/reveal-automation/challenge",
+      "/api/macaroni/reveal-automation",
+    ],
     createRateLimit({
       name: "auth-wallet",
       windowMs: 15 * 60 * 1000,

@@ -534,13 +534,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools", "pasta-protocol"],
     ownerSpec:
-      "contracts/wtf-collections/MacaroniBlindMintFA2V3.py, public/creation-tools/macaroni/{studio.html,js/studio.js,js/drop.js,contract/macaroni-v3.contract.json}, server/features/macaroni/reveal-automation.ts, server/routes/{macaroni.ts,macaroni-policy.test.ts}, shared/{schema-macaroni.ts,pasta-protocol/adapters.ts,pasta-protocol/foundation.test.ts}",
+      "contracts/wtf-collections/MacaroniBlindMintFA2V3.py, public/creation-tools/macaroni/{studio.html,js/studio.js,js/drop.js,contract/macaroni-v3.contract.json}, server/features/macaroni/{reveal-auth.ts,reveal-auth.test.ts,reveal-automation.ts}, server/routes/{macaroni.ts,macaroni-policy.test.ts}, shared/{schema-macaroni.ts,pasta-protocol/adapters.ts,pasta-protocol/foundation.test.ts}, tests/playwright/inventory/cobwebsaints-account.spec.mjs",
     verificationCommand:
-      "npm run contract:macaroni-v3:compile && npx tsx --test server/routes/macaroni-policy.test.ts shared/pasta-protocol/foundation.test.ts",
+      "npm run contract:macaroni-v3:compile && npx tsx --test server/features/macaroni/reveal-auth.test.ts server/routes/macaroni-policy.test.ts shared/pasta-protocol/foundation.test.ts && npx playwright test tests/playwright/inventory/cobwebsaints-account.spec.mjs",
     userVisibleAssertion:
       "A creator can select Macaroni V3 for a delayed-reveal drop, keep each final token metadata CID plus private nonce in the local Studio project, publish only a SHA-256 commitment before sale, and reveal a token only after it has minted; collector pages cannot choose metadata or submit the creator's reveal secrets, and Colander recognizes the V3 contract as Macaroni-owned.",
     durableSideEffectAssertion:
-      "The compiled V3 contract rejects pre-mint, unauthorized, early delayed, wrong-CID, wrong-nonce, and repeated reveals before writing token metadata; Studio offers instant and delayed modes, syncs only token id, quantity, and commitment, and registers the encrypted private manifest for automatic operator reveal; the collector page requests an immediate operator pass after mint confirmation while the scheduler provides durable fallback and delayed execution; exported collector configuration omits final token metadata and artifact CIDs; and the Colander V3 reveal action remains an administrator recovery path.",
+      "The compiled V3 contract rejects pre-mint, unauthorized, early delayed, wrong-CID, wrong-nonce, and repeated reveals before writing token metadata; Studio offers instant and delayed modes, syncs only token id, quantity, and commitment, and signs a one-time network/contract/administrator-bound challenge before registering the encrypted private manifest for automatic operator reveal; replay, impersonation, signature mutation, and network/contract substitution are rejected; the collector page requests an immediate operator pass after mint confirmation while the scheduler provides durable fallback and delayed execution; exported collector configuration omits final token metadata and artifact CIDs; and the Colander V3 reveal action remains an administrator recovery path.",
   },
   {
     id: "macaroni.shadownet-rpc-wallet-setup",

@@ -130,6 +130,12 @@ export async function registerMacaroniRevealAutomation(input: {
   revealDelaySeconds: number;
   tokens: MacaroniRevealManifestToken[];
 }) {
+  const tokens = [...input.tokens].sort((left, right) => left.tokenId - right.tokenId);
+  for (let tokenId = 0; tokenId < tokens.length; tokenId += 1) {
+    if (tokens[tokenId]?.tokenId !== tokenId) {
+      throw new Error("V3 reveal manifest must contain every token id exactly once");
+    }
+  }
   const operator = await getMacaroniRevealOperator(input.network);
   if (!operator.enabled || !operator.address) {
     throw new Error(`Automatic Macaroni reveal is not configured for ${input.network}`);
@@ -147,10 +153,10 @@ export async function registerMacaroniRevealAutomation(input: {
   if (Number(storage.reveal_delay) !== input.revealDelaySeconds) {
     throw new Error("V3 contract reveal delay does not match the Studio draft");
   }
-  if (Number(storage.token_count) !== input.tokens.length) {
+  if (Number(storage.token_count) !== tokens.length) {
     throw new Error("V3 reveal manifest does not match the synced token inventory");
   }
-  for (const token of input.tokens) {
+  for (const token of tokens) {
     const expected = createHash("sha256")
       .update(Buffer.concat([
         Buffer.from(token.metadataUri, "utf8"),
@@ -186,7 +192,7 @@ export async function registerMacaroniRevealAutomation(input: {
     revealOperator: operator.address,
     mode: input.mode,
     revealDelaySeconds: input.revealDelaySeconds,
-    encryptedManifest: encryptManifest(input.tokens),
+    encryptedManifest: encryptManifest(tokens),
     status: "active" as const,
     nextAttemptAt: new Date(),
     lastError: null,

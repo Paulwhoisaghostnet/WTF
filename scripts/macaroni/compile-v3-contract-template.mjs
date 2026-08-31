@@ -3,6 +3,11 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  MAX_OPERATION_DATA_LENGTH,
+  MIN_OPERATION_HEADROOM,
+  measureSignedOriginationOperationBytes,
+} from "../pasta-protocol/check-smartpy-origination-size.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../..");
@@ -13,7 +18,7 @@ const publicContractDir = path.join(root, "public/creation-tools/macaroni/contra
 const contractArtifact = path.join(publicContractDir, "macaroni-v3.contract.json");
 const storageTemplateArtifact = path.join(publicContractDir, "macaroni-v3.storage.tz");
 const manifestPath = path.join(publicContractDir, "macaroni-v3.template.json");
-const smartpyBin = process.env.SMARTPY_BIN || "smartpy";
+const smartpyBin = process.env.SMARTPY_BIN || path.join(root, "scripts/smartpy-cli-wrapper.sh");
 
 function walk(dir, suffix, found = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -50,6 +55,7 @@ try {
     stdio: "inherit",
     env: {
       ...process.env,
+      SMARTPY_PYTHON: process.env.SMARTPY_PYTHON || "python3",
       SMARTPY_SCENARIO_NAME: scenarioName,
     },
   });
@@ -64,8 +70,43 @@ try {
 }
 
 const compiledContract = latestArtifact("_contract.json");
-assertJsonContract(compiledContract);
+const compiledCode = assertJsonContract(compiledContract);
 copyFileSync(compiledContract, contractArtifact);
+
+const compiledStorageJson = latestArtifact("_storage.json");
+const compiledStorage = JSON.parse(readFileSync(compiledStorageJson, "utf8"));
+const encodedContract = JSON.stringify(compiledCode);
+const requiredEntrypoints = [
+  "transfer",
+  "balance_of",
+  "update_operators",
+  "add_tokens_v3",
+  "replace_tokens_v3",
+  "set_stages",
+  "set_allowlist",
+  "mint",
+  "reveal_tokens_v3",
+  "update_minter_royalty_metadata",
+  "lock_minter_royalties",
+  "set_pause",
+  "transfer_administration",
+  "accept_administration",
+];
+for (const entrypoint of requiredEntrypoints) {
+  if (!encodedContract.includes(entrypoint)) {
+    throw new Error(`Macaroni V3 compiled artifact is missing ${entrypoint}`);
+  }
+}
+const signedOriginationBytes = measureSignedOriginationOperationBytes({
+  code: compiledCode,
+  storage: compiledStorage,
+});
+const protocolHeadroomBytes = MAX_OPERATION_DATA_LENGTH - signedOriginationBytes;
+if (protocolHeadroomBytes < MIN_OPERATION_HEADROOM) {
+  throw new Error(
+    `Macaroni V3 signed origination is ${signedOriginationBytes} bytes, leaving only ${protocolHeadroomBytes} bytes below ${MAX_OPERATION_DATA_LENGTH}`
+  );
+}
 
 let storageArtifact = "";
 try {
@@ -86,22 +127,9 @@ writeFileSync(
       smartpyBinaryEnv: "SMARTPY_BIN",
       compiledContract: path.relative(root, contractArtifact),
       compiledStorageTemplate: storageArtifact ? path.relative(root, storageTemplateArtifact) : "",
-      entrypoints: [
-        "transfer",
-        "balance_of",
-        "update_operators",
-        "add_tokens_v3",
-        "replace_tokens_v3",
-        "set_stages",
-        "set_allowlist",
-        "mint",
-        "reveal_tokens_v3",
-        "update_minter_royalty_metadata",
-        "lock_minter_royalties",
-        "set_pause",
-        "transfer_administration",
-        "accept_administration",
-      ],
+      entrypoints: requiredEntrypoints,
+      signedOriginationBytes,
+      protocolHeadroomBytes,
     },
     null,
     2
@@ -111,3 +139,6 @@ writeFileSync(
 
 console.log(`Macaroni V3 contract artifact written to ${path.relative(root, contractArtifact)}`);
 console.log(`Macaroni V3 template manifest written to ${path.relative(root, manifestPath)}`);
+console.log(
+  `Macaroni V3 artifact: ${signedOriginationBytes} signed-origination bytes; ${protocolHeadroomBytes} bytes protocol headroom`
+);

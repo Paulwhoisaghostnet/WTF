@@ -62,7 +62,8 @@ export const macaroniPackages = pgTable(
   {
     id: serial("id").primaryKey(),
     ownerUserId: integer("owner_user_id")
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description").default("").notNull(),
     schemaVersion: varchar("schema_version", { length: 80 })

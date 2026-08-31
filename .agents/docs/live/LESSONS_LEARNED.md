@@ -11069,3 +11069,33 @@
 **Rule**: A cross-language CI job must set up and install every locked runtime it invokes. Contract compilation, artifact inspection, and protocol-operation measurement belong to one explicit dependency graph; prove the complete job in a clean runner rather than validating its commands independently on a populated workstation.
 
 ---
+
+## 2026-08-30 — Public contract state is not creator authentication
+
+**What happened**: Macaroni V3 automatic reveal registration compared a caller-supplied administrator address with public contract storage and described the resulting manifest as authenticated. The route accepted anonymous requests, so any caller who knew the public address could submit or replace private reveal instructions without proving control of the administrator wallet.
+
+**Why it mattered**: Matching public facts proves payload consistency, not caller authority. The service would use a platform-controlled signer and fee balance to execute work selected through an unauthenticated registration.
+
+**Rule**: Before accepting private instructions for a server signer, require a one-time purpose-specific signature from the exact on-chain authority and bind it to network, contract, action version, and nonce. CORS, a claimed address, and a successful storage comparison are never authentication.
+
+---
+
+## 2026-08-30 — One-time wallet challenges require one atomic database claim
+
+**What happened**: The shared wallet nonce helper selected an unconsumed nonce and updated it in a second query. Concurrent verifiers could both observe the unused row and both return success before either update became visible.
+
+**Why it mattered**: A challenge advertised as single-use could authorize a replay across wallet login, registration, linking, or Macaroni reveal registration precisely when requests raced.
+
+**Rule**: Consume authentication capabilities with one conditional database mutation that includes identity, nonce, unused state, and expiry, and treat a single returned row as the only success condition. Never implement one-time consumption as read-then-write.
+
+---
+
+## 2026-08-30 — Native capability ownership belongs on the capability record
+
+**What happened**: The Macaroni reveal job intentionally allowed a signed native registration without a wtfOS user, but the draft also made the unrelated `macaroni_packages.owner_user_id` nullable even though package creation remains session- and permission-owned and no migration changed that column.
+
+**Why it mattered**: Expanding nullability on a neighboring ownership model weakens its application contract and creates schema/migration drift without helping the native capability flow.
+
+**Rule**: Make only the capability-authenticated record nullable, and keep session-owned records non-null in both schema and migration. Do not broaden an adjacent ownership boundary to accommodate a new native workflow.
+
+---

@@ -1,4 +1,4 @@
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, gt, lt } from "drizzle-orm";
 import { db } from "../db";
 import { users, userWallets, walletAuthNonces } from "@shared/schema";
 import { isSystemUserRole, type UserRole } from "@shared/types";
@@ -244,27 +244,20 @@ export async function consumeWalletAuthNonce(
   walletAddress: string,
   nonce: string
 ): Promise<boolean> {
-  const [row] = await db
-    .select()
-    .from(walletAuthNonces)
+  const claimed = await db
+    .update(walletAuthNonces)
+    .set({ consumed: true })
     .where(
       and(
         eq(walletAuthNonces.walletAddress, walletAddress),
         eq(walletAuthNonces.nonce, nonce),
-        eq(walletAuthNonces.consumed, false)
+        eq(walletAuthNonces.consumed, false),
+        gt(walletAuthNonces.expiresAt, new Date())
       )
     )
-    .limit(1);
+    .returning({ id: walletAuthNonces.id });
 
-  if (!row) return false;
-  if (row.expiresAt < new Date()) return false;
-
-  await db
-    .update(walletAuthNonces)
-    .set({ consumed: true })
-    .where(eq(walletAuthNonces.id, row.id));
-
-  return true;
+  return claimed.length === 1;
 }
 
 export async function cleanupExpiredNonces() {

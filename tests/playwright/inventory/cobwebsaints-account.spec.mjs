@@ -97,6 +97,16 @@ test.describe("interaction inventory - cobwebsaints account readiness", () => {
     await expect(macaroniFrame.locator("#pinAccessHint")).toContainText(
       "wtfOS pinning and wtfOS subdomain publishing are enabled",
     );
+    await macaroniFrame.locator("#contractVersion").selectOption("macaroni-commitment-v3");
+    await expect(macaroniFrame.locator("#contractVersionHint")).toContainText(
+      "nonce-backed commitments",
+    );
+    await expect(macaroniFrame.locator("#revealHint")).toContainText(
+      "one free signature proving control of the contract",
+    );
+    await expect(macaroniFrame.locator("#revealHint")).toContainText(
+      "does not send a transaction or charge tez",
+    );
     await macaroniFrame.getByRole("tab", { name: "Drop Page Designer" }).click();
     await expect(macaroniFrame.locator("#publishWtfOSGate")).toBeVisible();
     await expect(macaroniFrame.locator("#btnPublishWtfOS")).toBeVisible();

@@ -1508,13 +1508,26 @@ async function registerAutomaticV3Reveal(contractAddress) {
   const delaySeconds = state.drop.revealMode === "delayed"
     ? Math.round(Number(state.drop.revealDelayDays) * 86400)
     : 0;
+  const identity = {
+    network: state.network,
+    contract: contractAddress,
+    administrator: MD.getAccount(),
+  };
+  const challengeRes = await revealServiceFetch("/api/macaroni/reveal-automation/challenge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(identity),
+  });
+  const challenge = await challengeRes.json().catch(() => ({}));
+  if (!challengeRes.ok || !challenge.nonce || !challenge.message) {
+    throw new Error(challenge.error || "Could not create automatic reveal wallet challenge");
+  }
+  const signed = await MD.signMessage(challenge.message);
   const res = await revealServiceFetch("/api/macaroni/reveal-automation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      network: state.network,
-      contract: contractAddress,
-      administrator: MD.getAccount(),
+      ...identity,
       mode: state.drop.revealMode,
       revealDelaySeconds: delaySeconds,
       tokens: state.tokens.map((token) => ({
@@ -1523,6 +1536,11 @@ async function registerAutomaticV3Reveal(contractAddress) {
         nonce: token.metadataNonce,
         commitment: token.metadataCommitment,
       })),
+      proof: {
+        nonce: challenge.nonce,
+        publicKey: signed.publicKey,
+        signature: signed.signature,
+      },
     }),
   });
   const body = await res.json().catch(() => ({}));
@@ -1901,7 +1919,8 @@ async function sync() {
       bump();
     }
     if (contractIsV3) {
-      $("deployStatus").textContent = "registering automatic reveal…";
+      $("deployStatus").textContent = "confirm creator wallet signature for automatic reveal (no transaction or fee)…";
+      log("Automatic reveal needs one wallet signature to prove you control this contract. This does not send a transaction or charge tez.");
       await registerAutomaticV3Reveal(kt);
       log(`${state.drop.revealMode} reveal automation registered for ${kt}`);
     }
@@ -2411,7 +2430,7 @@ function toggleRevealFields() {
   const delayed = state.drop.revealMode === "delayed";
   const automaticV3 = macaroniContractProfile().usesV3;
   $("revealHint").innerHTML = automaticV3
-    ? "Delayed V3 mints show your placeholder until the window expires. The authorized wtfOS revealer then publishes the already-committed metadata automatically; the creator wallet remains a recovery path, not a required step."
+    ? "The authorized wtfOS revealer publishes only metadata already committed by this draft. During Sync, your creator wallet asks for one free signature proving control of the contract; it does not send a transaction or charge tez. Delayed V3 mints keep the placeholder until the contract window expires."
     : "Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.";
   $("revealDelayWrap").style.display = delayed ? "" : "none";
   $("revealHint").style.display = delayed ? "" : "none";
