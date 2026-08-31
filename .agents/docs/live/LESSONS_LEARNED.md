@@ -11009,3 +11009,23 @@
 **Rule**: Give encoder-heavy journeys an explicit overall ceiling from the owning workflow contract, and retain a shorter repository-defined action/navigation ceiling inside that allowance. Never use an infinite test timeout unless every awaited operation has its own proven finite termination condition.
 
 ---
+
+## 2026-08-30 — Manual chain actions must identify the signing boundary
+
+**What happened**: Recapture screens mixed external-wallet payments, pasted operation hashes, and off-chain auction bids without one clear explanation of which button moved value. The server had already become stricter and verified exact applied TzKT operations before payment-state writes, but the customer-facing copy still reflected the older attestation model.
+
+**Why it mattered**: A user could reasonably interpret `Place bid` or `Record swap` as an in-app wallet transaction even though the former moved no funds and the latter only verified a transaction completed elsewhere.
+
+**Rule**: Every financially meaningful action must say whether wtfOS opens a wallet, signs, sends, reserves, or only verifies. Manual operation-hash flows must name the external step and the exact on-chain checks performed before credit; off-chain commitments must state that no balance moves or is reserved.
+
+---
+
+## 2026-08-30 — Browser inventory serves built assets, not edited source
+
+**What happened**: A focused Gamma assertion could not find newly added Recapture guidance because the Playwright harness was still serving the previous production bundle. Rebuilding the exact tree made the unchanged assertion pass immediately.
+
+**Why it mattered**: A stale bundle can misclassify a verified source change as a UI regression and waste debugging effort on selectors that are correct.
+
+**Rule**: After changing client code, run the production build before any focused Playwright command that does not invoke the repository's build-wrapping test script. Treat the served asset identity as part of browser-test evidence.
+
+---

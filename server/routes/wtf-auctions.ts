@@ -6,7 +6,10 @@
  * is WTF-denominated and last-bid-wins by timestamp. Proceeds move
  * from the winner's wallet → operator wallet on settlement. Nothing
  * here signs or transfers on-chain — settlement just records the
- * op_hash the winner provides after their Beacon transfer lands.
+ * op_hash the winner provides after an external-wallet transfer lands. The
+ * settlement route verifies the applied TzKT operation, linked winning wallet,
+ * WTF contract/token, operator destination, and exact winning amount before it
+ * marks the auction settled.
  */
 
 import { Router, type Request } from "express";

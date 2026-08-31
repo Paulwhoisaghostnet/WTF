@@ -283,6 +283,24 @@ export function WtfRecapture() {
         ) : null}
       </Tabs>
 
+      <GroupBox label="How WTF payments work" data-wtf-recapture-region="payment-boundary">
+        <div style={{ fontSize: 12, lineHeight: 1.45 }}>
+          <strong>Manual wallet step — verified on-chain.</strong> This wtfOS
+          screen does not open your wallet, sign, or send WTF for buybacks,
+          season antes, side-quest entry fees, or auction settlement. Complete
+          the required transaction with external Tezos wallet/contract tooling,
+          then provide its operation hash where the flow asks for it. wtfOS
+          credits the action only after TzKT reports an applied operation from
+          one of your linked wallets to the expected contract or operator wallet
+          for the exact WTF amount.
+        </div>
+        <div style={{ fontSize: 12, lineHeight: 1.45, marginTop: 6 }}>
+          Auction bids are off-chain commitments: placing a bid does not send or
+          reserve WTF. Only the winner completes the separate manual settlement
+          after the auction ends.
+        </div>
+      </GroupBox>
+
       {tab === "leaderboard" && (
         <Section data-wtf-recapture-region="section">
           <GroupBox label="Total WTF returned to the operator wallet" data-wtf-recapture-region="panel">
@@ -507,21 +525,24 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
           {w.status === "open" && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 12, marginBottom: 4 }}>
-                After your wallet swaps WTF for XTZ against the buyback
-                contract, paste the resulting operation hash here so the
-                recapture leaderboard credits your swap immediately (instead of
-                waiting 2 min for the watcher).
+                wtfOS cannot initiate this swap. Complete it with external Tezos
+                wallet/contract tooling against the buyback contract above,
+                using the required amount and allowlist proof. Then paste the
+                resulting operation hash here. wtfOS verifies the applied swap,
+                linked sender, contract, and exact amount before crediting it.
               </div>
               <div
                 style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}
               >
                 <TextInput
+                  aria-label="Raw WTF amount already swapped"
                   placeholder="Amount WTF swapped (raw)"
                   data-wtf-recapture-region="swap-amount-input"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
                 <TextInput
+                  aria-label="Completed buyback operation hash"
                   placeholder="Op hash (ooXY…)"
                   data-wtf-recapture-region="swap-op-input"
                   value={opHash}
@@ -540,8 +561,13 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
                 }
                 style={{ marginTop: 6 }}
               >
-                {intentMut.isPending ? "Submitting…" : "Record swap"}
+                {intentMut.isPending ? "Verifying on-chain…" : "Verify completed wallet swap"}
               </Button>
+              {intentMut.isSuccess && (
+                <div role="status" style={{ color: "#006600", marginTop: 4, fontSize: 12 }}>
+                  Swap verified on-chain and credited.
+                </div>
+              )}
               {intentMut.isError && (
                 <div style={{ color: "#880000", marginTop: 4, fontSize: 12 }}>
                   {(intentMut.error as Error)?.message}
@@ -627,7 +653,14 @@ function WtfAuctionCard({ auction }: { auction: Auction }) {
 
       {auction.status === "live" && user && (
         <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, marginBottom: 6 }}>
+            Off-chain bid only: this records your commitment but does not open
+            your wallet, transfer WTF, or reserve a balance. If you win, the
+            manual settlement happens after the auction ends and is accepted
+            only after on-chain verification.
+          </div>
           <TextInput
+            aria-label="Off-chain bid amount in raw WTF"
             placeholder="Bid amount (raw WTF)"
             data-wtf-recapture-region="auction-bid-input"
             value={bid}
@@ -639,8 +672,13 @@ function WtfAuctionCard({ auction }: { auction: Auction }) {
             onClick={() => bidMut.mutate(bid)}
             style={{ marginTop: 6 }}
           >
-            {bidMut.isPending ? "Bidding…" : "Place bid"}
+            {bidMut.isPending ? "Recording…" : "Record off-chain bid"}
           </Button>
+          {bidMut.isSuccess && (
+            <div role="status" style={{ color: "#006600", marginTop: 4, fontSize: 12 }}>
+              Bid recorded. No WTF has moved or been reserved.
+            </div>
+          )}
           {bidMut.isError && (
             <div style={{ color: "#880000", marginTop: 4, fontSize: 12 }}>
               {(bidMut.error as Error)?.message}

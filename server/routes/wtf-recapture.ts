@@ -2,11 +2,12 @@
  * Phase 10 — WTF recapture leaderboard + ante / side-quest entry-fee
  * attestation.
  *
- * Users sign their own Beacon transfer of WTF to the operator wallet
- * (ante for cohort slot, entry fee for a WTF-gated side quest) and
- * then POST the resulting op hash here. The recapture watcher
- * confirms it later against `wallet_events`, but the attestation row
- * gives the user (and operators) a live "I've paid" state.
+ * Users complete their own external-wallet transfer of WTF to the operator
+ * wallet (ante for cohort slot, entry fee for a WTF-gated side quest), then
+ * POST the resulting op hash here. These routes verify the applied TzKT
+ * operation, linked sender, WTF contract/token, destination, and exact amount
+ * before mutating payment state. The recapture watcher separately indexes the
+ * confirmed event for the leaderboard and durable wallet-event history.
  */
 
 import { Router, type Request } from "express";

@@ -29,7 +29,7 @@ test("gameshow native leftovers expose Gamma-aware owner boundaries", () => {
   assert.match(recaptureSource, /data-wtf-recapture-surface="recapture"/);
   assert.match(recaptureSource, /data-wtf-recapture-presentation-host=\{presentation\.host\}/);
   assert.match(recaptureSource, /\[data-wtf-recapture-presentation-host="gamma"\]/);
-  for (const region of ["surface", "tabs", "leader-row", "buyback-window", "auction-card", "metrics-grid"]) {
+  for (const region of ["surface", "tabs", "payment-boundary", "leader-row", "buyback-window", "auction-card", "metrics-grid"]) {
     assert.match(recaptureSource, new RegExp(`data-wtf-recapture-region="${region}"`));
   }
 
@@ -75,6 +75,11 @@ test("gameshow native routes keep shared behavior surfaces raw", () => {
   assert.match(recaptureSource, /\/api\/wtf-recapture\/mine/);
   assert.match(recaptureSource, /\/api\/buyback-windows\/\$\{w\.id\}\/swap-intent/);
   assert.match(recaptureSource, /\/api\/wtf-auctions\/\$\{auction\.id\}\/bids/);
+  assert.match(recaptureSource, /Manual wallet step — verified on-chain\./);
+  assert.match(recaptureSource, /credits the action only after TzKT reports an applied operation/);
+  assert.match(recaptureSource, /Auction bids are off-chain commitments/);
+  assert.match(recaptureSource, /Verify completed wallet swap/);
+  assert.match(recaptureSource, /Record off-chain bid/);
 
   assert.match(mintPortalSource, /\/api\/mint-portal\/challenges/);
   assert.match(mintPortalSource, /\/api\/mint-portal\/contracts\?network=/);

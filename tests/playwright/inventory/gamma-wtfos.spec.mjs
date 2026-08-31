@@ -6982,11 +6982,18 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await gotoGammaRoute(page, "/wtf-recapture");
     const recaptureSurface = page.locator('[data-gamma-application-content] [data-wtf-recapture-surface="recapture"]');
     await expect(recaptureSurface).toHaveAttribute("data-wtf-recapture-presentation-host", "gamma");
+    await expect(recaptureSurface.locator('[data-wtf-recapture-region="payment-boundary"]')).toContainText(
+      "Manual wallet step — verified on-chain.",
+    );
+    await expect(recaptureSurface.locator('[data-wtf-recapture-region="payment-boundary"]')).toContainText(
+      "placing a bid does not send or reserve WTF",
+    );
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="leader-row"]').first()).toContainText("The Count");
     await recaptureSurface.getByRole("button", { name: "Buyback Windows" }).click();
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="buyback-window"]')).toContainText("Harness buyback");
     await recaptureSurface.getByRole("button", { name: "WTF Auctions" }).click();
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="auction-card"]')).toContainText("Harness Auction");
+    await expect(recaptureSurface.getByRole("button", { name: "Record off-chain bid" })).toBeVisible();
     expectGammaMetrics(
       await readGammaMetrics(recaptureSurface, {
         surface: '[data-wtf-recapture-region="surface"]',
