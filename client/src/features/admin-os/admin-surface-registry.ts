@@ -1274,6 +1274,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta_suite.site_uninstalled",
     ],
     behaviorAssertionIds: [
+      "macaroni.v3-commitment-reveal",
       "pasta-protocol.sandbox-safe-feedback",
       "pasta-protocol.chease-handoff",
       "pasta-protocol.studio-draft-recovery",
@@ -1327,6 +1328,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "ipfs-pinning.pds-backed-wallet-backup",
       "account.cobwebsaints-domain-advanced-readiness",
       "skullzarmy.fafolab-integration-contracts",
+      "macaroni.v3-commitment-reveal",
       "macaroni.shadownet-rpc-wallet-setup",
       "macaroni.wtfos-package-source",
     ],

@@ -410,10 +410,11 @@ test("detectPastaContract identifies the standard collection", () => {
   assert.equal(detectPastaContract(eps)?.kind, "standard_collection");
 });
 
-test("detectPastaContract identifies both Macaroni contract generations over generic FA2", () => {
+test("detectPastaContract identifies all Macaroni contract generations over generic FA2", () => {
   const v1 = [...FA2_BASE, "set_stages", "set_allowlist", "set_paused", "reveal"];
   const v2 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal", "replace_tokens_v2"];
-  for (const entrypoints of [v1, v2]) {
+  const v3 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal_tokens_v3", "replace_tokens_v3"];
+  for (const entrypoints of [v1, v2, v3]) {
     const adapter = detectPastaContract(entrypoints)!;
     assert.equal(adapter.kind, "blind_mint_collection");
     const actions = availableActions(adapter, entrypoints);
@@ -423,6 +424,9 @@ test("detectPastaContract identifies both Macaroni contract generations over gen
   }
   assert(availableActions(detectPastaContract(v1)!, v1).some((action) => action.id === "set_paused"));
   assert(availableActions(detectPastaContract(v2)!, v2).some((action) => action.id === "set_pause"));
+  const v3Reveal = availableActions(detectPastaContract(v3)!, v3).find((action) => action.id === "reveal");
+  assert.equal(v3Reveal?.entrypoint, "reveal_tokens_v3");
+  assert.equal(v3Reveal?.access, "admin");
 });
 
 test("detectPastaContract identifies the open edition over generic FA2", () => {

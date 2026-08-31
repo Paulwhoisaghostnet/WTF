@@ -240,6 +240,7 @@ export const CREATION_TOOLS = [
       "/creation-tools/macaroni/js/site-bundle.js",
       "/creation-tools/macaroni/vendor/tezos.js",
       "/creation-tools/macaroni/contract/mydrop.contract.json",
+      "/creation-tools/macaroni/contract/macaroni-v3.contract.json",
     ],
     roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE],
     provenance: {

@@ -50,6 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| WTF-BB-635 | Fixed | Codex Macaroni V3 commitment repair | 2026-08-30 | Macaroni / premint metadata confidentiality and provenance | P0 | 17 | 1 | 4 | 5 | 3 | V3 keeps final metadata sealed before mint and provides automatic post-confirmation instant reveal or contract-timed delayed reveal; fresh-chain and production-operator verification remain before `Verified` |
 | WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
 | WTF-BB-629 | Verified | Codex commission fulfillment | 2026-08-29 | Media / durable mint receipt ownership and recovery | P1 | 13 | 6 | 4 | 5 | 0 | Mint receipts are now ownership-bound durable records verified from explicit-network TzKT evidence and recoverable from the same owned media across browser sessions |
@@ -525,7 +526,7 @@ Priority labels:
 ### WTF-BB-358 - Jackbox needs game-first apphost UX and WTF LIVE game rooms
 
 - Category: Desktop OS / Remote Applications + WTF LIVE game rooms
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex Jackbox game-room UX pass
 - Score: C4 + F5 + S0 + P1(4) = 13
 - Evidence:
@@ -7801,7 +7802,7 @@ Priority labels:
 ### WTF-BB-342 - Pasta WTF.ME host and pin recovery remain live-blocked
 
 - Category: Pasta Protocol / WTF.ME host and pin recovery
-- Status: In Progress
+- Status: Fixed
 - Owner/Session: Codex Pasta live host audit
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
@@ -12940,3 +12941,38 @@ Copy this when adding a new issue:
   - Preserve old evidence as append-only history while recording supersession explicitly instead of editing incompatible snapshots by hand.
 - Verification idea:
   - Run the policy against failing fixtures for every mismatch class and against the reconciled board; require the release command to consume the same authoritative scoped acceptance ledger rather than infer readiness from board row counts.
+
+### WTF-BB-635 - Macaroni exposes final metadata before mint without a commitment
+
+- Category: Macaroni / premint metadata confidentiality and provenance
+- Priority: P0
+- Status: In Progress
+- Owner/Session: Codex Macaroni V3 commitment repair
+- Last touched: 2026-08-30
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - Macaroni Studio pins every final artifact and metadata document before sale, then syncs each final metadata URI into public `pending_tokens` storage.
+  - Exported collector configuration also serializes the final metadata and artifact URIs before mint.
+  - An attacker can reuse those already-pinned bytes in an earlier token mint and report the artist when the intended Macaroni token is subsequently minted; current V1/V2 inventory has no nonce-backed hash commitment proving the sealed metadata assignment.
+- Why it matters:
+  - Sale-stage restrictions prevent early Macaroni minting but cannot make public contract storage or exported JavaScript private.
+  - The disclosure defeats asset-blind minting and creates a credible preemptive copymint/provenance dispute against the artist.
+- Correction direction:
+  - Add a new Macaroni V3 contract/runtime path that stores only nonce-backed metadata commitments before mint, omits final CIDs from collector configuration, and accepts final metadata only after the corresponding token has minted and the commitment verifies.
+  - Provide automatic immediate and scheduled reveal through a separately authorized platform revealer, with the creator retained only as a recovery authority; neither normal mode may require a creator-triggered reveal transaction.
+  - Preserve V1/V2 behavior and avoid unrelated mint, royalty, allocation, or marketplace changes.
+- Verification idea:
+  - Compile V3, prove its premint storage and exported config contain commitments but no final metadata/artifact URI, reject wrong nonce/URI and pre-mint reveal, accept the committed reveal after mint, and run focused Macaroni plus interaction-inventory coverage gates.
+- Correction:
+  - Added a separate V3 SmartPy template that preserves V2 mint/edition behavior while replacing public pending metadata with per-token SHA-256 commitments over `metadata_uri || 32-byte nonce`.
+  - V3 reveal requires the token to have minted, verifies the committed URI and nonce, rejects repeated reveal, and authorizes a separately originated reveal operator while retaining the administrator only as recovery authority.
+  - Studio registers an authenticated encrypted reveal manifest with the platform service. Instant mode requests reveal when the collector mint confirms; delayed mode is scheduled automatically and is independently time-gated by the contract before the operator can reveal.
+  - The public reveal-request endpoint can only wake an already-registered job. It accepts no URI, nonce, token assignment, or reveal time, so a collector cannot select or replace metadata through it; the durable scheduler supplies the restart/failure fallback.
+  - Studio retains final CIDs/nonces in the creator's local project, syncs commitments only, and omits final token metadata/artifact CIDs from V3 collector configuration; V1/V2 remain unchanged.
+  - The first V3 Studio path forced delayed reveal and exposed a creator-only Reveal button; that implementation was rejected and replaced. Both creator choices are now automatic, and the manual creator action is hidden from the normal V3 flow.
+- Verification evidence (2026-08-30):
+  - `npm run contract:macaroni-v3:compile` passed SmartPy scenarios for pre-mint, wrong-URI, wrong-nonce, unauthorized, repeated, automatic-operator instant, operator/administrator delayed-too-early, and delayed-at-unlock reveal paths and regenerated the public Micheline artifacts.
+  - `npx tsx --test server/routes/macaroni-policy.test.ts shared/pasta-protocol/foundation.test.ts` passed 61/61 focused source, artifact, and adapter checks.
+  - `node --test scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs`, both desktop package checks, the production build, repository-wide TypeScript check, environment-inventory check, and `npm run test:e2e:inventory:coverage` passed.
+  - A direct Shadownet-configured Studio Playwright check passed and proves that creators can select V3 instant or delayed automatic reveal while the manual reveal control stays hidden.
+  - The complete inventory browser run passed 292 scenarios, including Macaroni/Pasta/Colander flows, before stalling in an unrelated later media/integration scenario and being stopped; 408 scenarios did not run. A fresh V3 Shadownet origination/reveal is still required before promoting this item to `Verified`.

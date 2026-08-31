@@ -530,6 +530,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused Broot inventory spec stubs the Tezos wallet runtime, proves refresh restore does not request wallet permissions again, verifies artifact/metadata CIDs plus gas/storage/fee appear in the HEN review before any wallet send, then signs once and verifies the operation targets the HEN FA2 contract mint entrypoint with padded gas/storage options.",
   },
   {
+    id: "macaroni.v3-commitment-reveal",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "pasta-protocol"],
+    ownerSpec:
+      "contracts/wtf-collections/MacaroniBlindMintFA2V3.py, public/creation-tools/macaroni/{studio.html,js/studio.js,js/drop.js,contract/macaroni-v3.contract.json}, server/features/macaroni/reveal-automation.ts, server/routes/{macaroni.ts,macaroni-policy.test.ts}, shared/{schema-macaroni.ts,pasta-protocol/adapters.ts,pasta-protocol/foundation.test.ts}",
+    verificationCommand:
+      "npm run contract:macaroni-v3:compile && npx tsx --test server/routes/macaroni-policy.test.ts shared/pasta-protocol/foundation.test.ts",
+    userVisibleAssertion:
+      "A creator can select Macaroni V3 for a delayed-reveal drop, keep each final token metadata CID plus private nonce in the local Studio project, publish only a SHA-256 commitment before sale, and reveal a token only after it has minted; collector pages cannot choose metadata or submit the creator's reveal secrets, and Colander recognizes the V3 contract as Macaroni-owned.",
+    durableSideEffectAssertion:
+      "The compiled V3 contract rejects pre-mint, unauthorized, early delayed, wrong-CID, wrong-nonce, and repeated reveals before writing token metadata; Studio offers instant and delayed modes, syncs only token id, quantity, and commitment, and registers the encrypted private manifest for automatic operator reveal; the collector page requests an immediate operator pass after mint confirmation while the scheduler provides durable fallback and delayed execution; exported collector configuration omits final token metadata and artifact CIDs; and the Colander V3 reveal action remains an administrator recovery path.",
+  },
+  {
     id: "macaroni.shadownet-rpc-wallet-setup",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools", "wtf-domains"],
@@ -646,11 +659,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "contracts/wtf-collections/MacaroniBlindMintFA2V2.py, contracts/pasta-protocol/{PastaStandardCollectionFA2,PastaOpenEditionFA2,PastaPackRouterFA2,PastaGenerativeCollectionFA2,PastaDistributionFA2}.py, public/creation-tools/{macaroni,spaghetti,gnocchi,ravioli,rotini,penne}/contract/*.contract.json, scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs, scripts/pasta-protocol/shadownet-{gnocchi,ravioli,rotini}-ui-live.ts",
+      "contracts/wtf-collections/{MacaroniBlindMintFA2V2,MacaroniBlindMintFA2V3}.py, contracts/pasta-protocol/{PastaStandardCollectionFA2,PastaOpenEditionFA2,PastaPackRouterFA2,PastaGenerativeCollectionFA2,PastaDistributionFA2}.py, public/creation-tools/{macaroni,spaghetti,gnocchi,ravioli,rotini,penne}/contract/*.contract.json, scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs, scripts/pasta-protocol/shadownet-{gnocchi,ravioli,rotini}-ui-live.ts",
     verificationCommand:
-      "npm run contract:macaroni-v2:compile && node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaDistributionFA2.py pasta-distribution penne && node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaPackRouterFA2.py pasta-bundle ravioli && node --test scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs && npx tsx --test scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts",
+      "npm run contract:macaroni-v2:compile && npm run contract:macaroni-v3:compile && node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaDistributionFA2.py pasta-distribution penne && node scripts/pasta-protocol/compile-fa2-template.mjs contracts/pasta-protocol/PastaPackRouterFA2.py pasta-bundle ravioli && node --test scripts/pasta-protocol/pasta-fa2-indexer-layout-policy.test.mjs && npx tsx --test scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts",
     userVisibleAssertion:
-      "Macaroni V2, Spaghetti, Gnocchi, Ravioli, Rotini, and Penne originate contracts whose standard balance, transfer, and operator entrypoints are recognized as FA2, allowing their minted tokens and balances to appear through normal Tezos indexers rather than only inside Pasta's own storage reader.",
+      "Macaroni V2/V3, Spaghetti, Gnocchi, Ravioli, Rotini, and Penne originate contracts whose standard balance, transfer, and operator entrypoints are recognized as FA2, allowing their minted tokens and balances to appear through normal Tezos indexers rather than only inside Pasta's own storage reader.",
     durableSideEffectAssertion:
       "The compiled Micheline artifacts preserve the canonical TZIP-12 comb layouts for balance_of, transfer, and update_operators; the source-policy gate compares every token-producing artifact against the proven Spaghetti schema, and a UI-LIVE proof is rejected unless TzKT independently classifies the fresh contract as an FA2 asset and indexes its token, balances, metadata URI, and applied operations.",
   },
@@ -715,7 +728,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run pasta:shadownet:colander:ui-live:check && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4379 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --grep 'project lifecycle|web Colander owns' --reporter=list && npm run pasta:shadownet:colander",
     userVisibleAssertion:
-      "A creator can make and rename a local project in web or installed Colander, duplicate its workflow as an independent clean project, reversibly archive and restore it, permanently delete it only after explicit confirmation, reopen it after reload, export or import its versioned manifest, launch the owner app with project context, identify both Macaroni V1 and V2 as Macaroni-owned blind-mint contracts, and open a Penne KT1 with a public Claim allocation action without losing direct contract management or the visible success result after refresh.",
+      "A creator can make and rename a local project in web or installed Colander, duplicate its workflow as an independent clean project, reversibly archive and restore it, permanently delete it only after explicit confirmation, reopen it after reload, export or import its versioned manifest, launch the owner app with project context, identify Macaroni V1, V2, and V3 as Macaroni-owned blind-mint contracts, and open a Penne KT1 with a public Claim allocation action without losing direct contract management or the visible success result after refresh.",
     durableSideEffectAssertion:
       "The project persists under wtfos.pasta.colander.workspace.v1; archive stores its prior stage for exact restore while legacy archives infer a safe stage; duplicates receive a new id and empty draft/contract/site ledgers; deletion is restricted to archived records; the Macaroni adapter wins over generic FA2 detection and stores `toolId: macaroni`; confirmed writes retain their success status after the live state refresh; web and installed Colander emit normalized lifecycle events; CH-EASE preserves project ownership through package preparation; and Macaroni plus each newer Pasta publisher attaches a newly deployed or resumed KT1 to the originating project and advances it to deployed without requiring Objkt, Teia, or a wtfOS database.",
   },

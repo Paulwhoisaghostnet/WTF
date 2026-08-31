@@ -86,6 +86,7 @@
         <select id="contractVersion">
           <option value="macaroni-v1">Macaroni V1 — classic blind mint</option>
           <option value="macaroni-editions-v2">Macaroni V2 — editions + minter royalties</option>
+          <option value="macaroni-commitment-v3">Macaroni V3 — sealed metadata commitments</option>
         </select>
         <p class="muted" id="contractVersionHint">V1 is for 1/1 blind drops. V2 is required for shared-token editions, minter royalty pools, or multiple unrevealed images.</p>
       </div>
@@ -138,8 +139,8 @@
           <div>
             <label>Reveal mode</label>
             <select id="revealMode">
-              <option value="instant">Instant — reveal at mint</option>
-              <option value="delayed">Delayed — with auto-reveal fallback</option>
+              <option value="instant">Instant — automatic after mint confirms</option>
+              <option value="delayed">Delayed — automatic after the reveal window</option>
             </select>
           </div>
           <div id="revealDelayWrap" style="display:none">

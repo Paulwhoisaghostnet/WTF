@@ -616,7 +616,7 @@ test("Macaroni Studio models V2 editions, minter royalties, and placeholder pool
   assert.match(studioHtml, /id="royaltyUpdateEndpoint"/);
   assert.match(studioHtml, /id="placeholderFiles"[^>]*multiple/);
 
-  assert.match(studioSource, /const MACARONI_CONTRACT_VERSIONS = new Set\(\["macaroni-v1", "macaroni-editions-v2"\]\)/);
+  assert.match(studioSource, /const MACARONI_CONTRACT_VERSIONS = new Set\(\["macaroni-v1", "macaroni-editions-v2", "macaroni-commitment-v3"\]\)/);
   assert.match(studioSource, /const MACARONI_V2_ARTIFACT = "contract\/macaroni-v2\.contract\.json"/);
   assert.match(studioSource, /function normalizeTokenQuantity\(value\)/);
   assert.match(studioSource, /function normalizeOptionalHttpUrl\(value\)/);
@@ -630,8 +630,8 @@ test("Macaroni Studio models V2 editions, minter royalties, and placeholder pool
   assert.match(studioSource, /minterRoyalties:\s*\{/);
   assert.match(studioSource, /updateStrategy: minterRoyaltiesEnabled\(\) \? "drop_page_or_creator_triggered" : "none"/);
   assert.match(studioSource, /storage = \{[\s\S]*token_supply: new M\(\)[\s\S]*token_minted: new M\(\)[\s\S]*placeholder_pool: placeholderPoolMap[\s\S]*minter_royalty_config:/);
-  assert.match(studioSource, /const ep = contractIsV2 \? "replace_tokens_v2" : "replace_tokens"/);
-  assert.match(studioSource, /const ep = contractIsV2 \? "add_tokens_v2" : "add_tokens"/);
+  assert.match(studioSource, /const ep = contractIsV3 \? "replace_tokens_v3" : contractIsV2 \? "replace_tokens_v2" : "replace_tokens"/);
+  assert.match(studioSource, /const ep = contractIsV3 \? "add_tokens_v3" : contractIsV2 \? "add_tokens_v2" : "add_tokens"/);
   assert.match(studioSource, /quantity: normalizeTokenQuantity\(t\.quantity\)/);
 
   assert.match(dropSource, /function minterRoyaltyConfig\(\)/);
@@ -678,6 +678,85 @@ test("Macaroni V2 SmartPy source exposes edition and royalty entrypoints", () =>
   assert.match(source, /def lock_minter_royalties\(self, token_id\):/);
   assert.match(source, /assert cfg\.mode == 0 or sold_out or sp\.sender == self\.data\.administrator, "ROYALTY_POOL_OPEN"/);
   assert.match(source, /def deploy_macaroni_blind_mint_v2_template\(\):/);
+});
+
+test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+  const contractSource = readFileSync("contracts/wtf-collections/MacaroniBlindMintFA2V3.py", "utf8");
+  const compileSource = readFileSync("scripts/macaroni/compile-v3-contract-template.mjs", "utf8");
+  const revealServiceSource = readFileSync("server/features/macaroni/reveal-automation.ts", "utf8");
+  const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
+  const schemaSource = readFileSync("shared/schema-macaroni.ts", "utf8");
+  const appSource = readFileSync("server/app.ts", "utf8");
+  const compiledTemplate = JSON.parse(
+    readFileSync("public/creation-tools/macaroni/contract/macaroni-v3.template.json", "utf8")
+  );
+  const compiledContract = JSON.parse(
+    readFileSync("public/creation-tools/macaroni/contract/macaroni-v3.contract.json", "utf8")
+  );
+
+  assert.match(studioHtml, /value="macaroni-commitment-v3"/);
+  assert.match(studioSource, /const MACARONI_V3_ARTIFACT = "contract\/macaroni-v3\.contract\.json"/);
+  assert.match(studioSource, /crypto\.getRandomValues\(new Uint8Array\(32\)\)/);
+  assert.match(studioSource, /crypto\.subtle\.digest\("SHA-256", payload\)/);
+  assert.match(studioSource, /metadata_commitment: t\.metadataCommitment/);
+  assert.match(studioSource, /profile\.usesV3[\s\S]*id: t\.id - 1,[\s\S]*displayId: t\.id,[\s\S]*quantity: normalizeTokenQuantity\(t\.quantity\),[\s\S]*:\s*\{[\s\S]*metadata: t\.metadataCid/s);
+  assert.match(studioSource, /token_commitments: new M\(\), revealed_tokens: new M\(\)/);
+  assert.doesNotMatch(studioSource, /usesV3 && state\.drop\.revealMode !== "delayed"/);
+  assert.match(studioSource, /delayed_reveal: delayed/);
+  assert.match(studioSource, /reveal_operator: revealOperator/);
+  assert.match(studioSource, /registerAutomaticV3Reveal\(kt\)/);
+  assert.match(studioSource, /in sync · automatic reveal active/);
+  assert.match(studioSource, /serviceUrl: profile\.usesV3 \? automaticRevealRequestUrl\(\) : ""/);
+  assert.match(dropSource, /async function requestAutomaticV3Reveal\(\)/);
+  assert.match(dropSource, /await requestAutomaticV3Reveal\(\)/);
+  assert.match(studioSource, /const localCommitment = await metadataCommitment\(token\.metadataCid, token\.metadataNonce\)/);
+  assert.match(studioSource, /if \(localCommitment !== committed\)/);
+  assert.match(studioSource, /c\.methodsObject\.reveal_tokens_v3\(chunk\)/);
+  assert.match(dropSource, /function isCommitmentV3\(\)/);
+  assert.match(dropSource, /if \(isCommitmentV3\(\)\) return;/);
+
+  assert.match(contractSource, /self\.data\.token_commitments = sp\.cast\(sp\.big_map\(\), sp\.big_map\[sp\.nat, sp\.bytes\]\)/);
+  assert.match(contractSource, /def add_tokens_v3\(self, tokens\):/);
+  assert.match(contractSource, /def reveal_tokens_v3\(self, items\):/);
+  assert.match(contractSource, /self\.data\.reveal_operator = sp\.cast\(reveal_operator, sp\.address\)/);
+  assert.match(contractSource, /def _only_admin_or_reveal_operator\(self\):/);
+  assert.match(contractSource, /sp\.sender == self\.data\.reveal_operator/);
+  assert.match(contractSource, /if self\.data\.delayed_reveal:/);
+  assert.doesNotMatch(contractSource, /self\.data\.delayed_reveal and sp\.sender != self\.data\.administrator/);
+  assert.match(contractSource, /_sender=admin,[\s\S]*_now=sp\.timestamp\(69\),[\s\S]*_exception="TOO_EARLY"/);
+  assert.match(contractSource, /"TOO_EARLY"/);
+  assert.match(contractSource, /assert self\.data\.token_minted\.get\(item\.token_id, default=sp\.nat\(0\)\) > 0, "TOKEN_NOT_MINTED"/);
+  assert.match(contractSource, /commitment = sp\.sha256\(sp\.concat\(\[item\.metadata_uri, item\.nonce\]\)\)/);
+  assert.match(contractSource, /assert commitment == self\.data\.token_commitments\[item\.token_id\], "BAD_REVEAL"/);
+  assert.doesNotMatch(contractSource, /pending_tokens/);
+
+  assert.match(routeSource, /router\.get\("\/api\/macaroni\/reveal-operator"/);
+  assert.match(routeSource, /"\/api\/macaroni\/reveal-automation",\s*async \(req, res\)/s);
+  assert.match(routeSource, /router\.post\("\/api\/macaroni\/reveal-request"/);
+  assert.match(studioSource, /MACARONI_REVEAL_SERVICE_ORIGIN = IS_NATIVE_APP \? "https:\/\/wtfos\.app" : ""/);
+  assert.match(studioSource, /credentials: "omit"/);
+  assert.match(revealServiceSource, /MACARONI_REVEAL_OPERATOR_MAINNET_SECRET_KEY/);
+  assert.match(revealServiceSource, /MACARONI_REVEAL_OPERATOR_SHADOWNET_SECRET_KEY/);
+  assert.match(revealServiceSource, /MACARONI_REVEAL_ENCRYPTION_KEY/);
+  assert.match(revealServiceSource, /createCipheriv\("aes-256-gcm"/);
+  assert.match(revealServiceSource, /contract\.methodsObject\.reveal_tokens_v3\(batch\)\.send\(\)/);
+  assert.match(revealServiceSource, /export async function requestMacaroniReveal/);
+  assert.match(schemaSource, /export const macaroniRevealJobs = pgTable/);
+  assert.match(appSource, /function shouldAllowMacaroniRevealOrigin/);
+  assert.match(appSource, /path === "\/api\/macaroni\/reveal-request"/);
+  assert.match(appSource, /"127\.0\.0\.1", "localhost", "::1"/);
+  assert.match(appSource, /callback\(null, \{ origin: true, credentials: false \}\)/);
+
+  assert.match(compileSource, /scenarioName = "deploy_macaroni_blind_mint_v3_template"/);
+  assert.equal(compiledTemplate.templateVersion, "macaroni-commitment-v3");
+  assert.ok(compiledTemplate.entrypoints.includes("add_tokens_v3"));
+  assert.ok(compiledTemplate.entrypoints.includes("replace_tokens_v3"));
+  assert.ok(compiledTemplate.entrypoints.includes("reveal_tokens_v3"));
+  assert.ok(Array.isArray(compiledContract));
+  assert.ok(compiledContract.length > 0);
 });
 
 test("Macaroni generated pages only publish bounded theme CSS", () => {

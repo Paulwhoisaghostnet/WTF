@@ -20,6 +20,7 @@ const required = [
   "js/site-bundle.js",
   "vendor/tezos.js",
   "contract/mydrop.contract.json",
+  "contract/macaroni-v3.contract.json",
 ];
 
 if (!existsSync(sourceDir)) {

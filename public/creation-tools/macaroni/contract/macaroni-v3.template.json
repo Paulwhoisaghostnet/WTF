@@ -1,0 +1,25 @@
+{
+  "templateVersion": "macaroni-commitment-v3",
+  "source": "contracts/wtf-collections/MacaroniBlindMintFA2V3.py",
+  "scenario": "deploy_macaroni_blind_mint_v3_template",
+  "compileScript": "scripts/macaroni/compile-v3-contract-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/macaroni/contract/macaroni-v3.contract.json",
+  "compiledStorageTemplate": "public/creation-tools/macaroni/contract/macaroni-v3.storage.tz",
+  "entrypoints": [
+    "transfer",
+    "balance_of",
+    "update_operators",
+    "add_tokens_v3",
+    "replace_tokens_v3",
+    "set_stages",
+    "set_allowlist",
+    "mint",
+    "reveal_tokens_v3",
+    "update_minter_royalty_metadata",
+    "lock_minter_royalties",
+    "set_pause",
+    "transfer_administration",
+    "accept_administration"
+  ]
+}

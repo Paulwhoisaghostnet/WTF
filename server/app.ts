@@ -130,6 +130,20 @@ function requestPath(req: any): string {
   return rawUrl.split("?", 1)[0] || rawUrl;
 }
 
+function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: string): boolean {
+  if (path === "/api/macaroni/reveal-request") return true;
+  if (!origin || ![
+    "/api/macaroni/reveal-operator",
+    "/api/macaroni/reveal-automation",
+  ].includes(path)) return false;
+  try {
+    const url = new URL(origin);
+    return url.protocol === "http:" && ["127.0.0.1", "localhost", "::1"].includes(url.hostname);
+  } catch (_) {
+    return false;
+  }
+}
+
 function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
   const arcadeSourceNullOriginOptions: Parameters<typeof cors>[0] = {
     origin: "*",
@@ -165,6 +179,9 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
   };
 
   return (req, callback) => {
+    if (shouldAllowMacaroniRevealOrigin(req.headers.origin, requestPath(req))) {
+      return callback(null, { origin: true, credentials: false });
+    }
     if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
       return callback(null, arcadeSourceNullOriginOptions);
     }

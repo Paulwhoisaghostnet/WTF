@@ -61,6 +61,10 @@ import {
   WTFOS_ATPROTO_OUTBOX_PUBLISHER_LIMIT,
 } from "../features/tz2at/wtfos-outbox";
 import {
+  macaroniRevealPollIntervalMs,
+  runMacaroniRevealAutomation,
+} from "../features/macaroni/reveal-automation";
+import {
   register as registerJob,
   reconcileAbandonedRuns,
   start as startScheduler,
@@ -174,6 +178,16 @@ export async function startBackgroundJobs(): Promise<void> {
     skipInitialRun: true,
     scope: "wtfos-atproto-outbox",
   });
+
+  const macaroniRevealIntervalMs = macaroniRevealPollIntervalMs();
+  if (macaroniRevealIntervalMs) {
+    registerJob({
+      name: "macaroni-v3-reveal",
+      fn: runMacaroniRevealAutomation,
+      intervalMs: macaroniRevealIntervalMs,
+      scope: "macaroni-v3-automatic-reveal",
+    });
+  }
 
   registerJob({
     name: DB_HEALTH_COMPLETION_JOB_NAME,

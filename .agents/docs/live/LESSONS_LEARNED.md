@@ -10949,3 +10949,33 @@
 **Rule**: Never promote a bounty item to `Verified` by status alone. Record the resolving commit or exact correction, add dated reproducible verification evidence that satisfies the item's own verification idea, and confirm generated artifacts remain byte-stable before committing the board transition.
 
 ---
+
+## 2026-08-30 — Blind-mint confidentiality must cover every public CID surface
+
+**What happened**: Macaroni pinned final token content before sale, stored each final metadata URI in public contract inventory, and also serialized final metadata and artifact CIDs into the exported collector page. Removing only one disclosure path, or hashing a predictable CID without a private nonce, would still allow an observer to identify and pre-mint the intended artwork.
+
+**Why it mattered**: Sale timing and permission checks do not make chain storage or downloadable JavaScript private. An attacker could mint the artist's already-pinned bytes first and manufacture a copymint report when the intended collection later revealed them.
+
+**Rule**: A sealed blind-mint path must publish only nonce-backed commitments before the first mint, keep the final URI and nonce in creator-controlled storage, omit final CIDs from every collector-facing export, and accept metadata only after mint through an authorized reveal that verifies the commitment. Test contract storage and portable-page output together, including pre-mint, wrong-secret, unauthorized, repeated, and successful reveal cases.
+
+---
+
+## 2026-08-30 — Confidential reveal and automatic reveal are separate requirements
+
+**What happened**: The first Macaroni V3 correction protected final CIDs but treated post-mint disclosure as an artist task. Studio consequently rejected instant V3 configuration and exposed a creator-only reveal action, even though the product already described delayed reveal as automatic.
+
+**Why it mattered**: Confidentiality determines what may be public before mint; it does not require the creator to return after every mint. A dedicated revealer can publish only the URI whose nonce-backed commitment is already on-chain, while the contract independently blocks pre-mint and early delayed disclosure. Conflating those concerns fixed the copymint vector at the cost of unacceptable reveal UX.
+
+**Rule**: Model blind reveal as three boundaries: a sealed creator manifest, an independently authorized automatic revealer, and an on-chain commitment/timing verifier. Both instant and delayed modes must complete without creator intervention; creator authority is recovery only. Verify hosted and native registration paths, and never describe a creator button as automation.
+
+---
+
+## 2026-08-30 — Recovery authority must obey the advertised reveal clock
+
+**What happened**: The automatic V3 revealer was correctly blocked until a delayed drop's on-chain unlock time, but the creator recovery authority initially bypassed that same check. The database migration also allowed native, capability-authenticated registrations without a wtfOS user while the application schema still declared the owner column non-null.
+
+**Why it mattered**: A delayed reveal was not actually contract-enforced against every authorized caller, and the native automatic-registration path disagreed with its durable storage model. Either mismatch could turn a correct UI promise into a failed or prematurely revealed drop.
+
+**Rule**: Enforce reveal timing independently of which authorized recovery/operator address calls the entrypoint, test both addresses immediately before the boundary, and keep application nullability identical to the migration whenever a capability-authenticated native path intentionally has no platform user.
+
+---
