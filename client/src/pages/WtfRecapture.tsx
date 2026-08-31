@@ -428,7 +428,7 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
   const [opHash, setOpHash] = useState("");
   const [amount, setAmount] = useState("");
 
-  const { data: eligibility } = useQuery({
+  const { data: eligibility, error: eligibilityError } = useQuery({
     enabled: !!user,
     queryKey: ["buyback-windows", w.id, "eligibility"],
     queryFn: () =>
@@ -438,7 +438,11 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
           id: number;
           walletAddress: string;
           maxWtf: string;
-          merkleProof: string[];
+          merkleProof: {
+            version: string;
+            contractArtifact: string;
+            steps: Array<{ sibling: string; right: boolean }>;
+          };
           eligibilityReason: string;
           swappedWtf: string;
           swappedAt: string | null;
@@ -511,6 +515,10 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
         <div style={{ padding: 8, fontSize: 12 }}>
           Log in to see if your wallet is on the allowlist.
         </div>
+      ) : eligibilityError ? (
+        <div role="alert" style={{ padding: 8, fontSize: 12, color: "#880000" }}>
+          This buyback proof is not ready to use: {eligibilityError.message}
+        </div>
       ) : mine ? (
         <>
           <div style={{ marginTop: 8, fontSize: 13 }}>
@@ -519,17 +527,22 @@ function BuybackWindowCard({ window: w }: { window: Window }) {
             <strong>{formatWtfRaw(mine.swappedWtf)} WTF</strong>.
           </div>
           <div style={{ marginTop: 4, fontSize: 11 }}>
-            Merkle proof (hex, sorted-pair):{" "}
-            <code>{(mine.merkleProof || []).join(", ") || "—"}</code>
+            WtfBuybackV1 proof ({mine.merkleProof.version}):{" "}
+            <code>
+              {mine.merkleProof.steps
+                .map((step) => `${step.right ? "right" : "left"}:${step.sibling}`)
+                .join(", ") || "single-wallet proof (no siblings)"}
+            </code>
           </div>
           {w.status === "open" && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 12, marginBottom: 4 }}>
                 wtfOS cannot initiate this swap. Complete it with external Tezos
                 wallet/contract tooling against the buyback contract above,
-                using the required amount and allowlist proof. Then paste the
-                resulting operation hash here. wtfOS verifies the applied swap,
-                linked sender, contract, and exact amount before crediting it.
+                using the required amount and the directional proof shown above
+                (`right` means the sibling follows the current hash). Then paste
+                the resulting operation hash here. wtfOS verifies the applied
+                swap, linked sender, contract, and exact amount before crediting it.
               </div>
               <div
                 style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}

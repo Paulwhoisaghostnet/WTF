@@ -111,4 +111,6 @@ jobs:
         run: pip install smartpy-tezos
 
       - name: Run contract tests + compile (V1.2)
-        run: bash scripts/test-marketplace-contract.sh
+        run: |
+          bash scripts/test-marketplace-contract.sh
+          bash scripts/test-wtf-buyback-contract.sh

@@ -1,19 +1,8 @@
 /**
- * Phase 10 — Merkle tree helper for the WTF buyback allowlist.
- *
- * We mirror the SmartPy `WtfBuybackV1` contract's leaf encoding so
- * proofs generated here verify on-chain without a round-trip back
- * through a tool the operator doesn't control.
- *
- * Leaf encoding (deterministic):
- *   blake2b-256( packed_address ++ max_wtf_u128_be )
- * Parent:
- *   blake2b-256( left ++ right )  with the pair sorted bytewise so
- *   the tree is independent of insertion order (makes Solidity-style
- *   "sorted pairs" proofs trivial to verify).
- *
- * Dependency-free: we ship our own blake2b-256 and base58check
- * decoder to honour the "no external deps" rule.
+ * Merkle primitives used by the app-registry fingerprint and the WTF
+ * buyback allowlist. The legacy sorted-pair BLAKE2 functions remain stable
+ * for app fingerprints. Buyback proofs use the separate, versioned SHA-256
+ * functions below because they must exactly match `WtfBuybackV1.swap`.
  */
 
 import { createHash } from "node:crypto";
@@ -136,6 +125,142 @@ export function buildLeaf(walletAddress: string, maxWtf: bigint): Uint8Array {
   buf.set(addr, 0);
   buf.set(amt, addr.length);
   return blake2b256(buf);
+}
+
+export const WTF_BUYBACK_PROOF_VERSION =
+  "wtf-buyback-v1.sha256-packed-address.directional.v1";
+export const WTF_BUYBACK_CONTRACT_ARTIFACT =
+  "contracts/wtf-buyback/WtfBuybackV1.py#WtfBuybackV1.swap";
+
+export type BuybackMerkleStep = {
+  sibling: Uint8Array;
+  /** True when the sibling is concatenated to the right of the current node. */
+  right: boolean;
+};
+
+export type EncodedBuybackMerkleProof = {
+  version: typeof WTF_BUYBACK_PROOF_VERSION;
+  contractArtifact: typeof WTF_BUYBACK_CONTRACT_ARTIFACT;
+  steps: Array<{ sibling: string; right: boolean }>;
+};
+
+/** Exact bytes produced by Michelson `PACK` for a value of type `address`. */
+export function packMichelsonAddress(addr: string): Uint8Array {
+  const optimizedAddress = packAddress(addr);
+  const out = new Uint8Array(1 + 1 + 4 + optimizedAddress.length);
+  out[0] = 0x05; // PACK prefix
+  out[1] = 0x0a; // Micheline bytes node
+  const view = new DataView(out.buffer);
+  view.setUint32(2, optimizedAddress.length, false);
+  out.set(optimizedAddress, 6);
+  return out;
+}
+
+/** `sha256(sp.pack(address))`, matching the checked-in SmartPy contract. */
+export function buildBuybackLeaf(walletAddress: string): Uint8Array {
+  return sha256(packMichelsonAddress(walletAddress));
+}
+
+function concatBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
+  const out = new Uint8Array(left.length + right.length);
+  out.set(left, 0);
+  out.set(right, left.length);
+  return out;
+}
+
+/**
+ * Directional SHA-256 tree used by `WtfBuybackV1.swap`. Odd nodes are paired
+ * with themselves and the duplicate sibling is included in the proof.
+ */
+export function buildBuybackMerkleTree(leaves: Uint8Array[]): {
+  root: Uint8Array;
+  proofs: BuybackMerkleStep[][];
+} {
+  if (leaves.length === 0) {
+    return { root: new Uint8Array(32), proofs: [] };
+  }
+
+  const layers: Uint8Array[][] = [leaves.map((leaf) => leaf.slice())];
+  while (layers[layers.length - 1].length > 1) {
+    const current = layers[layers.length - 1];
+    const next: Uint8Array[] = [];
+    for (let index = 0; index < current.length; index += 2) {
+      const left = current[index];
+      const right = current[index + 1] ?? left;
+      next.push(sha256(concatBytes(left, right)));
+    }
+    layers.push(next);
+  }
+
+  const proofs = leaves.map((_, leafIndex) => {
+    const proof: BuybackMerkleStep[] = [];
+    let index = leafIndex;
+    for (let depth = 0; depth < layers.length - 1; depth++) {
+      const layer = layers[depth];
+      const isLeft = index % 2 === 0;
+      const siblingIndex = isLeft ? index + 1 : index - 1;
+      proof.push({
+        sibling: (layer[siblingIndex] ?? layer[index]).slice(),
+        right: isLeft,
+      });
+      index = Math.floor(index / 2);
+    }
+    return proof;
+  });
+
+  return { root: layers[layers.length - 1][0], proofs };
+}
+
+export function verifyBuybackProof(
+  leaf: Uint8Array,
+  proof: BuybackMerkleStep[],
+  root: Uint8Array,
+): boolean {
+  let computed = leaf;
+  for (const step of proof) {
+    computed = sha256(
+      step.right
+        ? concatBytes(computed, step.sibling)
+        : concatBytes(step.sibling, computed),
+    );
+  }
+  return compareBytes(computed, root) === 0;
+}
+
+export function encodeBuybackProof(
+  proof: BuybackMerkleStep[],
+): EncodedBuybackMerkleProof {
+  return {
+    version: WTF_BUYBACK_PROOF_VERSION,
+    contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
+    steps: proof.map((step) => ({ sibling: toHex(step.sibling), right: step.right })),
+  };
+}
+
+export function decodeBuybackProof(value: unknown): BuybackMerkleStep[] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Partial<EncodedBuybackMerkleProof>;
+  if (
+    candidate.version !== WTF_BUYBACK_PROOF_VERSION ||
+    candidate.contractArtifact !== WTF_BUYBACK_CONTRACT_ARTIFACT ||
+    !Array.isArray(candidate.steps)
+  ) {
+    return null;
+  }
+  const decoded: BuybackMerkleStep[] = [];
+  for (const step of candidate.steps) {
+    if (
+      !step ||
+      typeof step !== "object" ||
+      typeof step.sibling !== "string" ||
+      !/^(?:0x)?[0-9a-fA-F]{64}$/.test(step.sibling) ||
+      typeof step.right !== "boolean"
+    ) {
+      return null;
+    }
+    decoded.push({ sibling: fromHex(step.sibling), right: step.right });
+  }
+  return decoded;
 }
 
 function concatSorted(a: Uint8Array, b: Uint8Array): Uint8Array {

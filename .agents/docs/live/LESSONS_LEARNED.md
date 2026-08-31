@@ -11029,3 +11029,23 @@
 **Rule**: After changing client code, run the production build before any focused Playwright command that does not invoke the repository's build-wrapping test script. Treat the served asset identity as part of browser-test evidence.
 
 ---
+
+## 2026-08-30 — Off-chain proof claims need compiled cross-language vectors
+
+**What happened**: The server Merkle helper claimed to mirror `WtfBuybackV1`, but it hashed different leaf data with a different algorithm, discarded sibling direction, and stored an unversioned proof. The checked-in SmartPy source was not in CI and had also drifted out of compiler compatibility, so neither side could prove the claim.
+
+**Why it mattered**: A valid allowlisted customer could receive instructions and a proof that no contract built from the repository could accept. Unit-testing either implementation alone would preserve two internally consistent but incompatible protocols.
+
+**Rule**: Version every persisted cross-language proof with its contract artifact identity. Keep one fixed multi-party vector—covering odd trees and negative mutations—in both the off-chain generator tests and the compiled contract scenario, and fail activation when stored version/root/proof data does not verify. The authoritative contract must compile, expose its expected entrypoints, and pass protocol-size checks in CI.
+
+---
+
+## 2026-08-30 — Generated-evidence writes must not race verification reads
+
+**What happened**: The broad unit suite was reading the deterministic environment inventory while a parallel command regenerated that same file after new CI scripts were added. The policy test correctly observed two different file states and failed, even though the regenerated inventory was valid.
+
+**Why it mattered**: Parallelizing a source-derived write with readers made a clean tree appear nondeterministic and invalidated an otherwise useful full-suite result.
+
+**Rule**: Regenerate every source-derived artifact before launching any check that reads it. Once verification starts, keep generated evidence immutable until all concurrent readers finish; if a race occurs, rerun the affected policy test and the full owning gate from one stable tree.
+
+---

@@ -6783,7 +6783,18 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
                 id: 44,
                 walletAddress: "tz1CountGamma00000000000000000000000",
                 maxWtf: "1000000000",
-                merkleProof: ["0xabc"],
+                merkleProof: {
+                  version: "wtf-buyback-v1.sha256-packed-address.directional.v1",
+                  contractArtifact:
+                    "contracts/wtf-buyback/WtfBuybackV1.py#WtfBuybackV1.swap",
+                  steps: [
+                    {
+                      sibling:
+                        "08269418284a8b2d92427cd4cc0e20cc491f4f4c4721cd9ac3846f7c83121fe5",
+                      right: true,
+                    },
+                  ],
+                },
                 eligibilityReason: "The Count is counting the shell proof.",
                 swappedWtf: "100000000",
                 swappedAt: null,
@@ -6991,6 +7002,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="leader-row"]').first()).toContainText("The Count");
     await recaptureSurface.getByRole("button", { name: "Buyback Windows" }).click();
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="buyback-window"]')).toContainText("Harness buyback");
+    await expect(recaptureSurface.locator('[data-wtf-recapture-region="buyback-window"]')).toContainText(
+      "wtf-buyback-v1.sha256-packed-address.directional.v1",
+    );
+    await expect(recaptureSurface.locator('[data-wtf-recapture-region="buyback-window"]')).toContainText(
+      "right:08269418284a8b2d92427cd4cc0e20cc491f4f4c4721cd9ac3846f7c83121fe5",
+    );
     await recaptureSurface.getByRole("button", { name: "WTF Auctions" }).click();
     await expect(recaptureSurface.locator('[data-wtf-recapture-region="auction-card"]')).toContainText("Harness Auction");
     await expect(recaptureSurface.getByRole("button", { name: "Record off-chain bid" })).toBeVisible();

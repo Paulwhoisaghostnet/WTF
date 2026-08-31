@@ -16,17 +16,26 @@
 
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   buybackAllowlist,
   buybackWindows,
   operatorActions,
   userWallets,
-  users,
 } from "@shared/schema";
 import { isAuthenticated, requirePermission } from "../auth/passport";
-import { buildLeaf, buildMerkleTree, toHex, verifyProof, fromHex } from "../lib/merkle";
+import {
+  WTF_BUYBACK_CONTRACT_ARTIFACT,
+  WTF_BUYBACK_PROOF_VERSION,
+  buildBuybackLeaf,
+  buildBuybackMerkleTree,
+  decodeBuybackProof,
+  encodeBuybackProof,
+  fromHex,
+  toHex,
+  verifyBuybackProof,
+} from "../lib/merkle";
 import { verifyBuybackSwapByHash } from "../lib/wtf-op-verification";
 
 const router = Router();
@@ -181,10 +190,10 @@ router.post(
         .from(buybackWindows)
         .where(eq(buybackWindows.id, id));
       if (!window) return res.status(404).json({ error: "Window not found" });
-      if (window.status !== "draft" && window.status !== "funded") {
+      if (window.status !== "draft") {
         return res
           .status(400)
-          .json({ error: `Allowlist is frozen once window is ${window.status}` });
+          .json({ error: `Allowlist is frozen after draft; window is ${window.status}` });
       }
 
       // Dedup and sort entries to get deterministic root
@@ -195,11 +204,19 @@ router.post(
       const sorted = Array.from(byWallet.values()).sort((a, b) =>
         a.walletAddress.localeCompare(b.walletAddress)
       );
-      const leaves = sorted.map((e) => buildLeaf(e.walletAddress, BigInt(e.maxWtf)));
-      const { root, proofs } = buildMerkleTree(leaves);
+      const contractCap = BigInt(window.perSellerCapWtf);
+      const incompatibleCap = sorted.find((entry) => BigInt(entry.maxWtf) !== contractCap);
+      if (incompatibleCap) {
+        return res.status(400).json({
+          error:
+            "WtfBuybackV1 enforces one per-seller cap for the whole window; every allowlist maxWtf must equal the window perSellerCapWtf",
+        });
+      }
+      const leaves = sorted.map((entry) => buildBuybackLeaf(entry.walletAddress));
+      const { root, proofs } = buildBuybackMerkleTree(leaves);
 
-      // Wipe previous allowlist for this window and re-insert. No
-      // partial state — the admin provides the full set each time.
+      // Replace the complete draft set. The activation gate below recomputes
+      // every proof, so an interrupted replacement cannot be funded or opened.
       await db
         .delete(buybackAllowlist)
         .where(eq(buybackAllowlist.windowId, id));
@@ -226,7 +243,7 @@ router.post(
         userId: e.userId ?? userByWallet.get(e.walletAddress) ?? null,
         maxWtf: e.maxWtf,
         snapshotBalanceWtf: e.snapshotBalanceWtf,
-        merkleProof: proofs[i].map((b) => toHex(b)),
+        merkleProof: encodeBuybackProof(proofs[i]),
         eligibilityReason: e.eligibilityReason,
       }));
       if (batch.length > 0) {
@@ -248,7 +265,12 @@ router.post(
         actionKind: "buyback_window_allowlist_set",
         targetKind: "buyback_window",
         targetId: id,
-        payload: { root: toHex(root), size: batch.length },
+        payload: {
+          root: toHex(root),
+          size: batch.length,
+          proofVersion: WTF_BUYBACK_PROOF_VERSION,
+          contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
+        },
         req,
       });
 
@@ -256,6 +278,8 @@ router.post(
         ok: true,
         merkleRoot: toHex(root),
         size: batch.length,
+        proofVersion: WTF_BUYBACK_PROOF_VERSION,
+        contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
       });
     } catch (err) {
       console.error("[buyback-windows] allowlist failed:", err);
@@ -308,6 +332,41 @@ router.post(
           .json({
             error: `Illegal transition ${window.status} → ${parsed.data.target}`,
           });
+      }
+
+      if (parsed.data.target === "funded" || parsed.data.target === "open") {
+        if (!window.merkleRoot || !/^[0-9a-fA-F]{64}$/.test(window.merkleRoot)) {
+          return res.status(409).json({
+            error: "Buyback window has no compatible WtfBuybackV1 Merkle root",
+          });
+        }
+        const allowlist = await db
+          .select({
+            walletAddress: buybackAllowlist.walletAddress,
+            merkleProof: buybackAllowlist.merkleProof,
+          })
+          .from(buybackAllowlist)
+          .where(eq(buybackAllowlist.windowId, id));
+        if (allowlist.length === 0) {
+          return res.status(409).json({ error: "Buyback window has no allowlist" });
+        }
+        const root = fromHex(window.merkleRoot);
+        const invalid = allowlist.find((entry) => {
+          const proof = decodeBuybackProof(entry.merkleProof);
+          return (
+            proof === null ||
+            !verifyBuybackProof(buildBuybackLeaf(entry.walletAddress), proof, root)
+          );
+        });
+        if (invalid) {
+          return res.status(409).json({
+            error:
+              "Buyback allowlist proof is incompatible with WtfBuybackV1; upload the complete allowlist again before funding or opening",
+            walletAddress: invalid.walletAddress,
+            requiredProofVersion: WTF_BUYBACK_PROOF_VERSION,
+            contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
+          });
+        }
       }
 
       const updates: Record<string, unknown> = {
@@ -416,6 +475,18 @@ router.get(
           )
         );
 
+      const incompatibleProof = mine.find(
+        (entry) => decodeBuybackProof(entry.merkleProof) === null,
+      );
+      if (incompatibleProof) {
+        return res.status(409).json({
+          error:
+            "This window uses an obsolete allowlist proof. The operator must upload the complete allowlist again before customers can swap.",
+          requiredProofVersion: WTF_BUYBACK_PROOF_VERSION,
+          contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
+        });
+      }
+
       res.json({
         window: {
           id: window.id,
@@ -430,6 +501,8 @@ router.get(
           merkleRoot: window.merkleRoot,
         },
         eligibility: mine,
+        proofVersion: WTF_BUYBACK_PROOF_VERSION,
+        contractArtifact: WTF_BUYBACK_CONTRACT_ARTIFACT,
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to resolve eligibility" });
@@ -516,12 +589,5 @@ router.post(
     }
   }
 );
-
-// Defensive: surface unused imports so linters don't complain if one
-// of these helpers becomes optional after a future refactor.
-void isNull;
-void users;
-void verifyProof;
-void fromHex;
 
 export default router;
