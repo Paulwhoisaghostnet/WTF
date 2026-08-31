@@ -107,8 +107,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
       - name: Install SmartPy
         run: pip install smartpy-tezos
+
+      - name: Install Node dependencies
+        run: npm ci --ignore-scripts
 
       - name: Run contract tests + compile (V1.2)
         run: |

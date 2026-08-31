@@ -11059,3 +11059,13 @@
 **Rule**: Run SmartPy source through the repository-owned wrapper and the explicitly selected Python interpreter. CI checks must depend only on tools installed by the workflow or committed wrappers, and a new contract lane must be proven in that clean environment before its board item is considered production-verified.
 
 ---
+
+## 2026-08-30 — Cross-language contract gates must install both dependency graphs
+
+**What happened**: After the SmartPy wrapper correction, CI successfully tested and compiled the buyback contract but failed in the protocol-size check because the Python-only job had not installed the locked Taquito forging package used by that Node checker.
+
+**Why it mattered**: The release gate crossed Python compilation and Node-based Tezos operation forging, but its job definition declared only half of that runtime contract. Local dependencies hid the missing clean-environment prerequisite.
+
+**Rule**: A cross-language CI job must set up and install every locked runtime it invokes. Contract compilation, artifact inspection, and protocol-operation measurement belong to one explicit dependency graph; prove the complete job in a clean runner rather than validating its commands independently on a populated workstation.
+
+---
