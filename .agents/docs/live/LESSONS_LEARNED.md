@@ -11049,3 +11049,13 @@
 **Rule**: Regenerate every source-derived artifact before launching any check that reads it. Once verification starts, keep generated evidence immutable until all concurrent readers finish; if a race occurs, rerun the affected policy test and the full owning gate from one stable tree.
 
 ---
+
+## 2026-08-30 — SmartPy package installation does not guarantee a CLI executable
+
+**What happened**: The buyback contract gate passed locally through a user-installed `smartpy` command, but GitHub installed the same Python package without a console entry point. The contract itself was healthy; the new CI script failed before invoking it.
+
+**Why it mattered**: A local executable leaked into the verification contract even though the repository already provided a Python-module wrapper for clean environments.
+
+**Rule**: Run SmartPy source through the repository-owned wrapper and the explicitly selected Python interpreter. CI checks must depend only on tools installed by the workflow or committed wrappers, and a new contract lane must be proven in that clean environment before its board item is considered production-verified.
+
+---

@@ -6,13 +6,15 @@ SOURCE="$ROOT_DIR/contracts/wtf-buyback/WtfBuybackV1.py"
 BUILD_ROOT="$(mktemp -d)"
 trap 'rm -rf "$BUILD_ROOT"' EXIT
 
-if ! command -v smartpy >/dev/null 2>&1; then
-  echo "smartpy CLI not found. Install with: pip install smartpy-tezos" >&2
+if ! python3 -c "import smartpy" 2>/dev/null; then
+  echo "smartpy module not found. Install with: pip install smartpy-tezos" >&2
   exit 1
 fi
 
-smartpy test "$SOURCE" "$BUILD_ROOT/test"
-smartpy compile "$SOURCE" "$BUILD_ROOT/compile"
+SMARTPY_PYTHON="$(command -v python3)" \
+  bash "$ROOT_DIR/scripts/smartpy-cli-wrapper.sh" test "$SOURCE" "$BUILD_ROOT/test"
+SMARTPY_PYTHON="$(command -v python3)" \
+  bash "$ROOT_DIR/scripts/smartpy-cli-wrapper.sh" compile "$SOURCE" "$BUILD_ROOT/compile"
 
 ARTIFACT_DIR="$BUILD_ROOT/compile/WtfBuybackV1"
 CONTRACT_ARTIFACT="$ARTIFACT_DIR/step_001_cont_0_contract.json"
