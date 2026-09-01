@@ -11317,3 +11317,13 @@
 **Rule**: After changing any runtime, script, test, or harness that reads an environment variable, regenerate and check the environment inventory before committing. Treat source-count and scope-only changes as required generated artifacts, not optional documentation churn.
 
 ---
+
+## 2026-09-01 — Media-pipeline switches belong to the environment inventory
+
+**What happened**: The FAQ recording pipeline introduced `FAQ_TUTORIAL_BASE_URL`, `FAQ_TUTORIAL_HARNESS_PORT`, and `FAQ_TUTORIAL_SLUG`, but the first production commit did not regenerate the environment inventory. The app deployed and played the published videos correctly while the clean quality job stopped at the stale-inventory check.
+
+**Why it mattered**: Operator-only recording controls are still configuration inputs. Omitting them made a healthy production release fail its repository documentation contract before feature tests could run.
+
+**Rule**: Treat every new `process.env` reference as an inventory change, including local media, test, and publishing scripts. Regenerate and check the environment inventory before the first push, even when the variable is never present in the production app container.
+
+---
