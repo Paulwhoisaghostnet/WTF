@@ -48,10 +48,12 @@ test("deploy preflight checks free disk space before image build or app restart"
   assert.match(deploy, /docker system df \|\| true/);
   assert.match(deploy, /WTF_DEPLOY_AUTO_PRUNE_BUILD_CACHE_ON_LOW_DISK:-1/);
   assert.match(deploy, /docker builder prune -af/);
-  assert.doesNotMatch(deploy, /docker\s+(system|volume|image)\s+prune/);
+  assert.match(deploy, /WTF_DEPLOY_AUTO_PRUNE_UNUSED_IMAGES_ON_LOW_DISK:-1/);
+  assert.match(deploy, /docker image prune -af/);
+  assert.doesNotMatch(deploy, /docker\s+(system|volume)\s+prune/);
   assert.match(
     deploy,
-    /docker builder prune -af[\s\S]*available_kb="\$\(df -Pk "\$path" \| awk 'NR == 2 \{ print \$4 \}'\)"[\s\S]*deploy disk preflight failed for \$path after cache-only recovery/
+    /docker builder prune -af[\s\S]*available_kb="\$\(df -Pk "\$path" \| awk 'NR == 2 \{ print \$4 \}'\)"[\s\S]*docker image prune -af[\s\S]*available_kb="\$\(df -Pk "\$path" \| awk 'NR == 2 \{ print \$4 \}'\)"[\s\S]*deploy disk preflight failed for \$path after cache and unused-image recovery/
   );
   assert.match(
     deploy,

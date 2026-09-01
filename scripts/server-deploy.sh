@@ -103,12 +103,35 @@ require_min_free_disk() {
     fi
     available_mib=$((available_kb / 1024))
     if (( available_kb < min_kb )); then
-      echo "[server-deploy] ERROR: deploy disk preflight failed for $path after cache-only recovery: ${available_mib} MiB free, need at least ${min_mib} MiB"
-      echo "[server-deploy] Expand the production disk or perform a manual non-volume cleanup before deploying."
-      exit 1
+      if [[ "${WTF_DEPLOY_AUTO_PRUNE_UNUSED_IMAGES_ON_LOW_DISK:-1}" =~ ^(0|false|no|off)$ ]]; then
+        echo "[server-deploy] ERROR: deploy disk preflight remains below the floor after build-cache recovery: ${available_mib} MiB free, need at least ${min_mib} MiB"
+        echo "[server-deploy] Unused-image recovery is disabled; expand the disk or remove unused images manually."
+        exit 1
+      fi
+
+      echo "[server-deploy] build-cache recovery was insufficient; pruning unused Docker images only: docker image prune -af"
+      if ! docker image prune -af; then
+        echo "[server-deploy] ERROR: unused Docker image recovery failed"
+        exit 1
+      fi
+
+      echo "[server-deploy] Docker disk usage after unused-image recovery:"
+      docker system df || true
+
+      available_kb="$(df -Pk "$path" | awk 'NR == 2 { print $4 }')"
+      if [[ ! "$available_kb" =~ ^[0-9]+$ ]]; then
+        echo "[server-deploy] ERROR: could not determine free disk space for $path after unused-image recovery"
+        exit 1
+      fi
+      available_mib=$((available_kb / 1024))
+      if (( available_kb < min_kb )); then
+        echo "[server-deploy] ERROR: deploy disk preflight failed for $path after cache and unused-image recovery: ${available_mib} MiB free, need at least ${min_mib} MiB"
+        echo "[server-deploy] Expand the production disk or perform a manual non-volume cleanup before deploying."
+        exit 1
+      fi
     fi
 
-    echo "[server-deploy] disk preflight recovered for $path after Docker build-cache-only prune: ${available_mib} MiB free"
+    echo "[server-deploy] disk preflight recovered for $path without pruning Docker volumes: ${available_mib} MiB free"
     return 0
   fi
 

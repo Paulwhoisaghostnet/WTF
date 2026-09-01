@@ -11209,3 +11209,13 @@
 **Rule**: An absent revision may create a missing singleton row but must conflict on an existing row; an invalid revision must fail validation. A successful compare-and-update must atomically match the old revision and write a strictly newer revision. Prove both create races and update races with two executable writers and exactly one winner.
 
 ---
+
+## 2026-09-01 — Low-disk recovery must follow the host's actual reclaimable storage
+
+**What happened**: Production fell 425 MiB below its required deploy floor. The automated build-cache prune succeeded but reclaimed nothing, while Docker reported 1.978 GB of unused images that the recovery path intentionally did not touch.
+
+**Why it mattered**: Repeating the deployment could never change the blocking condition, so verified `main` commits remained off production even though enough safely reclaimable, non-volume storage was available.
+
+**Rule**: Keep the deployment floor unchanged and recover in narrow stages based on measured Docker usage: prune build cache first, recheck, then prune only images unused by every container and recheck again. Never automate system-wide or volume pruning; fail closed when those bounded stages cannot satisfy the existing floor.
+
+---
