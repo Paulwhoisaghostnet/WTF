@@ -11,6 +11,7 @@ const health = readFileSync("server/lib/health.ts", "utf8");
 const healthTest = readFileSync("server/lib/health.test.ts", "utf8");
 const dockerfile = readFileSync("Dockerfile", "utf8");
 const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+const deployWorkflow = readFileSync(".github/workflows/deploy.yml", "utf8");
 
 const deploySurface = `${migrations}\n${deploy}`;
 
@@ -63,6 +64,14 @@ test("deploy preflight checks free disk space before image build or app restart"
     deploy,
     /require_min_free_disk[\s\S]*docker compose build[\s\S]*docker compose stop app/
   );
+});
+
+test("Hetzner deploys queue and hold one host-side lock instead of orphaning cancelled builds", () => {
+  assert.match(deployWorkflow, /group: hetzner-deploy-main/);
+  assert.match(deployWorkflow, /cancel-in-progress: false/);
+  assert.match(deployWorkflow, /exec 9>\/tmp\/wtf-app-deploy\.lock/);
+  assert.match(deployWorkflow, /flock 9[\s\S]*git fetch origin[\s\S]*server-deploy\.sh/);
+  assert.doesNotMatch(deployWorkflow, /cancel-in-progress: true/);
 });
 
 test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {

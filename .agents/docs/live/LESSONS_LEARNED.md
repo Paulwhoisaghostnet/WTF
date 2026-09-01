@@ -11229,3 +11229,13 @@
 **Rule**: Reconcile schema bounties across all three layers: current schema declaration, deterministic forward migration with executable policy coverage, and immutable production-ledger evidence from a successful deploy. Mark the record verified only when all three agree.
 
 ---
+
+## 2026-09-01 — Canceling an SSH deploy does not prove the remote build stopped
+
+**What happened**: The GitHub deployment concurrency group canceled older jobs on each `main` push. The runner and SSH session ended, but host-side Docker build work remained active; later preflights reported 54 active, non-reclaimable cache records while free disk fell from 11,863 MiB to 10,270 MiB.
+
+**Why it mattered**: A control intended to prevent obsolete deployments instead created overlapping remote work that could not be reclaimed, repeatedly blocking the newest exact commit before build.
+
+**Rule**: For SSH-triggered host deployments, queue workflow runs instead of canceling in progress, and acquire a host-side file lock before fetch, reset, build, migration, or restart. Runner cancellation is not remote-process cancellation evidence.
+
+---

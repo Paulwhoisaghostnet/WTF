@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: hetzner-deploy-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -41,6 +41,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" << 'EOF'
             set -euo pipefail
+            exec 9>/tmp/wtf-app-deploy.lock
+            flock 9
             cd /opt/platform/repos/wtf-app
 
             if [ ! -f .env ]; then
