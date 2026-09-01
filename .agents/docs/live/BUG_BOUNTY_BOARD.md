@@ -23,16 +23,12 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **409** · Archived: **4**
+Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **409** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-300 | Open | - | 2026-06-29 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
-| WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
-| WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
-| WTF-BB-655 | Open | - | - | E2E live puppets / Console seed data | P1 | 9 | 511 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
 | WTF-BB-087 | Open | - | - | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-071 | Open | - | 2026-05-02 | Kiln integration / jstz adapter | P2 | 10 | 449 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
 | WTF-BB-059 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
@@ -92,6 +88,10 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-300 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
+| WTF-BB-069 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
+| WTF-BB-006 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
+| WTF-BB-655 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | E2E live puppets / Console seed data | P1 | 9 | 511 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -668,85 +668,6 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
-
-- Category: Desktop OS / route contract
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-06-29
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence:
-  - Local registry comparison on 2026-06-21 found `/map-lab` as `auth:true` in `client/src/routes/page-defs.ts` and `tests/e2e/inventory/route-fixtures.mjs`, but `auth:false` in `shared/wtf-browser-routes.ts`.
-  - Production `/api/cli/routes` lists `/map-lab` for anonymous callers, and `/api/access` advertises it public.
-  - Mobile browser smoke of `https://wtfos.app/map-lab` returned 200 but showed only the desktop, a Map Lab icon/taskbar entry, and no visible Map Lab window or demo content.
-- Why it matters:
-  - The recently fixed public Map Lab demo can look reachable to CLI/manifests while failing the actual anonymous visual task, and the current dirty registry state could redeploy the wrong auth contract.
-- Likely correction direction:
-  - Decide whether `/map-lab` remains public demo or signed-in app, sync every route registry, and ensure direct anonymous navigation opens the demo surface visibly on desktop and mobile.
-- Verification idea:
-  - Add focused Playwright for anonymous `/map-lab` with a rendered demo marker, route metadata sync, no horizontal overflow, and CLI/access manifest parity.
-- Related Gamma note:
-  - 2026-06-29 Gamma Map Lab containment was fixed without changing shared auth or route policy. `/gamma/map-lab` now has host-scoped presentation chrome and browser proof for workspace and demo states, but the public-route/auth drift described above remains open for a separate non-Gamma pass.
-
-### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
-
-- Category: Kiln integration / network metadata
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-05-02
-- Score: C2 + F3 + S1 + P1(4) = 10
-- Evidence:
-  - Browser/API probes of `kiln.wtfgameshow.app` showed the public catalog advertising Etherlink testnet at `https://node.ghostnet.etherlink.com`, chain ID `128123`.
-  - Official Etherlink docs identify Etherlink Shadownet as RPC `https://node.shadownet.etherlink.com`, chain ID `127823`.
-  - Public re-probe on 2026-05-02 still returned `etherlink-testnet` as active/supported and `/api/kiln/capabilities?networkId=etherlink-shadownet` still reported Tezos Shadownet runtime defaults.
-- Why it matters:
-  - Builders will deploy and test against the wrong L2 test rail if the public network card remains stale.
-- Likely correction direction:
-  - Deploy the local Kiln network catalog update and verify `/api/networks` lists `etherlink-shadownet` with chain ID `127823`.
-- Verification idea:
-  - Curl production `/api/networks` and `/api/kiln/capabilities?networkId=etherlink-shadownet` after deploy.
-- Local fix note (2026-05-02):
-  - The sibling Kiln app now lists `etherlink-shadownet` locally with chain ID `127823`, leaves old `etherlink-testnet` as planned/legacy, and resolves requested-network capabilities locally.
-- Production verification note (2026-05-03):
-  - Deployed commit `09ca113` to `kiln.wtfgameshow.app`.
-  - Public `/api/networks` now lists `etherlink-shadownet` with RPC `https://node.shadownet.etherlink.com` and chain ID `127823`.
-  - Public `/api/kiln/capabilities?networkId=etherlink-shadownet` now reports `runtimeNetwork: etherlink-shadownet`, Solidity source support, and explicit no-stub blocker statuses.
-
-### WTF-BB-006 - `0031_wtf_recapture.sql` is not idempotent for enum type creation
-
-- Category: DB migrations
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C2 + F3 + S1 + P1(4) = 10
-- Evidence: `0031_wtf_recapture.sql` uses `CREATE TYPE buyback_window_status AS ENUM (...)` without a guard; log showed `ERROR: type "buyback_window_status" already exists`.
-- Why it matters: The deploy script claims every `0015+` file is idempotent, but this file aborts once the type exists.
-- Likely correction direction: Use a guarded `DO $$ BEGIN CREATE TYPE ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;` pattern or split one-time type creation into a tracked migration.
-- Verification idea: Running the migration twice succeeds both times.
-
-### WTF-BB-655 - Console game seed upsert blocks live puppet harness
-
-- Category: E2E live puppets / Console seed data
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C2 + F3 + S0 + P1(4) = 9
-- Legacy identity: this distinct record formerly reused WTF-BB-117; it was assigned WTF-BB-655 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `npm run test:e2e:live:puppets` failed during `tests/e2e/puppets/seed.ts` before Playwright launched.
-  - The failing query was an upsert into `console_games` using `on conflict ("slug") do update` for the `adrift` fixture.
-  - Local verification for the onboarding release therefore could not complete the actor-backed live puppet pass, even though inventory coverage, inventory route smoke, typecheck, build, deploy health, and production smoke passed.
-- Why it matters:
-  - The live puppet suite is the durable login/wallet/workflow verification gate. Seed fixture drift should not block unrelated release verification or mask real product regressions.
-- Likely correction direction:
-  - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
-- Verification idea:
-  - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
 
 ### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
 
@@ -1917,6 +1838,85 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
+
+- Category: Desktop OS / route contract
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - Local registry comparison on 2026-06-21 found `/map-lab` as `auth:true` in `client/src/routes/page-defs.ts` and `tests/e2e/inventory/route-fixtures.mjs`, but `auth:false` in `shared/wtf-browser-routes.ts`.
+  - Production `/api/cli/routes` lists `/map-lab` for anonymous callers, and `/api/access` advertises it public.
+  - Mobile browser smoke of `https://wtfos.app/map-lab` returned 200 but showed only the desktop, a Map Lab icon/taskbar entry, and no visible Map Lab window or demo content.
+- Why it matters:
+  - The recently fixed public Map Lab demo can look reachable to CLI/manifests while failing the actual anonymous visual task, and the current dirty registry state could redeploy the wrong auth contract.
+- Likely correction direction:
+  - Decide whether `/map-lab` remains public demo or signed-in app, sync every route registry, and ensure direct anonymous navigation opens the demo surface visibly on desktop and mobile.
+- Verification idea:
+  - Add focused Playwright for anonymous `/map-lab` with a rendered demo marker, route metadata sync, no horizontal overflow, and CLI/access manifest parity.
+- Related Gamma note:
+  - 2026-06-29 Gamma Map Lab containment was fixed without changing shared auth or route policy. `/gamma/map-lab` now has host-scoped presentation chrome and browser proof for workspace and demo states, but the public-route/auth drift described above remains open for a separate non-Gamma pass.
+
+### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
+
+- Category: Kiln integration / network metadata
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Evidence:
+  - Browser/API probes of `kiln.wtfgameshow.app` showed the public catalog advertising Etherlink testnet at `https://node.ghostnet.etherlink.com`, chain ID `128123`.
+  - Official Etherlink docs identify Etherlink Shadownet as RPC `https://node.shadownet.etherlink.com`, chain ID `127823`.
+  - Public re-probe on 2026-05-02 still returned `etherlink-testnet` as active/supported and `/api/kiln/capabilities?networkId=etherlink-shadownet` still reported Tezos Shadownet runtime defaults.
+- Why it matters:
+  - Builders will deploy and test against the wrong L2 test rail if the public network card remains stale.
+- Likely correction direction:
+  - Deploy the local Kiln network catalog update and verify `/api/networks` lists `etherlink-shadownet` with chain ID `127823`.
+- Verification idea:
+  - Curl production `/api/networks` and `/api/kiln/capabilities?networkId=etherlink-shadownet` after deploy.
+- Local fix note (2026-05-02):
+  - The sibling Kiln app now lists `etherlink-shadownet` locally with chain ID `127823`, leaves old `etherlink-testnet` as planned/legacy, and resolves requested-network capabilities locally.
+- Production verification note (2026-05-03):
+  - Deployed commit `09ca113` to `kiln.wtfgameshow.app`.
+  - Public `/api/networks` now lists `etherlink-shadownet` with RPC `https://node.shadownet.etherlink.com` and chain ID `127823`.
+  - Public `/api/kiln/capabilities?networkId=etherlink-shadownet` now reports `runtimeNetwork: etherlink-shadownet`, Solidity source support, and explicit no-stub blocker statuses.
+
+### WTF-BB-006 - `0031_wtf_recapture.sql` is not idempotent for enum type creation
+
+- Category: DB migrations
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Evidence: `0031_wtf_recapture.sql` uses `CREATE TYPE buyback_window_status AS ENUM (...)` without a guard; log showed `ERROR: type "buyback_window_status" already exists`.
+- Why it matters: The deploy script claims every `0015+` file is idempotent, but this file aborts once the type exists.
+- Likely correction direction: Use a guarded `DO $$ BEGIN CREATE TYPE ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;` pattern or split one-time type creation into a tracked migration.
+- Verification idea: Running the migration twice succeeds both times.
+
+### WTF-BB-655 - Console game seed upsert blocks live puppet harness
+
+- Category: E2E live puppets / Console seed data
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Legacy identity: this distinct record formerly reused WTF-BB-117; it was assigned WTF-BB-655 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Evidence:
+  - `npm run test:e2e:live:puppets` failed during `tests/e2e/puppets/seed.ts` before Playwright launched.
+  - The failing query was an upsert into `console_games` using `on conflict ("slug") do update` for the `adrift` fixture.
+  - Local verification for the onboarding release therefore could not complete the actor-backed live puppet pass, even though inventory coverage, inventory route smoke, typecheck, build, deploy health, and production smoke passed.
+- Why it matters:
+  - The live puppet suite is the durable login/wallet/workflow verification gate. Seed fixture drift should not block unrelated release verification or mask real product regressions.
+- Likely correction direction:
+  - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
+- Verification idea:
+  - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
