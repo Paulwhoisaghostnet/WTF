@@ -355,7 +355,7 @@
     },
     {
       "id": "WTF-BB-044",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex W identity ambiguity reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Data integrity / identity",
@@ -366,7 +366,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "W identity resolution can collapse duplicate Twitter IDs into one row",
-      "body": "- Evidence:\n  - `shared/schema.ts:234` defines `users.twitterId` without a uniqueness constraint.\n  - `server/routes/w.ts:1390-1410` stores users in a `Map` keyed by `twitterId`.\n- Why it matters:\n  - Any duplicate `twitterId` rows (or merge drift over time) will be overwritten in-memory.\n  - Conversation filtering can map the wrong internal user and return incorrect W users or deny valid peers.\n- Likely correction direction:\n  - Enforce identity uniqueness in schema (e.g. partial unique over verified+connected users), and resolve conversations by `users.id` when possible.\n- Verification idea:\n  - Add duplicate-twitter fixture rows and verify route responses are deterministic or reject duplicates.",
+      "body": "- Historical evidence:\n  - The original W conversation enrichment built a map directly from user rows keyed by `twitterId`, so a duplicate row silently replaced whichever user appeared earlier.\n- Correction:\n  - Commit `1e157094e` introduced `selectUniqueConnectedWtfUsersByTwitterId`, groups connected/verified users by numeric X identity, and enriches a peer only when exactly one platform user owns that identity.\n  - Duplicate or malformed identity rows now fail closed as unlinked peers instead of resolving to an arbitrary internal account. This satisfies the record's deterministic-or-reject criterion without inventing a global uniqueness rule for historical rows.\n- Verification (2026-09-01):\n  - `server/features/w/message-identity-policy.test.ts` passes 1/1 with two users sharing one X id, one unique user, and one malformed id. The duplicate and malformed identities are omitted while the unique identity resolves correctly.\n  - Current W message enrichment calls this selector after filtering for verified connected accounts.",
       "legacyOriginalId": "WTF-BB-044"
     },
     {

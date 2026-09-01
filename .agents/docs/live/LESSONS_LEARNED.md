@@ -11279,3 +11279,13 @@
 **Rule**: For SSRF redirect defenses, test a public-to-private chain with a controlled fetch implementation. Assert manual redirect mode, the rejection reason, and—most importantly—that the private redirect target is never requested.
 
 ---
+
+## 2026-09-01 — Ambiguous external identities must fail closed
+
+**What happened**: An old W enrichment path silently overwrote duplicate X identities in a map. The current implementation had already grouped candidates and omitted any identity with more than one matching platform account, but the original bounty remained open.
+
+**Why it mattered**: Choosing an arbitrary duplicate can disclose or attribute a conversation to the wrong internal user; requiring a global schema rewrite was not necessary to make the read path safe against historical drift.
+
+**Rule**: When enriching external identities, resolve only a single validated match. Treat duplicate and malformed identifiers as unlinked, preserve the source rows for later cleanup, and prove the fail-closed behavior with an explicit duplicate fixture.
+
+---

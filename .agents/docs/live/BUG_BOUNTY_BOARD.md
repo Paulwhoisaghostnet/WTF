@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **24** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **405** · Archived: **4**
+Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **406** · Archived: **4**
 
 ## Canonical Board
 
@@ -94,7 +94,6 @@ Total: **635** · Open: **24** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-044 | Claimed | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -521,6 +520,7 @@ Total: **635** · Open: **24** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-085 | Verified | Codex security hardening pass (2026-05-30) | - | Supply chain | P1 | 11 | 369 | 4 | 2 | 1 | Root production dependency tree carries critical xmldom via legacy passport-twitter |
 | WTF-BB-084 | Verified | Codex human-alpha release completion | - | Secret handling / frontend bundle | P1 | 11 | 369 | 4 | 2 | 1 | Particle Painter frontend expects a Pinata JWT in Vite client env |
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 369 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
+| WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
 | WTF-BB-665 | Verified | Codex Kiln clean-checkout fixture repair | 2026-09-01 | Kiln CI / hermetic test data | P1 | 10 | 449 | 2 | 4 | 0 | Kiln main CI depends on a gitignored local reference-contract corpus |
 | WTF-BB-657 | Verified | Codex Skywire full-send deploy | - | Deploy / Hetzner checkout | P1 | 10 | 449 | 3 | 3 | 0 | Hetzner deploy checkout fails on divergent server branch |
@@ -1953,25 +1953,6 @@ Total: **635** · Open: **24** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-044 - W identity resolution can collapse duplicate Twitter IDs into one row
-
-- Category: Data integrity / identity
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex W identity ambiguity reconciliation
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S1 + P1(4) = 11
-- Evidence:
-  - `shared/schema.ts:234` defines `users.twitterId` without a uniqueness constraint.
-  - `server/routes/w.ts:1390-1410` stores users in a `Map` keyed by `twitterId`.
-- Why it matters:
-  - Any duplicate `twitterId` rows (or merge drift over time) will be overwritten in-memory.
-  - Conversation filtering can map the wrong internal user and return incorrect W users or deny valid peers.
-- Likely correction direction:
-  - Enforce identity uniqueness in schema (e.g. partial unique over verified+connected users), and resolve conversations by `users.id` when possible.
-- Verification idea:
-  - Add duplicate-twitter fixture rows and verify route responses are deterministic or reject duplicates.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -11746,6 +11727,23 @@ Copy this when adding a new issue:
 - Verification note: `node --test --import tsx server/lib/in-memory-rate-limit.test.ts server/lib/bounded-expiring-cache.test.ts` -> 6/6 pass; `npm run check` -> exit 0.
 - Verification idea:
   - Repeatedly resolve many actor users and verify `xUserIdCache` cardinality stabilizes instead of linearly growing.
+
+### WTF-BB-044 - W identity resolution can collapse duplicate Twitter IDs into one row
+
+- Category: Data integrity / identity
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex W identity ambiguity reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S1 + P1(4) = 11
+- Historical evidence:
+  - The original W conversation enrichment built a map directly from user rows keyed by `twitterId`, so a duplicate row silently replaced whichever user appeared earlier.
+- Correction:
+  - Commit `1e157094e` introduced `selectUniqueConnectedWtfUsersByTwitterId`, groups connected/verified users by numeric X identity, and enriches a peer only when exactly one platform user owns that identity.
+  - Duplicate or malformed identity rows now fail closed as unlinked peers instead of resolving to an arbitrary internal account. This satisfies the record's deterministic-or-reject criterion without inventing a global uniqueness rule for historical rows.
+- Verification (2026-09-01):
+  - `server/features/w/message-identity-policy.test.ts` passes 1/1 with two users sharing one X id, one unique user, and one malformed id. The duplicate and malformed identities are omitted while the unique identity resolves correctly.
+  - Current W message enrichment calls this selector after filtering for verified connected accounts.
 
 ### WTF-BB-034 - X token refresh updates users table without serialization
 
