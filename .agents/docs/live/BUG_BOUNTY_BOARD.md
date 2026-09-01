@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **406** · Archived: **4**
+Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **406** · Archived: **4**
 
 ## Canonical Board
 
@@ -35,7 +35,6 @@ Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-655 | Open | - | - | E2E live puppets / Console seed data | P1 | 9 | 509 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
 | WTF-BB-087 | Open | - | - | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
-| WTF-BB-081 | Open | - | - | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-071 | Open | - | 2026-05-02 | Kiln integration / jstz adapter | P2 | 10 | 449 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
 | WTF-BB-059 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-058 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
@@ -94,6 +93,7 @@ Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-081 | Claimed | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -781,26 +781,6 @@ Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Bloc
   - Split `manage_users` into low-risk profile support, temp-password support, and destructive delete/disable permissions. Prefer soft-disable over hard delete for pre-launch public accounts.
 - Verification idea:
   - A cohost should be able to perform intended support actions but should receive 403 for hard delete unless explicitly granted a dedicated destructive permission.
-
-### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
-
-- Category: Authentication / Tezos wallet proof
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C3 + F3 + S2 + P2(3) = 11
-- Evidence:
-  - `server/auth/wallet-verify.ts:1-5` builds a challenge from only a nonce.
-  - `server/auth/routes.ts:861-917` derives an address from `publicKey`, falls back to the client-supplied `walletAddress`, and does not call `verifyPublicKeyOwnership(walletAddress, publicKey)`.
-  - `server/auth/routes.ts:926-960` repeats the same pattern for wallet registration.
-  - The authenticated wallet-link route does perform the ownership check at `server/routes/wallets.ts:119-123`, so the stronger pattern already exists.
-- Why it matters:
-  - The signed statement does not commit to the wallet address, origin, or action. This weakens phishing resistance and makes address/account attribution rely on fallback logic rather than a single canonical proof.
-- Likely correction direction:
-  - Include wallet address, site origin, action, and expiry in the challenge message; require `verifyPublicKeyOwnership(walletAddress, publicKey)` before consuming the nonce.
-- Verification idea:
-  - A valid signature from one public key should never satisfy a challenge requested for a different wallet address.
 
 ### WTF-BB-071 - jstz is only planned/configurable and has no executable Kiln adapter
 
@@ -1953,6 +1933,26 @@ Total: **635** · Open: **24** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
+
+- Category: Authentication / Tezos wallet proof
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex wallet auth proof binding
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Evidence:
+  - `server/auth/wallet-verify.ts:1-5` builds a challenge from only a nonce.
+  - `server/auth/routes.ts:861-917` derives an address from `publicKey`, falls back to the client-supplied `walletAddress`, and does not call `verifyPublicKeyOwnership(walletAddress, publicKey)`.
+  - `server/auth/routes.ts:926-960` repeats the same pattern for wallet registration.
+  - The authenticated wallet-link route does perform the ownership check at `server/routes/wallets.ts:119-123`, so the stronger pattern already exists.
+- Why it matters:
+  - The signed statement does not commit to the wallet address, origin, or action. This weakens phishing resistance and makes address/account attribution rely on fallback logic rather than a single canonical proof.
+- Likely correction direction:
+  - Include wallet address, site origin, action, and expiry in the challenge message; require `verifyPublicKeyOwnership(walletAddress, publicKey)` before consuming the nonce.
+- Verification idea:
+  - A valid signature from one public key should never satisfy a challenge requested for a different wallet address.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 

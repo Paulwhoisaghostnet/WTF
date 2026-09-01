@@ -515,9 +515,9 @@
     },
     {
       "id": "WTF-BB-081",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex wallet auth proof binding",
+      "lastTouched": "2026-09-01",
       "category": "Authentication / Tezos wallet proof",
       "priority": "P2",
       "points": 11,
