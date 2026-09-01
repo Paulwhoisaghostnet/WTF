@@ -243,7 +243,7 @@
     },
     {
       "id": "WTF-BB-667",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex production disk recovery",
       "lastTouched": "2026-09-01",
       "category": "Deploy / production disk capacity",
@@ -254,7 +254,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "Production deploy preflight cannot recover when only unused Docker images are reclaimable",
-      "body": "- Evidence (2026-09-01):\n  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor. Build-cache cleanup reclaimed nothing, and the first unused-image cleanup correctly removed zero shared/reference-held bytes.\n  - Repeated `main` pushes exposed the root cause: workflow `cancel-in-progress: true` ended GitHub jobs while host-side Docker work remained active. Later preflights showed 54 active, non-reclaimable cache records and free disk falling to 9,763 MiB with no GitHub deploy still running.\n- Correction:\n  - The deploy workflow now queues rather than cancels in-progress host work and acquires `/tmp/wtf-app-deploy.lock` before fetch, reset, build, migration, or restart.\n  - Low-disk recovery remains bounded: build cache first, then only images unused by every container, with the same 12,288 MiB floor rechecked after each stage. Broad system and volume pruning remain forbidden.\n  - The new non-secret recovery toggle is recorded in the generated environment inventory.\n- Verification:\n  - Shell syntax plus deploy, migration, and Kiln posture policy suites pass 19/19. Environment inventory generation and its deterministic checker pass.\n  - Serialized rerun `33557989327` started with 13,299 MiB free, built exact commit `d52b543c`, passed checksum-bound migrations and internal readiness, then passed external health in 6m41s. Public `https://wtfos.app/api/health` reports `ok: true` and exact commit `d52b543c`.\n  - Status is Fixed pending a green quality run for the environment-inventory correction on the next exact `main` commit.",
+      "body": "- Evidence (2026-09-01):\n  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor. Build-cache cleanup reclaimed nothing, and the first unused-image cleanup correctly removed zero shared/reference-held bytes.\n  - Repeated `main` pushes exposed the root cause: workflow `cancel-in-progress: true` ended GitHub jobs while host-side Docker work remained active. Later preflights showed 54 active, non-reclaimable cache records and free disk falling to 9,763 MiB with no GitHub deploy still running.\n- Correction:\n  - The deploy workflow now queues rather than cancels in-progress host work and acquires `/tmp/wtf-app-deploy.lock` before fetch, reset, build, migration, or restart.\n  - Low-disk recovery remains bounded: build cache first, then only images unused by every container, with the same 12,288 MiB floor rechecked after each stage. Broad system and volume pruning remain forbidden.\n  - The new non-secret recovery toggle is recorded in the generated environment inventory.\n- Verification:\n  - Shell syntax plus deploy, migration, and Kiln posture policy suites pass 19/19. Environment inventory generation and its deterministic checker pass.\n  - Serialized rerun `33557989327` started with 13,299 MiB free, built exact commit `d52b543c`, passed checksum-bound migrations and internal readiness, then passed external health in 6m41s.\n  - Exact follow-up deploy `33559059218` completed successfully for commit `df7ba38e`; public `https://wtfos.app/api/health` reports `ok: true`, `status: alive`, and exact commit `df7ba38e`. Quality run `33559059243` passed the full unit suite, dependency and supply-chain gates, environment and board integrity, TypeScript, production build, inventory coverage and route smoke, external-link safety, and SmartPy contracts. The operational correction is therefore verified.",
       "legacyOriginalId": "WTF-BB-667"
     },
     {
@@ -355,9 +355,9 @@
     },
     {
       "id": "WTF-BB-044",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex W identity ambiguity reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "Data integrity / identity",
       "priority": "P1",
       "points": 11,

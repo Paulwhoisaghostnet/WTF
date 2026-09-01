@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **404** · Archived: **4**
+Total: **635** · Open: **24** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **405** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-044 | Open | - | 2026-04-27 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-522 | Open | - | - | E2E accuracy / Club Dues contract lifecycle | P1 | 10 | 449 | 2 | 2 | 2 | Club Dues live puppet still required the retired V1 template |
 | WTF-BB-300 | Open | - | 2026-06-29 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
@@ -95,6 +94,7 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-044 | Claimed | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -251,7 +251,6 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 509 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 509 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 509 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
-| WTF-BB-667 | Fixed | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 570 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 570 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 570 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 570 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
@@ -602,6 +601,7 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 509 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-134 | Verified | Codex desktop wiring pass | 2026-05-08 | Desktop OS / event and route wiring | P2 | 9 | 509 | 3 | 3 | 0 | Desktop icon/item automation and route wiring drifted after restructuring |
 | WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 509 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
+| WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 570 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 570 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 570 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
 | WTF-BB-566 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Release governance / environment inventory | P2 | 8 | 570 | 1 | 3 | 1 | The deterministic environment inventory has been regenerated from the integrated release tree and passes source equality, safety, and coverage policy |
@@ -666,25 +666,6 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-044 - W identity resolution can collapse duplicate Twitter IDs into one row
-
-- Category: Data integrity / identity
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C3 + F3 + S1 + P1(4) = 11
-- Evidence:
-  - `shared/schema.ts:234` defines `users.twitterId` without a uniqueness constraint.
-  - `server/routes/w.ts:1390-1410` stores users in a `Map` keyed by `twitterId`.
-- Why it matters:
-  - Any duplicate `twitterId` rows (or merge drift over time) will be overwritten in-memory.
-  - Conversation filtering can map the wrong internal user and return incorrect W users or deny valid peers.
-- Likely correction direction:
-  - Enforce identity uniqueness in schema (e.g. partial unique over verified+connected users), and resolve conversations by `users.id` when possible.
-- Verification idea:
-  - Add duplicate-twitter fixture rows and verify route responses are deterministic or reject duplicates.
 
 ### WTF-BB-522 - Club Dues live puppet still required the retired V1 template
 
@@ -1972,6 +1953,25 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-044 - W identity resolution can collapse duplicate Twitter IDs into one row
+
+- Category: Data integrity / identity
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex W identity ambiguity reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S1 + P1(4) = 11
+- Evidence:
+  - `shared/schema.ts:234` defines `users.twitterId` without a uniqueness constraint.
+  - `server/routes/w.ts:1390-1410` stores users in a `Map` keyed by `twitterId`.
+- Why it matters:
+  - Any duplicate `twitterId` rows (or merge drift over time) will be overwritten in-memory.
+  - Conversation filtering can map the wrong internal user and return incorrect W users or deny valid peers.
+- Likely correction direction:
+  - Enforce identity uniqueness in schema (e.g. partial unique over verified+connected users), and resolve conversations by `users.id` when possible.
+- Verification idea:
+  - Add duplicate-twitter fixture rows and verify route responses are deterministic or reject duplicates.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -5447,26 +5447,6 @@ Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Bloc
 - Verification idea: Production build emits no Vite `NODE_ENV` warning.
 - 2026-05-06 fix note: Removed `NODE_ENV=production` from `.env`; runtime production mode remains controlled by scripts/process env.
 - Verification: `npm run build` completed without the Vite `NODE_ENV` warning.
-
-### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
-
-- Category: Deploy / production disk capacity
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex production disk recovery
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence (2026-09-01):
-  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor. Build-cache cleanup reclaimed nothing, and the first unused-image cleanup correctly removed zero shared/reference-held bytes.
-  - Repeated `main` pushes exposed the root cause: workflow `cancel-in-progress: true` ended GitHub jobs while host-side Docker work remained active. Later preflights showed 54 active, non-reclaimable cache records and free disk falling to 9,763 MiB with no GitHub deploy still running.
-- Correction:
-  - The deploy workflow now queues rather than cancels in-progress host work and acquires `/tmp/wtf-app-deploy.lock` before fetch, reset, build, migration, or restart.
-  - Low-disk recovery remains bounded: build cache first, then only images unused by every container, with the same 12,288 MiB floor rechecked after each stage. Broad system and volume pruning remain forbidden.
-  - The new non-secret recovery toggle is recorded in the generated environment inventory.
-- Verification:
-  - Shell syntax plus deploy, migration, and Kiln posture policy suites pass 19/19. Environment inventory generation and its deterministic checker pass.
-  - Serialized rerun `33557989327` started with 13,299 MiB free, built exact commit `d52b543c`, passed checksum-bound migrations and internal readiness, then passed external health in 6m41s. Public `https://wtfos.app/api/health` reports `ok: true` and exact commit `d52b543c`.
-  - Status is Fixed pending a green quality run for the environment-inventory correction on the next exact `main` commit.
 
 ### WTF-BB-307 - Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap
 
@@ -13639,6 +13619,26 @@ Copy this when adding a new issue:
 - Local fix note: Updated the reported provenance, marketplace, media, and Game Studio external anchors to `rel="noopener noreferrer"`.
 - Verification: `npm run check:external-links` passed locally after the fix.
 - Verification idea: Keep the external-link safety check in the standard quality gate whenever new external links are added.
+
+### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
+
+- Category: Deploy / production disk capacity
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex production disk recovery
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence (2026-09-01):
+  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor. Build-cache cleanup reclaimed nothing, and the first unused-image cleanup correctly removed zero shared/reference-held bytes.
+  - Repeated `main` pushes exposed the root cause: workflow `cancel-in-progress: true` ended GitHub jobs while host-side Docker work remained active. Later preflights showed 54 active, non-reclaimable cache records and free disk falling to 9,763 MiB with no GitHub deploy still running.
+- Correction:
+  - The deploy workflow now queues rather than cancels in-progress host work and acquires `/tmp/wtf-app-deploy.lock` before fetch, reset, build, migration, or restart.
+  - Low-disk recovery remains bounded: build cache first, then only images unused by every container, with the same 12,288 MiB floor rechecked after each stage. Broad system and volume pruning remain forbidden.
+  - The new non-secret recovery toggle is recorded in the generated environment inventory.
+- Verification:
+  - Shell syntax plus deploy, migration, and Kiln posture policy suites pass 19/19. Environment inventory generation and its deterministic checker pass.
+  - Serialized rerun `33557989327` started with 13,299 MiB free, built exact commit `d52b543c`, passed checksum-bound migrations and internal readiness, then passed external health in 6m41s.
+  - Exact follow-up deploy `33559059218` completed successfully for commit `df7ba38e`; public `https://wtfos.app/api/health` reports `ok: true`, `status: alive`, and exact commit `df7ba38e`. Quality run `33559059243` passed the full unit suite, dependency and supply-chain gates, environment and board integrity, TypeScript, production build, inventory coverage and route smoke, external-link safety, and SmartPy contracts. The operational correction is therefore verified.
 
 ### WTF-BB-658 - PixAlerce inventory journey can wait forever after disabling every test and action timeout
 
