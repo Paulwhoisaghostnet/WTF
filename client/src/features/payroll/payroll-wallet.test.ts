@@ -55,7 +55,12 @@ test("Payroll keeps its connector isolated and rechecks signer, chain, and confi
   assert.equal(PAYROLL_RPC_URL, "https://tezos-mainnet.octez.io/");
   assert.match(source, /storage:\s*new LocalStorage\(PAYROLL_STORAGE_PREFIX\)/);
   assert.doesNotMatch(source, /wtf:wallet-session|WALLET_SESSION_KEY|useWallet/);
-  assert.match(source, /requestPermissions\(\{[\s\S]*?network:\s*\{\s*type:\s*PAYROLL_NETWORK,\s*rpcUrl:\s*PAYROLL_RPC_URL\s*\}/);
+  assert.match(source, /network:\s*\{\s*type:\s*PAYROLL_NETWORK,\s*rpcUrl:\s*PAYROLL_RPC_URL\s*\}/);
+  assert.match(source, /requestPermissions\(\)/);
+  assert.doesNotMatch(source, /requestPermissions\(\{[\s\S]*?network:/);
+  assert.match(source, /\.\.\.getOctezWalletConnectOptions\(\)/);
+  assert.doesNotMatch(source, /requestTimeoutMs/);
+  assert.doesNotMatch(source, /removeAllPeers\(false\)/);
   assert.match(source, /assertPayrollWalletNetwork\(active\?\.network\?\.type\)/);
   assert.match(source, /getChainId\(\)/);
   assert.match(source, /confirmation\(1\)/);

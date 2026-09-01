@@ -82,7 +82,7 @@ export const CREATION_TOOLS = [
     src: "/creation-tools/particle-painter/index.html",
     requiredAssets: [
       "/creation-tools/particle-painter/index.html",
-      "/creation-tools/particle-painter/assets/index-U0XZkEWM.js",
+      "/creation-tools/particle-painter/assets/index-CDMfOr_n.js",
       "/creation-tools/particle-painter/ffmpeg-core/ffmpeg-core.wasm",
     ],
   },

@@ -18,7 +18,7 @@
     "@radix-ui/react-tabs": "^1.1.2",
     "@taquito/taquito": "^25.0.0",
     "@taquito/utils": "^25.0.0",
-    "@tezos-x/octez.connect-sdk": "^4.8.6",
+    "@tezos-x/octez.connect-sdk": "^5.0.3",
     "buffer": "^6.0.3",
     "clsx": "^2.1.1",
     "gif.js": "^0.2.0",

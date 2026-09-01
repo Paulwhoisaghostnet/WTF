@@ -15,14 +15,23 @@
     return current && typeof current.DAppClient === "function" ? current.DAppClient : null;
   }
 
+  function withWalletConnectOptions(options) {
+    const current = sdk();
+    const projectId = current && typeof current.walletConnectProjectId === "string"
+      ? current.walletConnectProjectId.trim()
+      : "";
+    return projectId ? { ...options, walletConnectOptions: { projectId } } : options;
+  }
+
   function createDAppClient(options) {
+    const clientOptions = withWalletConnectOptions(options);
     const current = sdk();
     if (current && typeof current.getDAppClientInstance === "function") {
-      return current.getDAppClientInstance(options, Boolean(options && options.resetClient));
+      return current.getDAppClientInstance(clientOptions, Boolean(options && options.resetClient));
     }
     const DAppClient = dappClientCtor();
     if (!DAppClient) return null;
-    return new DAppClient(options);
+    return new DAppClient(clientOptions);
   }
 
   function disableMetrics(client) {

@@ -11109,3 +11109,23 @@
 **Rule**: Finalize inventory irreversibly before enabling sale stages or minting. Never call public or baker-influenced chain inputs random; use an audited oracle or multiparty commit/reveal when unbiased randomness is required, otherwise disclose deterministic creator-defined order. Keep edition metadata sealed until the edition's entire supply is allocated.
 
 ---
+
+## 2026-08-31 — Resolved code without a canonical board transition is still an open release claim
+
+**What happened**: The deprecated GitHub, Discord, and Twitter passport packages had already been removed and guarded by policy tests, but WTF-BB-050 remained Open with historical file references.
+
+**Why it mattered**: The board overstated the live defect count and sent release work back through an already-corrected dependency path, while newer audit findings could be overlooked behind stale evidence.
+
+**Rule**: A change that closes a bounty must update its canonical record in the same pass. Verification audits must reconcile historical evidence against the current lockfile, installed graph, focused tests, and live configuration; never infer current risk from old line numbers alone.
+
+---
+
+## 2026-08-31 — A canonical generated bundle is not complete until every shipped copy is synchronized
+
+**What happened**: The Tezos browser-vendor generator rebuilt the canonical Macaroni Octez Connect bundle and copied the Taquito bundle to six sibling Pasta tools, but it never copied the Octez bundle. A dependency migration could therefore pass against Macaroni while Gnocchi, Lasagna, Penne, Ravioli, Rotini, and Spaghetti still shipped the previous wallet runtime.
+
+**Why it mattered**: Source and lockfile verification overstated the release posture because most creator-facing static packages retained unaudited bytes. Users could receive different wallet security and behavior depending on which creation tool they opened.
+
+**Rule**: Every generator that owns replicated release artifacts must enumerate and synchronize every artifact family, then verify byte equality across all shipped targets. Rebuilding one canonical output is not proof that copied distribution surfaces are current.
+
+---

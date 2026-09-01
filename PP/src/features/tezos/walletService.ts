@@ -20,6 +20,11 @@ const DEBUG = typeof process !== 'undefined' && process.env && process.env.NODE_
 // requestPermissions() completes, before follow-up signing operations are stable.
 const CONNECTION_STABILIZATION_DELAY_MS = 500;
 
+const walletConnectProjectId =
+  typeof import.meta !== "undefined" && typeof (import.meta as any).env?.VITE_WALLETCONNECT_PROJECT_ID === "string"
+    ? (import.meta as any).env.VITE_WALLETCONNECT_PROJECT_ID.trim()
+    : "";
+
 const log = (message: string, data?: unknown) => {
   if (DEBUG) {
     const timestamp = new Date().toISOString();
@@ -72,6 +77,7 @@ class OctezTaquitoWalletProvider {
       },
       enableMetrics: false,
       featuredWallets: ["kukai", "temple", "umami"],
+      ...(walletConnectProjectId ? { walletConnectOptions: { projectId: walletConnectProjectId } } : {}),
     } as any);
   }
 
@@ -88,7 +94,7 @@ class OctezTaquitoWalletProvider {
       await (this.client as any).removeAllAccounts();
     }
     if (typeof (this.client as any).removeAllPeers === "function") {
-      await (this.client as any).removeAllPeers(false);
+      await (this.client as any).removeAllPeers();
     }
   }
 

@@ -809,6 +809,7 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
   const octezWalletSource = readFileSync("public/creation-tools/macaroni/js/octez-wallet.js", "utf8");
   const vendorSource = readFileSync("public/creation-tools/macaroni/vendor/tezos.js", "utf8");
+  const octezVendorSource = readFileSync("public/creation-tools/macaroni/vendor/octez-connect.js", "utf8");
   const frameSource = readFileSync("client/src/features/creation-tools/CreationToolFrame.tsx", "utf8");
 
   assert.match(commonSource, /shadownet:\s*{\s*label:\s*"Shadownet \(test\)"/s);
@@ -864,7 +865,9 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(vendorSource, /PsUshuai9/);
   assert.match(vendorSource, /25\.0\.0/);
   assert.doesNotMatch(vendorSource, /version:[`"']24\.3\.0/);
-  assert.match(vendorSource, /matrixNodes:t/);
+  assert.match(vendorSource, /matrixNodes/);
+  assert.match(octezVendorSource, /5\.0\.3/);
+  assert.match(octezVendorSource, /walletConnectProjectId/);
   assert.match(vendorSource, /beacon-node-1\.octez\.io/);
   assert.match(vendorSource, /shadownet:"https:\/\/shadownet\.kukai\.app"/);
   assert.match(frameSource, /allow-popups-to-escape-sandbox/);

@@ -4,6 +4,7 @@ import test from "node:test";
 
 test("Octez Connect is the primary wallet path with valid featured wallet prefixes", () => {
   const source = readFileSync(new URL("./wallet.ts", import.meta.url), "utf8");
+  const loaderSource = readFileSync(new URL("./loaders.ts", import.meta.url), "utf8");
 
   assert.match(source, /"kukai"/);
   assert.match(source, /"temple"/);
@@ -64,6 +65,10 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.doesNotMatch(source, /providerName: "beacon"/);
   assert.match(source, /const perms = await this\.client\.requestPermissions\(\)/);
   assert.doesNotMatch(source, /if \(rpcUrl\) spec\.rpcUrl = rpcUrl/);
+  assert.match(source, /\.\.\.getOctezWalletConnectOptions\(\)/);
+  assert.match(loaderSource, /VITE_WALLETCONNECT_PROJECT_ID/);
+  assert.match(loaderSource, /walletConnectOptions: \{ projectId \}/);
+  assert.doesNotMatch(source, /removeAllPeers\(false\)/);
 });
 
 test("wallet session fixtures seed the accepted Octez provider", () => {

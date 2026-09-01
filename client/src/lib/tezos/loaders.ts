@@ -42,6 +42,11 @@ export async function loadOctezConnect() {
   return import("@tezos-x/octez.connect-sdk");
 }
 
+export function getOctezWalletConnectOptions(): { walletConnectOptions: { projectId: string } } | Record<string, never> {
+  const projectId = viteEnv("VITE_WALLETCONNECT_PROJECT_ID");
+  return projectId ? { walletConnectOptions: { projectId } } : {};
+}
+
 export async function loadTaquito() {
   return import("@taquito/taquito");
 }

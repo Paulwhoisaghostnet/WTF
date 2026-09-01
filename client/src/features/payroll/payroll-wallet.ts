@@ -1,6 +1,6 @@
 import { ValidationResult, validateAddress } from "@taquito/utils";
 import { WTF_TOKEN } from "@shared/types";
-import { loadOctezConnect, loadTaquito } from "../../lib/tezos/loaders";
+import { getOctezWalletConnectOptions, loadOctezConnect, loadTaquito } from "../../lib/tezos/loaders";
 import { OctezConnectTaquitoWalletProvider } from "../../lib/tezos/wallet";
 
 export const PAYROLL_NETWORK = "mainnet";
@@ -113,7 +113,7 @@ export class PayrollWalletSession implements PayrollWalletController {
       preferredNetwork: PAYROLL_NETWORK,
       enableMetrics: false,
       featuredWallets: FEATURED_WALLETS,
-      requestTimeoutMs: 30_000,
+      ...getOctezWalletConnectOptions(),
     });
     await this.client.subscribeToEvent(
       BeaconEvent?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET",
@@ -132,9 +132,7 @@ export class PayrollWalletSession implements PayrollWalletController {
         if (typeof this.client.removeAllAccounts === "function") {
           await this.client.removeAllAccounts();
         }
-        const permissions = await this.client.requestPermissions({
-          network: { type: PAYROLL_NETWORK, rpcUrl: PAYROLL_RPC_URL },
-        });
+        const permissions = await this.client.requestPermissions();
         const active = await this.client.getActiveAccount();
         assertPayrollWalletNetwork(active?.network?.type);
         const address = permissions?.address || active?.address || "";
@@ -160,7 +158,7 @@ export class PayrollWalletSession implements PayrollWalletController {
         await this.client.removeAllAccounts().catch(() => undefined);
       }
       if (typeof this.client.removeAllPeers === "function") {
-        await this.client.removeAllPeers(false).catch(() => undefined);
+        await this.client.removeAllPeers().catch(() => undefined);
       }
     }
     this.client = null;

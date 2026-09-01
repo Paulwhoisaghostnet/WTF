@@ -4,6 +4,7 @@ import {
   getRpcFallbackUrlsForNetwork,
   getRpcUrlForNetwork,
   getNetwork,
+  getOctezWalletConnectOptions,
 } from "./loaders";
 
 type WalletProviderName = "octez.connect";
@@ -515,6 +516,7 @@ class OctezConnectAdapter implements WalletAdapter {
       preferredNetwork: preferredNetwork as any,
       enableMetrics: false,
       featuredWallets: OCTEZ_FEATURED_WALLETS,
+      ...getOctezWalletConnectOptions(),
     });
     await this.client.subscribeToEvent(
       ((BeaconEvent as any)?.ACTIVE_ACCOUNT_SET ?? "ACTIVE_ACCOUNT_SET") as any,
@@ -558,7 +560,7 @@ class OctezConnectAdapter implements WalletAdapter {
       await this.client.removeAllAccounts();
     }
     if (typeof this.client.removeAllPeers === "function") {
-      await this.client.removeAllPeers(false);
+      await this.client.removeAllPeers();
     }
     this.taquitoWalletProvider = null;
   }

@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = process.cwd();
 const TAQUITO_VERSION = "25.0.0";
-const OCTEZ_CONNECT_VERSION = "4.8.6";
+const OCTEZ_CONNECT_VERSION = "5.0.3";
 const SHADOWNET_OCTEZ_RPC = "https://tezos-shadownet.octez.io/";
 const MAINNET_OCTEZ_RPC = "https://tezos-mainnet.octez.io/";
 
@@ -38,6 +38,9 @@ test("Tezos wallet packages use the current U025/Octez Connect baseline", () => 
     assert.equal(dependencyVersion(rootPackage, packageName), `^${TAQUITO_VERSION}`);
   }
   assert.equal(dependencyVersion(rootPackage, "@tezos-x/octez.connect-sdk"), `^${OCTEZ_CONNECT_VERSION}`);
+  assert.equal(rootPackage.overrides?.["@walletconnect/core"], "2.23.6");
+  assert.equal(rootPackage.overrides?.["@walletconnect/sign-client"], "2.23.6");
+  assert.equal(rootPackage.overrides?.["@walletconnect/utils"], "2.23.6");
 
   for (const packageName of [
     "@taquito/http-utils",
@@ -154,7 +157,14 @@ test("static Tezos browser bundles carry U025 support and no stale Taquito icon 
     assert.doesNotMatch(source, /version:[`"']24\.3\.0/);
   }
 
-  const octezVendor = readText("public/creation-tools/macaroni/vendor/octez-connect.js");
+  const octezVendorFiles = vendorFiles.map((filePath) => filePath.replace(/tezos\.js$/, "octez-connect.js"));
+  const octezVendor = readText(octezVendorFiles[0]);
+  for (const filePath of octezVendorFiles) {
+    assert.equal(readText(filePath), octezVendor, `${filePath} must match the canonical Octez Connect bundle`);
+    const walletBridge = readText(filePath.replace(/vendor\/octez-connect\.js$/, "js/octez-wallet.js"));
+    assert.match(walletBridge, /function withWalletConnectOptions\(options\)/);
+    assert.match(walletBridge, /walletConnectOptions: \{ projectId \}/);
+  }
   assert.match(octezVendor, /MacaroniOctezConnect/);
   assert.match(octezVendor, /getDAppClientInstance/);
   assert.match(octezVendor, /beacon-node-1\.octez\.io/);

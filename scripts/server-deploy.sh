@@ -156,6 +156,7 @@ echo "[server-deploy] building app image for ${COMMIT_SHA}"
 docker compose build \
   --build-arg COMMIT_SHA="$COMMIT_SHA" \
   --build-arg VITE_MARKETPLACE_CONTRACT_ADDRESS="${VITE_MARKETPLACE_CONTRACT_ADDRESS:-}" \
+  --build-arg VITE_WALLETCONNECT_PROJECT_ID="${VITE_WALLETCONNECT_PROJECT_ID:-}" \
   --build-arg VITE_BARTER_CONTRACT_ADDRESS="${VITE_BARTER_CONTRACT_ADDRESS:-}" \
   app
 
