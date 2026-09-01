@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **388** · Archived: **3**
+Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **389** · Archived: **3**
 
 ## Canonical Board
 
@@ -174,7 +174,6 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 367 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
-| WTF-BB-663 | Fixed | Codex Octez 5 production advisory verification | 2026-08-31 | Dependencies / moderate production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories |
 | WTF-BB-649 | Fixed | Codex Tezos identity resolver pass | - | Tezos identity / token display | P1 | 14 | 126 | 5 | 4 | 1 | Tezos creator and collection displays fall back to raw addresses |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
@@ -348,6 +347,7 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 93 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-663 | Verified | Codex Octez 5 production advisory verification | 2026-08-31 | Dependencies / moderate production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories |
 | WTF-BB-647 | Verified | Codex legacy board authorization pass | 2026-08-30 | Authorization / message board | P1 | 14 | 126 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
 | WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 126 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-564 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / Ravioli recovery identity | P1 | 14 | 126 | 3 | 5 | 2 | Active Ravioli recovery accepts only enumerated schemas and exact opened identity, while the retired current-v4 executable fixture is quarantined behind its fail-closed retirement boundary |
@@ -3769,26 +3769,6 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
   - `npm run check -- --pretty false` passed.
 - Remaining target-environment proof before Verified:
   - Configure a dedicated production bucket with Object Lock enabled, run the pipeline, delete the local dump in a controlled drill, restore from the remote-only object, and record row-count/media-manifest proof plus the actual RPO/RTO.
-
-### WTF-BB-663 - Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories
-
-- Category: Dependencies / moderate production advisories
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Octez 5 production advisory verification
-- Last touched: 2026-08-31
-- Score: C3 + F3 + S4 + P1(4) = 14
-- Evidence:
-  - The baseline production audit reported 21 findings: 15 low and 6 moderate across Hono/MCP HTTP handling, `body-parser`, URI decoding, and wallet cryptography.
-  - The legacy Octez/WalletConnect fallback tree owned the remaining URI-decoding and elliptic findings after the compatible HTTP patches.
-- Correction:
-  - Updated the MCP SDK, Hono server/runtime, and `body-parser` to patched releases. Migrated the OS, payroll, Particle Painter, and seven Pasta creation-tool wallet surfaces to Octez Connect 5.0.3 and WalletConnect 2.23.6 with the v5 permission, disconnect, and peer-removal APIs.
-  - Added optional, application-owned `VITE_WALLETCONNECT_PROJECT_ID` wiring through documented build/deploy configuration. Mobile/QR pairing is enabled only when an operator supplies that project ID; extension and supported web-wallet transports remain available without borrowing a shared third-party identity.
-  - Production builds now regenerate and synchronize every shipped Tezos vendor bundle. All seven Pasta `octez-connect.js` copies are byte-identical (`21d50452fec9da2f6eba9cdf6c70bd96525542bb82745a4918a0f7b56e94372f`).
-- Verification (2026-08-31):
-  - Root and Particle Painter each report `found 0 vulnerabilities` from `npm audit --omit=dev --audit-level=moderate`. The installed production graph resolves MCP 1.30.0, Hono 4.13.5, `@hono/node-server` 2.1.1, `body-parser` 2.3.0, Octez Connect 5.0.3, and WalletConnect core/sign-client/utils 2.23.6.
-  - Forty-one focused dependency/wallet tests, TypeScript checking, root and Particle Painter production builds, all 2,509 unit tests, creation-tool synchronization checks, environment and interaction-inventory coverage, and the complete Chromium interaction inventory (700/700 in 14.4 minutes) passed.
-  - Production deployment and exact-commit live smoke verification remain before this record can move from `Fixed` to `Verified`.
 
 ### WTF-BB-649 - Tezos creator and collection displays fall back to raw addresses
 
@@ -7625,6 +7605,26 @@ Copy this when adding a new issue:
 - Verification (2026-08-30):
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
+
+### WTF-BB-663 - Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories
+
+- Category: Dependencies / moderate production advisories
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Octez 5 production advisory verification
+- Last touched: 2026-08-31
+- Score: C3 + F3 + S4 + P1(4) = 14
+- Evidence:
+  - The baseline production audit reported 21 findings: 15 low and 6 moderate across Hono/MCP HTTP handling, `body-parser`, URI decoding, and wallet cryptography.
+  - The legacy Octez/WalletConnect fallback tree owned the remaining URI-decoding and elliptic findings after the compatible HTTP patches.
+- Correction:
+  - Updated the MCP SDK, Hono server/runtime, and `body-parser` to patched releases. Migrated the OS, payroll, Particle Painter, and seven Pasta creation-tool wallet surfaces to Octez Connect 5.0.3 and WalletConnect 2.23.6 with the v5 permission, disconnect, and peer-removal APIs.
+  - Added optional, application-owned `VITE_WALLETCONNECT_PROJECT_ID` wiring through documented build/deploy configuration. Mobile/QR pairing is enabled only when an operator supplies that project ID; extension and supported web-wallet transports remain available without borrowing a shared third-party identity.
+  - Production builds now regenerate and synchronize every shipped Tezos vendor bundle. All seven Pasta `octez-connect.js` copies are byte-identical (`21d50452fec9da2f6eba9cdf6c70bd96525542bb82745a4918a0f7b56e94372f`).
+- Verification (2026-08-31):
+  - Root and Particle Painter each report `found 0 vulnerabilities` from `npm audit --omit=dev --audit-level=moderate`. The installed production graph resolves MCP 1.30.0, Hono 4.13.5, `@hono/node-server` 2.1.1, `body-parser` 2.3.0, Octez Connect 5.0.3, and WalletConnect core/sign-client/utils 2.23.6.
+  - Forty-one focused dependency/wallet tests, TypeScript checking, root and Particle Painter production builds, all 2,509 unit tests, creation-tool synchronization checks, environment and interaction-inventory coverage, and the complete Chromium interaction inventory (700/700 in 14.4 minutes) passed.
+  - Hetzner deployment run 33457599586 succeeded. Production health reports exact main commit `286e20db`; `/`, `/tools/macaroni`, `/tools/particle-painter`, and `/payroll` return HTTP 200, and the live Macaroni Octez bundle matches the tested `21d50452fec9da2f6eba9cdf6c70bd96525542bb82745a4918a0f7b56e94372f` hash.
 
 ### WTF-BB-647 - Legacy channel message endpoints bypass board channel permissions
 
