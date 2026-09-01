@@ -307,9 +307,9 @@
     },
     {
       "id": "WTF-BB-030",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex platform-settings concurrency verification",
+      "lastTouched": "2026-09-01",
       "category": "Data integrity / config",
       "priority": "P1",
       "points": 12,

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **396** · Archived: **4**
+Total: **634** · Open: **32** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **396** · Archived: **4**
 
 ## Canonical Board
 
@@ -31,7 +31,6 @@ Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Bloc
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 270 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-041 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
-| WTF-BB-030 | Open | - | 2026-04-27 | Data integrity / config | P1 | 12 | 270 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-125 | Open | - | 2026-05-08 | Tezos external marketplace / wallet preflight | P1 | 11 | 369 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
 | WTF-BB-044 | Open | - | 2026-04-27 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
@@ -101,6 +100,7 @@ Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
+| WTF-BB-030 | Claimed | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 270 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -716,23 +716,6 @@ Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Bloc
   - Enforce uniqueness by channel and create explicit precedence/versioning rules (or a single-row config table model).
 - Verification idea:
   - Attempt inserting duplicate active config rows and verify DB rejects inconsistent state.
-
-### WTF-BB-030 - `platform_settings` updates are prone to lost updates across concurrent actors
-
-- Category: Data integrity / config
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C3 + F3 + S2 + P1(4) = 12
-- Evidence: `server/routes/w.ts:1075-1083` inserts or upserts `platform_settings`, and `server/routes/w.ts:1084-1090` replaces whole row values whenever called, with no version/lock check.
-- Why it matters:
-  - Multiple admins/processes writing `w.gameshow_dm_conversation_id(s)` can overwrite each other nondeterministically.
-  - Operational config becomes lossy because no write ordering or intent logging is captured for this single global key.
-- Likely correction direction:
-  - Add optimistic concurrency control (`updatedAt` check or revision token) and event/audit logging before updates.
-- Verification idea:
-  - Simulate two writes in parallel and verify one does not silently clobber the other without explicit resolution.
 
 ### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
 
@@ -2096,6 +2079,23 @@ Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
+
+### WTF-BB-030 - `platform_settings` updates are prone to lost updates across concurrent actors
+
+- Category: Data integrity / config
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex platform-settings concurrency verification
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P1(4) = 12
+- Evidence: `server/routes/w.ts:1075-1083` inserts or upserts `platform_settings`, and `server/routes/w.ts:1084-1090` replaces whole row values whenever called, with no version/lock check.
+- Why it matters:
+  - Multiple admins/processes writing `w.gameshow_dm_conversation_id(s)` can overwrite each other nondeterministically.
+  - Operational config becomes lossy because no write ordering or intent logging is captured for this single global key.
+- Likely correction direction:
+  - Add optimistic concurrency control (`updatedAt` check or revision token) and event/audit logging before updates.
+- Verification idea:
+  - Simulate two writes in parallel and verify one does not silently clobber the other without explicit resolution.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
