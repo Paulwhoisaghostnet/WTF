@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { nonce, message } = await api.post<{ nonce: string; message: string }>(
       "/api/auth/wallet/challenge",
-      { walletAddress: wallet.address }
+      { walletAddress: wallet.address, action: "login" }
     );
 
     const { signature, publicKey } = await tezos.signAuthPayload(message);

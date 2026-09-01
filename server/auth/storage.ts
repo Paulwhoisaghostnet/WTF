@@ -4,6 +4,7 @@ import { users, userWallets, walletAuthNonces } from "@shared/schema";
 import { isSystemUserRole, type UserRole } from "@shared/types";
 import { randomBytes } from "crypto";
 import { ensureUserRole, listUserRoles, setUserRoles } from "../lib/user-roles";
+import type { WalletProofAction } from "./wallet-verify";
 
 async function withRoleSet<T extends { id: number; role: UserRole } | null>(
   user: T
@@ -227,37 +228,64 @@ export async function getUserByWalletAddress(walletAddress: string) {
   return withRoleSet(row?.user ?? null);
 }
 
-export async function createWalletAuthNonce(walletAddress: string): Promise<string> {
+export function createWalletAuthNonce(walletAddress: string): Promise<string>;
+export function createWalletAuthNonce(
+  walletAddress: string,
+  context: { origin: string; action: WalletProofAction }
+): Promise<{ nonce: string; expiresAt: Date }>;
+export async function createWalletAuthNonce(
+  walletAddress: string,
+  context?: { origin: string; action: WalletProofAction }
+): Promise<string | { nonce: string; expiresAt: Date }> {
   const nonce = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
 
   await db.insert(walletAuthNonces).values({
     walletAddress,
     nonce,
+    origin: context?.origin ?? "https://wtfos.app",
+    action: context?.action ?? "login",
     expiresAt,
   });
 
-  return nonce;
+  return context ? { nonce, expiresAt } : nonce;
 }
 
-export async function consumeWalletAuthNonce(
+export function consumeWalletAuthNonce(
   walletAddress: string,
   nonce: string
-): Promise<boolean> {
+): Promise<boolean>;
+export function consumeWalletAuthNonce(
+  walletAddress: string,
+  nonce: string,
+  context: { origin: string; action: WalletProofAction }
+): Promise<{ expiresAt: Date } | null>;
+export async function consumeWalletAuthNonce(
+  walletAddress: string,
+  nonce: string,
+  context?: { origin: string; action: WalletProofAction }
+): Promise<boolean | { expiresAt: Date } | null> {
+  const conditions = [
+    eq(walletAuthNonces.walletAddress, walletAddress),
+    eq(walletAuthNonces.nonce, nonce),
+    eq(walletAuthNonces.consumed, false),
+    gt(walletAuthNonces.expiresAt, new Date()),
+  ];
+  if (context) {
+    conditions.push(
+      eq(walletAuthNonces.origin, context.origin),
+      eq(walletAuthNonces.action, context.action)
+    );
+  }
   const claimed = await db
     .update(walletAuthNonces)
     .set({ consumed: true })
     .where(
-      and(
-        eq(walletAuthNonces.walletAddress, walletAddress),
-        eq(walletAuthNonces.nonce, nonce),
-        eq(walletAuthNonces.consumed, false),
-        gt(walletAuthNonces.expiresAt, new Date())
-      )
+      and(...conditions)
     )
-    .returning({ id: walletAuthNonces.id });
+    .returning({ expiresAt: walletAuthNonces.expiresAt });
 
-  return claimed.length === 1;
+  return context ? claimed[0] ?? null : claimed.length === 1;
 }
 
 export async function cleanupExpiredNonces() {

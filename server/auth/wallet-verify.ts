@@ -7,8 +7,44 @@ import { WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX } from "@shared/platform-branding";
 
 const CHALLENGE_PREFIX = WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX;
 
-export function buildChallengeMessage(nonce: string): string {
-  return `${CHALLENGE_PREFIX}${nonce}`;
+export type WalletProofAction = "login" | "register" | "link";
+
+const WALLET_PROOF_ACTION_LABELS: Record<WalletProofAction, string> = {
+  login: "Sign in",
+  register: "Create account",
+  link: "Link wallet",
+};
+
+export function normalizeWalletProofOrigin(candidate: unknown): string {
+  try {
+    const parsed = new URL(String(candidate || ""));
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("invalid protocol");
+    return parsed.origin;
+  } catch {
+    return "https://wtfos.app";
+  }
+}
+
+export function buildChallengeMessage(input: {
+  nonce: string;
+  walletAddress: string;
+  origin: string;
+  action: WalletProofAction;
+  expiresAt: Date | string;
+}): string {
+  const expiresAt =
+    input.expiresAt instanceof Date
+      ? input.expiresAt.toISOString()
+      : new Date(input.expiresAt).toISOString();
+  return [
+    CHALLENGE_PREFIX.replace(/\s*Nonce:\s*$/i, "").trim(),
+    "",
+    `Origin: ${input.origin}`,
+    `Action: ${WALLET_PROOF_ACTION_LABELS[input.action]}`,
+    `Wallet: ${input.walletAddress}`,
+    `Expires: ${expiresAt}`,
+    `Nonce: ${input.nonce}`,
+  ].join("\n");
 }
 
 // bs58check v4 is ESM — require() yields { default: { encode, decode } }

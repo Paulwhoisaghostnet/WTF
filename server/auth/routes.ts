@@ -23,9 +23,9 @@ import {
 } from "./oauth-base";
 import {
   buildChallengeMessage,
+  normalizeWalletProofOrigin,
   verifyWalletSignature,
   verifyPublicKeyOwnership,
-  publicKeyToAddress,
 } from "./wallet-verify";
 import { getEffectivePermissionsForRoles, hasPermission } from "../lib/permissions";
 import { getXpTierForTotal } from "@shared/types";
@@ -1024,6 +1024,12 @@ router.post("/api/auth/change-password", isAuthenticated, async (req, res) => {
 
 // ─── Wallet Auth (challenge-response) ────────────────────
 
+function walletProofOrigin(req: Request): string {
+  return normalizeWalletProofOrigin(
+    req.get("origin") || `${req.protocol}://${req.get("host")}`
+  );
+}
+
 router.post("/api/auth/wallet/challenge", async (req, res) => {
   try {
     const { walletAddress } = req.body;
@@ -1031,10 +1037,12 @@ router.post("/api/auth/wallet/challenge", async (req, res) => {
       return res.status(400).json({ error: "Invalid wallet address" });
     }
 
-    const nonce = await createWalletAuthNonce(walletAddress);
-    const message = buildChallengeMessage(nonce);
+    const action = req.body?.action === "register" ? "register" : "login";
+    const origin = walletProofOrigin(req);
+    const { nonce, expiresAt } = await createWalletAuthNonce(walletAddress, { origin, action });
+    const message = buildChallengeMessage({ nonce, walletAddress, origin, action, expiresAt });
 
-    res.json({ nonce, message });
+    res.json({ nonce, message, expiresAt: expiresAt.toISOString(), action, origin });
   } catch (err) {
     console.error("[auth] wallet challenge error:", err);
     res.status(500).json({ error: "Failed to create challenge" });
@@ -1060,27 +1068,30 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
       return res.status(400).json({ error: "Wallet did not provide a public key. Please try reconnecting your wallet." });
     }
 
-    const derivedAddress = publicKeyToAddress(publicKey);
-    const resolvedAddress = derivedAddress || walletAddress;
+    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
+      return res.status(401).json({ error: "Public key does not match wallet address" });
+    }
 
-    console.log("[auth] resolved address:", resolvedAddress, "derived:", derivedAddress, "client:", walletAddress);
-
-    const valid = await consumeWalletAuthNonce(walletAddress, nonce);
-    if (!valid) {
+    const origin = walletProofOrigin(req);
+    const claimed = await consumeWalletAuthNonce(walletAddress, nonce, { origin, action: "login" });
+    if (!claimed) {
       return res.status(401).json({ error: "Invalid or expired nonce" });
     }
 
-    const message = buildChallengeMessage(nonce);
+    const message = buildChallengeMessage({
+      nonce,
+      walletAddress,
+      origin,
+      action: "login",
+      expiresAt: claimed.expiresAt,
+    });
     const sigValid = verifyWalletSignature(message, signature, publicKey);
     if (!sigValid) {
       console.error("[auth] signature verification failed for", walletAddress, "pk:", publicKey.slice(0, 10));
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
-    let existingUser = await getUserByWalletAddress(resolvedAddress);
-    if (!existingUser && resolvedAddress !== walletAddress) {
-      existingUser = await getUserByWalletAddress(walletAddress);
-    }
+    const existingUser = await getUserByWalletAddress(walletAddress);
 
     if (existingUser) {
       loginWithSessionRegen(req, existingUser, async (err) => {
@@ -1102,7 +1113,7 @@ router.post("/api/auth/wallet/verify", async (req, res) => {
     } else {
       res.json({
         action: "register",
-        walletAddress: resolvedAddress,
+        walletAddress,
         publicKey,
       });
     }
@@ -1134,21 +1145,29 @@ router.post("/api/auth/wallet/register", async (req, res) => {
       }
     }
 
-    const derivedAddr = publicKeyToAddress(publicKey);
-    const resolvedAddr = derivedAddr || walletAddress;
+    if (!verifyPublicKeyOwnership(walletAddress, publicKey)) {
+      return res.status(401).json({ error: "Public key does not match wallet address" });
+    }
 
-    const valid = await consumeWalletAuthNonce(walletAddress, nonce);
-    if (!valid) {
+    const origin = walletProofOrigin(req);
+    const claimed = await consumeWalletAuthNonce(walletAddress, nonce, { origin, action: "register" });
+    if (!claimed) {
       return res.status(401).json({ error: "Invalid or expired nonce" });
     }
 
-    const message = buildChallengeMessage(nonce);
+    const message = buildChallengeMessage({
+      nonce,
+      walletAddress,
+      origin,
+      action: "register",
+      expiresAt: claimed.expiresAt,
+    });
     const sigValid = verifyWalletSignature(message, signature, publicKey);
     if (!sigValid) {
       return res.status(401).json({ error: "Signature verification failed" });
     }
 
-    const existingWalletUser = await getUserByWalletAddress(resolvedAddr) || await getUserByWalletAddress(walletAddress);
+    const existingWalletUser = await getUserByWalletAddress(walletAddress);
     if (existingWalletUser) {
       return res.status(409).json({ error: "Wallet is already linked to an account" });
     }
@@ -1171,7 +1190,7 @@ router.post("/api/auth/wallet/register", async (req, res) => {
     const { userWallets } = await import("@shared/schema");
     await dbRef.insert(userWallets).values({
       userId: user.id,
-      walletAddress: resolvedAddr,
+      walletAddress,
       isPrimary: true,
     });
 

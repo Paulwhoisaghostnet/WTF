@@ -155,6 +155,8 @@ export const walletAuthNonces = pgTable("wallet_auth_nonces", {
   id: serial("id").primaryKey(),
   walletAddress: varchar("wallet_address", { length: 36 }).notNull(),
   nonce: varchar("nonce", { length: 64 }).notNull(),
+  origin: varchar("origin", { length: 255 }).notNull().default("https://wtfos.app"),
+  action: varchar("action", { length: 32 }).notNull().default("login"),
   expiresAt: timestamp("expires_at").notNull(),
   consumed: boolean("consumed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

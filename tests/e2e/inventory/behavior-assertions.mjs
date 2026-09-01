@@ -382,11 +382,14 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["profile"],
-    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
-    verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion: "Each puppet wallet can complete the wallet-login challenge flow.",
+    ownerSpec:
+      "server/auth/wallet-proof-binding-policy.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/auth/wallet-proof-binding-policy.test.ts && npm run test:e2e:live:puppets",
+    userVisibleAssertion:
+      "Each puppet wallet can read and complete a wallet-login challenge that names the WTF OS origin, sign-in action, exact wallet, expiry, and one-time nonce.",
     durableSideEffectAssertion:
-      "The server verifies each platform-keyring signature against the linked wallet and returns the matching user.",
+      "The server proves that the submitted public key derives the challenged wallet, atomically consumes a nonce scoped to the same origin and action, verifies the exact bound message, and returns the matching linked user; a proof for another wallet, action, origin, expiry, or nonce cannot be replayed.",
   },
   {
     id: "auth.wallet-provider-login-lifecycle",

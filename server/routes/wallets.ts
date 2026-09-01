@@ -11,6 +11,7 @@ import {
 } from "../auth/storage";
 import {
   buildChallengeMessage,
+  normalizeWalletProofOrigin,
   verifyWalletSignature,
   verifyPublicKeyOwnership,
 } from "../auth/wallet-verify";
@@ -140,9 +141,21 @@ router.post("/api/wallets/challenge", isAuthenticated, async (req, res) => {
     if (!walletAddress || !walletAddress.startsWith("tz")) {
       return res.status(400).json({ error: "Invalid wallet address" });
     }
-    const nonce = await createWalletAuthNonce(walletAddress);
-    const message = buildChallengeMessage(nonce);
-    res.json({ nonce, message });
+    const origin = normalizeWalletProofOrigin(
+      req.get("origin") || `${req.protocol}://${req.get("host")}`
+    );
+    const { nonce, expiresAt } = await createWalletAuthNonce(walletAddress, {
+      origin,
+      action: "link",
+    });
+    const message = buildChallengeMessage({
+      nonce,
+      walletAddress,
+      origin,
+      action: "link",
+      expiresAt,
+    });
+    res.json({ nonce, message, expiresAt: expiresAt.toISOString(), action: "link", origin });
   } catch (err) {
     res.status(500).json({ error: "Failed to create challenge" });
   }
@@ -206,12 +219,24 @@ router.post("/api/wallets", isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: "Public key does not match wallet address" });
     }
 
-    const nonceValid = await consumeWalletAuthNonce(walletAddress, nonce);
-    if (!nonceValid) {
+    const origin = normalizeWalletProofOrigin(
+      req.get("origin") || `${req.protocol}://${req.get("host")}`
+    );
+    const claimed = await consumeWalletAuthNonce(walletAddress, nonce, {
+      origin,
+      action: "link",
+    });
+    if (!claimed) {
       return res.status(401).json({ error: "Invalid or expired nonce" });
     }
 
-    const message = buildChallengeMessage(nonce);
+    const message = buildChallengeMessage({
+      nonce,
+      walletAddress,
+      origin,
+      action: "link",
+      expiresAt: claimed.expiresAt,
+    });
     const sigValid = verifyWalletSignature(message, signature, publicKey);
     if (!sigValid) {
       return res.status(401).json({ error: "Signature verification failed" });

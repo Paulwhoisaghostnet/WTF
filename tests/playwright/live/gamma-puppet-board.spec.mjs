@@ -104,11 +104,11 @@ async function walletLogin(playwright, baseURL, actor) {
   const request = await playwright.request.newContext({ baseURL });
   const challenge = await expectOkJson(
     await request.post("/api/auth/wallet/challenge", {
-      data: { walletAddress: actor.walletAddress },
+      data: { walletAddress: actor.walletAddress, action: "login" },
     }),
     `wallet challenge ${actor.id}`
   );
-  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+  const message = challenge.message;
   const signed = await signChallenge(actor, message);
   expect(signed.walletAddress).toBe(actor.walletAddress);
 

@@ -26,11 +26,11 @@ async function loginActor(actor: any) {
   const chRes = await fetch(`${BASE}/api/auth/wallet/challenge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ walletAddress: actor.walletAddress }),
+    body: JSON.stringify({ walletAddress: actor.walletAddress, action: "login" }),
   });
   parseSetCookie(chRes.headers, jar);
   const challenge = await chRes.json();
-  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+  const message = challenge.message;
   const keyring = new PlatformWalletKeyring(await buildPuppetKeyringEnv());
   const { wallet, signer } = await keyring.getSigner(actor.walletId);
   const signed = await signer.sign(packedUtf8StringBody(message), new Uint8Array([0x05]));
@@ -69,13 +69,13 @@ async function main() {
   const chRes = await fetch(`${BASE}/api/auth/wallet/challenge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ walletAddress: actor.walletAddress }),
+    body: JSON.stringify({ walletAddress: actor.walletAddress, action: "login" }),
   });
   parseSetCookie(chRes.headers, jar);
   const challenge = await chRes.json();
   console.log("challenge HTTP", chRes.status, "nonce?", Boolean(challenge.nonce));
 
-  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+  const message = challenge.message;
   const keyring = new PlatformWalletKeyring(await buildPuppetKeyringEnv());
   const { wallet, signer } = await keyring.getSigner(actor.walletId);
   const signed = await signer.sign(packedUtf8StringBody(message), new Uint8Array([0x05]));

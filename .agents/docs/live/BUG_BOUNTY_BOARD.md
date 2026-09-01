@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **406** · Archived: **4**
+Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **406** · Archived: **4**
 
 ## Canonical Board
 
@@ -93,7 +93,6 @@ Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-081 | Claimed | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -227,6 +226,7 @@ Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 509 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
 | WTF-BB-650 | Fixed | Codex full-send release verification | - | E2E inventory / WTF Domains | P1 | 9 | 509 | 2 | 3 | 0 | WTF Domains E2E harness shape drift crashes native route smoke |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 509 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
+| WTF-BB-081 | Fixed | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 369 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 369 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 369 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -1933,26 +1933,6 @@ Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
-
-- Category: Authentication / Tezos wallet proof
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex wallet auth proof binding
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S2 + P2(3) = 11
-- Evidence:
-  - `server/auth/wallet-verify.ts:1-5` builds a challenge from only a nonce.
-  - `server/auth/routes.ts:861-917` derives an address from `publicKey`, falls back to the client-supplied `walletAddress`, and does not call `verifyPublicKeyOwnership(walletAddress, publicKey)`.
-  - `server/auth/routes.ts:926-960` repeats the same pattern for wallet registration.
-  - The authenticated wallet-link route does perform the ownership check at `server/routes/wallets.ts:119-123`, so the stronger pattern already exists.
-- Why it matters:
-  - The signed statement does not commit to the wallet address, origin, or action. This weakens phishing resistance and makes address/account attribution rely on fallback logic rather than a single canonical proof.
-- Likely correction direction:
-  - Include wallet address, site origin, action, and expiry in the challenge message; require `verifyPublicKeyOwnership(walletAddress, publicKey)` before consuming the nonce.
-- Verification idea:
-  - A valid signature from one public key should never satisfy a challenge requested for a different wallet address.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -4936,6 +4916,26 @@ Total: **635** · Open: **23** · Claimed: **42** · In Progress: **13** · Bloc
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
+
+### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
+
+- Category: Authentication / Tezos wallet proof
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex wallet auth proof binding
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Historical evidence:
+  - Wallet login and registration signed only a nonce, derived an address opportunistically from the public key, and could fall back to the client-submitted wallet address without proving that the key owned it.
+- Correction (2026-09-01):
+  - Wallet challenges now persist and return an origin and action alongside the existing wallet, expiry, and one-time nonce. The readable signed message binds all five values for login, registration, and authenticated wallet linking.
+  - Login and registration require `verifyPublicKeyOwnership(walletAddress, publicKey)` before atomically consuming a nonce that matches the same wallet, origin, action, unconsumed state, and live expiry. Address fallback logic was removed.
+  - Added forward migration `0125_wallet_auth_proof_binding.sql`; updated the Classic/Gamma clients, load probes, actor-backed puppet login harness, interaction inventory, and named behavior assertion to sign the server-returned bound message.
+  - The shared legacy nonce overload remains intact so the separately active Macaroni work is not modified by this pass.
+- Verification:
+  - Nine focused wallet-auth/client policy tests pass, including exact message-field binding, changed-wallet inequality, ownership-before-consumption ordering, scoped atomic nonce consumption, explicit login/register actions, passive-rehydration safety, and signed Profile linking.
+  - Production migration policy passes 8/8, inventory coverage remains complete for 238 surfaces and 973 handles, and the repository-wide TypeScript check passes.
+  - Status remains Fixed until the migration deploys and the live actor-backed wallet challenge succeeds on the exact production commit.
 
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 

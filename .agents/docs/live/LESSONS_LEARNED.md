@@ -11289,3 +11289,13 @@
 **Rule**: When enriching external identities, resolve only a single validated match. Treat duplicate and malformed identifiers as unlinked, preserve the source rows for later cleanup, and prove the fail-closed behavior with an explicit duplicate fixture.
 
 ---
+
+## 2026-09-01 — Wallet signatures must bind the complete authorization intent
+
+**What happened**: Wallet login and registration verified a signature over a random nonce but did not include the submitted wallet, site origin, action, or expiry in the signed text, and could fall back to the submitted address when public-key derivation failed.
+
+**Why it mattered**: A valid signature proved control of a key for one opaque challenge, but did not prove that the user approved the exact account, origin, and operation the server attributed to it.
+
+**Rule**: Build wallet-auth messages from server-stored wallet, origin, action, expiry, and nonce fields; require public-key derivation to match the challenged wallet before atomically consuming that exact scoped row. Clients and actor-backed tests must sign the returned message verbatim rather than reconstructing a partial payload.
+
+---

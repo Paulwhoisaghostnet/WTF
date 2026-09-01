@@ -204,10 +204,10 @@ async function csrfHeaders(request) {
 async function walletLoginContext(playwright, baseURL, actor) {
   const request = await playwright.request.newContext({ baseURL });
   const challengeResponse = await request.post("/api/auth/wallet/challenge", {
-    data: { walletAddress: actor.walletAddress },
+    data: { walletAddress: actor.walletAddress, action: "login" },
   });
   const challenge = await expectOkJson(challengeResponse, `wallet challenge ${actor.id}`);
-  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+  const message = challenge.message;
   const signed = await signChallenge(actor, message);
   expect(signed.walletAddress).toBe(actor.walletAddress);
 
@@ -341,11 +341,11 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     for (const actor of puppetCredentials.actors) {
       const challengeResponse = await request.post("/api/auth/wallet/challenge", {
-        data: { walletAddress: actor.walletAddress },
+        data: { walletAddress: actor.walletAddress, action: "login" },
       });
       expect(challengeResponse.ok(), `wallet challenge for ${actor.id}`).toBeTruthy();
       const challenge = await challengeResponse.json();
-      const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+      const message = challenge.message;
       const signed = await signChallenge(actor, message);
       expect(signed.walletAddress).toBe(actor.walletAddress);
 

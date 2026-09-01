@@ -46,7 +46,7 @@ export async function loginWalletActor(baseUrl, actor) {
   const chRes = await fetch(`${baseUrl}/api/auth/wallet/challenge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ walletAddress: actor.walletAddress }),
+    body: JSON.stringify({ walletAddress: actor.walletAddress, action: "login" }),
   });
   parseSetCookie(chRes.headers, jar);
   const challenge = await chRes.json();
@@ -54,7 +54,7 @@ export async function loginWalletActor(baseUrl, actor) {
     throw new Error(`wallet challenge failed for ${actor.username}: HTTP ${chRes.status}`);
   }
 
-  const message = `WTF OS Login\n\nNonce: ${challenge.nonce}`;
+  const message = challenge.message;
   const keyring = new PlatformWalletKeyring(await buildPuppetKeyringEnv());
   const { wallet, signer } = await keyring.getSigner(actor.walletId);
   const signed = await signer.sign(packedUtf8StringBody(message), new Uint8Array([0x05]));

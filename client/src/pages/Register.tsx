@@ -167,7 +167,7 @@ export function Register() {
       try {
         const { nonce, message } = await api.post<{ nonce: string; message: string }>(
           "/api/auth/wallet/challenge",
-          { walletAddress: walletParams.walletAddress }
+          { walletAddress: walletParams.walletAddress, action: "register" }
         );
         const tezos = await import("../lib/tezos");
         const { signature } = await tezos.signAuthPayload(message);
