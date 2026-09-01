@@ -11269,3 +11269,13 @@
 **Rule**: Re-audit authorization findings against the current order of validation, ownership checks, permission overrides, and side effects. Preserve the historical vulnerable behavior, but close the active claim when executable coverage proves every untrusted path returns before the mutation or enqueue boundary.
 
 ---
+
+## 2026-09-01 — Redirect safety needs proof at the next-request boundary
+
+**What happened**: W link previews had already moved to a shared manual-redirect guard, but the stale SSRF record had no focused executable proof that a public first hop could not cause a second request to a private host.
+
+**Why it mattered**: Source structure suggested the correction, but only call-count evidence could prove the validator ran before the dangerous network side effect.
+
+**Rule**: For SSRF redirect defenses, test a public-to-private chain with a controlled fetch implementation. Assert manual redirect mode, the rejection reason, and—most importantly—that the private redirect target is never requested.
+
+---

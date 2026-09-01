@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **400** · Archived: **4**
+Total: **635** · Open: **25** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **404** · Archived: **4**
 
 ## Canonical Board
 
@@ -95,10 +95,6 @@ Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-125 | Claimed | Codex stale security bounty reconciliation | 2026-09-01 | Tezos external marketplace / wallet preflight | P1 | 11 | 369 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
-| WTF-BB-034 | Claimed | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
-| WTF-BB-083 | Claimed | Codex stale security bounty reconciliation | 2026-09-01 | SSRF / remote fetch | P2 | 11 | 369 | 3 | 3 | 2 | W link preview follows redirects before validating every target |
-| WTF-BB-061 | Claimed | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 369 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -517,6 +513,7 @@ Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-148 | Verified | Codex TTC calendar full-send | 2026-05-24 | Browser security / CSP | P1 | 11 | 369 | 2 | 4 | 1 | TTC submit iframe blocked by production CSP frame-src |
 | WTF-BB-146 | Verified | Codex OS broken-window sweep | 2026-05-09 | App route resilience / inventory E2E | P1 | 11 | 369 | 3 | 4 | 0 | Inventory route smoke exposed app windows that crash on sparse API payloads |
 | WTF-BB-141 | Verified | Codex Hackcade arcade playback pass | 2026-05-09 | Arcade / source-game runtime | P1 | 11 | 369 | 2 | 5 | 0 | Hackcade-source Arcade games crash under the published-game sandbox |
+| WTF-BB-125 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Tezos external marketplace / wallet preflight | P1 | 11 | 369 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
 | WTF-BB-113 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / public route runtime | P1 | 11 | 369 | 1 | 5 | 1 | Public WTF Arcade route crashed on vendored ZIP loader import |
 | WTF-BB-100 | Verified | Codex server verifier pass | 2026-05-05 | Tezos / in-app market verification | P1 | 11 | 369 | 2 | 4 | 1 | In-app market verifier misses live TzKT entrypoint shape |
 | WTF-BB-097 | Verified | Codex pet ball account cap pass | 2026-05-05 | In-app market / render budget | P1 | 11 | 369 | 2 | 4 | 1 | Pet ball cap must be account-owned active inventory, not cart-local |
@@ -525,6 +522,7 @@ Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-085 | Verified | Codex security hardening pass (2026-05-30) | - | Supply chain | P1 | 11 | 369 | 4 | 2 | 1 | Root production dependency tree carries critical xmldom via legacy passport-twitter |
 | WTF-BB-084 | Verified | Codex human-alpha release completion | - | Secret handling / frontend bundle | P1 | 11 | 369 | 4 | 2 | 1 | Particle Painter frontend expects a Pinata JWT in Vite client env |
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 369 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
+| WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
 | WTF-BB-665 | Verified | Codex Kiln clean-checkout fixture repair | 2026-09-01 | Kiln CI / hermetic test data | P1 | 10 | 449 | 2 | 4 | 0 | Kiln main CI depends on a gitignored local reference-contract corpus |
 | WTF-BB-657 | Verified | Codex Skywire full-send deploy | - | Deploy / Hetzner checkout | P1 | 10 | 449 | 3 | 3 | 0 | Hetzner deploy checkout fails on divergent server branch |
 | WTF-BB-637 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop API / optimistic concurrency | P1 | 10 | 449 | 3 | 3 | 0 | Desktop settings preserves an explicit null first-write concurrency token; the focused policy test and authenticated desktop actor workflow pass |
@@ -572,6 +570,8 @@ Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-514 | Verified | Codex wtfOS contract release | - | E2E isolation / production data | P2 | 11 | 369 | 3 | 3 | 2 | Production contained a fake live Club Dues puppet row |
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 369 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-193 | Verified | Codex Skywire feed UI/token preview pass | 2026-06-03 | Skywire / feed UX and token previews | P2 | 11 | 369 | 3 | 5 | 0 | Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews |
+| WTF-BB-083 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | SSRF / remote fetch | P2 | 11 | 369 | 3 | 3 | 2 | W link preview follows redirects before validating every target |
+| WTF-BB-061 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 369 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-032 | Verified | Codex W repair pass | 2026-05-24 | Data safety / input validation | P2 | 11 | 369 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
 | WTF-BB-515 | Verified | Codex Púca’s Fortune integration | - | Arcade / cartridge packaging | P2 | 10 | 449 | 2 | 3 | 2 | Cartridge manifest regeneration dropped static Arcade games |
 | WTF-BB-512 | Verified | Codex wtfOS contract release | - | Casino / wallet integration | P2 | 10 | 449 | 2 | 3 | 2 | Casino browser encoded a scalar entrypoint as a record |
@@ -1972,80 +1972,6 @@ Total: **635** · Open: **25** · Claimed: **45** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
-
-- Category: Tezos external marketplace / wallet preflight
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex stale security bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F4 + S1 + P1(4) = 11
-- Evidence:
-  - `client/src/lib/tezos/external-marketplaces.ts` builds FA2 transfer, listing-cancel, and operator-revoke batch params with `tezos.wallet.at(...).methods...toTransferParams()` before `sendBatch` runs the wallet-provider preflight.
-  - This can reproduce the same class of `No signer configured` failure if Taquito requires a wallet provider during operation construction after a refreshed browser session.
-- Why it matters:
-  - External marketplace clean-up actions can fail before the improved send preflight gets a chance to rehydrate Beacon/Octez and bind the expected wallet.
-- Likely correction direction:
-  - Move wallet preflight ahead of batch builder calls, or make the builders accept a preflighted wallet toolkit/session so all wallet contract construction happens after provider attachment.
-- Verification idea:
-  - Refresh the browser with a persisted wallet address, then run cancel/revoke/batch-transfer flows without reconnecting manually; confirm the wallet permission request or send prompt appears instead of a signer error.
-
-### WTF-BB-034 - X token refresh updates users table without serialization
-
-- Category: Data integrity / auth lifecycle
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex stale security bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S2 + P1(4) = 11
-- Evidence: `server/lib/x-oauth2.ts:143-154` updates `users` fields after token refresh in a plain update statement; there is no row lock, no optimistic version check, and no retry-safe wrapper.
-- Why it matters:
-  - Concurrent `/api/w` requests for the same user near token expiry can race and update tokens out-of-order.
-  - A stale completion can persist and mask refresh failures, creating intermittent auth failures that are hard to reproduce.
-- Likely correction direction:
-  - Introduce an advisory lock or compare-and-swap (`updatedAt`/token version) around refresh/write operations.
-- Verification idea:
-  - Fire parallel endpoints that all trigger refresh and verify one refresh path is authoritative and stable final token state is consistent.
-
-### WTF-BB-083 - W link preview follows redirects before validating every target
-
-- Category: SSRF / remote fetch
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex stale security bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S2 + P2(3) = 11
-- Evidence:
-  - `server/routes/w.ts:3762-3773` exposes an authenticated link-preview fetcher for arbitrary URLs.
-  - `server/routes/w.ts:519-527` calls `fetch(url, { redirect: "follow" })`.
-  - The code normalizes `response.url` only after the fetch has already followed redirects.
-  - TV media fetching already has a safer manual redirect guard in `server/routes/tv.ts:642-666`.
-- Why it matters:
-  - A public URL can redirect the server-side fetch to a private/local host before validation, creating an SSRF-style probe/fetch path.
-- Likely correction direction:
-  - Reuse a shared manual redirect guard: `redirect: "manual"`, validate each `Location`, cap redirects, and reject private/local/DNS-pinned targets before issuing the next request.
-- Verification idea:
-  - Unit-test redirect chains where the first URL is public and the second URL is private/local; the route should return no preview without making the second fetch.
-
-### WTF-BB-061 - TzKT response cache stores arbitrary pagination/address combinations indefinitely
-
-- Category: Runtime / API scaling
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex stale security bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S3 + P2(3) = 11
-- Evidence:
-  - `server/tzkt.ts:19` defines a module `cache` map used by all public TzKT resolvers.
-  - `server/tzkt.ts:43`, `78`, and `94` build keys with caller-provided `limit`/`offset` and addresses.
-  - There is no periodic global reaping; stale keys are removed only for exact key lookup hits past TTL.
-- Why it matters:
-  - Attackers can issue many unique pagination windows and wallet addresses, forcing map growth tied to query cardinality rather than business entities.
-- Likely correction direction:
-  - Add per-prefix cap and age-based global cleanup sweeps; keep only active page windows or derive a bounded cache policy.
-- Verification idea:
-  - Hit thousands of offset windows for a fixed address and verify map size remains bounded.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -11646,6 +11572,23 @@ Copy this when adding a new issue:
   - Updated the interaction inventory for the Arcade play runtime behavior.
   - Verified with `npx tsx --test server/lib/cors-origins.test.ts server/features/arcade/source-proxy.test.ts server/features/arcade/source-import.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and a local Playwright smoke of the real `/api/arcade/source/fUAedxk5ti23jSWH9S1IyoSr/v1/index.html` iframe where clicking Start hid the overlay and ran the countdown.
 
+### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
+
+- Category: Tezos external marketplace / wallet preflight
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex stale security bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Historical evidence:
+  - External marketplace builders originally called Taquito wallet contracts while constructing transfer, cancellation, and operator-revoke parameters, before the send helper had a chance to restore and bind the expected signer.
+- Correction:
+  - Commit `ece085f23` moves `assertNetworkReadyForSend(expectedSigner)` ahead of `getTezos()` and every `tezos.wallet.at(...)` call in all three builders.
+  - Listing cancellation now passes its expected wallet address into the builder, keeping construction and send bound to the same active account.
+- Verification (2026-09-01):
+  - `client/src/lib/tezos/external-marketplaces-preflight-policy.test.ts` passes 2/2 and proves preflight ordering for FA2 batch transfer, listing cancellation, and operator revoke, plus expected-signer threading for cancellation.
+  - These checks run before wallet contract construction, closing the pre-send signer failure described by the record.
+
 ### WTF-BB-113 - Public WTF Arcade route crashed on vendored ZIP loader import
 
 - Category: Frontend / public route runtime
@@ -11823,6 +11766,23 @@ Copy this when adding a new issue:
 - Verification note: `node --test --import tsx server/lib/in-memory-rate-limit.test.ts server/lib/bounded-expiring-cache.test.ts` -> 6/6 pass; `npm run check` -> exit 0.
 - Verification idea:
   - Repeatedly resolve many actor users and verify `xUserIdCache` cardinality stabilizes instead of linearly growing.
+
+### WTF-BB-034 - X token refresh updates users table without serialization
+
+- Category: Data integrity / auth lifecycle
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex stale security bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S2 + P1(4) = 11
+- Historical evidence:
+  - The original X OAuth2 refresh path performed an uncoordinated user-row update, allowing concurrent near-expiry requests to persist tokens out of order.
+- Correction:
+  - Commit `c1c4d2cd7` wraps refresh in a database transaction, acquires a user-scoped PostgreSQL advisory transaction lock, and re-reads the user's current encrypted tokens and expiry after acquiring the lock.
+  - A waiting request reuses a token that the first writer already refreshed; only an actually stale locked row calls X and writes replacement credentials.
+- Verification (2026-09-01):
+  - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
+  - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
 
 ### WTF-BB-665 - Kiln main CI depends on a gitignored local reference-contract corpus
 
@@ -12944,6 +12904,40 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
   - Playwright visual smoke of `http://127.0.0.1:4173/skywire` with the inventory harness media/token fixture confirmed the media card, token preview, Buy/Open buttons, no duplicate generic external card, and zero console errors.
+
+### WTF-BB-083 - W link preview follows redirects before validating every target
+
+- Category: SSRF / remote fetch
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex stale security bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Historical evidence:
+  - The original W link-preview fetch used automatic redirect following, validating the final URL only after the server had already contacted every redirect target.
+- Correction:
+  - Commit `931b3cb9c` moved W previews to the shared `fetchSafeHttp` path. It validates the initial URL, requests each response with `redirect: "manual"`, resolves and validates every `Location` before the next fetch, rejects private/local targets, and enforces the existing redirect cap.
+  - The W route catches a rejected outbound target and returns a null preview without exposing the internal rejection.
+- Verification (2026-09-01):
+  - `server/lib/outbound-url.test.ts` supplies a public first hop that redirects to `127.0.0.1`, proves `OutboundUrlRejectedError`, proves the first request used manual redirects, and proves no second network call was issued.
+  - The focused executable test passes 1/1, directly satisfying the original redirect-chain acceptance criterion.
+
+### WTF-BB-061 - TzKT response cache stores arbitrary pagination/address combinations indefinitely
+
+- Category: Runtime / API scaling
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex stale security bounty reconciliation
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S3 + P2(3) = 11
+- Historical evidence:
+  - The original shared TzKT helper cached caller-shaped address and pagination keys in an unbounded module map and expired only keys that were read again.
+- Correction:
+  - Commit `4888214da` replaced that map with `createBoundedExpiringCache`, using the existing five-minute TTL, global expiry sweeps, least-recently-accessed overflow eviction, and a configurable 2,000-entry default bound.
+  - Persistent response-cache limits are separately normalized and clamped, so memory and durable cache cardinality both have explicit abuse boundaries.
+- Verification (2026-09-01):
+  - The bounded-cache, TzKT helper policy, and persistent-cache policy suites pass 5/5. The churn regression inserts more unique keys than the configured capacity and proves tracked cardinality never exceeds the bound; expiry tests prove stale entries are globally removable.
+  - Current `server/tzkt.ts` routes every helper key through the bounded cache, satisfying the original arbitrary-pagination growth criterion.
 
 ### WTF-BB-032 - Unowned media IDs are accepted for W post/DM flows
 

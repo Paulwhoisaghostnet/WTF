@@ -339,7 +339,7 @@
     },
     {
       "id": "WTF-BB-125",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex stale security bounty reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Tezos external marketplace / wallet preflight",
@@ -350,7 +350,7 @@
       "functionalityDanger": 4,
       "securityDanger": 1,
       "title": "External marketplace batch builders can touch Taquito wallet contracts before signer preflight",
-      "body": "- Evidence:\n  - `client/src/lib/tezos/external-marketplaces.ts` builds FA2 transfer, listing-cancel, and operator-revoke batch params with `tezos.wallet.at(...).methods...toTransferParams()` before `sendBatch` runs the wallet-provider preflight.\n  - This can reproduce the same class of `No signer configured` failure if Taquito requires a wallet provider during operation construction after a refreshed browser session.\n- Why it matters:\n  - External marketplace clean-up actions can fail before the improved send preflight gets a chance to rehydrate Beacon/Octez and bind the expected wallet.\n- Likely correction direction:\n  - Move wallet preflight ahead of batch builder calls, or make the builders accept a preflighted wallet toolkit/session so all wallet contract construction happens after provider attachment.\n- Verification idea:\n  - Refresh the browser with a persisted wallet address, then run cancel/revoke/batch-transfer flows without reconnecting manually; confirm the wallet permission request or send prompt appears instead of a signer error.",
+      "body": "- Historical evidence:\n  - External marketplace builders originally called Taquito wallet contracts while constructing transfer, cancellation, and operator-revoke parameters, before the send helper had a chance to restore and bind the expected signer.\n- Correction:\n  - Commit `ece085f23` moves `assertNetworkReadyForSend(expectedSigner)` ahead of `getTezos()` and every `tezos.wallet.at(...)` call in all three builders.\n  - Listing cancellation now passes its expected wallet address into the builder, keeping construction and send bound to the same active account.\n- Verification (2026-09-01):\n  - `client/src/lib/tezos/external-marketplaces-preflight-policy.test.ts` passes 2/2 and proves preflight ordering for FA2 batch transfer, listing cancellation, and operator revoke, plus expected-signer threading for cancellation.\n  - These checks run before wallet contract construction, closing the pre-send signer failure described by the record.",
       "legacyOriginalId": "WTF-BB-125"
     },
     {
@@ -371,7 +371,7 @@
     },
     {
       "id": "WTF-BB-034",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex stale security bounty reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Data integrity / auth lifecycle",
@@ -382,7 +382,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "X token refresh updates users table without serialization",
-      "body": "- Evidence: `server/lib/x-oauth2.ts:143-154` updates `users` fields after token refresh in a plain update statement; there is no row lock, no optimistic version check, and no retry-safe wrapper.\n- Why it matters:\n  - Concurrent `/api/w` requests for the same user near token expiry can race and update tokens out-of-order.\n  - A stale completion can persist and mask refresh failures, creating intermittent auth failures that are hard to reproduce.\n- Likely correction direction:\n  - Introduce an advisory lock or compare-and-swap (`updatedAt`/token version) around refresh/write operations.\n- Verification idea:\n  - Fire parallel endpoints that all trigger refresh and verify one refresh path is authoritative and stable final token state is consistent.",
+      "body": "- Historical evidence:\n  - The original X OAuth2 refresh path performed an uncoordinated user-row update, allowing concurrent near-expiry requests to persist tokens out of order.\n- Correction:\n  - Commit `c1c4d2cd7` wraps refresh in a database transaction, acquires a user-scoped PostgreSQL advisory transaction lock, and re-reads the user's current encrypted tokens and expiry after acquiring the lock.\n  - A waiting request reuses a token that the first writer already refreshed; only an actually stale locked row calls X and writes replacement credentials.\n- Verification (2026-09-01):\n  - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.\n  - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.",
       "legacyOriginalId": "WTF-BB-034"
     },
     {
@@ -499,7 +499,7 @@
     },
     {
       "id": "WTF-BB-083",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex stale security bounty reconciliation",
       "lastTouched": "2026-09-01",
       "category": "SSRF / remote fetch",
@@ -510,7 +510,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "W link preview follows redirects before validating every target",
-      "body": "- Evidence:\n  - `server/routes/w.ts:3762-3773` exposes an authenticated link-preview fetcher for arbitrary URLs.\n  - `server/routes/w.ts:519-527` calls `fetch(url, { redirect: \"follow\" })`.\n  - The code normalizes `response.url` only after the fetch has already followed redirects.\n  - TV media fetching already has a safer manual redirect guard in `server/routes/tv.ts:642-666`.\n- Why it matters:\n  - A public URL can redirect the server-side fetch to a private/local host before validation, creating an SSRF-style probe/fetch path.\n- Likely correction direction:\n  - Reuse a shared manual redirect guard: `redirect: \"manual\"`, validate each `Location`, cap redirects, and reject private/local/DNS-pinned targets before issuing the next request.\n- Verification idea:\n  - Unit-test redirect chains where the first URL is public and the second URL is private/local; the route should return no preview without making the second fetch.",
+      "body": "- Historical evidence:\n  - The original W link-preview fetch used automatic redirect following, validating the final URL only after the server had already contacted every redirect target.\n- Correction:\n  - Commit `931b3cb9c` moved W previews to the shared `fetchSafeHttp` path. It validates the initial URL, requests each response with `redirect: \"manual\"`, resolves and validates every `Location` before the next fetch, rejects private/local targets, and enforces the existing redirect cap.\n  - The W route catches a rejected outbound target and returns a null preview without exposing the internal rejection.\n- Verification (2026-09-01):\n  - `server/lib/outbound-url.test.ts` supplies a public first hop that redirects to `127.0.0.1`, proves `OutboundUrlRejectedError`, proves the first request used manual redirects, and proves no second network call was issued.\n  - The focused executable test passes 1/1, directly satisfying the original redirect-chain acceptance criterion.",
       "legacyOriginalId": "WTF-BB-083"
     },
     {
@@ -531,7 +531,7 @@
     },
     {
       "id": "WTF-BB-061",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex stale security bounty reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Runtime / API scaling",
@@ -542,7 +542,7 @@
       "functionalityDanger": 3,
       "securityDanger": 3,
       "title": "TzKT response cache stores arbitrary pagination/address combinations indefinitely",
-      "body": "- Evidence:\n  - `server/tzkt.ts:19` defines a module `cache` map used by all public TzKT resolvers.\n  - `server/tzkt.ts:43`, `78`, and `94` build keys with caller-provided `limit`/`offset` and addresses.\n  - There is no periodic global reaping; stale keys are removed only for exact key lookup hits past TTL.\n- Why it matters:\n  - Attackers can issue many unique pagination windows and wallet addresses, forcing map growth tied to query cardinality rather than business entities.\n- Likely correction direction:\n  - Add per-prefix cap and age-based global cleanup sweeps; keep only active page windows or derive a bounded cache policy.\n- Verification idea:\n  - Hit thousands of offset windows for a fixed address and verify map size remains bounded.",
+      "body": "- Historical evidence:\n  - The original shared TzKT helper cached caller-shaped address and pagination keys in an unbounded module map and expired only keys that were read again.\n- Correction:\n  - Commit `4888214da` replaced that map with `createBoundedExpiringCache`, using the existing five-minute TTL, global expiry sweeps, least-recently-accessed overflow eviction, and a configurable 2,000-entry default bound.\n  - Persistent response-cache limits are separately normalized and clamped, so memory and durable cache cardinality both have explicit abuse boundaries.\n- Verification (2026-09-01):\n  - The bounded-cache, TzKT helper policy, and persistent-cache policy suites pass 5/5. The churn regression inserts more unique keys than the configured capacity and proves tracked cardinality never exceeds the bound; expiry tests prove stale entries are globally removable.\n  - Current `server/tzkt.ts` routes every helper key through the bounded cache, satisfying the original arbitrary-pagination growth criterion.",
       "legacyOriginalId": "WTF-BB-061"
     },
     {

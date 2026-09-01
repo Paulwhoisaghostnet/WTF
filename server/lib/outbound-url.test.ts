@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertSafeOutboundUrl,
+  fetchSafeHttp,
   OutboundUrlRejectedError,
   porcupinOutboundPolicy,
 } from "./outbound-url";
@@ -53,5 +54,32 @@ test("porcupinOutboundPolicy requires https in production", () => {
     } else {
       process.env.PORCUPIN_ALLOW_HTTP = originalAllow;
     }
+  }
+});
+
+test("safe outbound fetch rejects a private redirect before issuing the next request", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; redirect: RequestRedirect | undefined }> = [];
+
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(input), redirect: init?.redirect });
+    return new Response(null, {
+      status: 302,
+      headers: { location: "http://127.0.0.1/internal" },
+    });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => fetchSafeHttp("https://public.example/start"),
+      (error: unknown) =>
+        error instanceof OutboundUrlRejectedError &&
+        /private or local network hosts/i.test(error.message)
+    );
+    assert.deepEqual(calls, [
+      { url: "https://public.example/start", redirect: "manual" },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
