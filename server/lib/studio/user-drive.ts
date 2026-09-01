@@ -13,11 +13,11 @@
  *   - the account's email (for display)
  *   - the granted scopes
  *
- * App usage (Studio's footprint in the user's Drive) is NOT persisted
+ * App usage (wtfOS's footprint in the user's Drive) is NOT persisted
  * on the row — we pull it fresh from Drive on demand and cache the
  * last-seen value in memory so repeat status checks stay cheap.  We
  * intentionally do NOT ask for `drive.metadata.readonly`, so the user's
- * *total* Drive quota is unavailable; `appUsage` is Studio-scoped.
+ * *total* Drive quota is unavailable; `appUsage` covers files wtfOS created.
  *
  * Projects created against a user's Drive store `gdriveOwner = <userId>`
  * in their `storage_context` — the driver reads that to pick the right
@@ -36,6 +36,7 @@
  */
 
 import { and, eq } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
 import { db } from "../../db";
 import { studioStorageAccounts } from "@shared/schema";
 import { openSecret, sealSecret, isStudioCryptoConfigured } from "./crypto";
@@ -480,6 +481,56 @@ export async function getOrLoadUserDriveClient(userId: number): Promise<{
     rootFolderId,
   });
   return { client, rootFolderId };
+}
+
+export type UserMediaDriveBackup = {
+  provider: "google_drive";
+  status: "ready";
+  fileId: string;
+  fileName: string;
+  webViewLink: string | null;
+  checksumSha256: string | null;
+  syncedAt: string;
+};
+
+/**
+ * Copy one My Media upload into the user's connected Google Drive.
+ * The platform object-storage object remains the playback source; this
+ * Drive object is an account-owned backup created under the narrow
+ * `drive.file` grant.
+ *
+ * Returns `null` when the user has no ready Drive connection so ordinary
+ * media uploads remain available without requiring Google.
+ */
+export async function backupUserMediaFileToDrive(input: {
+  userId: number;
+  mediaId: number;
+  filePath: string;
+  fileName: string;
+  mimeType: string;
+  checksumSha256?: string | null;
+}): Promise<UserMediaDriveBackup | null> {
+  if (!(await isUserDriveReady(input.userId))) return null;
+  const { client, rootFolderId } = await getOrLoadUserDriveClient(input.userId);
+  const parentId = await client.ensureFolderPath(rootFolderId, ["wtfOS My Media"]);
+  const buffer = await readFile(input.filePath);
+  const fileName = `${Math.max(0, Math.floor(input.mediaId))}-${input.fileName}`;
+  const uploaded = await client.uploadBuffer({
+    buffer,
+    mimeType: input.mimeType,
+    name: fileName,
+    parentId,
+  });
+  if (!uploaded.id) throw new Error("Google Drive media backup returned no file id");
+  return {
+    provider: "google_drive",
+    status: "ready",
+    fileId: uploaded.id,
+    fileName,
+    webViewLink: uploaded.webViewLink ?? null,
+    checksumSha256: input.checksumSha256 ?? null,
+    syncedAt: new Date().toISOString(),
+  };
 }
 
 /* ── Internal ───────────────────────────────────────────── */

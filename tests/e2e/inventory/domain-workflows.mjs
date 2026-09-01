@@ -17,11 +17,15 @@ export const DOMAIN_WORKFLOWS = [
       "profile.social.unlinked",
       "profile.social.link_blocked",
       "profile.avatar_media.saved",
+      "faq.tutorial.selected",
+      "faq.tutorial.played",
+      "faq.tutorial.completed",
       "notification.viewed",
     ],
     behaviorAssertionIds: [
       "auth.classic-first-run-task-wayfinder",
       "auth.stale-session-welcome-recovery",
+      "auth.faq-registration-tutorials",
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },
@@ -29,6 +33,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/profile/account" },
       { method: "GET", path: "/api/users/wtf-admin/activity", expectedStatuses: [200, 404] },
       { method: "GET", path: "/api/notifications/preferences" },
+      { method: "GET", path: "/api/faq/tutorials" },
     ],
   },
   {
@@ -909,6 +914,8 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/my-videos", "/my-photos", "/my-music", "/studio", "/game-studio", "/wim", "/tools/broot", "/tools/pixalerce", "/ipfs-pinning", "/tools/colander", "/mint-portal", "/live", "/tools/ch-ease", "/tools/macaroni-packager", "/tools/macaroni", "/arcade"],
     eventHandles: [
       "media.uploaded",
+      "media.drive_backup.completed",
+      "media.drive_backup.failed",
       "studio.project.created",
       "studio.workflow_updated",
       "skywire.pipeline.studio_queued",
@@ -930,11 +937,14 @@ export const DOMAIN_WORKFLOWS = [
     ],
     behaviorAssertionIds: [
       "media.creation-gallery-preservation-proof",
+      "media.personal-drive-backup",
       "arcade.creator-build-publish-discover",
       "macaroni.v3-commitment-reveal",
     ],
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
+      { method: "GET", path: "/api/studio/drive/status", expectedStatuses: [200, 401, 500] },
+      { method: "POST", path: "/api/media/1/drive-backup", body: {}, expectedStatuses: [200, 401, 403, 404, 409, 502] },
       { method: "GET", path: "/api/cockpit/project-bundles" },
       { method: "GET", path: "/api/cockpit/media-service" },
       { method: "GET", path: "/api/cockpit/ipfs-gateways" },
@@ -1147,6 +1157,9 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/links", "/faq", "/leaderboard", "/gallery", "/arcade"],
     eventHandles: [
       "faq.viewed",
+      "faq.tutorial.selected",
+      "faq.tutorial.played",
+      "faq.tutorial.completed",
       "api.public.read",
       "public_data.viewed",
       "mcp.tool.called",
@@ -1160,6 +1173,8 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/links" },
       { method: "GET", path: "/api/faq" },
+      { method: "GET", path: "/api/faq/tutorials" },
+      { method: "GET", path: "/api/faq/tutorials/create-account-and-sign-in/poster", expectedStatuses: [200, 404, 503] },
       { method: "GET", path: "/api/access" },
       { method: "GET", path: "/api/v1" },
       { method: "GET", path: "/api/v1/capabilities" },

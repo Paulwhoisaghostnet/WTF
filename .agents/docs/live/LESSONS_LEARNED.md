@@ -11239,3 +11239,13 @@
 **Rule**: For SSH-triggered host deployments, queue workflow runs instead of canceling in progress, and acquire a host-side file lock before fetch, reset, build, migration, or restart. Runner cancellation is not remote-process cancellation evidence.
 
 ---
+
+## 2026-09-01 — Tutorial recordings must prove the complete visible journey
+
+**What happened**: The first automated cloud-backup tutorial used the required TommyTezos identity but entered Studio with an actor that lacked Studio permission, and its simulated OAuth return did not expose the connected state. The recording technically completed while the visible lesson contradicted its narration.
+
+**Why it mattered**: Account-name validation and a successful browser run did not prove that viewers saw a usable workflow from entry through the durable result.
+
+**Rule**: A tutorial fixture must include the permissions and post-authorization state required by the narrated journey. Review representative frames at entry, decision, authorization, and completion; treat identity checks, browser completion, and final-state visibility as separate acceptance claims.
+
+---

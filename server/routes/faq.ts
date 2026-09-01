@@ -5,6 +5,12 @@ import { eq, asc } from "drizzle-orm";
 import { requirePermission } from "../auth/passport";
 import { classifyDbError } from "../errors/db-errors";
 import { z } from "zod";
+import {
+  findFaqTutorial,
+  getPublicFaqTutorialCatalog,
+  serveFaqTutorialAsset,
+  type FaqTutorialAssetKind,
+} from "../lib/faq-tutorials";
 
 const router = Router();
 
@@ -24,6 +30,31 @@ const faqCreateSchema = z
   .strict();
 
 const faqUpdateSchema = faqCreateSchema.partial().strict();
+
+router.get("/api/faq/tutorials", (_req, res) => {
+  res.json(getPublicFaqTutorialCatalog());
+});
+
+router.get("/api/faq/tutorials/:slug/:asset", async (req, res) => {
+  const tutorial = findFaqTutorial(String(req.params.slug || ""));
+  const asset = String(req.params.asset || "") as FaqTutorialAssetKind;
+  if (!tutorial || !["video", "captions", "poster"].includes(asset)) {
+    return res.status(404).json({ error: "Tutorial asset not found" });
+  }
+  try {
+    await serveFaqTutorialAsset({ req, res, tutorial, kind: asset });
+  } catch (error) {
+    console.error("Failed to serve FAQ tutorial asset:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("faq_tutorial_storage_unconfigured")) {
+      return res.status(503).json({ error: "Tutorial storage is not configured" });
+    }
+    if (/NoSuchKey|not found|404/i.test(message)) {
+      return res.status(404).json({ error: "Tutorial asset has not been published" });
+    }
+    return res.status(502).json({ error: "Failed to load tutorial asset" });
+  }
+});
 
 router.get("/api/faq", async (_req, res) => {
   try {
