@@ -11249,3 +11249,13 @@
 **Rule**: Whenever code adds, removes, or renames an environment variable, regenerate and check the environment inventory in the same commit before relying on broader CI. A passing runtime test does not replace the generated configuration contract.
 
 ---
+
+## 2026-09-01 — Data sparsity is evidence, not a product threshold
+
+**What happened**: A local-development database snapshot with many empty domain tables and nullable diagnostic fields remained recorded as an open P1 even after the requested daily completion scan, operator dashboard visibility, and full report command had shipped.
+
+**Why it mattered**: The board treated environment-specific population levels as a release defect without an owner-defined minimum, while obscuring the fact that the actionable monitoring gap had already been corrected and tested.
+
+**Rule**: Preserve database density snapshots as operational evidence, but do not invent row-count or cell-completion release thresholds. Reconcile the actionable monitoring criteria against current scheduling, operator visibility, and executable report coverage; require a product-owned invariant before treating an empty optional table or nullable diagnostic field as corruption.
+
+---
