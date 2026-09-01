@@ -4709,7 +4709,7 @@ function apiMock(req, res) {
           slug: "e2e-club",
           name: "E2E Club",
           description: "Inventory harness club dues contract",
-          templateVersion: "wtf-club-dues-v1",
+          templateVersion: "wtf-club-dues-v2",
           network: "shadownet",
           status: "live",
           contractAddress: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
@@ -4739,7 +4739,7 @@ function apiMock(req, res) {
   if (pathName === "/api/club-dues/templates/compile") {
     return res.json({
       ok: true,
-      templateVersion: "wtf-club-dues-v1",
+      templateVersion: "wtf-club-dues-v2",
       sourcePath: "contracts/wtf-club-dues/WtfClubDues.py",
       initialStorage: "{}",
       workflow: { harness: true },

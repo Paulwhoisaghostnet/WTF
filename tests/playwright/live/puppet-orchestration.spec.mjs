@@ -1816,7 +1816,8 @@ test.describe("live E2E puppet orchestration", () => {
         (contract) => contract.status === "live" && contract.contractAddress && contract.slug
       );
       expect(liveContract, "Club Dues live contract").toBeTruthy();
-      expect(liveContract.templateVersion).toBe("wtf-club-dues-v1");
+      expect(liveContract.templateVersion).toBe("wtf-club-dues-v2");
+      expect(liveContract.templateVersion).not.toBe("wtf-club-dues-v1");
 
       const myMemberships = await expectOkJson(
         await contestantRequest.get("/api/club-dues/my"),
@@ -1874,6 +1875,7 @@ test.describe("live E2E puppet orchestration", () => {
       );
       expect(compile.ok).toBe(true);
       expect(compile.templateVersion).toBe("wtf-club-dues-v2");
+      expect(compile.templateVersion).not.toBe("wtf-club-dues-v1");
       expect(compile.sourcePath).toContain("WtfClubDues.py");
       expect(compile.code, "compiled Michelson code").toContain("parameter");
       expect(compile.initialStorage, "compiled initial storage").toBeTruthy();

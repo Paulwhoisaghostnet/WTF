@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **406** · Archived: **4**
+Total: **635** · Open: **22** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **408** · Archived: **4**
 
 ## Canonical Board
 
@@ -92,7 +92,6 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-522 | Claimed | Codex Club Dues V2 harness alignment | 2026-09-01 | E2E accuracy / Club Dues contract lifecycle | P1 | 10 | 449 | 2 | 2 | 2 | Club Dues live puppet still required the retired V1 template |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -226,7 +225,6 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 509 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
 | WTF-BB-650 | Fixed | Codex full-send release verification | - | E2E inventory / WTF Domains | P1 | 9 | 509 | 2 | 3 | 0 | WTF Domains E2E harness shape drift crashes native route smoke |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 509 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
-| WTF-BB-081 | Fixed | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 369 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 369 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 369 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -533,6 +531,7 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-575 | Verified | Codex Rotini alpha preflight | - | Pasta Protocol / Rotini UI-LIVE test harness | P1 | 10 | 449 | 2 | 4 | 0 | Rotini fake finality depends on native confirmation polling |
 | WTF-BB-573 | Verified | Codex Gnocchi alpha preflight | - | Pasta Protocol / Gnocchi UI-LIVE test harness | P1 | 10 | 449 | 2 | 4 | 0 | Gnocchi fake finality depends on native confirmation polling |
 | WTF-BB-548 | Verified | Codex MSW usage audit | 2026-08-06 | WTF TV / IPFS cache gateway policy | P1 | 10 | 449 | 2 | 4 | 0 | Source/cache identity stays canonical while allowlisted fetch candidates and redirects remain distinct; failing-first regressions reproduced and then closed the 14,640-request/day production loop |
+| WTF-BB-522 | Verified | Codex Club Dues V2 harness alignment | 2026-09-01 | E2E accuracy / Club Dues contract lifecycle | P1 | 10 | 449 | 2 | 2 | 2 | Club Dues live puppet still required the retired V1 template |
 | WTF-BB-419 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Shadownet proof runtime | P1 | 10 | 449 | 2 | 4 | 0 | Shared proof-kit keyring loading now works in both tsx's CJS runtime and isolated strict TypeScript, and durable Kubo pins are independently gateway/hash verified before evidence can pass |
 | WTF-BB-418 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Colander Penne management parity | P1 | 10 | 449 | 2 | 4 | 0 | Colander now exposes Penne's public `Claim allocation` action with token-id input; verified by the 38-test adapter suite, inventory coverage, production build, and the 3/3 Colander Shadownet-shaped browser lane |
 | WTF-BB-417 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Shadownet preflight drift | P1 | 10 | 449 | 2 | 4 | 0 | Shared Pasta preflight now requires and accepts the current direct-sale entrypoints/actions before live proof execution |
@@ -570,6 +569,7 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 369 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-193 | Verified | Codex Skywire feed UI/token preview pass | 2026-06-03 | Skywire / feed UX and token previews | P2 | 11 | 369 | 3 | 5 | 0 | Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews |
 | WTF-BB-083 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | SSRF / remote fetch | P2 | 11 | 369 | 3 | 3 | 2 | W link preview follows redirects before validating every target |
+| WTF-BB-081 | Verified | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-061 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 369 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-032 | Verified | Codex W repair pass | 2026-05-24 | Data safety / input validation | P2 | 11 | 369 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
 | WTF-BB-515 | Verified | Codex Púca’s Fortune integration | - | Arcade / cartridge packaging | P2 | 10 | 449 | 2 | 3 | 2 | Cartridge manifest regeneration dropped static Arcade games |
@@ -1915,24 +1915,6 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-522 - Club Dues live puppet still required the retired V1 template
-
-- Category: E2E accuracy / Club Dues contract lifecycle
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex Club Dues V2 harness alignment
-- Last touched: 2026-09-01
-- Score: C2 + F2 + S2 + P1(4) = 10
-- Evidence:
-  - The July 23 actor-backed live harness returned the current `wtf-club-dues-v2` template from both live state and compile state, but `tests/playwright/live/puppet-orchestration.spec.mjs` still asserted `wtf-club-dues-v1`.
-  - The complete harness therefore ended 166/167 even though its Pasta routes and Pasta suite workflow passed.
-- Why it matters:
-  - A stale lifecycle assertion makes the release harness red after the V2 contract was deliberately promoted and can obscure an actual Club Dues regression.
-- Likely correction direction:
-  - Bind both assertions to the accepted V2 template identity and add a negative check that rejects a regression to the retired V1 artifact.
-- Verification idea:
-  - Re-run the focused Club Dues live-puppet scenario against the isolated test database, prove live and compiled identities are V2, then complete the 167-scenario harness.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -4916,27 +4898,6 @@ Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Bloc
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
-
-### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
-
-- Category: Authentication / Tezos wallet proof
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex wallet auth proof binding
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S2 + P2(3) = 11
-- Historical evidence:
-  - Wallet login and registration signed only a nonce, derived an address opportunistically from the public key, and could fall back to the client-submitted wallet address without proving that the key owned it.
-- Correction (2026-09-01):
-  - Wallet challenges now persist and return an origin and action alongside the existing wallet, expiry, and one-time nonce. The readable signed message binds all five values for login, registration, and authenticated wallet linking.
-  - Login and registration require `verifyPublicKeyOwnership(walletAddress, publicKey)` before atomically consuming a nonce that matches the same wallet, origin, action, unconsumed state, and live expiry. Address fallback logic was removed.
-  - Added forward migration `0125_wallet_auth_proof_binding.sql`; updated the Classic/Gamma clients, load probes, actor-backed puppet login harness, interaction inventory, and named behavior assertion to sign the server-returned bound message.
-  - The shared legacy nonce overload remains intact so the separately active Macaroni work is not modified by this pass.
-- Verification:
-  - Nine focused wallet-auth/client policy tests pass, including exact message-field binding, changed-wallet inequality, ownership-before-consumption ordering, scoped atomic nonce consumption, explicit login/register actions, passive-rehydration safety, and signed Profile linking.
-  - Production migration policy passes 8/8, inventory coverage remains complete for 238 surfaces and 973 handles, the environment inventory is current, and the repository-wide TypeScript check passes.
-  - Commit `435493fb455556ab7c095e364284d1c733649a58` deployed successfully and production health reported that exact commit. A live challenge bound the production origin, login action, exact wallet, expiry, and nonce.
-  - Status remains Fixed because the available actor credentials are intentionally limited to the local test database; the harness correctly refused to send them to production. Verification requires a production-scoped signer-backed actor rather than bypassing that safeguard.
 
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 
@@ -12034,6 +11995,27 @@ Copy this when adding a new issue:
   - `npx tsx --test server/features/tv/media-urls.test.ts` passes 9/9, covering distinct candidates, an allowlisted `nftstorage.link -> dweb.link` redirect, private/unallowlisted rejection before a second fetch, and stable canonical cache URLs.
   - `npm run check`, the production build, inventory coverage, and the full inventory browser suite pass; the browser suite is 667/667 and `git diff --check` reports no patch whitespace errors.
 
+### WTF-BB-522 - Club Dues live puppet still required the retired V1 template
+
+- Category: E2E accuracy / Club Dues contract lifecycle
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Club Dues V2 harness alignment
+- Last touched: 2026-09-01
+- Score: C2 + F2 + S2 + P1(4) = 10
+- Historical evidence:
+  - The July 23 actor-backed live harness returned the current `wtf-club-dues-v2` template from both live state and compile state, but `tests/playwright/live/puppet-orchestration.spec.mjs` still asserted `wtf-club-dues-v1`.
+  - The complete harness therefore ended 166/167 even though its Pasta routes and Pasta suite workflow passed.
+- Correction (2026-09-01):
+  - The local Club Dues seed now inserts V2 and updates both `templateVersion` and its compile artifact to V2 when the fixture row already exists. Repeated runs can no longer preserve the retired value.
+  - The actor-backed live assertions accept V2 for both live and compiled state and explicitly reject V1. Browser inventory fixtures now expose V2 consistently.
+  - Added `club-dues-v2-policy.test.ts` to enforce new-row, conflict-update, live assertion, negative-regression, and browser-fixture alignment.
+- Verification (2026-09-01):
+  - The focused policy suite passes 3/3.
+  - The isolated local puppet seed completes for all 12 actors and reports the Club Dues fixture installed.
+  - The focused actor-backed Club Dues scenario and its domain workflow pass 2/2 against the local server and database, proving the public live contract, V2 compile response, admin summary, dry arrears sweep, wallet preflight, linked-wallet intent, and domain workflow.
+  - Inventory coverage remains complete for 239 surfaces, 978 canonical handles, and 118 routes; the repository-wide TypeScript check passes.
+
 ### WTF-BB-419 - Shared proof-kit keyring loading now works in both tsx's CJS runtime and isolated strict TypeScript, and durable Kubo pins are independently gateway/hash verified before evidence can pass
 
 - Category: Pasta Protocol / Shadownet proof runtime
@@ -12900,6 +12882,27 @@ Copy this when adding a new issue:
 - Verification (2026-09-01):
   - `server/lib/outbound-url.test.ts` supplies a public first hop that redirects to `127.0.0.1`, proves `OutboundUrlRejectedError`, proves the first request used manual redirects, and proves no second network call was issued.
   - The focused executable test passes 1/1, directly satisfying the original redirect-chain acceptance criterion.
+
+### WTF-BB-081 - Wallet-login proof is not bound to the submitted wallet address
+
+- Category: Authentication / Tezos wallet proof
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex wallet auth proof binding
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P2(3) = 11
+- Historical evidence:
+  - Wallet login and registration signed only a nonce, derived an address opportunistically from the public key, and could fall back to the client-submitted wallet address without proving that the key owned it.
+- Correction (2026-09-01):
+  - Wallet challenges now persist and return an origin and action alongside the existing wallet, expiry, and one-time nonce. The readable signed message binds all five values for login, registration, and authenticated wallet linking.
+  - Login and registration require `verifyPublicKeyOwnership(walletAddress, publicKey)` before atomically consuming a nonce that matches the same wallet, origin, action, unconsumed state, and live expiry. Address fallback logic was removed.
+  - Added forward migration `0125_wallet_auth_proof_binding.sql`; updated the Classic/Gamma clients, load probes, actor-backed puppet login harness, interaction inventory, and named behavior assertion to sign the server-returned bound message.
+  - The shared legacy nonce overload remains intact so the separately active Macaroni work is not modified by this pass.
+- Verification:
+  - Nine focused wallet-auth/client policy tests pass, including exact message-field binding, changed-wallet inequality, ownership-before-consumption ordering, scoped atomic nonce consumption, explicit login/register actions, passive-rehydration safety, and signed Profile linking.
+  - Production migration policy passes 8/8, inventory coverage remains complete, the environment inventory is current, and the repository-wide TypeScript check passes.
+  - Commit `435493fb455556ab7c095e364284d1c733649a58` deployed successfully and production health reported that exact commit. A live challenge bound the production origin, login action, exact wallet, expiry, and nonce.
+  - A production-scoped Bert actor signed the exact server-returned challenge with the production platform keyring, submitted it to `https://wtfos.app/api/auth/wallet/verify`, and completed the login assertion 1/1. No local credential override or production safety bypass was used.
 
 ### WTF-BB-061 - TzKT response cache stores arbitrary pagination/address combinations indefinitely
 

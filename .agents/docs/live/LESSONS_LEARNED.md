@@ -11327,3 +11327,13 @@
 **Rule**: Treat every new `process.env` reference as an inventory change, including local media, test, and publishing scripts. Regenerate and check the environment inventory before the first push, even when the variable is never present in the production app container.
 
 ---
+
+## 2026-09-01 — Idempotent seeds must upgrade lifecycle identity
+
+**What happened**: The Club Dues actor harness expected the retired V1 template, and its seed conflict path refreshed addresses and timestamps without refreshing `templateVersion` or the compile artifact. Changing only the insert value would still have left an existing local fixture on V1.
+
+**Why it mattered**: A repeatable seed can report success while preserving obsolete state, causing a release test either to reject the promoted contract or to validate a lifecycle the product no longer serves.
+
+**Rule**: When a seeded product advances to a new contract or artifact version, update both the insert and conflict-update paths, assert the promoted identity, and explicitly reject the retired identity. Prove the result with a second-run-capable seed and the actor-backed workflow, not a source edit alone.
+
+---
