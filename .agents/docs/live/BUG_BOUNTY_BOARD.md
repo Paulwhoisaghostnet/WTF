@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **31** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **398** · Archived: **4**
+Total: **635** · Open: **30** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **398** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 270 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-125 | Open | - | 2026-05-08 | Tezos external marketplace / wallet preflight | P1 | 11 | 369 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
 | WTF-BB-044 | Open | - | 2026-04-27 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
@@ -99,6 +98,7 @@ Total: **635** · Open: **31** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
+| WTF-BB-052 | Claimed | Codex DB health completion reconciliation | 2026-09-01 | Data integrity / analytics | P1 | 12 | 270 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -666,39 +666,6 @@ Total: **635** · Open: **31** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-052 - DB health scan shows most public tables empty and top populated tables still sparse
-
-- Category: Data integrity / analytics
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C4 + F3 + S1 + P1(4) = 12
-- Evidence:
-  - Ran `WTF/scripts/db-health-completion.sql` against local DB `postgresql://wtf@localhost:5432/wtf`.
-  - Public schema totals: `total_public_tables = 106`, `populated_tables = 15`, `zero_row_tables = 91`.
-  - Populated tables with lowest completion:
-    - `public.users` (2 rows) — `39.39%` complete, `60.61%` empty.
-    - `public.backfill_manifest` (2,856 rows) — `62.06%` complete.
-    - `public.sync_runs` (24 rows) — `69.44%` complete.
-    - `public.system_event_logs` (57,074 rows) — `75.55%` complete, `24.45%` empty.
-    - `public.console_games` — `84.62%` complete, `15.38%` empty.
-  - Worst sparse columns from row_count > 0 sample (rows>=50):
-    - `public.backfill_manifest.payload`, `.last_error`, `.next_attempt_at` at `0%`.
-    - `public.system_event_logs.error_stack` at `0%` (`57072` empty / `57074` rows).
-    - `public.system_event_logs.error_name`, `.error_message` at `3.11%`.
-    - `public.backfill_manifest.last_attempt_at`, `.completed_at` at `3.36%`.
-    - `public.system_event_logs.user_id` at `13.42%`.
-- Why it matters:
-  - 91 of 106 public tables are currently zero-row in this environment, indicating no provisioned data for most domains.
-  - Sparse fields in populated tables weaken analytics quality and can hide backfill failures.
-- Likely correction direction:
-  - Add a regular completion job around `WTF/scripts/db-health-completion.sql` and fail fast for critical tables below your threshold.
-  - Prioritize `backfill_manifest` and `system_event_logs` sparse columns first, then user metadata fields that are expected to be required by downstream logic.
-- Verification idea:
-  - Re-run this same health script on staging and production snapshots and compare top-25 table/column drops from prior runs.
-  - Add a dashboard card for `zero_row_tables` and top-25 sparse columns so regressions are visible to ops.
 
 ### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
 
@@ -2062,6 +2029,39 @@ Total: **635** · Open: **31** · Claimed: **41** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
+
+### WTF-BB-052 - DB health scan shows most public tables empty and top populated tables still sparse
+
+- Category: Data integrity / analytics
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex DB health completion reconciliation
+- Last touched: 2026-09-01
+- Score: C4 + F3 + S1 + P1(4) = 12
+- Evidence:
+  - Ran `WTF/scripts/db-health-completion.sql` against local DB `postgresql://wtf@localhost:5432/wtf`.
+  - Public schema totals: `total_public_tables = 106`, `populated_tables = 15`, `zero_row_tables = 91`.
+  - Populated tables with lowest completion:
+    - `public.users` (2 rows) — `39.39%` complete, `60.61%` empty.
+    - `public.backfill_manifest` (2,856 rows) — `62.06%` complete.
+    - `public.sync_runs` (24 rows) — `69.44%` complete.
+    - `public.system_event_logs` (57,074 rows) — `75.55%` complete, `24.45%` empty.
+    - `public.console_games` — `84.62%` complete, `15.38%` empty.
+  - Worst sparse columns from row_count > 0 sample (rows>=50):
+    - `public.backfill_manifest.payload`, `.last_error`, `.next_attempt_at` at `0%`.
+    - `public.system_event_logs.error_stack` at `0%` (`57072` empty / `57074` rows).
+    - `public.system_event_logs.error_name`, `.error_message` at `3.11%`.
+    - `public.backfill_manifest.last_attempt_at`, `.completed_at` at `3.36%`.
+    - `public.system_event_logs.user_id` at `13.42%`.
+- Why it matters:
+  - 91 of 106 public tables are currently zero-row in this environment, indicating no provisioned data for most domains.
+  - Sparse fields in populated tables weaken analytics quality and can hide backfill failures.
+- Likely correction direction:
+  - Add a regular completion job around `WTF/scripts/db-health-completion.sql` and fail fast for critical tables below your threshold.
+  - Prioritize `backfill_manifest` and `system_event_logs` sparse columns first, then user metadata fields that are expected to be required by downstream logic.
+- Verification idea:
+  - Re-run this same health script on staging and production snapshots and compare top-25 table/column drops from prior runs.
+  - Add a dashboard card for `zero_row_tables` and top-25 sparse columns so regressions are visible to ops.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 

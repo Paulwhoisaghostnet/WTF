@@ -291,9 +291,9 @@
     },
     {
       "id": "WTF-BB-052",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex DB health completion reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "Data integrity / analytics",
       "priority": "P1",
       "points": 12,
