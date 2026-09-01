@@ -1170,7 +1170,7 @@ function buildPlaceholderMetadata(source, index, poolSize) {
   const meta = {
     name: `${state.drop.title || "Drop"} — unrevealed ${poolSize > 1 ? index + 1 : ""}`.trim(),
     description:
-      "This token has not been revealed yet. A random artwork from the collection will be assigned at reveal.",
+      "This token has not been revealed yet. Its creator-committed metadata remains sealed until the contract allows reveal.",
     decimals: 0,
     isBooleanAmount: true,
     symbol: state.drop.symbol || undefined,
@@ -1648,7 +1648,7 @@ async function deploy() {
         operators: new M(),
         token_metadata: new M(),
         ...(profile.usesV3
-          ? { token_commitments: new M(), revealed_tokens: new M() }
+          ? { token_commitments: new M(), revealed_tokens: new M(), inventory_finalized: false }
           : { pending_tokens: new M() }),
         token_supply: new M(),
         token_minted: new M(),
@@ -1772,12 +1772,20 @@ async function sync() {
     const c = await tezos.wallet.at(kt);
     const st = await (await tezos.contract.at(kt)).storage();
     const contractIsV3 = st.token_commitments != null && st.revealed_tokens != null;
+    const contractIsFinalizedV3 = contractIsV3 && st.inventory_finalized != null;
     const contractIsV2 = !contractIsV3 && st.token_supply != null && st.token_minted != null && st.minter_royalty_config != null;
     const contractUsesEditionStorage = contractIsV2 || contractIsV3;
     if (profile.usesV3 && !contractIsV3) {
       return notify(
         "Macaroni V3 is selected, but the selected contract is not a V3 commitment contract. " +
         "Deploy or resume a V3 contract for this draft.",
+        "err",
+        "deployStatus"
+      );
+    }
+    if (profile.usesV3 && !contractIsFinalizedV3) {
+      return notify(
+        "This is an older V3 contract without immutable pre-sale inventory. Deploy the current V3 contract before opening the sale.",
         "err",
         "deployStatus"
       );
@@ -1829,7 +1837,8 @@ async function sync() {
       );
 
     const replaceTodo = [];
-    if (state.tokens.length && !st.locked) {
+    const inventoryMutable = contractIsV3 ? !Boolean(st.inventory_finalized) : !st.locked;
+    if (state.tokens.length && inventoryMutable) {
       const existing = state.tokens.filter((t) => t.id - 1 < already);
       for (const t of existing) {
         if (contractIsV3) {
@@ -1841,11 +1850,35 @@ async function sync() {
           if (current !== desired) replaceTodo.push(t);
         }
       }
-    } else if (state.tokens.length && st.locked) {
-      log("sync: sale is locked; existing token metadata cannot be replaced");
+    } else if (state.tokens.length && !inventoryMutable) {
+      log(contractIsV3
+        ? "sync: V3 inventory is finalized; token rows and commitments are permanently sealed"
+        : "sync: sale is locked; existing token metadata cannot be replaced");
+    }
+
+    if (contractIsV3 && Boolean(st.inventory_finalized)) {
+      for (const t of state.tokens.filter((token) => token.id - 1 < already)) {
+        const tokenId = t.id - 1;
+        const committed = String((await st.token_commitments.get(tokenId)) || "").replace(/^0x/i, "").toLowerCase();
+        const supply = Number((await st.token_supply.get(tokenId)) || 0);
+        if (committed !== String(t.metadataCommitment || "").toLowerCase() || supply !== normalizeTokenQuantity(t.quantity)) {
+          return notify(
+            `Token ${t.id} differs from the permanently finalized V3 inventory. Restore the exact finalized backup or deploy a new contract.`,
+            "err",
+            "deployStatus"
+          );
+        }
+      }
     }
 
     const todo = state.tokens.filter((t) => t.id - 1 >= already);
+    if (contractIsV3 && Boolean(st.inventory_finalized) && todo.length) {
+      return notify(
+        "This V3 inventory is permanently finalized. Restore the exact finalized Studio backup or deploy a new contract for changed tokens.",
+        "err",
+        "deployStatus"
+      );
+    }
     const stages = stageRecords();
     const entries = [];
     for (const s of stages)
@@ -1856,6 +1889,7 @@ async function sync() {
       1,
       Math.ceil(replaceTodo.length / CHUNK) +
         Math.ceil(todo.length / CHUNK) +
+        (contractIsV3 && !Boolean(st.inventory_finalized) ? 1 : 0) +
         1 +
         (entries.length ? Math.ceil(entries.length / 200) : 1)
     );
@@ -1887,6 +1921,18 @@ async function sync() {
       });
       await op.confirmation(1);
       await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: ep });
+      bump();
+    }
+
+    if (contractIsV3 && !Boolean(st.inventory_finalized)) {
+      log("finalize_inventory — permanently seal token rows, quantities, commitments, and allocation order");
+      const op = await MD.sendWalletOp(c.methodsObject.finalize_inventory(), {}, {
+        ...STORAGE_PROFILE.inventory,
+        gasPerUnit: 80_000,
+        units: 1,
+      });
+      await op.confirmation(1);
+      await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: "finalize_inventory" });
       bump();
     }
 
@@ -1925,9 +1971,9 @@ async function sync() {
       log(`${state.drop.revealMode} reveal automation registered for ${kt}`);
     }
     $("syncBar").style.width = "100%";
-    $("deployStatus").textContent = contractIsV3 ? "in sync · automatic reveal active ✓" : "in sync ✓";
+    $("deployStatus").textContent = contractIsV3 ? "in sync · inventory sealed · automatic reveal active ✓" : "in sync ✓";
     log(contractIsV3
-      ? "sync complete — your drop is live on-chain and automatic reveal is active."
+      ? "sync complete — inventory and creator-defined allocation order are permanently sealed; automatic reveal is active."
       : "sync complete — your drop is live on-chain.");
     log("objkt collection (mainnet only): " + MD.objktUrl(state.network, kt));
     log("tip: Save studio backup (Resume panel) so you can restore this draft later.");
@@ -1956,8 +2002,9 @@ async function revealMinted() {
         const tokenId = token.id - 1;
         if (tokenId >= Number(initial.token_count || 0)) continue;
         const minted = Number((await initial.token_minted.get(tokenId)) || 0);
+        const supply = Number((await initial.token_supply.get(tokenId)) || 0);
         const revealed = await initial.revealed_tokens.get(tokenId);
-        if (minted <= 0 || revealed != null) continue;
+        if (minted <= 0 || minted !== supply || revealed != null) continue;
         if (!token.metadataCid || !/^[0-9a-f]{64}$/i.test(token.metadataNonce || "")) {
           throw new Error(`token ${token.id} reveal secret is missing from this Studio draft`);
         }
@@ -2430,7 +2477,7 @@ function toggleRevealFields() {
   const delayed = state.drop.revealMode === "delayed";
   const automaticV3 = macaroniContractProfile().usesV3;
   $("revealHint").innerHTML = automaticV3
-    ? "The authorized wtfOS revealer publishes only metadata already committed by this draft. During Sync, your creator wallet asks for one free signature proving control of the contract; it does not send a transaction or charge tez. Delayed V3 mints keep the placeholder until the contract window expires."
+    ? "V3 permanently seals token rows, quantities, metadata commitments, and a deterministic creator-defined allocation order before the sale opens. It does not claim provably random selection. An edition reveals only after every copy of that token is allocated. During Sync, your creator wallet also asks for one free signature proving control of the contract; it does not send a transaction or charge tez."
     : "Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.";
   $("revealDelayWrap").style.display = delayed ? "" : "none";
   $("revealHint").style.display = delayed ? "" : "none";
@@ -2458,8 +2505,8 @@ function renderContractVersionHint() {
   } else if (profile.usesV3) {
     el.textContent =
       state.drop.revealMode === "instant"
-        ? "V3 stores only nonce-backed commitments before mint; wtfOS reveals each token automatically after its mint confirms."
-        : "V3 stores only nonce-backed commitments before mint; wtfOS reveals automatically when the configured delay expires.";
+        ? "V3 seals inventory before sale and uses deterministic creator-defined order, not provable randomness. A 1/1 reveals after mint; an edition reveals after its final copy is allocated."
+        : "V3 seals inventory before sale and uses deterministic creator-defined order, not provable randomness. Reveal requires both token sellout and the configured delay.";
     el.className = "muted";
   } else {
     el.textContent = "V1 is for classic 1/1 blind drops with the existing Macaroni contract.";

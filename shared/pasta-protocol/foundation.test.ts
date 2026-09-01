@@ -413,7 +413,7 @@ test("detectPastaContract identifies the standard collection", () => {
 test("detectPastaContract identifies all Macaroni contract generations over generic FA2", () => {
   const v1 = [...FA2_BASE, "set_stages", "set_allowlist", "set_paused", "reveal"];
   const v2 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal", "replace_tokens_v2"];
-  const v3 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal_tokens_v3", "replace_tokens_v3"];
+  const v3 = [...FA2_BASE, "set_stages", "set_allowlist", "set_pause", "reveal_tokens_v3", "replace_tokens_v3", "finalize_inventory"];
   for (const entrypoints of [v1, v2, v3]) {
     const adapter = detectPastaContract(entrypoints)!;
     assert.equal(adapter.kind, "blind_mint_collection");

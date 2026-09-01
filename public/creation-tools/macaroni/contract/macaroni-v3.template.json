@@ -12,6 +12,7 @@
     "update_operators",
     "add_tokens_v3",
     "replace_tokens_v3",
+    "finalize_inventory",
     "set_stages",
     "set_allowlist",
     "mint",
@@ -22,6 +23,6 @@
     "transfer_administration",
     "accept_administration"
   ],
-  "signedOriginationBytes": 15384,
-  "protocolHeadroomBytes": 17384
+  "signedOriginationBytes": 16105,
+  "protocolHeadroomBytes": 16663
 }

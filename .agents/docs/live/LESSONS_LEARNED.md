@@ -11099,3 +11099,13 @@
 **Rule**: Make only the capability-authenticated record nullable, and keep session-owned records non-null in both schema and migration. Do not broaden an adjacent ownership boundary to accommodate a new native workflow.
 
 ---
+
+## 2026-08-31 — Public chain state is not private allocation entropy
+
+**What happened**: Macaroni V3 selected inventory from the current block level and delayed its inventory lock until sellout. A collector could predict a favorable level for any remaining slot, while an administrator could still change commitments or append inventory after sales began.
+
+**Why it mattered**: The interface implied a blind random allocation even though the result was targetable, and a post-mint inventory addition could corrupt the compact remaining-slot map and halt the sale.
+
+**Rule**: Finalize inventory irreversibly before enabling sale stages or minting. Never call public or baker-influenced chain inputs random; use an audited oracle or multiparty commit/reveal when unbiased randomness is required, otherwise disclose deterministic creator-defined order. Keep edition metadata sealed until the edition's entire supply is allocated.
+
+---

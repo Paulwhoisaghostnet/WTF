@@ -100,6 +100,7 @@ def main():
             self.data.stages = sp.cast({}, sp.map[sp.nat, StageType])
             self.data.allowlist = sp.cast(sp.big_map(), sp.big_map[AllowKeyType, sp.nat])
             self.data.stage_minted = sp.cast(sp.big_map(), sp.big_map[AllowKeyType, sp.nat])
+            self.data.inventory_finalized = False
             self.data.locked = False
             self.data.paused = False
             self.data.delayed_reveal = sp.cast(delayed_reveal, sp.bool)
@@ -302,6 +303,7 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(stages, sp.map[sp.nat, StageType])
             _ = self._only_admin()
+            assert self.data.inventory_finalized, "INVENTORY_NOT_FINALIZED"
             assert not self.data.locked, "LOCKED"
             self.data.stages = stages
 
@@ -310,6 +312,7 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(entries, sp.list[sp.record(stage=sp.nat, holder=sp.address, capacity=sp.nat)])
             _ = self._only_admin()
+            assert self.data.inventory_finalized, "INVENTORY_NOT_FINALIZED"
             assert not self.data.locked, "LOCKED"
             for item in entries:
                 self.data.allowlist[sp.record(stage=item.stage, holder=item.holder)] = item.capacity
@@ -321,6 +324,7 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(tokens, sp.list[TokenCommitmentBatchItemType])
             _ = self._only_admin()
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
             assert not self.data.locked, "LOCKED"
             for token in tokens:
                 assert token.quantity > 0, "BAD_QUANTITY"
@@ -342,6 +346,7 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(tokens, sp.list[TokenCommitmentBatchItemType])
             _ = self._only_admin()
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
             assert not self.data.locked, "LOCKED"
             for token in tokens:
                 assert token.token_id < self.data.token_count, "TOKEN_UNDEFINED"
@@ -350,12 +355,27 @@ def main():
                 assert sp.len(token.metadata_commitment) == 32, "BAD_COMMITMENT"
                 self.data.token_commitments[token.token_id] = token.metadata_commitment
 
+        @sp.entrypoint
+        def finalize_inventory(self):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            _ = self._only_admin()
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
+            assert self.data.minted == 0, "MINT_ALREADY_STARTED"
+            assert self.data.token_count > 0, "EMPTY_INVENTORY"
+            assert self.data.supply > 0, "EMPTY_INVENTORY"
+            self.data.inventory_finalized = True
+            sp.emit(
+                sp.record(token_count=self.data.token_count, supply=self.data.supply),
+                tag="inventory_finalized",
+            )
+
         # ---- Mint/reveal ----
 
         @sp.entrypoint
         def mint(self, amount):
             sp.cast(amount, sp.nat)
             assert amount > 0, "BAD_AMOUNT"
+            assert self.data.inventory_finalized, "INVENTORY_NOT_FINALIZED"
             assert not self.data.paused, "PAUSED"
             assert self.data.minted + amount <= self.data.supply, "SOLD_OUT"
             stage_id_opt = self._active_stage_id()
@@ -375,13 +395,9 @@ def main():
 
             for mint_index in sp.range(0, amount):
                 remaining = sp.as_nat(self.data.supply - self.data.minted)
-                draw = sp.mod(sp.level + self.data.minted, remaining)
-                last = sp.as_nat(remaining - 1)
-                token_id = self.data.slots[draw]
-                if draw != last:
-                    self.data.slots[draw] = self.data.slots[last]
-                if last in self.data.slots:
-                    del self.data.slots[last]
+                allocation_index = sp.as_nat(remaining - 1)
+                token_id = self.data.slots[allocation_index]
+                del self.data.slots[allocation_index]
 
                 _ = self._record_minter_royalty(sp.record(token_id=token_id, minter=sp.sender))
                 _ = self._maybe_set_placeholder(token_id)
@@ -412,6 +428,10 @@ def main():
             for item in items:
                 assert item.token_id < self.data.token_count, "TOKEN_UNDEFINED"
                 assert self.data.token_minted.get(item.token_id, default=sp.nat(0)) > 0, "TOKEN_NOT_MINTED"
+                assert (
+                    self.data.token_minted.get(item.token_id, default=sp.nat(0))
+                    == self.data.token_supply[item.token_id]
+                ), "TOKEN_NOT_SOLD_OUT"
                 assert not (item.token_id in self.data.revealed_tokens), "ALREADY_REVEALED"
                 assert sp.len(item.nonce) == 32, "BAD_NONCE"
                 commitment = sp.sha256(sp.concat([item.metadata_uri, item.nonce]))
@@ -557,6 +577,25 @@ def test():
         [sp.record(token_id=0, metadata_commitment=commitment, quantity=3)],
         _sender=admin,
     )
+    c.set_stages(
+        {},
+        _sender=admin,
+        _valid=False,
+        _exception="INVENTORY_NOT_FINALIZED",
+    )
+    c.finalize_inventory(_sender=admin)
+    c.add_tokens_v3(
+        [sp.record(token_id=1, metadata_commitment=commitment, quantity=1)],
+        _sender=admin,
+        _valid=False,
+        _exception="INVENTORY_FINALIZED",
+    )
+    c.replace_tokens_v3(
+        [sp.record(token_id=0, metadata_commitment=commitment, quantity=3)],
+        _sender=admin,
+        _valid=False,
+        _exception="INVENTORY_FINALIZED",
+    )
     c.set_stages({
         0: sp.record(
             start=sp.timestamp(0),
@@ -573,6 +612,13 @@ def test():
     )
     c.mint(1, _sender=alice, _amount=sp.tez(1), _now=sp.timestamp(1))
     c.mint(1, _sender=bob, _amount=sp.tez(1), _now=sp.timestamp(2))
+    c.reveal_tokens_v3(
+        [sp.record(token_id=0, metadata_uri=metadata_uri, nonce=nonce)],
+        _sender=reveal_operator,
+        _valid=False,
+        _exception="TOKEN_NOT_SOLD_OUT",
+    )
+    c.mint(1, _sender=alice, _amount=sp.tez(1), _now=sp.timestamp(3))
     c.reveal_tokens_v3(
         [sp.record(token_id=0, metadata_uri=bytes_of_string("ipfs://QmWrong"), nonce=nonce)],
         _sender=admin,
@@ -621,6 +667,15 @@ def test():
         [sp.record(token_id=0, metadata_commitment=commitment, quantity=1)],
         _sender=admin,
     )
+    delayed.mint(
+        1,
+        _sender=alice,
+        _amount=sp.tez(1),
+        _now=sp.timestamp(1),
+        _valid=False,
+        _exception="INVENTORY_NOT_FINALIZED",
+    )
+    delayed.finalize_inventory(_sender=admin)
     delayed.set_stages({
         0: sp.record(
             start=sp.timestamp(0),

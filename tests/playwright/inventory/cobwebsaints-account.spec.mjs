@@ -99,7 +99,10 @@ test.describe("interaction inventory - cobwebsaints account readiness", () => {
     );
     await macaroniFrame.locator("#contractVersion").selectOption("macaroni-commitment-v3");
     await expect(macaroniFrame.locator("#contractVersionHint")).toContainText(
-      "nonce-backed commitments",
+      "seals inventory before sale",
+    );
+    await expect(macaroniFrame.locator("#contractVersionHint")).toContainText(
+      "not provable randomness",
     );
     await expect(macaroniFrame.locator("#revealHint")).toContainText(
       "one free signature proving control of the contract",

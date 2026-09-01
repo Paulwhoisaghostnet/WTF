@@ -150,6 +150,9 @@ export async function registerMacaroniRevealAutomation(input: {
   if (Boolean(storage.delayed_reveal) !== (input.mode === "delayed")) {
     throw new Error("V3 contract reveal mode does not match the Studio draft");
   }
+  if (!Boolean(storage.inventory_finalized)) {
+    throw new Error("V3 token inventory must be permanently finalized before automatic reveal registration");
+  }
   if (Number(storage.reveal_delay) !== input.revealDelaySeconds) {
     throw new Error("V3 contract reveal delay does not match the Studio draft");
   }
@@ -252,7 +255,8 @@ async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Pr
         continue;
       }
       const minted = Number(await storage.token_minted.get(token.tokenId) || 0);
-      if (minted <= 0) continue;
+      const supply = Number(await storage.token_supply.get(token.tokenId) || 0);
+      if (minted <= 0 || minted !== supply) continue;
       const committed = normalizedHex(await storage.token_commitments.get(token.tokenId));
       if (committed !== normalizedHex(token.commitment)) {
         throw new Error(`On-chain commitment changed for token ${token.tokenId}`);

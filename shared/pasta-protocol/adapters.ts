@@ -301,7 +301,7 @@ export const BLIND_MINT_COLLECTION_ADAPTER: PastaContractAdapter = {
 
 export const BLIND_MINT_V3_COLLECTION_ADAPTER: PastaContractAdapter = {
   ...BLIND_MINT_COLLECTION_ADAPTER,
-  description: "Macaroni V3 commitment-sealed blind-mint collection with automatic operator reveal and creator recovery.",
+  description: "Macaroni V3 collection with finalized pre-sale inventory, deterministic sealed allocation, automatic operator reveal, and creator recovery.",
   signature: ["mint", "reveal_tokens_v3", "set_stages", "set_allowlist"],
   specificity: 5,
   actions: BLIND_MINT_COLLECTION_ADAPTER.actions.map((action) =>

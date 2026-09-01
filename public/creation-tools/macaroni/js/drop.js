@@ -1,5 +1,5 @@
 /* Macaroni — public mint page. Reads drop.config.js (or studio preview),
-   shows live contract state, mints, and reveals the randomly assigned tokens. */
+   shows live contract state, mints, and reveals allocated tokens. */
 
 "use strict";
 
@@ -1539,12 +1539,14 @@ function render() {
 
   // Collectors should know the reveal mechanics BEFORE they mint.
   const note = $("modeNote");
-  if (rs && rs.delayed) {
+  if (isCommitmentV3()) {
+    note.style.display = "";
+    note.textContent =
+      "Sealed V3 allocation — token rows, quantities, metadata commitments, and creator-defined order were permanently fixed before sale. This contract does not claim provably random selection. Each token reveals only after its full edition supply is allocated.";
+  } else if (rs && rs.delayed) {
     note.style.display = "";
     const days = Math.round((rs.delayMs / 86400000) * 10) / 10;
-    note.textContent = isCommitmentV3()
-      ? "Sealed V3 drop — final metadata was hash-committed before sale and remains private until the creator submits its verified post-mint reveal."
-      : "Sealed drop — every mint starts sealed and is assigned a random artwork at reveal." +
+    note.textContent = "Sealed drop — every mint starts sealed and is assigned a random artwork at reveal." +
         (days > 0
           ? ` If the creator hasn't revealed within ${days} day(s), anyone can trigger the reveal right here.`
           : " Anyone can trigger the reveal at any time.");

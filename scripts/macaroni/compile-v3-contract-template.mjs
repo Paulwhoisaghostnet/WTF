@@ -82,6 +82,7 @@ const requiredEntrypoints = [
   "update_operators",
   "add_tokens_v3",
   "replace_tokens_v3",
+  "finalize_inventory",
   "set_stages",
   "set_allowlist",
   "mint",

@@ -40,6 +40,6 @@ window.DROP_CONFIG = {
   },
   blocks: [
     { type: "h", value: "How it works" },
-    { type: "p", value: "Connect your wallet, pick a quantity, and mint. The contract assigns a random token from the remaining pool. No platform fee — mint payments go to the artist treasury." },
+    { type: "p", value: "Connect your wallet, pick a quantity, and mint from the contract's published allocation policy. No platform fee — mint payments go to the artist treasury." },
   ],
 };

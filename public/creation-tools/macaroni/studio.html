@@ -86,7 +86,7 @@
         <select id="contractVersion">
           <option value="macaroni-v1">Macaroni V1 — classic blind mint</option>
           <option value="macaroni-editions-v2">Macaroni V2 — editions + minter royalties</option>
-          <option value="macaroni-commitment-v3">Macaroni V3 — sealed metadata commitments</option>
+          <option value="macaroni-commitment-v3">Macaroni V3 — sealed, finalized inventory</option>
         </select>
         <p class="muted" id="contractVersionHint">V1 is for 1/1 blind drops. V2 is required for shared-token editions, minter royalty pools, or multiple unrevealed images.</p>
       </div>
@@ -222,7 +222,7 @@
   <!-- 6. Deploy -->
   <section class="panel" id="secDeploy">
     <h2>6 · Deploy & sync on-chain</h2>
-    <p class="muted">Deploys your own FA2 contract (it appears as a standalone collection on objkt), then loads token metadata, stages and allowlists in batched transactions. You pay only network fees — there is <strong>no platform fee</strong>.</p>
+    <p class="muted">Deploys your own FA2 contract (it appears as a standalone collection on objkt), then loads token metadata, stages and allowlists in batched transactions. V3 permanently finalizes its inventory before any sale stage opens. You pay only network fees — there is <strong>no platform fee</strong>.</p>
     <div class="row">
       <button class="btn" id="btnDeploy">Deploy contract</button>
       <button class="btn ghost" id="btnSync" disabled>Sync drop</button>
@@ -276,7 +276,7 @@
           </div>
         </div>
         <label>Page content blocks — one per line: <code>h: Heading</code>, <code>p: paragraph text</code>, <code>img: ipfs://… or https://…</code></label>
-        <textarea id="pageBlocks" placeholder="h: About this drop&#10;p: 500 unique works, randomly assigned at mint.&#10;img: ipfs://…"></textarea>
+        <textarea id="pageBlocks" placeholder="h: About this drop&#10;p: 500 works in a sealed creator-committed allocation order.&#10;img: ipfs://…"></textarea>
         <div class="grid2" style="margin-top:14px">
           <div>
             <label>X creator handle</label>
