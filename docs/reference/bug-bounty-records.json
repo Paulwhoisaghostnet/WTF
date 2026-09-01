@@ -147,7 +147,7 @@
     },
     {
       "id": "WTF-BB-124",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex marketplace signer-binding pass",
       "lastTouched": "2026-08-31",
       "category": "Tezos marketplace / wallet binding",
@@ -158,14 +158,14 @@
       "functionalityDanger": 4,
       "securityDanger": 2,
       "title": "Marketplace and barter writes do not bind contract sends to the expected wallet",
-      "body": "- Historical evidence:\n  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.\n- Correction:\n  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.\n  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.\n  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.\n- Verification (2026-08-31):\n  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.\n  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.\n  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.\n  - Production deployment and exact-commit live smoke verification remain before this record can move from `Fixed` to `Verified`.",
+      "body": "- Historical evidence:\n  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.\n- Correction:\n  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.\n  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.\n  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.\n- Verification (2026-08-31):\n  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.\n  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.\n  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.\n  - Hetzner deployment run 33459865337 succeeded. Production health reports exact main commit `4486d42f`, and `/marketplace` plus `/trade-boards` return HTTP 200.",
       "legacyOriginalId": "WTF-BB-124"
     },
     {
       "id": "WTF-BB-080",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex paid side-quest fee gate",
+      "lastTouched": "2026-08-31",
       "category": "Authorization / Tezos payment gating",
       "priority": "P1",
       "points": 13,

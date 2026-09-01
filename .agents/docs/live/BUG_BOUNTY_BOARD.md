@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **389** · Archived: **3**
+Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **390** · Archived: **3**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-080 | Open | - | - | Authorization / Tezos payment gating | P1 | 13 | 183 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 183 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 268 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-070 | Open | - | 2026-05-02 | Kiln integration / runtime assertions | P1 | 12 | 268 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
@@ -105,6 +104,7 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 183 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 183 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 268 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
+| WTF-BB-080 | Claimed | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 183 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 367 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 367 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -191,7 +191,6 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 | WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 183 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
-| WTF-BB-124 | Fixed | Codex marketplace signer-binding pass | 2026-08-31 | Tezos marketplace / wallet binding | P1 | 13 | 183 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 183 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 183 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 183 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
@@ -417,6 +416,7 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-200 | Verified | Codex Skywire OAuth permission sync pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 183 | 2 | 5 | 2 | Skywire chat add-on OAuth completion can strand upgraded permissions in the popup/new window instead of the original client |
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 183 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 183 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
+| WTF-BB-124 | Verified | Codex marketplace signer-binding pass | 2026-08-31 | Tezos marketplace / wallet binding | P1 | 13 | 183 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 13 | 183 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
 | WTF-BB-644 | Verified | Codex full-send cleanup pass | - | Build / dirty worktree isolation | P1 | 12 | 268 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
 | WTF-BB-639 | Verified | Codex WTF LIVE stage/attendance layout pass | 2026-06-04 | WTF LIVE / public room stage layout | P1 | 12 | 268 | 2 | 5 | 1 | WTF LIVE room layout does not reserve the bulk of the room for active video/screen share |
@@ -662,24 +662,6 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 447 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
-
-- Category: Authorization / Tezos payment gating
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C4 + F3 + S2 + P1(4) = 13
-- Evidence:
-  - `server/routes/side-quests.ts:470-539` accepts completion submissions and can auto-approve/reward them without checking `entryFeeWtf`.
-  - `server/routes/wtf-recapture.ts:167-230` records entry-fee attestations as `pending`, but the completion path does not require a matching confirmed fee row.
-- Why it matters:
-  - A paid quest can be completed, manually approved, or auto-approved without confirmed payment, undermining pay-to-enter game mechanics.
-- Likely correction direction:
-  - When `entryFeeWtf > 0`, require a confirmed `side_quest_entry_fees` row for the user before accepting completion or before auto-approval/reward distribution.
-- Verification idea:
-  - Configure an active side quest with a non-zero entry fee; a user without a confirmed fee should be blocked from completion and reward issuance.
 
 ### WTF-BB-068 - Shadowbox is still single-contract and cannot emulate product systems
 
@@ -2158,6 +2140,24 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
+
+### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
+
+- Category: Authorization / Tezos payment gating
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex paid side-quest fee gate
+- Last touched: 2026-08-31
+- Score: C4 + F3 + S2 + P1(4) = 13
+- Evidence:
+  - `server/routes/side-quests.ts:470-539` accepts completion submissions and can auto-approve/reward them without checking `entryFeeWtf`.
+  - `server/routes/wtf-recapture.ts:167-230` records entry-fee attestations as `pending`, but the completion path does not require a matching confirmed fee row.
+- Why it matters:
+  - A paid quest can be completed, manually approved, or auto-approved without confirmed payment, undermining pay-to-enter game mechanics.
+- Likely correction direction:
+  - When `entryFeeWtf > 0`, require a confirmed `side_quest_entry_fees` row for the user before accepting completion or before auto-approval/reward distribution.
+- Verification idea:
+  - Configure an active side quest with a non-zero entry fee; a user without a confirmed fee should be blocked from completion and reward issuance.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -4126,26 +4126,6 @@ Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Bloc
   - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.
 - Fix notes:
   - Added the platform wallet custody ignore patterns to `.dockerignore`.
-
-### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
-
-- Category: Tezos marketplace / wallet binding
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex marketplace signer-binding pass
-- Last touched: 2026-08-31
-- Score: C3 + F4 + S2 + P1(4) = 13
-- Historical evidence:
-  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.
-- Correction:
-  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.
-  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.
-  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.
-- Verification (2026-08-31):
-  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.
-  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.
-  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.
-  - Production deployment and exact-commit live smoke verification remain before this record can move from `Fixed` to `Verified`.
 
 ### WTF-BB-077 - TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage
 
@@ -9399,6 +9379,26 @@ Copy this when adding a new issue:
 - Fix notes:
   - Added local DB prep, live puppet seeding, signer-backed wallet challenge verification, role-aware actor selection, live route/domain orchestration, richer API failure reporting, and worker-rule documentation for maintaining the live harness.
   - Verified with `npm run test:e2e:live:puppets` returning 73 passed.
+
+### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
+
+- Category: Tezos marketplace / wallet binding
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex marketplace signer-binding pass
+- Last touched: 2026-08-31
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Historical evidence:
+  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.
+- Correction:
+  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.
+  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.
+  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.
+- Verification (2026-08-31):
+  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.
+  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.
+  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.
+  - Hetzner deployment run 33459865337 succeeded. Production health reports exact main commit `4486d42f`, and `/marketplace` plus `/trade-boards` return HTTP 200.
 
 ### WTF-BB-056 - Unauthenticated client log ingestion route is exempt from API rate limiting
 
