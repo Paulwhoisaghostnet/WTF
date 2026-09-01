@@ -62,8 +62,20 @@ export async function upsertPlatformSetting(
   }
 ): Promise<{ key: string; value: string; updatedAt: Date; updatedBy: number | null }> {
   const boundedValue = validatePlatformSettingValue(params.value);
-  const now = new Date();
   const expectedUpdatedAt = parseExpectedUpdatedAt(params.expectedUpdatedAt);
+  const hasExpectedRevision =
+    params.expectedUpdatedAt instanceof Date ||
+    (typeof params.expectedUpdatedAt === "string" && params.expectedUpdatedAt.trim().length > 0);
+
+  if (hasExpectedRevision && !expectedUpdatedAt) {
+    throw new PlatformSettingValidationError("expectedUpdatedAt must be a valid timestamp");
+  }
+
+  const now = new Date(
+    expectedUpdatedAt
+      ? Math.max(Date.now(), expectedUpdatedAt.getTime() + 1)
+      : Date.now()
+  );
 
   if (expectedUpdatedAt) {
     const [updated] = await db
@@ -106,13 +118,8 @@ export async function upsertPlatformSetting(
       updatedBy: params.updatedBy ?? null,
       updatedAt: now,
     })
-    .onConflictDoUpdate({
+    .onConflictDoNothing({
       target: platformSettings.key,
-      set: {
-        value: boundedValue,
-        updatedBy: params.updatedBy ?? null,
-        updatedAt: now,
-      },
     })
     .returning({
       key: platformSettings.key,
@@ -120,6 +127,12 @@ export async function upsertPlatformSetting(
       updatedAt: platformSettings.updatedAt,
       updatedBy: platformSettings.updatedBy,
     });
+
+  if (!row) {
+    throw new PlatformSettingConflictError(
+      "platform_settings row already exists; read its revision before updating"
+    );
+  }
 
   return {
     key: row.key,
