@@ -11219,3 +11219,13 @@
 **Rule**: Keep the deployment floor unchanged and recover in narrow stages based on measured Docker usage: prune build cache first, recheck, then prune only images unused by every container and recheck again. Never automate system-wide or volume pruning; fail closed when those bounded stages cannot satisfy the existing floor.
 
 ---
+
+## 2026-09-01 — Migration-ledger evidence closes stale schema findings
+
+**What happened**: The TV configuration board record still described an unconstrained table even though a forward migration had already deduplicated enabled rows, added a partial unique index, and been recorded as applied by the checksum-bound production migration ledger.
+
+**Why it mattered**: Source inspection alone showed the correction, but without connecting it to the production ledger the board could not distinguish “implemented” from “actually applied,” so a resolved P1 remained open.
+
+**Rule**: Reconcile schema bounties across all three layers: current schema declaration, deterministic forward migration with executable policy coverage, and immutable production-ledger evidence from a successful deploy. Mark the record verified only when all three agree.
+
+---

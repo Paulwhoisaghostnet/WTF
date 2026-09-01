@@ -243,7 +243,7 @@
     },
     {
       "id": "WTF-BB-667",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex production disk recovery",
       "lastTouched": "2026-09-01",
       "category": "Deploy / production disk capacity",
@@ -318,7 +318,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "TV config table has no uniqueness guard on active config row",
-      "body": "- Evidence:\n  - `shared/schema.ts:2100-2116` defines `tvWtfChannelConfig.channelId` nullable and without uniqueness constraints.\n- Why it matters:\n  - Multiple active rows can exist, while app reads `LIMIT 1`, creating nondeterministic config behavior.\n  - Hard to debug behavior changes during admin edits or migrations.\n- Likely correction direction:\n  - Enforce uniqueness by channel and create explicit precedence/versioning rules (or a single-row config table model).\n- Verification idea:\n  - Attempt inserting duplicate active config rows and verify DB rejects inconsistent state.",
+      "body": "- Historical evidence:\n  - The April 27 schema allowed multiple enabled `tv_wtf_channel_config` rows while readers could select an arbitrary row.\n- Correction:\n  - Commit `782980c2` added partial unique index `tv_wtf_channel_config_one_enabled_idx` in both the Drizzle schema and forward migration `0076_tv_wtf_config_active_unique.sql`; PostgreSQL can now contain at most one row where `enabled = true`.\n  - Before creating the index, the migration deterministically retains the newest enabled row with a real channel and disables every lower-ranked duplicate. Current readers also use explicit channel, enabled, update-time, and id precedence instead of `LIMIT 1`.\n- Verification (2026-09-01):\n  - The migration policy test proves duplicate cleanup occurs before the partial unique index, and the TV selector tests prove deterministic precedence. The focused TV/migration and fail-closed production migration suites pass 9/9.\n  - Successful production deploy run `33529923171` records `skip 0076_tv_wtf_config_active_unique.sql` in the checksum-bound migration ledger, proving the migration was already applied; the same run then passed migration readiness and application readiness.",
       "legacyOriginalId": "WTF-BB-041"
     },
     {

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **31** · Claimed: **43** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **397** · Archived: **4**
+Total: **635** · Open: **31** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **398** · Archived: **4**
 
 ## Canonical Board
 
@@ -102,7 +102,6 @@ Total: **635** · Open: **31** · Claimed: **43** · In Progress: **13** · Bloc
 | WTF-BB-041 | Claimed | Codex TV config uniqueness reconciliation | 2026-09-01 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-667 | Claimed | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 570 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -602,6 +601,7 @@ Total: **635** · Open: **31** · Claimed: **43** · In Progress: **13** · Bloc
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 509 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-134 | Verified | Codex desktop wiring pass | 2026-05-08 | Desktop OS / event and route wiring | P2 | 9 | 509 | 3 | 3 | 0 | Desktop icon/item automation and route wiring drifted after restructuring |
 | WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 509 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
+| WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 570 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 570 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 570 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
 | WTF-BB-566 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Release governance / environment inventory | P2 | 8 | 570 | 1 | 3 | 1 | The deterministic environment inventory has been regenerated from the integrated release tree and passes source equality, safety, and coverage policy |
@@ -2071,15 +2071,14 @@ Total: **635** · Open: **31** · Claimed: **43** · In Progress: **13** · Bloc
 - Owner/Session: Codex TV config uniqueness reconciliation
 - Last touched: 2026-09-01
 - Score: C3 + F3 + S2 + P1(4) = 12
-- Evidence:
-  - `shared/schema.ts:2100-2116` defines `tvWtfChannelConfig.channelId` nullable and without uniqueness constraints.
-- Why it matters:
-  - Multiple active rows can exist, while app reads `LIMIT 1`, creating nondeterministic config behavior.
-  - Hard to debug behavior changes during admin edits or migrations.
-- Likely correction direction:
-  - Enforce uniqueness by channel and create explicit precedence/versioning rules (or a single-row config table model).
-- Verification idea:
-  - Attempt inserting duplicate active config rows and verify DB rejects inconsistent state.
+- Historical evidence:
+  - The April 27 schema allowed multiple enabled `tv_wtf_channel_config` rows while readers could select an arbitrary row.
+- Correction:
+  - Commit `782980c2` added partial unique index `tv_wtf_channel_config_one_enabled_idx` in both the Drizzle schema and forward migration `0076_tv_wtf_config_active_unique.sql`; PostgreSQL can now contain at most one row where `enabled = true`.
+  - Before creating the index, the migration deterministically retains the newest enabled row with a real channel and disables every lower-ranked duplicate. Current readers also use explicit channel, enabled, update-time, and id precedence instead of `LIMIT 1`.
+- Verification (2026-09-01):
+  - The migration policy test proves duplicate cleanup occurs before the partial unique index, and the TV selector tests prove deterministic precedence. The focused TV/migration and fail-closed production migration suites pass 9/9.
+  - Successful production deploy run `33529923171` records `skip 0076_tv_wtf_config_active_unique.sql` in the checksum-bound migration ledger, proving the migration was already applied; the same run then passed migration readiness and application readiness.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -2116,24 +2115,6 @@ Total: **635** · Open: **31** · Claimed: **43** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
-
-- Category: Deploy / production disk capacity
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex production disk recovery
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence (2026-09-01):
-  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor.
-  - The existing build-cache-only recovery ran successfully but reclaimed zero bytes. `docker system df` reported 1.978 GB of unused images reclaimable, enough to clear the same preflight without touching application volumes.
-- Why it matters:
-  - Current `main` cannot reach production even though quality gates and local verification pass; repeated deploy attempts cannot self-recover from this bounded Docker image accumulation.
-- Correction direction:
-  - Extend the low-disk recovery branch to prune unused images only after build-cache recovery remains below the existing floor, keep system and volume pruning forbidden, recheck free space, and fail closed if the host is still below the same configured requirement.
-- Verification idea:
-  - Lock the narrow recovery order in the deploy policy test, pass shell syntax and deploy policy checks, then require the exact latest `main` commit to deploy and appear in public health.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13657,6 +13638,24 @@ Copy this when adding a new issue:
 - Local fix note: Updated the reported provenance, marketplace, media, and Game Studio external anchors to `rel="noopener noreferrer"`.
 - Verification: `npm run check:external-links` passed locally after the fix.
 - Verification idea: Keep the external-link safety check in the standard quality gate whenever new external links are added.
+
+### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
+
+- Category: Deploy / production disk capacity
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex production disk recovery
+- Last touched: 2026-09-01
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence (2026-09-01):
+  - Deploy runs `33557136240` and `33557445648` stopped before image build because the host had 11,863 MiB free against the repository's required 12,288 MiB floor.
+  - The existing build-cache-only recovery ran successfully but reclaimed zero bytes. `docker system df` reported 1.978 GB of unused images reclaimable, enough to clear the same preflight without touching application volumes.
+- Why it matters:
+  - Current `main` cannot reach production even though quality gates and local verification pass; repeated deploy attempts cannot self-recover from this bounded Docker image accumulation.
+- Correction direction:
+  - Extend the low-disk recovery branch to prune unused images only after build-cache recovery remains below the existing floor, keep system and volume pruning forbidden, recheck free space, and fail closed if the host is still below the same configured requirement.
+- Verification idea:
+  - Lock the narrow recovery order in the deploy policy test, pass shell syntax and deploy policy checks, then require the exact latest `main` commit to deploy and appear in public health.
 
 ### WTF-BB-658 - PixAlerce inventory journey can wait forever after disabling every test and action timeout
 
