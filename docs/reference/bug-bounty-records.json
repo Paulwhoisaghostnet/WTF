@@ -387,9 +387,9 @@
     },
     {
       "id": "WTF-BB-522",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex Club Dues V2 harness alignment",
+      "lastTouched": "2026-09-01",
       "category": "E2E accuracy / Club Dues contract lifecycle",
       "priority": "P1",
       "points": 10,

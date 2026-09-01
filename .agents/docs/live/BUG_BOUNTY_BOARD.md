@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **406** · Archived: **4**
+Total: **635** · Open: **22** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **406** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-522 | Open | - | - | E2E accuracy / Club Dues contract lifecycle | P1 | 10 | 449 | 2 | 2 | 2 | Club Dues live puppet still required the retired V1 template |
 | WTF-BB-300 | Open | - | 2026-06-29 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
@@ -93,6 +92,7 @@ Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-522 | Claimed | Codex Club Dues V2 harness alignment | 2026-09-01 | E2E accuracy / Club Dues contract lifecycle | P1 | 10 | 449 | 2 | 2 | 2 | Club Dues live puppet still required the retired V1 template |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -666,24 +666,6 @@ Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-522 - Club Dues live puppet still required the retired V1 template
-
-- Category: E2E accuracy / Club Dues contract lifecycle
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C2 + F2 + S2 + P1(4) = 10
-- Evidence:
-  - The July 23 actor-backed live harness returned the current `wtf-club-dues-v2` template from both live state and compile state, but `tests/playwright/live/puppet-orchestration.spec.mjs` still asserted `wtf-club-dues-v1`.
-  - The complete harness therefore ended 166/167 even though its Pasta routes and Pasta suite workflow passed.
-- Why it matters:
-  - A stale lifecycle assertion makes the release harness red after the V2 contract was deliberately promoted and can obscure an actual Club Dues regression.
-- Likely correction direction:
-  - Bind both assertions to the accepted V2 template identity and add a negative check that rejects a regression to the retired V1 artifact.
-- Verification idea:
-  - Re-run the focused Club Dues live-puppet scenario against the isolated test database, prove live and compiled identities are V2, then complete the 167-scenario harness.
 
 ### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
 
@@ -1933,6 +1915,24 @@ Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-522 - Club Dues live puppet still required the retired V1 template
+
+- Category: E2E accuracy / Club Dues contract lifecycle
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex Club Dues V2 harness alignment
+- Last touched: 2026-09-01
+- Score: C2 + F2 + S2 + P1(4) = 10
+- Evidence:
+  - The July 23 actor-backed live harness returned the current `wtf-club-dues-v2` template from both live state and compile state, but `tests/playwright/live/puppet-orchestration.spec.mjs` still asserted `wtf-club-dues-v1`.
+  - The complete harness therefore ended 166/167 even though its Pasta routes and Pasta suite workflow passed.
+- Why it matters:
+  - A stale lifecycle assertion makes the release harness red after the V2 contract was deliberately promoted and can obscure an actual Club Dues regression.
+- Likely correction direction:
+  - Bind both assertions to the accepted V2 template identity and add a negative check that rejects a regression to the retired V1 artifact.
+- Verification idea:
+  - Re-run the focused Club Dues live-puppet scenario against the isolated test database, prove live and compiled identities are V2, then complete the 167-scenario harness.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
