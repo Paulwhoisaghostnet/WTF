@@ -259,9 +259,9 @@
     },
     {
       "id": "WTF-BB-070",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-02",
+      "status": "Claimed",
+      "owner": "Codex Kiln assertion reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "Kiln integration / runtime assertions",
       "priority": "P1",
       "points": 12,
