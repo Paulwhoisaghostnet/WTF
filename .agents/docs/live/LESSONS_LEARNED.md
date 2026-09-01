@@ -11299,3 +11299,13 @@
 **Rule**: Build wallet-auth messages from server-stored wallet, origin, action, expiry, and nonce fields; require public-key derivation to match the challenged wallet before atomically consuming that exact scoped row. Clients and actor-backed tests must sign the returned message verbatim rather than reconstructing a partial payload.
 
 ---
+
+## 2026-09-01 — Generated inventories include tests and harnesses
+
+**What happened**: The wallet-auth correction passed its focused tests, migration policy, interaction coverage, and TypeScript validation, and deployed successfully, but the quality workflow stopped because a changed actor-backed test added an environment-variable reference without refreshing the generated environment inventory.
+
+**Why it mattered**: The generated inventory scans operational tests and harnesses as well as runtime code. A test-only reference can therefore change source counts, ownership, and scope metadata even when it introduces no new variable name.
+
+**Rule**: After changing any runtime, script, test, or harness that reads an environment variable, regenerate and check the environment inventory before committing. Treat source-count and scope-only changes as required generated artifacts, not optional documentation churn.
+
+---

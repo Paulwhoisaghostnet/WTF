@@ -4934,8 +4934,9 @@ Total: **635** · Open: **23** · Claimed: **41** · In Progress: **13** · Bloc
   - The shared legacy nonce overload remains intact so the separately active Macaroni work is not modified by this pass.
 - Verification:
   - Nine focused wallet-auth/client policy tests pass, including exact message-field binding, changed-wallet inequality, ownership-before-consumption ordering, scoped atomic nonce consumption, explicit login/register actions, passive-rehydration safety, and signed Profile linking.
-  - Production migration policy passes 8/8, inventory coverage remains complete for 238 surfaces and 973 handles, and the repository-wide TypeScript check passes.
-  - Status remains Fixed until the migration deploys and the live actor-backed wallet challenge succeeds on the exact production commit.
+  - Production migration policy passes 8/8, inventory coverage remains complete for 238 surfaces and 973 handles, the environment inventory is current, and the repository-wide TypeScript check passes.
+  - Commit `435493fb455556ab7c095e364284d1c733649a58` deployed successfully and production health reported that exact commit. A live challenge bound the production origin, login action, exact wallet, expiry, and nonce.
+  - Status remains Fixed because the available actor credentials are intentionally limited to the local test database; the harness correctly refused to send them to production. Verification requires a production-scoped signer-backed actor rather than bypassing that safeguard.
 
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 
