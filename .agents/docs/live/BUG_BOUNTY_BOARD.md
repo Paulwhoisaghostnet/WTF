@@ -50,7 +50,7 @@ Priority labels:
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-636 | Open | - | 2026-08-31 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 1 | 4 | 5 | 3 | V3 derives every draw from public block level and mint count, while commitments and inventory remain mutable until sellout and post-mint additions corrupt the packed shuffle table |
+| WTF-BB-636 | Verified | Codex Macaroni secure allocation | 2026-08-31 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 1 | 4 | 5 | 3 | V3 now locks a CSPRNG-shuffled, nonce-backed slot commitment deck before mint; paid claims settle sequentially only with valid proofs and inventory cannot mutate after finalization |
 | WTF-BB-635 | Fixed | Codex Macaroni V3 commitment repair | 2026-08-30 | Macaroni / premint metadata confidentiality and provenance | P0 | 17 | 1 | 4 | 5 | 3 | V3 keeps final metadata sealed before mint and provides automatic post-confirmation instant reveal or contract-timed delayed reveal; fresh-chain and production-operator verification remain before `Verified` |
 | WTF-BB-634 | Open | - | 2026-08-30 | Release governance / bug-board status integrity | P1 | 12 | 7 | 3 | 4 | 1 | The summary table and detailed bounty records disagree on 53 statuses, so the board cannot serve as a deterministic ship gate |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 2 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
@@ -3879,8 +3879,8 @@ Priority labels:
 ### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
 
 - Category: Deploy / DB operations
-- Status: Open
-- Owner/Session: -
+- Status: Claimed
+- Owner/Session: Codex Macaroni secure allocation
 - Score: C2 + F3 + P2(3) + S1 = 9
 - Evidence: `scripts/run-boot-backfill.ts` resolves region as `process.env.SUPABASE_REGION || "us-west-2"` and builds `aws-1-${region}.pooler.supabase.com`, coupled with forced no-verify SSL mode.
 - Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.
@@ -3933,8 +3933,8 @@ Priority labels:
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
 - Category: API / reliability
-- Status: Open
-- Owner/Session: -
+- Status: Verified
+- Owner/Session: Codex Macaroni secure allocation
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Evidence:
   - `server/routes/contract-activity.ts:135-139` defines local `fetchJson` using raw `fetch`.
@@ -13002,3 +13002,14 @@ Copy this when adding a new issue:
   - Do not treat hashing the current level, timestamp, sender, or operation data—alone or in combination—as unpredictable randomness.
 - Verification idea:
   - Re-run the fixed-state all-target reachability property, same-block ordering and baker-influence cases, edition targeting after first reveal, inventory-finalization invariants, and post-finalization administrator rejection against the revised design.
+- Resolution (2026-08-31):
+  - Removed all `sp.level`-based final-art allocation. The automatic service now expands the exact on-chain edition inventory, uses Node's cryptographic `randomInt` in Fisher-Yates, creates a fresh 32-byte nonce per slot, and commits `SHA-256(slot_nonce || token_metadata_commitment)` for every position.
+  - The contract blocks mint until the full slot deck is committed and explicitly finalized, then permanently rejects token additions and commitment replacements. Mint creates sequential paid claims; only the fixed administrator or reveal operator can settle the next claim, and the supplied token/nonce must match that claim's on-chain commitment and edition cap.
+  - Immediate and delayed modes both settle automatically after mint. Immediate metadata reveal follows settlement automatically; delayed metadata reveal follows the same automatic path only after the contract-enforced clock.
+- Verification evidence (2026-08-31):
+  - `smartpy test contracts/wtf-collections/MacaroniBlindMintFA2V3.py /tmp/macaroni-v3-secure-allocation-final --purge` passed scenarios for mint-before-finalize, incomplete finalization, post-finalization mutation, unauthorized settlement, wrong proof, nonsequential claim, successful assignment, and delayed settlement/reveal timing.
+  - `npm run contract:macaroni-v3:compile` regenerated the public V3 Micheline contract, storage, and entrypoint manifest from the revised source.
+  - `npx tsx --test server/features/macaroni/secure-allocation.test.ts server/routes/macaroni-policy.test.ts shared/pasta-protocol/foundation.test.ts` passed 63/63 checks, including exact edition preservation, unique 32-byte slot secrets, recomputed SHA-256 proofs, malformed input rejection, public-artifact entrypoints, and removal of `sp.level` allocation.
+  - `node --check public/creation-tools/macaroni/js/studio.js`, `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsc --noEmit --pretty false`, and `npm run test:e2e:inventory:coverage` passed.
+  - `HARNESS_PORT=4273 npm run test:e2e:inventory` passed all 700 browser inventory scenarios on an isolated harness port after the default port was found in use by a separate existing test process.
+  - A second `npm run contract:macaroni-v3:compile` produced identical SHA-256 hashes for the public contract, storage, and template artifacts, confirming byte-stable generation.

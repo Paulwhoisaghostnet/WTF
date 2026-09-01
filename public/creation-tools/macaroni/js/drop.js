@@ -527,10 +527,15 @@ function stagePositionText(stage) {
   return `Stage ${Math.max(0, index) + 1} of ${total}`;
 }
 
+function collectionMintedCount() {
+  if (!storage) return NaN;
+  return Number(storage.claim_count != null ? storage.claim_count : storage.minted);
+}
+
 function dropSupplyShareLine() {
   if (!storage) return "";
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount();
   if (!Number.isFinite(supply) || !Number.isFinite(minted)) return "";
   return `Minted: ${minted}/${supply}${supply > minted ? `, ${supply - minted} remaining` : ""}`;
 }
@@ -962,7 +967,7 @@ async function loadRecentMints(options) {
     setRecentMintsMessage("Recent mint activity appears after deployment.");
     return;
   }
-  const minted = storage ? Number(storage.minted) : "";
+  const minted = storage ? collectionMintedCount() : "";
   const revealed = storage ? Number(storage.revealed || 0) : "";
   const delayed = storage ? Number(!!storage.delayed_reveal) : "";
   const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}:${revealed}:${delayed}`;
@@ -1048,7 +1053,7 @@ async function loadCustomRecentMintsCompat(options) {
   const grid = $("airportersRecentGrid");
   const noteEl = $("airportersRecentNote");
   if (!grid || !noteEl || !CFG.contract) return;
-  const minted = storage ? Number(storage.minted || 0) : "";
+  const minted = storage ? collectionMintedCount() : "";
   const revealed = storage ? Number(storage.revealed || 0) : "";
   const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}:${revealed}:${grid.children.length}`;
   if (!options?.force && key === customRecentCompatKey) return;
@@ -1249,7 +1254,7 @@ function walletStatusKey(stage) {
     stage?.maxPerWallet ?? "",
     stage?.useAllowlist ? "allow" : "open",
     storage ? Number(storage.supply) : "",
-    storage ? Number(storage.minted) : "",
+    storage ? collectionMintedCount() : "",
   ].join(":");
 }
 
@@ -1260,7 +1265,7 @@ function stageNeedsWalletAllowance(stage) {
 function collectionRemaining() {
   if (!storage) return null;
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount();
   if (!Number.isFinite(supply) || !Number.isFinite(minted)) return null;
   return Math.max(0, supply - minted);
 }
@@ -1523,7 +1528,7 @@ function render() {
   if (!storage) return;
   renderMinterRoyaltyStatus();
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount();
   const left = supply - minted;
   const rs = revealState();
   const mintedPct = supply ? Math.round((minted / supply) * 100) : 0;

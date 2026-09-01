@@ -1630,7 +1630,16 @@ async function deploy() {
         operators: new M(),
         token_metadata: new M(),
         ...(profile.usesV3
-          ? { token_commitments: new M(), revealed_tokens: new M() }
+          ? {
+              token_commitments: new M(),
+              revealed_tokens: new M(),
+              slot_commitments: new M(),
+              slot_commitment_count: 0,
+              inventory_finalized: false,
+              claims: new M(),
+              claim_count: 0,
+              settled_count: 0,
+            }
           : { pending_tokens: new M() }),
         token_supply: new M(),
         token_minted: new M(),
@@ -1754,12 +1763,23 @@ async function sync() {
     const c = await tezos.wallet.at(kt);
     const st = await (await tezos.contract.at(kt)).storage();
     const contractIsV3 = st.token_commitments != null && st.revealed_tokens != null;
+    const contractHasSecureAllocation = contractIsV3
+      && st.slot_commitments != null
+      && st.inventory_finalized != null
+      && st.claims != null;
     const contractIsV2 = !contractIsV3 && st.token_supply != null && st.token_minted != null && st.minter_royalty_config != null;
     const contractUsesEditionStorage = contractIsV2 || contractIsV3;
     if (profile.usesV3 && !contractIsV3) {
       return notify(
         "Macaroni V3 is selected, but the selected contract is not a V3 commitment contract. " +
         "Deploy or resume a V3 contract for this draft.",
+        "err",
+        "deployStatus"
+      );
+    }
+    if (profile.usesV3 && !contractHasSecureAllocation) {
+      return notify(
+        "This contract predates V3 secure allocation. Deploy a current V3 contract before opening the sale.",
         "err",
         "deployStatus"
       );
@@ -1811,7 +1831,7 @@ async function sync() {
       );
 
     const replaceTodo = [];
-    if (state.tokens.length && !st.locked) {
+    if (state.tokens.length && !st.locked && !st.inventory_finalized) {
       const existing = state.tokens.filter((t) => t.id - 1 < already);
       for (const t of existing) {
         if (contractIsV3) {
@@ -1823,8 +1843,8 @@ async function sync() {
           if (current !== desired) replaceTodo.push(t);
         }
       }
-    } else if (state.tokens.length && st.locked) {
-      log("sync: sale is locked; existing token metadata cannot be replaced");
+    } else if (state.tokens.length && (st.locked || st.inventory_finalized)) {
+      log("sync: secure inventory is finalized; existing token commitments cannot be replaced");
     }
 
     const todo = state.tokens.filter((t) => t.id - 1 >= already);
@@ -1839,7 +1859,10 @@ async function sync() {
       Math.ceil(replaceTodo.length / CHUNK) +
         Math.ceil(todo.length / CHUNK) +
         1 +
-        (entries.length ? Math.ceil(entries.length / 200) : 1)
+        (entries.length ? Math.ceil(entries.length / 200) : 1) +
+        (contractHasSecureAllocation && !st.inventory_finalized
+          ? Math.ceil(Math.max(0, editionTotal - Number(st.slot_commitment_count || 0)) / CHUNK) + 1
+          : 0)
     );
     let step = 0;
     const bump = () => { $("syncBar").style.width = Math.round((++step / totalSteps) * 100) + "%"; };
@@ -1901,9 +1924,42 @@ async function sync() {
       bump();
     }
     if (contractIsV3) {
-      $("deployStatus").textContent = "registering automatic reveal…";
-      await registerAutomaticV3Reveal(kt);
-      log(`${state.drop.revealMode} reveal automation registered for ${kt}`);
+      $("deployStatus").textContent = "creating secure allocation…";
+      const registration = await registerAutomaticV3Reveal(kt);
+      if (!st.inventory_finalized) {
+        const slotCommitments = Array.isArray(registration.slotCommitments)
+          ? registration.slotCommitments
+          : [];
+        const slotCount = Number(st.slot_commitment_count || 0);
+        if (slotCommitments.length !== editionTotal || slotCount > slotCommitments.length) {
+          throw new Error("Automatic reveal returned an invalid secure allocation");
+        }
+        for (let i = slotCount; i < slotCommitments.length; i += CHUNK) {
+          const chunk = slotCommitments.slice(i, i + CHUNK).map((slot) => ({
+            slot_id: slot.slotId,
+            commitment: slot.commitment,
+          }));
+          log(`set_slot_commitments ${chunk[0].slot_id}…${chunk[chunk.length - 1].slot_id} (${chunk.length}) — approve in wallet`);
+          const op = await MD.sendWalletOp(c.methodsObject.set_slot_commitments(chunk), {}, {
+            ...STORAGE_PROFILE.inventory,
+            gasPerUnit: 80_000,
+            units: chunk.length,
+          });
+          await op.confirmation(1);
+          await MD.assertOperationApplied(op, { network: state.network, contractAddress: kt, entrypoint: "set_slot_commitments" });
+          bump();
+        }
+        log("finalize_inventory — approve in wallet");
+        const finalizeOp = await MD.sendWalletOp(c.methodsObject.finalize_inventory(), {}, {
+          ...STORAGE_PROFILE.inventory,
+          gasPerUnit: 120_000,
+          units: 1,
+        });
+        await finalizeOp.confirmation(1);
+        await MD.assertOperationApplied(finalizeOp, { network: state.network, contractAddress: kt, entrypoint: "finalize_inventory" });
+        bump();
+      }
+      log(`${state.drop.revealMode} automatic secure allocation and reveal registered for ${kt}`);
     }
     $("syncBar").style.width = "100%";
     $("deployStatus").textContent = contractIsV3 ? "in sync · automatic reveal active ✓" : "in sync ✓";

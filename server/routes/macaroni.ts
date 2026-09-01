@@ -697,7 +697,7 @@ router.post(
     }
     try {
       const user = req.user as { id?: number } | undefined;
-      const job = await registerMacaroniRevealAutomation({
+      const { job, slotCommitments } = await registerMacaroniRevealAutomation({
         ownerUserId: Number.isInteger(user?.id) ? Number(user?.id) : null,
         ...parsed.data,
       });
@@ -707,6 +707,7 @@ router.post(
         status: job.status,
         contract: job.contract,
         revealOperator: job.revealOperator,
+        slotCommitments,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not register automatic reveal";

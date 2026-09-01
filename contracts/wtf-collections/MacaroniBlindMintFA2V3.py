@@ -2,8 +2,11 @@
 #
 # V3 preserves V2 mint, edition, placeholder, sale, and royalty behavior while
 # sealing every final metadata URI behind a nonce-backed SHA-256 commitment.
-# Final metadata is accepted only after its token has minted and the commitment
-# verifies, so pre-sale storage contains no final metadata or artifact CID.
+# A platform-generated cryptographic shuffle is committed before the sale can
+# open. Mint creates a paid claim; the automatic reveal operator later proves
+# the claim's precommitted slot and assigns its token. Final metadata is accepted
+# only after assignment and commitment verification, so collectors cannot choose
+# a token and pre-sale storage contains no final metadata or artifact CID.
 
 import smartpy as sp
 
@@ -46,6 +49,20 @@ def main():
         metadata_uri=sp.bytes,
         nonce=sp.bytes,
     ).layout(("token_id", ("metadata_uri", "nonce")))
+    SlotCommitmentItemType: type = sp.record(
+        slot_id=sp.nat,
+        commitment=sp.bytes,
+    ).layout(("slot_id", "commitment"))
+    MintClaimType: type = sp.record(
+        owner=sp.address,
+        settled=sp.bool,
+        token_id=sp.option[sp.nat],
+    ).layout(("owner", ("settled", "token_id")))
+    SettlementItemType: type = sp.record(
+        claim_id=sp.nat,
+        token_id=sp.nat,
+        slot_nonce=sp.bytes,
+    ).layout(("claim_id", ("token_id", "slot_nonce")))
     StageType: type = sp.record(
         start=sp.timestamp,
         price=sp.mutez,
@@ -94,8 +111,14 @@ def main():
             self.data.token_supply = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
             self.data.token_minted = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
             self.data.slots = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.nat])
+            self.data.slot_commitments = sp.cast(sp.big_map(), sp.big_map[sp.nat, sp.bytes])
+            self.data.slot_commitment_count = sp.nat(0)
+            self.data.inventory_finalized = False
+            self.data.claims = sp.cast(sp.big_map(), sp.big_map[sp.nat, MintClaimType])
+            self.data.claim_count = sp.nat(0)
+            self.data.settled_count = sp.nat(0)
             self.data.supply = sp.nat(0)  # edition supply across all token rows
-            self.data.minted = sp.nat(0)  # editions minted
+            self.data.minted = sp.nat(0)  # claims cryptographically assigned
             self.data.token_count = sp.nat(0)
             self.data.stages = sp.cast({}, sp.map[sp.nat, StageType])
             self.data.allowlist = sp.cast(sp.big_map(), sp.big_map[AllowKeyType, sp.nat])
@@ -204,12 +227,9 @@ def main():
             if minted_before == 0:
                 if self.data.delayed_reveal:
                     assert self.data.placeholder_count > 0, "NO_PLACEHOLDER"
-                    # Placeholder choice is cosmetic; final metadata remains sealed
-                    # behind token_commitments until reveal_tokens_v3 verifies it.
-                    placeholder_index = sp.mod(
-                        sp.level + self.data.minted + token_id,
-                        self.data.placeholder_count,
-                    )
+                    # Placeholder choice is cosmetic and deliberately deterministic;
+                    # secure allocation comes only from the sealed slot commitment.
+                    placeholder_index = sp.mod(token_id, self.data.placeholder_count)
                     self.data.token_placeholder[token_id] = placeholder_index
                     self.data.token_metadata[token_id] = self.data.placeholder_pool[placeholder_index]
                 self.data.reveal_queue[self.data.reveal_tail] = token_id
@@ -321,7 +341,9 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(tokens, sp.list[TokenCommitmentBatchItemType])
             _ = self._only_admin()
-            assert not self.data.locked, "LOCKED"
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
+            assert self.data.slot_commitment_count == 0, "SHUFFLE_STARTED"
+            assert self.data.claim_count == 0, "SALE_STARTED"
             for token in tokens:
                 assert token.quantity > 0, "BAD_QUANTITY"
                 assert token.token_id == self.data.token_count, "NON_SEQUENTIAL_TOKEN"
@@ -332,9 +354,7 @@ def main():
                 self.data.royalty_revision[token.token_id] = sp.nat(0)
                 self.data.metadata_revision[token.token_id] = sp.nat(0)
                 self.data.royalty_locked[token.token_id] = False
-                for slot_index in sp.range(0, token.quantity):
-                    self.data.slots[self.data.supply] = token.token_id
-                    self.data.supply += 1
+                self.data.supply += token.quantity
                 self.data.token_count += 1
 
         @sp.entrypoint
@@ -342,13 +362,40 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_TEZ"
             sp.cast(tokens, sp.list[TokenCommitmentBatchItemType])
             _ = self._only_admin()
-            assert not self.data.locked, "LOCKED"
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
+            assert self.data.slot_commitment_count == 0, "SHUFFLE_STARTED"
+            assert self.data.claim_count == 0, "SALE_STARTED"
             for token in tokens:
                 assert token.token_id < self.data.token_count, "TOKEN_UNDEFINED"
                 assert self.data.token_minted.get(token.token_id, default=sp.nat(0)) == 0, "TOKEN_ALREADY_MINTED"
                 assert token.quantity == self.data.token_supply[token.token_id], "SUPPLY_IMMUTABLE"
                 assert sp.len(token.metadata_commitment) == 32, "BAD_COMMITMENT"
                 self.data.token_commitments[token.token_id] = token.metadata_commitment
+
+        @sp.entrypoint
+        def set_slot_commitments(self, slots):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(slots, sp.list[SlotCommitmentItemType])
+            _ = self._only_admin()
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
+            assert self.data.claim_count == 0, "SALE_STARTED"
+            assert sp.len(slots) > 0, "EMPTY_SLOTS"
+            for slot in slots:
+                assert slot.slot_id == self.data.slot_commitment_count, "NON_SEQUENTIAL_SLOT"
+                assert slot.slot_id < self.data.supply, "TOO_MANY_SLOTS"
+                assert sp.len(slot.commitment) == 32, "BAD_SLOT_COMMITMENT"
+                self.data.slot_commitments[slot.slot_id] = slot.commitment
+                self.data.slot_commitment_count += 1
+
+        @sp.entrypoint
+        def finalize_inventory(self):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            _ = self._only_admin()
+            assert not self.data.inventory_finalized, "INVENTORY_FINALIZED"
+            assert self.data.supply > 0, "EMPTY_INVENTORY"
+            assert self.data.slot_commitment_count == self.data.supply, "INCOMPLETE_SHUFFLE"
+            self.data.inventory_finalized = True
+            sp.emit(self.data.slot_commitment_count, tag="inventory_finalized")
 
         # ---- Mint/reveal ----
 
@@ -357,7 +404,8 @@ def main():
             sp.cast(amount, sp.nat)
             assert amount > 0, "BAD_AMOUNT"
             assert not self.data.paused, "PAUSED"
-            assert self.data.minted + amount <= self.data.supply, "SOLD_OUT"
+            assert self.data.inventory_finalized, "INVENTORY_NOT_FINALIZED"
+            assert self.data.claim_count + amount <= self.data.supply, "SOLD_OUT"
             stage_id_opt = self._active_stage_id()
             assert stage_id_opt.is_some(), "NO_STAGE"
             stage_id = stage_id_opt.unwrap_some()
@@ -374,28 +422,73 @@ def main():
                 assert already_stage_minted + amount <= cap, "ALLOWLIST_LIMIT"
 
             for mint_index in sp.range(0, amount):
-                remaining = sp.as_nat(self.data.supply - self.data.minted)
-                draw = sp.mod(sp.level + self.data.minted, remaining)
-                last = sp.as_nat(remaining - 1)
-                token_id = self.data.slots[draw]
-                if draw != last:
-                    self.data.slots[draw] = self.data.slots[last]
-                if last in self.data.slots:
-                    del self.data.slots[last]
+                claim_id = self.data.claim_count
+                self.data.claims[claim_id] = sp.record(
+                    owner=sp.sender,
+                    settled=False,
+                    token_id=sp.cast(None, sp.option[sp.nat]),
+                )
+                self.data.claim_count += 1
+                sp.emit(claim_id, tag="blind_mint_claim")
 
-                _ = self._record_minter_royalty(sp.record(token_id=token_id, minter=sp.sender))
-                _ = self._maybe_set_placeholder(token_id)
-
-                ledger_key = sp.record(owner=sp.sender, token_id=token_id)
-                self.data.ledger[ledger_key] = self.data.ledger.get(ledger_key, default=sp.nat(0)) + 1
-                self.data.token_minted[token_id] = self.data.token_minted.get(token_id, default=sp.nat(0)) + 1
-                self.data.minted += 1
-                sp.emit(token_id, tag="blind_mint")
+            if self.data.delayed_reveal and self.data.unrevealed_since.is_none():
+                self.data.unrevealed_since = sp.Some(sp.now)
 
             self.data.stage_minted[stage_key] = already_stage_minted + amount
             sp.send(self.data.treasury, sp.amount)
-            if self.data.minted == self.data.supply:
+            if self.data.claim_count == self.data.supply:
                 self.data.locked = True
+
+        @sp.entrypoint
+        def settle_mints(self, items):
+            assert sp.amount == sp.mutez(0), "NO_TEZ"
+            sp.cast(items, sp.list[SettlementItemType])
+            _ = self._only_admin_or_reveal_operator()
+            assert self.data.inventory_finalized, "INVENTORY_NOT_FINALIZED"
+            assert sp.len(items) > 0, "EMPTY_SETTLEMENT"
+            for item in items:
+                assert item.claim_id == self.data.settled_count, "NON_SEQUENTIAL_CLAIM"
+                assert item.claim_id < self.data.claim_count, "CLAIM_UNDEFINED"
+                claim = self.data.claims[item.claim_id]
+                assert not claim.settled, "CLAIM_SETTLED"
+                assert item.token_id < self.data.token_count, "TOKEN_UNDEFINED"
+                assert sp.len(item.slot_nonce) == 32, "BAD_SLOT_NONCE"
+                assert (
+                    self.data.token_minted.get(item.token_id, default=sp.nat(0))
+                    < self.data.token_supply[item.token_id]
+                ), "TOKEN_SOLD_OUT"
+                commitment = sp.sha256(
+                    sp.concat([item.slot_nonce, self.data.token_commitments[item.token_id]])
+                )
+                assert commitment == self.data.slot_commitments[item.claim_id], "BAD_SLOT_PROOF"
+
+                _ = self._record_minter_royalty(
+                    sp.record(token_id=item.token_id, minter=claim.owner)
+                )
+                _ = self._maybe_set_placeholder(item.token_id)
+                ledger_key = sp.record(owner=claim.owner, token_id=item.token_id)
+                self.data.ledger[ledger_key] = (
+                    self.data.ledger.get(ledger_key, default=sp.nat(0)) + 1
+                )
+                self.data.token_minted[item.token_id] = (
+                    self.data.token_minted.get(item.token_id, default=sp.nat(0)) + 1
+                )
+                self.data.claims[item.claim_id] = sp.record(
+                    owner=claim.owner,
+                    settled=True,
+                    token_id=sp.Some(item.token_id),
+                )
+                self.data.settled_count += 1
+                self.data.minted += 1
+                sp.emit(item.token_id, tag="blind_mint")
+                sp.emit(
+                    sp.record(
+                        claim_id=item.claim_id,
+                        token_id=item.token_id,
+                        owner=claim.owner,
+                    ),
+                    tag="blind_mint_settled",
+                )
 
         @sp.entrypoint
         def reveal_tokens_v3(self, items):
@@ -553,6 +646,12 @@ def test():
     metadata_uri = bytes_of_string("ipfs://QmToken")
     nonce = sp.bytes("0x" + "11" * 32)
     commitment = sp.sha256(sp.concat([metadata_uri, nonce]))
+    slot_nonce_0 = sp.bytes("0x" + "31" * 32)
+    slot_nonce_1 = sp.bytes("0x" + "32" * 32)
+    slot_nonce_2 = sp.bytes("0x" + "33" * 32)
+    slot_commitment_0 = sp.sha256(sp.concat([slot_nonce_0, commitment]))
+    slot_commitment_1 = sp.sha256(sp.concat([slot_nonce_1, commitment]))
+    slot_commitment_2 = sp.sha256(sp.concat([slot_nonce_2, commitment]))
     c.add_tokens_v3(
         [sp.record(token_id=0, metadata_commitment=commitment, quantity=3)],
         _sender=admin,
@@ -565,6 +664,40 @@ def test():
             max_per_wallet=sp.cast(None, sp.option[sp.nat]),
         )
     }, _sender=admin)
+    c.mint(
+        1,
+        _sender=alice,
+        _amount=sp.tez(1),
+        _now=sp.timestamp(1),
+        _valid=False,
+        _exception="INVENTORY_NOT_FINALIZED",
+    )
+    c.finalize_inventory(
+        _sender=admin,
+        _valid=False,
+        _exception="INCOMPLETE_SHUFFLE",
+    )
+    c.set_slot_commitments(
+        [
+            sp.record(slot_id=0, commitment=slot_commitment_0),
+            sp.record(slot_id=1, commitment=slot_commitment_1),
+            sp.record(slot_id=2, commitment=slot_commitment_2),
+        ],
+        _sender=admin,
+    )
+    c.finalize_inventory(_sender=admin)
+    c.add_tokens_v3(
+        [sp.record(token_id=1, metadata_commitment=commitment, quantity=1)],
+        _sender=admin,
+        _valid=False,
+        _exception="INVENTORY_FINALIZED",
+    )
+    c.replace_tokens_v3(
+        [sp.record(token_id=0, metadata_commitment=commitment, quantity=3)],
+        _sender=admin,
+        _valid=False,
+        _exception="INVENTORY_FINALIZED",
+    )
     c.reveal_tokens_v3(
         [sp.record(token_id=0, metadata_uri=metadata_uri, nonce=nonce)],
         _sender=admin,
@@ -573,6 +706,36 @@ def test():
     )
     c.mint(1, _sender=alice, _amount=sp.tez(1), _now=sp.timestamp(1))
     c.mint(1, _sender=bob, _amount=sp.tez(1), _now=sp.timestamp(2))
+    scenario.verify(c.data.claim_count == 2)
+    scenario.verify(c.data.minted == 0)
+    c.settle_mints(
+        [sp.record(claim_id=0, token_id=0, slot_nonce=slot_nonce_0)],
+        _sender=bob,
+        _valid=False,
+        _exception="NOT_REVEALER",
+    )
+    c.settle_mints(
+        [sp.record(claim_id=0, token_id=0, slot_nonce=slot_nonce_1)],
+        _sender=reveal_operator,
+        _valid=False,
+        _exception="BAD_SLOT_PROOF",
+    )
+    c.settle_mints(
+        [sp.record(claim_id=1, token_id=0, slot_nonce=slot_nonce_1)],
+        _sender=reveal_operator,
+        _valid=False,
+        _exception="NON_SEQUENTIAL_CLAIM",
+    )
+    c.settle_mints(
+        [
+            sp.record(claim_id=0, token_id=0, slot_nonce=slot_nonce_0),
+            sp.record(claim_id=1, token_id=0, slot_nonce=slot_nonce_1),
+        ],
+        _sender=reveal_operator,
+    )
+    scenario.verify(c.data.minted == 2)
+    scenario.verify(c.data.ledger[sp.record(owner=alice.address, token_id=0)] == 1)
+    scenario.verify(c.data.ledger[sp.record(owner=bob.address, token_id=0)] == 1)
     c.reveal_tokens_v3(
         [sp.record(token_id=0, metadata_uri=bytes_of_string("ipfs://QmWrong"), nonce=nonce)],
         _sender=admin,
@@ -629,7 +792,17 @@ def test():
             max_per_wallet=sp.cast(None, sp.option[sp.nat]),
         )
     }, _sender=admin)
+    delayed.set_slot_commitments(
+        [sp.record(slot_id=0, commitment=slot_commitment_0)],
+        _sender=admin,
+    )
+    delayed.finalize_inventory(_sender=admin)
     delayed.mint(1, _sender=alice, _amount=sp.tez(1), _now=sp.timestamp(10))
+    delayed.settle_mints(
+        [sp.record(claim_id=0, token_id=0, slot_nonce=slot_nonce_0)],
+        _sender=reveal_operator,
+        _now=sp.timestamp(10),
+    )
     delayed.reveal_tokens_v3(
         [sp.record(token_id=0, metadata_uri=metadata_uri, nonce=nonce)],
         _sender=reveal_operator,

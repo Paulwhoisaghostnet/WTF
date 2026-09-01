@@ -10979,3 +10979,13 @@
 **Rule**: Enforce reveal timing independently of which authorized recovery/operator address calls the entrypoint, test both addresses immediately before the boundary, and keep application nullability identical to the migration whenever a capability-authenticated native path intentionally has no platform user.
 
 ---
+
+## 2026-08-31 — A hidden CID does not make a public-state draw unpredictable
+
+**What happened**: Macaroni V3 correctly sealed metadata with nonce-backed commitments, but still chose the final token from `sp.level` and the public mint count. Buyers could calculate favorable inclusion levels, the administrator could mutate unminted inventory until sellout, and adding rows after a partial sale could corrupt the compact slot table.
+
+**Why it mattered**: Metadata confidentiality and allocation fairness are independent properties. The artwork could remain hidden while a buyer targeted a known token ID, and a creator-side inventory change could invalidate the remaining sale.
+
+**Rule**: Freeze the complete edition inventory before accepting payment; generate its order with a cryptographic random source while it is still private; commit every position with an independent high-entropy nonce; make mint create a sequential claim; and require an authorized automatic settler to prove the exact precommitted slot before assigning a token. Never use public block level, time, sender, or their hashes as smart-contract randomness.
+
+---

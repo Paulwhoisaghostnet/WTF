@@ -687,6 +687,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   const contractSource = readFileSync("contracts/wtf-collections/MacaroniBlindMintFA2V3.py", "utf8");
   const compileSource = readFileSync("scripts/macaroni/compile-v3-contract-template.mjs", "utf8");
   const revealServiceSource = readFileSync("server/features/macaroni/reveal-automation.ts", "utf8");
+  const secureAllocationSource = readFileSync("server/features/macaroni/secure-allocation.ts", "utf8");
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const schemaSource = readFileSync("shared/schema-macaroni.ts", "utf8");
   const appSource = readFileSync("server/app.ts", "utf8");
@@ -703,11 +704,15 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(studioSource, /crypto\.subtle\.digest\("SHA-256", payload\)/);
   assert.match(studioSource, /metadata_commitment: t\.metadataCommitment/);
   assert.match(studioSource, /profile\.usesV3[\s\S]*id: t\.id - 1,[\s\S]*displayId: t\.id,[\s\S]*quantity: normalizeTokenQuantity\(t\.quantity\),[\s\S]*:\s*\{[\s\S]*metadata: t\.metadataCid/s);
-  assert.match(studioSource, /token_commitments: new M\(\), revealed_tokens: new M\(\)/);
+  assert.match(studioSource, /token_commitments: new M\(\),[\s\S]*revealed_tokens: new M\(\),[\s\S]*slot_commitments: new M\(\)/);
+  assert.match(studioSource, /inventory_finalized: false/);
+  assert.match(studioSource, /claims: new M\(\)/);
   assert.doesNotMatch(studioSource, /usesV3 && state\.drop\.revealMode !== "delayed"/);
   assert.match(studioSource, /delayed_reveal: delayed/);
   assert.match(studioSource, /reveal_operator: revealOperator/);
   assert.match(studioSource, /registerAutomaticV3Reveal\(kt\)/);
+  assert.match(studioSource, /c\.methodsObject\.set_slot_commitments\(chunk\)/);
+  assert.match(studioSource, /c\.methodsObject\.finalize_inventory\(\)/);
   assert.match(studioSource, /in sync · automatic reveal active/);
   assert.match(studioSource, /serviceUrl: profile\.usesV3 \? automaticRevealRequestUrl\(\) : ""/);
   assert.match(dropSource, /async function requestAutomaticV3Reveal\(\)/);
@@ -720,6 +725,9 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
 
   assert.match(contractSource, /self\.data\.token_commitments = sp\.cast\(sp\.big_map\(\), sp\.big_map\[sp\.nat, sp\.bytes\]\)/);
   assert.match(contractSource, /def add_tokens_v3\(self, tokens\):/);
+  assert.match(contractSource, /def set_slot_commitments\(self, slots\):/);
+  assert.match(contractSource, /def finalize_inventory\(self\):/);
+  assert.match(contractSource, /def settle_mints\(self, items\):/);
   assert.match(contractSource, /def reveal_tokens_v3\(self, items\):/);
   assert.match(contractSource, /self\.data\.reveal_operator = sp\.cast\(reveal_operator, sp\.address\)/);
   assert.match(contractSource, /def _only_admin_or_reveal_operator\(self\):/);
@@ -731,6 +739,10 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(contractSource, /assert self\.data\.token_minted\.get\(item\.token_id, default=sp\.nat\(0\)\) > 0, "TOKEN_NOT_MINTED"/);
   assert.match(contractSource, /commitment = sp\.sha256\(sp\.concat\(\[item\.metadata_uri, item\.nonce\]\)\)/);
   assert.match(contractSource, /assert commitment == self\.data\.token_commitments\[item\.token_id\], "BAD_REVEAL"/);
+  assert.match(contractSource, /commitment = sp\.sha256\([\s\S]*item\.slot_nonce, self\.data\.token_commitments\[item\.token_id\]/);
+  assert.match(contractSource, /assert commitment == self\.data\.slot_commitments\[item\.claim_id\], "BAD_SLOT_PROOF"/);
+  assert.match(contractSource, /assert self\.data\.inventory_finalized, "INVENTORY_NOT_FINALIZED"/);
+  assert.doesNotMatch(contractSource, /sp\.level/);
   assert.doesNotMatch(contractSource, /pending_tokens/);
 
   assert.match(routeSource, /router\.get\("\/api\/macaroni\/reveal-operator"/);
@@ -742,6 +754,9 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(revealServiceSource, /MACARONI_REVEAL_OPERATOR_SHADOWNET_SECRET_KEY/);
   assert.match(revealServiceSource, /MACARONI_REVEAL_ENCRYPTION_KEY/);
   assert.match(revealServiceSource, /createCipheriv\("aes-256-gcm"/);
+  assert.match(secureAllocationSource, /randomInt\(index \+ 1\)/);
+  assert.match(secureAllocationSource, /randomBytes\(32\)\.toString\("hex"\)/);
+  assert.match(revealServiceSource, /contract\.methodsObject\.settle_mints\(batch\)\.send\(\)/);
   assert.match(revealServiceSource, /contract\.methodsObject\.reveal_tokens_v3\(batch\)\.send\(\)/);
   assert.match(revealServiceSource, /export async function requestMacaroniReveal/);
   assert.match(schemaSource, /export const macaroniRevealJobs = pgTable/);
@@ -754,6 +769,9 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.equal(compiledTemplate.templateVersion, "macaroni-commitment-v3");
   assert.ok(compiledTemplate.entrypoints.includes("add_tokens_v3"));
   assert.ok(compiledTemplate.entrypoints.includes("replace_tokens_v3"));
+  assert.ok(compiledTemplate.entrypoints.includes("set_slot_commitments"));
+  assert.ok(compiledTemplate.entrypoints.includes("finalize_inventory"));
+  assert.ok(compiledTemplate.entrypoints.includes("settle_mints"));
   assert.ok(compiledTemplate.entrypoints.includes("reveal_tokens_v3"));
   assert.ok(Array.isArray(compiledContract));
   assert.ok(compiledContract.length > 0);

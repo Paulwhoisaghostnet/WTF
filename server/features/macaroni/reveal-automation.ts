@@ -4,6 +4,10 @@ import { TezosToolkit } from "@taquito/taquito";
 import { and, eq, lte } from "drizzle-orm";
 import { db } from "../../db";
 import { macaroniRevealJobs } from "@shared/schema";
+import {
+  createSecureAllocation,
+  type MacaroniRevealManifestSlot,
+} from "./secure-allocation";
 
 export type MacaroniRevealNetwork = "mainnet" | "shadownet";
 export type MacaroniRevealMode = "instant" | "delayed";
@@ -13,6 +17,11 @@ export type MacaroniRevealManifestToken = {
   metadataUri: string;
   nonce: string;
   commitment: string;
+};
+
+type MacaroniRevealManifest = {
+  tokens: MacaroniRevealManifestToken[];
+  slots: MacaroniRevealManifestSlot[];
 };
 
 const RPC: Record<MacaroniRevealNetwork, readonly [string, string]> = {
@@ -41,11 +50,11 @@ export function macaroniRevealPollIntervalMs(): number | null {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-function encryptManifest(tokens: MacaroniRevealManifestToken[]): string {
+function encryptManifest(manifest: MacaroniRevealManifest): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
   const encrypted = Buffer.concat([
-    cipher.update(JSON.stringify({ version: 1, tokens }), "utf8"),
+    cipher.update(JSON.stringify({ version: 2, ...manifest }), "utf8"),
     cipher.final(),
   ]);
   return [
@@ -56,7 +65,7 @@ function encryptManifest(tokens: MacaroniRevealManifestToken[]): string {
   ].join(".");
 }
 
-function decryptManifest(payload: string): MacaroniRevealManifestToken[] {
+function decryptManifest(payload: string): MacaroniRevealManifest {
   const [version, ivText, encryptedText, tagText, extra] = String(payload || "").split(".");
   if (version !== ENCRYPTION_VERSION || !ivText || !encryptedText || !tagText || extra) {
     throw new Error("Invalid Macaroni reveal manifest");
@@ -70,11 +79,21 @@ function decryptManifest(payload: string): MacaroniRevealManifestToken[] {
   const decoded = JSON.parse(Buffer.concat([
     decipher.update(Buffer.from(encryptedText, "base64url")),
     decipher.final(),
-  ]).toString("utf8")) as { version?: number; tokens?: MacaroniRevealManifestToken[] };
-  if (decoded.version !== 1 || !Array.isArray(decoded.tokens)) {
+  ]).toString("utf8")) as {
+    version?: number;
+    tokens?: MacaroniRevealManifestToken[];
+    slots?: MacaroniRevealManifestSlot[];
+  };
+  if ((decoded.version !== 1 && decoded.version !== 2) || !Array.isArray(decoded.tokens)) {
     throw new Error("Invalid Macaroni reveal manifest body");
   }
-  return decoded.tokens;
+  if (decoded.version === 2 && !Array.isArray(decoded.slots)) {
+    throw new Error("Invalid Macaroni secure allocation manifest");
+  }
+  return {
+    tokens: decoded.tokens,
+    slots: decoded.version === 2 ? decoded.slots! : [],
+  };
 }
 
 async function operatorSigner(network: MacaroniRevealNetwork): Promise<InMemorySigner> {
@@ -96,6 +115,17 @@ export async function getMacaroniRevealOperator(network: MacaroniRevealNetwork):
 
 function normalizedHex(value: unknown): string {
   return String(value || "").replace(/^0x/i, "").toLowerCase();
+}
+
+function manifestsMatch(left: MacaroniRevealManifestToken[], right: MacaroniRevealManifestToken[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((token, index) => {
+    const other = right[index];
+    return token.tokenId === other?.tokenId
+      && token.metadataUri === other.metadataUri
+      && normalizedHex(token.nonce) === normalizedHex(other.nonce)
+      && normalizedHex(token.commitment) === normalizedHex(other.commitment);
+  });
 }
 
 function timestampMs(value: unknown): number | null {
@@ -150,7 +180,12 @@ export async function registerMacaroniRevealAutomation(input: {
   if (Number(storage.token_count) !== input.tokens.length) {
     throw new Error("V3 reveal manifest does not match the synced token inventory");
   }
-  for (const token of input.tokens) {
+  const tokens = [...input.tokens].sort((left, right) => left.tokenId - right.tokenId);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.tokenId !== index) {
+      throw new Error("V3 reveal manifest token ids must be complete and sequential");
+    }
     const expected = createHash("sha256")
       .update(Buffer.concat([
         Buffer.from(token.metadataUri, "utf8"),
@@ -167,7 +202,11 @@ export async function registerMacaroniRevealAutomation(input: {
   }
 
   const existing = await db
-    .select({ id: macaroniRevealJobs.id, ownerUserId: macaroniRevealJobs.ownerUserId })
+    .select({
+      id: macaroniRevealJobs.id,
+      ownerUserId: macaroniRevealJobs.ownerUserId,
+      encryptedManifest: macaroniRevealJobs.encryptedManifest,
+    })
     .from(macaroniRevealJobs)
     .where(and(
       eq(macaroniRevealJobs.network, input.network),
@@ -178,6 +217,35 @@ export async function registerMacaroniRevealAutomation(input: {
     throw new Error("This V3 contract already belongs to another automatic reveal registration");
   }
 
+  const secureAllocation = storage.slot_commitments != null
+    && storage.inventory_finalized != null
+    && storage.claims != null;
+  let slots: MacaroniRevealManifestSlot[] = [];
+  if (existing[0]) {
+    const previous = decryptManifest(existing[0].encryptedManifest);
+    if (!manifestsMatch(previous.tokens, tokens)) {
+      throw new Error("This V3 contract is already registered with a different private reveal manifest");
+    }
+    slots = previous.slots;
+  }
+  if (secureAllocation && slots.length === 0) {
+    if (Number(storage.slot_commitment_count || 0) !== 0) {
+      throw new Error("The on-chain secure allocation cannot be recovered from this reveal registration");
+    }
+    const allocationTokens = [];
+    for (const token of tokens) {
+      allocationTokens.push({
+        tokenId: token.tokenId,
+        quantity: Number(await storage.token_supply.get(token.tokenId)),
+        metadataCommitment: token.commitment,
+      });
+    }
+    slots = createSecureAllocation(allocationTokens, Number(storage.supply));
+  }
+  if (secureAllocation && slots.length !== Number(storage.supply)) {
+    throw new Error("V3 secure allocation does not match the on-chain edition supply");
+  }
+
   const values = {
     ownerUserId: input.ownerUserId,
     network: input.network,
@@ -186,7 +254,7 @@ export async function registerMacaroniRevealAutomation(input: {
     revealOperator: operator.address,
     mode: input.mode,
     revealDelaySeconds: input.revealDelaySeconds,
-    encryptedManifest: encryptManifest(input.tokens),
+    encryptedManifest: encryptManifest({ tokens, slots }),
     status: "active" as const,
     nextAttemptAt: new Date(),
     lastError: null,
@@ -199,10 +267,16 @@ export async function registerMacaroniRevealAutomation(input: {
       .set(values)
       .where(eq(macaroniRevealJobs.id, existing[0].id))
       .returning();
-    return updated;
+    return {
+      job: updated,
+      slotCommitments: slots.map(({ slotId, commitment }) => ({ slotId, commitment })),
+    };
   }
   const [created] = await db.insert(macaroniRevealJobs).values(values).returning();
-  return created;
+  return {
+    job: created,
+    slotCommitments: slots.map(({ slotId, commitment }) => ({ slotId, commitment })),
+  };
 }
 
 async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Promise<{
@@ -216,11 +290,48 @@ async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Pr
     const signer = await operatorSigner(job.network);
     const operatorAddress = await signer.publicKeyHash();
     if (operatorAddress !== job.revealOperator) throw new Error("Configured reveal signer no longer matches this V3 contract");
-    const { contract, storage } = await contractStorage(job.network, job.contract, signer);
+    let { contract, storage } = await contractStorage(job.network, job.contract, signer);
     if (String(storage.reveal_operator) !== operatorAddress) throw new Error("V3 reveal operator authorization changed on-chain");
 
     const intervalMs = macaroniRevealPollIntervalMs();
     if (!intervalMs) throw new Error("Macaroni reveal reconciliation interval is not configured");
+    const manifest = decryptManifest(job.encryptedManifest);
+    const secureAllocation = storage.slot_commitments != null
+      && storage.inventory_finalized != null
+      && storage.claims != null;
+    let lastOperationHash: string | null = job.lastOperationHash;
+    if (secureAllocation) {
+      if (!Boolean(storage.inventory_finalized)) {
+        throw new Error("V3 secure inventory has not been finalized");
+      }
+      if (manifest.slots.length !== Number(storage.supply)) {
+        throw new Error("V3 secure allocation manifest is incomplete");
+      }
+      const settledCount = Number(storage.settled_count || 0);
+      const claimCount = Number(storage.claim_count || 0);
+      if (!Number.isSafeInteger(settledCount) || !Number.isSafeInteger(claimCount)
+        || settledCount < 0 || claimCount < settledCount || claimCount > manifest.slots.length) {
+        throw new Error("V3 claim counters are invalid");
+      }
+      const settlements = manifest.slots.slice(settledCount, claimCount).map((slot, offset) => {
+        const claimId = settledCount + offset;
+        if (slot.slotId !== claimId) throw new Error(`V3 secure allocation slot ${claimId} is invalid`);
+        return {
+          claim_id: claimId,
+          token_id: slot.tokenId,
+          slot_nonce: slot.nonce,
+        };
+      });
+      for (let index = 0; index < settlements.length; index += REVEAL_BATCH_SIZE) {
+        const batch = settlements.slice(index, index + REVEAL_BATCH_SIZE);
+        const operation = await contract.methodsObject.settle_mints(batch).send();
+        await operation.confirmation(1);
+        lastOperationHash = operation.hash;
+      }
+      if (settlements.length) {
+        ({ contract, storage } = await contractStorage(job.network, job.contract, signer));
+      }
+    }
     if (job.mode === "delayed") {
       const pendingSince = timestampMs(storage.unrevealed_since);
       if (pendingSince != null) {
@@ -236,10 +347,9 @@ async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Pr
       }
     }
 
-    const manifest = decryptManifest(job.encryptedManifest);
     const pending: Array<{ token_id: number; metadata_uri: string; nonce: string }> = [];
     let revealedCount = 0;
-    for (const token of manifest) {
+    for (const token of manifest.tokens) {
       const revealed = await storage.revealed_tokens.get(token.tokenId);
       if (revealed != null) {
         revealedCount += 1;
@@ -258,7 +368,6 @@ async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Pr
       });
     }
 
-    let lastOperationHash: string | null = job.lastOperationHash;
     for (let index = 0; index < pending.length; index += REVEAL_BATCH_SIZE) {
       const batch = pending.slice(index, index + REVEAL_BATCH_SIZE);
       const operation = await contract.methodsObject.reveal_tokens_v3(batch).send();
@@ -266,7 +375,8 @@ async function processRevealJob(job: typeof macaroniRevealJobs.$inferSelect): Pr
       lastOperationHash = operation.hash;
       revealedCount += batch.length;
     }
-    const completed = revealedCount === manifest.length;
+    const completed = revealedCount === manifest.tokens.length
+      && (!secureAllocation || Number(storage.settled_count || 0) === Number(storage.supply));
     await db.update(macaroniRevealJobs).set({
       status: completed ? "completed" : "active",
       nextAttemptAt: new Date(Date.now() + intervalMs),
