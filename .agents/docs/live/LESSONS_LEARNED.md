@@ -11159,3 +11159,13 @@
 **Rule**: When canonicalizing or re-auditing an old finding, reconcile it against current source, executable guards, archived production evidence, and current live capabilities before carrying its status forward. Preserve the historical claim, but replace stale evidence with exact correction and verification records; separately record any new risk discovered during that verification.
 
 ---
+
+## 2026-09-01 — Tests must own fixtures and consume parsed configuration
+
+**What happened**: Kiln's reference-contract tests depended on a gitignored operator corpus, so developer checkouts with local data passed while clean GitHub Actions failed. Injecting a tracked fixture initially did not fix the API test because the router ignored its parsed application environment and re-read global process state.
+
+**Why it mattered**: Local verification overstated release readiness, main stayed red, and the same server instance could observe configuration through two different ownership paths.
+
+**Rule**: Every automated test must carry or generate the smallest fixture it requires; ignored operator data is never a test dependency. Parse environment once at the application boundary and pass typed configuration into routes and services—do not re-read ambient process state inside domain logic.
+
+---
