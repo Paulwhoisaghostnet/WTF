@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **32** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **397** · Archived: **4**
+Total: **634** · Open: **31** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **397** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 270 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
-| WTF-BB-041 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
 | WTF-BB-125 | Open | - | 2026-05-08 | Tezos external marketplace / wallet preflight | P1 | 11 | 369 | 2 | 4 | 1 | External marketplace batch builders can touch Taquito wallet contracts before signer preflight |
 | WTF-BB-044 | Open | - | 2026-04-27 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Open | - | 2026-04-27 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
@@ -100,6 +99,7 @@ Total: **634** · Open: **32** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
+| WTF-BB-041 | Claimed | Codex TV config uniqueness reconciliation | 2026-09-01 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -698,24 +698,6 @@ Total: **634** · Open: **32** · Claimed: **41** · In Progress: **13** · Bloc
 - Verification idea:
   - Re-run this same health script on staging and production snapshots and compare top-25 table/column drops from prior runs.
   - Add a dashboard card for `zero_row_tables` and top-25 sparse columns so regressions are visible to ops.
-
-### WTF-BB-041 - TV config table has no uniqueness guard on active config row
-
-- Category: TV microapp / config integrity
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C3 + F3 + S2 + P1(4) = 12
-- Evidence:
-  - `shared/schema.ts:2100-2116` defines `tvWtfChannelConfig.channelId` nullable and without uniqueness constraints.
-- Why it matters:
-  - Multiple active rows can exist, while app reads `LIMIT 1`, creating nondeterministic config behavior.
-  - Hard to debug behavior changes during admin edits or migrations.
-- Likely correction direction:
-  - Enforce uniqueness by channel and create explicit precedence/versioning rules (or a single-row config table model).
-- Verification idea:
-  - Attempt inserting duplicate active config rows and verify DB rejects inconsistent state.
 
 ### WTF-BB-125 - External marketplace batch builders can touch Taquito wallet contracts before signer preflight
 
@@ -2079,6 +2061,24 @@ Total: **634** · Open: **32** · Claimed: **41** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
+
+### WTF-BB-041 - TV config table has no uniqueness guard on active config row
+
+- Category: TV microapp / config integrity
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex TV config uniqueness reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P1(4) = 12
+- Evidence:
+  - `shared/schema.ts:2100-2116` defines `tvWtfChannelConfig.channelId` nullable and without uniqueness constraints.
+- Why it matters:
+  - Multiple active rows can exist, while app reads `LIMIT 1`, creating nondeterministic config behavior.
+  - Hard to debug behavior changes during admin edits or migrations.
+- Likely correction direction:
+  - Enforce uniqueness by channel and create explicit precedence/versioning rules (or a single-row config table model).
+- Verification idea:
+  - Attempt inserting duplicate active config rows and verify DB rejects inconsistent state.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 

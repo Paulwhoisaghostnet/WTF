@@ -291,9 +291,9 @@
     },
     {
       "id": "WTF-BB-041",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex TV config uniqueness reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "TV microapp / config integrity",
       "priority": "P1",
       "points": 12,
