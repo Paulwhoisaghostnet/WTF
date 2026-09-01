@@ -11139,3 +11139,13 @@
 **Rule**: Compare the active account with the operation's expected signer immediately after resolving the account and before configuring a provider, persisting a session, reading a contract, or sending. Prove expected, unspecified, whitespace-normalized, and mismatched cases with executable tests; retain source-policy coverage that every value-moving helper supplies the expected wallet.
 
 ---
+
+## 2026-08-31 — Payment proof must gate every transition that can award value
+
+**What happened**: Side-quest entry-fee transfers were verified and stored, but completion, auto-approval, staff approval, and reward distribution never consumed the confirmed fee state. The staff confirmation route also selected a fee only by its row id even though the URL named a parent quest.
+
+**Why it mattered**: A paid quest could award value without confirmed payment, and a fee could be confirmed through a mismatched quest URL. Verifying payment at intake did not enforce the later pay-to-enter invariant.
+
+**Rule**: Check the current confirmed payment immediately before every state transition that can approve work or award value, and do so before mutation. Parent-scoped mutation routes must bind both parent and child identifiers; prove missing, pending, underpaid, malformed, exact, and overpaid cases plus write ordering.
+
+---

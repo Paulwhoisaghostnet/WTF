@@ -200,6 +200,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "gamma.daily-sidequest-handoff",
       "gameshow.launch-surfaces-active-challenge-ui",
       "gameshow.side-quests-messageboard-check-in",
+      "gameshow.paid-side-quest-confirmed-fee-gate",
       "gameshow.mint-art-monday-linked-wallet",
     ],
   },

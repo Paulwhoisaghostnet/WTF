@@ -1061,6 +1061,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness seeds canonical side quests, creates a temporary board channel, posts as a contestant, verifies the daily check-in is ready to claim for the current UTC day, claims it, verifies XP action completion, verifies a queued WTF reward ledger row, and removes the temporary channel.",
   },
   {
+    id: "gameshow.paid-side-quest-confirmed-fee-gate",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["side-quests"],
+    ownerSpec:
+      "server/features/side-quests/entry-fee-policy.test.ts, server/side-quest-entry-fee-policy.test.ts",
+    verificationCommand:
+      "npx tsx --test server/features/side-quests/entry-fee-policy.test.ts server/side-quest-entry-fee-policy.test.ts",
+    userVisibleAssertion:
+      "A paid side quest explains the required WTF amount and refuses submission until that contestant has a matching confirmed entry fee of at least the configured amount.",
+    durableSideEffectAssertion:
+      "Executable fee-policy tests reject absent, pending, underpaid, and malformed payments, while route-order tests prove the same decision runs before auto-verification, completion persistence, first staff approval, or reward distribution; staff confirmation also binds the fee id to the quest id in the request.",
+  },
+  {
     id: "gameshow.mint-art-monday-linked-wallet",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["mint-portal", "side-quests"],

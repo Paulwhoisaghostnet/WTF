@@ -290,14 +290,27 @@ router.post(
   requirePermission("manage_gameshow"),
   async (req, res) => {
     try {
+      const sideQuestId = parseInt(String(req.params.id ?? ""), 10);
       const feeId = parseInt(String(req.params.feeId ?? ""), 10);
+      if (!Number.isInteger(sideQuestId) || sideQuestId <= 0) {
+        return res.status(400).json({ error: "Invalid side quest id" });
+      }
       if (!Number.isInteger(feeId) || feeId <= 0) {
         return res.status(400).json({ error: "Invalid fee id" });
       }
-      await db
+      const [confirmedFee] = await db
         .update(sideQuestEntryFees)
         .set({ status: "confirmed", confirmedAt: new Date() })
-        .where(eq(sideQuestEntryFees.id, feeId));
+        .where(
+          and(
+            eq(sideQuestEntryFees.id, feeId),
+            eq(sideQuestEntryFees.sideQuestId, sideQuestId)
+          )
+        )
+        .returning({ id: sideQuestEntryFees.id });
+      if (!confirmedFee) {
+        return res.status(404).json({ error: "Entry fee not found for this side quest" });
+      }
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: "Failed to confirm fee" });

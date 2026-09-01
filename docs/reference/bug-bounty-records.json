@@ -163,7 +163,7 @@
     },
     {
       "id": "WTF-BB-080",
-      "status": "Claimed",
+      "status": "Fixed",
       "owner": "Codex paid side-quest fee gate",
       "lastTouched": "2026-08-31",
       "category": "Authorization / Tezos payment gating",
@@ -174,7 +174,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "Paid side-quest completion does not require confirmed entry-fee payment",
-      "body": "- Evidence:\n  - `server/routes/side-quests.ts:470-539` accepts completion submissions and can auto-approve/reward them without checking `entryFeeWtf`.\n  - `server/routes/wtf-recapture.ts:167-230` records entry-fee attestations as `pending`, but the completion path does not require a matching confirmed fee row.\n- Why it matters:\n  - A paid quest can be completed, manually approved, or auto-approved without confirmed payment, undermining pay-to-enter game mechanics.\n- Likely correction direction:\n  - When `entryFeeWtf > 0`, require a confirmed `side_quest_entry_fees` row for the user before accepting completion or before auto-approval/reward distribution.\n- Verification idea:\n  - Configure an active side quest with a non-zero entry fee; a user without a confirmed fee should be blocked from completion and reward issuance.",
+      "body": "- Historical evidence:\n  - Paid side-quest completion and manual approval could mutate completion/approval state and distribute rewards without consuming the separately stored confirmed entry-fee state.\n  - Staff fee confirmation selected only the fee id even though the route also named a parent quest.\n- Correction:\n  - A shared fail-closed policy now evaluates the configured WTF fee against the contestant's matching fee records. Missing, pending, malformed, and underpaid records are rejected; an exact or greater confirmed amount is accepted.\n  - Submission checks the fee before auto-verification, completion insertion, or automatic reward distribution. First staff approval checks the same invariant before approval mutation or manual reward distribution.\n  - Manual fee confirmation now binds both the fee id and side-quest id and returns 404 instead of confirming a cross-quest row.\n  - The interaction inventory and Side Quests behavior registry own the confirmed-fee boundary.\n- Verification (2026-08-31):\n  - Seven focused executable and route-order tests passed across free, missing, pending, malformed, underpaid, exact, overpaid, completion, approval, reward, and cross-quest confirmation cases.\n  - TypeScript checking and the production build passed. The aggregate suite passed 2,520 tests with 0 failures and 12 intentional skips.\n  - Interaction-inventory coverage passed for 238 rows, 973 handles, 118 routes, 16 workflows, and 127 actor-backed behaviors.",
       "legacyOriginalId": "WTF-BB-080"
     },
     {

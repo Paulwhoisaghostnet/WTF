@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { db } from "../db";
 import {
   sideQuests,
@@ -8,6 +8,7 @@ import {
   boardThreadReplies,
   rewardLedger,
   buybackAllowlist,
+  sideQuestEntryFees,
 } from "@shared/schema";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { sumRecapturedForUser } from "../lib/wtf-recapture-watcher";
@@ -20,6 +21,7 @@ import { hasActiveUserCurse } from "../lib/user-curses";
 import { notifyHosts } from "../lib/notify-hosts";
 import { getUserGameLayerStats } from "../lib/game-layer-stats";
 import { z } from "zod";
+import { evaluateSideQuestEntryFee } from "../features/side-quests/entry-fee-policy";
 
 const router = Router();
 
@@ -111,6 +113,39 @@ const sideQuestCreateSchema = z
   .strict();
 
 const sideQuestUpdateSchema = sideQuestCreateSchema.partial().strict();
+
+async function getSideQuestEntryFeeDecision(
+  sideQuestId: number,
+  userId: number,
+  requiredWtf: string | null | undefined
+) {
+  const feeRows = await db
+    .select({
+      amountWtf: sideQuestEntryFees.amountWtf,
+      status: sideQuestEntryFees.status,
+    })
+    .from(sideQuestEntryFees)
+    .where(
+      and(
+        eq(sideQuestEntryFees.sideQuestId, sideQuestId),
+        eq(sideQuestEntryFees.userId, userId)
+      )
+    );
+
+  return evaluateSideQuestEntryFee(requiredWtf, feeRows);
+}
+
+function rejectUnpaidSideQuest(
+  res: Response,
+  decision: ReturnType<typeof evaluateSideQuestEntryFee>
+) {
+  return res.status(402).json({
+    error: `Pay and confirm the ${decision.requiredWtf} WTF entry fee before submitting this side quest`,
+    code: "SIDE_QUEST_ENTRY_FEE_REQUIRED",
+    requiredWtf: decision.requiredWtf,
+    confirmedWtf: decision.confirmedWtf,
+  });
+}
 
 /* ═══ Auto-verification logic ════════════════════════════ */
 
@@ -602,6 +637,15 @@ router.post(
       if (quest.deadline && new Date(quest.deadline) < new Date())
         return res.status(400).json({ error: "Quest deadline has passed" });
 
+      const feeDecision = await getSideQuestEntryFeeDecision(
+        questId,
+        user.id,
+        quest.entryFeeWtf
+      );
+      if (!feeDecision.allowed) {
+        return rejectUnpaidSideQuest(res, feeDecision);
+      }
+
       const existing = await db
         .select({ id: sideQuestCompletions.id })
         .from(sideQuestCompletions)
@@ -701,6 +745,26 @@ router.put(
       if (!comp)
         return res.status(404).json({ error: "Completion not found" });
 
+      let questForReward: typeof sideQuests.$inferSelect | null = null;
+      if (isApproved && !comp.approved) {
+        const [quest] = await db
+          .select()
+          .from(sideQuests)
+          .where(eq(sideQuests.id, comp.sideQuestId));
+        if (!quest)
+          return res.status(404).json({ error: "Side quest not found" });
+
+        const feeDecision = await getSideQuestEntryFeeDecision(
+          quest.id,
+          comp.userId,
+          quest.entryFeeWtf
+        );
+        if (!feeDecision.allowed) {
+          return rejectUnpaidSideQuest(res, feeDecision);
+        }
+        questForReward = quest;
+      }
+
       const [updated] = await db
         .update(sideQuestCompletions)
         .set({
@@ -714,14 +778,13 @@ router.put(
       // Only distribute rewards when transitioning to approved for the first time.
       // comp.approved is null (pending) or false (rejected) for a new approval;
       // skip if already true to prevent double-paying.
-      if (isApproved && !comp.approved) {
-        const [quest] = await db
-          .select()
-          .from(sideQuests)
-          .where(eq(sideQuests.id, comp.sideQuestId));
-        if (quest) {
-          await distributeRewards(completionId, quest, comp.userId, staff.id);
-        }
+      if (isApproved && !comp.approved && questForReward) {
+        await distributeRewards(
+          completionId,
+          questForReward,
+          comp.userId,
+          staff.id
+        );
       }
 
       res.json(updated);

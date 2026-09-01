@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **390** · Archived: **3**
+Total: **631** · Open: **36** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **390** · Archived: **3**
 
 ## Canonical Board
 
@@ -104,7 +104,6 @@ Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 183 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 183 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 268 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-080 | Claimed | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 183 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 367 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 367 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -191,6 +190,7 @@ Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 | WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 183 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
+| WTF-BB-080 | Fixed | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 183 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 183 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 183 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 183 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
@@ -2140,24 +2140,6 @@ Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
-
-### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
-
-- Category: Authorization / Tezos payment gating
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex paid side-quest fee gate
-- Last touched: 2026-08-31
-- Score: C4 + F3 + S2 + P1(4) = 13
-- Evidence:
-  - `server/routes/side-quests.ts:470-539` accepts completion submissions and can auto-approve/reward them without checking `entryFeeWtf`.
-  - `server/routes/wtf-recapture.ts:167-230` records entry-fee attestations as `pending`, but the completion path does not require a matching confirmed fee row.
-- Why it matters:
-  - A paid quest can be completed, manually approved, or auto-approved without confirmed payment, undermining pay-to-enter game mechanics.
-- Likely correction direction:
-  - When `entryFeeWtf > 0`, require a confirmed `side_quest_entry_fees` row for the user before accepting completion or before auto-approval/reward distribution.
-- Verification idea:
-  - Configure an active side quest with a non-zero entry fee; a user without a confirmed fee should be blocked from completion and reward issuance.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -4126,6 +4108,27 @@ Total: **631** · Open: **36** · Claimed: **42** · In Progress: **13** · Bloc
   - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.
 - Fix notes:
   - Added the platform wallet custody ignore patterns to `.dockerignore`.
+
+### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
+
+- Category: Authorization / Tezos payment gating
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex paid side-quest fee gate
+- Last touched: 2026-08-31
+- Score: C4 + F3 + S2 + P1(4) = 13
+- Historical evidence:
+  - Paid side-quest completion and manual approval could mutate completion/approval state and distribute rewards without consuming the separately stored confirmed entry-fee state.
+  - Staff fee confirmation selected only the fee id even though the route also named a parent quest.
+- Correction:
+  - A shared fail-closed policy now evaluates the configured WTF fee against the contestant's matching fee records. Missing, pending, malformed, and underpaid records are rejected; an exact or greater confirmed amount is accepted.
+  - Submission checks the fee before auto-verification, completion insertion, or automatic reward distribution. First staff approval checks the same invariant before approval mutation or manual reward distribution.
+  - Manual fee confirmation now binds both the fee id and side-quest id and returns 404 instead of confirming a cross-quest row.
+  - The interaction inventory and Side Quests behavior registry own the confirmed-fee boundary.
+- Verification (2026-08-31):
+  - Seven focused executable and route-order tests passed across free, missing, pending, malformed, underpaid, exact, overpaid, completion, approval, reward, and cross-quest confirmation cases.
+  - TypeScript checking and the production build passed. The aggregate suite passed 2,520 tests with 0 failures and 12 intentional skips.
+  - Interaction-inventory coverage passed for 238 rows, 973 handles, 118 routes, 16 workflows, and 127 actor-backed behaviors.
 
 ### WTF-BB-077 - TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage
 
