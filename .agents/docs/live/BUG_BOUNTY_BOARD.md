@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **29** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **399** · Archived: **4**
+Total: **635** · Open: **29** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **400** · Archived: **4**
 
 ## Canonical Board
 
@@ -99,7 +99,6 @@ Total: **635** · Open: **29** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-646 | Claimed | Codex cockpit wallet sync reconciliation | 2026-09-01 | Authorization / Tezos indexing | P2 | 12 | 270 | 3 | 4 | 2 | Manual cockpit wallet sync accepts arbitrary wallet targets |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -569,6 +568,7 @@ Total: **635** · Open: **29** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 570 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 606 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-014 | Verified | Codex security hardening pass | 2026-05-30 | Auth / CSRF | P2 | 13 | 185 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
+| WTF-BB-646 | Verified | Codex cockpit wallet sync reconciliation | 2026-09-01 | Authorization / Tezos indexing | P2 | 12 | 270 | 3 | 4 | 2 | Manual cockpit wallet sync accepts arbitrary wallet targets |
 | WTF-BB-514 | Verified | Codex wtfOS contract release | - | E2E isolation / production data | P2 | 11 | 369 | 3 | 3 | 2 | Production contained a fake live Club Dues puppet row |
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 369 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-193 | Verified | Codex Skywire feed UI/token preview pass | 2026-06-03 | Skywire / feed UX and token previews | P2 | 11 | 369 | 3 | 5 | 0 | Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews |
@@ -2046,25 +2046,6 @@ Total: **635** · Open: **29** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-646 - Manual cockpit wallet sync accepts arbitrary wallet targets
-
-- Category: Authorization / Tezos indexing
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex cockpit wallet sync reconciliation
-- Last touched: 2026-09-01
-- Score: C3 + F4 + S2 + P2(3) = 12
-- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `server/routes/cockpit.ts:292-304` documents a manual sync for one of the caller's wallets, but never verifies that `req.params.wallet` belongs to the authenticated user.
-  - The route enqueues `{ target: wallet, targetKind: "wallet", reason: "manual", userId: caller }` for any non-empty string.
-- Why it matters:
-  - Any account can push arbitrary wallet targets into the indexing queue, causing upstream TzKT work, noisy attribution, and possible data-pollution/backlog pressure.
-- Likely correction direction:
-  - Validate Tezos address format and require a matching `user_wallets` row for the caller before enqueueing, unless the caller has a staff permission.
-- Verification idea:
-  - A user should be able to enqueue only linked wallets; arbitrary or unlinked addresses should return 403/404.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -12862,6 +12843,25 @@ Copy this when adding a new issue:
 - Why it matters: SameSite=Lax is useful, but it is a policy mitigation rather than an app-level write-token check. This leaves less defense if CORS, same-site subdomains, embeds, or cookie settings change.
 - Likely correction direction: Decide the intended CSRF strategy for cookie-authenticated APIs, then add token issuance/verification or document why each write surface is otherwise protected.
 - Verification idea: A forged cross-site write request without a valid CSRF token is rejected while normal app writes still pass.
+
+### WTF-BB-646 - Manual cockpit wallet sync accepts arbitrary wallet targets
+
+- Category: Authorization / Tezos indexing
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex cockpit wallet sync reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F4 + S2 + P2(3) = 12
+- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Historical evidence:
+  - The original route accepted any non-empty `req.params.wallet` and enqueued it with the caller's user id.
+- Correction:
+  - Commit `f8d0fb14c` validates the target against the Tezos implicit-address pattern before any database or queue work.
+  - Ordinary authenticated callers must have an exact `user_wallets` row matching both their user id and the submitted address; unlinked addresses return 403 before enqueue.
+  - The only documented override is guarded by the existing `manage_users` staff permission, and every accepted queue row retains the authenticated caller id.
+- Verification (2026-09-01):
+  - `server/cockpit-wallet-sync-policy.test.ts` passes 1/1 and proves format validation, caller ownership matching, the explicit staff-permission gate, and the unlinked-wallet denial.
+  - Current route ordering performs all validation and authorization before `enqueueIndex`, satisfying the original acceptance criteria.
 
 ### WTF-BB-514 - Production contained a fake live Club Dues puppet row
 

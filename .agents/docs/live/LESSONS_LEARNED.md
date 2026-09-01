@@ -11259,3 +11259,13 @@
 **Rule**: Preserve database density snapshots as operational evidence, but do not invent row-count or cell-completion release thresholds. Reconcile the actionable monitoring criteria against current scheduling, operator visibility, and executable report coverage; require a product-owned invariant before treating an empty optional table or nullable diagnostic field as corruption.
 
 ---
+
+## 2026-09-01 — Authorization findings must be reconciled against route ordering
+
+**What happened**: A canonical bounty record continued to describe the cockpit manual-sync route as accepting arbitrary wallet strings even though a later correction validated Tezos addresses, required an exact caller-owned wallet row, and reserved the override for a named staff permission before enqueueing.
+
+**Why it mattered**: The release queue reported an exploitable indexing-abuse path that current source and its focused policy test no longer permitted.
+
+**Rule**: Re-audit authorization findings against the current order of validation, ownership checks, permission overrides, and side effects. Preserve the historical vulnerable behavior, but close the active claim when executable coverage proves every untrusted path returns before the mutation or enqueue boundary.
+
+---

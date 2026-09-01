@@ -467,7 +467,7 @@
     },
     {
       "id": "WTF-BB-646",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex cockpit wallet sync reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Authorization / Tezos indexing",
@@ -478,7 +478,7 @@
       "functionalityDanger": 4,
       "securityDanger": 2,
       "title": "Manual cockpit wallet sync accepts arbitrary wallet targets",
-      "body": "- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.\n- Evidence:\n  - `server/routes/cockpit.ts:292-304` documents a manual sync for one of the caller's wallets, but never verifies that `req.params.wallet` belongs to the authenticated user.\n  - The route enqueues `{ target: wallet, targetKind: \"wallet\", reason: \"manual\", userId: caller }` for any non-empty string.\n- Why it matters:\n  - Any account can push arbitrary wallet targets into the indexing queue, causing upstream TzKT work, noisy attribution, and possible data-pollution/backlog pressure.\n- Likely correction direction:\n  - Validate Tezos address format and require a matching `user_wallets` row for the caller before enqueueing, unless the caller has a staff permission.\n- Verification idea:\n  - A user should be able to enqueue only linked wallets; arbitrary or unlinked addresses should return 403/404.",
+      "body": "- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.\n- Historical evidence:\n  - The original route accepted any non-empty `req.params.wallet` and enqueued it with the caller's user id.\n- Correction:\n  - Commit `f8d0fb14c` validates the target against the Tezos implicit-address pattern before any database or queue work.\n  - Ordinary authenticated callers must have an exact `user_wallets` row matching both their user id and the submitted address; unlinked addresses return 403 before enqueue.\n  - The only documented override is guarded by the existing `manage_users` staff permission, and every accepted queue row retains the authenticated caller id.\n- Verification (2026-09-01):\n  - `server/cockpit-wallet-sync-policy.test.ts` passes 1/1 and proves format validation, caller ownership matching, the explicit staff-permission gate, and the unlinked-wallet denial.\n  - Current route ordering performs all validation and authorization before `enqueueIndex`, satisfying the original acceptance criteria.",
       "legacyOriginalId": "WTF-BB-077"
     },
     {
