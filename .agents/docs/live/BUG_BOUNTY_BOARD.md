@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **35** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **394** · Archived: **3**
+Total: **634** · Open: **35** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **3**
 
 ## Canonical Board
 
@@ -103,7 +103,6 @@ Total: **634** · Open: **35** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-666 | Claimed | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -345,6 +344,7 @@ Total: **634** · Open: **35** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 93 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-666 | Verified | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
 | WTF-BB-664 | Verified | Codex Kiln dependency remediation | 2026-09-01 | Kiln dependencies / production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln production dependency graph contains five high-severity transitive advisories |
 | WTF-BB-663 | Verified | Codex Octez 5 production advisory verification | 2026-08-31 | Dependencies / moderate production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories |
 | WTF-BB-647 | Verified | Codex legacy board authorization pass | 2026-08-30 | Authorization / message board | P1 | 14 | 126 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
@@ -2125,25 +2125,6 @@ Total: **634** · Open: **35** · Claimed: **42** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
-
-### WTF-BB-666 - Kiln retains three moderate production advisories in its legacy Beacon wallet tree
-
-- Category: Kiln dependencies / wallet runtime advisories
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex Kiln wallet dependency pass
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S4 + P1(4) = 14
-- Evidence (2026-09-01):
-  - After eliminating all high and critical findings, `npm audit --omit=dev --json` still reports 11 production findings: 8 low and 3 moderate.
-  - The moderate chain runs through `@airgap/beacon-dapp` to legacy WalletConnect utils, query-string, and decode-uri-component. npm's automatic recommendation is a backward downgrade to Beacon 4.4.0 and is not an acceptable correction.
-  - The complete graph adds one moderate Joi development-tool finding and low-severity Babel, esbuild, legacy elliptic, and node-polyfill paths.
-- Why it matters:
-  - Kiln's browser wallet surface accepts pairing and permission data; malformed URI decoding and legacy wallet utility code should not remain the production baseline merely because the highest-severity paths were removed.
-- Correction direction:
-  - Follow the already-proven wtfOS wallet-runtime migration: move the direct Beacon surface to the supported Octez Connect generation or apply compatible WalletConnect ownership overrides only where executable wallet tests prove the dependency contract. Patch the independent development-only paths without unsafe downgrades.
-- Verification:
-  - Require zero moderate/high/critical production advisories, wallet connect/disconnect and permission regression coverage, the full clean Kiln suite and build, clean CI, deployed exact main commit, and live Shadownet health/capabilities.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -7572,6 +7553,25 @@ Copy this when adding a new issue:
 - Verification (2026-08-30):
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
+
+### WTF-BB-666 - Kiln retains three moderate production advisories in its legacy Beacon wallet tree
+
+- Category: Kiln dependencies / wallet runtime advisories
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Kiln wallet dependency pass
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S4 + P1(4) = 14
+- Evidence (2026-09-01):
+  - After eliminating all high and critical findings, `npm audit --omit=dev --json` still reported 11 production findings: 8 low and 3 moderate.
+  - The entire moderate chain ran through direct `@airgap/beacon-dapp`, but source and test scans proved Kiln never imported that package. Its actual wallet implementation uses `@taquito/beacon-wallet`, whose ECAD transport resolves the patched WalletConnect generation.
+- Correction:
+  - Removed the unused direct AirGap Beacon runtime and its obsolete transport tree. Refreshed independent Joi, Browserslist, and build-tool lock entries where compatible patches existed.
+  - Rejected npm's vite polyfill downgrade after the real client build externalized required `process` and `crypto` modules and regressed drastically; the supported plugin remains because it preserves the wallet bundle contract.
+- Verification:
+  - Fresh locked production audit reports zero vulnerabilities at every severity. The complete development/build graph reports zero moderate, high, or critical findings; seven low polyfill-chain advisories remain because their only suggested downgrade breaks the production build contract.
+  - Wallet-focused tests passed 31/31. The complete suite passed 238/238 with 2 intentional live-network skips and coverage above repository thresholds; TypeScript and the client/server production build passed.
+  - Kiln CI run `33555628354` passed from a clean checkout. Deploy run `33555761661` advanced the host to exact main commit `0db7514`, restarted healthy, and passed external health. Live capabilities still report token auth, Tezos Shadownet `NetXsqzbfFenSTS`, command-provider Shadowbox, multi-contract/payable support, and fail-closed assertions.
 
 ### WTF-BB-664 - Kiln production dependency graph contains five high-severity transitive advisories
 

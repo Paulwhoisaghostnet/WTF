@@ -11169,3 +11169,13 @@
 **Rule**: Every automated test must carry or generate the smallest fixture it requires; ignored operator data is never a test dependency. Parse environment once at the application boundary and pass typed configuration into routes and services—do not re-read ambient process state inside domain logic.
 
 ---
+
+## 2026-09-01 — Audit remediation must preserve the runtime contract
+
+**What happened**: Kiln carried a direct legacy Beacon dependency that no source imported, so removing it eliminated the production advisory chain cleanly. npm also proposed downgrading the active node-polyfill plugin to clear low findings; that downgrade externalized required browser `process` and `crypto` modules and made the production build dramatically slower.
+
+**Why it mattered**: A numerically cleaner audit could have produced a less reliable wallet bundle. Conversely, retaining an unused dependency exposed the project to advisories without providing any functionality.
+
+**Rule**: Remove provably unused vulnerable roots before adding overrides or migrations. Treat automatic downgrade advice as a hypothesis: validate wallet behavior, clean install, audit, typecheck, full tests, and the real production build, and reject any audit-only change that breaks bundling semantics or operational performance.
+
+---
