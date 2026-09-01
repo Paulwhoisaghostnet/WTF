@@ -11297,7 +11297,15 @@
 **Why it mattered**: A valid signature proved control of a key for one opaque challenge, but did not prove that the user approved the exact account, origin, and operation the server attributed to it.
 
 **Rule**: Build wallet-auth messages from server-stored wallet, origin, action, expiry, and nonce fields; require public-key derivation to match the challenged wallet before atomically consuming that exact scoped row. Clients and actor-backed tests must sign the returned message verbatim rather than reconstructing a partial payload.
+---
 
+## 2026-09-01 — Tutorial recordings must prove the complete visible journey
+
+**What happened**: The first automated cloud-backup tutorial used the required TommyTezos identity but entered Studio with an actor that lacked Studio permission, and its simulated OAuth return did not expose the connected state. The recording technically completed while the visible lesson contradicted its narration.
+
+**Why it mattered**: Account-name validation and a successful browser run did not prove that viewers saw a usable workflow from entry through the durable result.
+
+**Rule**: A tutorial fixture must include the permissions and post-authorization state required by the narrated journey. Review representative frames at entry, decision, authorization, and completion; treat identity checks, browser completion, and final-state visibility as separate acceptance claims.
 ---
 
 ## 2026-09-01 — Generated inventories include tests and harnesses

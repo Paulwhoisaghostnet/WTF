@@ -101,6 +101,14 @@ interface MediaItem {
   createdAt: string;
 }
 
+interface DriveStatusResponse {
+  connected: boolean;
+  canConnect: boolean;
+  accountEmail: string | null;
+  appUsage: { bytes: number; fileCount: number } | null;
+  backedUpMediaCount: number;
+}
+
 interface OwnedToken {
   id: number;
   contract: string;
@@ -455,6 +463,34 @@ export function MyVideos() {
     ? (myMediaQuery.data as MediaItem[])
     : [];
 
+  const driveStatusQuery = useQuery({
+    queryKey: ["studio", "drive-status"],
+    queryFn: () => api.get<DriveStatusResponse>("/api/studio/drive/status"),
+    staleTime: 30_000,
+  });
+
+  const connectDriveMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ ok: boolean; authorizeUrl: string }>(
+        "/api/studio/drive/start",
+        {}
+      ),
+    onSuccess: (data) => {
+      if (data.authorizeUrl) {
+        window.open(data.authorizeUrl, "_blank", "noopener,noreferrer");
+      }
+    },
+  });
+
+  const backupToDriveMutation = useMutation({
+    mutationFn: (mediaId: number) =>
+      api.post(`/api/media/${mediaId}/drive-backup`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      qc.invalidateQueries({ queryKey: ["studio", "drive-status"] });
+    },
+  });
+
   const myTokensQuery = useQuery({
     queryKey: ["profile-tokens-video-import"],
     queryFn: async () => {
@@ -484,6 +520,7 @@ export function MyVideos() {
       api.post("/api/media/upload", { ...body, mediaCategory: "video" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["media-library", "video"] });
+      qc.invalidateQueries({ queryKey: ["studio", "drive-status"] });
       setUploadTitle("");
       setUploadCreatorName("");
     },
@@ -799,6 +836,7 @@ export function MyVideos() {
                     const overlayCollection = getOverlayCollectionName(item);
                     const provenance = readEmbeddedProvenance(item);
                     const supportLink = provenanceSupportLinks(provenance)[0] || null;
+                    const cloudBackup = item.metadata?.cloudBackup;
                     return (
                       <MediaCard key={item.id} data-my-videos-region="media-card">
                         <MediaThumb data-my-videos-region="media-thumb">
@@ -833,6 +871,17 @@ export function MyVideos() {
                               Creator · from your media
                             </MediaMeta>
                           )}
+                          {item.sourceType === "upload" && (
+                            <MediaMeta>
+                              Google Drive backup · {cloudBackup?.status === "ready"
+                                ? "ready"
+                                : cloudBackup?.status === "failed"
+                                  ? "needs retry"
+                                  : driveStatusQuery.data?.connected
+                                    ? "not backed up"
+                                    : "connect Drive to enable"}
+                            </MediaMeta>
+                          )}
                           {provenance && (
                             <MediaMeta>
                               Provenance · {provenanceCreatorLabel(provenance)}
@@ -847,6 +896,19 @@ export function MyVideos() {
                             </MediaMeta>
                           )}
                           <CardActions data-my-videos-region="card-actions">
+                            {item.sourceType === "upload" &&
+                              driveStatusQuery.data?.connected &&
+                              cloudBackup?.status !== "ready" && (
+                                <Button
+                                  size="sm"
+                                  disabled={backupToDriveMutation.isPending}
+                                  onClick={() => backupToDriveMutation.mutate(item.id)}
+                                >
+                                  {backupToDriveMutation.isPending
+                                    ? "Backing up…"
+                                    : "Back up to Google Drive"}
+                                </Button>
+                              )}
                             {item.sourceType === "upload" && item.status === "ready" && (
                               <Button
                                 size="sm"
@@ -1190,6 +1252,53 @@ export function MyVideos() {
 
           {/* ─── Upload tab ─── */}
           {tab === 4 && (
+            <>
+            <GroupBox label="Personal cloud backup" data-my-videos-region="drive-backup-panel">
+              <InlinePanel>
+                {driveStatusQuery.isLoading ? (
+                  <HintText>Checking your Google Drive connection…</HintText>
+                ) : driveStatusQuery.data?.connected ? (
+                  <>
+                    <StateText $tone="success">
+                      Connected{driveStatusQuery.data.accountEmail
+                        ? ` as ${driveStatusQuery.data.accountEmail}`
+                        : ""}
+                    </StateText>
+                    <HintText>
+                      New uploads receive an automatic copy in your wtfOS My Media
+                      Drive folder. The object-storage copy remains the playback source.
+                      {` ${driveStatusQuery.data.backedUpMediaCount || 0} upload${
+                        driveStatusQuery.data.backedUpMediaCount === 1 ? " is" : "s are"
+                      } backed up.`}
+                    </HintText>
+                  </>
+                ) : (
+                  <>
+                    <HintText>
+                      Connect your Google Drive once for Studio projects and automatic
+                      My Media upload backups. wtfOS requests only drive.file access.
+                    </HintText>
+                    <Button
+                      onClick={() => connectDriveMutation.mutate()}
+                      disabled={
+                        connectDriveMutation.isPending ||
+                        driveStatusQuery.data?.canConnect === false
+                      }
+                    >
+                      {connectDriveMutation.isPending
+                        ? "Opening Google…"
+                        : "Connect Google Drive"}
+                    </Button>
+                    {connectDriveMutation.isError && (
+                      <StateText $tone="danger">
+                        {(connectDriveMutation.error as Error)?.message ||
+                          "Could not start the Drive connection."}
+                      </StateText>
+                    )}
+                  </>
+                )}
+              </InlinePanel>
+            </GroupBox>
             <GroupBox label="Upload Video" data-my-videos-region="upload-panel">
               <UploadForm data-my-videos-region="upload-form">
                 <TextInput
@@ -1247,6 +1356,7 @@ export function MyVideos() {
                 )}
               </UploadForm>
             </GroupBox>
+            </>
           )}
         </TabBody>
 

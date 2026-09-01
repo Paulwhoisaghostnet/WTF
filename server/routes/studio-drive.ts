@@ -1,11 +1,9 @@
 /**
  * Per-user Studio Drive routes.
  *
- * Lets each Studio member connect their own Google Drive account so
- * projects they create are backed by their personal storage instead of
- * the platform pool.  Mirrors the admin flow in `studio-admin.ts` but
- * keyed by the authenticated user and gated by `create_studio_projects`
- * (the permission granted at Contestant role and above).
+ * Lets each authenticated member connect their own Google Drive account
+ * for new Studio projects and My Media upload backups. Mirrors the admin
+ * flow in `studio-admin.ts`, but keys the connection to the member.
  *
  * Flow:
  *   1. Client POSTs /api/studio/drive/start → authorize URL + state
@@ -17,10 +15,10 @@
 
 import { Router } from "express";
 import { randomBytes } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db";
-import { studioProjects } from "@shared/schema";
-import { isAuthenticated, requirePermission } from "../auth/passport";
+import { studioProjects, userMediaLibrary } from "@shared/schema";
+import { isAuthenticated } from "../auth/passport";
 import {
   buildUserConnectUrl,
   completeUserConnect,
@@ -50,7 +48,6 @@ const router = Router();
 router.get(
   "/api/studio/drive/status",
   isAuthenticated,
-  requirePermission("access_studio"),
   async (req, res) => {
     try {
       const user = req.user as { id: number };
@@ -61,17 +58,31 @@ router.get(
       // the client ("5 projects will lose their files until you
       // reconnect").
       let projectCount = 0;
+      let backedUpMediaCount = 0;
       if (status.connected) {
-        const projects = await db
-          .select({ id: studioProjects.id })
-          .from(studioProjects)
-          .where(
-            and(
-              eq(studioProjects.ownerUserId, user.id),
-              eq(studioProjects.storageBackend, "google_drive")
-            )
-          );
+        const [projects, mediaBackups] = await Promise.all([
+          db
+            .select({ id: studioProjects.id })
+            .from(studioProjects)
+            .where(
+              and(
+                eq(studioProjects.ownerUserId, user.id),
+                eq(studioProjects.storageBackend, "google_drive")
+              )
+            ),
+          db
+            .select({ id: userMediaLibrary.id })
+            .from(userMediaLibrary)
+            .where(
+              and(
+                eq(userMediaLibrary.ownerUserId, user.id),
+                sql`${userMediaLibrary.metadata}->'cloudBackup'->>'provider' = 'google_drive'`,
+                sql`${userMediaLibrary.metadata}->'cloudBackup'->>'status' = 'ready'`
+              )
+            ),
+        ]);
         projectCount = projects.length;
+        backedUpMediaCount = mediaBackups.length;
       }
 
       res.json({
@@ -81,6 +92,7 @@ router.get(
         canConnect: isUserDriveConfigured(),
         ...status,
         dependentProjectCount: projectCount,
+        backedUpMediaCount,
       });
     } catch (err) {
       console.error("[studio-drive] status error:", err);
@@ -94,7 +106,6 @@ router.get(
 router.post(
   "/api/studio/drive/start",
   isAuthenticated,
-  requirePermission("create_studio_projects"),
   async (req, res) => {
     try {
       if (!isUserDriveConfigured()) {
@@ -141,7 +152,6 @@ router.post(
 router.get(
   "/api/studio/drive/callback",
   isAuthenticated,
-  requirePermission("create_studio_projects"),
   async (req, res) => {
     try {
       const code = String(req.query.code ?? "").trim();
@@ -181,7 +191,7 @@ router.get(
         renderHtml(
           `Your Google Drive is connected as <code>${escapeHtml(
             row.accountEmail ?? "(email unknown)"
-          )}</code>.<br><br>You can close this tab and return to Studio — new projects you create will default to your Drive.`,
+          )}</code>.<br><br>You can close this tab and return to wtfOS. New Studio projects can use your Drive, and new My Media uploads will receive an account-owned backup.`,
           false
         )
       );
@@ -199,7 +209,6 @@ router.get(
 router.post(
   "/api/studio/drive/disconnect",
   isAuthenticated,
-  requirePermission("access_studio"),
   async (req, res) => {
     try {
       const user = req.user as { id: number };
@@ -214,14 +223,13 @@ router.post(
 
 /* ── POST /api/studio/drive/refresh-quota ───────────────── */
 // Path kept as `/refresh-quota` for URL stability; the payload is
-// `appUsage` (Studio's footprint in the user's Drive) — the full Drive
+// `appUsage` (wtfOS's footprint in the user's Drive) — the full Drive
 // quota isn't reachable under the `drive.file` scope and we
 // deliberately don't ask for a broader one.
 
 router.post(
   "/api/studio/drive/refresh-quota",
   isAuthenticated,
-  requirePermission("access_studio"),
   async (req, res) => {
     const user = req.user as { id: number };
     try {

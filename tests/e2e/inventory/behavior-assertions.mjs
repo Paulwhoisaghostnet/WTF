@@ -69,6 +69,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
   },
   {
+    id: "auth.faq-registration-tutorials",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "faq",
+    ownerSpec: "server/lib/faq-tutorials.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/faq-tutorials.test.ts && npm run build && npx playwright test tests/playwright/inventory/faq-tutorials.spec.mjs",
+    userVisibleAssertion:
+      "The public FAQ previews short, captioned how-to videos for the full registration journey, and every tutorial visibly uses the TommyTezos account.",
+    durableSideEffectAssertion:
+      "The checked-in catalog binds each tutorial to private S3 object keys while the public API exposes only same-origin streaming routes; the browser harness proves all eight guides, English captions, transcripts, selection behavior, and mobile containment.",
+  },
+  {
     id: "wtfiam.creator-store-moderation-purchase",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["wtfiam"],
@@ -1135,6 +1147,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "A creator can upload media, retrieve it from the library/file endpoint, inspect media-service dwellings, and build a Game Studio project bundle.",
     durableSideEffectAssertion:
       "The live harness verifies upload cache/checksum/playback state, library and detail reads, file serving, project-bundle and IPFS/media-service contracts, Game Studio project creation, bundle build checksum, and build-history persistence.",
+  },
+  {
+    id: "media.personal-drive-backup",
+    domain: "Media, Creation, Gallery, and Preservation",
+    platformOwner: "media-library",
+    ownerSpec: "server/lib/studio/media-drive-backup-policy.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/studio/media-drive-backup-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/faq-tutorials.spec.mjs",
+    userVisibleAssertion:
+      "A signed-in user can connect one personal Google Drive for Studio and My Media, see the connection in both apps, and retry an upload backup without changing the object-storage playback source.",
+    durableSideEffectAssertion:
+      "New uploaded media retains its S3/cache playback fields while Google Drive backup status, file id, checksum, and sync time are persisted in media metadata; normalized success/failure events and the owner-gated retry route make recovery observable.",
   },
   {
     id: "public-data-mcp-agent-token-proof",

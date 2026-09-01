@@ -33,9 +33,14 @@ import {
 } from "../lib/storage/media-keys";
 import { getObjectStorageConfig, putObjectFromFile } from "../lib/storage/object-storage";
 import { shouldProtectObjectUploads } from "../lib/storage/object-storage-usage";
-import { copyToHotCache } from "../lib/storage/media-cache";
+import { copyToHotCache, resolveMediaFilePath } from "../lib/storage/media-cache";
 import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 import { MEDIA_HOT_CACHE_DIR, MEDIA_STAGING_DIR, assertInsideRoot } from "../lib/storage/paths";
+import {
+  backupUserMediaFileToDrive,
+  type UserMediaDriveBackup,
+} from "../lib/studio/user-drive";
+import { logSystemEvent } from "../lib/system-log";
 import {
   readTvOverlayOverride,
   resolveTvOverlayMetadata,
@@ -130,6 +135,25 @@ async function sha256File(filePath: string): Promise<string> {
     stream.on("end", resolve);
   });
   return hash.digest("hex");
+}
+
+export type MediaCloudBackup =
+  | UserMediaDriveBackup
+  | {
+      provider: "google_drive";
+      status: "failed";
+      attemptedAt: string;
+      error: string;
+    };
+
+export function withCloudBackupMetadata(
+  metadata: unknown,
+  cloudBackup: MediaCloudBackup
+): Record<string, unknown> {
+  const current = metadata && typeof metadata === "object"
+    ? (metadata as Record<string, unknown>)
+    : {};
+  return { ...current, cloudBackup };
 }
 
 async function hydrateLibraryMetadataWithTokenFallback(input: {
@@ -632,6 +656,46 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
       safeFilename: safeName,
     });
 
+    let finalMetadata: Record<string, unknown> | null =
+      metadata && typeof metadata === "object"
+        ? (metadata as Record<string, unknown>)
+        : null;
+    try {
+      const driveBackup = await backupUserMediaFileToDrive({
+        userId: user.id,
+        mediaId: created.id,
+        filePath: stagingPath,
+        fileName: safeName,
+        mimeType,
+        checksumSha256,
+      });
+      if (driveBackup) {
+        finalMetadata = withCloudBackupMetadata(finalMetadata, driveBackup);
+        logSystemEvent({
+          source: "media-library",
+          eventType: "media.drive_backup.completed",
+          message: `My Media upload ${created.id} backed up to the user's Google Drive`,
+          metadata: { mediaItemId: created.id, userId: user.id, checksumSha256 },
+        });
+      }
+    } catch (driveError) {
+      const message = driveError instanceof Error ? driveError.message : String(driveError);
+      finalMetadata = withCloudBackupMetadata(finalMetadata, {
+        provider: "google_drive",
+        status: "failed",
+        attemptedAt: new Date().toISOString(),
+        error: message.slice(0, 300),
+      });
+      logSystemEvent({
+        source: "media-library",
+        eventType: "media.drive_backup.failed",
+        severity: "warn",
+        message: `My Media upload ${created.id} could not be backed up to Google Drive`,
+        metadata: { mediaItemId: created.id, userId: user.id, checksumSha256 },
+        error: message,
+      });
+    }
+
     const [stamped] = await db
       .update(userMediaLibrary)
       .set({
@@ -649,6 +713,7 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
         lastAccessedAt: new Date(),
         uploadStatus: "ready",
         status: "ready",
+        metadata: finalMetadata,
         updatedAt: new Date(),
       })
       .where(eq(userMediaLibrary.id, created.id))
@@ -672,6 +737,96 @@ router.post("/api/media/upload", isAuthenticated, maybeMultipartUpload, async (r
     }
     console.error("[media-library] upload error:", err);
     res.status(500).json({ error: "Failed to upload media" });
+  }
+});
+
+router.post("/api/media/:id/drive-backup", isAuthenticated, async (req: any, res: any) => {
+  try {
+    const user = req.user as any;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    const [item] = await db
+      .select({
+        id: userMediaLibrary.id,
+        ownerUserId: userMediaLibrary.ownerUserId,
+        sourceType: userMediaLibrary.sourceType,
+        mimeType: userMediaLibrary.mimeType,
+        safeFilename: userMediaLibrary.safeFilename,
+        originalFilename: userMediaLibrary.originalFilename,
+        checksumSha256: userMediaLibrary.checksumSha256,
+        metadata: userMediaLibrary.metadata,
+        objectStorageBucket: userMediaLibrary.objectStorageBucket,
+        objectStorageKey: userMediaLibrary.objectStorageKey,
+        hotCachePath: userMediaLibrary.hotCachePath,
+      })
+      .from(userMediaLibrary)
+      .where(eq(userMediaLibrary.id, id));
+
+    if (!item || item.sourceType !== "upload") {
+      return res.status(404).json({ error: "Uploaded media was not found" });
+    }
+    // This writes to the authenticated account's personal Drive. Staff
+    // read access must not permit copying another member's media there.
+    if (item.ownerUserId !== user.id) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const existingBackup = (item.metadata as any)?.cloudBackup;
+    if (existingBackup?.provider === "google_drive" && existingBackup?.status === "ready") {
+      return res.json({ ok: true, cloudBackup: existingBackup, alreadyBackedUp: true });
+    }
+
+    const resolved = await resolveMediaFilePath({
+      mediaId: item.id,
+      hotCachePath: item.hotCachePath,
+      objectStorageBucket: item.objectStorageBucket,
+      objectStorageKey: item.objectStorageKey,
+      safeFilename: item.safeFilename,
+    });
+    if (!resolved) {
+      return res.status(409).json({ error: "The media file is not available for backup" });
+    }
+
+    const backup = await backupUserMediaFileToDrive({
+      userId: user.id,
+      mediaId: item.id,
+      filePath: resolved.path,
+      fileName: item.safeFilename || item.originalFilename || `media-${item.id}`,
+      mimeType: item.mimeType,
+      checksumSha256: item.checksumSha256,
+    });
+    if (!backup) {
+      return res.status(409).json({
+        error: "Connect Google Drive from Studio or My Videos before starting a backup.",
+        code: "drive_not_connected",
+      });
+    }
+
+    const metadata = withCloudBackupMetadata(item.metadata, backup);
+    await db
+      .update(userMediaLibrary)
+      .set({ metadata, updatedAt: new Date() })
+      .where(eq(userMediaLibrary.id, item.id));
+    logSystemEvent({
+      source: "media-library",
+      eventType: "media.drive_backup.completed",
+      message: `My Media upload ${item.id} backed up to the user's Google Drive`,
+      metadata: { mediaItemId: item.id, userId: user.id, checksumSha256: item.checksumSha256 },
+    });
+    res.json({ ok: true, cloudBackup: backup, alreadyBackedUp: false });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[media-library] drive backup error:", error);
+    logSystemEvent({
+      source: "media-library",
+      eventType: "media.drive_backup.failed",
+      severity: "warn",
+      message: "A requested My Media Google Drive backup failed",
+      metadata: { mediaItemId: Number(req.params.id) || null, userId: req.user?.id ?? null },
+      error: message,
+    });
+    res.status(502).json({ error: "Google Drive backup failed. Retry from My Videos." });
   }
 });
 

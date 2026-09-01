@@ -7,6 +7,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
+import { FaqTutorials } from "../features/faq/FaqTutorials";
 
 const StartPanel = styled.section`
   margin-bottom: 16px;
@@ -126,6 +127,7 @@ export function Faq() {
           ))}
         </TaskGrid>
       </StartPanel>
+      <FaqTutorials />
       {categories.length > 0
         ? categories.map((cat) => (
             <GroupBox

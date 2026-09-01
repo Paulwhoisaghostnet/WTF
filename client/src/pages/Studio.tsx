@@ -447,12 +447,13 @@ interface DriveStatusResponse {
   connectedAt: string | null;
   lastRefreshedAt: string | null;
   hasDedicatedRedirect: boolean;
-  // Studio's footprint in the user's Drive.  Not a total quota — we
+  // wtfOS's footprint in the user's Drive.  Not a total quota — we
   // only request `drive.file`, which cannot see the user's overall
   // storage ceiling.  This tells the user how much space Studio itself
   // is using in their Drive.
   appUsage: { bytes: number; fileCount: number } | null;
   dependentProjectCount: number;
+  backedUpMediaCount: number;
 }
 
 export function Studio() {
@@ -745,11 +746,11 @@ export function Studio() {
                     <Button
                       onClick={() => refreshUsageMutation.mutate()}
                       disabled={refreshUsageMutation.isPending}
-                      title="Recount bytes & files Studio is using in this Drive"
+                      title="Recount bytes and files wtfOS is using in this Drive"
                     >
                       {refreshUsageMutation.isPending
                         ? "Refreshing…"
-                        : "Refresh Studio usage"}
+                        : "Refresh wtfOS usage"}
                     </Button>
                     <Button
                       onClick={() => {
@@ -774,7 +775,7 @@ export function Studio() {
                 {driveStatusQuery.data.appUsage ? (
                   <DriveUsageWrap>
                     <span>
-                      Studio is using{" "}
+                      wtfOS is using{" "}
                       <strong>
                         {formatBytes(driveStatusQuery.data.appUsage.bytes)}
                       </strong>{" "}
@@ -799,7 +800,7 @@ export function Studio() {
                 {refreshUsageMutation.isError ? (
                   <ErrorBanner>
                     {(refreshUsageMutation.error as Error)?.message ||
-                      "Failed to refresh Studio usage."}
+                      "Failed to refresh wtfOS usage."}
                   </ErrorBanner>
                 ) : null}
                 <div
@@ -808,9 +809,9 @@ export function Studio() {
                     color: "var(--wtf-app-muted-text, #444)",
                   }}
                 >
-                  New projects default to your Drive. Files stay in
-                  your account — disconnecting revokes access until you
-                  reconnect the same Google account.
+                  New Studio projects default to your Drive, and new My Media
+                  uploads receive an account-owned backup. Disconnecting revokes
+                  access until you reconnect the same Google account.
                 </div>
                 <div
                   style={{
@@ -819,8 +820,8 @@ export function Studio() {
                   }}
                 >
                   We request only the <code>drive.file</code> scope, so
-                  Studio can't see your total Drive quota — the number
-                  above is just Studio's own footprint in your Drive.
+                  wtfOS can't see your total Drive quota — the number above is
+                  only the footprint of files wtfOS created in your Drive.
                 </div>
               </>
             ) : (
@@ -848,8 +849,10 @@ export function Studio() {
                   }}
                 >
                   We request the minimum Drive scope —{" "}
-                  <code>drive.file</code> — which only gives Studio access
-                  to files it creates in your Drive. You can revoke at any
+                  <code>drive.file</code> — which only gives wtfOS access
+                  to files it creates in your Drive. New Studio projects use
+                  this connection and new My Media uploads receive a backup.
+                  You can revoke at any
                   time from your Google account settings or from this
                   panel.
                 </div>

@@ -7,12 +7,16 @@
 
 import express from "express";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocket, WebSocketServer } from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../../dist/public");
+const FAQ_TUTORIALS = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../shared/faq-tutorials.json"), "utf8")
+);
 const PORT = Number(process.env.HARNESS_PORT || 4173);
 const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
@@ -23,6 +27,7 @@ const state = {
   groupchatLog: [],
   interactionLog: [],
   authUser: { id: 1, username: "wtf-admin", displayName: "WTF Admin" },
+  driveConnected: false,
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
   skywireGroupPayloads: [],
@@ -518,6 +523,7 @@ app.post("/__test/state", (req, res) => {
         displayName: String(req.body?.displayName || defaultAuthUser.displayName),
       }
     : null;
+  state.driveConnected = Boolean(req.body?.driveConnected);
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
   state.skywireGroupPayloads = [];
@@ -686,6 +692,8 @@ app.get("/api/auth/user", (_req, res) => {
             manage_gameshow: true,
             manage_rewards: true,
             trusted_market_creator: true,
+            access_studio: true,
+            create_studio_projects: true,
           }
         : state.userRole === COBWEBSAINTS_FULL_USER_ROLE
           ? {
@@ -3890,6 +3898,44 @@ function apiMock(req, res) {
         tezosRpcUrl: "https://tezos-mainnet.octez.io/",
       },
       jobs: { ok: true, registered: 7, running: 0, recentErrors: 0 },
+    });
+  }
+  if (pathName === "/api/faq/tutorials") {
+    return res.json(
+      FAQ_TUTORIALS.map((tutorial) => ({
+        slug: tutorial.slug,
+        title: tutorial.title,
+        summary: tutorial.summary,
+        category: tutorial.category,
+        sortOrder: tutorial.sortOrder,
+        accountName: tutorial.accountName,
+        route: tutorial.route,
+        durationSeconds: tutorial.durationSeconds,
+        steps: tutorial.steps,
+        transcript: tutorial.narration,
+        aiNarration: true,
+        videoUrl: `/api/faq/tutorials/${tutorial.slug}/video`,
+        captionsUrl: `/api/faq/tutorials/${tutorial.slug}/captions`,
+        posterUrl: "/__test/media/harness-alpha-token.png",
+      }))
+    );
+  }
+  if (pathName === "/api/studio/drive/status" && req.method === "GET") {
+    return res.json({
+      ok: true,
+      envConfigured: true,
+      cryptoConfigured: true,
+      canConnect: true,
+      configured: true,
+      connected: state.driveConnected,
+      accountEmail: state.driveConnected ? "tommytezos@example.com" : null,
+      scopes: state.driveConnected ? "https://www.googleapis.com/auth/drive.file" : null,
+      connectedAt: state.driveConnected ? "2026-09-01T12:00:00.000Z" : null,
+      lastRefreshedAt: null,
+      hasDedicatedRedirect: true,
+      appUsage: state.driveConnected ? { bytes: 1843200, fileCount: 3 } : null,
+      dependentProjectCount: 0,
+      backedUpMediaCount: state.driveConnected ? 1 : 0,
     });
   }
   if (pathName === "/api/links" || pathName === "/api/faq") return res.json([]);
