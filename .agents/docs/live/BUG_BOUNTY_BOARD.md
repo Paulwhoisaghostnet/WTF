@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **389** · Archived: **3**
+Total: **631** · Open: **37** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **389** · Archived: **3**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-124 | Open | - | 2026-05-08 | Tezos marketplace / wallet binding | P1 | 13 | 183 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-080 | Open | - | - | Authorization / Tezos payment gating | P1 | 13 | 183 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Open | - | 2026-05-02 | Kiln integration / Shadowbox | P1 | 13 | 183 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 268 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
@@ -192,6 +191,7 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 183 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
 | WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 183 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
+| WTF-BB-124 | Fixed | Codex marketplace signer-binding pass | 2026-08-31 | Tezos marketplace / wallet binding | P1 | 13 | 183 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 183 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 183 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 183 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
@@ -662,25 +662,6 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 447 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
-
-- Category: Tezos marketplace / wallet binding
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-05-08
-- Score: C3 + F4 + S2 + P1(4) = 13
-- Evidence:
-  - `client/src/lib/tezos/marketplace.ts` calls `assertNetworkReadyForSend()` without an expected wallet for create listing, create auction, buy, bid, settle, cancel, offer, and accept offer sends.
-  - `client/src/lib/tezos/barter.ts` binds approval preflights to the active wallet, but create, accept, and cancel trade sends do not pass an expected wallet.
-  - `client/src/features/marketplace/CreateMarketEntryPanel.tsx` can select owned tokens across linked wallets, while `useMarketplaceActions` approves and creates marketplace entries with the current active wallet address and does not assert that the selected token wallet matches the active signer.
-- Why it matters:
-  - A stale or switched wallet can sign follow-on marketplace/barter operations after an approval preflight, causing confusing failures at best and wrong-account actions where contracts permit them.
-- Likely correction direction:
-  - Thread `expectedWalletAddress` through every marketplace/barter write helper, enforce selected-token owner equals active wallet before approval/create, and add UI guards for handlers that currently rely only on button visibility.
-- Verification idea:
-  - Test marketplace listing, auction, buy, bid, offer, accept offer, cancel, barter create, barter accept, and barter cancel with no wallet, wrong wallet, and expected wallet connected; assert wrong-wallet sends fail before contract invocation.
 
 ### WTF-BB-080 - Paid side-quest completion does not require confirmed entry-fee payment
 
@@ -4145,6 +4126,26 @@ Total: **631** · Open: **38** · Claimed: **41** · In Progress: **13** · Bloc
   - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.
 - Fix notes:
   - Added the platform wallet custody ignore patterns to `.dockerignore`.
+
+### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
+
+- Category: Tezos marketplace / wallet binding
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex marketplace signer-binding pass
+- Last touched: 2026-08-31
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Historical evidence:
+  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.
+- Correction:
+  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.
+  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.
+  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.
+- Verification (2026-08-31):
+  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.
+  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.
+  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.
+  - Production deployment and exact-commit live smoke verification remain before this record can move from `Fixed` to `Verified`.
 
 ### WTF-BB-077 - TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage
 

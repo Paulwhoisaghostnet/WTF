@@ -11129,3 +11129,13 @@
 **Rule**: Every generator that owns replicated release artifacts must enumerate and synchronize every artifact family, then verify byte equality across all shipped targets. Rebuilding one canonical output is not proof that copied distribution surfaces are current.
 
 ---
+
+## 2026-08-31 — Expected-signer checks belong before wallet-provider mutation
+
+**What happened**: Marketplace and barter writes had been updated to pass their prepared wallet address into preflight, but the shared wallet adapter configured Taquito and persisted the active session before rejecting a different active signer.
+
+**Why it mattered**: Contract access was still blocked, but a wrong-wallet attempt could mutate the browser's provider/session state before failing. That made the failure harder to reason about and left only source-pattern tests for the signer boundary.
+
+**Rule**: Compare the active account with the operation's expected signer immediately after resolving the account and before configuring a provider, persisting a session, reading a contract, or sending. Prove expected, unspecified, whitespace-normalized, and mismatched cases with executable tests; retain source-policy coverage that every value-moving helper supplies the expected wallet.
+
+---

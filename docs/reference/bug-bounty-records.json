@@ -147,9 +147,9 @@
     },
     {
       "id": "WTF-BB-124",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-08",
+      "status": "Fixed",
+      "owner": "Codex marketplace signer-binding pass",
+      "lastTouched": "2026-08-31",
       "category": "Tezos marketplace / wallet binding",
       "priority": "P1",
       "points": 13,
@@ -158,7 +158,7 @@
       "functionalityDanger": 4,
       "securityDanger": 2,
       "title": "Marketplace and barter writes do not bind contract sends to the expected wallet",
-      "body": "- Evidence:\n  - `client/src/lib/tezos/marketplace.ts` calls `assertNetworkReadyForSend()` without an expected wallet for create listing, create auction, buy, bid, settle, cancel, offer, and accept offer sends.\n  - `client/src/lib/tezos/barter.ts` binds approval preflights to the active wallet, but create, accept, and cancel trade sends do not pass an expected wallet.\n  - `client/src/features/marketplace/CreateMarketEntryPanel.tsx` can select owned tokens across linked wallets, while `useMarketplaceActions` approves and creates marketplace entries with the current active wallet address and does not assert that the selected token wallet matches the active signer.\n- Why it matters:\n  - A stale or switched wallet can sign follow-on marketplace/barter operations after an approval preflight, causing confusing failures at best and wrong-account actions where contracts permit them.\n- Likely correction direction:\n  - Thread `expectedWalletAddress` through every marketplace/barter write helper, enforce selected-token owner equals active wallet before approval/create, and add UI guards for handlers that currently rely only on button visibility.\n- Verification idea:\n  - Test marketplace listing, auction, buy, bid, offer, accept offer, cancel, barter create, barter accept, and barter cancel with no wallet, wrong wallet, and expected wallet connected; assert wrong-wallet sends fail before contract invocation.",
+      "body": "- Historical evidence:\n  - The May 8 audit found marketplace and barter contract writes calling send preflight without their prepared wallet and a cross-linked-wallet token selector without an owner/signer comparison.\n- Correction:\n  - Marketplace approvals, listings, auctions, buys, bids, settlements, cancellations, offers, and offer accepts now pass the prepared wallet into `assertNetworkReadyForSend`; barter approvals, creates, accepts, and cancellations do the same.\n  - Marketplace creation rejects a selected token whose owning linked wallet differs from the active signer before approval. The shared signer guard now rejects a switched account immediately after account resolution and before configuring Taquito, persisting the wallet session, reading a contract, or sending.\n  - The interaction inventory and behavior registry explicitly own the wrong-wallet rejection boundary for marketplace and barter.\n- Verification (2026-08-31):\n  - Git history shows the missing helper arguments were corrected in `cbec17126` on May 14 and the selected-token owner guard in `cfb7c50ff` on May 15, but the canonical bounty was never transitioned.\n  - Nine focused wallet/marketplace policy and executable signer tests passed, covering the expected wallet, an unspecified wallet, a whitespace-normalized address, and a switched wallet with actionable error details. TypeScript checking passed with the measured local compiler heap raised after the default 4 GB process exhausted memory.\n  - The production build, environment-inventory policy, all 2,513 aggregate unit tests, interaction-inventory coverage (238 rows, 973 handles, 118 routes, 16 workflows, and 126 actor-backed behaviors), and the complete Chromium interaction inventory (700/700 in 12.7 minutes) passed.\n  - Production deployment and exact-commit live smoke verification remain before this record can move from `Fixed` to `Verified`.",
       "legacyOriginalId": "WTF-BB-124"
     },
     {

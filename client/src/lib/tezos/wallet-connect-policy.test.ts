@@ -53,8 +53,8 @@ test("Octez Connect is the primary wallet path with valid featured wallet prefix
   assert.match(source, /spec\.type = "custom"/);
   assert.match(source, /clearWalletIndexedDbState/);
   assert.match(source, /WalletAccountMismatchError/);
+  assert.match(source, /assertExpectedWalletAddress\(expectedAddress, address\);[\s\S]*await getTezos\(config\)/);
   assert.match(source, /WalletProviderPreflightError/);
-  assert.match(source, /expectedAddress && !sameWalletAddress\(address, expectedAddress\)/);
   assert.match(source, /forcePermissions/);
   assert.match(source, /resetWalletConnectorState/);
   assert.doesNotMatch(source, /retrying via Beacon/);

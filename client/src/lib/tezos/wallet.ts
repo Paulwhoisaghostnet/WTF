@@ -6,6 +6,12 @@ import {
   getNetwork,
   getOctezWalletConnectOptions,
 } from "./loaders";
+import {
+  assertExpectedWalletAddress,
+  WalletAccountMismatchError,
+} from "./wallet-signer-binding";
+
+export { WalletAccountMismatchError } from "./wallet-signer-binding";
 
 type WalletProviderName = "octez.connect";
 
@@ -184,23 +190,6 @@ let connectPromise:
   | Promise<WalletConnectionResult>
   | null = null;
 let connectPromiseConfig: WalletNetworkConfig | null = null;
-
-function sameWalletAddress(a: string, b: string): boolean {
-  return a.trim() === b.trim();
-}
-
-export class WalletAccountMismatchError extends Error {
-  readonly code = "WALLET_ACCOUNT_MISMATCH";
-  constructor(
-    readonly expectedAddress: string,
-    readonly actualAddress: string,
-  ) {
-    super(
-      `Your active wallet is ${actualAddress}, but this operation was prepared for ${expectedAddress}. ` +
-        "Reconnect that wallet or retry after the wallet display updates."
-    );
-  }
-}
 
 export class WalletProviderPreflightError extends Error {
   readonly code = "WALLET_PROVIDER_PREFLIGHT_FAILED";
@@ -668,13 +657,11 @@ async function activateAdapterForSend(
     throw new Error("Wallet connected, but no address is available");
   }
 
+  assertExpectedWalletAddress(expectedAddress, address);
+
   await getTezos(config);
   await adapter.setAsTaquitoProvider(tezosToolkit);
   persistWalletSession({ address, providerName: adapter.name });
-
-  if (expectedAddress && !sameWalletAddress(address, expectedAddress)) {
-    throw new WalletAccountMismatchError(expectedAddress, address);
-  }
 
   return { address, providerName: adapter.name };
 }
