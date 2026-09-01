@@ -59,6 +59,8 @@ jobs:
           if-no-files-found: error
 
       - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run check
 
       - name: Vite env policy

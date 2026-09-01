@@ -11337,3 +11337,13 @@
 **Rule**: When a seeded product advances to a new contract or artifact version, update both the insert and conflict-update paths, assert the promoted identity, and explicitly reject the retired identity. Prove the result with a second-run-capable seed and the actor-backed workflow, not a source edit alone.
 
 ---
+
+## 2026-09-01 — A compiler OOM is not a type error
+
+**What happened**: The combined FAQ release passed all aggregate tests, then the TypeScript process aborted near Node's default 4 GB old-space ceiling before emitting any diagnostic. Local type checking still passed on a machine with more available memory.
+
+**Why it mattered**: Treating the run as a source-level type failure would send debugging toward valid application code while leaving the deterministic CI resource boundary unresolved.
+
+**Rule**: Distinguish compiler diagnostics from runtime termination. When garbage-collection evidence shows heap exhaustion, scope measured headroom to the compiler step, add a workflow policy assertion, and require the exact CI run to finish every downstream gate before marking the release signal verified.
+
+---

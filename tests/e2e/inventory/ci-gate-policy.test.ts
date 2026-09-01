@@ -22,6 +22,15 @@ test("quality gates run aggregate unit, production audit, environment, CSP, and 
   assert.match(workflow, /Upload SBOM[\s\S]*actions\/upload-artifact@/);
 });
 
+test("quality typecheck receives measured heap headroom without widening other steps", () => {
+  const matches = workflow.match(/NODE_OPTIONS:\s*--max-old-space-size=6144/g) ?? [];
+  assert.equal(matches.length, 1);
+  assert.match(
+    workflow,
+    /- name: Typecheck\s+env:\s+NODE_OPTIONS: --max-old-space-size=6144\s+run: npm run check/,
+  );
+});
+
 test("inventory lane names do not claim route reachability is feature-complete behavior coverage", () => {
   assert.match(workflow, /Inventory registry coverage \(skeleton, not feature completeness\)/);
   assert.match(workflow, /Inventory route smoke \(reachability, not durable behavior\)/);
