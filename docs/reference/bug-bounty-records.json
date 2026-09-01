@@ -467,9 +467,9 @@
     },
     {
       "id": "WTF-BB-646",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex cockpit wallet sync reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "Authorization / Tezos indexing",
       "priority": "P2",
       "points": 12,

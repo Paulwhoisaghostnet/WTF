@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **635** · Open: **30** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **399** · Archived: **4**
+Total: **635** · Open: **29** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **399** · Archived: **4**
 
 ## Canonical Board
 
@@ -37,7 +37,6 @@ Total: **635** · Open: **30** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-069 | Open | - | 2026-05-02 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-006 | Open | - | 2026-04-27 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-655 | Open | - | - | E2E live puppets / Console seed data | P1 | 9 | 509 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
-| WTF-BB-646 | Open | - | - | Authorization / Tezos indexing | P2 | 12 | 270 | 3 | 4 | 2 | Manual cockpit wallet sync accepts arbitrary wallet targets |
 | WTF-BB-087 | Open | - | - | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-083 | Open | - | - | SSRF / remote fetch | P2 | 11 | 369 | 3 | 3 | 2 | W link preview follows redirects before validating every target |
 | WTF-BB-081 | Open | - | - | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
@@ -100,6 +99,7 @@ Total: **635** · Open: **30** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-646 | Claimed | Codex cockpit wallet sync reconciliation | 2026-09-01 | Authorization / Tezos indexing | P2 | 12 | 270 | 3 | 4 | 2 | Manual cockpit wallet sync accepts arbitrary wallet targets |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -817,25 +817,6 @@ Total: **635** · Open: **30** · Claimed: **41** · In Progress: **13** · Bloc
   - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
 - Verification idea:
   - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
-
-### WTF-BB-646 - Manual cockpit wallet sync accepts arbitrary wallet targets
-
-- Category: Authorization / Tezos indexing
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C3 + F4 + S2 + P2(3) = 12
-- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `server/routes/cockpit.ts:292-304` documents a manual sync for one of the caller's wallets, but never verifies that `req.params.wallet` belongs to the authenticated user.
-  - The route enqueues `{ target: wallet, targetKind: "wallet", reason: "manual", userId: caller }` for any non-empty string.
-- Why it matters:
-  - Any account can push arbitrary wallet targets into the indexing queue, causing upstream TzKT work, noisy attribution, and possible data-pollution/backlog pressure.
-- Likely correction direction:
-  - Validate Tezos address format and require a matching `user_wallets` row for the caller before enqueueing, unless the caller has a staff permission.
-- Verification idea:
-  - A user should be able to enqueue only linked wallets; arbitrary or unlinked addresses should return 403/404.
 
 ### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
 
@@ -2065,6 +2046,25 @@ Total: **635** · Open: **30** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-646 - Manual cockpit wallet sync accepts arbitrary wallet targets
+
+- Category: Authorization / Tezos indexing
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex cockpit wallet sync reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F4 + S2 + P2(3) = 12
+- Legacy identity: this distinct record formerly reused WTF-BB-077; it was assigned WTF-BB-646 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Evidence:
+  - `server/routes/cockpit.ts:292-304` documents a manual sync for one of the caller's wallets, but never verifies that `req.params.wallet` belongs to the authenticated user.
+  - The route enqueues `{ target: wallet, targetKind: "wallet", reason: "manual", userId: caller }` for any non-empty string.
+- Why it matters:
+  - Any account can push arbitrary wallet targets into the indexing queue, causing upstream TzKT work, noisy attribution, and possible data-pollution/backlog pressure.
+- Likely correction direction:
+  - Validate Tezos address format and require a matching `user_wallets` row for the caller before enqueueing, unless the caller has a staff permission.
+- Verification idea:
+  - A user should be able to enqueue only linked wallets; arbitrary or unlinked addresses should return 403/404.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
