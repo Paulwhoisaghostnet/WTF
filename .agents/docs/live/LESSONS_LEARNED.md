@@ -11239,3 +11239,13 @@
 **Rule**: For SSH-triggered host deployments, queue workflow runs instead of canceling in progress, and acquire a host-side file lock before fetch, reset, build, migration, or restart. Runner cancellation is not remote-process cancellation evidence.
 
 ---
+
+## 2026-09-01 — Operational toggles are part of the environment contract
+
+**What happened**: The deploy recovery introduced `WTF_DEPLOY_AUTO_PRUNE_UNUSED_IMAGES_ON_LOW_DISK`, and every functional deploy policy passed, but the clean quality job failed because the generated environment inventory had not been refreshed.
+
+**Why it mattered**: The production correction deployed successfully, yet the repository's documentation contract correctly remained red; operators would otherwise have an undiscoverable recovery control.
+
+**Rule**: Whenever code adds, removes, or renames an environment variable, regenerate and check the environment inventory in the same commit before relying on broader CI. A passing runtime test does not replace the generated configuration contract.
+
+---
