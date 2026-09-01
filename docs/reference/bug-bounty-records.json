@@ -307,7 +307,7 @@
     },
     {
       "id": "WTF-BB-030",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex platform-settings concurrency verification",
       "lastTouched": "2026-09-01",
       "category": "Data integrity / config",
@@ -318,7 +318,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "`platform_settings` updates are prone to lost updates across concurrent actors",
-      "body": "- Evidence: `server/routes/w.ts:1075-1083` inserts or upserts `platform_settings`, and `server/routes/w.ts:1084-1090` replaces whole row values whenever called, with no version/lock check.\n- Why it matters:\n  - Multiple admins/processes writing `w.gameshow_dm_conversation_id(s)` can overwrite each other nondeterministically.\n  - Operational config becomes lossy because no write ordering or intent logging is captured for this single global key.\n- Likely correction direction:\n  - Add optimistic concurrency control (`updatedAt` check or revision token) and event/audit logging before updates.\n- Verification idea:\n  - Simulate two writes in parallel and verify one does not silently clobber the other without explicit resolution.",
+      "body": "- Historical evidence:\n  - The April 27 route replaced complete `platform_settings` values through an unconditional upsert, allowing concurrent administrators or processes to overwrite one another without a conflict.\n- Correction:\n  - Commit `931b3cb9` introduced `updatedAt` revision reads, atomic compare-and-update writes, actor attribution, and HTTP 409 conflict responses for the W admin settings paths.\n  - Commit `68637964` closes the remaining fallback: a write without a revision may atomically create a missing key but cannot replace an existing row; malformed revisions fail validation; successful versioned updates advance their timestamp beyond the matched revision even inside the same millisecond.\n  - The production W digest currently returns 410 for the retired native-X groupchat and stream-rule admin routes, but the shared settings primitive is safe if those paths or another controlled setting writer are reactivated.\n- Verification (2026-09-01):\n  - Executable concurrent-write regressions launch two creates and two updates against shared state. Each case produces exactly one successful writer and one `PlatformSettingConflictError`, while preserving the winning value.\n  - The focused platform-settings, W settings, and W stream policy suite passes 20/20. The repository-wide TypeScript check passes with no errors.\n  - Invalid revision input is also proven to reject rather than silently enter the unversioned create path.",
       "legacyOriginalId": "WTF-BB-030"
     },
     {

@@ -11199,3 +11199,13 @@
 **Rule**: When one implementation satisfies multiple independently valid bounty records, keep each record for history but reconcile each one against its own acceptance criteria. Attach shared executable and production evidence to every satisfied record instead of assuming one verified umbrella item will update related findings automatically.
 
 ---
+
+## 2026-09-01 — Optional concurrency tokens must never restore overwrite semantics
+
+**What happened**: Platform settings had an atomic compare-and-update path when callers supplied `expectedUpdatedAt`, but omitting or malforming that value fell back to an unconditional conflict-update. A rapid successful update could also reuse the matched millisecond timestamp instead of advancing the revision.
+
+**Why it mattered**: The UI appeared to support optimistic locking, while a stale or nonconforming client could still silently replace an existing global setting and a non-advancing revision could weaken the next conflict check.
+
+**Rule**: An absent revision may create a missing singleton row but must conflict on an existing row; an invalid revision must fail validation. A successful compare-and-update must atomically match the old revision and write a strictly newer revision. Prove both create races and update races with two executable writers and exactly one winner.
+
+---

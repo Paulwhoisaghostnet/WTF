@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **32** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **396** · Archived: **4**
+Total: **634** · Open: **32** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **397** · Archived: **4**
 
 ## Canonical Board
 
@@ -100,7 +100,6 @@ Total: **634** · Open: **32** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-030 | Claimed | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 270 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -479,6 +478,7 @@ Total: **634** · Open: **32** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-070 | Verified | Codex Kiln assertion reconciliation | 2026-09-01 | Kiln integration / runtime assertions | P1 | 12 | 270 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
 | WTF-BB-046 | Verified | Swarm A5 | 2026-04-28 | Runtime / abuse prevention | P1 | 12 | 270 | 2 | 4 | 2 | API in-memory rate limiter grows without hard cap |
 | WTF-BB-045 | Verified | Swarm A6 | 2026-04-28 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 4 | 1 | TV auto-refresh reads an arbitrary config row |
+| WTF-BB-030 | Verified | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 270 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 270 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 270 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
 | WTF-BB-631 | Verified | Codex commission fulfillment | - | Release engineering / evidence harness | P1 | 11 | 369 | 3 | 4 | 0 | Commission release commands referenced files that never existed |
@@ -2079,23 +2079,6 @@ Total: **634** · Open: **32** · Claimed: **42** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
-
-### WTF-BB-030 - `platform_settings` updates are prone to lost updates across concurrent actors
-
-- Category: Data integrity / config
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex platform-settings concurrency verification
-- Last touched: 2026-09-01
-- Score: C3 + F3 + S2 + P1(4) = 12
-- Evidence: `server/routes/w.ts:1075-1083` inserts or upserts `platform_settings`, and `server/routes/w.ts:1084-1090` replaces whole row values whenever called, with no version/lock check.
-- Why it matters:
-  - Multiple admins/processes writing `w.gameshow_dm_conversation_id(s)` can overwrite each other nondeterministically.
-  - Operational config becomes lossy because no write ordering or intent logging is captured for this single global key.
-- Likely correction direction:
-  - Add optimistic concurrency control (`updatedAt` check or revision token) and event/audit logging before updates.
-- Verification idea:
-  - Simulate two writes in parallel and verify one does not silently clobber the other without explicit resolution.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -10856,6 +10839,25 @@ Copy this when adding a new issue:
   - Added `server/lib/tv-wtf-config.ts` to deterministically prefer rows with a real `channel_id`, then enabled rows, then the newest update/highest id.
   - Swapped WTF TV config selection in `server/routes/tv.ts`, `server/routes/admin.ts`, and `server/lib/tv-boot-backfill.ts` off the bare `LIMIT 1` path.
   - Verification: `node --import tsx --test server/lib/tv-wtf-config.test.ts` and `npm run check`.
+
+### WTF-BB-030 - `platform_settings` updates are prone to lost updates across concurrent actors
+
+- Category: Data integrity / config
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex platform-settings concurrency verification
+- Last touched: 2026-09-01
+- Score: C3 + F3 + S2 + P1(4) = 12
+- Historical evidence:
+  - The April 27 route replaced complete `platform_settings` values through an unconditional upsert, allowing concurrent administrators or processes to overwrite one another without a conflict.
+- Correction:
+  - Commit `931b3cb9` introduced `updatedAt` revision reads, atomic compare-and-update writes, actor attribution, and HTTP 409 conflict responses for the W admin settings paths.
+  - Commit `68637964` closes the remaining fallback: a write without a revision may atomically create a missing key but cannot replace an existing row; malformed revisions fail validation; successful versioned updates advance their timestamp beyond the matched revision even inside the same millisecond.
+  - The production W digest currently returns 410 for the retired native-X groupchat and stream-rule admin routes, but the shared settings primitive is safe if those paths or another controlled setting writer are reactivated.
+- Verification (2026-09-01):
+  - Executable concurrent-write regressions launch two creates and two updates against shared state. Each case produces exactly one successful writer and one `PlatformSettingConflictError`, while preserving the winning value.
+  - The focused platform-settings, W settings, and W stream policy suite passes 20/20. The repository-wide TypeScript check passes with no errors.
+  - Invalid revision input is also proven to reject rather than silently enter the unversioned create path.
 
 ### WTF-BB-007 - Production runtime image includes DB schema mutation tooling
 
