@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **34** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **3**
+Total: **634** · Open: **34** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **4**
 
 ## Canonical Board
 
@@ -102,7 +102,6 @@ Total: **634** · Open: **34** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-154 | Claimed | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -660,6 +659,7 @@ Total: **634** · Open: **34** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 633 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 633 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 185 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
+| WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 369 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
 | WTF-BB-075 | Archived | Operator review 2026-05-30 | 2026-05-30 | Kiln integration / public test infrastructure | P2 | 10 | 449 | 2 | 3 | 2 | Accepted: open Shadownet puppet wallets are intentional faucet-funded builder convenience |
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
@@ -2113,18 +2113,6 @@ Total: **634** · Open: **34** · Claimed: **42** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
-
-### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
-
-- Category: Build / dirty worktree isolation
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex dirty-worktree duplicate reconciliation
-- Last touched: 2026-09-01
-- Score: C3 + F4 + S1 + P1(4) = 12
-| WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
-
-## Issue Details
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -14890,6 +14878,23 @@ Copy this when adding a new issue:
   - Completed: replace the empty legacy instance, preserve economic storage, and restrict production signer calls to the V2 address.
 - Verification idea:
   - Completed with SmartPy tests, canonical compiled/live identity, both-network role choreography, exact treasury transfers, production DB/config migration, and signer allowlist inspection.
+
+### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
+
+- Category: Build / dirty worktree isolation
+- Priority: P1
+- Status: Archived
+- Owner/Session: Codex dirty-worktree duplicate reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F4 + S1 + P1(4) = 12
+- Archived as a malformed duplicate of canonical record `WTF-BB-644`; no separate product defect was described by this record.
+- Evidence:
+  - The legacy source opens a `WTF-BB-154` heading, but its only table row identifies `WTF-BB-147` and is immediately followed by the complete `WTF-BB-147` issue details.
+  - Canonicalization preserved that complete distinct issue as `WTF-BB-644`, including the affected Mastodon/Subdomains paths and verification direction; `WTF-BB-644` is already Verified.
+  - Repository history shows this malformed record entered the canonical data in commit `37b87694` and never contained independent evidence or acceptance criteria.
+  - The formerly untracked paths named by `WTF-BB-644` are tracked, and the active `main` checkout is clean at reconciliation time.
+- Resolution:
+  - Preserve this ID for audit history, but exclude it from the active queue. All substantive evidence and resolution remain on `WTF-BB-644`.
 
 ### WTF-BB-386 - A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added
 

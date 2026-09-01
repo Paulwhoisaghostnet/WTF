@@ -11179,3 +11179,13 @@
 **Rule**: Remove provably unused vulnerable roots before adding overrides or migrations. Treat automatic downgrade advice as a hypothesis: validate wallet behavior, clean install, audit, typecheck, full tests, and the real production build, and reject any audit-only change that breaks bundling semantics or operational performance.
 
 ---
+
+## 2026-09-01 — Canonical imports must reject header/body identity mismatches
+
+**What happened**: A legacy section headed `WTF-BB-154` contained a table row for `WTF-BB-147` and no independent issue details. Canonicalization imported the malformed shell as an open record while also preserving the complete underlying dirty-worktree finding as `WTF-BB-644`.
+
+**Why it mattered**: The release queue counted the same historical concern twice and presented a content-free P1 as unfinished product work, obscuring the board's actual remaining risks.
+
+**Rule**: During board import, treat a heading ID that disagrees with the first structured body ID as a reconciliation error. Preserve the source for audit history, but do not create a second active finding without independent evidence, correction criteria, and verification criteria.
+
+---

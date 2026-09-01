@@ -243,7 +243,7 @@
     },
     {
       "id": "WTF-BB-154",
-      "status": "Claimed",
+      "status": "Archived",
       "owner": "Codex dirty-worktree duplicate reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Build / dirty worktree isolation",
@@ -254,7 +254,7 @@
       "functionalityDanger": 4,
       "securityDanger": 1,
       "title": "Unrelated dirty Mastodon/Subdomains work can block scoped W verification",
-      "body": "| WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |\n\n## Issue Details",
+      "body": "- Archived as a malformed duplicate of canonical record `WTF-BB-644`; no separate product defect was described by this record.\n- Evidence:\n  - The legacy source opens a `WTF-BB-154` heading, but its only table row identifies `WTF-BB-147` and is immediately followed by the complete `WTF-BB-147` issue details.\n  - Canonicalization preserved that complete distinct issue as `WTF-BB-644`, including the affected Mastodon/Subdomains paths and verification direction; `WTF-BB-644` is already Verified.\n  - Repository history shows this malformed record entered the canonical data in commit `37b87694` and never contained independent evidence or acceptance criteria.\n  - The formerly untracked paths named by `WTF-BB-644` are tracked, and the active `main` checkout is clean at reconciliation time.\n- Resolution:\n  - Preserve this ID for audit history, but exclude it from the active queue. All substantive evidence and resolution remain on `WTF-BB-644`.",
       "legacyOriginalId": "WTF-BB-154"
     },
     {
