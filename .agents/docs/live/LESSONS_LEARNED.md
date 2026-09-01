@@ -11149,3 +11149,13 @@
 **Rule**: Check the current confirmed payment immediately before every state transition that can approve work or award value, and do so before mutation. Parent-scoped mutation routes must bind both parent and child identifiers; prove missing, pending, underpaid, malformed, exact, and overpaid cases plus write ordering.
 
 ---
+
+## 2026-08-31 — Canonicalization must not resurrect an archived proven correction
+
+**What happened**: The canonical bounty record still described Shadowbox as a single-contract runner even though the current runner, constitutional acceptance record, archived live scenario, and production capability endpoint all proved multi-contract targeted and payable execution with storage, balance, and big-map assertions.
+
+**Why it mattered**: The release board counted a resolved capability as an active P1 defect and directed engineering effort toward obsolete source behavior. At the same time, a fresh dependency audit exposed a real Kiln production risk that was not represented on the board.
+
+**Rule**: When canonicalizing or re-auditing an old finding, reconcile it against current source, executable guards, archived production evidence, and current live capabilities before carrying its status forward. Preserve the historical claim, but replace stale evidence with exact correction and verification records; separately record any new risk discovered during that verification.
+
+---
