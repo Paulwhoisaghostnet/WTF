@@ -259,7 +259,7 @@
     },
     {
       "id": "WTF-BB-070",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex Kiln assertion reconciliation",
       "lastTouched": "2026-09-01",
       "category": "Kiln integration / runtime assertions",
@@ -270,7 +270,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "Kiln live E2E cannot yet verify storage, balance, and big-map assertions",
-      "body": "- Evidence:\n  - The local Kiln API schema now accepts assertion objects, but live Tezos E2E fails closed when assertions are present because runtime readers are not implemented yet.\n- Why it matters:\n  - Without post-call storage and balance verification, E2E can prove operation inclusion but not application-level correctness.\n- Likely correction direction:\n  - Add RPC/TzKT-backed readers for contract storage, balances, and big maps with deterministic assertion evaluation and operation-level evidence.\n- Verification idea:\n  - E2E scenario creates a listing, swaps, reads `remaining_escrow_mutez`, and asserts the expected post-swap value.",
+      "body": "- Historical evidence:\n  - The May 2 finding correctly observed that Kiln accepted assertion objects but had no runtime readers for post-call storage, balance, or big-map state.\n- Correction:\n  - Current Kiln commit `0db7514` includes RPC-backed storage and balance reads plus TzKT-backed big-map reads, deterministic assertion evaluation, operation-level evidence, and fail-closed handling for unsupported or mismatched assertions.\n  - The same runner correction also satisfied the broader multi-contract Shadowbox record `WTF-BB-068`; this record retains the narrower runtime-assertion history.\n- Verification (2026-09-01):\n  - Archived production job `sbox_ae493400-ebed-433e-9cb8-1456e6888d31` ran on Kiln with two contracts and 2/2 successful steps, then recorded storage `ready`, balance `1000000`, and ledger big-map value `7` with no warnings.\n  - Five focused Kiln files passed 78/78 executable tests covering the runner, contract runtime, API, workflow, and Michelson compatibility; the WTF fail-closed scope guard passed 5/5.\n  - Live `https://kiln.wtfgameshow.app/api/health` reports Tezos Shadownet chain `NetXsqzbfFenSTS` with token auth. Live capabilities report required command-provider Shadowbox clearance, supported storage assertions, multi-contract targets, payable calls, blocked mock clearance, and fail-closed unsupported assertions.",
       "legacyOriginalId": "WTF-BB-070"
     },
     {

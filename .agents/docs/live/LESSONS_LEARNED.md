@@ -11189,3 +11189,13 @@
 **Rule**: During board import, treat a heading ID that disagrees with the first structured body ID as a reconciliation error. Preserve the source for audit history, but do not create a second active finding without independent evidence, correction criteria, and verification criteria.
 
 ---
+
+## 2026-09-01 — Shared corrections must close every independently tracked acceptance claim
+
+**What happened**: The Shadowbox multi-contract correction was verified under `WTF-BB-068`, but the narrower `WTF-BB-070` assertion-reader finding remained open even though the same runner, tests, archived job, and live capability endpoint proved storage, balance, and big-map evaluation.
+
+**Why it mattered**: The board continued to report a P1 runtime gap after the deployed system had satisfied its exact acceptance criteria, making the open queue less trustworthy.
+
+**Rule**: When one implementation satisfies multiple independently valid bounty records, keep each record for history but reconcile each one against its own acceptance criteria. Attach shared executable and production evidence to every satisfied record instead of assuming one verified umbrella item will update related findings automatically.
+
+---

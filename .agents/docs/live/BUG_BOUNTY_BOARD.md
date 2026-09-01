@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **33** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **4**
+Total: **634** · Open: **33** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **396** · Archived: **4**
 
 ## Canonical Board
 
@@ -101,7 +101,6 @@ Total: **634** · Open: **33** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-070 | Claimed | Codex Kiln assertion reconciliation | 2026-09-01 | Kiln integration / runtime assertions | P1 | 12 | 270 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -477,6 +476,7 @@ Total: **634** · Open: **33** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-107 | Verified | Codex pet care market removal pass | 2026-05-06 | Desktop pet / in-app market inventory | P1 | 12 | 270 | 3 | 4 | 1 | Pet care tray exposes market capability while food inventory defaults are not guaranteed |
 | WTF-BB-101 | Verified | Codex server verifier pass | 2026-05-05 | In-app market / catalog policy | P1 | 12 | 270 | 2 | 4 | 2 | Direct listing fallback can grant inactive catalog items |
 | WTF-BB-078 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / runtime env | P1 | 12 | 270 | 3 | 4 | 1 | Compose deployment blanks object-storage env by overriding env-file values with empty strings |
+| WTF-BB-070 | Verified | Codex Kiln assertion reconciliation | 2026-09-01 | Kiln integration / runtime assertions | P1 | 12 | 270 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
 | WTF-BB-046 | Verified | Swarm A5 | 2026-04-28 | Runtime / abuse prevention | P1 | 12 | 270 | 2 | 4 | 2 | API in-memory rate limiter grows without hard cap |
 | WTF-BB-045 | Verified | Swarm A6 | 2026-04-28 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 4 | 1 | TV auto-refresh reads an arbitrary config row |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 270 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
@@ -2096,23 +2096,6 @@ Total: **634** · Open: **33** · Claimed: **42** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
-
-### WTF-BB-070 - Kiln live E2E cannot yet verify storage, balance, and big-map assertions
-
-- Category: Kiln integration / runtime assertions
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex Kiln assertion reconciliation
-- Last touched: 2026-09-01
-- Score: C4 + F3 + S1 + P1(4) = 12
-- Evidence:
-  - The local Kiln API schema now accepts assertion objects, but live Tezos E2E fails closed when assertions are present because runtime readers are not implemented yet.
-- Why it matters:
-  - Without post-call storage and balance verification, E2E can prove operation inclusion but not application-level correctness.
-- Likely correction direction:
-  - Add RPC/TzKT-backed readers for contract storage, balances, and big maps with deterministic assertion evaluation and operation-level evidence.
-- Verification idea:
-  - E2E scenario creates a listing, swaps, reads `remaining_escrow_mutez`, and asserts the expected post-swap value.
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
@@ -10808,6 +10791,24 @@ Copy this when adding a new issue:
 - Local fix note: Removed the empty-string `S3_*`, `GDRIVE_REMOTE`, and `RCLONE_CONFIG` overrides from compose, and `scripts/server-deploy.sh` now creates a temporary readable env file from `/etc/wtf/wtf.env` when needed so both compose interpolation and container `env_file` loading work during deploy.
 - Verification: live Hetzner redeploy + `verifyObjectStorageAccess()` from inside the refreshed container returned `{\"ok\":true,\"bucket\":true,\"endpoint\":true}`
 - Verification idea: Recreate the app container on the host and confirm in-container `process.env.S3_ENDPOINT` is populated without needing ad-hoc shell exports.
+
+### WTF-BB-070 - Kiln live E2E cannot yet verify storage, balance, and big-map assertions
+
+- Category: Kiln integration / runtime assertions
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Kiln assertion reconciliation
+- Last touched: 2026-09-01
+- Score: C4 + F3 + S1 + P1(4) = 12
+- Historical evidence:
+  - The May 2 finding correctly observed that Kiln accepted assertion objects but had no runtime readers for post-call storage, balance, or big-map state.
+- Correction:
+  - Current Kiln commit `0db7514` includes RPC-backed storage and balance reads plus TzKT-backed big-map reads, deterministic assertion evaluation, operation-level evidence, and fail-closed handling for unsupported or mismatched assertions.
+  - The same runner correction also satisfied the broader multi-contract Shadowbox record `WTF-BB-068`; this record retains the narrower runtime-assertion history.
+- Verification (2026-09-01):
+  - Archived production job `sbox_ae493400-ebed-433e-9cb8-1456e6888d31` ran on Kiln with two contracts and 2/2 successful steps, then recorded storage `ready`, balance `1000000`, and ledger big-map value `7` with no warnings.
+  - Five focused Kiln files passed 78/78 executable tests covering the runner, contract runtime, API, workflow, and Michelson compatibility; the WTF fail-closed scope guard passed 5/5.
+  - Live `https://kiln.wtfgameshow.app/api/health` reports Tezos Shadownet chain `NetXsqzbfFenSTS` with token auth. Live capabilities report required command-provider Shadowbox clearance, supported storage assertions, multi-contract targets, payable calls, blocked mock clearance, and fail-closed unsupported assertions.
 
 ### WTF-BB-046 - API in-memory rate limiter grows without hard cap
 
