@@ -243,9 +243,9 @@
     },
     {
       "id": "WTF-BB-154",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-24",
+      "status": "Claimed",
+      "owner": "Codex dirty-worktree duplicate reconciliation",
+      "lastTouched": "2026-09-01",
       "category": "Build / dirty worktree isolation",
       "priority": "P1",
       "points": 12,

@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **634** · Open: **35** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **3**
+Total: **634** · Open: **34** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **395** · Archived: **3**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-154 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-070 | Open | - | 2026-05-02 | Kiln integration / runtime assertions | P1 | 12 | 270 | 4 | 3 | 1 | Kiln live E2E cannot yet verify storage, balance, and big-map assertions |
 | WTF-BB-052 | Open | - | 2026-04-27 | Data integrity / analytics | P1 | 12 | 270 | 4 | 3 | 1 | DB health scan shows most public tables empty and top populated tables still sparse |
 | WTF-BB-041 | Open | - | 2026-04-27 | TV microapp / config integrity | P1 | 12 | 270 | 3 | 3 | 2 | TV config table has no uniqueness guard on active config row |
@@ -103,6 +102,7 @@ Total: **634** · Open: **35** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 185 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 185 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
+| WTF-BB-154 | Claimed | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
@@ -663,18 +663,6 @@ Total: **634** · Open: **35** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 369 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
 | WTF-BB-075 | Archived | Operator review 2026-05-30 | 2026-05-30 | Kiln integration / public test infrastructure | P2 | 10 | 449 | 2 | 3 | 2 | Accepted: open Shadownet puppet wallets are intentional faucet-funded builder convenience |
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
-
-## Issue Details
-
-### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
-
-- Category: Build / dirty worktree isolation
-- Priority: P1
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-05-24
-- Score: C3 + F4 + S1 + P1(4) = 12
-| WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
 
 ## Issue Details
 
@@ -2125,6 +2113,18 @@ Total: **634** · Open: **35** · Claimed: **41** · In Progress: **13** · Bloc
   - Resume the exact claimed pre-write journal instead of replacing or replaying it.
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
+
+### WTF-BB-154 - Unrelated dirty Mastodon/Subdomains work can block scoped W verification
+
+- Category: Build / dirty worktree isolation
+- Priority: P1
+- Status: Claimed
+- Owner/Session: Codex dirty-worktree duplicate reconciliation
+- Last touched: 2026-09-01
+- Score: C3 + F4 + S1 + P1(4) = 12
+| WTF-BB-147 | Open | - | 2026-05-24 | Build / dirty worktree isolation | P1 | 12 | 7 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
+
+## Issue Details
 
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
