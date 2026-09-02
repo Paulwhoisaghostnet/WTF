@@ -706,9 +706,9 @@
     },
     {
       "id": "WTF-BB-074",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-03",
+      "status": "Claimed",
+      "owner": "Codex Netlify rollback verification",
+      "lastTouched": "2026-09-02",
       "category": "Kiln integration / deploy tooling",
       "priority": "P2",
       "points": 9,
@@ -717,7 +717,7 @@
       "functionalityDanger": 2,
       "securityDanger": 2,
       "title": "Netlify CLI rollback path is blocked by root-owned npm cache",
-      "body": "- Evidence:\n  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.\n  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 \"/Users/joshuafarnworth/.npm\"`.\n- Why it matters:\n  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.\n- Likely correction direction:\n  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.\n- Verification idea:\n  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.",
+      "body": "- Evidence:\n  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.\n  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 \"/Users/joshuafarnworth/.npm\"`.\n- Why it matters:\n  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.\n- Likely correction direction:\n  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.\n- Verification idea:\n  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.\n- Claim (2026-09-02):\n  - Codex reproduced the default-cache `EACCES`. The existing `deploy:netlify:status` wrapper correctly bypasses that cache with a pinned CLI and repo-local cache, but two cold/warm resolution attempts exceeded its 120-second guard while still installing legitimate dependencies. The item is claimed to complete and prove the existing correction rather than alter the unrelated Hetzner primary path.",
       "legacyOriginalId": "WTF-BB-074"
     },
     {

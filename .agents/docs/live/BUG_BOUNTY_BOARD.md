@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **10** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **421** · Archived: **4**
+Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **421** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
-| WTF-BB-074 | Open | - | 2026-05-03 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-060 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-042 | Open | - | 2026-04-27 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
@@ -80,6 +79,7 @@ Total: **637** · Open: **10** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-074 | Claimed | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -678,24 +678,6 @@ Total: **637** · Open: **10** · Claimed: **41** · In Progress: **13** · Bloc
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-074 - Netlify CLI rollback path is blocked by root-owned npm cache
-
-- Category: Kiln integration / deploy tooling
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-05-03
-- Score: C2 + F2 + S2 + P2(3) = 9
-- Evidence:
-  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.
-  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 "/Users/joshuafarnworth/.npm"`.
-- Why it matters:
-  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.
-- Likely correction direction:
-  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.
-- Verification idea:
-  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.
 
 ### WTF-BB-060 - DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)
 
@@ -1691,6 +1673,26 @@ Total: **637** · Open: **10** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-074 - Netlify CLI rollback path is blocked by root-owned npm cache
+
+- Category: Kiln integration / deploy tooling
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex Netlify rollback verification
+- Last touched: 2026-09-02
+- Score: C2 + F2 + S2 + P2(3) = 9
+- Evidence:
+  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.
+  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 "/Users/joshuafarnworth/.npm"`.
+- Why it matters:
+  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.
+- Likely correction direction:
+  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.
+- Verification idea:
+  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.
+- Claim (2026-09-02):
+  - Codex reproduced the default-cache `EACCES`. The existing `deploy:netlify:status` wrapper correctly bypasses that cache with a pinned CLI and repo-local cache, but two cold/warm resolution attempts exceeded its 120-second guard while still installing legitimate dependencies. The item is claimed to complete and prove the existing correction rather than alter the unrelated Hetzner primary path.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
