@@ -11517,3 +11517,13 @@
 **Rule**: Fail before connection setup when an infrastructure location is required but absent. Verify both the policy source and a real missing-location invocation, and keep insecure TLS behavior behind a named, warning-producing emergency override.
 
 ---
+
+## 2026-09-02 — Bounded output does not make a random database sort cheap
+
+**What happened**: The WTF TV refresh record remained Open after candidate selection had moved from `ORDER BY RANDOM()` to a deterministic activity/derivation/ID priority backed by a matching multicolumn index.
+
+**Why it mattered**: A `LIMIT` constrains returned rows but does not prevent the database from assigning and sorting random values across the eligible input. Stable ordering also makes refresh behavior diagnosable instead of changing arbitrarily between identical runs.
+
+**Rule**: For periodic candidate refreshes, order by product-relevant indexed state with a deterministic tie-breaker, apply the existing bounded limit, and keep schema plus migration definitions under a regression test that forbids random SQL sorting.
+
+---

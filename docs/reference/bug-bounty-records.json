@@ -818,7 +818,7 @@
     },
     {
       "id": "WTF-BB-043",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex TV refresh query reconciliation",
       "lastTouched": "2026-09-02",
       "category": "TV microapp / refresh scale",
@@ -829,7 +829,7 @@
       "functionalityDanger": 2,
       "securityDanger": 1,
       "title": "WTF TV refresh currently sorts all wallet rows randomly",
-      "body": "- Evidence:\n  - `server/routes/tv.ts:4777-4780` includes a wallet candidate query with `ORDER BY RANDOM()`.\n- Why it matters:\n  - `ORDER BY RANDOM()` scales poorly and can become expensive for large wallet tables.\n  - Refresh loops can become slower and less deterministic as dataset size increases.\n- Likely correction direction:\n  - Replace random sort with cursor/priority strategy or reservoir sampling via indexed state and deterministic batching.\n- Verification idea:\n  - Compare refresh wall-time on production-like wallet counts and verify coverage remains stable across runs.",
+      "body": "- Historical evidence:\n  - The WTF TV auto-playlist once selected wallet holdings with `ORDER BY RANDOM()`, forcing the database to randomize the eligible set before applying its bounded limit.\n- Correction:\n  - Ancestor commit `1ac70168` replaced the random sort with a deterministic priority order: newest `last_activity_at`, then newest `derived_at`, then ascending holding ID as a stable tie-breaker. The query remains capped at three times the configured playlist size before playable-asset filtering.\n  - Migration `0077_wallet_holdings_refresh_candidates.sql` and the matching Drizzle schema add `idx_holdings_refresh_candidates(last_activity_at, derived_at, id)` so the priority order has a persistent database index.\n- Verification (2026-09-02):\n  - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.\n  - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.",
       "legacyOriginalId": "WTF-BB-043"
     },
     {

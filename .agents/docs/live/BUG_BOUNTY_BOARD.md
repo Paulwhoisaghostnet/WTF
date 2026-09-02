@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **3** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **427** · Archived: **4**
+Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **428** · Archived: **4**
 
 ## Canonical Board
 
@@ -73,7 +73,6 @@ Total: **637** · Open: **3** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-043 | Claimed | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 572 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -632,6 +631,7 @@ Total: **637** · Open: **3** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-115 | Verified | Codex arcade/console split pass | 2026-05-08 | MCP / agent discoverability | P2 | 8 | 572 | 1 | 3 | 1 | Arcade MCP tools drifted from capabilities and scopes |
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 572 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 572 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
+| WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 572 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
 | WTF-BB-589 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Frontend security / tabnabbing link safety | P2 | 7 | 608 | 1 | 2 | 1 | Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes |
 | WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 608 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
 | WTF-BB-562 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Beta wtfOS / route catalog ownership | P2 | 7 | 608 | 1 | 3 | 0 | Dashboard is the unique session-owned Beta replacement for retired Hoard, with route, access, stage, persona, relationship, and browser coverage green |
@@ -1567,24 +1567,6 @@ Total: **637** · Open: **3** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-043 - WTF TV refresh currently sorts all wallet rows randomly
-
-- Category: TV microapp / refresh scale
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex TV refresh query reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F2 + S1 + P2(3) = 8
-- Evidence:
-  - `server/routes/tv.ts:4777-4780` includes a wallet candidate query with `ORDER BY RANDOM()`.
-- Why it matters:
-  - `ORDER BY RANDOM()` scales poorly and can become expensive for large wallet tables.
-  - Refresh loops can become slower and less deterministic as dataset size increases.
-- Likely correction direction:
-  - Replace random sort with cursor/priority strategy or reservoir sampling via indexed state and deterministic batching.
-- Verification idea:
-  - Compare refresh wall-time on production-like wallet counts and verify coverage remains stable across runs.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -14300,6 +14282,23 @@ Copy this when adding a new issue:
 - Local fix note: `scripts/server-deploy.sh` now unconditionally sets `COMMIT_SHA` from the checked-out repo head instead of allowing ambient host env to override it.
 - Verification: live Hetzner redeploy after the fix; `/api/health` now reports the actual deployed commit.
 - Verification idea: Compare `git rev-parse --short HEAD` on the host repo to the public/local health endpoint after each deploy.
+
+### WTF-BB-043 - WTF TV refresh currently sorts all wallet rows randomly
+
+- Category: TV microapp / refresh scale
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex TV refresh query reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F2 + S1 + P2(3) = 8
+- Historical evidence:
+  - The WTF TV auto-playlist once selected wallet holdings with `ORDER BY RANDOM()`, forcing the database to randomize the eligible set before applying its bounded limit.
+- Correction:
+  - Ancestor commit `1ac70168` replaced the random sort with a deterministic priority order: newest `last_activity_at`, then newest `derived_at`, then ascending holding ID as a stable tie-breaker. The query remains capped at three times the configured playlist size before playable-asset filtering.
+  - Migration `0077_wallet_holdings_refresh_candidates.sql` and the matching Drizzle schema add `idx_holdings_refresh_candidates(last_activity_at, derived_at, id)` so the priority order has a persistent database index.
+- Verification (2026-09-02):
+  - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
+  - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
 
 ### WTF-BB-589 - Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes
 
