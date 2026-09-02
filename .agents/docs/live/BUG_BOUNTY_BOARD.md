@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **428** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **144** · Verified: **431** · Archived: **4**
 
 ## Canonical Board
 
@@ -114,7 +114,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-439 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni operation finality and storage | P0 | 16 | 71 | 4 | 5 | 2 | Macaroni attempt 3 accepted a safe fee but `add_tokens_v2` backtracked because the fallback storage limit was 320 bytes versus 621 consumed, after which Studio displayed sync success; the production fallback is now conservatively unit-sized and every Studio/drop operation requires independently indexed `applied` status, with a fresh Shadownet replacement proof still required |
 | WTF-BB-378 | Fixed | Codex production outage repair | 2026-07-15 | Deploy / runtime and migration failure recovery | P0 | 16 | 71 | 3 | 5 | 3 | Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending |
 | WTF-BB-160 | Fixed | Codex Skywire session persistence hardening | 2026-05-24 | Skywire / AT Protocol session lifecycle | P0 | 16 | 71 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
-| WTF-BB-001 | Fixed | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 71 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-577 | Fixed | Codex Ravioli generation-independent restart safety | - | Pasta Protocol / Ravioli restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Fresh Ravioli has no generation-independent mid-journal resume |
 | WTF-BB-534 | Fixed | Codex Pasta alpha installer hardening | 2026-07-24 | Pasta Protocol / alpha installer traceability and runtime verification | P0 | 15 | 93 | 3 | 5 | 2 | All nine alpha packages now carry clean exact-commit/target provenance, bind CI artifacts and existing release tags to `GITHUB_SHA`, and run product-complete macOS/Windows installed-runtime plus stable-origin relaunch smoke; clean platform jobs and an arm64 device gate remain before Verified |
 | WTF-BB-498 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / holder-side backing verification | P0 | 15 | 93 | 4 | 4 | 2 | Ravioli rendered generative children without rechecking adapter reservation capacity |
@@ -122,7 +121,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-445 | Fixed | Codex Macaroni UI-LIVE proof | - | Pasta Protocol / Macaroni manager-operation inclusion | P0 | 15 | 93 | 4 | 5 | 1 | Valid Macaroni fallback operations can be starved by declared gas |
 | WTF-BB-433 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / portable site option decoding | P0 | 15 | 93 | 3 | 5 | 2 | The canonical self-hosted page treated Taquito `Some` wrappers as raw numbers/timestamps, allowing capped Gnocchi/Rotini exports to show invalid policy state or sold-out incorrectly; the site kit now unwraps options, generated-site browser fixtures reproduce capped/timed values, and six publisher copies are synchronized, with focused browser and fresh live export verification pending |
 | WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 93 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
-| WTF-BB-008 | Fixed | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 93 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
 | WTF-BB-576 | Fixed | Codex Ravioli alpha preflight repair | - | Pasta Protocol / Ravioli alpha preflight | P0 | 14 | 126 | 3 | 5 | 1 | Ravioli fresh preflight and fake-chain fixtures trail the bounded-child/finality contracts |
 | WTF-BB-572 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / Macaroni exact recovery | P0 | 14 | 126 | 3 | 5 | 1 | Macaroni V1 recovery rejects the RPC-normalized epoch timestamp |
 | WTF-BB-528 | Fixed | Codex Ravioli post-boundary-61 recovery | - | Pasta Protocol / UI-LIVE read reliability and browser lifecycle | P0 | 14 | 126 | 3 | 5 | 1 | Ravioli buyer readiness timeout leaked its browser and expired a live sale |
@@ -226,7 +224,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 511 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 511 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 511 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
-| WTF-BB-026 | Fixed | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 511 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 511 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 572 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -265,6 +262,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-410 | Verified | Codex full-send release pass | - | Desktop / Windows release integrity | P0 | 16 | 71 | 4 | 5 | 2 | Pasta Suite Windows serves the package directory at `/` |
 | WTF-BB-363 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Deploy / DB migration integrity | P0 | 16 | 71 | 3 | 5 | 3 | Production migration ledger records checksums without enforcing checksum equality and can bootstrap every migration as applied from the existence of one table |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 71 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
+| WTF-BB-001 | Verified | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 71 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 93 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
 | WTF-BB-583 | Verified | Codex Spaghetti and Penne alpha preflight | - | Pasta Protocol / human-alpha proof restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Spaghetti and Penne fresh runners cannot resume an applied prefix |
 | WTF-BB-582 | Verified | Codex Lasagna and Colander alpha preflight | - | Pasta Protocol / human-alpha proof restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Lasagna and Colander fresh runners cannot resume an applied prefix |
@@ -281,6 +279,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-232 | Verified | Codex in-app market V2 full-send fallback repair | 2026-06-10 | Tezos / in-app market contract rollout | P0 | 15 | 93 | 3 | 5 | 2 | Mainnet production had no in-app market env override, so the app could fall back to the V2 KT1 address while still defaulting the payload contract version to V1; fixed by coupling shared address and version defaults and verified by TypeScript, focused policy tests, inventory coverage, and full inventory E2E |
 | WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 93 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 93 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
+| WTF-BB-008 | Verified | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 93 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
 | WTF-BB-004 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 15 | 93 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
 | WTF-BB-633 | Verified | Codex commission fulfillment | - | UX / first-run navigation | P0 | 14 | 126 | 4 | 5 | 0 | First-run and mobile Help task labels are visually clipped |
 | WTF-BB-585 | Verified | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli dependency authentication | P0 | 14 | 126 | 3 | 5 | 1 | Ravioli fresh dependency gate rejects an authenticated Gnocchi recovery shape |
@@ -601,6 +600,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-060 | Verified | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-042 | Verified | Codex TV boot serialization reconciliation | 2026-09-02 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
+| WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 511 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
@@ -2594,20 +2594,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npm run test:e2e:inventory`
   - `npm run check:external-links`
 
-### WTF-BB-001 - Overlapping migration systems run every deploy
-
-- Category: Deploy / DB migrations
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Swarm A1
-- Last touched: 2026-04-28
-- Score: C4 + F5 + S2 + P0(5) = 16
-- Evidence: `.github/workflows/deploy.yml` applies `drizzle/cockpit_all.sql`, then all numbered SQL files from `0015+`, then runs `docker compose exec -T app npx drizzle-kit push --force`.
-- Why it matters: Multiple schema authorities can repeat work, disagree about target state, and leave the DB half-mutated while the deploy still proceeds.
-- Likely correction direction: Pick one production schema path. If SQL-first, make Drizzle push a local/dev tool only. If Drizzle-first, stop replaying broad SQL bundles on every deploy.
-- Verification idea: Fresh DB deploy and existing DB deploy both complete without duplicate DDL errors or Drizzle prompts.
-- Swarm A1 note (2026-04-28): Deploy now starts only `postgres`, waits for `pg_isready`, applies SQL migrations before the app boots, removes the production `drizzle-kit push --force` step, and no longer installs `drizzle-kit` in the runtime image. Supporting replay guards were added to `drizzle/0031_wtf_recapture.sql` so the SQL-first path can fail closed. Local checks: `git diff --check` passed and `rg` confirmed the production deploy path no longer references `drizzle-kit push`. Still needs a real deploy run before marking `Verified`.
-
 ### WTF-BB-577 - Fresh Ravioli has no generation-independent mid-journal resume
 
 - Category: Pasta Protocol / Ravioli restart safety
@@ -2774,20 +2760,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npm run build`
   - `npm run test:e2e:inventory:coverage`
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
-
-### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
-
-- Category: Build / secrets
-- Priority: P0
-- Status: Fixed
-- Owner/Session: gardener session
-- Last touched: 2026-04-27
-- Score: C2 + F3 + S5 + P0(5) = 15
-- Evidence: No `WTF/.dockerignore` was present, while `WTF/.env` exists. Docker build output showed Vite injecting env from `.env`.
-- Why it matters: Secrets can enter the build context and possibly image layers when `COPY . .` runs in the builder stage.
-- Likely correction direction: Add a tight `.dockerignore`, remove secret files from build context, and audit built image history/layers if needed.
-- Local fix note: Added `WTF/.dockerignore` to exclude env files, dependency folders, build outputs, local cache/upload/backup volumes, editor metadata, and test reports from Docker build context. Still needs Docker build-context verification before marking `Verified`.
-- Verification idea: Docker build context excludes `.env`; build logs no longer report env injection from `.env`.
 
 ### WTF-BB-576 - Ravioli fresh preflight and fake-chain fixtures trail the bounded-child/finality contracts
 
@@ -5004,23 +4976,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Verification idea:
   - Replay flood traffic with varied `sessionId`s and verify memory and queue-blacklist behavior remain bounded.
 
-### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
-
-- Category: API / reliability
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex TzKT upstream consolidation
-- Last touched: 2026-09-02
-- Score: C3 + F2 + S1 + P2(3) = 9
-- Historical evidence:
-  - Profile, contract-metadata, operation-verification, and operator-balance readers once owned hardcoded TzKT/TzProfiles URLs and independent raw-fetch/retry behavior, creating multiple endpoint and rate-policy authorities.
-- Correction (completed 2026-09-02):
-  - Earlier ancestor corrections moved profile resolution, operation verification, operator balances, WTF Domains, contract activity, and operator reconciliation onto named shared upstream clients. This pass moved the remaining listed contract-metadata scheduler off its local URL/fetch/retry loop and onto the shared TzKT client while retaining the stale-contract 404 marker.
-  - The shared TzKT client now obtains its base URL from the single network-aware contract-config resolver, so `TZKT_API_URL` overrides and Shadownet selection cannot drift between readers. Callers inherit one rate bucket, timeout, retry budget, Retry-After policy, headers, and error shape. Caller cancellation is combined with the timeout signal and exits without retrying cancelled work.
-- Verification:
-  - The focused upstream/kernel suite passes 5/5, proving retry budgets, caller cancellation, and that every file named by this record uses the shared client without raw fetch or local retry constants. Explicit probes route a custom `TZKT_API_URL` to its supplied host and unset-override `TEZOS_NETWORK=shadownet` to `https://api.shadownet.tzkt.io/v1`.
-  - Production build and full TypeScript check pass. The source correction awaits `main` deployment and live verification, so WTF-BB-026 is Fixed.
-
 ### WTF-BB-010 - Entrypoint recursively `chown -R`s mounted volumes every boot
 
 - Category: Startup performance
@@ -5920,6 +5875,23 @@ Copy this when adding a new issue:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run test:e2e:inventory`.
 
+### WTF-BB-001 - Overlapping migration systems run every deploy
+
+- Category: Deploy / DB migrations
+- Priority: P0
+- Status: Verified
+- Owner/Session: Swarm A1
+- Last touched: 2026-04-28
+- Score: C4 + F5 + S2 + P0(5) = 16
+- Historical evidence:
+  - Production once replayed overlapping broad/numbered SQL paths and then ran `drizzle-kit push --force`, leaving multiple schema authorities in one deploy.
+- Correction:
+  - Production is now SQL-first through `scripts/apply-production-migrations.sh`. It enumerates one sorted numbered-migration stream, records immutable SHA-256 checksums in `production_schema_migrations`, refuses checksum drift and unreviewed empty-ledger bootstrap, uses `psql ON_ERROR_STOP=1`, and records a migration only after its SQL succeeds.
+  - `scripts/server-deploy.sh` builds the image, starts only Postgres, waits for readiness, applies that migration stream, and replaces the app only after migrations pass. Production deploy source contains no `drizzle-kit push`; Drizzle push remains a local/manual package command.
+- Verification (2026-09-02):
+  - Migration/deploy policy suite passes 19/19, including fail-closed SQL, immutable checksums, no interactive schema path, and app-start ordering.
+  - Hetzner deploy run `33610255740` applied/skipped the complete checksum-ledger migration sequence, logged `migrations passed; replacing app`, then passed readiness with `commitRef: 1238a78d`. Quality Gates run `33610255781` also succeeded. WTF-BB-001 is Verified.
+
 ### WTF-BB-630 - Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence
 
 - Category: Pasta Protocol / fresh-run restart replay boundary
@@ -6293,6 +6265,23 @@ Copy this when adding a new issue:
   - `NODE_ENV=production DATABASE_URL='postgresql://user:pass@127.0.0.1:5432/postgres' PUBLIC_SITE_URL='https://wtf.example.com' CORS_ALLOWED_ORIGINS='' npx tsx --eval "import { createApp } from './server/app.ts'; (async () => { await createApp(); console.log('CREATE_APP_OK'); process.exit(0); })().catch((err) => { console.error(String(err?.message || err)); process.exit(1); });"` → exited `0` and printed `CREATE_APP_OK`
   - `npm run check` → passed
 - Verification idea: Production boot without an allowed-origin config fails clearly, or cross-origin credentialed requests are rejected.
+
+### WTF-BB-008 - Missing `.dockerignore` likely sends `.env` into Docker build context
+
+- Category: Build / secrets
+- Priority: P0
+- Status: Verified
+- Owner/Session: gardener session
+- Last touched: 2026-04-27
+- Score: C2 + F3 + S5 + P0(5) = 15
+- Historical evidence:
+  - The Docker builder uses `COPY . .`; before `.dockerignore` existed, a local `.env` could enter the build context and be read by Vite during image construction.
+- Correction:
+  - The root `.dockerignore` excludes `.env`, `.env.*`, dependency/build/test outputs, runtime uploads/cache/backups, operator evidence, local editor/agent state, and platform wallet keyring material before Docker receives the context. Git ignores the same local env family.
+  - Quality Gates enforce the required context exclusions and Vite env boundary on every push.
+- Verification (2026-09-02):
+  - Focused Docker/supply-chain/Vite policy suite passes 10/10, and `git check-ignore --no-index` confirms `.env`, `.env.local`, `.env.production`, and nested env files are excluded.
+  - Hetzner deploy run `33610255740` built production commit `1238a78d` through the real `COPY . .` path and Vite reported `injected env (0) from .env`; the deploy succeeded and public health reports the same commit. WTF-BB-008 is Verified.
 
 ### WTF-BB-004 - `drizzle-kit push --force` prompts in non-interactive production shell
 
@@ -13643,6 +13632,23 @@ Copy this when adding a new issue:
 - Verification:
   - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.
   - Exact fix commit `3775bbe2` passed Quality Gates run `33602174137` and Hetzner deploy run `33602174163`; public health reports `commitRef: 3775bbe2`. WTF-BB-033 is Verified.
+
+### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
+
+- Category: API / reliability
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex TzKT upstream consolidation
+- Last touched: 2026-09-02
+- Score: C3 + F2 + S1 + P2(3) = 9
+- Historical evidence:
+  - Profile, contract-metadata, operation-verification, and operator-balance readers once owned hardcoded TzKT/TzProfiles URLs and independent raw-fetch/retry behavior, creating multiple endpoint and rate-policy authorities.
+- Correction (completed 2026-09-02):
+  - Earlier ancestor corrections moved profile resolution, operation verification, operator balances, WTF Domains, contract activity, and operator reconciliation onto named shared upstream clients. This pass moved the remaining listed contract-metadata scheduler off its local URL/fetch/retry loop and onto the shared TzKT client while retaining the stale-contract 404 marker.
+  - The shared TzKT client now obtains its base URL from the single network-aware contract-config resolver, so `TZKT_API_URL` overrides and Shadownet selection cannot drift between readers. Callers inherit one rate bucket, timeout, retry budget, Retry-After policy, headers, and error shape. Caller cancellation is combined with the timeout signal and exits without retrying cancelled work.
+- Verification:
+  - The focused upstream/kernel suite passes 5/5, proving retry budgets, caller cancellation, and that every file named by this record uses the shared client without raw fetch or local retry constants. Explicit probes route a custom `TZKT_API_URL` to its supplied host and unset-override `TEZOS_NETWORK=shadownet` to `https://api.shadownet.tzkt.io/v1`. Production build and full TypeScript check pass.
+  - Exact fix commit `1238a78d` passed Quality Gates run `33610255781` and Hetzner deploy run `33610255740`; public health reports `commitRef: 1238a78d`. WTF-BB-026 is Verified.
 
 ### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
 

@@ -11537,3 +11537,23 @@
 **Rule**: Keep shared harness response keys under a contract test against both the production route and consumer, then run at least one focused browser story with no route override and assert the visible loaded state.
 
 ---
+
+## 2026-09-02 — Prove secret exclusion at the real Docker build boundary
+
+**What happened**: The missing-`.dockerignore` record remained Fixed after the repository gained explicit env, keyring, runtime-state, test, and evidence exclusions. Static policy was green, but the record still lacked proof from the actual production builder.
+
+**Why it mattered**: Ignoring a secret in Git does not exclude it from Docker, and checking patterns alone does not prove the production build consumed the intended ignore file before `COPY . .`.
+
+**Rule**: Pair Git-ignore checks with Docker-context policy tests, then inspect a successful real deploy build and require Vite to report zero injected `.env` values before marking the boundary Verified.
+
+---
+
+## 2026-09-02 — A migration authority is proven by the deploy transcript
+
+**What happened**: The overlapping-migration record remained Fixed after production had consolidated onto a checksum-ledgered SQL stream and removed `drizzle-kit push` from deploys. The final missing evidence was an actual existing-database deployment completing that stream before app replacement.
+
+**Why it mattered**: Static scripts can express the intended authority while a workflow still invokes a second path or starts the app too early. A successful health check alone also cannot show migrations were fail-closed and ordered before replacement.
+
+**Rule**: Verify one production migration enumerator in source, immutable applied-file checksums, fail-closed SQL policy, and a real deploy transcript that shows migrations pass before the app is replaced and readiness reports the deployed commit.
+
+---
