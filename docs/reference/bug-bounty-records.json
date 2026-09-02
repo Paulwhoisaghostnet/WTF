@@ -818,9 +818,9 @@
     },
     {
       "id": "WTF-BB-043",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex TV refresh query reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "TV microapp / refresh scale",
       "priority": "P2",
       "points": 8,
