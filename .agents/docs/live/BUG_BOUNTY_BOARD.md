@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **124** · Verified: **451** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **124** · Verified: **452** · Archived: **4**
 
 ## Canonical Board
 
@@ -78,7 +78,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
-| WTF-BB-092 | In Progress | Codex MCP agent layer pass | 2026-05-04 | MCP / agent access control | P1 | 14 | 126 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 185 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 185 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 185 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
@@ -320,6 +319,7 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-130 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Public repo / operational intel | P1 | 14 | 126 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
 | WTF-BB-129 | Verified | Codex platform wallet keyring pass | 2026-09-02 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-126 | Verified | Codex recapture payment-boundary pass | 2026-08-30 | Tezos recapture / settlement | P1 | 14 | 126 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
+| WTF-BB-092 | Verified | Codex MCP agent layer pass | 2026-09-02 | MCP / agent access control | P1 | 14 | 126 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
 | WTF-BB-066 | Verified | Codex security hardening pass | 2026-05-30 | Kiln integration / security | P1 | 14 | 126 | 2 | 3 | 5 | Deploy runs `check-kiln-auth.mjs` + mutation probe; open Shadownet mode is intentional |
 | WTF-BB-050 | Verified | Codex auth dependency verification pass | 2026-08-31 | Dependencies / security | P1 | 14 | 126 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
 | WTF-BB-039 | Verified | Codex TV stream snapshot cache production verification | 2026-05-04 | TV microapp / stream performance | P1 | 14 | 126 | 3 | 3 | 4 | Stream endpoint rebuilds full queue and full bumpers each call |
@@ -1724,21 +1724,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - Added a derived AppView intelligence layer over the scoped AT Protocol records: operator brief cards, ecosystem lanes, largest value flows, and value-adder/value-extractor leaderboards now summarize the record stream without adding interpretation to the tz2at relay itself.
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
-
-### WTF-BB-092 - Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates
-
-- Category: MCP / agent access control
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex MCP agent layer pass
-- Last touched: 2026-05-04
-- Score: C4 + F4 + S2 + P1(4) = 14
-- Evidence: WTF currently exposes browser/session APIs but has no dedicated MCP pairing token, agent rate limit, or MCP-aware enforcement of admin-disabled sub apps. The requested MCP layer will let agents read public blockchain-derived rows and mutate user-owned settings/pet/account-adjacent state, so it is a new abuse boundary.
-- Why it matters: An unauthenticated or over-broad agent surface could leak private user data, ignore operator feature shutdowns, or let an agent spam write paths on behalf of a paired user.
-- Likely correction direction: Add a per-user token table storing only hashes, generate/revoke endpoints in user settings, a Streamable HTTP MCP endpoint with token-scoped authentication and rate limits, public-data-only read tools, and tool-level checks against the same admin desktop-app config used by the control panel.
-- Local fix note: Added `mcp_agent_tokens` with one-time-visible bearer tokens stored as SHA-256 hashes, `/api/mcp/tokens` generate/list/revoke APIs, a rate-limited Streamable HTTP `/mcp` endpoint, and an MCP tool layer for capabilities, desktop appearance, desktop pet care, public token search, unlisted trade-board discovery, trade-board mutation for the paired user, listing workflow preparation, and public TV channel discovery. Tool handlers check admin desktop-app gates before serving gated sub-app features.
-- Verification: `npm run check`; `node --import tsx/esm --test server/lib/mcp-agent-auth.test.ts server/lib/wtf-mcp.test.ts`; `npm run build`
-- Verification idea: Unit-test token hashing/auth, feature-gate denial, and public read/write tool behavior; manually confirm generated tokens are shown once and revoked tokens fail.
 
 ### WTF-BB-342 - Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface
 
@@ -7163,6 +7148,25 @@ Copy this when adding a new issue:
   - `npx tsx --test client/src/pages/gameshow-native-presentation-policy.test.ts server/lib/wtf-op-verification.test.ts` passed 7/7 UI-boundary and on-chain-write-order checks.
   - A fresh production build passed. The focused Gamma browser journey passed 1/1 and proved the payment-boundary notice plus the `Record off-chain bid` action render inside the selected presentation shell.
   - A newly discovered, separate server/contract Merkle-proof parity defect is tracked as WTF-BB-659; it does not erase the now-explicit manual signing boundary.
+
+### WTF-BB-092 - Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates
+
+- Category: MCP / agent access control
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex MCP agent layer pass
+- Last touched: 2026-09-02
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Historical evidence:
+  - WTF originally exposed browser/session APIs without a dedicated MCP pairing token, agent rate limit, or MCP-aware enforcement of admin-disabled sub apps.
+  - The first MCP implementation added token scopes, but several older private-read and user-mutation tools did not enforce them, so a valid narrow token could still reach desktop, pet, trade-board, listing-planning, and bundle behavior outside its requested grants.
+- Correction:
+  - `mcp_agent_tokens` stores only SHA-256 token hashes and one-time-visible prefixes; signed-in users can create, list, and revoke only their own tokens. Authentication excludes revoked rows and updates last-use metadata after a timing-safe hash check.
+  - `/mcp` requires the bearer token independently of browser cookies, suppresses `Set-Cookie`, applies per-token/IP bounded rate limiting, attributes activity to the paired user, caps scopes to account role, and checks current desktop-app gates. Public-data tools select public/on-chain-derived fields; private reads and user-bound mutations require their domain read/write scopes before data access or side effects.
+- Verification (2026-09-02):
+  - Focused token, MCP, scope, response-cookie, and route-wiring checks passed 25/25. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 registered routes, and 16 domain workflows; full TypeScript and production build passed.
+  - Commit `ce5df56d` deployed successfully in Hetzner run 33652732056; public readiness reports exact commit `ce5df56d` with database, chain, and jobs healthy. Anonymous `/mcp` and `/api/mcp/tokens` probes return 401.
+  - The production Bert actor proof passed 1/1: it created a narrow token, observed the one-time bearer and stored prefix, listed tools without receiving a browser cookie, used the permitted versioned API bridge, received an MCP scope error for a desktop mutation missing `desktop:write`, revoked the token, and received 401 when reusing that bearer. WTF-BB-092 is Verified.
 
 ### WTF-BB-066 - Deploy runs `check-kiln-auth.mjs` + mutation probe; open Shadownet mode is intentional
 
