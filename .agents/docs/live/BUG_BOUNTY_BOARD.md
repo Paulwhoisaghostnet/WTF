@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **123** · Verified: **452** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **123** · Verified: **453** · Archived: **4**
 
 ## Canonical Board
 
@@ -80,7 +80,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 185 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 185 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
-| WTF-BB-020 | In Progress | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 185 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 185 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 270 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 370 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
@@ -386,6 +385,7 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-080 | Verified | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 185 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Verified | Codex Shadowbox evidence reconciliation | 2026-08-31 | Kiln integration / Shadowbox | P1 | 13 | 185 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 13 | 185 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
+| WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 185 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 185 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-670 | Verified | Codex credential-independent Hetzner deploy transport | 2026-09-02 | Deploy / Hetzner source transport | P1 | 12 | 270 | 2 | 5 | 1 | Production deploy intermittently depends on an unavailable GitHub credential stored on the server |
 | WTF-BB-644 | Verified | Codex full-send cleanup pass | - | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
@@ -1835,25 +1835,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 - Local verification: `node --import tsx/esm --test server/lib/portfolio-costing.test.ts server/lib/tzkt-ops.test.ts` passed.
 - Verification idea:
   - Replay mixed backfill + read traffic and confirm upstream request rates and retry paths are now centralized.
-
-### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
-
-- Category: DB connectivity / TLS
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Swarm A3
-- Last touched: 2026-04-28
-- Score: C2 + F2 + S5 + P1(4) = 13
-- Evidence: `scripts/db-push.mjs` rewrites Supabase URLs with `sslmode=no-verify`, `scripts/run-boot-backfill.ts` defaults to `&sslmode=no-verify`, and `scripts/check-db-connection.mjs` creates a Supabase `Client` with `ssl: { rejectUnauthorized: false }`.
-- Why it matters: Disabling certificate verification in DB connection paths allows active network interception of credentials and query traffic if the transport layer is compromised.
-- Likely correction direction: Remove forced SSL overrides, require TLS verification by default, and gate exceptions behind an explicit, auditable emergency flag with environment-based allowlisting.
-- Local fix note: `scripts/db-push.mjs` and `scripts/run-boot-backfill.ts` now default Supabase URLs to `sslmode=require`, while `scripts/check-db-connection.mjs` verifies certificates by default. The only remaining downgrade path is `ALLOW_INSECURE_DB_TLS=1`, which logs a warning when used.
-- Verification:
-  - `rg -n "sslmode=no-verify|rejectUnauthorized:\\s*false|ALLOW_INSECURE_DB_TLS|sslmode=require" scripts/db-push.mjs scripts/run-boot-backfill.ts scripts/check-db-connection.mjs` → default URL builders now emit `sslmode=require`; remaining `no-verify` references are warning text tied to `ALLOW_INSECURE_DB_TLS=1`
-  - `node --check scripts/db-push.mjs` → passed
-  - `node --check scripts/check-db-connection.mjs` → passed
-  - `npm run check` → passed
-- Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.
 
 ### WTF-BB-005 - `token_sales` duplicates make unique-index migrations impossible
 
@@ -8759,6 +8740,25 @@ Copy this when adding a new issue:
   - Require a signed source token for client log writes and add endpoint-specific, authenticated rate limiting separate from viewer exception paths.
 - Verification idea:
   - Verify anonymous burst traffic to this endpoint no longer succeeds when limits are exceeded and log table growth remains bounded.
+
+### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
+
+- Category: DB connectivity / TLS
+- Priority: P1
+- Status: Verified
+- Owner/Session: Swarm A3
+- Last touched: 2026-09-02
+- Score: C2 + F2 + S5 + P1(4) = 13
+- Historical evidence:
+  - Migration/backfill/connection helpers once forced `sslmode=no-verify` or `rejectUnauthorized: false`, allowing active interception of database credentials and query traffic if transport routing was compromised.
+  - The first correction changed URL producers to `sslmode=require`. Installed `pg` currently aliases that mode to `verify-full`, but explicitly warns the next major version will adopt standard weaker libpq `require` semantics. Operator-supplied Supabase URLs could also override an adjacent client TLS option during connection-string parsing.
+- Correction:
+  - `db-push`, boot backfill, database connection check, and URL resolver now emit or normalize every Supabase URL to `sslmode=verify-full`, including operator-supplied backup URLs. This explicitly requires certificate-chain and hostname verification across current and future `pg` semantics.
+  - The only downgrade remains `ALLOW_INSECURE_DB_TLS=1`; the affected operational scripts name it explicitly and log a warning when it is used.
+- Verification (2026-09-02):
+  - Focused database TLS and Supabase-region policy tests passed 4/4; script syntax, full TypeScript, production build, board integrity, environment inventory, and diff checks passed. The source policy rejects reintroduction of the `sslmode=require` alias and proves supplied URLs are normalized before client creation.
+  - A local PostgreSQL SSL negotiation probe presented a fresh self-signed certificate to `pg` using the exact `sslmode=verify-full` policy; the client rejected the handshake with `self-signed certificate` before authentication.
+  - Commit `ca84c7ad` deployed successfully in Hetzner run 33663138367, and production readiness reports exact commit `ca84c7ad` with database, chain, and jobs healthy. WTF-BB-020 is Verified.
 
 ### WTF-BB-019 - OAuth and Studio secret encryption fall back to `SESSION_SECRET`
 

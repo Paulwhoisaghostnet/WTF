@@ -2866,9 +2866,9 @@
     },
     {
       "id": "WTF-BB-020",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Swarm A3",
-      "lastTouched": "2026-04-28",
+      "lastTouched": "2026-09-02",
       "category": "DB connectivity / TLS",
       "priority": "P1",
       "points": 13,
@@ -2877,7 +2877,7 @@
       "functionalityDanger": 2,
       "securityDanger": 5,
       "title": "Supabase migration and connection scripts disable TLS certificate verification",
-      "body": "- Evidence: `scripts/db-push.mjs` rewrites Supabase URLs with `sslmode=no-verify`, `scripts/run-boot-backfill.ts` defaults to `&sslmode=no-verify`, and `scripts/check-db-connection.mjs` creates a Supabase `Client` with `ssl: { rejectUnauthorized: false }`.\n- Why it matters: Disabling certificate verification in DB connection paths allows active network interception of credentials and query traffic if the transport layer is compromised.\n- Likely correction direction: Remove forced SSL overrides, require TLS verification by default, and gate exceptions behind an explicit, auditable emergency flag with environment-based allowlisting.\n- Local fix note: `scripts/db-push.mjs` and `scripts/run-boot-backfill.ts` now default Supabase URLs to `sslmode=require`, while `scripts/check-db-connection.mjs` verifies certificates by default. The only remaining downgrade path is `ALLOW_INSECURE_DB_TLS=1`, which logs a warning when used.\n- Verification:\n  - `rg -n \"sslmode=no-verify|rejectUnauthorized:\\\\s*false|ALLOW_INSECURE_DB_TLS|sslmode=require\" scripts/db-push.mjs scripts/run-boot-backfill.ts scripts/check-db-connection.mjs` → default URL builders now emit `sslmode=require`; remaining `no-verify` references are warning text tied to `ALLOW_INSECURE_DB_TLS=1`\n  - `node --check scripts/db-push.mjs` → passed\n  - `node --check scripts/check-db-connection.mjs` → passed\n  - `npm run check` → passed\n- Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.",
+      "body": "- Historical evidence:\n  - Migration/backfill/connection helpers once forced `sslmode=no-verify` or `rejectUnauthorized: false`, allowing active interception of database credentials and query traffic if transport routing was compromised.\n  - The first correction changed URL producers to `sslmode=require`. Installed `pg` currently aliases that mode to `verify-full`, but explicitly warns the next major version will adopt standard weaker libpq `require` semantics. Operator-supplied Supabase URLs could also override an adjacent client TLS option during connection-string parsing.\n- Correction:\n  - `db-push`, boot backfill, database connection check, and URL resolver now emit or normalize every Supabase URL to `sslmode=verify-full`, including operator-supplied backup URLs. This explicitly requires certificate-chain and hostname verification across current and future `pg` semantics.\n  - The only downgrade remains `ALLOW_INSECURE_DB_TLS=1`; the affected operational scripts name it explicitly and log a warning when it is used.\n- Verification (2026-09-02):\n  - Focused database TLS and Supabase-region policy tests passed 4/4; script syntax, full TypeScript, production build, board integrity, environment inventory, and diff checks passed. The source policy rejects reintroduction of the `sslmode=require` alias and proves supplied URLs are normalized before client creation.\n  - A local PostgreSQL SSL negotiation probe presented a fresh self-signed certificate to `pg` using the exact `sslmode=verify-full` policy; the client rejected the handshake with `self-signed certificate` before authentication.\n  - Commit `ca84c7ad` deployed successfully in Hetzner run 33663138367, and production readiness reports exact commit `ca84c7ad` with database, chain, and jobs healthy. WTF-BB-020 is Verified.",
       "legacyOriginalId": "WTF-BB-020"
     },
     {
