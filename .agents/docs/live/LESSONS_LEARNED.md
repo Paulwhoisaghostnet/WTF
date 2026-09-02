@@ -11767,3 +11767,13 @@
 **Rule**: Pair exhaustive isolated mutation-and-reload proof with authenticated, read-only production probes of each deployed API family and real persisted collections. Use production mutations only when the missing claim cannot be established without them and cleanup is complete.
 
 ---
+
+## 2026-09-02 — Clean-checkout unit tests must declare import-time database context
+
+**What happened**: The focused Objkt Operator policy test imported server role helpers, which imported the database module and stopped before any assertion because the clean verification checkout intentionally had no `DATABASE_URL`.
+
+**Why it mattered**: The failure looked like a product regression even though the test never opened a connection and passed unchanged once given an isolated non-routable test descriptor. Undeclared import-time configuration makes focused verification depend on a developer's ambient environment.
+
+**Rule**: When a focused unit imports server wiring that validates `DATABASE_URL` at module load, provide an explicit isolated test descriptor in the verification command or refactor the dependency boundary so pure policy tests do not require database configuration. Never borrow production credentials to satisfy a non-connecting test.
+
+---

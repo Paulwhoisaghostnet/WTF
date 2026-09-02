@@ -1522,7 +1522,7 @@
     },
     {
       "id": "WTF-BB-406",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Codex Rotini self-contained artifact repair",
       "lastTouched": "-",
       "category": "Pasta Protocol / Rotini artifact interoperability",
@@ -2492,8 +2492,8 @@
       "complexity": 4,
       "functionalityDanger": 5,
       "securityDanger": 2,
-      "title": "Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending",
-      "body": "- Evidence:\n  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process.\n  - Stopping that process removed access to the interface, and no deployed wtfOS route or durable server state existed.\n  - The replacement now has an owner-gated `/objkt-operator` AppWindow, owner-keyed `objkt_operator_states` PostgreSQL row, and a focused browser proof covering score review, approval, and reload persistence.\n- Why it matters:\n  - The user needs a private operator available independently of a Codex conversation. Ephemeral browser state cannot support a persistent acquisition workflow or trustworthy spending controls.\n  - Moving state server-side must not turn the wtfOS database into wallet custody; mnemonic words and signing passwords remain explicitly out of scope.\n- Correction direction:\n  - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.\n- Verification idea:\n  - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.",
+      "title": "Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries",
+      "body": "- Historical evidence:\n  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process. Stopping that process removed access to the interface.\n- Correction:\n  - The native `/objkt-operator` AppWindow persists creator reviews, score evidence, policy, scans, signing queue, public wallet metadata, and event history in the owner-keyed `objkt_operator_states` PostgreSQL table.\n  - Access requires both an administrator role and the explicit `OBJKT_OPERATOR_OWNER_USERNAMES` allowlist. Kukai remains the external signer; no mnemonic or signing password enters wtfOS.\n- Verification (2026-09-02):\n  - Focused owner-policy, settings, discovery, scoring, and candidate-policy tests pass 7/7. Focused Chromium passes the owner creator-review and reload-persistence story 1/1. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 16 workflows.\n  - `https://operator.wtfos.app/` serves valid TLS, redirects to `/objkt-operator`, and the app route returns HTTP 200. Production has the migration table and one configured-owner row: `wtf-admin`, state version 16, 25 creator records, and an empty purchase queue. This verifies durable production use without mutating shared acquisition state.\n  - A separate authenticated production administrator, `e2e_thecount`, receives `{ allowed: false }` from the read-only access probe and HTTP 403 from the state route. The production allowlist includes `wtf-admin` and excludes that test administrator. WTF-BB-392 is Verified.",
       "legacyOriginalId": "WTF-BB-392"
     },
     {

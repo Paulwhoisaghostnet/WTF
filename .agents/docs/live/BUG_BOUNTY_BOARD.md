@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **118** · Verified: **457** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **118** · Verified: **458** · Archived: **4**
 
 ## Canonical Board
 
@@ -72,10 +72,9 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 271 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 371 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 371 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
-| WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
+| WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
@@ -215,6 +214,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-474 | Verified | Codex Ravioli production audit | 2026-08-30 | Pasta Protocol / reservation fulfillment authority | P0 | 18 | 12 | 5 | 5 | 3 | Mutable helper authorization can strand sold reserved packs |
 | WTF-BB-472 | Verified | Codex Ravioli production audit | 2026-08-30 | Pasta Protocol / creator recovery | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli recipe nonces are persisted after their irreversible commitments |
 | WTF-BB-469 | Verified | Codex Ravioli on-chain LE guard | - | Pasta Protocol / cross-contract issuance invariant | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's child-expiry guarantee is bypassable outside the Studio |
+| WTF-BB-406 | Verified | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-405 | Verified | Codex Rotini/Gnocchi Shadownet proof | 2026-07-16 | Pasta Protocol / generative and open-edition mint truth | P0 | 18 | 12 | 4 | 5 | 4 | Fresh app-artifact Shadownet contracts now prove collector-created Rotini iterations plus capped and vaultable forever Gnocchi OEs with two independent collectors, indexed ownership/supply/metadata, closed-state rejections, reopen, local SmartPy invariants, browser choreography, and installer asset policy |
 | WTF-BB-213 | Verified | Codex Skywire OAuth completion regression repair | 2026-06-05 | Skywire / AT OAuth completion propagation | P0 | 18 | 12 | 3 | 5 | 5 | Same-window Skywire OAuth callback stopped notifying the original app window, and unresolved Bluesky handles could make OAuth start look stalled; fixed with unconditional callback completion broadcast, unresolved-handle preflight, and verified by `npm run test:e2e:inventory` plus focused Skywire OAuth tests |
 | WTF-BB-208 | Verified | Codex Skywire chat OAuth session persistence repair | 2026-09-02 | Skywire / AT OAuth session persistence | P0 | 18 | 12 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
@@ -1560,38 +1560,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
 
-### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
-
-- Category: Pasta Protocol / Rotini artifact interoperability
-- Priority: P0
-- Status: In Progress
-- Owner/Session: Codex Rotini self-contained artifact repair
-- Last touched: -
-- Score: C4 + F5 + S4 + P0(5) = 18
-- Evidence:
-  - `PastaGenerativeCollectionFA2.mint_iteration` writes the project `generator_uri` into every token's `artifactUri`; that URI resolves to a `pasta-rotini-generator@1` JSON manifest, not a PNG, GIF, or interactive ZIP.
-  - The manifest references separately pinned layer files and therefore is neither a standard display artifact nor a self-contained interactive token.
-  - Rotini's public mint page calls `mint_iteration` directly and never renders, packages, pins, or validates a finished iteration artifact.
-  - Objkt's current interactive-token requirements call for a ZIP with top-level `index.html`, relative local references, and no external requests; its supported direct image formats include PNG and GIF.
-- Why it matters:
-  - A minted token can have valid FA2 ownership and a unique seed while still displaying as a JSON document or failing to render on ordinary Tezos marketplaces.
-  - Requiring a custom Pasta/Objkt renderer would contradict Rotini's portability and creator-independence goals.
-- Correction direction:
-  - Replace direct recipe minting with bounded reservation/finalization: reserve a collector-specific token id and seed on-chain, render from that immutable seed in the local mint application, pin a finished PNG/GIF/self-contained ZIP plus TZIP-21 metadata, and only then finalize FA2 supply and ownership.
-  - Store the finalized metadata URI, artifact URI, MIME type, artifact digest, project id, and seed on-chain. Allow only `image/png`, `image/gif`, or `application/zip`; require a PNG/GIF display and thumbnail for ZIP output.
-  - Keep payment in contract custody until finalization, cap reservations against project and wallet limits, and provide expiry/refund so abandoned renders cannot permanently consume supply.
-  - Interactive ZIPs must contain a top-level `index.html`, use only relative local references, make no network requests, and pass offline sandbox validation before pinning.
-- Verification idea:
-  - Compile and size-check the revised contract, synchronize the exact Rotini and Pasta Suite artifacts, and test authorization, reservation capacity, payment custody, finalization, MIME allowlist, immutable metadata, expiry/refund, transfer, close/reopen, and abandoned reservations.
-  - Browser-test all three output modes from reserved seed through local render/package, offline validation, pinning, metadata creation, and finalization with no creator pre-mint.
-  - Originate a fresh Shadownet collection and have independent puppet collectors finalize a PNG, GIF, and self-contained interactive ZIP; verify TzKT ownership/state and Objkt-compatible metadata/artifact MIME values.
-- Progress/verification:
-  - Replaced recipe-as-artifact minting with `reserve_iteration` and `finalize_iteration`; no FA2 supply or ownership exists until the collector has rendered and pinned the final artifact, and abandoned paid reservations can be refunded after expiry.
-  - The finalization allowlist accepts only `image/png`, `image/gif`, and `application/zip`, records the artifact SHA-256 on-chain, and requires direct display/thumbnail images for interactive ZIP output.
-  - Added a dependency-free browser artifact kernel that produces real PNG bytes, bounded animated GIF89a files, and ZIPs with a top-level `index.html`, relative packaged assets, and offline request validation. Browser coverage decodes PNG/GIF output and validates ZIP contents before mocked pinning.
-  - SmartPy compilation/tests, Rotini artifact unit tests, the full Pasta publishing browser suite, Colander fixtures, shared adapter/static policy tests, desktop package policies, inventory coverage, and the production build pass locally.
-  - The fresh v2 Shadownet proof script now pins and byte-verifies all three artifact types and checks independent collector ownership through TzKT. It intentionally refuses to originate or mint without a durable Pinata credential or Kubo endpoint, neither of which is configured in the current environment; the historical Rotini v1 address is not accepted as proof of this repair.
-
 ### WTF-BB-422 - UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified
 
 - Category: Pasta Protocol / browser-to-chain evidence
@@ -1635,7 +1603,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
   - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
-### WTF-BB-392 - Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending
+### WTF-BB-392 - Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries
 
 - Category: Commerce / private Objkt operator availability
 - Priority: P1
@@ -1643,17 +1611,15 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 - Owner/Session: Codex Objkt Operator production verification
 - Last touched: 2026-09-02
 - Score: C4 + F5 + S2 + P1(4) = 15
-- Evidence:
-  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process.
-  - Stopping that process removed access to the interface, and no deployed wtfOS route or durable server state existed.
-  - The replacement now has an owner-gated `/objkt-operator` AppWindow, owner-keyed `objkt_operator_states` PostgreSQL row, and a focused browser proof covering score review, approval, and reload persistence.
-- Why it matters:
-  - The user needs a private operator available independently of a Codex conversation. Ephemeral browser state cannot support a persistent acquisition workflow or trustworthy spending controls.
-  - Moving state server-side must not turn the wtfOS database into wallet custody; mnemonic words and signing passwords remain explicitly out of scope.
-- Correction direction:
-  - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
-- Verification idea:
-  - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
+- Historical evidence:
+  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process. Stopping that process removed access to the interface.
+- Correction:
+  - The native `/objkt-operator` AppWindow persists creator reviews, score evidence, policy, scans, signing queue, public wallet metadata, and event history in the owner-keyed `objkt_operator_states` PostgreSQL table.
+  - Access requires both an administrator role and the explicit `OBJKT_OPERATOR_OWNER_USERNAMES` allowlist. Kukai remains the external signer; no mnemonic or signing password enters wtfOS.
+- Verification (2026-09-02):
+  - Focused owner-policy, settings, discovery, scoring, and candidate-policy tests pass 7/7. Focused Chromium passes the owner creator-review and reload-persistence story 1/1. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
+  - `https://operator.wtfos.app/` serves valid TLS, redirects to `/objkt-operator`, and the app route returns HTTP 200. Production has the migration table and one configured-owner row: `wtf-admin`, state version 16, 25 creator records, and an empty purchase queue. This verifies durable production use without mutating shared acquisition state.
+  - A separate authenticated production administrator, `e2e_thecount`, receives `{ allowed: false }` from the read-only access probe and HTTP 403 from the state route. The production allowlist includes `wtf-admin` and excludes that test administrator. WTF-BB-392 is Verified.
 
 ### WTF-BB-298 - Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing
 
@@ -4769,6 +4735,38 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - Bind supported router/adapter implementations by version or code hash and add artifact/source parity gates.
 - Verification idea:
   - Prove omitted, forged-later, inactive, unlocked, uncapped, untimed, expired, and no-sale paths fail on chain; prove equal/earlier deadlines succeed; prove already-reserved holders can still open after the child public window; rebuild artifacts byte-for-byte and use only the corrected artifact in the fresh Shadownet proof.
+
+### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
+
+- Category: Pasta Protocol / Rotini artifact interoperability
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Rotini self-contained artifact repair
+- Last touched: -
+- Score: C4 + F5 + S4 + P0(5) = 18
+- Evidence:
+  - `PastaGenerativeCollectionFA2.mint_iteration` writes the project `generator_uri` into every token's `artifactUri`; that URI resolves to a `pasta-rotini-generator@1` JSON manifest, not a PNG, GIF, or interactive ZIP.
+  - The manifest references separately pinned layer files and therefore is neither a standard display artifact nor a self-contained interactive token.
+  - Rotini's public mint page calls `mint_iteration` directly and never renders, packages, pins, or validates a finished iteration artifact.
+  - Objkt's current interactive-token requirements call for a ZIP with top-level `index.html`, relative local references, and no external requests; its supported direct image formats include PNG and GIF.
+- Why it matters:
+  - A minted token can have valid FA2 ownership and a unique seed while still displaying as a JSON document or failing to render on ordinary Tezos marketplaces.
+  - Requiring a custom Pasta/Objkt renderer would contradict Rotini's portability and creator-independence goals.
+- Correction direction:
+  - Replace direct recipe minting with bounded reservation/finalization: reserve a collector-specific token id and seed on-chain, render from that immutable seed in the local mint application, pin a finished PNG/GIF/self-contained ZIP plus TZIP-21 metadata, and only then finalize FA2 supply and ownership.
+  - Store the finalized metadata URI, artifact URI, MIME type, artifact digest, project id, and seed on-chain. Allow only `image/png`, `image/gif`, or `application/zip`; require a PNG/GIF display and thumbnail for ZIP output.
+  - Keep payment in contract custody until finalization, cap reservations against project and wallet limits, and provide expiry/refund so abandoned renders cannot permanently consume supply.
+  - Interactive ZIPs must contain a top-level `index.html`, use only relative local references, make no network requests, and pass offline sandbox validation before pinning.
+- Verification idea:
+  - Compile and size-check the revised contract, synchronize the exact Rotini and Pasta Suite artifacts, and test authorization, reservation capacity, payment custody, finalization, MIME allowlist, immutable metadata, expiry/refund, transfer, close/reopen, and abandoned reservations.
+  - Browser-test all three output modes from reserved seed through local render/package, offline validation, pinning, metadata creation, and finalization with no creator pre-mint.
+  - Originate a fresh Shadownet collection and have independent puppet collectors finalize a PNG, GIF, and self-contained interactive ZIP; verify TzKT ownership/state and Objkt-compatible metadata/artifact MIME values.
+- Progress/verification:
+  - Replaced recipe-as-artifact minting with `reserve_iteration` and `finalize_iteration`; no FA2 supply or ownership exists until the collector has rendered and pinned the final artifact, and abandoned paid reservations can be refunded after expiry.
+  - The finalization allowlist accepts only `image/png`, `image/gif`, and `application/zip`, records the artifact SHA-256 on-chain, and requires direct display/thumbnail images for interactive ZIP output.
+  - Added a dependency-free browser artifact kernel that produces real PNG bytes, bounded animated GIF89a files, and ZIPs with a top-level `index.html`, relative packaged assets, and offline request validation. Browser coverage decodes PNG/GIF output and validates ZIP contents before mocked pinning.
+  - SmartPy compilation/tests, Rotini artifact unit tests, the full Pasta publishing browser suite, Colander fixtures, shared adapter/static policy tests, desktop package policies, inventory coverage, and the production build pass locally.
+  - The fresh v2 Shadownet proof script now pins and byte-verifies all three artifact types and checks independent collector ownership through TzKT. It intentionally refuses to originate or mint without a durable Pinata credential or Kubo endpoint, neither of which is configured in the current environment; the historical Rotini v1 address is not accepted as proof of this repair.
 
 ### WTF-BB-405 - Fresh app-artifact Shadownet contracts now prove collector-created Rotini iterations plus capped and vaultable forever Gnocchi OEs with two independent collectors, indexed ownership/supply/metadata, closed-state rejections, reopen, local SmartPy invariants, browser choreography, and installer asset policy
 
