@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **428** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **428** · Archived: **4**
 
 ## Canonical Board
 
@@ -31,7 +31,6 @@ Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Block
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 572 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
-| WTF-BB-317 | Open | - | 2026-06-27 | E2E / Playwright harness parity | P3 | 7 | 608 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-500 | Claimed | Codex Ravioli v3 contract hardening | - | Pasta Protocol / buyer funds and fulfillment solvency | P0 | 20 | 1 | 5 | 5 | 5 | Ravioli released blind-sale proceeds before child delivery |
 | WTF-BB-545 | Claimed | Codex Ravioli authenticated post-event-86 correction | - | Pasta Protocol / Ravioli recovery plan and proof finality | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli's post-event-86 plan and terminal model cannot complete truthfully |
 | WTF-BB-507 | Claimed | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / live proof dependency identity | P0 | 19 | 3 | 5 | 5 | 4 | The accepted Rotini proof contract predates Ravioli's recipient-independent seed ABI |
@@ -73,6 +72,7 @@ Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-317 | Claimed | Codex challenge automation harness parity | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 608 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -703,16 +703,6 @@ Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Block
   - Gamma media discovery/detail pass saw direct `playwright test tests/playwright/inventory` collapse after the first passing auth-session spec, with unrelated Beta, Broot, domain, Gamma, route-smoke, and subdomain specs failing on `apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4173` after the shared harness died. Touched media-detail proof passed before and after the cascade, including a fresh `HARNESS_PORT=4273` rerun, and the full Gamma suite passed `55/55` on the same fresh port.
 - Related note (2026-07-15):
   - A 633-test release run overlapped another task's build/focused Playwright start in the same checkout. The overlap removed `dist/public/index.html` and retained traces mid-run, and a concurrently renamed test produced `Test not found in the worker process`; 630 tests passed and every affected current-tree story passed immediately with isolated output after the other task stopped. This confirms that same-worktree source/build quiescence is part of the still-open isolation requirement.
-
-### WTF-BB-317 - Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion
-
-- Category: E2E / Playwright harness parity
-- Priority: P3
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-06-27
-- Score: C2 + F3 + S0 + P3(2) = 7
-- Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
 
 ### WTF-BB-500 - Ravioli released blind-sale proceeds before child delivery
 
@@ -1567,6 +1557,16 @@ Total: **637** · Open: **3** · Claimed: **41** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-317 - Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion
+
+- Category: E2E / Playwright harness parity
+- Priority: P3
+- Status: Claimed
+- Owner/Session: Codex challenge automation harness parity
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S0 + P3(2) = 7
+- Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 

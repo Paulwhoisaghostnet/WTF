@@ -834,9 +834,9 @@
     },
     {
       "id": "WTF-BB-317",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-06-27",
+      "status": "Claimed",
+      "owner": "Codex challenge automation harness parity",
+      "lastTouched": "2026-09-02",
       "category": "E2E / Playwright harness parity",
       "priority": "P3",
       "points": 7,
