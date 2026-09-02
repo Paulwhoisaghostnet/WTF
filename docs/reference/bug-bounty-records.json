@@ -1522,7 +1522,7 @@
     },
     {
       "id": "WTF-BB-406",
-      "status": "Fixed",
+      "status": "In Progress",
       "owner": "Codex Rotini self-contained artifact repair",
       "lastTouched": "-",
       "category": "Pasta Protocol / Rotini artifact interoperability",
@@ -10187,7 +10187,7 @@
     },
     {
       "id": "WTF-BB-670",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Codex credential-independent Hetzner deploy transport",
       "lastTouched": "2026-09-02",
       "category": "Deploy / Hetzner source transport",
@@ -10198,7 +10198,7 @@
       "functionalityDanger": 5,
       "securityDanger": 1,
       "title": "Production deploy intermittently depends on an unavailable GitHub credential stored on the server",
-      "body": "- Evidence (2026-09-02):\n  - Deploy runs 33614355895, 33625821904, 33625908215, and 33626073158 reached the Hetzner host but failed before build or migration at the server-side `git fetch origin` with `fatal: could not read Username for 'https://github.com': No such device or address`.\n  - The same workflow sometimes succeeded, so release delivery depended on mutable server-local GitHub authentication that the workflow neither provisioned nor verified. Quality Gates could pass while production remained on an older commit.\n- Why it matters:\n  - A push to `main` was not reliably deployable, and documentation-only pushes could leave later application fixes stranded behind an unrelated server credential failure. Repeated blind retries did not establish a trustworthy release path.\n- Correction (2026-09-02):\n  - The workflow now checks out complete history, verifies the checkout equals `github.sha`, measures the server's current HEAD, and builds either the smallest prerequisite-aware Git bundle or a self-contained bundle when the server has diverged. It verifies the bundle locally and copies it over the already-authorized Hetzner SSH channel.\n  - The server imports `HEAD` from that bundle, verifies the fetched commit equals the requested deploy commit, resets `main` exactly to it, and removes the uniquely named temporary bundle on exit. No server-side GitHub fetch or GitHub credential is required; `.env` and runtime volumes remain outside the tracked reset.\n  - Post-deploy readiness now requires both `status:ready` and the requested commit's exact eight-character `commitRef`, so an older healthy container cannot satisfy the workflow.\n- Local verification:\n  - Fourteen focused deploy, readiness, and repo-doctor policy checks pass. They reject `git fetch origin`, require the verified bundle transport and exact commit reset, preserve the serialized host lock, and require commit-bound readiness. Workflow formatting, board integrity, environment inventory, and diff checks pass. WTF-BB-670 is Fixed pending a successful self-deployment and public exact-commit health proof."
+      "body": "- Evidence (2026-09-02):\n  - Deploy runs 33614355895, 33625821904, 33625908215, and 33626073158 reached the Hetzner host but failed before build or migration at the server-side `git fetch origin` with `fatal: could not read Username for 'https://github.com': No such device or address`.\n  - The same workflow sometimes succeeded, so release delivery depended on mutable server-local GitHub authentication that the workflow neither provisioned nor verified. Quality Gates could pass while production remained on an older commit.\n- Why it matters:\n  - A push to `main` was not reliably deployable, and documentation-only pushes could leave later application fixes stranded behind an unrelated server credential failure. Repeated blind retries did not establish a trustworthy release path.\n- Correction (2026-09-02):\n  - Commit `47319133` makes the workflow check out complete history, verify the checkout equals `github.sha`, measure the server's current HEAD, and build either the smallest prerequisite-aware Git bundle or a self-contained bundle when the server has diverged. It verifies the bundle locally and copies it over the already-authorized Hetzner SSH channel.\n  - The server imports `HEAD` from that bundle, verifies the fetched commit equals the requested deploy commit, resets `main` exactly to it, and removes the uniquely named temporary bundle on exit. No server-side GitHub fetch or GitHub credential is required; `.env` and runtime volumes remain outside the tracked reset.\n  - Post-deploy readiness requires both `status:ready` and the requested commit's exact eight-character `commitRef`, so an older healthy container cannot satisfy the workflow.\n- Verification:\n  - Fourteen focused deploy, readiness, and repo-doctor policy checks pass. They reject `git fetch origin`, require the verified bundle transport and exact commit reset, preserve the serialized host lock, and require commit-bound readiness. Full TypeScript, workflow formatting, board integrity, environment inventory, and diff checks pass.\n  - The correction deployed itself in run 33630052693: checkout, SSH setup, exact-source bundle packaging, server build/migrations/replacement, and commit-bound health all succeeded. Public `/api/health` reported exact commit `47319133`. WTF-BB-670 is Verified."
     }
   ]
 }

@@ -11667,3 +11667,13 @@
 **Rule**: Execute a deliberately non-terminating child through the real process wrapper, saturate and release the real slot manager, and separately prove uploads enqueue bounded background work before reconciling media-processing availability.
 
 ---
+
+## 2026-09-02 — Status edits must be identity-scoped
+
+**What happened**: A patch that changed a generic `In Progress` status matched an earlier record while a separate body hunk correctly targeted the newly added deploy record. The resulting board temporarily changed ownership state for an excluded active-work item.
+
+**Why it mattered**: Repeated status strings are not record identities. A syntactically valid generated board can still misrepresent another worker's scope when a patch hunk is under-contextualized.
+
+**Rule**: Every canonical status or owner patch must include the record ID in the same match hunk, then compare the before/after status set before committing. Restore any accidental cross-scope change immediately without touching that record's implementation.
+
+---
