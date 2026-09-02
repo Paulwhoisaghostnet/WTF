@@ -80,11 +80,11 @@ async function fetchProjectRegion(ref, token) {
 }
 
 function buildUrls(ref, passwordEncoded, region) {
-  const direct = `postgresql://postgres:${passwordEncoded}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
+  const direct = `postgresql://postgres:${passwordEncoded}@db.${ref}.supabase.co:5432/postgres?sslmode=verify-full`;
 
   const pooler =
     region &&
-    `postgresql://postgres.${ref}:${passwordEncoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require`;
+    `postgresql://postgres.${ref}:${passwordEncoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=verify-full`;
 
   return { direct, pooler, region };
 }

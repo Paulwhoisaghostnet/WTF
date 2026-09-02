@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **124** · Verified: **452** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **123** · Verified: **452** · Archived: **4**
 
 ## Canonical Board
 
@@ -80,6 +80,7 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 185 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 185 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
+| WTF-BB-020 | In Progress | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 185 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 185 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 270 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 370 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
@@ -141,7 +142,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 185 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 13 | 185 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 185 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
-| WTF-BB-020 | Fixed | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 185 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-661 | Fixed | Codex wallet nonce atomicity pass | 2026-08-30 | Authentication / wallet challenge replay | P1 | 12 | 270 | 2 | 3 | 3 | Wallet challenge consumption is not atomic under concurrent verification |
 | WTF-BB-642 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 270 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 270 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
@@ -1836,6 +1836,25 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Verification idea:
   - Replay mixed backfill + read traffic and confirm upstream request rates and retry paths are now centralized.
 
+### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
+
+- Category: DB connectivity / TLS
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Swarm A3
+- Last touched: 2026-04-28
+- Score: C2 + F2 + S5 + P1(4) = 13
+- Evidence: `scripts/db-push.mjs` rewrites Supabase URLs with `sslmode=no-verify`, `scripts/run-boot-backfill.ts` defaults to `&sslmode=no-verify`, and `scripts/check-db-connection.mjs` creates a Supabase `Client` with `ssl: { rejectUnauthorized: false }`.
+- Why it matters: Disabling certificate verification in DB connection paths allows active network interception of credentials and query traffic if the transport layer is compromised.
+- Likely correction direction: Remove forced SSL overrides, require TLS verification by default, and gate exceptions behind an explicit, auditable emergency flag with environment-based allowlisting.
+- Local fix note: `scripts/db-push.mjs` and `scripts/run-boot-backfill.ts` now default Supabase URLs to `sslmode=require`, while `scripts/check-db-connection.mjs` verifies certificates by default. The only remaining downgrade path is `ALLOW_INSECURE_DB_TLS=1`, which logs a warning when used.
+- Verification:
+  - `rg -n "sslmode=no-verify|rejectUnauthorized:\\s*false|ALLOW_INSECURE_DB_TLS|sslmode=require" scripts/db-push.mjs scripts/run-boot-backfill.ts scripts/check-db-connection.mjs` → default URL builders now emit `sslmode=require`; remaining `no-verify` references are warning text tied to `ALLOW_INSECURE_DB_TLS=1`
+  - `node --check scripts/db-push.mjs` → passed
+  - `node --check scripts/check-db-connection.mjs` → passed
+  - `npm run check` → passed
+- Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.
+
 ### WTF-BB-005 - `token_sales` duplicates make unique-index migrations impossible
 
 - Category: Data integrity / analytics
@@ -3155,25 +3174,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
     - clear skip notice appears,
     - queue advances without long stalls,
     - telemetry item-end events are persisted in server-side bucket state.
-
-### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
-
-- Category: DB connectivity / TLS
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Swarm A3
-- Last touched: 2026-04-28
-- Score: C2 + F2 + S5 + P1(4) = 13
-- Evidence: `scripts/db-push.mjs` rewrites Supabase URLs with `sslmode=no-verify`, `scripts/run-boot-backfill.ts` defaults to `&sslmode=no-verify`, and `scripts/check-db-connection.mjs` creates a Supabase `Client` with `ssl: { rejectUnauthorized: false }`.
-- Why it matters: Disabling certificate verification in DB connection paths allows active network interception of credentials and query traffic if the transport layer is compromised.
-- Likely correction direction: Remove forced SSL overrides, require TLS verification by default, and gate exceptions behind an explicit, auditable emergency flag with environment-based allowlisting.
-- Local fix note: `scripts/db-push.mjs` and `scripts/run-boot-backfill.ts` now default Supabase URLs to `sslmode=require`, while `scripts/check-db-connection.mjs` verifies certificates by default. The only remaining downgrade path is `ALLOW_INSECURE_DB_TLS=1`, which logs a warning when used.
-- Verification:
-  - `rg -n "sslmode=no-verify|rejectUnauthorized:\\s*false|ALLOW_INSECURE_DB_TLS|sslmode=require" scripts/db-push.mjs scripts/run-boot-backfill.ts scripts/check-db-connection.mjs` → default URL builders now emit `sslmode=require`; remaining `no-verify` references are warning text tied to `ALLOW_INSECURE_DB_TLS=1`
-  - `node --check scripts/db-push.mjs` → passed
-  - `node --check scripts/check-db-connection.mjs` → passed
-  - `npm run check` → passed
-- Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.
 
 ### WTF-BB-661 - Wallet challenge consumption is not atomic under concurrent verification
 

@@ -2866,7 +2866,7 @@
     },
     {
       "id": "WTF-BB-020",
-      "status": "Fixed",
+      "status": "In Progress",
       "owner": "Swarm A3",
       "lastTouched": "2026-04-28",
       "category": "DB connectivity / TLS",

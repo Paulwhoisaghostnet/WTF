@@ -29,6 +29,13 @@ const dbName = parsed.pathname.replace(/^\//, "") || "postgres";
 const isSupabaseHost =
   host.includes("supabase") || host.includes("pooler.supabase.com");
 const allowInsecureDbTls = process.env.ALLOW_INSECURE_DB_TLS?.trim() === "1";
+if (isSupabaseHost) {
+  parsed.searchParams.set(
+    "sslmode",
+    allowInsecureDbTls ? "no-verify" : "verify-full"
+  );
+}
+const normalizedDbUrl = isSupabaseHost ? parsed.toString() : dbUrl;
 
 console.log(`Host: ${host}`);
 console.log(`Port: ${port}`);
@@ -52,10 +59,7 @@ try {
 }
 
 const client = new Client({
-  connectionString: dbUrl,
-  ssl: isSupabaseHost
-    ? { rejectUnauthorized: !allowInsecureDbTls }
-    : undefined,
+  connectionString: normalizedDbUrl,
   connectionTimeoutMillis: 10_000,
 });
 

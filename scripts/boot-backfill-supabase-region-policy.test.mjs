@@ -20,5 +20,8 @@ test("explicit Supabase backup URL remains the operator-pinned override", () => 
     bootBackfill,
     /process\.env\.SUPABASE_BACKUP_URL \|\| \(await resolveSupabaseUrl\(\)\)/
   );
-  assert.match(bootBackfill, /const sslmode = allowInsecureDbTls\(\) \? "no-verify" : "require"/);
+  assert.match(
+    bootBackfill,
+    /const sslmode = allowInsecureDbTls\(\) \? "no-verify" : "verify-full"/
+  );
 });

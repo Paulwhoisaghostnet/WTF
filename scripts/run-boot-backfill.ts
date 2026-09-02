@@ -23,6 +23,20 @@ function allowInsecureDbTls() {
   return process.env.ALLOW_INSECURE_DB_TLS?.trim() === "1";
 }
 
+function normalizeSupabaseTls(url: string): string {
+  const parsed = new URL(url);
+  if (
+    parsed.hostname.endsWith(".supabase.co") ||
+    parsed.hostname.endsWith(".pooler.supabase.com")
+  ) {
+    parsed.searchParams.set(
+      "sslmode",
+      allowInsecureDbTls() ? "no-verify" : "verify-full"
+    );
+  }
+  return parsed.toString();
+}
+
 async function resolveSupabaseUrl() {
   const ref =
     process.env.SUPABASE_PROJECT_REF ||
@@ -38,7 +52,7 @@ async function resolveSupabaseUrl() {
       "SUPABASE_REGION is required for --supabase boot backfill; refusing to guess a pooler region"
     );
   }
-  const sslmode = allowInsecureDbTls() ? "no-verify" : "require";
+  const sslmode = allowInsecureDbTls() ? "no-verify" : "verify-full";
   return `postgresql://postgres.${ref}:${encoded}@aws-1-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=${sslmode}`;
 }
 
@@ -50,15 +64,15 @@ async function main() {
         "[boot-backfill] WARNING: ALLOW_INSECURE_DB_TLS=1 downgraded Supabase TLS verification to sslmode=no-verify."
       );
     }
-    const url =
+    const rawUrl =
       process.env.SUPABASE_BACKUP_URL || (await resolveSupabaseUrl());
-    if (!url) {
+    if (!rawUrl) {
       console.error(
         "[boot-backfill] cannot resolve Supabase URL; set SUPABASE_BACKUP_URL or SUPABASE_URL + SUPABASE_DB_PASSWORD"
       );
       process.exit(1);
     }
-    process.env.DATABASE_URL = url;
+    process.env.DATABASE_URL = normalizeSupabaseTls(rawUrl);
   }
   if (!process.env.DATABASE_URL) {
     console.error("[boot-backfill] DATABASE_URL is not set");

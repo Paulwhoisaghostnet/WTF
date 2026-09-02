@@ -11707,3 +11707,13 @@
 **Rule**: Every private read and user-bound mutation must check its domain read/write scope before its first data read or side effect. Live token lifecycle proof must include one missing-scope denial and rejection after revocation, not only successful pairing.
 
 ---
+
+## 2026-09-02 — Name the database TLS guarantee explicitly
+
+**What happened**: Supabase maintenance scripts replaced `no-verify` with `sslmode=require` and described the result as certificate verification. The installed `pg` currently aliases `require` to `verify-full`, but warns that its next major version will adopt weaker libpq `require` semantics.
+
+**Why it mattered**: A dependency-version alias made the security property temporary. Operator-supplied connection strings could also carry their own weaker SSL mode and override an adjacent client option during `pg` configuration parsing.
+
+**Rule**: Emit and normalize Supabase URLs to `sslmode=verify-full`, including supplied override URLs, before constructing a database client. Keep any downgrade behind one explicit warning-backed emergency flag and prove the default rejects a self-signed endpoint.
+
+---

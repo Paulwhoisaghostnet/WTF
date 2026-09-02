@@ -89,9 +89,9 @@ async function resolveFromSupabase() {
   }
 
   if (region) {
-    return `postgresql://postgres.${ref}:${encoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require`;
+    return `postgresql://postgres.${ref}:${encoded}@aws-0-${region}.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=verify-full`;
   }
-  return `postgresql://postgres:${encoded}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
+  return `postgresql://postgres:${encoded}@db.${ref}.supabase.co:5432/postgres?sslmode=verify-full`;
 }
 
 function allowInsecureDbTls() {
@@ -107,7 +107,7 @@ function normalizeSupabaseTls(url) {
       host.endsWith(".supabase.co") ||
       host.endsWith(".pooler.supabase.com");
     if (!isSupabase) return url;
-    u.searchParams.set("sslmode", allowInsecureDbTls() ? "no-verify" : "require");
+    u.searchParams.set("sslmode", allowInsecureDbTls() ? "no-verify" : "verify-full");
     return u.toString();
   } catch {
     return url;
