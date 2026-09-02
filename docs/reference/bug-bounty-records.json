@@ -626,9 +626,9 @@
     },
     {
       "id": "WTF-BB-570",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex",
+      "lastTouched": "2026-09-02",
       "category": "Creation tools / quality gate",
       "priority": "P2",
       "points": 9,
@@ -637,7 +637,7 @@
       "functionalityDanger": 4,
       "securityDanger": 0,
       "title": "Particle Painter lint configuration crashes before file analysis",
-      "body": "- Evidence:\n  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.\n  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.\n- Why it matters:\n  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.\n- Correction direction:\n  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.\n- Verification idea:\n  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.",
+      "body": "- Evidence:\n  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.\n  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.\n- Why it matters:\n  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.\n- Correction direction:\n  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.\n- Verification idea:\n  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.\n- Claim (2026-09-02):\n  - Codex reproduced the configuration-loader crash against the lockfile-installed Particle Painter toolchain and claimed the item for a scoped configuration correction plus regression proof.",
       "legacyOriginalId": "WTF-BB-570"
     },
     {

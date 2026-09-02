@@ -23,13 +23,12 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **14** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **417** · Archived: **4**
+Total: **637** · Open: **13** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **417** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-570 | Open | - | - | Creation tools / quality gate | P2 | 9 | 511 | 2 | 4 | 0 | Particle Painter lint configuration crashes before file analysis |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
 | WTF-BB-310 | Open | - | 2026-06-22 | Ops / Hetzner verification dependencies | P2 | 9 | 511 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
 | WTF-BB-182 | Open | - | 2026-05-28 | In-app market / inventory E2E | P2 | 9 | 511 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
@@ -84,6 +83,7 @@ Total: **637** · Open: **14** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-570 | Claimed | Codex | 2026-09-02 | Creation tools / quality gate | P2 | 9 | 511 | 2 | 4 | 0 | Particle Painter lint configuration crashes before file analysis |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -668,24 +668,6 @@ Total: **637** · Open: **14** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-055 | Archived | Codex TV2 retirement pass | 2026-05-04 | TV microapp / test coverage | P2 | 10 | 449 | 3 | 3 | 1 | No automated parity checks between `/tv` and `/tv2` for stream/error-handling edge cases |
 
 ## Issue Details
-
-### WTF-BB-570 - Particle Painter lint configuration crashes before file analysis
-
-- Category: Creation tools / quality gate
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: -
-- Score: C2 + F4 + S0 + P2(3) = 9
-- Evidence:
-  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.
-  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.
-- Why it matters:
-  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.
-- Correction direction:
-  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.
-- Verification idea:
-  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.
 
 ### WTF-BB-434 - Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test
 
@@ -1764,6 +1746,26 @@ Total: **637** · Open: **14** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-570 - Particle Painter lint configuration crashes before file analysis
+
+- Category: Creation tools / quality gate
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.
+  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.
+- Why it matters:
+  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.
+- Correction direction:
+  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.
+- Verification idea:
+  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.
+- Claim (2026-09-02):
+  - Codex reproduced the configuration-loader crash against the lockfile-installed Particle Painter toolchain and claimed the item for a scoped configuration correction plus regression proof.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
