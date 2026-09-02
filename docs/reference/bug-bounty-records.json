@@ -514,9 +514,9 @@
     },
     {
       "id": "WTF-BB-087",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex cohost least-privilege pass",
+      "lastTouched": "2026-09-02",
       "category": "RBAC / blast radius",
       "priority": "P2",
       "points": 11,
