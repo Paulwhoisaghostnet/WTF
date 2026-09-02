@@ -81,6 +81,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The checked-in catalog binds each tutorial to private S3 object keys while the public API exposes only same-origin streaming routes; the browser harness proves all eight guides, English captions, transcripts, selection behavior, and mobile containment.",
   },
   {
+    id: "wtfos.guide-promo-channel",
+    domain: "WTF TV, Playback, Channels, and Embeds",
+    platformOwner: "faq-tv",
+    ownerSpec:
+      "server/lib/wtfos-promos.test.ts; server/lib/wtfos-guide-tv.test.ts; server/lib/tv-boot-backfill-guide-channel-policy.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs; tests/playwright/inventory/wtfos-guide-tv.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/wtfos-promos.test.ts server/lib/wtfos-guide-tv.test.ts server/lib/tv-boot-backfill-guide-channel-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/faq-tutorials.spec.mjs tests/playwright/inventory/wtfos-guide-tv.spec.mjs",
+    userVisibleAssertion:
+      "The public FAQ previews captioned wtfOS promos for Play, Create, Shop, Events, and Talk, while wtfOS Guide TV provides one dedicated channel containing those promos and the TommyTezos FAQ how-tos only.",
+    durableSideEffectAssertion:
+      "The checked-in catalogs expose only same-origin object-storage routes; boot reconciliation removes unrelated guide-channel videos, playlists, schedules, and bumpers; server and browser regressions prove the exact combined queue, TommyTezos attribution, promo selection, captions, and mobile containment.",
+  },
+  {
     id: "wtfiam.creator-store-moderation-purchase",
     domain: "Market, Exchange, Inventory, and Commerce",
     ownerSurfaceIds: ["wtfiam"],

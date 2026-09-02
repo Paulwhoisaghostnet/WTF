@@ -17,6 +17,9 @@ const DIST_DIR = path.resolve(__dirname, "../../dist/public");
 const FAQ_TUTORIALS = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../shared/faq-tutorials.json"), "utf8")
 );
+const WTFOS_PROMOS = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../shared/wtfos-promos.json"), "utf8")
+);
 const PORT = Number(process.env.HARNESS_PORT || 4173);
 const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
@@ -28,6 +31,8 @@ const state = {
   interactionLog: [],
   authUser: { id: 1, username: "wtf-admin", displayName: "WTF Admin" },
   driveConnected: false,
+  profileSocialConnected: null,
+  etherlinkLinked: false,
   skywirePostPayloads: [],
   skywireFollowPayloads: [],
   skywireGroupPayloads: [],
@@ -524,6 +529,8 @@ app.post("/__test/state", (req, res) => {
       }
     : null;
   state.driveConnected = Boolean(req.body?.driveConnected);
+  state.profileSocialConnected = req.body?.profileSocialConnected || null;
+  state.etherlinkLinked = Boolean(req.body?.etherlinkLinked);
   state.skywirePostPayloads = [];
   state.skywireFollowPayloads = [];
   state.skywireGroupPayloads = [];
@@ -716,6 +723,86 @@ app.get("/api/auth/user", (_req, res) => {
       routePatterns: state.userRole === "admin" ? ["/admin", "/admin-inbox"] : ["/admin-inbox"],
       adminPanelTabs: state.userRole === "admin" ? ["OS Admin", "Automation"] : [],
       automationHandles: ["admin_inbox.message.created", "app.interaction.tracked"],
+    },
+  });
+});
+
+app.get("/api/auth/social/config", (_req, res) => {
+  res.json({
+    twitter: true,
+    twitterOauth2: true,
+    discord: true,
+    publicSiteUrl: "http://127.0.0.1",
+  });
+});
+
+app.get("/api/profile/social", (_req, res) => {
+  const twitterConnected = state.profileSocialConnected === "twitter";
+  const discordConnected = state.profileSocialConnected === "discord";
+  const skywireConnected = state.profileSocialConnected === "skywire";
+  res.json({
+    email: "tommytezos@example.com",
+    emailPublic: false,
+    twitterHandle: twitterConnected ? "TommyTezos" : "",
+    twitterVerified: twitterConnected,
+    twitterPublic: twitterConnected,
+    discordHandle: discordConnected ? "TommyTezos" : "",
+    discordVerified: discordConnected,
+    discordPublic: discordConnected,
+    atprotoDid: skywireConnected ? "did:plc:tommytezos" : null,
+    atprotoHandle: skywireConnected ? "tommytezos.bsky.social" : null,
+    atprotoDisplayName: skywireConnected ? "TommyTezos" : null,
+    atprotoAvatarUrl: null,
+  });
+});
+
+app.get("/api/etherlink/wallets", (_req, res) => {
+  if (!state.etherlinkLinked) return res.json([]);
+  return res.json([
+    {
+      id: 77,
+      walletAddress: "0x7e205e0000000000000000000000000000000077",
+      chainId: 42793,
+      network: "Etherlink Mainnet",
+      providerName: "Temple Wallet",
+      nativeBalanceXtz: "12.5",
+      isPrimary: true,
+      tokenCount: 2,
+      lastSyncedAt: "2026-09-01T12:00:00.000Z",
+      explorerUrl: "https://explorer.etherlink.com/address/0x7e205e0000000000000000000000000000000077",
+    },
+  ]);
+});
+
+app.get("/api/etherlink/assets", (_req, res) => {
+  const items = state.etherlinkLinked
+    ? [
+        {
+          id: 7701,
+          walletAddress: "0x7e205e0000000000000000000000000000000077",
+          chainId: 42793,
+          network: "Etherlink Mainnet",
+          tokenContract: "0x0000000000000000000000000000000000000001",
+          tokenId: "1",
+          tokenStandard: "ERC-721",
+          balance: "1",
+          name: "Tommy's Etherlink Proof",
+          symbol: "TEZOS",
+          decimals: null,
+          thumbnail: null,
+          explorerUrl: "https://explorer.etherlink.com/token/0x0000000000000000000000000000000000000001",
+          updatedAt: "2026-09-01T12:00:00.000Z",
+        },
+      ]
+    : [];
+  res.json({
+    items,
+    pagination: {
+      limit: 25,
+      offset: 0,
+      total: items.length,
+      hasMore: false,
+      nextOffset: items.length,
     },
   });
 });
@@ -1003,6 +1090,50 @@ const sampleTvChannel = {
   dialNumber: 3,
   videosPerBumper: 4,
 };
+
+const sampleGuideTvChannel = {
+  id: 77,
+  ownerUserId: 1,
+  slug: "wtfos-guide-tv",
+  title: "wtfOS Guide TV",
+  description: "Official wtfOS promos and TommyTezos FAQ walkthroughs, all in one learning channel.",
+  isPublic: true,
+  ownerUsername: "wtf-admin",
+  ownerDisplayName: "WTF Admin",
+  dialNumber: 77,
+  videosPerBumper: 0,
+};
+
+const sampleGuideTvQueue = [
+  ...WTFOS_PROMOS.map((item) => ({ ...item, kind: "promo" })),
+  ...FAQ_TUTORIALS.map((item) => ({ ...item, kind: "tutorial" })),
+].map((item, index) => ({
+  queueIndex: index,
+  playlistIndex: index,
+  itemId: 7700 + index,
+  videoId: 7700 + index,
+  title: item.title,
+  mimeType: "video/mp4",
+  thumbnailUri: item.kind === "promo"
+    ? `/api/faq/promos/${item.slug}/poster`
+    : `/api/faq/tutorials/${item.slug}/poster`,
+  sourceUri: item.kind === "promo"
+    ? `/api/faq/promos/${item.slug}/video`
+    : `/api/faq/tutorials/${item.slug}/video`,
+  cacheUrl: item.kind === "promo"
+    ? `/api/faq/promos/${item.slug}/video`
+    : `/api/faq/tutorials/${item.slug}/video`,
+  durationSeconds: item.durationSeconds,
+  assetDurationSeconds: item.durationSeconds,
+  offsetSeconds: 0,
+  kind: "video",
+  creatorName: "wtfOS",
+  creatorAddress: null,
+  collectionName: "wtfOS Guide TV",
+  mintedAtIso: null,
+  objktUrl: null,
+  addedByUsername: "TommyTezos",
+}));
 
 const sampleBoardCategories = [
   { id: 1, name: "General", slug: "general", sortOrder: 1 },
@@ -3920,6 +4051,25 @@ function apiMock(req, res) {
       }))
     );
   }
+  if (pathName === "/api/faq/promos") {
+    return res.json(
+      WTFOS_PROMOS.map((promo) => ({
+        slug: promo.slug,
+        title: promo.title,
+        summary: promo.summary,
+        category: promo.category,
+        sortOrder: promo.sortOrder,
+        accountName: promo.accountName,
+        durationSeconds: promo.durationSeconds,
+        scenes: promo.scenes,
+        transcript: promo.narration,
+        aiNarration: true,
+        videoUrl: `/api/faq/promos/${promo.slug}/video`,
+        captionsUrl: `/api/faq/promos/${promo.slug}/captions`,
+        posterUrl: "/__test/media/harness-alpha-token.png",
+      }))
+    );
+  }
   if (pathName === "/api/studio/drive/status" && req.method === "GET") {
     return res.json({
       ok: true,
@@ -4179,17 +4329,24 @@ function apiMock(req, res) {
   if (pathName.startsWith("/api/media/mine")) return res.json([]);
   if (pathName.startsWith("/api/media/")) return res.json({ ok: true, usage: [] });
   if (/^\/api\/tv\/channels\/\d+\/stream$/.test(pathName)) {
+    const channelId = Number(pathName.split("/")[4]);
+    const channel = channelId === sampleGuideTvChannel.id ? sampleGuideTvChannel : sampleTvChannel;
+    const queue = channelId === sampleGuideTvChannel.id ? sampleGuideTvQueue : [];
     return res.json({
-      channel: sampleTvChannel,
-      playlist: null,
+      channel,
+      playlist: channelId === sampleGuideTvChannel.id
+        ? { id: 77, name: "Promos + FAQ How-Tos", transitionSeconds: 1 }
+        : null,
       scheduleLabel: null,
       generatedAt: nowIso(),
-      loopDurationSeconds: 0,
-      queue: [],
-      current: null,
+      loopDurationSeconds: queue.reduce((sum, item) => sum + item.durationSeconds, 0),
+      queue,
+      current: queue[0] || null,
       offline: state.mode === "tv-offline",
       bumperOnly: false,
-      message: state.mode === "tv-offline" ? "Harness stream unavailable" : "No playlist content",
+      message: state.mode === "tv-offline"
+        ? "Harness stream unavailable"
+        : queue.length > 0 ? undefined : "No playlist content",
     });
   }
   if (/^\/api\/tv\/channels\/\d+$/.test(pathName)) {
@@ -4201,7 +4358,9 @@ function apiMock(req, res) {
       playlistItems: [],
     });
   }
-  if (pathName.startsWith("/api/tv/channels")) return res.json([sampleTvChannel]);
+  if (pathName.startsWith("/api/tv/channels")) {
+    return res.json([sampleTvChannel, sampleGuideTvChannel]);
+  }
   if (pathName === "/api/tv/bumpers/pool") return res.json([]);
   if (pathName.startsWith("/api/tv/") || pathName.startsWith("/api/admin/wtf-tv")) return res.json({ channels: [sampleTvChannel], items: [], current: null, stream: [] });
   if (pathName === "/api/casino/status") {

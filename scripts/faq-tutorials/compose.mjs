@@ -57,6 +57,13 @@ function makeVtt(text, totalDuration) {
   return `WEBVTT\n\n${cues.join("\n")}`;
 }
 
+function makeTimedVtt(segments) {
+  const cues = segments.map((segment, index) =>
+    `${index + 1}\n${timestamp(segment.startSeconds)} --> ${timestamp(segment.endSeconds)}\n${segment.text}\n`
+  );
+  return `WEBVTT\n\n${cues.join("\n")}`;
+}
+
 async function sha256(file) {
   const buffer = await fs.readFile(file);
   return createHash("sha256").update(buffer).digest("hex");
@@ -65,7 +72,13 @@ async function sha256(file) {
 const manifest = {
   generatedAt: new Date().toISOString(),
   accountName: "TommyTezos",
-  narration: { model: "hexgrad/Kokoro-82M", package: "kokoro==0.9.4", voice: "af_heart", aiGenerated: true },
+  narration: {
+    model: "hexgrad/Kokoro-82M",
+    package: "kokoro==0.9.4",
+    voice: "am_puck",
+    persona: "Tommy",
+    aiGenerated: true,
+  },
   recorder: "Playwright Chromium",
   encoder: "FFmpeg H.264/AAC, 1280x720, yuv420p",
   tutorials: [],
@@ -74,16 +87,22 @@ const manifest = {
 for (const tutorial of catalog) {
   const raw = path.join(base, "recordings", `${tutorial.slug}.webm`);
   const narration = path.join(base, "narration", `${tutorial.slug}.wav`);
+  const timingPath = path.join(base, "narration", `${tutorial.slug}.timings.json`);
   const mp4 = path.join(finalDir, `${tutorial.slug}.mp4`);
   const vtt = path.join(finalDir, `${tutorial.slug}.vtt`);
   const poster = path.join(finalDir, `${tutorial.slug}.jpg`);
   const audioDuration = await duration(narration);
   const recordingDuration = await duration(raw);
-  const usefulRecordingDuration = Math.min(recordingDuration, tutorial.steps.length * 1.85 + 1);
+  const usefulRecordingDuration = Math.min(recordingDuration, audioDuration + 0.5);
   const recordingOffset = Math.max(0, recordingDuration - usefulRecordingDuration);
   const stretch = audioDuration / usefulRecordingDuration;
   await run("ffmpeg", ["-y", "-ss", recordingOffset.toFixed(3), "-i", raw, "-i", narration, "-map", "0:v:0", "-map", "1:a:0", "-t", String(audioDuration), "-vf", `setpts=${stretch.toFixed(8)}*PTS,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black`, "-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", mp4]);
-  await fs.writeFile(vtt, makeVtt(tutorial.narration, audioDuration), "utf8");
+  const timing = JSON.parse(await fs.readFile(timingPath, "utf8"));
+  await fs.writeFile(
+    vtt,
+    Array.isArray(timing.segments) ? makeTimedVtt(timing.segments) : makeVtt(tutorial.narration, audioDuration),
+    "utf8"
+  );
   await run("ffmpeg", ["-y", "-ss", String(Math.min(2, Math.max(0, audioDuration / 4))), "-i", mp4, "-frames:v", "1", "-update", "1", "-q:v", "2", poster]);
   const stat = await fs.stat(mp4);
   manifest.tutorials.push({ slug: tutorial.slug, durationSeconds: Math.round(audioDuration), bytes: stat.size, sha256: await sha256(mp4) });

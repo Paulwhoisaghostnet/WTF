@@ -33,6 +33,19 @@ test("FAQ previews all registration videos with captions and the TommyTezos acco
     "src",
     "/api/faq/tutorials/connect-etherlink-wallet/video"
   );
+
+  const promoViewer = page.locator('[data-faq-promo-viewer="true"]');
+  await expect(page.getByRole("heading", { name: "Play, Create, Shop, Events, and Talk" })).toBeVisible();
+  await expect(page.locator("[data-faq-promo-card]")).toHaveCount(6);
+  await expect(promoViewer.getByText("Account: TommyTezos")).toBeVisible();
+  await expect(promoViewer.locator('track[kind="captions"]')).toHaveAttribute("srclang", "en");
+
+  await page.getByRole("button", { name: "Watch Play on wtfOS" }).click();
+  await expect(promoViewer.getByRole("heading", { name: "Play on wtfOS" })).toBeVisible();
+  await expect(promoViewer.locator("source")).toHaveAttribute(
+    "src",
+    "/api/faq/promos/play-on-wtfos/video"
+  );
 });
 
 test("FAQ tutorial gallery stays within a mobile viewport", async ({ page }) => {
@@ -40,6 +53,7 @@ test("FAQ tutorial gallery stays within a mobile viewport", async ({ page }) => 
   await useTommyTezos(page);
   await page.goto("/faq");
   await expect(page.locator('[data-faq-tutorial-viewer="true"]')).toBeVisible();
+  await expect(page.locator('[data-faq-promo-viewer="true"]')).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });

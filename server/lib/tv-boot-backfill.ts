@@ -2,6 +2,13 @@ import { pool } from "../db";
 import { randomBytes, scrypt } from "crypto";
 import { promisify } from "util";
 import { pickPreferredWtfChannelConfig } from "./tv-wtf-config";
+import {
+  WTFOS_GUIDE_TV_CHANNEL_DESCRIPTION,
+  WTFOS_GUIDE_TV_CHANNEL_SLUG,
+  WTFOS_GUIDE_TV_CHANNEL_TITLE,
+  WTFOS_GUIDE_TV_PLAYLIST_NAME,
+  getWtfosGuideTvCatalog,
+} from "./wtfos-guide-tv";
 
 const scryptAsync = promisify(scrypt);
 
@@ -542,7 +549,172 @@ export async function runTvBootBackfill(): Promise<void> {
     );
     results["roger_playlist.item_synced"] = 1;
 
-    // 7) Dial-number pins.  Executed in this order so a re-claim is
+    // 7) Official wtfOS learning channel. This platform-managed channel
+    //    intentionally contains only the promo catalog and the FAQ
+    //    tutorial catalog. Bumpers and schedules stay disabled so no
+    //    unrelated TV media can enter the broadcast queue.
+    const guideCatalog = getWtfosGuideTvCatalog();
+    if (guideCatalog.length === 0) {
+      throw new Error("wtfOS Guide TV catalog cannot be empty");
+    }
+
+    let guideChannelId: number;
+    const existingGuideChannel = await client.query<{ id: number }>(
+      `SELECT id FROM tv_channels WHERE slug = $1 ORDER BY id ASC LIMIT 1`,
+      [WTFOS_GUIDE_TV_CHANNEL_SLUG]
+    );
+    if (existingGuideChannel.rows.length > 0) {
+      guideChannelId = existingGuideChannel.rows[0]!.id;
+      await client.query(
+        `UPDATE tv_channels
+            SET owner_user_id = $1,
+                title = $2,
+                description = $3,
+                is_public = TRUE,
+                is_active = TRUE,
+                videos_per_bumper = 0,
+                updated_at = NOW()
+          WHERE id = $4`,
+        [
+          adminUserId,
+          WTFOS_GUIDE_TV_CHANNEL_TITLE,
+          WTFOS_GUIDE_TV_CHANNEL_DESCRIPTION,
+          guideChannelId,
+        ]
+      );
+      results["guide_channel.existing"] = 1;
+    } else {
+      const created = await client.query<{ id: number }>(
+        `INSERT INTO tv_channels
+           (owner_user_id, slug, title, description,
+            is_public, is_active, sort_order, dial_number,
+            videos_per_bumper, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, TRUE, TRUE, 0, NULL, 0, NOW(), NOW())
+         RETURNING id`,
+        [
+          adminUserId,
+          WTFOS_GUIDE_TV_CHANNEL_SLUG,
+          WTFOS_GUIDE_TV_CHANNEL_TITLE,
+          WTFOS_GUIDE_TV_CHANNEL_DESCRIPTION,
+        ]
+      );
+      guideChannelId = created.rows[0]!.id;
+      await client.query(
+        `UPDATE tv_channels SET sort_order = id WHERE id = $1`,
+        [guideChannelId]
+      );
+      results["guide_channel.created"] = 1;
+    }
+
+    await client.query(
+      `UPDATE tv_playlists
+          SET is_active = FALSE,
+              updated_at = NOW()
+        WHERE channel_id = $1 AND is_active = TRUE`,
+      [guideChannelId]
+    );
+    const existingGuidePlaylist = await client.query<{ id: number }>(
+      `SELECT id FROM tv_playlists
+        WHERE channel_id = $1 AND name = $2
+        ORDER BY id ASC LIMIT 1`,
+      [guideChannelId, WTFOS_GUIDE_TV_PLAYLIST_NAME]
+    );
+    let guidePlaylistId: number;
+    if (existingGuidePlaylist.rows.length > 0) {
+      guidePlaylistId = existingGuidePlaylist.rows[0]!.id;
+      await client.query(
+        `UPDATE tv_playlists
+            SET is_active = TRUE,
+                transition_seconds = 1,
+                updated_at = NOW()
+          WHERE id = $1`,
+        [guidePlaylistId]
+      );
+      results["guide_playlist.existing"] = 1;
+    } else {
+      const created = await client.query<{ id: number }>(
+        `INSERT INTO tv_playlists
+           (channel_id, name, is_active, transition_seconds, created_at, updated_at)
+         VALUES ($1, $2, TRUE, 1, NOW(), NOW())
+         RETURNING id`,
+        [guideChannelId, WTFOS_GUIDE_TV_PLAYLIST_NAME]
+      );
+      guidePlaylistId = created.rows[0]!.id;
+      results["guide_playlist.created"] = 1;
+    }
+
+    await client.query(`DELETE FROM tv_schedule_entries WHERE channel_id = $1`, [guideChannelId]);
+    await client.query(
+      `DELETE FROM tv_playlists WHERE channel_id = $1 AND id <> $2`,
+      [guideChannelId, guidePlaylistId]
+    );
+
+    const guideVideoIds: number[] = [];
+    for (const entry of guideCatalog) {
+      const synced = await client.query<{ id: number }>(
+        `INSERT INTO tv_channel_videos
+           (channel_id, token_contract, token_id, source_uri, mime_type,
+            title, thumbnail_uri, metadata,
+            creator_name, collection_name, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, 'video/mp4', $5, $6, $7::jsonb,
+                 'wtfOS', 'wtfOS Guide TV', NOW(), NOW())
+         ON CONFLICT (channel_id, token_contract, token_id)
+         DO UPDATE SET
+            source_uri = EXCLUDED.source_uri,
+            mime_type = EXCLUDED.mime_type,
+            title = EXCLUDED.title,
+            thumbnail_uri = EXCLUDED.thumbnail_uri,
+            metadata = EXCLUDED.metadata,
+            creator_name = EXCLUDED.creator_name,
+            collection_name = EXCLUDED.collection_name,
+            updated_at = NOW()
+         RETURNING id`,
+        [
+          guideChannelId,
+          entry.tokenContract,
+          entry.slug,
+          entry.sourceUri,
+          entry.title,
+          entry.posterUri,
+          JSON.stringify({
+            managedChannel: WTFOS_GUIDE_TV_CHANNEL_SLUG,
+            contentKind: entry.kind,
+            summary: entry.summary,
+            accountName: entry.accountName,
+          }),
+        ]
+      );
+      const videoId = synced.rows[0]!.id;
+      guideVideoIds.push(videoId);
+      await client.query(
+        `INSERT INTO tv_playlist_items
+           (playlist_id, video_id, media_item_id, sort_order,
+            duration_seconds, created_at, updated_at)
+         VALUES ($1, $2, NULL, $3, $4, NOW(), NOW())
+         ON CONFLICT (playlist_id, video_id)
+         DO UPDATE SET
+            sort_order = EXCLUDED.sort_order,
+            duration_seconds = EXCLUDED.duration_seconds,
+            updated_at = NOW()`,
+        [guidePlaylistId, videoId, entry.sortOrder, entry.durationSeconds]
+      );
+    }
+
+    await client.query(
+      `DELETE FROM tv_playlist_items
+        WHERE playlist_id = $1
+          AND NOT (video_id = ANY($2::int[]))`,
+      [guidePlaylistId, guideVideoIds]
+    );
+    await client.query(
+      `DELETE FROM tv_channel_videos
+        WHERE channel_id = $1
+          AND NOT (id = ANY($2::int[]))`,
+      [guideChannelId, guideVideoIds]
+    );
+    results["guide_channel.catalog_items"] = guideVideoIds.length;
+
+    // 8) Dial-number pins.  Executed in this order so a re-claim is
     //    a no-op: we only update when dial_number IS NULL.
     const pinDial = async (dial: number, channelId: number) => {
       // First clear the dial from any other channel (except the
@@ -662,7 +834,7 @@ export async function runTvBootBackfill(): Promise<void> {
     await pinDial(PLATFORM_DIAL, platformChannelId);
     results[`dial.${PLATFORM_DIAL}`] = platformChannelId;
 
-    // 8) Auto-assign dial numbers to brand-new channels only.  Dials
+    // 9) Auto-assign dial numbers to brand-new channels only.  Dials
     //    are sticky: once a channel owns a slot it keeps it forever,
     //    and a deleted channel's dial is never recycled to anyone
     //    else.  A small monotonic counter (`tv_dial_counter`) records
@@ -744,7 +916,7 @@ export async function runTvBootBackfill(): Promise<void> {
       results["dial.auto_assigned"] = assigned;
     }
 
-    // 9) Defensive orphan sweep.  Drops playlist items whose video
+    // 10) Defensive orphan sweep.  Drops playlist items whose video
     //    pointer still references a channel-video that got orphaned
     //    before the FK cascade existed.  The migration runs the same
     //    sweep; we repeat here so a re-boot after manual surgery also

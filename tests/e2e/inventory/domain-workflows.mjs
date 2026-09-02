@@ -20,12 +20,16 @@ export const DOMAIN_WORKFLOWS = [
       "faq.tutorial.selected",
       "faq.tutorial.played",
       "faq.tutorial.completed",
+      "faq.promo.selected",
+      "faq.promo.played",
+      "faq.promo.completed",
       "notification.viewed",
     ],
     behaviorAssertionIds: [
       "auth.classic-first-run-task-wayfinder",
       "auth.stale-session-welcome-recovery",
       "auth.faq-registration-tutorials",
+      "wtfos.guide-promo-channel",
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },
@@ -34,6 +38,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/users/wtf-admin/activity", expectedStatuses: [200, 404] },
       { method: "GET", path: "/api/notifications/preferences" },
       { method: "GET", path: "/api/faq/tutorials" },
+      { method: "GET", path: "/api/faq/promos" },
     ],
   },
   {
@@ -975,8 +980,10 @@ export const DOMAIN_WORKFLOWS = [
       "skywire.pipeline.tv_queued",
       "tv.admin.config_updated",
     ],
+    behaviorAssertionIds: ["wtfos.guide-promo-channel"],
     apiProbes: [
       { method: "GET", path: "/api/tv/channels" },
+      { method: "GET", path: "/api/tv/channels/77/stream" },
       { method: "GET", path: "/api/tv/channels/roger-radio-live/embed", expectedStatuses: [404] },
       { method: "GET", path: "/api/tv/channels?mine=1" },
       { method: "GET", path: "/api/tv/channels/roger-radio-live/embed", expectedStatuses: [404] },
@@ -1160,6 +1167,9 @@ export const DOMAIN_WORKFLOWS = [
       "faq.tutorial.selected",
       "faq.tutorial.played",
       "faq.tutorial.completed",
+      "faq.promo.selected",
+      "faq.promo.played",
+      "faq.promo.completed",
       "api.public.read",
       "public_data.viewed",
       "mcp.tool.called",
@@ -1173,6 +1183,7 @@ export const DOMAIN_WORKFLOWS = [
     apiProbes: [
       { method: "GET", path: "/api/links" },
       { method: "GET", path: "/api/faq" },
+      { method: "GET", path: "/api/faq/promos" },
       { method: "GET", path: "/api/faq/tutorials" },
       { method: "GET", path: "/api/faq/tutorials/create-account-and-sign-in/poster", expectedStatuses: [200, 404, 503] },
       { method: "GET", path: "/api/access" },

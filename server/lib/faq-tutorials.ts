@@ -1,5 +1,6 @@
 import { createReadStream } from "node:fs";
 import { promises as fs } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import faqTutorialSource from "@shared/faq-tutorials.json";
 import { downloadObjectToFile, getObjectStorageConfig } from "./storage/object-storage";
@@ -21,11 +22,12 @@ export type FaqTutorial = {
   posterObjectKey: string;
   steps: string[];
   narration: string;
+  spokenSteps: string[];
 };
 
 export type PublicFaqTutorial = Omit<
   FaqTutorial,
-  "videoObjectKey" | "captionsObjectKey" | "posterObjectKey" | "narration"
+  "videoObjectKey" | "captionsObjectKey" | "posterObjectKey" | "narration" | "spokenSteps"
 > & {
   videoUrl: string;
   captionsUrl: string;
@@ -51,6 +53,7 @@ export function getFaqTutorialCatalog(): FaqTutorial[] {
   return tutorialCatalog.map((tutorial) => ({
     ...tutorial,
     steps: [...tutorial.steps],
+    spokenSteps: [...tutorial.spokenSteps],
   }));
 }
 
@@ -136,23 +139,28 @@ function parseSingleRange(value: string | undefined, size: number): {
   return { start, end };
 }
 
-async function resolveCachedAsset(
-  tutorial: FaqTutorial,
-  kind: FaqTutorialAssetKind
-): Promise<string> {
+async function resolveCachedAsset(input: {
+  slug: string;
+  cacheNamespace: string;
+  objectKey: string;
+  kind: FaqTutorialAssetKind;
+}): Promise<string> {
   if (!getObjectStorageConfig()) {
     throw new Error("faq_tutorial_storage_unconfigured");
   }
-  const metadata = assetMetadata(kind);
-  const cacheRoot = path.join(MEDIA_HOT_CACHE_DIR, "faq-tutorials");
-  const destinationPath = path.join(cacheRoot, `${tutorial.slug}${metadata.extension}`);
+  const metadata = assetMetadata(input.kind);
+  const cacheRoot = path.join(MEDIA_HOT_CACHE_DIR, input.cacheNamespace);
+  const objectVersion = createHash("sha256").update(input.objectKey).digest("hex").slice(0, 12);
+  const destinationPath = path.join(
+    cacheRoot,
+    `${input.slug}-${objectVersion}${metadata.extension}`
+  );
   assertInsideRoot(destinationPath, cacheRoot);
 
   const existing = await fs.stat(destinationPath).catch(() => null);
   if (existing?.isFile() && existing.size > 0) return destinationPath;
 
-  const objectKey = objectKeyForAsset(tutorial, kind);
-  const inflightKey = `${tutorial.slug}:${kind}`;
+  const inflightKey = `${input.cacheNamespace}:${input.slug}:${input.objectKey}:${input.kind}`;
   const existingDownload = assetDownloads.get(inflightKey);
   if (existingDownload) return existingDownload;
 
@@ -162,12 +170,12 @@ async function resolveCachedAsset(
     assertInsideRoot(temporaryPath, cacheRoot);
     try {
       await downloadObjectToFile({
-        key: objectKey,
+        key: input.objectKey,
         destinationPath: temporaryPath,
       });
       const stat = await fs.stat(temporaryPath);
       if (!stat.isFile() || stat.size <= 0) {
-        throw new Error(`FAQ tutorial asset is empty: ${objectKey}`);
+        throw new Error(`Guide media asset is empty: ${input.objectKey}`);
       }
       await fs.rename(temporaryPath, destinationPath);
       return destinationPath;
@@ -184,13 +192,17 @@ async function resolveCachedAsset(
   }
 }
 
-export async function serveFaqTutorialAsset(input: {
+export async function serveStoredGuideAsset(input: {
   req: any;
   res: any;
-  tutorial: FaqTutorial;
+  slug: string;
+  cacheNamespace: string;
+  objectKey: string;
   kind: FaqTutorialAssetKind;
+  accountName: string;
+  accountHeaderName?: string;
 }): Promise<void> {
-  const filePath = await resolveCachedAsset(input.tutorial, input.kind);
+  const filePath = await resolveCachedAsset(input);
   const stat = await fs.stat(filePath);
   const metadata = assetMetadata(input.kind);
   const requestedRange = String(input.req.headers?.range || "").trim();
@@ -201,7 +213,10 @@ export async function serveFaqTutorialAsset(input: {
   input.res.setHeader("Content-Type", metadata.contentType);
   input.res.setHeader("Cache-Control", metadata.cacheControl);
   input.res.setHeader("X-Content-Type-Options", "nosniff");
-  input.res.setHeader("X-WTF-Tutorial-Account", FAQ_TUTORIAL_ACCOUNT_NAME);
+  input.res.setHeader("X-WTF-Video-Account", input.accountName);
+  if (input.accountHeaderName) {
+    input.res.setHeader(input.accountHeaderName, input.accountName);
+  }
 
   if (input.kind === "video") {
     input.res.setHeader("Accept-Ranges", "bytes");
@@ -222,4 +237,22 @@ export async function serveFaqTutorialAsset(input: {
 
   input.res.setHeader("Content-Length", String(stat.size));
   createReadStream(filePath).pipe(input.res);
+}
+
+export async function serveFaqTutorialAsset(input: {
+  req: any;
+  res: any;
+  tutorial: FaqTutorial;
+  kind: FaqTutorialAssetKind;
+}): Promise<void> {
+  await serveStoredGuideAsset({
+    req: input.req,
+    res: input.res,
+    slug: input.tutorial.slug,
+    cacheNamespace: "faq-tutorials",
+    objectKey: objectKeyForAsset(input.tutorial, input.kind),
+    kind: input.kind,
+    accountName: FAQ_TUTORIAL_ACCOUNT_NAME,
+    accountHeaderName: "X-WTF-Tutorial-Account",
+  });
 }

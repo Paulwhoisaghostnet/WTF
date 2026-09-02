@@ -24,11 +24,13 @@ test("FAQ tutorial catalog covers each requested registration journey as TommyTe
   );
   for (const tutorial of catalog) {
     assert.equal(tutorial.accountName, "TommyTezos");
+    assert.equal(tutorial.spokenSteps.length, tutorial.steps.length);
+    assert.equal(tutorial.narration, tutorial.spokenSteps.join(" "));
     assert.match(tutorial.videoObjectKey, /^faq\/tutorials\/2026-09-01\/.+\.mp4$/);
     assert.match(tutorial.captionsObjectKey, /\.vtt$/);
     assert.match(tutorial.posterObjectKey, /\.jpg$/);
     assert.ok(tutorial.steps.length >= 4);
-    assert.ok(tutorial.narration.includes("TommyTezos"));
+    assert.match(tutorial.narration, /^(Hi|Hey), I'm Tommy\./);
   }
 });
 
