@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **118** · Verified: **458** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **117** · Verified: **458** · Archived: **4**
 
 ## Canonical Board
 
@@ -78,6 +78,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
+| WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 186 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 186 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
@@ -128,7 +129,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 371 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 186 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
-| WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-447 | Fixed | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / historical indexer evidence | P1 | 13 | 186 | 3 | 4 | 2 | Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized |
 | WTF-BB-353 | Fixed | Codex accurate MapLab wtfOS topology pass | 2026-07-02 | Desktop OS / Map Lab demo accuracy | P1 | 13 | 186 | 4 | 5 | 0 | The public read-only MapLab demo now renders a generated full wtfOS topology with PageDef route nodes, domain/subdomain lanes, admin/native manager surfaces, interaction inventory, SystemEvent spine, domain workflows, behavior assertions, public/API/agent paths, persistence, and deploy-health nodes; verified by `npm run check -- --pretty false`, `npm run build`, focused MapLab Playwright, inventory coverage, full inventory E2E, and local harness smoke showing 212 nodes / 419 routes |
 | WTF-BB-184 | Fixed | Codex wtfOS doc-registry hardening pass | - | wtfOS / app installation governance | P1 | 13 | 186 | 4 | 4 | 1 | Desktop app installs could bypass doc-registry proof |
@@ -1712,6 +1712,40 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
+### WTF-BB-622 - Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys
+
+- Category: Desktop OS / commissioned app wayfinding and runtime state
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex commission production wayfinding verification
+- Last touched: 2026-09-02
+- Score: C4 + F5 + S0 + P1(4) = 13
+- Evidence:
+  - Production `GET /api/apps/desktop` on 2026-08-29 returned `false` for Arcade, Casino, Console, Game Studio, Studio, IPFS Pinning, Pasta Protocol, and other creator services even though the source defaults enable most of them.
+  - The production FAQ returned an empty list.
+  - `WelcomeMessage.tsx` tells a new user only that the account is ready and offers acknowledgement, Profile, or a novelty Diary path; it does not identify the commissioned Play, Create, Shop, Events, and Talk tasks.
+  - The Start Menu uses internal product-domain labels such as Gameshow, On Chain, and Gaming and duplicates several destinations across groups without one first-run task map.
+  - Production Arcade data has eight published games but zero creator games and zero Game Studio games, while the app itself is disabled.
+- Why it matters:
+  - The customer cannot treat the platform as self-explanatory while commissioned capabilities are unreachable or require an operator to explain internal app names and entitlement history.
+  - Source defaults do not repair existing production registration rows; release evidence must cover the authoritative database-backed app response.
+- Correction direction:
+  - Make the Classic OS the primary shell and expose stable Play, Create, Shop, Events, and Talk entry groups.
+  - Turn the first-run welcome into a task chooser and make the same guide recoverable through Help.
+  - Seed commission help content idempotently and migrate the authoritative desktop registrations for approved commissioned apps without conflating docs freshness with enablement.
+  - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
+- Verification idea:
+  - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
+- Correction:
+  - Added one shared Classic task map for Play, Create, Shop, Events, and Talk and used it in the welcome event, Help & Start Here, and the leading Start Menu groups.
+  - Reclassified Arcade, Studio, and Game Studio as free core desktop applications and replaced Casino's wagering claim with explicit practice-sandbox language while preserving its membership gate.
+  - Added an idempotent migration that restores commissioned app registrations as enabled/permanent and seeds plain-language FAQ guidance without overwriting operator content.
+  - Updated the live-puppet database preparation, route inventory, behavior registry, and browser harness so first-run completion is persistent and observable.
+- Verification:
+  - Focused wayfinding/catalog tests pass 20/20; the two-scenario browser journey proves task-map agreement, chosen-route launch, persisted welcome completion, public Help recovery, and stale-session recovery.
+  - Production build and inventory coverage pass. The guarded local migration applied successfully; direct reads confirm Arcade, Casino, Game Studio, Studio, WTFIAM, and Mail enabled/registered/permanent, the help seed present, and the Studio workflow column installed.
+  - Production verification remains pending deployment, so this bounty is Fixed rather than Verified.
+
 ### WTF-BB-342 - Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface
 
 - Category: Pasta Protocol / WTF.ME host and pin recovery
@@ -2847,40 +2881,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Score: C4 + F4 + S1 + P1(4) = 13
 - Legacy identity: this distinct record formerly reused WTF-BB-178; it was assigned WTF-BB-641 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-622 - Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys
-
-- Category: Desktop OS / commissioned app wayfinding and runtime state
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex commission fulfillment
-- Last touched: 2026-08-29
-- Score: C4 + F5 + S0 + P1(4) = 13
-- Evidence:
-  - Production `GET /api/apps/desktop` on 2026-08-29 returned `false` for Arcade, Casino, Console, Game Studio, Studio, IPFS Pinning, Pasta Protocol, and other creator services even though the source defaults enable most of them.
-  - The production FAQ returned an empty list.
-  - `WelcomeMessage.tsx` tells a new user only that the account is ready and offers acknowledgement, Profile, or a novelty Diary path; it does not identify the commissioned Play, Create, Shop, Events, and Talk tasks.
-  - The Start Menu uses internal product-domain labels such as Gameshow, On Chain, and Gaming and duplicates several destinations across groups without one first-run task map.
-  - Production Arcade data has eight published games but zero creator games and zero Game Studio games, while the app itself is disabled.
-- Why it matters:
-  - The customer cannot treat the platform as self-explanatory while commissioned capabilities are unreachable or require an operator to explain internal app names and entitlement history.
-  - Source defaults do not repair existing production registration rows; release evidence must cover the authoritative database-backed app response.
-- Correction direction:
-  - Make the Classic OS the primary shell and expose stable Play, Create, Shop, Events, and Talk entry groups.
-  - Turn the first-run welcome into a task chooser and make the same guide recoverable through Help.
-  - Seed commission help content idempotently and migrate the authoritative desktop registrations for approved commissioned apps without conflating docs freshness with enablement.
-  - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
-- Verification idea:
-  - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
-- Correction:
-  - Added one shared Classic task map for Play, Create, Shop, Events, and Talk and used it in the welcome event, Help & Start Here, and the leading Start Menu groups.
-  - Reclassified Arcade, Studio, and Game Studio as free core desktop applications and replaced Casino's wagering claim with explicit practice-sandbox language while preserving its membership gate.
-  - Added an idempotent migration that restores commissioned app registrations as enabled/permanent and seeds plain-language FAQ guidance without overwriting operator content.
-  - Updated the live-puppet database preparation, route inventory, behavior registry, and browser harness so first-run completion is persistent and observable.
-- Verification:
-  - Focused wayfinding/catalog tests pass 20/20; the two-scenario browser journey proves task-map agreement, chosen-route launch, persisted welcome completion, public Help recovery, and stale-session recovery.
-  - Production build and inventory coverage pass. The guarded local migration applied successfully; direct reads confirm Arcade, Casino, Game Studio, Studio, WTFIAM, and Mail enabled/registered/permanent, the help seed present, and the Studio workflow column installed.
-  - Production verification remains pending deployment, so this bounty is Fixed rather than Verified.
 
 ### WTF-BB-447 - Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized
 

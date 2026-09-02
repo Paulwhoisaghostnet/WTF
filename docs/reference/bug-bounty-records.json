@@ -2674,9 +2674,9 @@
     },
     {
       "id": "WTF-BB-622",
-      "status": "Fixed",
-      "owner": "Codex commission fulfillment",
-      "lastTouched": "2026-08-29",
+      "status": "In Progress",
+      "owner": "Codex commission production wayfinding verification",
+      "lastTouched": "2026-09-02",
       "category": "Desktop OS / commissioned app wayfinding and runtime state",
       "priority": "P1",
       "points": 13,
