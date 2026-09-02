@@ -73,6 +73,21 @@ test("board webhook limiter caps tracked keyspace under token/ip churn", () => {
   assert.equal(limiter.getTrackedKeyCount(), 3);
 });
 
+test("board webhook limiter removes quiet token/ip keys after the request window", () => {
+  const limiter = createBoardWebhookRateLimit({
+    maxEntries: 10,
+    sweepIntervalMs: 1_000,
+  });
+
+  mockNow(1_000);
+  runLimiter(limiter, "quiet-token", "203.0.113.30");
+  assert.equal(limiter.getTrackedKeyCount(), 1);
+
+  mockNow(62_000);
+  runLimiter(limiter, "active-token", "203.0.113.31");
+  assert.equal(limiter.getTrackedKeyCount(), 1);
+});
+
 test("board webhook limiter keeps the existing per-token/ip request ceiling", () => {
   const limiter = createBoardWebhookRateLimit({ maxEntries: 10 });
 

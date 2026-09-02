@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **16** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **414** · Archived: **4**
+Total: **637** · Open: **16** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **415** · Archived: **4**
 
 ## Canonical Board
 
@@ -86,7 +86,6 @@ Total: **637** · Open: **16** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-059 | Claimed | Codex board webhook limiter reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -579,6 +578,7 @@ Total: **637** · Open: **16** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-229 | Verified | Codex WTF LIVE WIM identity pass | 2026-06-09 | WTF LIVE / wtfOS identity and WIM buddies | P2 | 10 | 449 | 3 | 4 | 0 | WTF LIVE now binds signed-in room joins to wtfOS usernames, emits account-backed attendance metadata, and lets signed-in viewers add WTF users to WIM buddies from compact roster rows |
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 449 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
 | WTF-BB-062 | Verified | Codex W repair pass | 2026-05-24 | Runtime / API scaling | P2 | 10 | 449 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
+| WTF-BB-059 | Verified | Codex board webhook limiter reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-051 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Dependencies / reproducibility | P2 | 10 | 449 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-031 | Verified | Codex W repair pass | 2026-05-24 | Config reliability | P2 | 10 | 449 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
 | WTF-BB-640 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 511 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
@@ -1801,25 +1801,6 @@ Total: **637** · Open: **16** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-059 - Board webhook rate limiter retains per token+IP keys without TTL-based eviction
-
-- Category: Runtime / memory hygiene
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex board webhook limiter reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S2 + P2(3) = 10
-- Evidence:
-  - `server/routes/board.ts:38` defines `webhookHits` as a module-level `Map<string, number[]>`.
-  - `server/routes/board.ts:80-90` filters stale timestamps but never deletes the parent key when a webhook sender becomes quiet.
-  - `server/routes/board.ts:1043-1044` generates keys as `${req.params.token}:${sourceIp}`, allowing unbounded growth from token/IP cardinality.
-- Why it matters:
-  - A burst of unique tokens or spoofed source IPs can grow this map unbounded during long uptime, adding memory pressure on public board webhook traffic.
-- Likely correction direction:
-  - Add periodic key reaping and hard cap by map size + per-key entry count; keep a fixed-size ring or token bucket state instead of unlimited arrays.
-- Verification idea:
-  - Replay a high-cardinality flood of webhook calls and confirm map size stabilizes under TTL/eviction policy.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13114,6 +13095,23 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory`
 - Verification idea:
   - Simulate a large stream of unique DM key patterns and confirm bounded key count and bounded memory over time.
+
+### WTF-BB-059 - Board webhook rate limiter retains per token+IP keys without TTL-based eviction
+
+- Category: Runtime / memory hygiene
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex board webhook limiter reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Historical evidence:
+  - The board webhook route once owned an unbounded module-level token/IP map. It trimmed timestamps inside a bucket but retained quiet parent keys forever, so high-cardinality traffic could grow the keyspace for the life of the process.
+- Correction:
+  - Commit `aec0c5a16db38368b8ab6ff829e7bd7ad1cf8bab` moved the route to the shared in-memory limiter with bounded token/IP key parts, periodic expired-key sweeps, oldest-key eviction, a 5,000-key ceiling, and the existing 20-request/60-second ceiling.
+  - The current route imports only `boardWebhookRateLimit` and no longer owns the reported `webhookHits` map. The correction is an ancestor of the production commit reported by `/api/health`.
+- Verification (2026-09-02):
+  - The focused limiter suite passes 4/4: key material is bounded, 12 distinct token/IP pairs stabilize at the configured three-key test ceiling, a quiet key disappears after the 60-second request window, and the 21st request for one key still returns 429.
+  - The original unbounded-key condition is absent from current source and production lineage, so this was a stale Open record rather than an outstanding runtime defect.
 
 ### WTF-BB-051 - `latest` versions in package manifests create non-reproducible dependency behavior
 

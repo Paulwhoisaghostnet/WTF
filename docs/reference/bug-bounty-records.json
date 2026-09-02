@@ -594,7 +594,7 @@
     },
     {
       "id": "WTF-BB-059",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex board webhook limiter reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Runtime / memory hygiene",
@@ -605,7 +605,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "Board webhook rate limiter retains per token+IP keys without TTL-based eviction",
-      "body": "- Evidence:\n  - `server/routes/board.ts:38` defines `webhookHits` as a module-level `Map<string, number[]>`.\n  - `server/routes/board.ts:80-90` filters stale timestamps but never deletes the parent key when a webhook sender becomes quiet.\n  - `server/routes/board.ts:1043-1044` generates keys as `${req.params.token}:${sourceIp}`, allowing unbounded growth from token/IP cardinality.\n- Why it matters:\n  - A burst of unique tokens or spoofed source IPs can grow this map unbounded during long uptime, adding memory pressure on public board webhook traffic.\n- Likely correction direction:\n  - Add periodic key reaping and hard cap by map size + per-key entry count; keep a fixed-size ring or token bucket state instead of unlimited arrays.\n- Verification idea:\n  - Replay a high-cardinality flood of webhook calls and confirm map size stabilizes under TTL/eviction policy.",
+      "body": "- Historical evidence:\n  - The board webhook route once owned an unbounded module-level token/IP map. It trimmed timestamps inside a bucket but retained quiet parent keys forever, so high-cardinality traffic could grow the keyspace for the life of the process.\n- Correction:\n  - Commit `aec0c5a16db38368b8ab6ff829e7bd7ad1cf8bab` moved the route to the shared in-memory limiter with bounded token/IP key parts, periodic expired-key sweeps, oldest-key eviction, a 5,000-key ceiling, and the existing 20-request/60-second ceiling.\n  - The current route imports only `boardWebhookRateLimit` and no longer owns the reported `webhookHits` map. The correction is an ancestor of the production commit reported by `/api/health`.\n- Verification (2026-09-02):\n  - The focused limiter suite passes 4/4: key material is bounded, 12 distinct token/IP pairs stabilize at the configured three-key test ceiling, a quiet key disappears after the 60-second request window, and the 21st request for one key still returns 429.\n  - The original unbounded-key condition is absent from current source and production lineage, so this was a stale Open record rather than an outstanding runtime defect.",
       "legacyOriginalId": "WTF-BB-059"
     },
     {

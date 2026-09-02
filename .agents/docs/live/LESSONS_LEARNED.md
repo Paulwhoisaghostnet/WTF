@@ -11397,3 +11397,13 @@
 **Rule**: Separate irreversible actions from the support permission that leads operators to them. Enforce the dedicated permission on the server, exclude it from support-role defaults, expose any exceptional grant only through the role-permission system, and make the UI state the boundary instead of presenting a control that will fail later.
 
 ---
+
+## 2026-09-02 — A bounded rate limiter needs cap and expiry proofs
+
+**What happened**: The board bounty still described an unbounded token/IP map after the route had already moved to a shared limiter with a hard key ceiling and periodic sweeping. Existing tests proved cardinality stabilization and per-key throttling but did not directly prove that a quiet key disappears after its request window.
+
+**Why it mattered**: A hard cap prevents unlimited growth, but without an expiry assertion the limiter could retain stale identities until unrelated churn forces eviction. The board could not distinguish a complete correction from a partial one.
+
+**Rule**: For any in-memory limiter or cache, separately prove the admission ceiling, stale-key expiry, and per-key behavior. Reconcile the bounty against current route ownership and production ancestry before changing a defect that may already be gone.
+
+---
