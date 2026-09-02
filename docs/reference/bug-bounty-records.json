@@ -626,7 +626,7 @@
     },
     {
       "id": "WTF-BB-570",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex",
       "lastTouched": "2026-09-02",
       "category": "Creation tools / quality gate",
@@ -637,7 +637,7 @@
       "functionalityDanger": 4,
       "securityDanger": 0,
       "title": "Particle Painter lint configuration crashes before file analysis",
-      "body": "- Evidence:\n  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.\n  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.\n- Why it matters:\n  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.\n- Correction direction:\n  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.\n- Verification idea:\n  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.\n- Claim (2026-09-02):\n  - Codex reproduced the configuration-loader crash against the lockfile-installed Particle Painter toolchain and claimed the item for a scoped configuration correction plus regression proof.",
+      "body": "- Historical evidence:\n  - `npm --prefix PP run lint` exited before linting a file because `PP/eslint.config.js` requested `reactHooks.configs.flat.recommended`, an export absent from the lockfile-installed React Hooks ESLint plugin.\n- Why it mattered:\n  - Particle Painter changes could not receive their configured static lint gate, allowing source findings to hide behind a toolchain crash.\n- Correction (2026-09-02):\n  - The flat configuration now consumes the installed plugin's `recommended-latest` export and the dependency declaration names the stable 5.2 line recorded by the lockfile. Existing external-adapter `any` boundaries remain visible as warnings, while real unused-symbol and invalid-refresh errors were removed or narrowly exempted for intentional component/helper entry points.\n  - The main quality workflow now installs Particle Painter from its own lockfile and runs its exact lint command. A workflow policy assertion prevents that nested gate from being silently removed.\n- Verification (2026-09-02):\n  - `npm --prefix PP run lint` reaches every current source file and exits successfully with zero errors.\n  - `npm --prefix PP run build` passes the strict TypeScript and Vite production build.\n  - The focused CI gate policy suite passes 5/5, including the new Particle Painter install-and-lint assertion.\n  - The former configuration-loader exception is no longer reproducible, so WTF-BB-570 is Verified.",
       "legacyOriginalId": "WTF-BB-570"
     },
     {

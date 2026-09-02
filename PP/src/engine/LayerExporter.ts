@@ -23,6 +23,7 @@ export type LayerSettingsFile = {
 export function exportLayerSettings(layer: LayerConfig): void {
   // Create a copy without the id (will be regenerated on import)
   const { id, ...settings } = layer;
+  void id;
   
   const exportData: LayerSettingsFile = {
     version: LAYER_SETTINGS_VERSION,

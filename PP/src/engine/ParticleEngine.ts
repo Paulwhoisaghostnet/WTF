@@ -1,4 +1,4 @@
-import type { GlobalConfig, LayerConfig, AudioMapping, AudioSource } from "../state/types";
+import type { GlobalConfig, LayerConfig, AudioMapping } from "../state/types";
 import { createFbo, createProgram, createTexture, makeQuadVAO, must, loadImageBitmap } from "./gl";
 import { 
   simVS, simFS, renderVS, renderFS, blitVS, blitFS,

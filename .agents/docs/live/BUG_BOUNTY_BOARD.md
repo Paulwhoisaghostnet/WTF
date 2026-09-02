@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **13** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **417** · Archived: **4**
+Total: **637** · Open: **13** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **418** · Archived: **4**
 
 ## Canonical Board
 
@@ -83,7 +83,6 @@ Total: **637** · Open: **13** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-570 | Claimed | Codex | 2026-09-02 | Creation tools / quality gate | P2 | 9 | 511 | 2 | 4 | 0 | Particle Painter lint configuration crashes before file analysis |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -582,6 +581,7 @@ Total: **637** · Open: **13** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-051 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Dependencies / reproducibility | P2 | 10 | 449 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-031 | Verified | Codex W repair pass | 2026-05-24 | Config reliability | P2 | 10 | 449 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
 | WTF-BB-640 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 511 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
+| WTF-BB-570 | Verified | Codex | 2026-09-02 | Creation tools / quality gate | P2 | 9 | 511 | 2 | 4 | 0 | Particle Painter lint configuration crashes before file analysis |
 | WTF-BB-368 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Architecture / duplicate and disconnected organs | P2 | 9 | 511 | 2 | 3 | 1 | Duplicate access-route mounting and disconnected creator-payout, Discord-command, and external-listing organs create false capability surface |
 | WTF-BB-366 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Developer experience / configuration | P2 | 9 | 511 | 3 | 2 | 1 | Hundreds of environment-variable reads have no generated ownership, secrecy, validation, lifecycle, or documentation inventory |
 | WTF-BB-357 | Verified | Codex Reggie personality script pass | 2026-07-07 | Desktop OS / Reggie assistant voice | P2 | 9 | 511 | 3 | 3 | 0 | Reggie now has deep authored script pools for every quest story plus summon/loading/locked/progress/empty-question states, with tests enforcing at least four intro/nudge/congrats variants per user story and deterministic no-repeat selection; verified with focused Reggie policy/model/dialogue tests, TypeScript, and diff whitespace |
@@ -1746,26 +1746,6 @@ Total: **637** · Open: **13** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-570 - Particle Painter lint configuration crashes before file analysis
-
-- Category: Creation tools / quality gate
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex
-- Last touched: 2026-09-02
-- Score: C2 + F4 + S0 + P2(3) = 9
-- Evidence:
-  - `npm --prefix PP run lint` exits before linting a file because `PP/eslint.config.js` reads a missing `recommended` configuration from the installed React Hooks ESLint plugin shape.
-  - The same source passes the strict TypeScript/Vite production build, so this is a lint-loader failure rather than a TypeScript failure in the credential repair.
-- Why it matters:
-  - Particle Painter changes cannot receive their configured static lint gate, allowing lint regressions to hide behind a toolchain crash.
-- Correction direction:
-  - Align the flat ESLint configuration with the exact installed plugin exports and retain a config-loading regression.
-- Verification idea:
-  - `npm --prefix PP run lint` must reach file analysis and exit successfully on the current Particle Painter source.
-- Claim (2026-09-02):
-  - Codex reproduced the configuration-loader crash against the lockfile-installed Particle Painter toolchain and claimed the item for a scoped configuration correction plus regression proof.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13182,6 +13162,27 @@ Copy this when adding a new issue:
   - Added explicit email/password/handle autocomplete semantics, client-side email-shape submit gating, default `.bsky.social` suffix normalization for short handles, and server field-level parser errors.
 - Verification:
   - Focused AT/Skywire policy tests, typecheck, build, and Skywire route smoke.
+
+### WTF-BB-570 - Particle Painter lint configuration crashes before file analysis
+
+- Category: Creation tools / quality gate
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Historical evidence:
+  - `npm --prefix PP run lint` exited before linting a file because `PP/eslint.config.js` requested `reactHooks.configs.flat.recommended`, an export absent from the lockfile-installed React Hooks ESLint plugin.
+- Why it mattered:
+  - Particle Painter changes could not receive their configured static lint gate, allowing source findings to hide behind a toolchain crash.
+- Correction (2026-09-02):
+  - The flat configuration now consumes the installed plugin's `recommended-latest` export and the dependency declaration names the stable 5.2 line recorded by the lockfile. Existing external-adapter `any` boundaries remain visible as warnings, while real unused-symbol and invalid-refresh errors were removed or narrowly exempted for intentional component/helper entry points.
+  - The main quality workflow now installs Particle Painter from its own lockfile and runs its exact lint command. A workflow policy assertion prevents that nested gate from being silently removed.
+- Verification (2026-09-02):
+  - `npm --prefix PP run lint` reaches every current source file and exits successfully with zero errors.
+  - `npm --prefix PP run build` passes the strict TypeScript and Vite production build.
+  - The focused CI gate policy suite passes 5/5, including the new Particle Painter install-and-lint assertion.
+  - The former configuration-loader exception is no longer reproducible, so WTF-BB-570 is Verified.
 
 ### WTF-BB-368 - Duplicate access-route mounting and disconnected creator-payout, Discord-command, and external-listing organs create false capability surface
 

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useStudioStore } from "../state/store";
 import { SliderRow } from "./ui/SliderRow";
-import type { FlowPath, FlowPoint } from "../state/types";
+import type { FlowPoint } from "../state/types";
 
 const CANVAS_SIZE = 512;
 

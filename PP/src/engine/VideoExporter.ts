@@ -213,7 +213,7 @@ export async function recordWebM(
       resolve(blob);
     };
     
-    recorder.onerror = (e) => {
+    recorder.onerror = () => {
       reject(new Error("Recording failed"));
     };
     

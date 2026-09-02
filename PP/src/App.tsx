@@ -17,7 +17,7 @@ export default function App() {
   const isInitialized = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const recordingTimeoutRef = useRef<number | null>(null);
+  const recordingTimeoutRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const audioWasPlayingRef = useRef<boolean>(false);
   const gifWorkerUrl = useRef<string>(new URL("gif.js/dist/gif.worker.js", import.meta.url).toString());
@@ -198,7 +198,7 @@ export default function App() {
           try {
             Tone.getDestination().disconnect(audioDestinationRef.current);
             audioDestinationRef.current = null;
-          } catch (err) {
+          } catch {
             // Ignore disconnect errors
           }
         }
@@ -370,8 +370,7 @@ export default function App() {
              }
           }, 100);
           
-          // Store interval ID in ref (casting to any/number to avoid type issues)
-          recordingTimeoutRef.current = progressInterval as any;
+          recordingTimeoutRef.current = progressInterval;
         } else {
              // Manual stop: still update progress message but no %
              setExportProgress(0, "Recording...");

@@ -11417,3 +11417,13 @@
 **Rule**: Record execution environment and clearance separately. A local adapter may be Verified when a real sandbox deploy/run succeeds and the gate captures failures, while production stays disabled unless its own endpoint, host configuration, and network evidence are explicitly proven.
 
 ---
+
+## 2026-09-02 — A lint command must prove configuration loading before it can police source
+
+**What happened**: Particle Painter's lint command crashed while importing the React Hooks flat configuration because the file expected a `configs.flat.recommended` export that the lockfile-installed plugin did not provide. Once the loader was corrected, it exposed source findings that had been hidden behind the configuration failure.
+
+**Why it mattered**: A configured lint script looked like a quality gate but never analyzed a file. Without running the exact nested package toolchain in CI, future dependency resolution or configuration edits could silently restore the same false assurance.
+
+**Rule**: Bind flat-config imports to the exports of the lockfile-installed plugin, run the nested package's real lint command in the shared quality workflow, and treat a configuration-loader failure separately from the source findings it masks.
+
+---

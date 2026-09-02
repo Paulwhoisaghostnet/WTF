@@ -31,6 +31,13 @@ test("quality typecheck receives measured heap headroom without widening other s
   );
 });
 
+test("quality gates install and lint Particle Painter with its lockfile toolchain", () => {
+  assert.match(
+    workflow,
+    /- name: Particle Painter lint\s+run: \|\s+npm --prefix PP ci\s+npm --prefix PP run lint/,
+  );
+});
+
 test("inventory lane names do not claim route reachability is feature-complete behavior coverage", () => {
   assert.match(workflow, /Inventory registry coverage \(skeleton, not feature completeness\)/);
   assert.match(workflow, /Inventory route smoke \(reachability, not durable behavior\)/);

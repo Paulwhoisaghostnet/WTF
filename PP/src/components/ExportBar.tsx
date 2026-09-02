@@ -8,13 +8,6 @@ import { quickExportGif, quickExportWebM, downloadBlob } from "../engine/QuickEx
 import { WalletConnect } from "./WalletConnect";
 import { MintModal } from "./MintModal";
 
-type ExportStatus = {
-  active: boolean;
-  format: "gif" | "webm" | "mp4" | null;
-  message: string;
-  progress: number;
-};
-
 export function ExportBar() {
   const global = useStudioStore((s) => s.global);
   const setGlobal = useStudioStore((s) => s.setGlobal);

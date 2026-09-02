@@ -48,6 +48,11 @@ jobs:
       - name: Aggregate unit tests
         run: npm run test:unit
 
+      - name: Particle Painter lint
+        run: |
+          npm --prefix PP ci
+          npm --prefix PP run lint
+
       - name: Generate CycloneDX SBOM
         run: npm run security:sbom
 

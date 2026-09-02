@@ -67,12 +67,10 @@ export function RightPanel() {
   const global = useStudioStore((s) => s.global);
   const setGlobal = useStudioStore((s) => s.setGlobal);
   
-  const [audioAnalysis, setAudioAnalysis] = useState<AudioAnalysisData | null>(null);
   const [cvBuffer, setCvBuffer] = useState<CVSample[]>([]);
   const cvStartTimeRef = useRef<number | null>(null);
   
   const handleAudioAnalysis = useCallback((data: AudioAnalysisData) => {
-    setAudioAnalysis(data);
     const now = performance.now() / 1000;
     if (cvStartTimeRef.current === null) cvStartTimeRef.current = now;
     const sample = {
