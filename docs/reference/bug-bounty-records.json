@@ -2850,8 +2850,8 @@
     },
     {
       "id": "WTF-BB-053",
-      "status": "In Progress",
-      "owner": "Codex canonical TV resilience verification",
+      "status": "Verified",
+      "owner": "Codex canonical TV broken-clip recovery",
       "lastTouched": "2026-09-02",
       "category": "TV microapp / reliability",
       "priority": "P1",
@@ -2861,7 +2861,7 @@
       "functionalityDanger": 4,
       "securityDanger": 2,
       "title": "Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry)",
-      "body": "- Evidence:\n  - `client/src/pages/TV2.tsx` adds a user-visible skip notice (`SkipNoticeBanner`) and explicit error state messaging on item failures.\n  - `client/src/pages/TV2.tsx` adds client-side `reportItemEnd`/`sessionId` telemetry emission to `/api/tv/telemetry/item-end` and per-session failure tracking for queue health.\n  - `/api/tv/telemetry/item-end` is implemented server-side with session-distinct blacklisting logic in `server/routes/tv.ts`.\n  - `client/src/pages/TV.tsx` currently runs on `/tv` without those TV2-only resilience components/features.\n- Why it matters:\n  - In `/tv`, broken or repeatedly flaky media can still degrade the viewer experience with silent recovery paths and without the session-level failure signals that TV2 now uses.\n  - Recovery behavior is less observable and harder to harden under repeated failures.\n- Likely correction direction:\n  - Backport TV2 resilience logic into `client/src/pages/TV.tsx` under a staged flag and keep existing behavior defaulted until parity testing passes.\n  - Reuse existing TV2 helper strategy for session-scoped failure tracking and telemetry emission.\n- Local fix note:\n  - Backported item-end telemetry, session ids, and skip-notice UX into `client/src/pages/TV.tsx` so canonical `/tv` now reports natural clip ends and hard failures to `/api/tv/telemetry/item-end`.\n  - Patched both `TV.tsx` and `TV2.tsx` so the per-session skip list is not dead state anymore: queue advancement now hops over blacklisted items instead of dutifully replaying them on the next loop.\n- Verification: `npm run check`\n- Verification idea:\n  - Inject a synthetic broken clip and confirm:\n    - clear skip notice appears,\n    - queue advances without long stalls,\n    - telemetry item-end events are persisted in server-side bucket state.",
+      "body": "- Historical evidence:\n  - Resilience behavior was first implemented only in the retired `TV2.tsx`: canonical `/tv` lacked its skip notice, item-end/session telemetry, and per-session failure tracking.\n  - Those pieces were later moved into canonical TV, but the hard-error handler called the authoritative stream refresh. Because the wall-clock cursor still named the broken clip, the notice and telemetry could fire while the viewer immediately received the same failed item again.\n- Correction (2026-09-02):\n  - Commit `c21f452e` resolves error fallback and telemetry identity from the active client queue item rather than the server's original current item.\n  - A hard failure now uses the existing session skip list to select and locally advance to the next healthy queue item. Authoritative stream refresh remains only when the queue has no different playable target.\n  - The canonical OS inventory registers `tv.broken-clip-recovery` as owned behavior with a visible-result and durable telemetry assertion.\n- Verification:\n  - Focused queue, canonical-route, rate-limit, and bounded telemetry tests passed 13/13; full TypeScript, production build, and inventory coverage passed for 241 surfaces, 981 handles, 118 routes, and 16 workflows.\n  - Focused Chromium passed 2/2. Its synthetic broken MP4 produces the plain-language `Skipping broken clip...` status, renders the next healthy embed, and captures an error item-end payload with video 701 plus a non-empty session id.\n  - Deploy run 33675092344 succeeded for exact correction `c21f452e`; public readiness reported that commit with database, chain, and jobs healthy, and `/tv` returned HTTP 200. WTF-BB-053 is Verified.",
       "legacyOriginalId": "WTF-BB-053"
     },
     {
@@ -10202,7 +10202,7 @@
     },
     {
       "id": "WTF-BB-671",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Codex production dependency advisory response",
       "lastTouched": "2026-09-02",
       "category": "Dependencies / security",
@@ -10213,7 +10213,7 @@
       "functionalityDanger": 4,
       "securityDanger": 4,
       "title": "New fast-uri and qs advisories fail the production dependency audit",
-      "body": "- Evidence (2026-09-02):\n  - Exact-main Quality Gates run `33675092343` failed `npm run security:audit` after npm published four high-severity `fast-uri` host-confusion/SSRF advisories affecting 3.1.5 and two moderate `qs` parsing/denial-of-service advisories affecting 6.15.2.\n  - The installed paths are transitive through Ajv and Express/body-parser; npm reports compatible fixes are available.\n- Why it matters:\n  - The release gate is red and the production dependency graph contains newly disclosed input-normalization vulnerabilities.\n- Likely correction direction:\n  - Pin compatible patched transitive releases, regenerate the lockfile, and avoid forced direct-dependency downgrades or unrelated upgrades.\n- Verification idea:\n  - A clean install resolves the patched versions, `npm run security:audit` exits zero, dependency consumers still pass focused tests, and the exact correction commit passes Quality Gates and production readiness."
+      "body": "- Evidence (2026-09-02):\n  - Exact-main Quality Gates run `33675092343` failed `npm run security:audit` after npm published four high-severity `fast-uri` host-confusion/SSRF advisories affecting 3.1.5 and two moderate `qs` parsing/denial-of-service advisories affecting 6.15.2.\n  - The installed paths were transitive through Ajv and Express/body-parser; npm reported compatible fixes.\n- Correction:\n  - Commit `ebe26e2a` pins `fast-uri` 3.1.6 and `qs` 6.16.0 through root overrides and regenerates the lockfile without changing direct framework versions.\n- Verification:\n  - A clean `npm ci` resolved the exact patched leaves. Both `npm audit --omit=dev --audit-level=high` and the stricter moderate-level production audit reported zero vulnerabilities.\n  - Focused Express public-API/cache/health/static tests passed 11/11, supply-chain policy passed 4/4, and local TypeScript and production build passed.\n  - Exact-commit Quality Gates run 33678900075 succeeded, including the production audit, all aggregate unit tests, SBOM, TypeScript, build, full inventory route smoke, SmartPy, and external-link safety. Deploy run 33678900101 succeeded and production readiness reported exact commit `ebe26e2a` with database, chain, and jobs healthy. WTF-BB-671 is Verified."
     }
   ]
 }

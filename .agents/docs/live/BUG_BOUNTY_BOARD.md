@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Blocked: **2** · Fixed: **122** · Verified: **453** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **122** · Verified: **455** · Archived: **4**
 
 ## Canonical Board
 
@@ -75,12 +75,10 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
-| WTF-BB-671 | In Progress | Codex production dependency advisory response | 2026-09-02 | Dependencies / security | P1 | 14 | 126 | 2 | 4 | 4 | New fast-uri and qs advisories fail the production dependency audit |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 186 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
-| WTF-BB-053 | In Progress | Codex canonical TV resilience verification | 2026-09-02 | TV microapp / reliability | P1 | 13 | 186 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 186 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 271 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
@@ -300,6 +298,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 93 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-671 | Verified | Codex production dependency advisory response | 2026-09-02 | Dependencies / security | P1 | 14 | 126 | 2 | 4 | 4 | New fast-uri and qs advisories fail the production dependency audit |
 | WTF-BB-666 | Verified | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
 | WTF-BB-664 | Verified | Codex Kiln dependency remediation | 2026-09-01 | Kiln dependencies / production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln production dependency graph contains five high-severity transitive advisories |
 | WTF-BB-663 | Verified | Codex Octez 5 production advisory verification | 2026-08-31 | Dependencies / moderate production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories |
@@ -386,6 +385,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-080 | Verified | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 186 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Verified | Codex Shadowbox evidence reconciliation | 2026-08-31 | Kiln integration / Shadowbox | P1 | 13 | 186 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 13 | 186 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
+| WTF-BB-053 | Verified | Codex canonical TV broken-clip recovery | 2026-09-02 | TV microapp / reliability | P1 | 13 | 186 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 186 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 186 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-670 | Verified | Codex credential-independent Hetzner deploy transport | 2026-09-02 | Deploy / Hetzner source transport | P1 | 12 | 271 | 2 | 5 | 1 | Production deploy intermittently depends on an unavailable GitHub credential stored on the server |
@@ -1635,24 +1635,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
   - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
-### WTF-BB-671 - New fast-uri and qs advisories fail the production dependency audit
-
-- Category: Dependencies / security
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex production dependency advisory response
-- Last touched: 2026-09-02
-- Score: C2 + F4 + S4 + P1(4) = 14
-- Evidence (2026-09-02):
-  - Exact-main Quality Gates run `33675092343` failed `npm run security:audit` after npm published four high-severity `fast-uri` host-confusion/SSRF advisories affecting 3.1.5 and two moderate `qs` parsing/denial-of-service advisories affecting 6.15.2.
-  - The installed paths are transitive through Ajv and Express/body-parser; npm reports compatible fixes are available.
-- Why it matters:
-  - The release gate is red and the production dependency graph contains newly disclosed input-normalization vulnerabilities.
-- Likely correction direction:
-  - Pin compatible patched transitive releases, regenerate the lockfile, and avoid forced direct-dependency downgrades or unrelated upgrades.
-- Verification idea:
-  - A clean install resolves the patched versions, `npm run security:audit` exits zero, dependency consumers still pass focused tests, and the exact correction commit passes Quality Gates and production readiness.
-
 ### WTF-BB-298 - Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing
 
 - Category: API / app gates and information disclosure
@@ -1831,35 +1813,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
   - 2026-07-06 live recheck with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved repo cleanup, deployment identity, static/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof while blocking only on the dedicated WTF.ME credential and live host proof.
   - 2026-07-06 strict final gate with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d npm run pasta:live-readiness:final` proved the same non-WTF.ME surfaces and exited `1` only on the same WTF.ME blockers.
-
-### WTF-BB-053 - Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry)
-
-- Category: TV microapp / reliability
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex canonical TV resilience verification
-- Last touched: 2026-09-02
-- Score: C3 + F4 + S2 + P1(4) = 13
-- Evidence:
-  - `client/src/pages/TV2.tsx` adds a user-visible skip notice (`SkipNoticeBanner`) and explicit error state messaging on item failures.
-  - `client/src/pages/TV2.tsx` adds client-side `reportItemEnd`/`sessionId` telemetry emission to `/api/tv/telemetry/item-end` and per-session failure tracking for queue health.
-  - `/api/tv/telemetry/item-end` is implemented server-side with session-distinct blacklisting logic in `server/routes/tv.ts`.
-  - `client/src/pages/TV.tsx` currently runs on `/tv` without those TV2-only resilience components/features.
-- Why it matters:
-  - In `/tv`, broken or repeatedly flaky media can still degrade the viewer experience with silent recovery paths and without the session-level failure signals that TV2 now uses.
-  - Recovery behavior is less observable and harder to harden under repeated failures.
-- Likely correction direction:
-  - Backport TV2 resilience logic into `client/src/pages/TV.tsx` under a staged flag and keep existing behavior defaulted until parity testing passes.
-  - Reuse existing TV2 helper strategy for session-scoped failure tracking and telemetry emission.
-- Local fix note:
-  - Backported item-end telemetry, session ids, and skip-notice UX into `client/src/pages/TV.tsx` so canonical `/tv` now reports natural clip ends and hard failures to `/api/tv/telemetry/item-end`.
-  - Patched both `TV.tsx` and `TV2.tsx` so the per-session skip list is not dead state anymore: queue advancement now hops over blacklisted items instead of dutifully replaying them on the next loop.
-- Verification: `npm run check`
-- Verification idea:
-  - Inject a synthetic broken clip and confirm:
-    - clear skip notice appears,
-    - queue advances without long stalls,
-    - telemetry item-end events are persisted in server-side bucket state.
 
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
@@ -6674,6 +6627,24 @@ Copy this when adding a new issue:
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
 
+### WTF-BB-671 - New fast-uri and qs advisories fail the production dependency audit
+
+- Category: Dependencies / security
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex production dependency advisory response
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S4 + P1(4) = 14
+- Evidence (2026-09-02):
+  - Exact-main Quality Gates run `33675092343` failed `npm run security:audit` after npm published four high-severity `fast-uri` host-confusion/SSRF advisories affecting 3.1.5 and two moderate `qs` parsing/denial-of-service advisories affecting 6.15.2.
+  - The installed paths were transitive through Ajv and Express/body-parser; npm reported compatible fixes.
+- Correction:
+  - Commit `ebe26e2a` pins `fast-uri` 3.1.6 and `qs` 6.16.0 through root overrides and regenerates the lockfile without changing direct framework versions.
+- Verification:
+  - A clean `npm ci` resolved the exact patched leaves. Both `npm audit --omit=dev --audit-level=high` and the stricter moderate-level production audit reported zero vulnerabilities.
+  - Focused Express public-API/cache/health/static tests passed 11/11, supply-chain policy passed 4/4, and local TypeScript and production build passed.
+  - Exact-commit Quality Gates run 33678900075 succeeded, including the production audit, all aggregate unit tests, SBOM, TypeScript, build, full inventory route smoke, SmartPy, and external-link safety. Deploy run 33678900101 succeeded and production readiness reported exact commit `ebe26e2a` with database, chain, and jobs healthy. WTF-BB-671 is Verified.
+
 ### WTF-BB-666 - Kiln retains three moderate production advisories in its legacy Beacon wallet tree
 
 - Category: Kiln dependencies / wallet runtime advisories
@@ -8759,6 +8730,26 @@ Copy this when adding a new issue:
   - Require a signed source token for client log writes and add endpoint-specific, authenticated rate limiting separate from viewer exception paths.
 - Verification idea:
   - Verify anonymous burst traffic to this endpoint no longer succeeds when limits are exceeded and log table growth remains bounded.
+
+### WTF-BB-053 - Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry)
+
+- Category: TV microapp / reliability
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex canonical TV broken-clip recovery
+- Last touched: 2026-09-02
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Historical evidence:
+  - Resilience behavior was first implemented only in the retired `TV2.tsx`: canonical `/tv` lacked its skip notice, item-end/session telemetry, and per-session failure tracking.
+  - Those pieces were later moved into canonical TV, but the hard-error handler called the authoritative stream refresh. Because the wall-clock cursor still named the broken clip, the notice and telemetry could fire while the viewer immediately received the same failed item again.
+- Correction (2026-09-02):
+  - Commit `c21f452e` resolves error fallback and telemetry identity from the active client queue item rather than the server's original current item.
+  - A hard failure now uses the existing session skip list to select and locally advance to the next healthy queue item. Authoritative stream refresh remains only when the queue has no different playable target.
+  - The canonical OS inventory registers `tv.broken-clip-recovery` as owned behavior with a visible-result and durable telemetry assertion.
+- Verification:
+  - Focused queue, canonical-route, rate-limit, and bounded telemetry tests passed 13/13; full TypeScript, production build, and inventory coverage passed for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
+  - Focused Chromium passed 2/2. Its synthetic broken MP4 produces the plain-language `Skipping broken clip...` status, renders the next healthy embed, and captures an error item-end payload with video 701 plus a non-empty session id.
+  - Deploy run 33675092344 succeeded for exact correction `c21f452e`; public readiness reported that commit with database, chain, and jobs healthy, and `/tv` returned HTTP 200. WTF-BB-053 is Verified.
 
 ### WTF-BB-020 - Supabase migration and connection scripts disable TLS certificate verification
 
