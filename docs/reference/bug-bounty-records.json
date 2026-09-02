@@ -594,9 +594,9 @@
     },
     {
       "id": "WTF-BB-059",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex board webhook limiter reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "Runtime / memory hygiene",
       "priority": "P2",
       "points": 10,

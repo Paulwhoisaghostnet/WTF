@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **17** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **414** · Archived: **4**
+Total: **637** · Open: **16** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **414** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-071 | Open | - | 2026-05-02 | Kiln integration / jstz adapter | P2 | 10 | 449 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
-| WTF-BB-059 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-058 | Open | - | 2026-04-27 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
 | WTF-BB-570 | Open | - | - | Creation tools / quality gate | P2 | 9 | 511 | 2 | 4 | 0 | Particle Painter lint configuration crashes before file analysis |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
@@ -87,6 +86,7 @@ Total: **637** · Open: **17** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-059 | Claimed | Codex board webhook limiter reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -685,25 +685,6 @@ Total: **637** · Open: **17** · Claimed: **41** · In Progress: **13** · Bloc
   - Add a real jstz CLI/sandbox adapter for local smart-function deploy/run and make external jstz networks configurable only when endpoints are provided.
 - Verification idea:
   - Deploy and run a local jstz counter function through Kiln, capturing request/response evidence and failure output.
-
-### WTF-BB-059 - Board webhook rate limiter retains per token+IP keys without TTL-based eviction
-
-- Category: Runtime / memory hygiene
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C2 + F3 + S2 + P2(3) = 10
-- Evidence:
-  - `server/routes/board.ts:38` defines `webhookHits` as a module-level `Map<string, number[]>`.
-  - `server/routes/board.ts:80-90` filters stale timestamps but never deletes the parent key when a webhook sender becomes quiet.
-  - `server/routes/board.ts:1043-1044` generates keys as `${req.params.token}:${sourceIp}`, allowing unbounded growth from token/IP cardinality.
-- Why it matters:
-  - A burst of unique tokens or spoofed source IPs can grow this map unbounded during long uptime, adding memory pressure on public board webhook traffic.
-- Likely correction direction:
-  - Add periodic key reaping and hard cap by map size + per-key entry count; keep a fixed-size ring or token bucket state instead of unlimited arrays.
-- Verification idea:
-  - Replay a high-cardinality flood of webhook calls and confirm map size stabilizes under TTL/eviction policy.
 
 ### WTF-BB-058 - Shared on-boot/domain-profile caches are global maps without key eviction
 
@@ -1820,6 +1801,25 @@ Total: **637** · Open: **17** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-059 - Board webhook rate limiter retains per token+IP keys without TTL-based eviction
+
+- Category: Runtime / memory hygiene
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex board webhook limiter reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Evidence:
+  - `server/routes/board.ts:38` defines `webhookHits` as a module-level `Map<string, number[]>`.
+  - `server/routes/board.ts:80-90` filters stale timestamps but never deletes the parent key when a webhook sender becomes quiet.
+  - `server/routes/board.ts:1043-1044` generates keys as `${req.params.token}:${sourceIp}`, allowing unbounded growth from token/IP cardinality.
+- Why it matters:
+  - A burst of unique tokens or spoofed source IPs can grow this map unbounded during long uptime, adding memory pressure on public board webhook traffic.
+- Likely correction direction:
+  - Add periodic key reaping and hard cap by map size + per-key entry count; keep a fixed-size ring or token bucket state instead of unlimited arrays.
+- Verification idea:
+  - Replay a high-cardinality flood of webhook calls and confirm map size stabilizes under TTL/eviction policy.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
