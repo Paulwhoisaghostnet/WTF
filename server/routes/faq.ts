@@ -11,6 +11,11 @@ import {
   serveFaqTutorialAsset,
   type FaqTutorialAssetKind,
 } from "../lib/faq-tutorials";
+import {
+  findWtfosPromo,
+  getPublicWtfosPromoCatalog,
+  serveWtfosPromoAsset,
+} from "../lib/wtfos-promos";
 
 const router = Router();
 
@@ -33,6 +38,31 @@ const faqUpdateSchema = faqCreateSchema.partial().strict();
 
 router.get("/api/faq/tutorials", (_req, res) => {
   res.json(getPublicFaqTutorialCatalog());
+});
+
+router.get("/api/faq/promos", (_req, res) => {
+  res.json(getPublicWtfosPromoCatalog());
+});
+
+router.get("/api/faq/promos/:slug/:asset", async (req, res) => {
+  const promo = findWtfosPromo(String(req.params.slug || ""));
+  const asset = String(req.params.asset || "") as FaqTutorialAssetKind;
+  if (!promo || !["video", "captions", "poster"].includes(asset)) {
+    return res.status(404).json({ error: "Promo asset not found" });
+  }
+  try {
+    await serveWtfosPromoAsset({ req, res, promo, kind: asset });
+  } catch (error) {
+    console.error("Failed to serve wtfOS promo asset:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("faq_tutorial_storage_unconfigured")) {
+      return res.status(503).json({ error: "Promo storage is not configured" });
+    }
+    if (/NoSuchKey|not found|404/i.test(message)) {
+      return res.status(404).json({ error: "Promo asset has not been published" });
+    }
+    return res.status(502).json({ error: "Failed to load promo asset" });
+  }
 });
 
 router.get("/api/faq/tutorials/:slug/:asset", async (req, res) => {

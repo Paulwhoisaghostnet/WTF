@@ -1,0 +1,321 @@
+[
+  {
+    "slug": "meet-wtfos",
+    "title": "Meet wtfOS",
+    "summary": "One internet desktop for identity, creation, ownership, play, community, and live experiences.",
+    "category": "Overview",
+    "sortOrder": 10,
+    "accountName": "TommyTezos",
+    "durationSeconds": 40.73,
+    "videoObjectKey": "faq/promos/2026-09-01/meet-wtfos.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/meet-wtfos.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/meet-wtfos.jpg",
+    "narration": "Hey, I'm Tommy. Gee whiz, wtfOS puts my identity, stuff, games, projects, and people on one internet desktop. In Profile, I can prove my Tezos and Etherlink wallets and connect the social accounts I actually control. Studio gives my ideas a path from a rough project to created, preserved, and published work. WTF IAM lets me discover community-made apps, items, and experiences without losing track of what I own. Then I can play, join events, talk, go live, or put media on wtfTV. I just choose Play, Create, Shop, Events, or Talk and keep going.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Gee whiz, wtfOS puts my identity, stuff, games, projects, and people on one internet desktop.",
+      "In Profile, I can prove my Tezos and Etherlink wallets and connect the social accounts I actually control.",
+      "Studio gives my ideas a path from a rough project to created, preserved, and published work.",
+      "WTF IAM lets me discover community-made apps, items, and experiences without losing track of what I own.",
+      "Then I can play, join events, talk, go live, or put media on wtfTV. I just choose Play, Create, Shop, Events, or Talk and keep going."
+    ],
+    "scenes": [
+      {
+        "route": "/",
+        "label": "Your internet desktop",
+        "copy": "One home for identity, creativity, ownership, play, and community.",
+        "highlight": "TommyTezos"
+      },
+      {
+        "route": "/profile",
+        "label": "Prove who you are",
+        "copy": "Link social identities plus Tezos and Etherlink wallets to one account.",
+        "highlight": "Linked Wallets"
+      },
+      {
+        "route": "/studio",
+        "label": "Turn ideas into releases",
+        "copy": "Plan, collaborate, create, preserve, mint, and present from Studio.",
+        "highlight": "Take a Tezos project"
+      },
+      {
+        "route": "/wtfiam",
+        "label": "Own your environment",
+        "copy": "Unlock apps, items, upgrades, and community-made experiences.",
+        "highlight": "WTF In-App Marketplace"
+      },
+      {
+        "route": "/live",
+        "label": "Show up together",
+        "copy": "Go live, share screens, host stages, tip creators, and keep the conversation moving.",
+        "highlight": "WTF LIVE"
+      }
+    ]
+  },
+  {
+    "slug": "play-on-wtfos",
+    "title": "Play on wtfOS",
+    "summary": "Discover community games, run owned titles, build new ones, and turn play into shared progress.",
+    "category": "Play",
+    "sortOrder": 20,
+    "accountName": "TommyTezos",
+    "durationSeconds": 36.505,
+    "videoObjectKey": "faq/promos/2026-09-01/play-on-wtfos.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/play-on-wtfos.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/play-on-wtfos.jpg",
+    "narration": "Hey, I'm Tommy. Today I'm gonna show you why Play on wtfOS is bigger than one game. First, I browse community cartridges, play sessions, scores, and Arcade progress in WTF Arcade. The Game Console is where I keep and run games I own. If I want to build one, Game Studio takes me from testing to a real Arcade submission. Live game rooms put friends, voice, video, chat, reactions, and the shared game screen together. Side Quests and challenges can connect my play to scores, EXP, proofs, and rewards across the desktop.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Today I'm gonna show you why Play on wtfOS is bigger than one game. First, I browse community cartridges, play sessions, scores, and Arcade progress in WTF Arcade.",
+      "The Game Console is where I keep and run games I own.",
+      "If I want to build one, Game Studio takes me from testing to a real Arcade submission.",
+      "Live game rooms put friends, voice, video, chat, reactions, and the shared game screen together.",
+      "Side Quests and challenges can connect my play to scores, EXP, proofs, and rewards across the desktop."
+    ],
+    "scenes": [
+      {
+        "route": "/arcade",
+        "label": "Find community games",
+        "copy": "Browse cartridges, play sessions, scores, and Arcade progress.",
+        "highlight": "PUBLIC ARCADE"
+      },
+      {
+        "route": "/console",
+        "label": "Run what you own",
+        "copy": "Keep installed games and console-style play sessions in your library.",
+        "highlight": "Game Console"
+      },
+      {
+        "route": "/game-studio",
+        "label": "Build the next game",
+        "copy": "Create, test, package, and submit games for the public Arcade.",
+        "highlight": "Game Studio"
+      },
+      {
+        "route": "/live?tab=rooms",
+        "label": "Play in the same room",
+        "copy": "Host game rooms with shared screens, voice, video, chat, and reactions.",
+        "highlight": "rooms"
+      },
+      {
+        "route": "/side-quests",
+        "label": "Make play count",
+        "copy": "Connect games to quests, challenges, scores, EXP, and rewards.",
+        "highlight": "Side Quests"
+      }
+    ]
+  },
+  {
+    "slug": "create-on-wtfos",
+    "title": "Create on wtfOS",
+    "summary": "Move from a rough idea to collaborative media, durable storage, on-chain releases, and live presentation.",
+    "category": "Create",
+    "sortOrder": 30,
+    "accountName": "TommyTezos",
+    "durationSeconds": 40.355,
+    "videoObjectKey": "faq/promos/2026-09-01/create-on-wtfos.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/create-on-wtfos.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/create-on-wtfos.jpg",
+    "narration": "Hey, I'm Tommy. Today I'm gonna show you how I create on wtfOS without losing the project between tools. First, Studio gives the idea a home for collaborators, drafts, versions, and the release plan. Broot and the visual tools help me make images, G I Fs, video, and layered media. Pasta Protocol tools help package collection-ready work. IPFS preservation keeps the finished artifacts and portable manifests attached to their provenance. When I'm ready, I can carry the same release into a gallery, Tezos mint, live stage, social post, or my own wtfTV channel.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Today I'm gonna show you how I create on wtfOS without losing the project between tools. First, Studio gives the idea a home for collaborators, drafts, versions, and the release plan.",
+      "Broot and the visual tools help me make images, G I Fs, video, and layered media.",
+      "Pasta Protocol tools help package collection-ready work.",
+      "IPFS preservation keeps the finished artifacts and portable manifests attached to their provenance.",
+      "When I'm ready, I can carry the same release into a gallery, Tezos mint, live stage, social post, or my own wtfTV channel."
+    ],
+    "scenes": [
+      {
+        "route": "/studio",
+        "label": "Give the project a home",
+        "copy": "Frame the concept, collaborate, keep versions, and plan the release.",
+        "highlight": "Studio project lifecycle"
+      },
+      {
+        "route": "/tools/broot",
+        "label": "Make the media",
+        "copy": "Compose images, GIFs, video, layers, and export-ready creative work.",
+        "highlight": "Broot"
+      },
+      {
+        "route": "/tools/macaroni",
+        "label": "Package the collection",
+        "copy": "Prepare creator assets and collection flows with Pasta Protocol tools.",
+        "highlight": "Macaroni"
+      },
+      {
+        "route": "/ipfs-pinning",
+        "label": "Preserve the release",
+        "copy": "Pin artifacts, keep portable manifests, and retain durable provenance.",
+        "highlight": "IPFS"
+      },
+      {
+        "route": "/tv",
+        "label": "Put the work on air",
+        "copy": "See promos and FAQ how-tos together on the dedicated wtfOS Guide TV channel.",
+        "highlight": "wtfOS Guide TV"
+      }
+    ]
+  },
+  {
+    "slug": "shop-own-trade-on-wtfos",
+    "title": "Shop, own, and trade on wtfOS",
+    "summary": "Connect wallet identity to collections, community markets, app unlocks, swaps, and portable names.",
+    "category": "Shop",
+    "sortOrder": 40,
+    "accountName": "TommyTezos",
+    "durationSeconds": 42.455,
+    "videoObjectKey": "faq/promos/2026-09-01/shop-own-trade-on-wtfos.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/shop-own-trade-on-wtfos.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/shop-own-trade-on-wtfos.jpg",
+    "narration": "Hey, I'm Tommy. Today I'm gonna show you how Shop works when identity and ownership stay connected. First, I prove my Tezos and Etherlink wallets in Profile, and my wallet still approves every signature. My Gallery brings owned media and my own creative work together. WTF IAM is the community shop for apps, desktop items, preservation tools, Arcade access, and creator experiences. Marketplace, trade boards, swaps, and tips give me different ways to exchange value without pretending they are the same thing. I can even claim a portable wtfOS or Tezos name and keep it connected to the account that owns it.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Today I'm gonna show you how Shop works when identity and ownership stay connected. First, I prove my Tezos and Etherlink wallets in Profile, and my wallet still approves every signature.",
+      "My Gallery brings owned media and my own creative work together.",
+      "WTF IAM is the community shop for apps, desktop items, preservation tools, Arcade access, and creator experiences.",
+      "Marketplace, trade boards, swaps, and tips give me different ways to exchange value without pretending they are the same thing.",
+      "I can even claim a portable wtfOS or Tezos name and keep it connected to the account that owns it."
+    ],
+    "scenes": [
+      {
+        "route": "/profile",
+        "label": "Start with proved ownership",
+        "copy": "Link Tezos and Etherlink wallets without mixing their sessions.",
+        "highlight": "Linked Wallets"
+      },
+      {
+        "route": "/my-gallery",
+        "label": "See what you own",
+        "copy": "Bring wallet media and personal creative work into one gallery.",
+        "highlight": "My Gallery"
+      },
+      {
+        "route": "/wtfiam",
+        "label": "Unlock the desktop",
+        "copy": "Use WTF, earned balances, or EXP where the catalog allows it.",
+        "highlight": "Community shop"
+      },
+      {
+        "route": "/marketplace",
+        "label": "Discover and exchange",
+        "copy": "Move between marketplace listings, trade boards, swaps, and tips.",
+        "highlight": "Marketplace"
+      },
+      {
+        "route": "/wtf-subdomains",
+        "label": "Claim a portable name",
+        "copy": "Connect wtfOS handles and Tezos subdomains to your identity.",
+        "highlight": "subdomain"
+      }
+    ]
+  },
+  {
+    "slug": "events-quests-and-rewards",
+    "title": "Events, quests, and rewards on wtfOS",
+    "summary": "Follow rounds, challenges, side quests, calendars, proofs, and rewards from one daily command center.",
+    "category": "Events",
+    "sortOrder": 50,
+    "accountName": "TommyTezos",
+    "durationSeconds": 38.68,
+    "videoObjectKey": "faq/promos/2026-09-01/events-quests-and-rewards.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/events-quests-and-rewards.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/events-quests-and-rewards.jpg",
+    "narration": "Hey, I'm Tommy. Today I'm gonna show you how Events on wtfOS connect the calendar to things I can actually do. My Dashboard shows the next move across my account, activity, and daily loop. Rounds organize seasons and their launch boards. Challenges tell me the requirement, the proof, and the review state. Side Quests give me smaller daily actions that can connect to EXP, WTF rewards, unlocks, or recognition when I'm eligible. The Calendar points into gameshows, live rooms, mint moments, and creator launches, so the reminder is also a way into the event.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Today I'm gonna show you how Events on wtfOS connect the calendar to things I can actually do. My Dashboard shows the next move across my account, activity, and daily loop.",
+      "Rounds organize seasons and their launch boards.",
+      "Challenges tell me the requirement, the proof, and the review state.",
+      "Side Quests give me smaller daily actions that can connect to EXP, WTF rewards, unlocks, or recognition when I'm eligible.",
+      "The Calendar points into gameshows, live rooms, mint moments, and creator launches, so the reminder is also a way into the event."
+    ],
+    "scenes": [
+      {
+        "route": "/dashboard",
+        "label": "See the next move",
+        "copy": "Use one cockpit for account, portfolio, activity, discovery, and daily action.",
+        "highlight": "Dashboard"
+      },
+      {
+        "route": "/rounds",
+        "label": "Enter the season",
+        "copy": "Follow rounds, launch boards, and the challenges attached to them.",
+        "highlight": "Rounds"
+      },
+      {
+        "route": "/challenges",
+        "label": "Take the challenge",
+        "copy": "Read the requirements, submit proof, and track review state.",
+        "highlight": "Challenges"
+      },
+      {
+        "route": "/side-quests",
+        "label": "Build a daily loop",
+        "copy": "Complete smaller proofs that connect activity to progress and rewards.",
+        "highlight": "Side Quests"
+      },
+      {
+        "route": "/calendar",
+        "label": "Know what happens next",
+        "copy": "Move from event listings into gameshows, rooms, drops, and launches.",
+        "highlight": "Calendar"
+      }
+    ]
+  },
+  {
+    "slug": "talk-live-and-broadcast",
+    "title": "Talk, go live, and broadcast on wtfOS",
+    "summary": "Move between public posts, private messages, community boards, AT Protocol, live rooms, and television.",
+    "category": "Talk",
+    "sortOrder": 60,
+    "accountName": "TommyTezos",
+    "durationSeconds": 43.45,
+    "videoObjectKey": "faq/promos/2026-09-01/talk-live-and-broadcast.mp4",
+    "captionsObjectKey": "faq/promos/2026-09-01/talk-live-and-broadcast.vtt",
+    "posterObjectKey": "faq/promos/2026-09-01/talk-live-and-broadcast.jpg",
+    "narration": "Hey, I'm Tommy. Today I'm gonna show you how I Talk on wtfOS at the size the moment needs. W is my lightweight public feed. WIM is where I move into direct messages and buddy conversations. The Message Board keeps longer community threads, reactions, pins, and channel permissions organized. Skywire connects my AT Protocol identity for Bluesky feeds, posts, chats, signals, and live status. WTF LIVE adds rooms, stages, voice, video, screen sharing, reactions, show kits, and tips. If the moment should keep broadcasting, I program uploaded or owned media into a wtfTV channel.",
+    "spokenSteps": [
+      "Hey, I'm Tommy. Today I'm gonna show you how I Talk on wtfOS at the size the moment needs. W is my lightweight public feed.",
+      "WIM is where I move into direct messages and buddy conversations.",
+      "The Message Board keeps longer community threads, reactions, pins, and channel permissions organized.",
+      "Skywire connects my AT Protocol identity for Bluesky feeds, posts, chats, signals, and live status.",
+      "WTF LIVE adds rooms, stages, voice, video, screen sharing, reactions, show kits, and tips.",
+      "If the moment should keep broadcasting, I program uploaded or owned media into a wtfTV channel."
+    ],
+    "scenes": [
+      {
+        "route": "/w",
+        "label": "Post in public",
+        "copy": "Share lightweight updates and follow the WTF community feed.",
+        "highlight": "W"
+      },
+      {
+        "route": "/wim",
+        "label": "Move into direct conversation",
+        "copy": "Use buddy lists and private messages when the thread gets personal.",
+        "highlight": "WIM"
+      },
+      {
+        "route": "/messageboard",
+        "label": "Build the community thread",
+        "copy": "Organize durable discussions, reactions, pins, and channel permissions.",
+        "highlight": "Message Board"
+      },
+      {
+        "route": "/skywire",
+        "label": "Carry an open social identity",
+        "copy": "Use Bluesky feeds, posts, chats, signals, and live status through AT Protocol.",
+        "highlight": "Skywire"
+      },
+      {
+        "route": "/live",
+        "label": "Turn the conversation live",
+        "copy": "Host rooms and stages with voice, video, screens, reactions, show kits, and tips.",
+        "highlight": "WTF LIVE"
+      },
+      {
+        "route": "/tv",
+        "label": "Keep the signal on air",
+        "copy": "Keep promos and FAQ how-tos broadcasting on the dedicated wtfOS Guide TV channel.",
+        "highlight": "wtfOS Guide TV"
+      }
+    ]
+  }
+]

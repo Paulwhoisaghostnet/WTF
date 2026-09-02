@@ -8,6 +8,7 @@ import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayf
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import { FaqTutorials } from "../features/faq/FaqTutorials";
+import { FaqPromos } from "../features/faq/FaqPromos";
 
 const StartPanel = styled.section`
   margin-bottom: 16px;
@@ -127,6 +128,7 @@ export function Faq() {
           ))}
         </TaskGrid>
       </StartPanel>
+      <FaqPromos />
       <FaqTutorials />
       {categories.length > 0
         ? categories.map((cat) => (

@@ -7,17 +7,23 @@
     "sortOrder": 10,
     "accountName": "TommyTezos",
     "route": "/register",
-    "durationSeconds": 33,
+    "durationSeconds": 21.835,
     "videoObjectKey": "faq/tutorials/2026-09-01/create-account-and-sign-in.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/create-account-and-sign-in.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/create-account-and-sign-in.jpg",
     "steps": [
       "Open Create Account from the wtfOS sign-in screen.",
-      "Enter TommyTezos and choose a private password of at least eight characters.",
-      "Create the account, or return to Sign In when the account already exists.",
-      "Sign in as TommyTezos and confirm the desktop opens."
+      "Enter TommyTezos and choose a private password.",
+      "Confirm the password and create the account.",
+      "Return later with Log In and confirm the TommyTezos desktop opens."
     ],
-    "narration": "This walkthrough uses the wtfOS account TommyTezos. From the sign-in screen, choose Create Account. Enter TommyTezos as the username, then create and confirm a private password with at least eight characters. Never show or share that password in a recording. Choose Create Account to open the desktop. If TommyTezos already exists, return to Sign In instead, enter the same username and your private password, then choose Log In. A successful sign-in opens the wtfOS desktop for TommyTezos."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I make a wtfOS account and sign in. First, I click Create Account and type TommyTezos for my username. Then I make a private password, type it again, and click Create Account. There it is! When I come back later, I use Log In with the same TommyTezos name and my password.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I make a wtfOS account and sign in.",
+      "First, I click Create Account and type TommyTezos for my username.",
+      "Then I make a private password, type it again, and click Create Account.",
+      "There it is! When I come back later, I use Log In with the same TommyTezos name and my password."
+    ]
   },
   {
     "slug": "find-and-open-tools",
@@ -27,17 +33,25 @@
     "sortOrder": 20,
     "accountName": "TommyTezos",
     "route": "/",
-    "durationSeconds": 27,
+    "durationSeconds": 25.605,
     "videoObjectKey": "faq/tutorials/2026-09-01/find-and-open-tools.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/find-and-open-tools.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/find-and-open-tools.jpg",
     "steps": [
-      "Sign in as TommyTezos and open the Start menu.",
+      "Sign in as TommyTezos and open the Stuffs menu.",
+      "Close and reopen Stuffs so the menu gesture is easy to recognize.",
       "Choose Play, Create, Shop, Events, or Talk for a guided destination.",
-      "Use the menu search when you already know the tool name.",
+      "Use menu search when you already know the tool name.",
       "Open Applications to see the wider catalog and availability state."
     ],
-    "narration": "After signing in as TommyTezos, use the Start button at the bottom of the desktop. The first choices group tools by what you want to do: Play, Create, Shop, Events, or Talk. Choose one when you know the goal but not the app name. If you already know the tool, type its name in Start menu search and open the matching result. The Applications app shows the wider catalog, including which tools are ready, stopped, or restricted. Help and Start Here always brings the five task shortcuts back."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I find stuff in wtfOS. First, I click Stuffs down here. I open it, close it, and open it again so you can see exactly where it is. These big choices take me straight to Play, Create, Shop, Events, or Talk. If I already know an app's name, I type it into search. Applications shows me the whole catalog and which tools are ready for me.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I find stuff in wtfOS.",
+      "First, I click Stuffs down here. I open it, close it, and open it again so you can see exactly where it is.",
+      "These big choices take me straight to Play, Create, Shop, Events, or Talk.",
+      "If I already know an app's name, I type it into search.",
+      "Applications shows me the whole catalog and which tools are ready for me."
+    ]
   },
   {
     "slug": "connect-tezos-wallet",
@@ -47,7 +61,7 @@
     "sortOrder": 30,
     "accountName": "TommyTezos",
     "route": "/profile",
-    "durationSeconds": 37,
+    "durationSeconds": 28.68,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-tezos-wallet.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-tezos-wallet.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-tezos-wallet.jpg",
@@ -58,7 +72,14 @@
       "Sign the ownership message; this is not a token transfer.",
       "Confirm the wallet appears in the linked-wallet table."
     ],
-    "narration": "Sign in as TommyTezos and open Profile. Scroll to Linked Wallets, then choose Connect wallet to link. Select your Tezos wallet provider and approve the connection in the wallet. wtfOS then asks for an ownership signature. Read the message and sign it; this proof does not transfer tokens and should not request tez. When the proof finishes, the address appears in Linked Wallets. wtfOS can now sync that wallet's tokens, Tezos domains, WTF balance, and on-chain activity to TommyTezos. Use Set primary wallet if you link more than one."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I prove that a Tezos wallet is mine. First, I open Profile and scroll down to Linked Wallets. I click Connect wallet to link, then pick the wallet app I actually use. My wallet asks me to sign an ownership message. I read it, make sure it isn't sending tez, and sign. Hey, it worked! My address shows up here, and wtfOS can sync my tokens, domains, balance, and activity.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I prove that a Tezos wallet is mine.",
+      "First, I open Profile and scroll down to Linked Wallets.",
+      "I click Connect wallet to link, then pick the wallet app I actually use.",
+      "My wallet asks me to sign an ownership message. I read it, make sure it isn't sending tez, and sign.",
+      "Hey, it worked! My address shows up here, and wtfOS can sync my tokens, domains, balance, and activity."
+    ]
   },
   {
     "slug": "connect-etherlink-wallet",
@@ -68,7 +89,7 @@
     "sortOrder": 40,
     "accountName": "TommyTezos",
     "route": "/profile",
-    "durationSeconds": 37,
+    "durationSeconds": 32.155,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-etherlink-wallet.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-etherlink-wallet.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-etherlink-wallet.jpg",
@@ -79,7 +100,14 @@
       "Choose Link Connected and sign the ownership message.",
       "Confirm the EVM address and synced assets appear."
     ],
-    "narration": "In TommyTezos Profile, scroll to Etherlink Wallets. Etherlink uses a separate EVM session, so your Tezos wallet can stay connected. Choose Connect Temple or Connect MetaMask. In the wallet, review the site and approve Etherlink Mainnet, chain ID forty-two thousand seven hundred ninety-three. Back in wtfOS, choose Link Connected and sign the ownership message. This signature proves control of the address; it is not a transaction. The linked EVM address, network, XTZ balance, and indexed assets then appear under TommyTezos. Use Sync when you want a fresh asset scan."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I connect an Etherlink wallet without messing up my Tezos connection. First, I open Profile and find Etherlink Wallets. I click Temple or MetaMask and check that the network says Etherlink Mainnet, chain I D forty-two thousand seven hundred ninety-three. Then I click Link Connected and sign the ownership message. Neat! My E V M address, balance, and indexed assets appear right here, and I can use Sync whenever I want a fresh scan.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I connect an Etherlink wallet without messing up my Tezos connection.",
+      "First, I open Profile and find Etherlink Wallets.",
+      "I click Temple or MetaMask and check that the network says Etherlink Mainnet, chain I D forty-two thousand seven hundred ninety-three.",
+      "Then I click Link Connected and sign the ownership message.",
+      "Neat! My E V M address, balance, and indexed assets appear right here, and I can use Sync whenever I want a fresh scan."
+    ]
   },
   {
     "slug": "connect-x-identity",
@@ -89,7 +117,7 @@
     "sortOrder": 50,
     "accountName": "TommyTezos",
     "route": "/profile",
-    "durationSeconds": 32,
+    "durationSeconds": 32.155,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-x-identity.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-x-identity.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-x-identity.jpg",
@@ -100,7 +128,14 @@
       "Return to Profile and confirm the Verified badge.",
       "Choose whether the handle is public, then save social info."
     ],
-    "narration": "Open TommyTezos Profile and find the Social section. In the X row, enter the handle you expect to connect, then choose Connect X. The expected handle protects against authorizing the wrong account. On X, confirm the signed-in account and review the identity permissions before authorizing. wtfOS returns to Profile and shows Verified only when the account matches. Turn Public on if other members may see the handle, or leave it off to keep the link private. Choose Save social info after changing visibility."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I prove which X account is mine. First, I open Profile and find Social. I type the X handle I expect to connect, then click Connect X. On X, I double-check the signed-in account and approve the identity permission. When I come back, wtfOS says Verified. Then I choose whether my handle is public and click Save social info. That's it—my account is proved without sharing my X password with wtfOS.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I prove which X account is mine.",
+      "First, I open Profile and find Social.",
+      "I type the X handle I expect to connect, then click Connect X.",
+      "On X, I double-check the signed-in account and approve the identity permission. When I come back, wtfOS says Verified.",
+      "Then I choose whether my handle is public and click Save social info. That's it—my account is proved without sharing my X password with wtfOS."
+    ]
   },
   {
     "slug": "connect-discord-identity",
@@ -110,7 +145,7 @@
     "sortOrder": 60,
     "accountName": "TommyTezos",
     "route": "/profile",
-    "durationSeconds": 37,
+    "durationSeconds": 32.73,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-discord-identity.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-discord-identity.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-discord-identity.jpg",
@@ -121,7 +156,14 @@
       "Return to Profile and confirm the Verified badge.",
       "Set the Public option and save social info."
     ],
-    "narration": "From TommyTezos Profile, find the Discord row in Social and choose Connect Discord. Discord opens its authorization screen. Confirm that the selected Discord account is yours, review the requested identity permission, and authorize wtfOS. After the redirect, Profile shows the connected Discord username with a Verified badge. Use the Public checkbox to decide whether other members can see it. Then choose Save social info. Disconnect Discord removes the verified link without deleting either your Discord account or your TommyTezos wtfOS account."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I connect Discord to wtfOS. First, I open Profile, find Social, and click Connect Discord. Discord shows me the account and the identity permission wtfOS is asking for. I check that it's really mine and authorize it. Back in Profile, I look for the Verified badge. Then I choose whether the username is public and click Save social info. If I disconnect later, it only removes the link—it doesn't delete either account.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I connect Discord to wtfOS.",
+      "First, I open Profile, find Social, and click Connect Discord.",
+      "Discord shows me the account and the identity permission wtfOS is asking for.",
+      "I check that it's really mine and authorize it. Back in Profile, I look for the Verified badge.",
+      "Then I choose whether the username is public and click Save social info. If I disconnect later, it only removes the link—it doesn't delete either account."
+    ]
   },
   {
     "slug": "connect-skywire-bluesky",
@@ -131,7 +173,7 @@
     "sortOrder": 70,
     "accountName": "TommyTezos",
     "route": "/skywire?tab=account",
-    "durationSeconds": 35,
+    "durationSeconds": 30.055,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-skywire-bluesky.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-skywire-bluesky.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-skywire-bluesky.jpg",
@@ -142,7 +184,14 @@
       "Approve the AT Protocol authorization.",
       "Return to Skywire and confirm the connected handle."
     ],
-    "narration": "In TommyTezos Profile, choose Connect Skywire to open the AT Protocol account screen. Enter the Bluesky handle or D I D you control. Review the available Skywire permission tiers and choose the minimum tier that supports what you want to do. A basic identity connection proves the account; broader tiers can allow social actions such as posting or chat. Continue to Bluesky, confirm the exact handle, and approve the authorization. Skywire then returns with the connected handle attached to TommyTezos. You can disconnect it later from Profile."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I connect my Bluesky identity through Skywire. First, I open Skywire's account screen and type the Bluesky handle or D I D I control. I pick the smallest permission level that can do what I want. Then I continue to Bluesky, check the exact account, and approve it. When Skywire comes back, there it is—my handle is connected to TommyTezos. I can upgrade permissions later or disconnect the link from Profile.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I connect my Bluesky identity through Skywire.",
+      "First, I open Skywire's account screen and type the Bluesky handle or D I D I control.",
+      "I pick the smallest permission level that can do what I want.",
+      "Then I continue to Bluesky, check the exact account, and approve it.",
+      "When Skywire comes back, there it is—my handle is connected to TommyTezos. I can upgrade permissions later or disconnect the link from Profile."
+    ]
   },
   {
     "slug": "connect-google-drive",
@@ -152,7 +201,7 @@
     "sortOrder": 80,
     "accountName": "TommyTezos",
     "route": "/studio",
-    "durationSeconds": 37,
+    "durationSeconds": 34.03,
     "videoObjectKey": "faq/tutorials/2026-09-01/connect-google-drive.mp4",
     "captionsObjectKey": "faq/tutorials/2026-09-01/connect-google-drive.vtt",
     "posterObjectKey": "faq/tutorials/2026-09-01/connect-google-drive.jpg",
@@ -163,6 +212,13 @@
       "Return to Studio and confirm Connected status.",
       "Open My Videos to confirm new uploads will also receive a Drive backup."
     ],
-    "narration": "Sign in as TommyTezos, open Studio, and find Your Drive. Choose Connect Google Drive, select the Google account you control, and review the limited drive dot file permission. That scope lets wtfOS use only files it creates; it does not browse the rest of your Drive. After authorization, return to Studio and confirm the Connected status. New Studio projects can use your Drive, and My Videos shows the same connection for automatic backup of new uploads. The wtfOS object-storage copy remains the playback source, while your Drive copy gives TommyTezos an account-owned backup."
+    "narration": "Hi, I'm Tommy. Today I'm gonna show you how I connect my own cloud storage to wtfOS. First, I open Studio, find Your Drive, and click Connect Google Drive. I pick my Google account and review the limited drive dot file permission. That lets wtfOS use files it creates without browsing my whole Drive. When I come back, Studio says Connected. Now new projects can use my Drive, and My Videos can make an account-owned backup while wtfOS keeps the playback copy ready.",
+    "spokenSteps": [
+      "Hi, I'm Tommy. Today I'm gonna show you how I connect my own cloud storage to wtfOS.",
+      "First, I open Studio, find Your Drive, and click Connect Google Drive.",
+      "I pick my Google account and review the limited drive dot file permission. That lets wtfOS use files it creates without browsing my whole Drive.",
+      "When I come back, Studio says Connected.",
+      "Now new projects can use my Drive, and My Videos can make an account-owned backup while wtfOS keeps the playback copy ready."
+    ]
   }
 ]
