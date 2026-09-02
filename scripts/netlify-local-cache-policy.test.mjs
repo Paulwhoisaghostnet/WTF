@@ -17,6 +17,7 @@ test("Netlify rollback status uses a repo-local npm cache and pinned CLI", () =>
   assert.match(helper, /PATH:[\s\S]*npmBinDir/);
   assert.match(helper, /netlify-cli@\$\{cliVersion\}/);
   assert.match(helper, /const cliVersion = "17\.38\.1"/);
+  assert.match(helper, /NETLIFY_STATUS_TIMEOUT_MS \|\| 300_000/);
   assert.match(helper, /"netlify",\s*"status"/);
   assert.match(gitignore, /^\.npm-cache\/$/m);
 });

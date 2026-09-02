@@ -7,7 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const cacheDir = path.join(repoRoot, ".npm-cache", "netlify-status");
 const cliVersion = "17.38.1";
-const timeoutMs = Number(process.env.NETLIFY_STATUS_TIMEOUT_MS || 120_000);
+// The pinned CLI has a large dependency graph. Two measured cold-cache installs
+// exceeded the old 120-second guard before reaching `status`; five minutes
+// keeps the guard bounded while covering the observed local install path.
+const timeoutMs = Number(process.env.NETLIFY_STATUS_TIMEOUT_MS || 300_000);
 const preferredNpmBins = [
   process.env.NETLIFY_STATUS_NPM_BIN,
   "/Users/joshuafarnworth/.nvm/versions/node/v22.22.0/bin/npm",

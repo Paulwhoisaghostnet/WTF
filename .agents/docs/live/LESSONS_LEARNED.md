@@ -11457,3 +11457,13 @@
 **Rule**: Keep remote media URLs on the shared allowlisted sanitizer, verify any token reference against the authenticated user's positive holding before mutation, and route generated/edited pixels through owner-scoped media storage. Browser proof must assert both the uploaded media ID and retained held-token reference.
 
 ---
+
+## 2026-09-02 — CLI cache ownership and CLI readiness are separate failures
+
+**What happened**: Direct Netlify CLI invocation still failed in the root-owned user npm cache. The existing repo-local-cache wrapper bypassed that failure, but a cold install of the pinned CLI exceeded its earlier two-minute guard before the CLI could report authentication state.
+
+**Why it mattered**: Fixing cache ownership only to terminate legitimate dependency setup still leaves the rollback check unusable, while interpreting `Not logged in` as another cache failure obscures the actual operator action required next.
+
+**Rule**: Pin deployment CLIs, isolate their npm cache from user-global state, derive a bounded cold-install guard from measured resolution time, and distinguish successful tool execution from authentication/site linkage. A status check may prove the tool path without authorizing a deploy.
+
+---

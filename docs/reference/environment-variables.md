@@ -369,7 +369,7 @@ Variables: **1186**. Source files scanned: **2269**.
 | `NAME` | delivery | deploy-ops | none | no | no explicit validation found | active | 1 (.github/workflows/deploy.yml) |
 | `NAME_I` | delivery | deploy-ops | none | no | no explicit validation found | active | 1 (.github/workflows/import-intel-csv.yml) |
 | `NETLIFY_STATUS_NPM_BIN` | operations | deploy-ops, server-runtime | none | no | parsed or validated | active | 1 (scripts/netlify-status-local-cache.mjs) |
-| `NETLIFY_STATUS_TIMEOUT_MS` | operations | deploy-ops, server-runtime | 120 | no | parsed or validated | active | 1 (scripts/netlify-status-local-cache.mjs) |
+| `NETLIFY_STATUS_TIMEOUT_MS` | operations | deploy-ops, server-runtime | 300 | no | parsed or validated | active | 1 (scripts/netlify-status-local-cache.mjs) |
 | `NEXT_PUBLIC_APP_URL` | apps/collekt | package-runtime | http://localhost:3001 | no | no explicit validation found | active | 1 (apps/collekt/.env.example) |
 | `NEXT_PUBLIC_UMAMI_SCRIPT_URL` | apps/collekt | package-runtime, server-runtime | https://cloud.umami.is/script.js | no | no explicit validation found | active | 1 (apps/collekt/components/analytics/UmamiAnalytics.tsx) |
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | apps/collekt | package-runtime, server-runtime | none | no | no explicit validation found | active | 1 (apps/collekt/components/analytics/UmamiAnalytics.tsx) |

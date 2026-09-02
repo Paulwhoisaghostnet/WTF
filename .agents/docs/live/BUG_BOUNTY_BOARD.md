@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **421** · Archived: **4**
+Total: **637** · Open: **9** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **423** · Archived: **4**
 
 ## Canonical Board
 
@@ -79,7 +79,6 @@ Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-074 | Claimed | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -233,7 +232,6 @@ Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 511 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 511 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 511 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
-| WTF-BB-086 | Fixed | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 511 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 511 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 511 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
@@ -603,6 +601,8 @@ Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-145 | Verified | Codex OS mechanics pass | 2026-05-09 | Desktop OS / window management | P2 | 9 | 511 | 3 | 3 | 0 | WTF OS windows do not behave like durable OS sessions |
 | WTF-BB-134 | Verified | Codex desktop wiring pass | 2026-05-08 | Desktop OS / event and route wiring | P2 | 9 | 511 | 3 | 3 | 0 | Desktop icon/item automation and route wiring drifted after restructuring |
 | WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 511 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
+| WTF-BB-086 | Verified | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
+| WTF-BB-074 | Verified | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 572 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1673,26 +1673,6 @@ Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-074 - Netlify CLI rollback path is blocked by root-owned npm cache
-
-- Category: Kiln integration / deploy tooling
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex Netlify rollback verification
-- Last touched: 2026-09-02
-- Score: C2 + F2 + S2 + P2(3) = 9
-- Evidence:
-  - `npx netlify status` failed locally with `EACCES` opening a file under `/Users/joshuafarnworth/.npm/_cacache/...`.
-  - npm reported the cache contains root-owned files and recommended `sudo chown -R 501:20 "/Users/joshuafarnworth/.npm"`.
-- Why it matters:
-  - Hetzner is the primary deploy path, but Netlify is documented as rollback. A broken local Netlify CLI blocks fast rollback/preview deploy checks.
-- Likely correction direction:
-  - Repair npm cache ownership or run Netlify CLI with a project-local npm cache path, then re-run `npx netlify status`.
-- Verification idea:
-  - `npm_config_cache=.npm-cache npx netlify status` or repaired default cache should complete without `EACCES`.
-- Claim (2026-09-02):
-  - Codex reproduced the default-cache `EACCES`. The existing `deploy:netlify:status` wrapper correctly bypasses that cache with a pinned CLI and repo-local cache, but two cold/warm resolution attempts exceeded its 120-second guard while still installing legitimate dependencies. The item is claimed to complete and prove the existing correction rather than alter the unrelated Hetzner primary path.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -5113,29 +5093,6 @@ Total: **637** · Open: **9** · Claimed: **42** · In Progress: **13** · Block
   - Verified with `npx tsx --test server/lib/studio/serve-mime.test.ts`, `npm run build`, and `npm run test:e2e:inventory:coverage`.
   - `npm run check -- --pretty false` is blocked by unrelated dirty-tree TypeScript errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
   - `npm run test:e2e:inventory` built successfully, then failed 46 route/market smoke tests after the harness server stopped accepting `127.0.0.1:4173/__test/state`; 163 inventory tests still passed, including Studio subdomain ownership.
-
-### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
-
-- Category: Privacy / media validation
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex PFP media boundary pass
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence:
-  - `PUT /api/profile/pfp` stored `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`, bypassing the thumbnail sanitizer used by token-derived candidates and trusting any supplied token reference.
-- Why it mattered:
-  - Users could make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts. They could also label the PFP as a token they did not hold.
-- Correction (2026-09-02):
-  - Remote PFP writes now require a normalized allowlisted HTTPS/IPFS URL. Data/script/private/unallowlisted URLs fail before the user row update. Token contract/id fields must be supplied together and a positive `wallet_holdings` row for the authenticated user is required before either the remote-URL or edited-media route stores the token reference.
-  - The canvas editor no longer persists a database-resident `data:` URL. It encodes the edited image as PNG, uploads it through the existing media service, then assigns the resulting owner-scoped media ID while preserving the verified token contract/id. Direct image uploads use the same helper and the server retains MIME, size, ready-state, source-type, and media-owner checks.
-  - The interaction inventory now states the server ownership and URL boundary, and the Gamma Profile browser story proves the edited-token upload and assignment request.
-- Local verification (2026-09-02):
-  - Focused sanitizer, token-reference, route-ordering, and Profile presentation tests pass 8/8. They cover normalized HTTP/IPFS media, rejection of data/script/private/unallowlisted URLs, paired bounded token refs, positive-holding checks before updates, and owner-scoped media assignment.
-  - The focused Gamma Profile browser story passes 1/1 and proves Save profile picture uploads the canvas and assigns media ID 91 with the exact held contract/id, then shows the visible success message.
-  - `npm run build` passes. Inventory coverage remains complete.
-- Remaining proof before Verified:
-  - The correction must pass the Node 22 containerized full TypeScript check, deploy successfully, and report its commit from live health.
 
 ### WTF-BB-048 - TV telemetry endpoint can grow session-tracking memory under spam
 
@@ -13674,6 +13631,47 @@ Copy this when adding a new issue:
 - Local fix note: Updated the reported provenance, marketplace, media, and Game Studio external anchors to `rel="noopener noreferrer"`.
 - Verification: `npm run check:external-links` passed locally after the fix.
 - Verification idea: Keep the external-link safety check in the standard quality gate whenever new external links are added.
+
+### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
+
+- Category: Privacy / media validation
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex PFP media boundary pass
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - `PUT /api/profile/pfp` stored `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`, bypassing the thumbnail sanitizer used by token-derived candidates and trusting any supplied token reference.
+- Why it mattered:
+  - Users could make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts. They could also label the PFP as a token they did not hold.
+- Correction (2026-09-02):
+  - Remote PFP writes now require a normalized allowlisted HTTPS/IPFS URL. Data/script/private/unallowlisted URLs fail before the user row update. Token contract/id fields must be supplied together and a positive `wallet_holdings` row for the authenticated user is required before either the remote-URL or edited-media route stores the token reference.
+  - The canvas editor no longer persists a database-resident `data:` URL. It encodes the edited image as PNG, uploads it through the existing media service, then assigns the resulting owner-scoped media ID while preserving the verified token contract/id. Direct image uploads use the same helper and the server retains MIME, size, ready-state, source-type, and media-owner checks.
+  - The interaction inventory now states the server ownership and URL boundary, and the Gamma Profile browser story proves the edited-token upload and assignment request.
+- Verification (2026-09-02):
+  - Focused sanitizer, token-reference, route-ordering, and Profile presentation tests pass 8/8. They cover normalized HTTP/IPFS media, rejection of data/script/private/unallowlisted URLs, paired bounded token refs, positive-holding checks before updates, and owner-scoped media assignment.
+  - The focused Gamma Profile browser story passes 1/1 and proves Save profile picture uploads the canvas and assigns media ID 91 with the exact held contract/id, then shows the visible success message. `npm run build` passes and inventory coverage remains complete.
+  - Exact commit `15ce5a5a` passed Quality Gates run `33596654840` and Deploy to Hetzner run `33596654881`. The production Docker builder completed the full Node 22 TypeScript check before replacement, and `https://wtfos.app/api/health` reports `ok: true` with `commitRef: "15ce5a5a"`. WTF-BB-086 is Verified.
+
+### WTF-BB-074 - Netlify CLI rollback path is blocked by root-owned npm cache
+
+- Category: Kiln integration / deploy tooling
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Netlify rollback verification
+- Last touched: 2026-09-02
+- Score: C2 + F2 + S2 + P2(3) = 9
+- Historical evidence:
+  - Direct `npx netlify status` failed with `EACCES` under the root-owned user npm cache, blocking the documented rollback/preview CLI before it could inspect authentication or site linkage.
+- Why it mattered:
+  - Hetzner is the primary deploy path, but operators still need the Netlify rollback tool to reach its real authentication and site state without requiring a privileged ownership repair.
+- Correction:
+  - Ancestor commit `9d8dad6de` added `deploy:netlify:status`, which runs pinned `netlify-cli@17.38.1` through Node 22 with a gitignored repository-local npm cache. It does not read or write the broken user cache.
+  - Two measured cold-cache installs exceeded the original 120-second guard while legitimately resolving/installing the CLI, so the bounded default is now 300 seconds; this covers the observed cold path while retaining an explicit termination guard and environment override.
+- Verification (2026-09-02):
+  - Direct `npx --yes netlify-cli@latest status` reproduces the original root-cache `EACCES`.
+  - The wrapper policy test passes and locks the local cache, pinned CLI, Node 22 preference, ignored cache directory, and measured timeout.
+  - `npm run deploy:netlify:status` completes without `EACCES` and reaches the Netlify CLI's actual result: `Not logged in. Please log in to see site status.` It exits 0. Authentication is now the explicit operator prerequisite rather than an npm ownership failure; no preview or production deploy was attempted. WTF-BB-074 is Verified.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 
