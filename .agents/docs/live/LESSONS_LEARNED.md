@@ -11607,3 +11607,13 @@
 **Rule**: Resolve creator and collection identity at the server data boundary, preserve the address as provenance, test fallback precedence, and inspect real public payloads for human names before marking cross-surface identity work Verified.
 
 ---
+
+## 2026-09-02 — Distinguish a rejected deploy from a rejected build
+
+**What happened**: The TV correction passed every quality gate, but its first production workflow failed before deployment because the server could not authenticate its repository fetch. A later descendant deployed successfully with the correction intact.
+
+**Why it mattered**: Treating the failed fetch as a code regression would have duplicated passing work; ignoring it without descendant proof would have left production uncertain.
+
+**Rule**: Classify deploy failures at the exact failing boundary, then require a successful descendant deployment, an exact live commit report, and behavior-level production evidence before closing the affected record.
+
+---

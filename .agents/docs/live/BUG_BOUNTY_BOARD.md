@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **136** · Verified: **439** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **135** · Verified: **440** · Archived: **4**
 
 ## Canonical Board
 
@@ -122,7 +122,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-456 | Fixed | Codex Ravioli sale/open state repair | 2026-07-19 | Pasta Protocol / atomic-pack buyer state | P0 | 14 | 126 | 3 | 5 | 1 | Sale-open Ravioli pages now show `Primary sale open · fully reserved`, and exact real-page/runner assertions preserve both sale availability and atomic backing without weakening the no-sale reserve proof |
 | WTF-BB-438 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni fee safety | P0 | 14 | 126 | 3 | 5 | 1 | Macaroni attempt 2 forged a fixed 2,500-mutez fee with a 200,000 gas limit and was permanently refused as `fees_too_low`, while the runner waited only for UI success; the proof now uses Macaroni's gas/byte-derived fee path and monitors both UI failure and signer/contract-scoped refused mempool operations, pending a fresh replacement proof |
 | WTF-BB-270 | Fixed | Codex Macaroni wallet-returned hash boundary repair | 2026-06-16 | Macaroni / generated drop website wallet operation propagation | P0 | 14 | 126 | 3 | 5 | 1 | A live Temple user received operation hash `onqHofT7uzbey8XpeS5sXYjpnkHppH2cyPqXNGc4r9Q4V6pLw6r` from Macaroni, but the hash was absent from TzKT indexed operations, TzKT/SmartPy mempools, and sampled public RPC head operation hashes; fixed by aligning Beacon active-account network RPC to Macaroni's configured RPC before signed operations and by changing generated mint-page status to distinguish wallet-returned hash, node-visible mempool state, and indexer-confirmed application; verified locally by `node --check public/creation-tools/macaroni/js/common.js`, `node --check public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage`; DB-backed `npm run test:e2e:macaroni:shadownet` was blocked in the temp worktree by missing `DATABASE_URL` |
-| WTF-BB-090 | Fixed | Codex public TV broadcast authority repair | 2026-09-02 | TV microapp / playback architecture | P0 | 14 | 126 | 4 | 5 | 0 | Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback |
 | WTF-BB-571 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / Macaroni Shadownet proof reliability | P0 | 13 | 185 | 3 | 4 | 1 | Macaroni projection remotely packs every big-map key |
 | WTF-BB-271 | Fixed | Codex Macaroni fee-floor repair | 2026-06-16 | Macaroni / generated drop website wallet operation fees | P0 | 13 | 185 | 2 | 5 | 1 | Live mint attempts can fail with `Fee is too low, blockchain says: "No tip, no trip"` because Macaroni inflates Taquito-estimated gas/storage limits but derives the explicit wallet fee from the lower unpadded estimate; fixed by deriving a fee floor from the padded gas limit actually sent to Beacon/Taquito plus a small tip, and verified by `node --check public/creation-tools/macaroni/js/common.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage` |
 | WTF-BB-574 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / strict proof packaging | P0 | 12 | 270 | 2 | 5 | 0 | Macaroni recovery capability omits visual evidence |
@@ -292,6 +291,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-297 | Verified | Codex live user-story gap loop | 2026-06-22 | Desktop OS / production app gates | P0 | 14 | 126 | 3 | 5 | 1 | Production app gate doc freshness disables core public apps; fixed in `44e556f` by decoupling runtime launcher availability from stale doc/install-key health, verified on `https://wtfos.app` with `/api/apps/desktop` showing `wtf-live` and `skywire` launchable while stale plus 3/3 independent WTF LIVE user-story probes passing |
 | WTF-BB-255 | Verified | Codex Macaroni wallet regression repair | 2026-06-13 | Macaroni / Beacon connect lifecycle and treasury defaults | P0 | 14 | 126 | 3 | 5 | 1 | Macaroni explicit Connect again drops cleared Beacon client state and creates a fresh wallet client, while invalid optional treasury/royalty strings clear to the connected-wallet fallback; verified locally, by GitHub deploy/quality runs, and live asset checks on `wtfos.app` commit `c1279a0` |
 | WTF-BB-214 | Verified | Codex auth rate-limit bucket repair | 2026-06-06 | Auth / Postgres rate limits | P0 | 14 | 126 | 2 | 5 | 2 | Postgres-backed rate limiters share bucket keys across endpoints and can lock out wtfOS login |
+| WTF-BB-090 | Verified | Codex public TV broadcast authority repair and production verification | 2026-09-02 | TV microapp / playback architecture | P0 | 14 | 126 | 4 | 5 | 0 | Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback |
 | WTF-BB-003 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 14 | 126 | 2 | 5 | 2 | Migration failures are swallowed and deploy continues |
 | WTF-BB-464 | Verified | Codex Ravioli live proof | - | Pasta Protocol / cross-source normalization | P0 | 13 | 185 | 2 | 5 | 1 | Equivalent RFC 3339 expiry spellings blocked Ravioli preflight |
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 185 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
@@ -2752,26 +2752,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npx tsx --test server/routes/macaroni-policy.test.ts server/features/wtf-sites/macaroni-compat.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `git diff --check`
-
-### WTF-BB-090 - Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback
-
-- Category: TV microapp / playback architecture
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex public TV broadcast authority repair
-- Last touched: 2026-09-02
-- Score: C4 + F5 + S0 + P0(5) = 14
-- Historical evidence: `server/routes/tv.ts` carried authoritative wall-clock concepts, but the main TV client once rejected the server cursor and ran a client-owned queue, buffer gate, cover bumper, and local advance path. Faster media delivery could start prior audio beneath bumper visuals, cut mid-clip, and make every viewer begin at playlist position zero.
-- Why it matters: This is not cosmetic. Competing playback authorities break the TV metaphor and can mount overlapping media.
-- Earlier correction: `server/lib/tv-broadcast.ts` computes the wall-clock cursor and rotates the stream queue around the on-air item. The main `/tv` client seeks to `offsetSeconds` and refetches the authoritative stream at natural media boundaries; its remaining same-channel index pin only prevents a background metadata refresh from interrupting a clip already playing.
-- Regression found 2026-09-02:
-  - The public `/embed/tv/:ref` player still ignored `data.current` and every item `offsetSeconds`, reset a private `cursor = 0`, and advanced locally. Two independent production tabs on `wtfos-guide-tv` selected the same media but reported playback positions about eleven seconds apart instead of tuning to the same broadcast position. Each tab had one video and no audio element, isolating the failure to cursor authority rather than overlapping DOM media.
-- Correction (2026-09-02):
-  - The public embed now consumes `data.current`, seeks video to its server-provided `offsetSeconds`, schedules image boundaries from the remaining broadcast slot, and refetches the authoritative stream after natural ends, errors, or unrecovered stalls. Its private queue cursor and local advance function are removed.
-  - Switching to image media pauses, unloads, and clears the video source, so hidden video audio cannot continue beneath a GIF or bumper. The main TV query comment now accurately describes its server-authoritative boundary behavior.
-- Local verification:
-  - Focused TV/broadcast/embed/cache/telemetry/policy checks pass 27/27. The embed policy compiles the generated browser script, locks current-item and offset consumption, requires authoritative boundary refetch, forbids a private cursor/advance function, and proves a single video/no-audio surface with explicit unload before image playback.
-  - Full TypeScript check, production build, inventory coverage, and diff check pass. WTF-BB-090 is Fixed pending deployment and a repeated two-viewer production check.
 
 ### WTF-BB-571 - Macaroni projection remotely packs every big-map key
 
@@ -6478,6 +6458,26 @@ Copy this when adding a new issue:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `git diff --check`.
   - Passed `npm run build`.
+
+### WTF-BB-090 - Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback
+
+- Category: TV microapp / playback architecture
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex public TV broadcast authority repair and production verification
+- Last touched: 2026-09-02
+- Score: C4 + F5 + S0 + P0(5) = 14
+- Historical evidence: `server/routes/tv.ts` carried authoritative wall-clock concepts, but the main TV client once rejected the server cursor and ran a client-owned queue, buffer gate, cover bumper, and local advance path. Faster media delivery could start prior audio beneath bumper visuals, cut mid-clip, and make every viewer begin at playlist position zero.
+- Why it matters: This is not cosmetic. Competing playback authorities break the TV metaphor and can mount overlapping media.
+- Earlier correction: `server/lib/tv-broadcast.ts` computes the wall-clock cursor and rotates the stream queue around the on-air item. The main `/tv` client seeks to `offsetSeconds` and refetches the authoritative stream at natural media boundaries; its remaining same-channel index pin only prevents a background metadata refresh from interrupting a clip already playing.
+- Regression found 2026-09-02:
+  - The public `/embed/tv/:ref` player still ignored `data.current` and every item `offsetSeconds`, reset a private `cursor = 0`, and advanced locally. Two independent production tabs on `wtfos-guide-tv` selected the same media but reported playback positions about eleven seconds apart instead of tuning to the same broadcast position. Each tab had one video and no audio element, isolating the failure to cursor authority rather than overlapping DOM media.
+- Correction (2026-09-02):
+  - Commit `64fc322b` makes the public embed consume `data.current`, seek video to its server-provided `offsetSeconds`, schedule image boundaries from the remaining broadcast slot, and refetch the authoritative stream after natural ends, errors, or unrecovered stalls. Its private queue cursor and local advance function are removed.
+  - Switching to image media pauses, unloads, and clears the video source, so hidden video audio cannot continue beneath a GIF or bumper. The main TV query comment now accurately describes its server-authoritative boundary behavior.
+- Verification:
+  - Focused TV/broadcast/embed/cache/telemetry/policy checks pass 27/27. The embed policy compiles the generated browser script, locks current-item and offset consumption, requires authoritative boundary refetch, forbids a private cursor/advance function, and proves a single video/no-audio surface with explicit unload before image playback. Full TypeScript check, production build, inventory coverage, and diff check pass; Quality Gates run 33614355879 succeeded for the correction commit.
+  - Deploy run 33619118314 succeeded for descendant `d62d6b7f`, and public `/api/health` reported that exact commit. Two independently opened production embeds on `wtfos-guide-tv` sampled at the same millisecond played the same source at 25.131 and 25.297 seconds, a 0.167-second spread rather than separate local starts. Each surface was actively playing with exactly one video and zero audio elements. WTF-BB-090 is Verified.
 
 ### WTF-BB-003 - Migration failures are swallowed and deploy continues
 
