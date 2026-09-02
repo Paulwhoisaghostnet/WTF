@@ -2482,9 +2482,9 @@
     },
     {
       "id": "WTF-BB-392",
-      "status": "Fixed",
-      "owner": "Codex Objkt Operator persistence",
-      "lastTouched": "2026-07-15",
+      "status": "In Progress",
+      "owner": "Codex Objkt Operator production verification",
+      "lastTouched": "2026-09-02",
       "category": "Commerce / private Objkt operator availability",
       "priority": "P1",
       "points": 15,

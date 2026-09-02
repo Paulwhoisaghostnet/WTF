@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **119** · Verified: **457** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **118** · Verified: **457** · Archived: **4**
 
 ## Canonical Board
 
@@ -75,6 +75,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
@@ -126,7 +127,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-271 | Fixed | Codex Macaroni fee-floor repair | 2026-06-16 | Macaroni / generated drop website wallet operation fees | P0 | 13 | 186 | 2 | 5 | 1 | Live mint attempts can fail with `Fee is too low, blockchain says: "No tip, no trip"` because Macaroni inflates Taquito-estimated gas/storage limits but derives the explicit wallet fee from the lower unpadded estimate; fixed by deriving a fee floor from the padded gas limit actually sent to Beacon/Taquito plus a small tip, and verified by `node --check public/creation-tools/macaroni/js/common.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage` |
 | WTF-BB-574 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / strict proof packaging | P0 | 12 | 271 | 2 | 5 | 0 | Macaroni recovery capability omits visual evidence |
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 371 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
-| WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 186 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
@@ -1635,6 +1635,26 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
   - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
+### WTF-BB-392 - Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending
+
+- Category: Commerce / private Objkt operator availability
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex Objkt Operator production verification
+- Last touched: 2026-09-02
+- Score: C4 + F5 + S2 + P1(4) = 15
+- Evidence:
+  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process.
+  - Stopping that process removed access to the interface, and no deployed wtfOS route or durable server state existed.
+  - The replacement now has an owner-gated `/objkt-operator` AppWindow, owner-keyed `objkt_operator_states` PostgreSQL row, and a focused browser proof covering score review, approval, and reload persistence.
+- Why it matters:
+  - The user needs a private operator available independently of a Codex conversation. Ephemeral browser state cannot support a persistent acquisition workflow or trustworthy spending controls.
+  - Moving state server-side must not turn the wtfOS database into wallet custody; mnemonic words and signing passwords remain explicitly out of scope.
+- Correction direction:
+  - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
+- Verification idea:
+  - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
+
 ### WTF-BB-298 - Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing
 
 - Category: API / app gates and information disclosure
@@ -2827,26 +2847,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Verification:
   - The targeted five-mode real-page fixture passed in 9.7 seconds with all twelve buy/open actions and zero browser events.
   - The complete Ravioli UI-live suite passed 9/9 in 10.8 seconds; native-recovery checks passed 10/10; assembler checks passed 15/15; isolated strict TypeScript passed.
-
-### WTF-BB-392 - Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending
-
-- Category: Commerce / private Objkt operator availability
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Objkt Operator persistence
-- Last touched: 2026-07-15
-- Score: C4 + F5 + S2 + P1(4) = 15
-- Evidence:
-  - The original operator portal stored approvals, scan results, spend policy, and queue progress in browser-local state served only by an ad hoc local development process.
-  - Stopping that process removed access to the interface, and no deployed wtfOS route or durable server state existed.
-  - The replacement now has an owner-gated `/objkt-operator` AppWindow, owner-keyed `objkt_operator_states` PostgreSQL row, and a focused browser proof covering score review, approval, and reload persistence.
-- Why it matters:
-  - The user needs a private operator available independently of a Codex conversation. Ephemeral browser state cannot support a persistent acquisition workflow or trustworthy spending controls.
-  - Moving state server-side must not turn the wtfOS database into wallet custody; mnemonic words and signing passwords remain explicitly out of scope.
-- Correction direction:
-  - Deploy the registered wtfOS app and forward-only migration, retain the server owner gate, and keep Kukai as the external signer.
-- Verification idea:
-  - Run policy, type, build, inventory, and browser persistence coverage; deploy to production; authenticate as the configured owner; verify initial state creation, creator approval persistence across reload, and denial for a non-owner admin.
 
 ### WTF-BB-082 - Backup pipeline defaults do not create an immutable off-host dump
 
