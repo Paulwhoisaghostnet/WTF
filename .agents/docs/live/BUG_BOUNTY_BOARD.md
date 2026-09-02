@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **144** · Verified: **431** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **143** · Verified: **432** · Archived: **4**
 
 ## Canonical Board
 
@@ -131,7 +131,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-090 | Fixed | Codex broadcast playback pass | 2026-05-04 | TV microapp / playback architecture | P0 | 14 | 126 | 4 | 5 | 0 | Client-owned cursor and local bumper gates compete with the server feed, causing overlapping media and DVD-style playback |
 | WTF-BB-571 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / Macaroni Shadownet proof reliability | P0 | 13 | 185 | 3 | 4 | 1 | Macaroni projection remotely packs every big-map key |
 | WTF-BB-271 | Fixed | Codex Macaroni fee-floor repair | 2026-06-16 | Macaroni / generated drop website wallet operation fees | P0 | 13 | 185 | 2 | 5 | 1 | Live mint attempts can fail with `Fee is too low, blockchain says: "No tip, no trip"` because Macaroni inflates Taquito-estimated gas/storage limits but derives the explicit wallet fee from the lower unpadded estimate; fixed by deriving a fee floor from the padded gas limit actually sent to Beacon/Taquito plus a small tip, and verified by `node --check public/creation-tools/macaroni/js/common.js`, `npx tsx --test server/routes/macaroni-policy.test.ts`, and `npm run test:e2e:inventory:coverage` |
-| WTF-BB-123 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos RPC / deploy config | P0 | 13 | 185 | 2 | 5 | 1 | ECAD RPC defaults will break Tezos operations after provider shutdown |
 | WTF-BB-574 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / strict proof packaging | P0 | 12 | 270 | 2 | 5 | 0 | Macaroni recovery capability omits visual evidence |
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 369 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
@@ -299,6 +298,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-331 | Verified | Codex Pasta live-readiness | 2026-06-30 | Deploy / production disk capacity | P0 | 13 | 185 | 2 | 5 | 1 | Pasta deploy disk exhaustion was cleared without touching app volumes, `scripts/server-deploy.sh` now has a 12 GiB free-space preflight, Deploy to Hetzner `28467035058` passed, and live health reports commit `f32dbe8` |
 | WTF-BB-305 | Verified | Codex wallet live full-send | 2026-06-21 | Operations / production health | P0 | 13 | 185 | 3 | 5 | 0 | Live `/api/health` could intermittently return 503 because scheduler audit used a whole-table latest-run query that timed out under production audit volume; fixed by querying only registered job names through indexed lateral latest-row lookups plus a production index; verified live on `wtfos.app` |
 | WTF-BB-233 | Verified | Codex WTF LIVE tip seed deploy blocker repair | 2026-06-10 | Deploy / in-app market seed migration | P0 | 13 | 185 | 3 | 5 | 0 | Production deploy failed after app stop because the WTF LIVE tip item seed violated the existing `price_score BETWEEN 1 AND 10` constraint; fixed by clamping seed scores and adding a migration policy test |
+| WTF-BB-123 | Verified | Codex wallet/RPC emergency pass | 2026-09-02 | Tezos RPC / deploy config | P0 | 13 | 185 | 2 | 5 | 1 | ECAD RPC defaults will break Tezos operations after provider shutdown |
 | WTF-BB-543 | Verified | Codex alpha release packaging audit | 2026-07-24 | Pasta Protocol / packaged-runtime readiness | P0 | 12 | 270 | 2 | 5 | 0 | Packaged smoke now uses explicit load/readiness/assets plus exact response classification instead of global network idle, and real Suite/Spaghetti launch-relaunch smokes pass |
 | WTF-BB-542 | Verified | Codex alpha release packaging audit | 2026-07-24 | Pasta Protocol / Pasta Suite child-window native bridge | P0 | 12 | 270 | 2 | 4 | 1 | Suite-created child tools now receive the native preload bridge; real packaged Suite smoke opens all eight tools without falling through to hosted API dependencies |
 | WTF-BB-187 | Verified | Codex wtfos canonical-domain TLS repair | 2026-06-01 | Deploy / edge TLS | P0 | 12 | 270 | 2 | 5 | 0 | Cloudflare proxied `wtfos.app` points at an origin that does not serve the canonical hostname |
@@ -2971,33 +2971,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-06-16
 - Score: C2 + F5 + S1 + P0(5) = 13
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-123 - ECAD RPC defaults will break Tezos operations after provider shutdown
-
-- Category: Tezos RPC / deploy config
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex wallet/RPC emergency pass
-- Last touched: 2026-05-08
-- Score: C2 + F5 + S1 + P0(5) = 13
-- Evidence:
-  - User report on 2026-05-08: ECAD RPC nodes are defunded and will cease operation at the end of May, so WTF/Kiln Tezos connections relying on ECAD will break on May 31.
-  - Repo scan found ECAD defaults in shared client RPC config, app env templates, operator signer env examples, and local WTF app env.
-- Why it matters:
-  - Checkout, marketplace, wallet preflight, operator signing, and Kiln-like Tezos workflows all depend on a live RPC. Leaving ECAD defaults in source or deployment env creates a scheduled outage.
-- Likely correction direction:
-  - Replace ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet`, replace ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com`, and verify chain IDs before closing.
-- Verification idea:
-  - Scan for ECAD hostnames, curl the replacement RPC chain IDs, run typecheck/build, and smoke the in-app marketplace wallet preflight path.
-- Fix:
-  - Replaced ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet` and ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com` across shared client config, env templates, operator signer env, domain/subdomain helpers, and bundled Particle Painter wallet code.
-  - Updated local WTF app env references to stop using ECAD RPCs.
-- Local verification:
-  - `curl -fsS https://rpc.tzkt.io/mainnet/chains/main/chain_id` returned `NetXdQprcVkpaWU`.
-  - `curl -fsS https://rpc.ghostnet.teztnets.com/chains/main/chain_id` returned `NetXnHfVqm9iesp`.
-  - ECAD hostname scan across source/env targets returned no matches.
-  - `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.
-  - Remaining target verification: production host/deploy env must pick up the new RPC before this is marked Verified.
 
 ### WTF-BB-574 - Macaroni recovery capability omits visual evidence
 
@@ -6694,6 +6667,23 @@ Copy this when adding a new issue:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `git diff --check`.
   - Public health was restored after manually restarting the app container; deploy retry still required for normal full-send completion.
+
+### WTF-BB-123 - ECAD RPC defaults will break Tezos operations after provider shutdown
+
+- Category: Tezos RPC / deploy config
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex wallet/RPC emergency pass
+- Last touched: 2026-09-02
+- Score: C2 + F5 + S1 + P0(5) = 13
+- Historical evidence:
+  - Shared wallet, signer, and domain configuration once defaulted to retiring ECAD Tezos RPC hosts. The first correction removed those hosts; a later correction superseded its interim providers with the project's approved Octez primary endpoints and TC Infra fallbacks.
+- Correction:
+  - Mainnet now defaults to `https://tezos-mainnet.octez.io/` with `https://tcinfra.net/rpc/tezos/mainnet` fallback. Shadownet defaults to `https://tezos-shadownet.octez.io/` with `https://tcinfra.net/rpc/tezos/shadownet` fallback. Deployment rewrites the known interim TzKT/teztnets defaults in both checkout and operator runtime env files before loading them.
+  - The non-Macaroni/non-Pasta application, environment, signer, domain, contract, and operator source scan contains no ECAD hostnames.
+- Verification (2026-09-02):
+  - Both mainnet endpoints returned `NetXdQprcVkpaWU`; both Shadownet endpoints returned `NetXsqzbfFenSTS`. Focused wallet connection, ownership/value, and Shadownet preflight checks passed 9/9; health policy passed 6/6.
+  - ECAD-removal commit `9be793d0` and approved-Octez correction `1bd5925a` are ancestors of live commit `896f7761`. Hetzner deploy run `33612787081` succeeded, and public readiness reports production `commitRef: 896f7761` with database, chain configuration, and scheduler checks all healthy. WTF-BB-123 is Verified.
 
 ### WTF-BB-543 - Packaged smoke now uses explicit load/readiness/assets plus exact response classification instead of global network idle, and real Suite/Spaghetti launch-relaunch smokes pass
 

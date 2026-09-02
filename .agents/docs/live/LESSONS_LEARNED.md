@@ -11557,3 +11557,13 @@
 **Rule**: Verify one production migration enumerator in source, immutable applied-file checksums, fail-closed SQL policy, and a real deploy transcript that shows migrations pass before the app is replaced and readiness reports the deployed commit.
 
 ---
+
+## 2026-09-02 — RPC retirement proof must follow the replacement chain
+
+**What happened**: The ECAD retirement record stayed Fixed after its first replacement endpoints were themselves superseded by the project's approved Octez primaries and TC Infra fallbacks. The source was current, but the record still described the interim topology and lacked production ancestry evidence.
+
+**Why it mattered**: Proving that an obsolete hostname disappeared is not enough when endpoint policy can change again. A network URL can also be reachable while serving the wrong chain, and a local correction does not prove the deployed application contains it.
+
+**Rule**: Reconcile RPC retirement against the current authoritative endpoint table, verify every primary and fallback chain ID, prove the correction commits are ancestors of the live commit, and require live production chain readiness before closing the record.
+
+---

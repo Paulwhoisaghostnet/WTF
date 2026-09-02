@@ -2434,9 +2434,9 @@
     },
     {
       "id": "WTF-BB-123",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex wallet/RPC emergency pass",
-      "lastTouched": "2026-05-08",
+      "lastTouched": "2026-09-02",
       "category": "Tezos RPC / deploy config",
       "priority": "P0",
       "points": 13,
@@ -2445,7 +2445,7 @@
       "functionalityDanger": 5,
       "securityDanger": 1,
       "title": "ECAD RPC defaults will break Tezos operations after provider shutdown",
-      "body": "- Evidence:\n  - User report on 2026-05-08: ECAD RPC nodes are defunded and will cease operation at the end of May, so WTF/Kiln Tezos connections relying on ECAD will break on May 31.\n  - Repo scan found ECAD defaults in shared client RPC config, app env templates, operator signer env examples, and local WTF app env.\n- Why it matters:\n  - Checkout, marketplace, wallet preflight, operator signing, and Kiln-like Tezos workflows all depend on a live RPC. Leaving ECAD defaults in source or deployment env creates a scheduled outage.\n- Likely correction direction:\n  - Replace ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet`, replace ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com`, and verify chain IDs before closing.\n- Verification idea:\n  - Scan for ECAD hostnames, curl the replacement RPC chain IDs, run typecheck/build, and smoke the in-app marketplace wallet preflight path.\n- Fix:\n  - Replaced ECAD mainnet defaults with `https://rpc.tzkt.io/mainnet` and ECAD Ghostnet defaults with `https://rpc.ghostnet.teztnets.com` across shared client config, env templates, operator signer env, domain/subdomain helpers, and bundled Particle Painter wallet code.\n  - Updated local WTF app env references to stop using ECAD RPCs.\n- Local verification:\n  - `curl -fsS https://rpc.tzkt.io/mainnet/chains/main/chain_id` returned `NetXdQprcVkpaWU`.\n  - `curl -fsS https://rpc.ghostnet.teztnets.com/chains/main/chain_id` returned `NetXnHfVqm9iesp`.\n  - ECAD hostname scan across source/env targets returned no matches.\n  - `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.\n  - Remaining target verification: production host/deploy env must pick up the new RPC before this is marked Verified.",
+      "body": "- Historical evidence:\n  - Shared wallet, signer, and domain configuration once defaulted to retiring ECAD Tezos RPC hosts. The first correction removed those hosts; a later correction superseded its interim providers with the project's approved Octez primary endpoints and TC Infra fallbacks.\n- Correction:\n  - Mainnet now defaults to `https://tezos-mainnet.octez.io/` with `https://tcinfra.net/rpc/tezos/mainnet` fallback. Shadownet defaults to `https://tezos-shadownet.octez.io/` with `https://tcinfra.net/rpc/tezos/shadownet` fallback. Deployment rewrites the known interim TzKT/teztnets defaults in both checkout and operator runtime env files before loading them.\n  - The non-Macaroni/non-Pasta application, environment, signer, domain, contract, and operator source scan contains no ECAD hostnames.\n- Verification (2026-09-02):\n  - Both mainnet endpoints returned `NetXdQprcVkpaWU`; both Shadownet endpoints returned `NetXsqzbfFenSTS`. Focused wallet connection, ownership/value, and Shadownet preflight checks passed 9/9; health policy passed 6/6.\n  - ECAD-removal commit `9be793d0` and approved-Octez correction `1bd5925a` are ancestors of live commit `896f7761`. Hetzner deploy run `33612787081` succeeded, and public readiness reports production `commitRef: 896f7761` with database, chain configuration, and scheduler checks all healthy. WTF-BB-123 is Verified.",
       "legacyOriginalId": "WTF-BB-123"
     },
     {
