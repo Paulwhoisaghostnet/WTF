@@ -57,10 +57,10 @@ export function useTVDataQueries(args: UseTVDataQueriesArgs) {
         `/api/tv/channels/${selectedChannelId}/stream`
       ),
     enabled: Boolean(powerOn && selectedChannelId),
-    // Under the client-driven playback model, the refetch isn't used
-    // to re-sync playback time — it's only needed to pick up new or
-    // removed playlist items.  A longer cadence means fewer spurious
-    // queue re-renders while playback is running smoothly.
+    // Natural media boundaries explicitly refetch the server's
+    // wall-clock broadcast cursor. This background refresh only picks
+    // up playlist metadata changes and must not interrupt an item that
+    // is already playing.
     refetchInterval: powerOn ? 5 * 60_000 : false,
     staleTime: 30_000,
   });

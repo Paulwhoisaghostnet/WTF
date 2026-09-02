@@ -11587,3 +11587,13 @@
 **Rule**: Before reconciling a stale bounty, compare title, category, owner, body, and legacy history as one identity. If canonicalization crossed records, preserve the distinct canonical successor and repair the corrupted record before evaluating its status.
 
 ---
+
+## 2026-09-02 — Broadcast authority must cover every player surface
+
+**What happened**: The main WTF TV client had moved back to the server's wall-clock current item, but the public embed retained its own cursor, ignored the returned offset, and advanced locally. Two production tabs therefore played the same clip roughly eleven seconds apart.
+
+**Why it mattered**: A shared stream endpoint does not create a broadcast if one consumer treats its rotated queue as a private playlist. The public embed is a first-class viewer surface and can reintroduce the exact DVD-style behavior removed from the signed-in app.
+
+**Rule**: Every TV consumer must take `current` and `offsetSeconds` from the server, re-read that authority at natural/error boundaries, and explicitly stop the prior media element before changing media types. Prove synchronization with two independent production viewers after deployment.
+
+---

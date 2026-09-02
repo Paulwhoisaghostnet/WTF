@@ -7,13 +7,12 @@
  *   GET /api/tv/channels/:channelId/embed   → JSON metadata for embeds
  *   GET /oembed                             → oEmbed JSON for rich previews
  *
- * The embed player is intentionally streaming-free: it polls the
- * existing /api/tv/channels/:id/stream endpoint on a 30-minute
- * deterministic window, plays each item in sequence from the cache
- * proxy, and re-fetches the queue when it reaches the end (or when
- * the poll detects that the channel's playlist changed).  Every
- * viewer is a progressive-download client — no HLS/DASH/WebRTC
- * session is created anywhere.
+ * The embed player is intentionally streaming-free: it tunes to the
+ * authoritative `current` item and wall-clock offset returned by the
+ * existing /api/tv/channels/:id/stream endpoint, then re-fetches that
+ * authority at each natural media boundary. Every viewer is a
+ * progressive-download client — no HLS/DASH/WebRTC session is
+ * created anywhere.
  */
 import { Router } from "express";
 import { and, eq } from "drizzle-orm";
@@ -357,13 +356,7 @@ ${isCrawler ? "" : `
 <script>
 (function () {
   "use strict";
-  var CHANNEL_ID = ${channelId};
   var STREAM_URL = ${JSON.stringify(streamUrl)};
-  var REFETCH_AT_END = true;
-  // Re-fetch once the shuffle window rotates so the viewer doesn't
-  // see the same ordering twice, and so playlist edits show up
-  // automatically.  30 min matches STREAM_SHUFFLE_WINDOW_MS server-side.
-  var REFRESH_POLL_MS = 15 * 60 * 1000;
 
   var player = document.getElementById("player");
   var gif = document.getElementById("gif");
@@ -372,37 +365,31 @@ ${isCrawler ? "" : `
   var kindLabel = document.getElementById("kind");
   var unmuteBtn = document.getElementById("unmute");
 
-  var queue = [];
-  var cursor = 0;
-  var fetchInFlight = false;
-  var lastShuffleSeed = null;
-  var lastFetchAt = 0;
+  var fetchInFlight = null;
+  var resyncTimer = null;
+  var pendingVideoOffsetSeconds = 0;
 
   function setKindBadge(kind) {
     kindLabel.textContent = (kind || "?").slice(0,8);
     kindLabel.className = "kind-badge" + (kind === "bumper" ? " bumper" : "");
   }
 
-  async function fetchQueue() {
-    if (fetchInFlight) return;
-    fetchInFlight = true;
-    try {
+  async function fetchBroadcast() {
+    if (fetchInFlight) return fetchInFlight;
+    fetchInFlight = (async function () {
       var res = await fetch(STREAM_URL, { credentials: "omit" });
       if (!res.ok) throw new Error("stream fetch failed: " + res.status);
       var data = await res.json();
-      var newQueue = Array.isArray(data.queue) ? data.queue : [];
-      lastShuffleSeed = data.shuffleSeed || null;
-      lastFetchAt = Date.now();
-      queue = newQueue;
-      if (queue.length === 0) {
-        nowLabel.textContent = data.message || "Channel is dark";
-        setKindBadge("idle");
-      }
-      cursor = 0;
-    } catch (err) {
-      console.warn("[embed] fetch queue failed:", err);
+      var queue = Array.isArray(data.queue) ? data.queue : [];
+      return {
+        item: data.current || queue[0] || null,
+        message: data.message || "Channel is dark"
+      };
+    })();
+    try {
+      return await fetchInFlight;
     } finally {
-      fetchInFlight = false;
+      fetchInFlight = null;
     }
   }
 
@@ -410,59 +397,100 @@ ${isCrawler ? "" : `
     if (placeholder && placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
   }
 
-  function playCurrent() {
-    if (queue.length === 0) return;
-    var item = queue[cursor % queue.length];
+  function scheduleAuthoritativeSync(delayMs) {
+    if (resyncTimer) clearTimeout(resyncTimer);
+    resyncTimer = setTimeout(syncToBroadcast, delayMs);
+  }
+
+  function remainingItemMs(item) {
+    var duration = Math.max(1, Number(item.durationSeconds) || 1);
+    var offset = Math.max(0, Number(item.offsetSeconds) || 0);
+    return Math.max(1000, Math.round(Math.max(0, duration - offset) * 1000));
+  }
+
+  function startPendingVideo() {
+    var duration = Number.isFinite(player.duration) ? player.duration : 0;
+    var desiredOffset = Math.max(0, pendingVideoOffsetSeconds);
+    try {
+      if (desiredOffset > 0.1 && duration > 0) {
+        player.currentTime = Math.min(desiredOffset, Math.max(0, duration - 0.25));
+      } else if (player.currentTime > 0.1) {
+        player.currentTime = 0;
+      }
+    } catch (_) { /* the next metadata event will retry */ }
+    var p = player.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(function (err) {
+        console.warn("[embed] autoplay blocked; muting:", err && err.message);
+        player.muted = true;
+        unmuteBtn.hidden = false;
+        player.play().catch(function () { /* boundary retry remains armed */ });
+      });
+    }
+  }
+
+  function playAuthoritative(item) {
     if (!item) return;
+    if (resyncTimer) {
+      clearTimeout(resyncTimer);
+      resyncTimer = null;
+    }
     hidePlaceholder();
     nowLabel.textContent = item.title || "Playing…";
     setKindBadge(item.kind);
     var src = item.cacheUrl || item.sourceUri;
     if (item.kind === "gif" || (item.mimeType && item.mimeType.indexOf("image/") === 0)) {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
       gif.hidden = false;
       player.hidden = true;
       gif.src = src;
-      var dur = Math.max(1, item.durationSeconds || 4);
       clearTimeout(gif._timer);
-      gif._timer = setTimeout(advance, dur * 1000);
+      gif._timer = setTimeout(syncToBroadcast, remainingItemMs(item));
     } else {
+      clearTimeout(gif._timer);
+      gif.removeAttribute("src");
       gif.hidden = true;
       player.hidden = false;
       try {
+        player.pause();
+        pendingVideoOffsetSeconds = Math.max(0, Number(item.offsetSeconds) || 0);
         player.src = src;
         player.load();
-        var p = player.play();
-        if (p && typeof p.catch === "function") {
-          p.catch(function (err) {
-            console.warn("[embed] autoplay blocked; muting:", err && err.message);
-            player.muted = true;
-            unmuteBtn.hidden = false;
-            player.play().catch(function () { /* fallthrough to timeout */ });
-          });
-        }
       } catch (err) {
         console.error("[embed] play error:", err);
-        setTimeout(advance, 1000);
+        scheduleAuthoritativeSync(1000);
       }
     }
   }
 
-  function advance() {
-    cursor += 1;
-    if (cursor >= queue.length) {
-      if (REFETCH_AT_END) {
-        fetchQueue().then(playCurrent);
+  async function syncToBroadcast() {
+    try {
+      var broadcast = await fetchBroadcast();
+      if (!broadcast || !broadcast.item) {
+        player.pause();
+        player.removeAttribute("src");
+        player.load();
+        gif.removeAttribute("src");
+        gif.hidden = true;
+        player.hidden = true;
+        nowLabel.textContent = broadcast ? broadcast.message : "Channel is dark";
+        setKindBadge("idle");
         return;
       }
-      cursor = 0;
+      playAuthoritative(broadcast.item);
+    } catch (err) {
+      console.warn("[embed] authoritative stream sync failed:", err);
+      scheduleAuthoritativeSync(1000);
     }
-    playCurrent();
   }
 
-  player.addEventListener("ended", advance);
+  player.addEventListener("loadedmetadata", startPendingVideo);
+  player.addEventListener("ended", syncToBroadcast);
   player.addEventListener("error", function () {
-    console.warn("[embed] media error, skipping");
-    setTimeout(advance, 500);
+    console.warn("[embed] media error, re-syncing broadcast");
+    scheduleAuthoritativeSync(500);
   });
   player.addEventListener("stalled", function () {
     // Do NOT auto-skip on stall — progressive download often reports
@@ -470,7 +498,7 @@ ${isCrawler ? "" : `
     if (player._stalledTimer) return;
     player._stalledTimer = setTimeout(function () {
       player._stalledTimer = null;
-      if (player.readyState < 2) advance();
+      if (player.readyState < 2) syncToBroadcast();
     }, 8000);
   });
   player.addEventListener("playing", function () {
@@ -486,19 +514,7 @@ ${isCrawler ? "" : `
     player.play().catch(function () {});
   });
 
-  // Light-touch refresh: poll every REFRESH_POLL_MS.  If the seed
-  // changed, reset the queue at the next natural item boundary so
-  // the current item still plays out.
-  setInterval(function () {
-    var prior = lastShuffleSeed;
-    fetchQueue().then(function () {
-      if (prior !== null && lastShuffleSeed !== null && lastShuffleSeed !== prior) {
-        cursor = 0;
-      }
-    });
-  }, REFRESH_POLL_MS);
-
-  fetchQueue().then(playCurrent);
+  syncToBroadcast();
 })();
 </script>
 `}

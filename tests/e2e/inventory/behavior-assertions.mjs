@@ -1045,13 +1045,14 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "tv.public-channel-stream-embed",
     domain: "WTF TV, Playback, Channels, and Embeds",
     ownerSurfaceIds: ["tv"],
-    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    ownerSpec:
+      "server/routes/tv-embed-policy.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"WTF TV public channel\"",
+      "npx tsx --test server/routes/tv-embed-policy.test.ts && WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"WTF TV public channel\"",
     userVisibleAssertion:
-      "A contestant can discover a public WTF TV channel and resolve its current broadcast state.",
+      "A contestant can discover a public WTF TV channel and resolve its current broadcast state; independent public embeds tune to the same server-selected item and wall-clock offset instead of starting private queues at zero.",
     durableSideEffectAssertion:
-      "The live harness proves the same public active channel resolves through channel list, owned-channel scope, now/stream state, dial lookup, embed metadata, and oEmbed metadata without requiring private media access.",
+      "The live harness proves the same public active channel resolves through channel list, owned-channel scope, now/stream state, dial lookup, embed metadata, and oEmbed metadata without requiring private media access; source policy locks boundary refetch, offset seeking, and a single media authority into the generated embed player.",
   },
   {
     id: "gameshow.automation-completion-reward-proof",
