@@ -578,9 +578,9 @@
     },
     {
       "id": "WTF-BB-071",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-02",
+      "status": "Claimed",
+      "owner": "Codex jstz adapter proof reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "Kiln integration / jstz adapter",
       "priority": "P2",
       "points": 10,
