@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **126** · Verified: **450** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **125** · Verified: **451** · Archived: **4**
 
 ## Canonical Board
 
@@ -129,7 +129,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
-| WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-092 | Fixed | Codex MCP agent layer pass | 2026-05-04 | MCP / agent access control | P1 | 14 | 126 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 185 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 185 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
@@ -319,6 +318,7 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-274 | Verified | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 126 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy |
 | WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 126 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 | WTF-BB-130 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Public repo / operational intel | P1 | 14 | 126 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
+| WTF-BB-129 | Verified | Codex platform wallet keyring pass | 2026-09-02 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-126 | Verified | Codex recapture payment-boundary pass | 2026-08-30 | Tezos recapture / settlement | P1 | 14 | 126 | 4 | 4 | 2 | Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends |
 | WTF-BB-066 | Verified | Codex security hardening pass | 2026-05-30 | Kiln integration / security | P1 | 14 | 126 | 2 | 3 | 5 | Deploy runs `check-kiln-auth.mjs` + mutation probe; open Shadownet mode is intentional |
 | WTF-BB-050 | Verified | Codex auth dependency verification pass | 2026-08-31 | Dependencies / security | P1 | 14 | 126 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
@@ -2900,35 +2900,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
   - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
   - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
-
-### WTF-BB-129 - Platform wallet custody depends on one legacy env secret instead of a role-aware keyring
-
-- Category: Tezos platform wallets / key custody
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex platform wallet keyring pass
-- Last touched: 2026-05-08
-- Score: C4 + F4 + S2 + P1(4) = 14
-- Evidence:
-  - The signer previously loaded a single `WTF_OPERATOR_SIGNER_SECRET`, so reward disbursements, buyback operations, and future Arcade treasury flows would have shared one broad hot-wallet identity.
-  - Adding Arcade credit redemption and creator earnings needs wallet roles such as `arcade_treasury`, `reward_disburser`, and `contract_admin` without printing or handing private keys to the app.
-- Why it matters:
-  - A monolithic hot-wallet env var makes wallet rotation, blast-radius control, audit trails, and future contract-specific allowlists harder. It also encourages adding more raw secrets as new domains need platform custody.
-- Likely correction direction:
-  - Move platform key custody into the isolated signer process, encrypt generated wallet keys in a host-local keyring, keep creation/listing in server-local tooling, and let backend code target wallet IDs instead of private keys.
-- Verification idea:
-  - Create an Arcade Treasury wallet in a temp keyring, verify the signer can reload it by wallet ID, assert the keyring file contains no plaintext `edsk`, run signer typecheck/build, and run app typecheck/build.
-- Fix notes:
-  - Added an encrypted multi-wallet platform keyring inside `wtf-operator-signer`, backed by Taquito `generateSecretKey` + `InMemorySigner` and AES-256-GCM host-local storage.
-  - Extended the shared signer/keyring domain with public wallet DTOs, DID/chain-id metadata, and optional `walletId` targeting for future backend-owned signed operations.
-  - Removed the `/api/platform-wallets` admin route and Operator Wallet keyring UI so no WTF OS user, including an admin, can create or manipulate platform wallets from the browser.
-  - Added server-local `npm run platform-wallets` tooling plus `.gitignore` and server deployment-plan coverage so keyring files, master keys, and generated local manifests stay outside git.
-  - Defaulted app-facing signer wallet creation to locked (`WTF_PLATFORM_KEYRING_CREATE_ENABLED=0`) for the long-running signer.
-- Local verification:
-  - Temp keyring smoke created `arcade-treasury`, reloaded its signer, matched the public address, and confirmed the on-disk keyring did not contain plaintext `edsk`.
-  - Local Shadownet keyring created host-local `wtf-os-root` and `arcade-treasury` wallets under `~/.wtf-gameshow/`; generated public manifest is ignored by git.
-  - Verified `/api/platform-wallets` and Operator Wallet keyring UI were removed; signer health response strips wallet lists before returning through the app health route.
-  - `npm run operator-signer:check`, `npm run operator-signer:build`, `npm run operator-signer:test`, `npm run check -- --pretty false`, `git diff --check`, and `npm run build` passed.
 
 ### WTF-BB-092 - Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates
 
@@ -7151,6 +7122,27 @@ Copy this when adding a new issue:
   - Residual risk: `.agents/docs` is still tracked in this repo per current owner direction, so this fixes the public-facing GitHub clutter and path exposure but does not create a separate private ops mirror.
   - 2026-07-14 quick-win verification: a public-release allowlist now keeps only the bounty board, lessons, and interaction inventory tracked under `.agents`; 181 other internal `.agents` paths are staged for index removal while their local ignored copies remain available to operators.
   - `npm run security:public-release-boundary` passed for 2,828 tracked files. Full-history secret scanning completed before any rewrite decision; the historic credential finding is tracked separately as `WTF-BB-371` because rotation must precede coordinated history surgery.
+
+### WTF-BB-129 - Platform wallet custody depends on one legacy env secret instead of a role-aware keyring
+
+- Category: Tezos platform wallets / key custody
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex platform wallet keyring pass
+- Last touched: 2026-09-02
+- Score: C4 + F4 + S2 + P1(4) = 14
+- Evidence:
+  - The signer previously loaded a single `WTF_OPERATOR_SIGNER_SECRET`, so reward disbursements, buyback operations, and future Arcade treasury flows would have shared one broad hot-wallet identity.
+  - Adding Arcade credit redemption and creator earnings needs wallet roles such as `arcade_treasury`, `reward_disburser`, and `contract_admin` without printing or handing private keys to the app.
+- Why it matters:
+  - A monolithic hot-wallet env var makes wallet rotation, blast-radius control, audit trails, and future contract-specific allowlists harder. It also encourages adding more raw secrets as new domains need platform custody.
+- Correction:
+  - Platform key custody lives in the isolated signer process, with AES-256-GCM host-local storage, role/network metadata, wallet-ID targeting, atomic mode-0600 writes, and wallet creation locked by default in the long-running signer.
+  - Browser creation/listing routes were removed. Server-local tooling owns keyring administration, generated custody files are excluded from Git and Docker, and the app-facing health projection strips wallet objects.
+- Verification (2026-09-02):
+  - A focused temp-keyring test creates `arcade-treasury`, inspects the stored document for the exact encrypted secret fields and no plaintext `edsk`, confirms mode 0600, then constructs a fresh keyring instance and reloads the same wallet ID, address, public key, role, and signer. The combined signer/keyring/policy suite passed 7/7.
+  - Signer typecheck/build and client tests passed; full application TypeScript and production build passed; board, environment-inventory, and diff-integrity checks passed. Commit `46d79797` containing the custody correction is an ancestor of the deployed line.
+  - Anonymous production access to `https://wtfos.app/api/operator-wallet/signer/health` returns 401 `Not authenticated`, preserving the operator-only boundary. WTF-BB-129 is Verified.
 
 ### WTF-BB-126 - Recapture, auction, ante, and entry-fee flows rely on manual op-hash attestations instead of wallet-backed sends
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -68,6 +68,51 @@ test("keyring can retarget stored wallet network metadata without rotating the s
     assert.equal(await signerHandle.signer.publicKeyHash(), mainnetWallet.address);
     assert.equal(signerHandle.wallet.network, "shadownet");
     assert.equal(signerHandle.wallet.chainId, "NetXsqzbfFenSTS");
+  } finally {
+    globalThis.fetch = originalFetch;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("keyring encrypts generated secrets and a fresh instance reloads by wallet id", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("named-network keyring metadata must not depend on live RPC reads");
+  }) as typeof fetch;
+
+  const dir = await mkdtemp(join(tmpdir(), "wtf-keyring-reload-"));
+  const keyringPath = join(dir, "keyring.json");
+  try {
+    const env = keyringEnv(keyringPath);
+    const creator = new PlatformWalletKeyring(env);
+    const created = await creator.createWallet({
+      id: "arcade-treasury",
+      label: "Arcade Treasury",
+      role: "arcade_treasury",
+      network: "mainnet",
+    });
+
+    const serialized = await readFile(keyringPath, "utf8");
+    const stored = JSON.parse(serialized) as {
+      wallets: Array<{
+        secret: Record<string, unknown>;
+      }>;
+    };
+    assert.equal(serialized.includes("edsk"), false);
+    assert.deepEqual(Object.keys(stored.wallets[0]!.secret).sort(), [
+      "alg",
+      "ciphertext",
+      "iv",
+      "tag",
+    ]);
+    assert.equal((await stat(keyringPath)).mode & 0o777, 0o600);
+
+    const reloaded = new PlatformWalletKeyring(keyringEnv(keyringPath));
+    const signerHandle = await reloaded.getSigner("arcade-treasury");
+    assert.equal(signerHandle.wallet.id, "arcade-treasury");
+    assert.equal(signerHandle.wallet.role, "arcade_treasury");
+    assert.equal(await signerHandle.signer.publicKeyHash(), created.address);
+    assert.equal(await signerHandle.signer.publicKey(), created.publicKey);
   } finally {
     globalThis.fetch = originalFetch;
     await rm(dir, { recursive: true, force: true });

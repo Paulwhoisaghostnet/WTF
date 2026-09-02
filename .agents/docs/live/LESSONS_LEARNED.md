@@ -11687,3 +11687,13 @@
 **Rule**: Prove secret separation with production-mode rejection, deploy preflight ordering, and a successful real deploy. Prove custody-file exclusion against both Git and Docker using representative generated paths and the actual build-context policy.
 
 ---
+
+## 2026-09-02 — Encrypted custody needs fresh-reader proof
+
+**What happened**: The platform wallet keyring correction was implemented and deployed, but its checked-in test reused one keyring object and never inspected the stored document even though the bounty claimed fresh reload and ciphertext verification.
+
+**Why it mattered**: An in-memory signer success does not prove a later signer process can decrypt the host-local file, and naming an AES scheme in source does not prove generated secret keys are absent from serialized storage.
+
+**Rule**: For encrypted key custody, create through one instance, inspect file permissions and serialized fields for plaintext secret material, then load and use the same wallet ID through a newly constructed instance before closing the record.
+
+---
