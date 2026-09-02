@@ -11627,3 +11627,13 @@
 **Rule**: Preserve the failed aggregate result, identify its exact owner, re-prove the affected correction directly, and require a later all-green descendant before reconciling its record as Verified.
 
 ---
+
+## 2026-09-02 — Verify TV integrity at both persistence and delivery boundaries
+
+**What happened**: The active-playlist race and repeated stream-assembly records remained Fixed after their corrections were deployed because the board carried only local typecheck notes.
+
+**Why it mattered**: A schema invariant is incomplete evidence until production has applied its migration, while a cache implementation is incomplete evidence until live responses demonstrate reuse without bypassing current visibility and schedule checks.
+
+**Rule**: For TV state races, require the route transaction, database constraint, and production migration transcript. For stream caches, require bounded/coalesced unit behavior plus observable live miss-to-hit transitions on the deployed correction.
+
+---
