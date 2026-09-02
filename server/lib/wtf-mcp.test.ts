@@ -69,6 +69,35 @@ test("MCP token scopes are capped to the paired user's account role", async () =
   assert.deepEqual(normalizeMcpScopes(["api:admin"], "admin"), ["api:admin"]);
 });
 
+test("private reads and user-bound mutations enforce their declared MCP scopes", async () => {
+  const source = await readFile(new URL("./wtf-mcp.ts", import.meta.url), "utf8");
+  const requiredScopes = new Map([
+    ["wtf_get_desktop_appearance", "desktop:read"],
+    ["wtf_set_desktop_appearance", "desktop:write"],
+    ["wtf_get_desktop_pet", "pet:read"],
+    ["wtf_keep_desktop_pet_alive", "pet:write"],
+    ["wtf_set_trade_board_tokens", "trade-board:write"],
+    ["wtf_prepare_single_edition_listing_workflow", "market:write"],
+    ["wtf_build_game_studio_bundle", "game-studio:write"],
+  ]);
+  const registrations = [...source.matchAll(/server\.registerTool\(\s*"([^"]+)"/g)];
+
+  for (const [toolName, requiredScope] of requiredScopes) {
+    const registrationIndex = registrations.findIndex((match) => match[1] === toolName);
+    assert.notEqual(registrationIndex, -1, `${toolName} should be registered`);
+    const block = source.slice(
+      registrations[registrationIndex]!.index,
+      registrations[registrationIndex + 1]?.index ?? source.length
+    );
+    assert.match(block, /requireMcpScopes\(/, `${toolName} should enforce token scopes`);
+    assert.match(
+      block,
+      new RegExp(`\\["${requiredScope.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"\\]`),
+      `${toolName} should require ${requiredScope}`
+    );
+  }
+});
+
 test("capability tool catalog stays in sync with registered MCP tools", async () => {
   const { WTF_MCP_TOOL_NAMES } = await import("./wtf-mcp");
   const source = await readFile(new URL("./wtf-mcp.ts", import.meta.url), "utf8");

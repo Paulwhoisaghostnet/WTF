@@ -2188,6 +2188,26 @@ test.describe("live E2E puppet orchestration", () => {
       const toolsBody = await tools.text();
       expect(toolsBody).toContain("wtf_api_request");
 
+      const deniedDesktopWrite = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: {
+            name: "wtf_set_desktop_appearance",
+            arguments: { desktop_color: "#008080", response_format: "json" },
+          },
+        },
+      });
+      expect(deniedDesktopWrite.ok()).toBe(true);
+      expect(await deniedDesktopWrite.text()).toContain(
+        "requires MCP scope desktop:write"
+      );
+
       const apiHealth = await publicRequest.get("/api/v1/health", {
         headers: { Authorization: `Bearer ${created.token}` },
       });
@@ -2219,6 +2239,14 @@ test.describe("live E2E puppet orchestration", () => {
       );
       expect(revoked.ok).toBe(true);
       expect(revoked.token?.revokedAt, "MCP token revoked timestamp").toBeTruthy();
+      const rejectedAfterRevoke = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: { jsonrpc: "2.0", id: 4, method: "tools/list", params: {} },
+      });
+      expect(rejectedAfterRevoke.status()).toBe(401);
       tokenId = null;
     } finally {
       if (tokenId) {

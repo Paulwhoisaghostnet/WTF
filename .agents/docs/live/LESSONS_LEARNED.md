@@ -11697,3 +11697,13 @@
 **Rule**: For encrypted key custody, create through one instance, inspect file permissions and serialized fields for plaintext secret material, then load and use the same wallet ID through a newly constructed instance before closing the record.
 
 ---
+
+## 2026-09-02 — Token ownership and token scope are separate boundaries
+
+**What happened**: MCP bearer authentication and paired-user ownership were enforced globally, but several older private-read and user-mutation tools did not call the newer scope guard. A valid narrow token could therefore reach desktop, pet, trade-board, listing-planning, or bundle behavior outside its requested grants.
+
+**Why it mattered**: Acting only as the token owner limits whose data can change, but it does not honor what that owner authorized the agent to do. A revocable token with decorative scopes is still over-broad authority.
+
+**Rule**: Every private read and user-bound mutation must check its domain read/write scope before its first data read or side effect. Live token lifecycle proof must include one missing-scope denial and rejection after revocation, not only successful pairing.
+
+---

@@ -984,6 +984,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
+      const scopeError = requireMcpScopes(
+        auth,
+        ["desktop:read"],
+        "wtf_get_desktop_appearance",
+        response_format
+      );
+      if (scopeError) return scopeError;
       const settings = await getDesktopSettings(auth.user.id);
       return toolResult(
         { ok: true, ...settings },
@@ -1033,6 +1040,13 @@ export function createWtfMcpServer(
       },
     },
     async (params) => {
+      const scopeError = requireMcpScopes(
+        auth,
+        ["desktop:write"],
+        "wtf_set_desktop_appearance",
+        params.response_format
+      );
+      if (scopeError) return scopeError;
       const current = await getDesktopSettings(auth.user.id);
       const withScheme = applySchemePatch(current.appearance, params.scheme_key);
       const next = normalizeDesktopAppearance({
@@ -1088,6 +1102,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
+      const scopeError = requireMcpScopes(
+        auth,
+        ["pet:read"],
+        "wtf_get_desktop_pet",
+        response_format
+      );
+      if (scopeError) return scopeError;
       const pet = await getOrCreatePetState(auth.user.id);
       return toolResult(
         { ok: true, pet },
@@ -1117,6 +1138,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ strategy, action, max_actions, response_format }) => {
+      const scopeError = requireMcpScopes(
+        auth,
+        ["pet:write"],
+        "wtf_keep_desktop_pet_alive",
+        response_format
+      );
+      if (scopeError) return scopeError;
       let pet = await getOrCreatePetState(auth.user.id);
       const actions =
         strategy === "specific" && action
@@ -1426,6 +1454,13 @@ export function createWtfMcpServer(
     async ({ action, tokens, response_format }) => {
       const gate = await requireMcpFeature("wtfiam", "wtf_set_trade_board_tokens", response_format);
       if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["trade-board:write"],
+        "wtf_set_trade_board_tokens",
+        response_format
+      );
+      if (scopeError) return scopeError;
 
       const ownedRows = await db
         .select({
@@ -1522,6 +1557,13 @@ export function createWtfMcpServer(
     async ({ token_contract, token_id, price_wtf, amount, response_format }) => {
       const gate = await requireMcpFeature("wtfiam", "wtf_prepare_single_edition_listing_workflow", response_format);
       if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["market:write"],
+        "wtf_prepare_single_edition_listing_workflow",
+        response_format
+      );
+      if (scopeError) return scopeError;
 
       const [holding] = await db
         .select({
@@ -2488,6 +2530,13 @@ export function createWtfMcpServer(
         response_format
       );
       if (!gate.ok) return gate.error!;
+      const scopeError = requireMcpScopes(
+        auth,
+        ["game-studio:write"],
+        "wtf_build_game_studio_bundle",
+        response_format
+      );
+      if (scopeError) return scopeError;
 
       const scaffold = buildGameStudioScaffold(template_id);
       const { zip, manifest } = buildGameStudioZip({
