@@ -738,7 +738,7 @@
     },
     {
       "id": "WTF-BB-042",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex TV boot serialization reconciliation",
       "lastTouched": "2026-09-02",
       "category": "TV microapp / schema drift",
@@ -749,7 +749,7 @@
       "functionalityDanger": 2,
       "securityDanger": 2,
       "title": "Boot-time TV backfill applies schema-like changes without single-writer lock",
-      "body": "- Evidence:\n  - `server/lib/tv-boot-backfill.ts:64-117` runs DDL-like/seed actions as part of startup.\n  - `server/index.ts:64-66` imports and executes this during app init, including when multiple app instances boot.\n- Why it matters:\n  - Concurrent starts can race schema/data bootstrap logic and produce partial or duplicate boot changes.\n  - Increases deployment fragility where rolling restarts can trip each other.\n- Likely correction direction:\n  - Move bootstrap actions behind single-instance lock + explicit run-state table and make startup idempotent.\n- Verification idea:\n  - Parallel startup simulation (2-3 instances) shows only one active writer and clean completion in all instances.",
+      "body": "- Historical evidence:\n  - The TV boot path performs idempotent schema-hardening and data-seed work before the HTTP listener opens, so concurrent process starts once could enter the same mutations together.\n- Correction:\n  - Ancestor commit `47a35a1f` added one PostgreSQL session advisory lock for the complete TV boot backfill. The lock attempt occurs before the DDL block; a non-owner exits without writing; the owner releases the lock in `finally` before releasing its dedicated database client.\n  - Every underlying DDL/seed mutation remains idempotent, and startup policy requires all one-shot mutating boot work to settle before the process starts accepting HTTP traffic. No separate run-state row is necessary to establish the requested single-active-writer property.\n- Verification (2026-09-02):\n  - The focused TV/startup policy suite passes 6/6, proving lock-before-DDL ordering, non-owner early return, unlock-before-client-release cleanup, and completion of one-shot mutations before listener startup.\n  - `47a35a1f` is an ancestor of current `main` and of live production commit `15ce5a5a`; public health is alive. The concurrent-writer condition described by this record is absent, so WTF-BB-042 is Verified.",
       "legacyOriginalId": "WTF-BB-042"
     },
     {

@@ -11477,3 +11477,13 @@
 **Rule**: For related request-derived cache keys, prove one aggregate cardinality ceiling, stale expiry, and overflow eviction across all prefixes. Reconcile route ownership and correction ancestry before adding redundant per-endpoint maps or validators.
 
 ---
+
+## 2026-09-02 — Verify boot serialization at the mutation boundary
+
+**What happened**: The TV boot-backfill record remained Open after the full mutation sequence had already been placed behind a PostgreSQL session advisory lock. The correction also kept every mutation idempotent and ensured one-shot startup work settles before the HTTP listener opens.
+
+**Why it mattered**: Seeing idempotent statements or orderly startup alone does not prove two processes cannot write concurrently. Conversely, adding a run-state table after a database lock already excludes all competing writers would introduce another recovery state without closing a remaining commission gap.
+
+**Rule**: For boot-time writers, prove lock acquisition precedes the first mutation, non-owners perform no writes, the owner unlocks in `finally` before releasing its connection, and the listener cannot open before the startup task settles. Add persistent run-state only when the product needs resumability or audit history beyond those guarantees.
+
+---

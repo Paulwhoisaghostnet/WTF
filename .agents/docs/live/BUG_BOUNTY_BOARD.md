@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **7** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **424** · Archived: **4**
+Total: **637** · Open: **7** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **425** · Archived: **4**
 
 ## Canonical Board
 
@@ -77,7 +77,6 @@ Total: **637** · Open: **7** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-042 | Claimed | Codex TV boot serialization reconciliation | 2026-09-02 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -603,6 +602,7 @@ Total: **637** · Open: **7** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-086 | Verified | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-074 | Verified | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-060 | Verified | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
+| WTF-BB-042 | Verified | Codex TV boot serialization reconciliation | 2026-09-02 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 572 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1635,25 +1635,6 @@ Total: **637** · Open: **7** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-042 - Boot-time TV backfill applies schema-like changes without single-writer lock
-
-- Category: TV microapp / schema drift
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex TV boot serialization reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F2 + S2 + P2(3) = 9
-- Evidence:
-  - `server/lib/tv-boot-backfill.ts:64-117` runs DDL-like/seed actions as part of startup.
-  - `server/index.ts:64-66` imports and executes this during app init, including when multiple app instances boot.
-- Why it matters:
-  - Concurrent starts can race schema/data bootstrap logic and produce partial or duplicate boot changes.
-  - Increases deployment fragility where rolling restarts can trip each other.
-- Likely correction direction:
-  - Move bootstrap actions behind single-instance lock + explicit run-state table and make startup idempotent.
-- Verification idea:
-  - Parallel startup simulation (2-3 instances) shows only one active writer and clean completion in all instances.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13672,6 +13653,23 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - The focused DEX/shared-cache suite passes 4/4: current route ownership, live reads before TTL, expired-key removal, and five-key churn stabilizing at a configured three-entry ceiling.
   - Commit `2c3d64996` is an ancestor of current production, and live health reports descendant `15ce5a5a`. The unbounded map described by the Open record is absent, so WTF-BB-060 is Verified.
+
+### WTF-BB-042 - Boot-time TV backfill applies schema-like changes without single-writer lock
+
+- Category: TV microapp / schema drift
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex TV boot serialization reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F2 + S2 + P2(3) = 9
+- Historical evidence:
+  - The TV boot path performs idempotent schema-hardening and data-seed work before the HTTP listener opens, so concurrent process starts once could enter the same mutations together.
+- Correction:
+  - Ancestor commit `47a35a1f` added one PostgreSQL session advisory lock for the complete TV boot backfill. The lock attempt occurs before the DDL block; a non-owner exits without writing; the owner releases the lock in `finally` before releasing its dedicated database client.
+  - Every underlying DDL/seed mutation remains idempotent, and startup policy requires all one-shot mutating boot work to settle before the process starts accepting HTTP traffic. No separate run-state row is necessary to establish the requested single-active-writer property.
+- Verification (2026-09-02):
+  - The focused TV/startup policy suite passes 6/6, proving lock-before-DDL ordering, non-owner early return, unlock-before-client-release cleanup, and completion of one-shot mutations before listener startup.
+  - `47a35a1f` is an ancestor of current `main` and of live production commit `15ce5a5a`; public health is alive. The concurrent-writer condition described by this record is absent, so WTF-BB-042 is Verified.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 
