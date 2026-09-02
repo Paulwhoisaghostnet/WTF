@@ -11757,3 +11757,13 @@
 **Rule**: Separate repository remediation from provider revocation. Mark the former with executable secret-scan evidence, keep the record Blocked under the credential owner until non-secret revocation confirmation exists, and never validate an exposed secret merely to test whether it still works.
 
 ---
+
+## 2026-09-02 — Production verification can preserve shared community state
+
+**What happened**: WTF LIVE already had a browser test that mutated every smart-room control against an isolated persistent harness, while its bounty record still needed proof that the deployed route and database-backed API family were actually available.
+
+**Why it mattered**: Repeating the complete mutation story in production would create rooms, invitations, Show Kits, and calendar records that outlive the test. Checking only the public page would not prove the authenticated persistence surfaces deployed.
+
+**Rule**: Pair exhaustive isolated mutation-and-reload proof with authenticated, read-only production probes of each deployed API family and real persisted collections. Use production mutations only when the missing claim cannot be established without them and cleanup is complete.
+
+---
