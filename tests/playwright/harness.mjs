@@ -51,6 +51,7 @@ const state = {
   macaroniPackages: [],
   macaroniNextPackageId: 1,
   macaroniNextItemId: 1,
+  casinoAppPassOwned: false,
   casinoCanEnter: false,
   casinoPracticeGames: [],
   casinoNextPracticeGameId: 1,
@@ -550,6 +551,9 @@ app.post("/__test/state", (req, res) => {
   state.macaroniNextPackageId = 1;
   state.macaroniNextItemId = 1;
   state.casinoCanEnter = Boolean(req.body?.casinoCanEnter);
+  state.casinoAppPassOwned = req.body?.casinoAppPassOwned === undefined
+    ? state.casinoCanEnter
+    : Boolean(req.body.casinoAppPassOwned);
   state.casinoPracticeGames = [];
   state.casinoNextPracticeGameId = 1;
   state.casinoNextPracticePlayId = 1;
@@ -578,6 +582,9 @@ app.post("/__test/state", (req, res) => {
   );
   resetHarnessAppHostState();
   resetHarnessMarketState();
+  if (state.authUser && state.casinoAppPassOwned) {
+    setHarnessInventoryQuantity(state.authUser.id, "casino-app-pass", 1);
+  }
   harnessAdminDesktopSettings = defaultHarnessAdminDesktopSettings();
   const ownedAppPasses = normalizeHarnessOwnedAppPasses(req.body?.ownedAppPasses);
   if (state.authUser && ownedAppPasses.length) {
@@ -598,6 +605,7 @@ app.post("/__test/state", (req, res) => {
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
       wtfUserSiteStatus: state.wtfUserSiteStatus,
       wtfUserSitePages: state.wtfUserSitePages,
+      casinoAppPassOwned: state.casinoAppPassOwned,
       casinoCanEnter: state.casinoCanEnter,
       ownedAppPasses,
     },
@@ -989,7 +997,10 @@ function personalizedHarnessDesktopApps(user = currentAuthUser()) {
   for (const key of harnessAppStoreAppKeys) {
     apps[key] = Boolean(
       desktopApps[key] &&
-      harnessInventoryQuantity(user.id, harnessAppUnlockSku(key)) > 0
+      (
+        harnessInventoryQuantity(user.id, harnessAppUnlockSku(key)) > 0 ||
+        (key === "casino" && harnessInventoryQuantity(user.id, "casino-app-pass") > 0)
+      )
     );
   }
   return apps;
@@ -4367,7 +4378,7 @@ function apiMock(req, res) {
   if (pathName === "/api/casino/status") {
     return res.json({
       userId: 1,
-      appPass: { sku: "casino-app-pass", owned: state.casinoCanEnter, quantity: state.casinoCanEnter ? 1 : 0, marketCategory: "casino" },
+      appPass: { sku: "casino-app-pass", owned: state.casinoAppPassOwned, quantity: state.casinoAppPassOwned ? 1 : 0, marketCategory: "casino" },
       membership: { active: state.casinoCanEnter, expiresAt: state.casinoCanEnter ? nowIso() : null, walletAddress: null, purchaseRef: null },
       canEnter: state.casinoCanEnter,
       wageringEnabled: false,

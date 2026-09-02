@@ -5,8 +5,9 @@ import { db } from "../db";
 import { desktopAppSettings, inAppInventoryItems } from "@shared/schema";
 import { DESKTOP_APPS, type DesktopAppKey } from "@shared/types";
 import {
+  WTFOS_APP_CATALOG,
+  hasWtfOsAppAccess,
   isAppStoreAppKey,
-  wtfosAppMarketSku,
 } from "@shared/wtfos-app-catalog";
 import {
   createInstallKeyMaterial,
@@ -50,7 +51,9 @@ async function personalizeDesktopAppsForViewer(
         .map((row) => row.sku)
     );
     for (const key of appStoreKeys) {
-      apps[key] = Boolean(globallyEnabled[key] && owned.has(wtfosAppMarketSku(key)));
+      apps[key] = Boolean(
+        globallyEnabled[key] && hasWtfOsAppAccess(WTFOS_APP_CATALOG[key], owned)
+      );
     }
   }
 

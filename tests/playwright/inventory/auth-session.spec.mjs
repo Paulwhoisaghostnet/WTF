@@ -92,4 +92,26 @@ test.describe("interaction inventory - auth session recovery", () => {
       .toContain("auth.session.invalidated");
     expect(walletWarnings).toEqual([]);
   });
+
+  test("Casino app pass exposes the launcher while membership stays fail-closed", async ({
+    page,
+    request,
+  }) => {
+    await setHarnessState(request, {
+      userRole: "contestant",
+      username: "casino-pass-holder",
+      casinoAppPassOwned: true,
+      casinoCanEnter: false,
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Open Stuffs menu" }).click();
+    await page.getByText("Play", { exact: true }).last().click();
+
+    const casinoItem = page.getByText("WTF Casino", { exact: true }).locator("..");
+    await expect(casinoItem).toBeVisible();
+    await expect(casinoItem).toHaveAttribute("title", "Casino membership card required");
+    await casinoItem.click();
+    await expect(page).toHaveURL(/\/$/);
+  });
 });

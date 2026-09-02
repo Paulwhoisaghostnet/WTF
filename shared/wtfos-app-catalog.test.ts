@@ -6,6 +6,7 @@ import {
   WTFOS_APP_CATALOG_ENTRIES,
   desktopAppKeyFromWtfosMarketSku,
   evaluateWtfOsAppPurchaseEligibility,
+  hasWtfOsAppAccess,
   isAppStoreAppKey,
   isDefaultDesktopAppKey,
   wtfosAppMarketSku,
@@ -96,7 +97,10 @@ test("role and prerequisite gated apps fail closed before purchase", () => {
     witnessRoles,
     ["casino-app-pass"]
   );
-  assert.equal(casinoWithPass.canPurchase, true);
+  assert.equal(casinoWithPass.canPurchase, false);
+  assert.match(casinoWithPass.reason ?? "", /already unlocked/i);
+  assert.equal(hasWtfOsAppAccess(WTFOS_APP_CATALOG.casino, ["casino-app-pass"]), true);
+  assert.equal(hasWtfOsAppAccess(WTFOS_APP_CATALOG.casino, []), false);
 });
 
 test("owned app unlocks cannot be purchased again", () => {

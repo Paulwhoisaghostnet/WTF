@@ -836,9 +836,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["casino"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion: "A contestant with access can open the Casino game API surfaces.",
+    userVisibleAssertion: "A contestant's Casino app pass exposes the Casino launcher without a second app purchase; an inactive membership keeps the launcher visibly locked with the membership-card reason, while a fully eligible contestant can open the Casino game API surfaces.",
     durableSideEffectAssertion:
-      "The harness exercises entry, quote, join, and bet-intent endpoints while preserving fail-closed response contracts.",
+      "Catalog and desktop-personalization policy treat casino-app-pass as the app-access entitlement, while the actor harness separately proves membership state and exercises entry, quote, join, and bet-intent endpoints with fail-closed response contracts.",
   },
   {
     id: "casino.community-practice-create-moderate-play",

@@ -37,6 +37,7 @@ export interface WtfOsAppCatalogEntry {
   accent: string;
   requiredRoles?: readonly UserRole[];
   requiredInventorySkus?: readonly string[];
+  accessInventorySkus?: readonly string[];
   prerequisite?: string;
 }
 
@@ -351,6 +352,7 @@ const APP_ENTRIES = [
     monogram: "BET",
     accent: "#d5a237",
     requiredInventorySkus: ["casino-app-pass"],
+    accessInventorySkus: ["casino-app-pass"],
     prerequisite: "Requires a Casino app pass or active Casino membership card.",
   },
   {
@@ -498,6 +500,15 @@ export function wtfosAppMarketSku(appKey: DesktopAppKey): string {
   return `${WTFOS_APP_MARKET_SKU_PREFIX}${appKey}`;
 }
 
+export function hasWtfOsAppAccess(
+  entry: WtfOsAppCatalogEntry,
+  ownedSkus: ReadonlySet<string> | readonly string[],
+): boolean {
+  const owned = ownedSkus instanceof Set ? ownedSkus : new Set(ownedSkus);
+  return owned.has(wtfosAppMarketSku(entry.key)) ||
+    Boolean(entry.accessInventorySkus?.some((sku) => owned.has(sku)));
+}
+
 export function desktopAppKeyFromWtfosMarketSku(sku: string): DesktopAppKey | null {
   if (!sku.startsWith(WTFOS_APP_MARKET_SKU_PREFIX)) return null;
   const candidate = sku.slice(WTFOS_APP_MARKET_SKU_PREFIX.length);
@@ -521,14 +532,13 @@ export function evaluateWtfOsAppPurchaseEligibility(
   options: { rolloutConfig?: SkywireRolloutConfig } = {}
 ): WtfOsAppEligibility {
   const owned = ownedSkus instanceof Set ? ownedSkus : new Set(ownedSkus);
-  const appSku = wtfosAppMarketSku(entry.key);
   if (entry.placement !== "app-store") {
     return {
       canPurchase: false,
       reason: "This core app is already available on the default desktop or Start menu.",
     };
   }
-  if (owned.has(appSku)) {
+  if (hasWtfOsAppAccess(entry, owned)) {
     return {
       canPurchase: false,
       reason: "Already unlocked. Use the Start menu to open it or pin it to your desktop.",

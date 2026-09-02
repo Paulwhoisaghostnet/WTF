@@ -11777,3 +11777,13 @@
 **Rule**: When a focused unit imports server wiring that validates `DATABASE_URL` at module load, provide an explicit isolated test descriptor in the verification command or refactor the dependency boundary so pure policy tests do not require database configuration. Never borrow production credentials to satisfy a non-connecting test.
 
 ---
+
+## 2026-09-02 — One access pass must not become two app unlocks
+
+**What happened**: Production globally enabled Casino and users owned the documented `casino-app-pass`, but desktop personalization recognized only the generic `wtfos-app-casino` SKU. Pass holders therefore lost the launcher before the separate membership gate could explain or enforce entry.
+
+**Why it mattered**: The app looked disabled by an operator even though the user held its actual access entitlement. Requiring a second, undocumented app-store purchase broke wayfinding and hid the membership recovery path without strengthening casino authorization.
+
+**Rule**: Catalog every inventory SKU that grants launcher access and make desktop personalization use that catalog declaration. Test launcher access and in-app membership as separate gates: the pass exposes the surface, while active membership controls entry.
+
+---

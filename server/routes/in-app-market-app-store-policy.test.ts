@@ -20,10 +20,11 @@ test("app-unlock SKUs are enforced server-side during checkout intent creation",
   assert.match(marketRouteSource, /isWtfOsAppMarketSku\(line\.sku\)\) continue/);
 });
 
-test("desktop app availability is personalized by owned app-unlock inventory", () => {
+test("desktop app availability recognizes canonical and catalog-declared access inventory", () => {
   assert.match(desktopAppsRouteSource, /personalizeDesktopAppsForViewer/);
   assert.match(desktopAppsRouteSource, /isAppStoreAppKey/);
-  assert.match(desktopAppsRouteSource, /wtfosAppMarketSku/);
+  assert.match(desktopAppsRouteSource, /hasWtfOsAppAccess/);
+  assert.match(desktopAppsRouteSource, /WTFOS_APP_CATALOG/);
   assert.match(desktopAppsRouteSource, /inAppInventoryItems/);
-  assert.match(desktopAppsRouteSource, /apps\[key\] = Boolean\(globallyEnabled\[key\] && owned\.has\(wtfosAppMarketSku\(key\)\)\)/);
+  assert.match(desktopAppsRouteSource, /globallyEnabled\[key\] && hasWtfOsAppAccess\(WTFOS_APP_CATALOG\[key\], owned\)/);
 });
