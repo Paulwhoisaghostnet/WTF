@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **143** · Verified: **432** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **138** · Verified: **437** · Archived: **4**
 
 ## Canonical Board
 
@@ -95,8 +95,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-493 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / generative pack authenticity | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's generated children are arbitrary uploads rather than Rotini-derived outputs |
 | WTF-BB-457 | Fixed | Codex Ravioli native recovery | 2026-07-19 | Pasta Protocol / native pack recovery | P0 | 18 | 12 | 4 | 5 | 4 | An explicitly gated recovery harness now closes all five public sales first, proves the four remaining creator wrappers are still owned, consumes them through exact ordinary `open_pack` calls, restores every reserved Gnocchi/Rotini asset, and creates fresh Rotini project 3 without privileged replacement minting; focused 9/9 and isolated strict TypeScript pass, with controlled Shadownet execution still pending |
 | WTF-BB-428 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / FA2 indexer compliance | P0 | 18 | 12 | 4 | 5 | 4 | Macaroni V2, Ravioli, and Penne now compile explicit canonical TZIP-12 layouts; regenerated Michelson passes the six-app structural indexer policy plus Macaroni/Penne SmartPy tests and Ravioli five-mode/atomicity suite, with fresh TzKT classification still required before Verified |
-| WTF-BB-208 | Fixed | Codex Skywire chat OAuth session persistence repair | 2026-06-04 | Skywire / AT OAuth session persistence | P0 | 18 | 12 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
-| WTF-BB-207 | Fixed | Codex Skywire canonical-domain OAuth repair | 2026-06-04 | Platform domains / AT OAuth identity boundary | P0 | 18 | 12 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-662 | Fixed | Codex Macaroni V3 inventory-finality pass | 2026-08-31 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 38 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
 | WTF-BB-635 | Fixed | Codex Macaroni V3 commitment repair | 2026-08-30 | Macaroni / premint metadata confidentiality and provenance | P0 | 17 | 38 | 4 | 5 | 3 | Macaroni exposes final metadata before mint without a nonce-backed commitment |
 | WTF-BB-535 | Fixed | Codex Macaroni exact continuation | 2026-07-24 | Pasta Protocol / interrupted Macaroni UI-LIVE recovery | P0 | 17 | 38 | 4 | 5 | 3 | Exact-prefix one-shot continuation now authenticates the applied V2 boundary, permits only the missing reveal, runs the ordinary fresh V1 lane, and writes the complete package manifest last; controlled Shadownet execution remains pending |
@@ -108,19 +106,16 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-452 | Fixed | Codex Ravioli open-kit persistence | 2026-07-18 | Pasta Protocol / recoverable product output | P0 | 17 | 38 | 4 | 5 | 3 | Ravioli now captures and immediately retains every real Studio open-kit download with exact bytes and hashes, so a later crash cannot strand wrapper tokens by losing their only opening nonces |
 | WTF-BB-451 | Fixed | Codex Ravioli dependency recovery | 2026-07-18 | Pasta Protocol / immutable dependency inventory | P0 | 17 | 38 | 4 | 5 | 3 | A strict-serial, explicitly gated Shadownet recovery harness now restores only the exact Gnocchi 2/2 creator inventory through two estimated admin mints, preserves accepted proof bytes, and makes a validated recovery receipt a mandatory pre-write Ravioli dependency |
 | WTF-BB-402 | Fixed | Codex Pasta final packaging | 2026-07-15 | Pasta Suite Desktop / consumer installer readiness | P0 | 17 | 38 | 4 | 5 | 3 | Branded universal macOS DMG/ZIP and Windows x64 NSIS wizard now build with license, GUI-only unsigned-install guidance, checksums, review manifest, and packaged-app smoke wiring; Mac artifact smoke passes, while the Windows runner proof remains the final cross-platform verification gate |
-| WTF-BB-161 | Fixed | Codex Skywire feed/session live-test pass | 2026-05-24 | Skywire / AT Protocol feed delivery | P0 | 17 | 38 | 4 | 5 | 3 | Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface |
 | WTF-BB-497 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / holder-side generative authenticity | P0 | 16 | 71 | 4 | 4 | 3 | Ravioli generative rendering did not bind the opener account across the local render window |
 | WTF-BB-443 | Fixed | Codex Ravioli live proof | 2026-07-18 | Pasta Protocol / UI-LIVE storage projection memory safety | P0 | 16 | 71 | 4 | 5 | 2 | Ravioli's first strict UI-LIVE run exhausted Node's 4 GB V8 heap by passing a raw Taquito `BigMapAbstraction` into an unbounded bridge serializer; bounded fresh-map projections, a fail-closed shared serializer, poisoned-provider regressions, and a 1.5 GB runtime heap ceiling now pass all non-writing gates, with a fresh complete Shadownet replacement proof still required for Verified |
 | WTF-BB-439 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni operation finality and storage | P0 | 16 | 71 | 4 | 5 | 2 | Macaroni attempt 3 accepted a safe fee but `add_tokens_v2` backtracked because the fallback storage limit was 320 bytes versus 621 consumed, after which Studio displayed sync success; the production fallback is now conservatively unit-sized and every Studio/drop operation requires independently indexed `applied` status, with a fresh Shadownet replacement proof still required |
 | WTF-BB-378 | Fixed | Codex production outage repair | 2026-07-15 | Deploy / runtime and migration failure recovery | P0 | 16 | 71 | 3 | 5 | 3 | Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending |
-| WTF-BB-160 | Fixed | Codex Skywire session persistence hardening | 2026-05-24 | Skywire / AT Protocol session lifecycle | P0 | 16 | 71 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
 | WTF-BB-577 | Fixed | Codex Ravioli generation-independent restart safety | - | Pasta Protocol / Ravioli restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Fresh Ravioli has no generation-independent mid-journal resume |
 | WTF-BB-534 | Fixed | Codex Pasta alpha installer hardening | 2026-07-24 | Pasta Protocol / alpha installer traceability and runtime verification | P0 | 15 | 93 | 3 | 5 | 2 | All nine alpha packages now carry clean exact-commit/target provenance, bind CI artifacts and existing release tags to `GITHUB_SHA`, and run product-complete macOS/Windows installed-runtime plus stable-origin relaunch smoke; clean platform jobs and an arm64 device gate remain before Verified |
 | WTF-BB-498 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / holder-side backing verification | P0 | 15 | 93 | 4 | 4 | 2 | Ravioli rendered generative children without rechecking adapter reservation capacity |
 | WTF-BB-462 | Fixed | Codex Ravioli LE dependency proof | - | Pasta Protocol / guarded browser bridge | P0 | 15 | 93 | 3 | 5 | 2 | UI-live bridge rejected legitimate deep Tezos entrypoint schemas |
 | WTF-BB-445 | Fixed | Codex Macaroni UI-LIVE proof | - | Pasta Protocol / Macaroni manager-operation inclusion | P0 | 15 | 93 | 4 | 5 | 1 | Valid Macaroni fallback operations can be starved by declared gas |
 | WTF-BB-433 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / portable site option decoding | P0 | 15 | 93 | 3 | 5 | 2 | The canonical self-hosted page treated Taquito `Some` wrappers as raw numbers/timestamps, allowing capped Gnocchi/Rotini exports to show invalid policy state or sold-out incorrectly; the site kit now unwraps options, generated-site browser fixtures reproduce capped/timed values, and six publisher copies are synchronized, with focused browser and fresh live export verification pending |
-| WTF-BB-159 | Fixed | Codex Skywire OAuth restore hotfix | 2026-05-24 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 93 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
 | WTF-BB-576 | Fixed | Codex Ravioli alpha preflight repair | - | Pasta Protocol / Ravioli alpha preflight | P0 | 14 | 126 | 3 | 5 | 1 | Ravioli fresh preflight and fake-chain fixtures trail the bounded-child/finality contracts |
 | WTF-BB-572 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / Macaroni exact recovery | P0 | 14 | 126 | 3 | 5 | 1 | Macaroni V1 recovery rejects the RPC-normalized epoch timestamp |
 | WTF-BB-528 | Fixed | Codex Ravioli post-boundary-61 recovery | - | Pasta Protocol / UI-LIVE read reliability and browser lifecycle | P0 | 14 | 126 | 3 | 5 | 1 | Ravioli buyer readiness timeout leaked its browser and expired a live sale |
@@ -240,6 +235,8 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-469 | Verified | Codex Ravioli on-chain LE guard | - | Pasta Protocol / cross-contract issuance invariant | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's child-expiry guarantee is bypassable outside the Studio |
 | WTF-BB-405 | Verified | Codex Rotini/Gnocchi Shadownet proof | 2026-07-16 | Pasta Protocol / generative and open-edition mint truth | P0 | 18 | 12 | 4 | 5 | 4 | Fresh app-artifact Shadownet contracts now prove collector-created Rotini iterations plus capped and vaultable forever Gnocchi OEs with two independent collectors, indexed ownership/supply/metadata, closed-state rejections, reopen, local SmartPy invariants, browser choreography, and installer asset policy |
 | WTF-BB-213 | Verified | Codex Skywire OAuth completion regression repair | 2026-06-05 | Skywire / AT OAuth completion propagation | P0 | 18 | 12 | 3 | 5 | 5 | Same-window Skywire OAuth callback stopped notifying the original app window, and unresolved Bluesky handles could make OAuth start look stalled; fixed with unconditional callback completion broadcast, unresolved-handle preflight, and verified by `npm run test:e2e:inventory` plus focused Skywire OAuth tests |
+| WTF-BB-208 | Verified | Codex Skywire chat OAuth session persistence repair | 2026-09-02 | Skywire / AT OAuth session persistence | P0 | 18 | 12 | 3 | 5 | 5 | Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect |
+| WTF-BB-207 | Verified | Codex Skywire canonical-domain OAuth repair | 2026-09-02 | Platform domains / AT OAuth identity boundary | P0 | 18 | 12 | 3 | 5 | 5 | Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity |
 | WTF-BB-206 | Verified | Codex Skywire OAuth primary-domain repair | 2026-06-04 | Skywire / AT OAuth domain and session binding | P0 | 18 | 12 | 3 | 5 | 5 | Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity |
 | WTF-BB-205 | Verified | Codex Skywire OAuth identity-binding emergency | 2026-06-04 | Skywire / AT OAuth identity binding | P0 | 18 | 12 | 3 | 5 | 5 | Skywire Chat Add-on OAuth can target the shared WTF Gameshow Bluesky actor instead of the signed-in user's linked account |
 | WTF-BB-521 | Verified | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / authenticated recovery storage projection | P0 | 17 | 38 | 4 | 5 | 3 | Current-v2 recovery required a router big map absent from the certified contract |
@@ -253,6 +250,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-245 | Verified | Codex Macaroni CSS injection hotfix | 2026-06-12 | Macaroni / generated drop website stored CSS safety | P0 | 17 | 38 | 3 | 5 | 4 | Macaroni generated pages now sanitize published theme config server-side and client-side, apply only known themes, hex accent colors, and known font stacks, remove arbitrary stored `customCss`, and regression-test `</style>`, `url(javascript:)`, and malformed custom-property payloads; verified by `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check`, `npm run build`, and `npm run test:e2e:macaroni:shadownet` |
 | WTF-BB-223 | Verified | Codex WTF-XTZ fixed-rate listing hardening | 2026-06-09 | Tezos / WTF-XTZ exchange contract | P0 | 17 | 38 | 3 | 5 | 4 | WTF-XTZ exchange now binds create/swap wallet signatures to explicit escrow amount, rate, owner, and exact output terms; source and Shadownet Kiln puppet proof passed, with no mainnet deploy attempted |
 | WTF-BB-215 | Verified | Codex Skywire new OAuth outage repair | 2026-06-06 | Skywire / AT OAuth new-session connect | P0 | 17 | 38 | 4 | 5 | 3 | New Skywire OAuth connections to Bluesky fail while existing sessions continue working; fixed with durable app+SDK OAuth state persistence and verified live on wtfos.app |
+| WTF-BB-161 | Verified | Codex Skywire feed/session live-test pass | 2026-09-02 | Skywire / AT Protocol feed delivery | P0 | 17 | 38 | 4 | 5 | 3 | Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface |
 | WTF-BB-620 | Verified | Codex admin access and support launcher repair | 2026-08-29 | Desktop OS / admin route authorization | P0 | 16 | 71 | 2 | 5 | 4 | A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement |
 | WTF-BB-487 | Verified | Codex Ravioli Shadownet proof pass | - | Pasta Protocol / fresh-run durability | P0 | 16 | 71 | 4 | 5 | 2 | Fresh Ravioli proof could not initialize its durable journal |
 | WTF-BB-470 | Verified | Codex Ravioli production audit | - | Pasta Protocol / allocation policy composition | P0 | 16 | 71 | 4 | 5 | 2 | Ravioli rejects legitimate Gnocchi policy shapes and mixed allocation packs |
@@ -261,6 +259,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-410 | Verified | Codex full-send release pass | - | Desktop / Windows release integrity | P0 | 16 | 71 | 4 | 5 | 2 | Pasta Suite Windows serves the package directory at `/` |
 | WTF-BB-363 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Deploy / DB migration integrity | P0 | 16 | 71 | 3 | 5 | 3 | Production migration ledger records checksums without enforcing checksum equality and can bootstrap every migration as applied from the existence of one table |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 71 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
+| WTF-BB-160 | Verified | Codex Skywire session persistence hardening | 2026-09-02 | Skywire / AT Protocol session lifecycle | P0 | 16 | 71 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
 | WTF-BB-001 | Verified | Swarm A1 | 2026-04-28 | Deploy / DB migrations | P0 | 16 | 71 | 4 | 5 | 2 | Overlapping migration systems run every deploy |
 | WTF-BB-630 | Verified | Codex commission fulfillment | 2026-08-29 | Pasta Protocol / fresh-run restart replay boundary | P0 | 15 | 93 | 4 | 5 | 1 | Fresh/resumed restart boundaries now preserve exact semantic replay and a fresh Shadownet Spaghetti UI-LIVE run completed origination, mint, sale, separate-collector buy, screenshots, and indexed receipt evidence |
 | WTF-BB-583 | Verified | Codex Spaghetti and Penne alpha preflight | - | Pasta Protocol / human-alpha proof restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Spaghetti and Penne fresh runners cannot resume an applied prefix |
@@ -277,6 +276,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-315 | Verified | Codex Macaroni exported drop wallet repair | 2026-06-23 | Macaroni / exported drop wallet and stage config | P0 | 15 | 93 | 3 | 5 | 2 | Exported Macaroni drop pages can create duplicate Octez/Beacon wallet clients, misdisplay max-per-wallet stage caps, and hit browser-blocked Octez RPC packing from third-party drop origins; fixed in `1ad5b57` and verified live on `https://wtfos.app` |
 | WTF-BB-232 | Verified | Codex in-app market V2 full-send fallback repair | 2026-06-10 | Tezos / in-app market contract rollout | P0 | 15 | 93 | 3 | 5 | 2 | Mainnet production had no in-app market env override, so the app could fall back to the V2 KT1 address while still defaulting the payload contract version to V1; fixed by coupling shared address and version defaults and verified by TypeScript, focused policy tests, inventory coverage, and full inventory E2E |
 | WTF-BB-199 | Verified | Codex WTF LIVE realtime media/chat pass | 2026-06-04 | WTF LIVE / realtime room transport | P0 | 15 | 93 | 4 | 5 | 1 | WTF LIVE guest room media controls are local-only and do not connect participants |
+| WTF-BB-159 | Verified | Codex Skywire OAuth restore hotfix | 2026-09-02 | Skywire / AT Protocol OAuth session restore | P0 | 15 | 93 | 2 | 5 | 3 | Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab |
 | WTF-BB-013 | Verified | Swarm A3 | 2026-04-28 | Security / CORS | P0 | 15 | 93 | 2 | 3 | 5 | Production CORS fallback reflects any origin with credentials |
 | WTF-BB-008 | Verified | gardener session | 2026-04-27 | Build / secrets | P0 | 15 | 93 | 2 | 3 | 5 | Missing `.dockerignore` likely sends `.env` into Docker build context |
 | WTF-BB-004 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / DB migrations | P0 | 15 | 93 | 3 | 4 | 3 | `drizzle-kit push --force` prompts in non-interactive production shell |
@@ -2142,71 +2142,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Score: C4 + F5 + S4 + P0(5) = 18
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
 
-### WTF-BB-208 - Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect
-
-- Category: Skywire / AT OAuth session persistence
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex Skywire chat OAuth session persistence repair
-- Last touched: 2026-06-04
-- Score: C3 + F5 + S5 + P0(5) = 18
-- Evidence:
-  - User live-tested the canonical-domain fix on 2026-06-04 and reported that approving Chat Add-on permissions now returns to Skywire with the AT session marked ended/reconnect-required.
-  - Code inspection found the OAuth callback performs a final `persistOAuthSessionForDid(session.did, storedSession ?? (session as any), ...)` write after `client.callback(...)`.
-  - The installed `@atproto/oauth-client` returns an `OAuthSession` wrapper from `client.callback`, while the persistable `{ tokenSet, dpopJwk }` value is passed separately through `sessionStore.set`.
-  - For an existing account, `persistOAuthSessionForDid` deletes the pending saved session after the SDK store write, so the final callback falls back to the wrapper and can overwrite encrypted access/refresh token fields with `null`.
-- Likely correction direction:
-  - Keep the SDK-provided saved session available until the route callback performs its final scoped account write.
-  - Remove the route fallback that persists the live `OAuthSession` wrapper.
-  - Fail closed if token persistence is asked to store an object without token set and DPoP key material.
-- Correction:
-  - `persistOAuthSessionForDid` now treats SDK session-store writes as callback handoffs and keeps the SDK saved `{ tokenSet, dpopJwk }` session available until the route callback performs the final user+DID scoped write.
-  - The OAuth callback no longer falls back to persisting the live `OAuthSession` wrapper; if the saved session is missing, callback fails closed instead of overwriting encrypted token fields with null.
-  - `encryptedSessionFields` now asserts token set subject, access token, refresh token, and DPoP key material before producing DB fields.
-- Verification idea:
-  - Unit/policy tests should prove wrapper objects cannot produce null token writes and callback persistence requires the SDK saved session.
-  - Live smoke should complete Chat Add-on approval and show `/api/atproto/me` with `session.reconnectRequired=false`, encrypted token storage, DPoP key, and chat capability.
-- Local verification:
-  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/permission-tiers.test.ts server/lib/canonical-domain.test.ts` passed 26/26.
-  - `npm run check -- --pretty false` passed.
-  - `npm run test:e2e:inventory:coverage` passed.
-  - `npm run build` passed.
-  - `node scripts/caddy-domain-policy.test.mjs` passed.
-  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"` passed 5/5.
-  - `npm run test:e2e:inventory` passed 290/290 after rerunning sequentially. The first browser attempt was discarded because two Playwright suites were run in parallel against the same harness and produced shared-server noise.
-
-### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
-
-- Category: Platform domains / AT OAuth identity boundary
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex Skywire canonical-domain OAuth repair
-- Last touched: 2026-06-04
-- Score: C3 + F5 + S5 + P0(5) = 18
-- Evidence:
-  - User incognito reproduction on 2026-06-04: a Skywire Chat Add-on OAuth flow started on `wtfos.app` asks for the right Bluesky account, but after approval redirects to `wtfgameshow.app` and lands on a login screen because that domain has a separate browser session.
-  - User non-incognito reproduction on 2026-06-04: the same domain switch collides with a different already-signed-in legacy-domain user, replacing the apparent account context in the primary `wtfos.app` Skywire view.
-  - Code inspection found ATProto OAuth client metadata and redirect URI still derive from `ATPROTO_PUBLIC_BASE_URL` / `PUBLIC_SITE_URL`, so a legacy production env value can keep advertising `https://wtfgameshow.app/api/atproto/oauth/callback`.
-  - Caddy still serves `wtfos.app` and `wtfgameshow.app` as peers in the same app block, so the legacy domain remains a full session boundary rather than an alias.
-- Correction:
-  - Canonicalize WTF platform public origins so legacy `wtfgameshow.app` env values collapse to `https://wtfos.app` for ATProto OAuth client metadata, redirect URI, and client URI.
-  - Redirect browser GET/HEAD traffic from `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app`, preserving path and query, so the legacy domain cannot keep a separate Skywire/login reality.
-  - Force-recreate the Caddy container during production deploys so the single-file `Caddyfile` bind mount remounts domain routing changes instead of keeping the previous inode.
-  - Keep local development origins local and allow explicit non-WTF override origins for previews/tests without silently promoting the legacy production domain.
-- Verification idea:
-  - Static/unit tests assert legacy env canonicalization to `wtfos.app`, OAuth metadata never advertises `wtfgameshow.app`, app middleware redirects legacy hosts to canonical with path/query intact, and the Caddyfile redirects legacy apex/www to `wtfos.app`.
-  - Inventory docs and behavior assertions should describe legacy domain aliasing, not cross-domain session isolation.
-- Verification:
-  - `npx tsx --test server/lib/canonical-domain.test.ts shared/platform-branding.test.ts server/features/atproto/skywire-policy.test.ts`
-  - `node scripts/caddy-domain-policy.test.mjs`
-  - `node scripts/production-migrations-policy.test.mjs scripts/deploy-dry-run-policy.test.mjs`
-  - `npm run check -- --pretty false`
-  - `npm run test:e2e:inventory:coverage`
-  - `git diff --check`
-  - `npm run build`
-  - `npm run test:e2e:inventory` (290/290 passed)
-- Last touched: 2026-06-04
-
 ### WTF-BB-662 - Macaroni V3 derives draws from public state and permits inventory mutation after sales begin
 
 - Category: Macaroni / predictable allocation and mutable sale inventory
@@ -2457,39 +2392,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Built `Pasta-Suite-1.0.0-win-x64.exe` as a valid NSIS GUI installer with an x64 `Pasta Suite.exe` payload and complete ASAR. Execution on a real Windows runner is wired but has not yet run from this uncommitted shared checkout.
   - The 2026-08-05 icon pass passes `npm run pasta:icons:check`, all nine desktop package policies, `npm run creation-tools:check`, TypeScript, production build, inventory coverage, and a browser smoke that served the Gnocchi Sugo favicon as `image/svg+xml`.
 
-### WTF-BB-161 - Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface
-
-- Category: Skywire / AT Protocol feed delivery
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex Skywire feed/session live-test pass
-- Last touched: 2026-05-24
-- Score: C4 + F5 + S3 + P0(5) = 17
-- Evidence:
-  - User live-testing report on 2026-05-24: reconnect completes, but Home still says Skywire needs a reconnect; WTF/Tezos tabs show `forbidden`; Discover shows the connected user and a follow affordance.
-  - Production logs show OAuth restore failing with `Client authentication method "undefined" no longer supported`.
-  - Local SDK inspection shows `NodeSavedSession.authMethod` must be an object such as `{ method: "none" }`, not the string `"none"`.
-  - Skywire read-only search/discovery feeds were routed through the connected account session/PDS when Bluesky search/actor/official-feed reads should use the public AppView, while the WTF tab used keyword search instead of the official account's author feed.
-- Why it matters:
-  - Skywire must deliver the connected user's home timeline, the official WTFgameshow account feed, and other connected Skywire users without asking users to reconnect or showing raw upstream authorization failures.
-- Likely correction direction:
-  - Restore OAuth rows with the SDK's exact `authMethod` shape, keep Home authenticated, route read-only search/discovery/official author feeds through public AppView, and recommend WTF users with linked AT accounts while excluding self-follow.
-- Fix:
-  - Restored OAuth rows now rebuild `authMethod` as `{ method: "none" }`, matching the installed SDK's `NodeSavedSession` contract.
-  - The WTF feed tab now reads the configured official account through `app.bsky.feed.getAuthorFeed`.
-  - Tezos/search/actor discovery/author-feed reads now use the public Bluesky AppView instead of the connected user's PDS session.
-  - Discover now recommends WTF users with linked AT Protocol accounts through `/api/skywire/actors/recommended` and disables self-follow affordances.
-- Verification:
-  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
-  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
-  - `npm run check -- --pretty false`
-  - `npm run build`
-  - `npm run check:external-links`
-  - `npm run test:e2e:inventory:coverage`
-  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "WTF Domains"`
-  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Unified timeline"`
-  - `npm run test:e2e:inventory`
-
 ### WTF-BB-497 - Ravioli generative rendering did not bind the opener account across the local render window
 
 - Category: Pasta Protocol / holder-side generative authenticity
@@ -2564,35 +2466,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Lock the null-preservation expression with the focused concurrency policy test and rerun the authenticated desktop actor workflow.
 - Verification:
   - `server/desktop-settings-concurrency-policy.test.ts` passes and prevents nullish coalescing from returning; the focused `desktop os app shell loop` actor workflow passes.
-
-### WTF-BB-160 - OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes
-
-- Category: Skywire / AT Protocol session lifecycle
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex Skywire session persistence hardening
-- Last touched: 2026-05-24
-- Score: C3 + F5 + S3 + P0(5) = 16
-- Evidence:
-  - User live-testing report on 2026-05-24 after the `sub` hotfix: "This session was deleted by another process" and normal page refreshes should preserve session state.
-  - The AT OAuth SDK emits that message when its store returns no saved session for the DID being restored.
-  - Skywire's `sessionStore.del` cleared encrypted DB tokens for any SDK delete request, so a transient restore-shape bug could permanently convert a linked account into a tokenless row.
-  - Restored OAuth rows depended on separately persisted issuer/audience metadata even though the pending SDK session already contains `tokenSet.aud`.
-- Why it matters:
-  - A linked AT account must survive page refreshes, server restarts, and deploys. Losing the encrypted session makes Skywire look connected while every authenticated Bluesky action requires reauth or throws raw SDK errors.
-- Fix:
-  - Persist the full OAuth restore contract into server storage, including subject, issuer, audience, token expiry, and DPoP key material.
-  - Make SDK cache deletion non-destructive for persisted DB tokens; only explicit unlink should clear encrypted tokens.
-  - Expose reconnect-required account state when stored tokens are truly missing, and let public-read Skywire surfaces fall back to appview instead of breaking every tab.
-- Verification:
-  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
-  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
-  - `npm run check -- --pretty false`
-  - `npm run build`
-  - `npm run test:e2e:inventory:coverage`
-  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
-  - `npm run test:e2e:inventory`
-  - `npm run check:external-links`
 
 ### WTF-BB-577 - Fresh Ravioli has no generation-independent mid-journal resume
 
@@ -2736,30 +2609,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-07-18
 - Score: C3 + F5 + S2 + P0(5) = 15
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-159 - Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab
-
-- Category: Skywire / AT Protocol OAuth session restore
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex Skywire OAuth restore hotfix
-- Last touched: 2026-05-24
-- Score: C2 + F5 + S3 + P0(5) = 15
-- Evidence:
-  - User live-testing report on 2026-05-24: Home tab and every Skywire tab show "Token set does not match the expected sub".
-  - `@atproto/oauth-client` throws that exact error when `client.restore(did)` loads a stored session whose `tokenSet.sub` does not match the requested DID.
-  - Skywire's DB restore path rebuilt OAuth token sets with access/refresh tokens, scope, and token type only, dropping `sub`, `iss`, and `aud`.
-- Why it matters:
-  - The OAuth connection can appear linked while every authenticated AT Protocol read/write call fails, making Skywire unusable during live testing.
-- Likely correction direction:
-  - Rebuild stored OAuth sessions with the identity-bearing token fields required by the SDK: `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration.
-- Verification:
-  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`
-  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`
-  - `npm run check -- --pretty false`
-  - `npm run build`
-  - `npm run test:e2e:inventory:coverage`
-  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
 
 ### WTF-BB-576 - Ravioli fresh preflight and fake-chain fixtures trail the bounded-child/finality contracts
 
@@ -5329,6 +5178,43 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Score: C3 + F5 + S5 + P0(5) = 18
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
 
+### WTF-BB-208 - Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect
+
+- Category: Skywire / AT OAuth session persistence
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Skywire chat OAuth session persistence repair
+- Last touched: 2026-09-02
+- Score: C3 + F5 + S5 + P0(5) = 18
+- Evidence:
+  - User live-tested the canonical-domain fix on 2026-06-04 and reported that approving Chat Add-on permissions now returns to Skywire with the AT session marked ended/reconnect-required.
+  - Code inspection found the OAuth callback performs a final `persistOAuthSessionForDid(session.did, storedSession ?? (session as any), ...)` write after `client.callback(...)`.
+  - The installed `@atproto/oauth-client` returns an `OAuthSession` wrapper from `client.callback`, while the persistable `{ tokenSet, dpopJwk }` value is passed separately through `sessionStore.set`.
+  - For an existing account, `persistOAuthSessionForDid` deletes the pending saved session after the SDK store write, so the final callback falls back to the wrapper and can overwrite encrypted access/refresh token fields with `null`.
+- Correction:
+  - `persistOAuthSessionForDid` now treats SDK session-store writes as callback handoffs and keeps the SDK saved `{ tokenSet, dpopJwk }` session available until the route callback performs the final user+DID scoped write.
+  - The OAuth callback no longer falls back to persisting the live `OAuthSession` wrapper; if the saved session is missing, callback fails closed instead of overwriting encrypted token fields with null.
+  - `encryptedSessionFields` asserts token subject, access token, refresh token, and DPoP key material before producing DB fields.
+- Verification (2026-09-02):
+  - Current OAuth/session/canonical-domain policies pass 28/28. Eight focused browser flows prove Chat Add-on consent, canonical account confirmation, same-window completion, durable permission refresh, cross-window notification, and refusal to trust a forged completion signal.
+  - The public OAuth metadata advertises only `wtfos.app`, the explicit chat scope, refresh-token grant, and `none` client authentication. Correction commit `dd0e5197` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-208 is Verified.
+
+### WTF-BB-207 - Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity
+
+- Category: Platform domains / AT OAuth identity boundary
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Skywire canonical-domain OAuth repair
+- Last touched: 2026-09-02
+- Score: C3 + F5 + S5 + P0(5) = 18
+- Evidence:
+  - User reproduction on 2026-06-04 showed Skywire OAuth leaving `wtfos.app` for a separately signed-in legacy `wtfgameshow.app` portal, changing browser-session identity after approval. OAuth metadata and redirects could inherit that legacy origin from production env.
+- Correction:
+  - WTF public origins canonicalize legacy values to `https://wtfos.app` for OAuth metadata, redirect URI, and client URI. Legacy apex and `www` GET/HEAD traffic redirects to the canonical host with path and query intact; `new.wtfgameshow.app` is decommissioned at DNS. Caddy is force-recreated during deploy so routing changes remount reliably.
+- Verification (2026-09-02):
+  - Current OAuth/session/canonical-domain policies pass 28/28 and focused OAuth browser flows pass 8/8. Public OAuth metadata advertises `https://wtfos.app/api/atproto/oauth/callback` and no legacy origin. Live legacy apex and `www` return 301 to `https://wtfos.app/skywire?tab=account`, preserving path and query.
+  - Correction commit `62f87fd1` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-207 is Verified.
+
 ### WTF-BB-206 - Skywire OAuth callback bounces wtfos.app users to legacy wtfgameshow.app and collides with that domain's logged-in identity
 
 - Category: Skywire / AT OAuth domain and session binding
@@ -5660,6 +5546,22 @@ Copy this when adding a new issue:
   - Live `https://wtfos.app/api/health` returned `ok` with `commitRef: f5bb22e`, database `ok`, and jobs `ok`.
   - Live `https://wtfos.app/.well-known/oauth-client-metadata.json` returned canonical `https://wtfos.app` client metadata and callback URL.
 
+### WTF-BB-161 - Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface
+
+- Category: Skywire / AT Protocol feed delivery
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Skywire feed/session live-test pass
+- Last touched: 2026-09-02
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Evidence:
+  - User live-testing on 2026-05-24 showed reconnect completing while Home still demanded reconnect, read tabs returned `forbidden`, and restored OAuth failed because the SDK received an invalid client-auth shape. Read-only discovery also used the connected PDS instead of public AppView.
+- Correction:
+  - Restored rows rebuild `authMethod` as `{ method: "none" }`. Home remains authenticated; WTF uses the official author's feed; Tezos/search/actor/discovery reads use public Bluesky AppView; peer recommendations exclude self-follow.
+- Verification (2026-09-02):
+  - Current OAuth/session/canonical-domain policies pass 28/28, directly asserting the SDK auth shape and public read surfaces; focused OAuth browser flows pass 8/8. Public metadata confirms `token_endpoint_auth_method: none` and the required AppView scopes.
+  - Correction commit `db7b87e2` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-161 is Verified.
+
 ### WTF-BB-620 - A duplicate `/admin` surface registration lets every default wtfOS role bypass the route's strict admin requirement
 
 - Category: Desktop OS / admin route authorization
@@ -5847,6 +5749,22 @@ Copy this when adding a new issue:
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed `npm run test:e2e:inventory`.
+
+### WTF-BB-160 - OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes
+
+- Category: Skywire / AT Protocol session lifecycle
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Skywire session persistence hardening
+- Last touched: 2026-09-02
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Evidence:
+  - User live-testing on 2026-05-24 showed normal refreshes producing `This session was deleted by another process`. SDK cache deletion cleared durable encrypted tokens, and restored rows could hide issuer/audience already present in the saved token set.
+- Correction:
+  - Server storage retains the full OAuth restore contract: subject, issuer, audience, expiry, access/refresh tokens, and DPoP material. SDK cache deletion is non-destructive; only explicit unlink clears durable tokens. Truly incomplete rows surface a reconnect-required state while public reads retain AppView fallback.
+- Verification (2026-09-02):
+  - Current OAuth/session/canonical-domain policies pass 28/28, including restored legacy rows, exact token identity, non-destructive deletion policy, and incomplete-row handling; focused OAuth browser flows pass 8/8.
+  - Correction commit `2f33f38e` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-160 is Verified.
 
 ### WTF-BB-001 - Overlapping migration systems run every deploy
 
@@ -6220,6 +6138,22 @@ Copy this when adding a new issue:
   - Passed `npm run test:e2e:inventory:coverage`.
   - Passed focused `npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "public room guests"`.
   - Passed full `npm run test:e2e:inventory` with 281/281 tests, including the new two-user WTF LIVE media/chat behavior assertion.
+
+### WTF-BB-159 - Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab
+
+- Category: Skywire / AT Protocol OAuth session restore
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Skywire OAuth restore hotfix
+- Last touched: 2026-09-02
+- Score: C2 + F5 + S3 + P0(5) = 15
+- Evidence:
+  - User live-testing on 2026-05-24 showed every authenticated Skywire tab failing with `Token set does not match the expected sub`. The DB restore path had omitted the SDK-required token subject, issuer, and audience.
+- Correction:
+  - Restored OAuth sessions now bind `sub` to the account DID, restore issuer/resource audience, retain DPoP token type and scopes, decrypt both tokens, and serialize expiry in the SDK's expected shape.
+- Verification (2026-09-02):
+  - Current OAuth/session/canonical-domain policies pass 28/28, including exact restored subject, issuer, audience, token pair, expiry, and `{ method: "none" }` authentication; focused OAuth browser flows pass 8/8.
+  - Correction commit `8edcf4dc` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-159 is Verified.
 
 ### WTF-BB-013 - Production CORS fallback reflects any origin with credentials
 

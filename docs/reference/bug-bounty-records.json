@@ -1858,9 +1858,9 @@
     },
     {
       "id": "WTF-BB-208",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Skywire chat OAuth session persistence repair",
-      "lastTouched": "2026-06-04",
+      "lastTouched": "2026-09-02",
       "category": "Skywire / AT OAuth session persistence",
       "priority": "P0",
       "points": 18,
@@ -1869,14 +1869,14 @@
       "functionalityDanger": 5,
       "securityDanger": 5,
       "title": "Skywire Chat Add-on approval can immediately null stored OAuth token material and force reconnect",
-      "body": "- Evidence:\n  - User live-tested the canonical-domain fix on 2026-06-04 and reported that approving Chat Add-on permissions now returns to Skywire with the AT session marked ended/reconnect-required.\n  - Code inspection found the OAuth callback performs a final `persistOAuthSessionForDid(session.did, storedSession ?? (session as any), ...)` write after `client.callback(...)`.\n  - The installed `@atproto/oauth-client` returns an `OAuthSession` wrapper from `client.callback`, while the persistable `{ tokenSet, dpopJwk }` value is passed separately through `sessionStore.set`.\n  - For an existing account, `persistOAuthSessionForDid` deletes the pending saved session after the SDK store write, so the final callback falls back to the wrapper and can overwrite encrypted access/refresh token fields with `null`.\n- Likely correction direction:\n  - Keep the SDK-provided saved session available until the route callback performs its final scoped account write.\n  - Remove the route fallback that persists the live `OAuthSession` wrapper.\n  - Fail closed if token persistence is asked to store an object without token set and DPoP key material.\n- Correction:\n  - `persistOAuthSessionForDid` now treats SDK session-store writes as callback handoffs and keeps the SDK saved `{ tokenSet, dpopJwk }` session available until the route callback performs the final user+DID scoped write.\n  - The OAuth callback no longer falls back to persisting the live `OAuthSession` wrapper; if the saved session is missing, callback fails closed instead of overwriting encrypted token fields with null.\n  - `encryptedSessionFields` now asserts token set subject, access token, refresh token, and DPoP key material before producing DB fields.\n- Verification idea:\n  - Unit/policy tests should prove wrapper objects cannot produce null token writes and callback persistence requires the SDK saved session.\n  - Live smoke should complete Chat Add-on approval and show `/api/atproto/me` with `session.reconnectRequired=false`, encrypted token storage, DPoP key, and chat capability.\n- Local verification:\n  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts server/features/atproto/skywire-policy.test.ts server/features/atproto/permission-tiers.test.ts server/lib/canonical-domain.test.ts` passed 26/26.\n  - `npm run check -- --pretty false` passed.\n  - `npm run test:e2e:inventory:coverage` passed.\n  - `npm run build` passed.\n  - `node scripts/caddy-domain-policy.test.mjs` passed.\n  - `npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"` passed 5/5.\n  - `npm run test:e2e:inventory` passed 290/290 after rerunning sequentially. The first browser attempt was discarded because two Playwright suites were run in parallel against the same harness and produced shared-server noise.",
+      "body": "- Evidence:\n  - User live-tested the canonical-domain fix on 2026-06-04 and reported that approving Chat Add-on permissions now returns to Skywire with the AT session marked ended/reconnect-required.\n  - Code inspection found the OAuth callback performs a final `persistOAuthSessionForDid(session.did, storedSession ?? (session as any), ...)` write after `client.callback(...)`.\n  - The installed `@atproto/oauth-client` returns an `OAuthSession` wrapper from `client.callback`, while the persistable `{ tokenSet, dpopJwk }` value is passed separately through `sessionStore.set`.\n  - For an existing account, `persistOAuthSessionForDid` deletes the pending saved session after the SDK store write, so the final callback falls back to the wrapper and can overwrite encrypted access/refresh token fields with `null`.\n- Correction:\n  - `persistOAuthSessionForDid` now treats SDK session-store writes as callback handoffs and keeps the SDK saved `{ tokenSet, dpopJwk }` session available until the route callback performs the final user+DID scoped write.\n  - The OAuth callback no longer falls back to persisting the live `OAuthSession` wrapper; if the saved session is missing, callback fails closed instead of overwriting encrypted token fields with null.\n  - `encryptedSessionFields` asserts token subject, access token, refresh token, and DPoP key material before producing DB fields.\n- Verification (2026-09-02):\n  - Current OAuth/session/canonical-domain policies pass 28/28. Eight focused browser flows prove Chat Add-on consent, canonical account confirmation, same-window completion, durable permission refresh, cross-window notification, and refusal to trust a forged completion signal.\n  - The public OAuth metadata advertises only `wtfos.app`, the explicit chat scope, refresh-token grant, and `none` client authentication. Correction commit `dd0e5197` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-208 is Verified.",
       "legacyOriginalId": "WTF-BB-208"
     },
     {
       "id": "WTF-BB-207",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Skywire canonical-domain OAuth repair",
-      "lastTouched": "2026-06-04",
+      "lastTouched": "2026-09-02",
       "category": "Platform domains / AT OAuth identity boundary",
       "priority": "P0",
       "points": 18,
@@ -1885,7 +1885,7 @@
       "functionalityDanger": 5,
       "securityDanger": 5,
       "title": "Legacy wtfgameshow.app remains a separate signed-in portal and poisons Skywire OAuth redirect identity",
-      "body": "- Evidence:\n  - User incognito reproduction on 2026-06-04: a Skywire Chat Add-on OAuth flow started on `wtfos.app` asks for the right Bluesky account, but after approval redirects to `wtfgameshow.app` and lands on a login screen because that domain has a separate browser session.\n  - User non-incognito reproduction on 2026-06-04: the same domain switch collides with a different already-signed-in legacy-domain user, replacing the apparent account context in the primary `wtfos.app` Skywire view.\n  - Code inspection found ATProto OAuth client metadata and redirect URI still derive from `ATPROTO_PUBLIC_BASE_URL` / `PUBLIC_SITE_URL`, so a legacy production env value can keep advertising `https://wtfgameshow.app/api/atproto/oauth/callback`.\n  - Caddy still serves `wtfos.app` and `wtfgameshow.app` as peers in the same app block, so the legacy domain remains a full session boundary rather than an alias.\n- Correction:\n  - Canonicalize WTF platform public origins so legacy `wtfgameshow.app` env values collapse to `https://wtfos.app` for ATProto OAuth client metadata, redirect URI, and client URI.\n  - Redirect browser GET/HEAD traffic from `wtfgameshow.app`, `www.wtfgameshow.app`, and `new.wtfgameshow.app` to `https://wtfos.app`, preserving path and query, so the legacy domain cannot keep a separate Skywire/login reality.\n  - Force-recreate the Caddy container during production deploys so the single-file `Caddyfile` bind mount remounts domain routing changes instead of keeping the previous inode.\n  - Keep local development origins local and allow explicit non-WTF override origins for previews/tests without silently promoting the legacy production domain.\n- Verification idea:\n  - Static/unit tests assert legacy env canonicalization to `wtfos.app`, OAuth metadata never advertises `wtfgameshow.app`, app middleware redirects legacy hosts to canonical with path/query intact, and the Caddyfile redirects legacy apex/www to `wtfos.app`.\n  - Inventory docs and behavior assertions should describe legacy domain aliasing, not cross-domain session isolation.\n- Verification:\n  - `npx tsx --test server/lib/canonical-domain.test.ts shared/platform-branding.test.ts server/features/atproto/skywire-policy.test.ts`\n  - `node scripts/caddy-domain-policy.test.mjs`\n  - `node scripts/production-migrations-policy.test.mjs scripts/deploy-dry-run-policy.test.mjs`\n  - `npm run check -- --pretty false`\n  - `npm run test:e2e:inventory:coverage`\n  - `git diff --check`\n  - `npm run build`\n  - `npm run test:e2e:inventory` (290/290 passed)\n- Last touched: 2026-06-04",
+      "body": "- Evidence:\n  - User reproduction on 2026-06-04 showed Skywire OAuth leaving `wtfos.app` for a separately signed-in legacy `wtfgameshow.app` portal, changing browser-session identity after approval. OAuth metadata and redirects could inherit that legacy origin from production env.\n- Correction:\n  - WTF public origins canonicalize legacy values to `https://wtfos.app` for OAuth metadata, redirect URI, and client URI. Legacy apex and `www` GET/HEAD traffic redirects to the canonical host with path and query intact; `new.wtfgameshow.app` is decommissioned at DNS. Caddy is force-recreated during deploy so routing changes remount reliably.\n- Verification (2026-09-02):\n  - Current OAuth/session/canonical-domain policies pass 28/28 and focused OAuth browser flows pass 8/8. Public OAuth metadata advertises `https://wtfos.app/api/atproto/oauth/callback` and no legacy origin. Live legacy apex and `www` return 301 to `https://wtfos.app/skywire?tab=account`, preserving path and query.\n  - Correction commit `62f87fd1` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-207 is Verified.",
       "legacyOriginalId": "WTF-BB-207"
     },
     {
@@ -2034,9 +2034,9 @@
     },
     {
       "id": "WTF-BB-161",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Skywire feed/session live-test pass",
-      "lastTouched": "2026-05-24",
+      "lastTouched": "2026-09-02",
       "category": "Skywire / AT Protocol feed delivery",
       "priority": "P0",
       "points": 17,
@@ -2045,7 +2045,7 @@
       "functionalityDanger": 5,
       "securityDanger": 3,
       "title": "Restored OAuth sessions still fail client-auth shape and read tabs use the wrong AT surface",
-      "body": "- Evidence:\n  - User live-testing report on 2026-05-24: reconnect completes, but Home still says Skywire needs a reconnect; WTF/Tezos tabs show `forbidden`; Discover shows the connected user and a follow affordance.\n  - Production logs show OAuth restore failing with `Client authentication method \"undefined\" no longer supported`.\n  - Local SDK inspection shows `NodeSavedSession.authMethod` must be an object such as `{ method: \"none\" }`, not the string `\"none\"`.\n  - Skywire read-only search/discovery feeds were routed through the connected account session/PDS when Bluesky search/actor/official-feed reads should use the public AppView, while the WTF tab used keyword search instead of the official account's author feed.\n- Why it matters:\n  - Skywire must deliver the connected user's home timeline, the official WTFgameshow account feed, and other connected Skywire users without asking users to reconnect or showing raw upstream authorization failures.\n- Likely correction direction:\n  - Restore OAuth rows with the SDK's exact `authMethod` shape, keep Home authenticated, route read-only search/discovery/official author feeds through public AppView, and recommend WTF users with linked AT accounts while excluding self-follow.\n- Fix:\n  - Restored OAuth rows now rebuild `authMethod` as `{ method: \"none\" }`, matching the installed SDK's `NodeSavedSession` contract.\n  - The WTF feed tab now reads the configured official account through `app.bsky.feed.getAuthorFeed`.\n  - Tezos/search/actor discovery/author-feed reads now use the public Bluesky AppView instead of the connected user's PDS session.\n  - Discover now recommends WTF users with linked AT Protocol accounts through `/api/skywire/actors/recommended` and disables self-follow affordances.\n- Verification:\n  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`\n  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`\n  - `npm run check -- --pretty false`\n  - `npm run build`\n  - `npm run check:external-links`\n  - `npm run test:e2e:inventory:coverage`\n  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g \"WTF Domains\"`\n  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g \"Unified timeline\"`\n  - `npm run test:e2e:inventory`",
+      "body": "- Evidence:\n  - User live-testing on 2026-05-24 showed reconnect completing while Home still demanded reconnect, read tabs returned `forbidden`, and restored OAuth failed because the SDK received an invalid client-auth shape. Read-only discovery also used the connected PDS instead of public AppView.\n- Correction:\n  - Restored rows rebuild `authMethod` as `{ method: \"none\" }`. Home remains authenticated; WTF uses the official author's feed; Tezos/search/actor/discovery reads use public Bluesky AppView; peer recommendations exclude self-follow.\n- Verification (2026-09-02):\n  - Current OAuth/session/canonical-domain policies pass 28/28, directly asserting the SDK auth shape and public read surfaces; focused OAuth browser flows pass 8/8. Public metadata confirms `token_endpoint_auth_method: none` and the required AppView scopes.\n  - Correction commit `db7b87e2` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-161 is Verified.",
       "legacyOriginalId": "WTF-BB-161"
     },
     {
@@ -2114,9 +2114,9 @@
     },
     {
       "id": "WTF-BB-160",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Skywire session persistence hardening",
-      "lastTouched": "2026-05-24",
+      "lastTouched": "2026-09-02",
       "category": "Skywire / AT Protocol session lifecycle",
       "priority": "P0",
       "points": 16,
@@ -2125,7 +2125,7 @@
       "functionalityDanger": 5,
       "securityDanger": 3,
       "title": "OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes",
-      "body": "- Evidence:\n  - User live-testing report on 2026-05-24 after the `sub` hotfix: \"This session was deleted by another process\" and normal page refreshes should preserve session state.\n  - The AT OAuth SDK emits that message when its store returns no saved session for the DID being restored.\n  - Skywire's `sessionStore.del` cleared encrypted DB tokens for any SDK delete request, so a transient restore-shape bug could permanently convert a linked account into a tokenless row.\n  - Restored OAuth rows depended on separately persisted issuer/audience metadata even though the pending SDK session already contains `tokenSet.aud`.\n- Why it matters:\n  - A linked AT account must survive page refreshes, server restarts, and deploys. Losing the encrypted session makes Skywire look connected while every authenticated Bluesky action requires reauth or throws raw SDK errors.\n- Fix:\n  - Persist the full OAuth restore contract into server storage, including subject, issuer, audience, token expiry, and DPoP key material.\n  - Make SDK cache deletion non-destructive for persisted DB tokens; only explicit unlink should clear encrypted tokens.\n  - Expose reconnect-required account state when stored tokens are truly missing, and let public-read Skywire surfaces fall back to appview instead of breaking every tab.\n- Verification:\n  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`\n  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`\n  - `npm run check -- --pretty false`\n  - `npm run build`\n  - `npm run test:e2e:inventory:coverage`\n  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g \"Skywire AT Protocol bridge\"`\n  - `npm run test:e2e:inventory`\n  - `npm run check:external-links`",
+      "body": "- Evidence:\n  - User live-testing on 2026-05-24 showed normal refreshes producing `This session was deleted by another process`. SDK cache deletion cleared durable encrypted tokens, and restored rows could hide issuer/audience already present in the saved token set.\n- Correction:\n  - Server storage retains the full OAuth restore contract: subject, issuer, audience, expiry, access/refresh tokens, and DPoP material. SDK cache deletion is non-destructive; only explicit unlink clears durable tokens. Truly incomplete rows surface a reconnect-required state while public reads retain AppView fallback.\n- Verification (2026-09-02):\n  - Current OAuth/session/canonical-domain policies pass 28/28, including restored legacy rows, exact token identity, non-destructive deletion policy, and incomplete-row handling; focused OAuth browser flows pass 8/8.\n  - Correction commit `2f33f38e` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-160 is Verified.",
       "legacyOriginalId": "WTF-BB-160"
     },
     {
@@ -2242,9 +2242,9 @@
     },
     {
       "id": "WTF-BB-159",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Skywire OAuth restore hotfix",
-      "lastTouched": "2026-05-24",
+      "lastTouched": "2026-09-02",
       "category": "Skywire / AT Protocol OAuth session restore",
       "priority": "P0",
       "points": 15,
@@ -2253,7 +2253,7 @@
       "functionalityDanger": 5,
       "securityDanger": 3,
       "title": "Restored OAuth token sets omit the DID subject and break every authenticated Skywire tab",
-      "body": "- Evidence:\n  - User live-testing report on 2026-05-24: Home tab and every Skywire tab show \"Token set does not match the expected sub\".\n  - `@atproto/oauth-client` throws that exact error when `client.restore(did)` loads a stored session whose `tokenSet.sub` does not match the requested DID.\n  - Skywire's DB restore path rebuilt OAuth token sets with access/refresh tokens, scope, and token type only, dropping `sub`, `iss`, and `aud`.\n- Why it matters:\n  - The OAuth connection can appear linked while every authenticated AT Protocol read/write call fails, making Skywire unusable during live testing.\n- Likely correction direction:\n  - Rebuild stored OAuth sessions with the identity-bearing token fields required by the SDK: `sub`, `iss`, `aud`, token type, scope, access/refresh tokens, and ISO expiration.\n- Verification:\n  - `npx tsx --test server/features/atproto/oauth-session-restore.test.ts`\n  - `npx tsx --test server/features/atproto/skywire-policy.test.ts`\n  - `npm run check -- --pretty false`\n  - `npm run build`\n  - `npm run test:e2e:inventory:coverage`\n  - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g \"Skywire AT Protocol bridge\"`",
+      "body": "- Evidence:\n  - User live-testing on 2026-05-24 showed every authenticated Skywire tab failing with `Token set does not match the expected sub`. The DB restore path had omitted the SDK-required token subject, issuer, and audience.\n- Correction:\n  - Restored OAuth sessions now bind `sub` to the account DID, restore issuer/resource audience, retain DPoP token type and scopes, decrypt both tokens, and serialize expiry in the SDK's expected shape.\n- Verification (2026-09-02):\n  - Current OAuth/session/canonical-domain policies pass 28/28, including exact restored subject, issuer, audience, token pair, expiry, and `{ method: \"none\" }` authentication; focused OAuth browser flows pass 8/8.\n  - Correction commit `8edcf4dc` is an ancestor of live production commit `896f7761`; Hetzner deploy run `33612787081` succeeded and public readiness is healthy. WTF-BB-159 is Verified.",
       "legacyOriginalId": "WTF-BB-159"
     },
     {

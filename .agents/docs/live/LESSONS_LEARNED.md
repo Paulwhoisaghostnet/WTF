@@ -11567,3 +11567,13 @@
 **Rule**: Reconcile RPC retirement against the current authoritative endpoint table, verify every primary and fallback chain ID, prove the correction commits are ancestors of the live commit, and require live production chain readiness before closing the record.
 
 ---
+
+## 2026-09-02 — OAuth incidents are a chain, not isolated symptoms
+
+**What happened**: Five Skywire P0 records described successive symptoms of one OAuth lifecycle: missing token identity, destructive SDK cache deletion, invalid restored client-auth shape, a legacy-domain redirect boundary, and a final callback write using the wrong session object. Each fix was present in production, but the records remained independently Fixed.
+
+**Why it mattered**: Verifying only the newest symptom could hide a regression in an earlier dependency. Conversely, leaving every historical symptom unresolved after the complete chain is deployed makes the board overstate current product risk.
+
+**Rule**: Reconcile linked OAuth incidents as an ordered contract: canonical origin, exact persisted token shape, non-destructive restore lifecycle, fail-closed callback handoff, durable permission refresh, then deployed ancestry and public metadata verification.
+
+---
