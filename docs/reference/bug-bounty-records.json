@@ -786,9 +786,9 @@
     },
     {
       "id": "WTF-BB-022",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex Supabase boot-backfill reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "Deploy / DB operations",
       "priority": "P2",
       "points": 9,
