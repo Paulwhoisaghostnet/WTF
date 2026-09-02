@@ -7,6 +7,7 @@ import { hasPermission } from "../../lib/permissions";
 import {
   getPlatformSettingUpdatedAt,
   PlatformSettingConflictError,
+  PlatformSettingValidationError,
   upsertPlatformSetting,
   validatePlatformSettingValue,
 } from "../../lib/platform-settings";
@@ -61,6 +62,7 @@ import {
 import {
   resolveWGroupchatConfigState,
   type WGroupchatConfigState,
+  validateWGroupchatConversationSelection,
 } from "./groupchat-config";
 
 const W_GAMESHOW_DM_SETTING_KEY = "w.gameshow_dm_conversation_id";
@@ -1371,15 +1373,15 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       });
     }
 
-    const requestedIds = Array.isArray(req.body?.conversationIds)
-      ? req.body.conversationIds
-      : [req.body?.conversationId];
-    const conversationIds: string[] = Array.from(
-      new Set(requestedIds.map((id: unknown) => String(id || "").trim()).filter(isDmConversationId))
-    );
-    if (conversationIds.length === 0) {
-      return res.status(400).json({ error: "At least one valid X DM conversation id is required" });
+    const requestedIds = req.body?.conversationIds ?? [req.body?.conversationId];
+    const selection = validateWGroupchatConversationSelection(requestedIds);
+    if (!selection.ok) {
+      return res.status(400).json({ error: selection.error });
     }
+    const conversationIds = selection.conversationIds;
+    const serializedConversationIds = validatePlatformSettingValue(
+      JSON.stringify(conversationIds)
+    );
 
     const accessToken = await getPlatformXOAuth2AccessToken();
     if (!accessToken) {
@@ -1401,7 +1403,7 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
 
     const saved = await upsertPlatformSetting(db, {
       key: W_GAMESHOW_DM_SETTING_KEY,
-      value: JSON.stringify(conversationIds),
+      value: serializedConversationIds,
       updatedBy: user.id,
       expectedUpdatedAt: req.body?.expectedUpdatedAt,
     });
@@ -1417,6 +1419,9 @@ router.put("/api/w/admin/groupchat", isAuthenticated, async (req, res) => {
       return res.status(409).json({
         error: "Gameshow groupchat settings changed elsewhere; reload and retry",
       });
+    }
+    if (err instanceof PlatformSettingValidationError) {
+      return res.status(400).json({ error: err.message });
     }
     console.error("[w] groupchat selection failed:", err);
     res

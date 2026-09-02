@@ -1466,11 +1466,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "w.groupchat-readonly-config-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["w"],
-    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
-    verificationCommand: "npm run test:e2e:live:puppets",
+    ownerSpec:
+      "server/features/w/message-routes-settings.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "node --import tsx --test server/features/w/message-routes-settings.test.ts && npm run test:e2e:live:puppets",
     userVisibleAssertion: "W users can read the configured Gameshow groupchat mirror without a send surface.",
     durableSideEffectAssertion:
-      "The harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
+      "The focused settings contract rejects malformed, non-array, or over-limit admin selections before upstream lookups or persistence; the live harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
   },
   {
     id: "inbox.compose-reply-send-actions",

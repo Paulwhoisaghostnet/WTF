@@ -1,6 +1,11 @@
 export type WGroupchatConfigMode = "db_preferred" | "env_override";
 export type WGroupchatConfigSource = "db" | "env" | "default" | "unconfigured";
 
+// The X DM cache already retains at most 250 conversation identities per
+// account. Keep the operator-selected gameshow list inside that same persisted
+// conversation window so request work and platform_settings storage are bounded.
+export const W_GROUPCHAT_MAX_CONVERSATIONS = 250;
+
 export type WGroupchatConfigState = {
   mode: WGroupchatConfigMode;
   source: WGroupchatConfigSource;
@@ -30,6 +35,55 @@ export type WGroupchatConfigState = {
 function isDmConversationId(value: string | null | undefined): boolean {
   const id = String(value || "").trim();
   return /^(?:g[a-z0-9_-]+|\d+|\d+-\d+)$/i.test(id);
+}
+
+export type WGroupchatConversationSelection =
+  | { ok: true; conversationIds: string[] }
+  | { ok: false; error: string };
+
+export function validateWGroupchatConversationSelection(
+  value: unknown
+): WGroupchatConversationSelection {
+  if (!Array.isArray(value)) {
+    return { ok: false, error: "conversationIds must be an array" };
+  }
+  if (value.length === 0) {
+    return { ok: false, error: "At least one X DM conversation id is required" };
+  }
+  if (value.length > W_GROUPCHAT_MAX_CONVERSATIONS) {
+    return {
+      ok: false,
+      error: `No more than ${W_GROUPCHAT_MAX_CONVERSATIONS} X DM conversations may be selected`,
+    };
+  }
+
+  const conversationIds: string[] = [];
+  const seen = new Set<string>();
+  for (const rawId of value) {
+    if (typeof rawId !== "string") {
+      return { ok: false, error: "Every X DM conversation id must be a string" };
+    }
+    const id = rawId.trim();
+    if (!isDmConversationId(id)) {
+      return { ok: false, error: `Invalid X DM conversation id: ${id || "(empty)"}` };
+    }
+    if (!seen.has(id)) {
+      seen.add(id);
+      conversationIds.push(id);
+    }
+  }
+
+  return { ok: true, conversationIds };
+}
+
+function parseDbConversationIds(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    const selection = validateWGroupchatConversationSelection(parsed);
+    return selection.ok ? selection.conversationIds : [];
+  } catch {
+    return [];
+  }
 }
 
 function parseConversationIds(value: string | null | undefined): string[] {
@@ -63,7 +117,7 @@ export function resolveWGroupchatConfigState(input: {
   const dbRaw = String(input.dbValue || "").trim();
   const envRaw = String(input.envValue || "").trim();
   const defaultRaw = String(input.defaultValue || "").trim();
-  const dbIds = parseConversationIds(dbRaw);
+  const dbIds = dbRaw ? parseDbConversationIds(dbRaw) : [];
   const envIds = parseConversationIds(envRaw);
   const defaultIds = parseConversationIds(defaultRaw);
   const warnings: string[] = [];

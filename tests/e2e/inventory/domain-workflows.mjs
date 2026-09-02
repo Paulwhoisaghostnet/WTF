@@ -389,6 +389,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/w/capabilities" },
       { method: "GET", path: "/api/w/timeline" },
       { method: "GET", path: "/api/w/admin/digest-handles", expectedStatuses: [200, 403] },
+      { method: "PUT", path: "/api/w/admin/groupchat", body: { conversationIds: ["not valid"] }, expectedStatuses: [400, 403, 410] },
       { method: "GET", path: "/api/admin/w-digest-handles", expectedStatuses: [200, 403] },
       { method: "GET", path: "/api/atproto/me" },
       { method: "GET", path: "/api/atproto/permissions/options" },

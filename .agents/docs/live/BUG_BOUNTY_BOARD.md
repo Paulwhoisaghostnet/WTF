@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **425** · Archived: **4**
+Total: **637** · Open: **6** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **425** · Archived: **4**
 
 ## Canonical Board
 
@@ -76,7 +76,6 @@ Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-033 | Claimed | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -231,6 +230,7 @@ Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 511 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 511 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 511 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
+| WTF-BB-033 | Fixed | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 511 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 511 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 572 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -1618,23 +1618,6 @@ Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
-
-- Category: Data integrity / ops
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex W groupchat settings hardening
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence: `server/routes/w.ts:1075-1083` writes caller-supplied JSON string directly to `platform_settings.value`; `parseConversationIds` (1094-1105) accepts arbitrary arrays/strings and trims only by ID format.
-- Why it matters:
-  - A bug or compromised admin session could write an unbounded array/garbage to `platform_settings`, affecting startup and endpoint behavior that depends on DM configuration.
-  - Without row-level constraints, malformed payloads become a DB-sized resilience risk.
-- Likely correction direction:
-  - Enforce length/element-count caps on setter + strict JSON schema for this setting, plus validation before persistence.
-- Verification idea:
-  - Attempt to write oversized/invalid payloads and verify endpoint rejects with deterministic 4xx, not silently accepting.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -5081,6 +5064,24 @@ Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Block
 - Verification: `node --import tsx/esm --test server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `npm run check`
 - Verification idea:
   - Replay flood traffic with varied `sessionId`s and verify memory and queue-blacklist behavior remain bounded.
+
+### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
+
+- Category: Data integrity / ops
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex W groupchat settings hardening
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.
+- Correction (2026-09-02):
+  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.
+  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.
+  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.
+- Verification:
+  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.
+  - Source correction is committed locally and awaits the normal `main` deployment/live verification before this record can move from Fixed to Verified.
 
 ### WTF-BB-010 - Entrypoint recursively `chown -R`s mounted volumes every boot
 

@@ -11487,3 +11487,13 @@
 **Rule**: For boot-time writers, prove lock acquisition precedes the first mutation, non-owners perform no writes, the owner unlocks in `finally` before releasing its connection, and the listener cannot open before the startup task settles. Add persistent run-state only when the product needs resumability or audit history beyond those guarantees.
 
 ---
+
+## 2026-09-02 — Validate bounded collections before their fan-out begins
+
+**What happened**: The W groupchat setting had a general database value-size guard, but the route reached it only after normalizing an arbitrary caller array and issuing one X lookup per accepted identity. Malformed elements were silently removed, and DB reads accepted loose non-JSON formats.
+
+**Why it mattered**: A persistence cap cannot bound request cost that occurs before persistence, and silent cleanup makes an operator believe a requested configuration was saved intact when it was not. A compromised admin session could still cause unnecessary upstream work even though the final row fit the database limit.
+
+**Rule**: Validate collection shape, element type/format, cardinality, and serialized size before any external fan-out. Reject invalid operator input deterministically instead of truncating it, and make stored configuration pass the same schema used at the write boundary.
+
+---

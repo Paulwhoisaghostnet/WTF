@@ -754,7 +754,7 @@
     },
     {
       "id": "WTF-BB-033",
-      "status": "Claimed",
+      "status": "Fixed",
       "owner": "Codex W groupchat settings hardening",
       "lastTouched": "2026-09-02",
       "category": "Data integrity / ops",
@@ -765,7 +765,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "Unbounded `platform_settings` value payload allows oversized conversation lists",
-      "body": "- Evidence: `server/routes/w.ts:1075-1083` writes caller-supplied JSON string directly to `platform_settings.value`; `parseConversationIds` (1094-1105) accepts arbitrary arrays/strings and trims only by ID format.\n- Why it matters:\n  - A bug or compromised admin session could write an unbounded array/garbage to `platform_settings`, affecting startup and endpoint behavior that depends on DM configuration.\n  - Without row-level constraints, malformed payloads become a DB-sized resilience risk.\n- Likely correction direction:\n  - Enforce length/element-count caps on setter + strict JSON schema for this setting, plus validation before persistence.\n- Verification idea:\n  - Attempt to write oversized/invalid payloads and verify endpoint rejects with deterministic 4xx, not silently accepting.",
+      "body": "- Historical evidence:\n  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.\n- Correction (2026-09-02):\n  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.\n  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.\n  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.\n- Verification:\n  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.\n  - Source correction is committed locally and awaits the normal `main` deployment/live verification before this record can move from Fixed to Verified.",
       "legacyOriginalId": "WTF-BB-033"
     },
     {
