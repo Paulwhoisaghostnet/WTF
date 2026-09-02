@@ -11647,3 +11647,23 @@
 **Rule**: Package the exact checked-out commit on the runner, verify it, transport it through the deployment channel, verify it again before reset, and bind readiness to that commit. Do not make the target host re-fetch the source from a separately authenticated service.
 
 ---
+
+## 2026-09-02 — Separate private media identity from public playback authority
+
+**What happened**: Raw upload IDs, broad playback rate-limit exemptions, and anonymous cache warming once blurred three distinct boundaries: ownership, intentional publication, and resource consumption.
+
+**Why it mattered**: Fixing only the file route could still expose expensive writes through a playback exemption; fixing only rate limits could still leave private bytes enumerable. Public TV also needs a safe path that does not weaken the private library.
+
+**Rule**: Keep raw media owner/staff-only, derive public playback from visible channel association, allow rate-limit bypasses only for exact read methods, and authenticate plus separately bound every write or prefetch path. Verify both source policy and anonymous production responses.
+
+---
+
+## 2026-09-02 — A process timeout needs queue-recovery proof
+
+**What happened**: Studio preview safeguards existed in source, but the bounty record had only a typecheck note and still described previews as upload-request work after they had moved to the scheduler.
+
+**Why it mattered**: Seeing a timer and concurrency counter in code does not prove a hung child is killed, a saturated waiter is removed, or capacity returns after failure. Stale architecture notes also overstate current request-path risk.
+
+**Rule**: Execute a deliberately non-terminating child through the real process wrapper, saturate and release the real slot manager, and separately prove uploads enqueue bounded background work before reconciling media-processing availability.
+
+---

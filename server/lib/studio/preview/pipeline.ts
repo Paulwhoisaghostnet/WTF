@@ -255,6 +255,13 @@ function runProcess(bin: string, args: string[]): Promise<{
   });
 }
 
+export const studioPreviewProcessTestHooks = Object.freeze({
+  runProcess,
+  withPreviewProcessSlot,
+  processesInFlight: () => previewProcessesInFlight,
+  queuedProcesses: () => previewProcessWaiters.length,
+});
+
 async function runFfmpeg(args: string[]): Promise<void> {
   await runProcess("ffmpeg", args);
 }

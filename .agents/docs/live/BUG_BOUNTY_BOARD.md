@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **133** · Verified: **443** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **129** · Verified: **447** · Archived: **4**
 
 ## Canonical Board
 
@@ -132,10 +132,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-092 | Fixed | Codex MCP agent layer pass | 2026-05-04 | MCP / agent access control | P1 | 14 | 126 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
-| WTF-BB-018 | Fixed | Swarm A4 | 2026-04-28 | Studio / media processing | P1 | 14 | 126 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
-| WTF-BB-017 | Fixed | Codex TV hardening pass | 2026-05-03 | TV cache / SSRF-DoS | P1 | 14 | 126 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
-| WTF-BB-016 | Fixed | Codex TV hardening pass | 2026-05-03 | Abuse prevention / rate limits | P1 | 14 | 126 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
-| WTF-BB-015 | Fixed | Codex TV hardening pass | 2026-05-03 | Media / access control | P1 | 14 | 126 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 185 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 185 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-447 | Fixed | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / historical indexer evidence | P1 | 13 | 185 | 3 | 4 | 2 | Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized |
@@ -331,6 +327,10 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-050 | Verified | Codex auth dependency verification pass | 2026-08-31 | Dependencies / security | P1 | 14 | 126 | 3 | 3 | 4 | Runtime auth path still depends on deprecated/unmaintained auth packages |
 | WTF-BB-039 | Verified | Codex TV stream snapshot cache production verification | 2026-05-04 | TV microapp / stream performance | P1 | 14 | 126 | 3 | 3 | 4 | Stream endpoint rebuilds full queue and full bumpers each call |
 | WTF-BB-038 | Verified | Codex TV playlist integrity production verification | 2026-05-04 | TV microapp / data integrity | P1 | 14 | 126 | 3 | 3 | 4 | Active playlist flips can race and violate channel state assumptions |
+| WTF-BB-018 | Verified | Codex Studio preview guard production verification | 2026-04-28 | Studio / media processing | P1 | 14 | 126 | 4 | 3 | 3 | Studio preview ffmpeg jobs run inline without timeout or concurrency guard |
+| WTF-BB-017 | Verified | Codex TV cache prefetch production verification | 2026-05-03 | TV cache / SSRF-DoS | P1 | 14 | 126 | 3 | 4 | 3 | Unauthenticated TV prefetch can force large public media downloads |
+| WTF-BB-016 | Verified | Codex media rate-limit boundary verification | 2026-05-03 | Abuse prevention / rate limits | P1 | 14 | 126 | 3 | 4 | 3 | Media rate-limit bypass is broad enough to cover write-heavy endpoints |
+| WTF-BB-015 | Verified | Codex media access-control production verification | 2026-05-03 | Media / access control | P1 | 14 | 126 | 3 | 3 | 4 | Uploaded media files are unauthenticated and enumerable by ID |
 | WTF-BB-012 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Dependencies / security | P1 | 14 | 126 | 4 | 2 | 4 | Patched transitive leaf versions install cleanly and restore the high-severity production audit gate without a breaking direct-dependency change |
 | WTF-BB-659 | Verified | Codex buyback proof-parity pass | 2026-08-30 | Tezos buyback / Merkle proof parity | P1 | 13 | 185 | 4 | 4 | 1 | Buyback allowlist proofs generated by the server do not match the checked-in SmartPy contract |
 | WTF-BB-648 | Verified | Codex recapture payment-boundary pass | 2026-08-30 | Tezos / reward integrity | P1 | 13 | 185 | 4 | 3 | 2 | Buyback swap intent is trusted before on-chain confirmation |
@@ -2964,66 +2964,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Local fix note: Added `mcp_agent_tokens` with one-time-visible bearer tokens stored as SHA-256 hashes, `/api/mcp/tokens` generate/list/revoke APIs, a rate-limited Streamable HTTP `/mcp` endpoint, and an MCP tool layer for capabilities, desktop appearance, desktop pet care, public token search, unlisted trade-board discovery, trade-board mutation for the paired user, listing workflow preparation, and public TV channel discovery. Tool handlers check admin desktop-app gates before serving gated sub-app features.
 - Verification: `npm run check`; `node --import tsx/esm --test server/lib/mcp-agent-auth.test.ts server/lib/wtf-mcp.test.ts`; `npm run build`
 - Verification idea: Unit-test token hashing/auth, feature-gate denial, and public read/write tool behavior; manually confirm generated tokens are shown once and revoked tokens fail.
-
-### WTF-BB-018 - Studio preview ffmpeg jobs run inline without timeout or concurrency guard
-
-- Category: Studio / media processing
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Swarm A4
-- Last touched: 2026-04-28
-- Score: C4 + F3 + S3 + P1(4) = 14
-- Evidence: `server/routes/studio-files.ts:184-285` handles uploads in the request path and awaits `generatePreview`. `server/lib/studio/preview/pipeline.ts:158-185` spawns `ffmpeg`/`ffprobe` without an explicit timeout or kill path, and video/audio preview calls at `server/lib/studio/preview/pipeline.ts:294-326` and `359+` process user-provided media buffers inline.
-- Why it matters: A malformed or expensive upload can tie up Node request handling and external processes. Auth and upload caps reduce exposure, but there is no obvious worker queue, global concurrency cap, or process timeout around the heavy preview stage.
-- Likely correction direction: Move preview generation to a bounded worker queue, add ffmpeg/ffprobe timeouts, and return upload success before derivative generation when practical.
-- Local fix note: Added bounded in-process preview slots plus explicit `ffmpeg`/`ffprobe` kill timeouts in `server/lib/studio/preview/pipeline.ts` so heavy preview jobs fail closed instead of hanging indefinitely.
-- Verification: `npm run check`
-- Verification idea: A slow/corrupt media file cannot keep an ffmpeg process alive past the timeout and does not block unrelated Studio requests.
-
-### WTF-BB-017 - Unauthenticated TV prefetch can force large public media downloads
-
-- Category: TV cache / SSRF-DoS
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex TV hardening pass
-- Last touched: 2026-05-03
-- Score: C3 + F4 + S3 + P1(4) = 14
-- Evidence: `server/routes/tv.ts:4430-4453` accepts unauthenticated `POST /api/tv/cache/prefetch` requests, normalizes up to 10 submitted URLs, and calls `prefetchMediaAsync`. `server/lib/network-safety.ts:21-39` allows any public host when the allowlist is empty, `.env.example:193` leaves `TV_CACHE_ALLOWED_HOSTS=` blank, and `server/routes/tv.ts:70-85` defaults the remote-file cap to 500 MB with a 25s fetch timeout.
-- Why it matters: Attackers can make the server spend outbound bandwidth and disk/cache churn against arbitrary public media hosts, even if private/local hosts are blocked.
-- Likely correction direction: Require auth or a signed viewer token for prefetch, set a real host allowlist for production, lower public defaults, and rate-limit this route separately.
-- Local fix note: `POST /api/tv/cache/prefetch` now requires authentication and sits behind a dedicated 12-requests-per-minute limiter. The TV clients were also updated to only attempt server-side prefetch when a user session exists, so anonymous public viewers stop generating useless 401 churn against the warm-cache path.
-- Verification: `npm run check`
-- Verification idea: Anonymous prefetch requests are rejected or tightly capped; allowed channel playback still warms expected IPFS media.
-
-### WTF-BB-016 - Media rate-limit bypass is broad enough to cover write-heavy endpoints
-
-- Category: Abuse prevention / rate limits
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex TV hardening pass
-- Last touched: 2026-05-03
-- Score: C3 + F4 + S3 + P1(4) = 14
-- Evidence: `server/app.ts:105-112` exempts `/api/tv/cache/`, `/api/tv/channels/`, `/api/tv/bumpers/`, `/api/media/`, and `/api/uploads/` from the generic `/api/` limiter via `skip: isMediaStreamRequest` at `server/app.ts:253-260`. That prefix also covers `POST /api/media/upload` at `server/routes/media-library.ts:189` and `POST /api/tv/cache/prefetch` at `server/routes/tv.ts:4430`.
-- Why it matters: Playback reads need special handling, but broad prefix skips also remove the default guard from upload, cache-warming, and channel mutation paths that can consume CPU, disk, database, and network.
-- Likely correction direction: Narrow the bypass to specific safe read/stream routes and add endpoint-specific limits for uploads, prefetch, and cache mutation.
-- Local fix note: The generic `/api` limiter now exempts only read-only playback routes (cache proxy, stream/now/current, bumper media, and file-serving endpoints) via method-aware exact patterns instead of prefix-wide TV/media skips. Dedicated in-memory limiters were added for `/api/tv/cache/prefetch` and `/api/media/upload`.
-- Verification: `npm run check`
-- Verification idea: Streaming remains smooth, but repeated uploads/prefetches hit a clear endpoint-specific rate limit.
-
-### WTF-BB-015 - Uploaded media files are unauthenticated and enumerable by ID
-
-- Category: Media / access control
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex TV hardening pass
-- Last touched: 2026-05-03
-- Score: C3 + F3 + S4 + P1(4) = 14
-- Evidence: `server/routes/media-library.ts:189-249` requires auth to upload and stores `playbackUrl = /api/media/:id/file`, but `server/routes/media-library.ts:256-310` serves that file without `isAuthenticated`, owner checks, status checks, or a signed/public-token gate.
-- Why it matters: User uploads can be fetched by numeric ID, even before a user intentionally places them in a public TV/channel context. That is a privacy and access-control footgun.
-- Likely correction direction: Split private library file access from public playback access, or require signed playback URLs for upload-backed media.
-- Local fix note: `GET /api/media/:id/file` now requires auth and owner-or-staff access, while public TV playback for upload-backed media moved to `/api/tv/channels/:channelId/media/:mediaItemId/file` with channel-visibility checks plus an explicit channel/media association check. Both routes now serve through the shared object-storage + hot-cache helper so TV playback uses the Hetzner-backed storage path instead of leaking raw library IDs.
-- Verification: `node --import tsx/esm --test server/lib/tv-policy.test.ts`; `npm run check`
-- Verification idea: A logged-out request to another user's private upload ID returns 401/403, while intentional public TV playback still works.
 
 ### WTF-BB-641 - Rat Race hot-edition feed is backed by an empty local market index
 
@@ -7375,6 +7315,72 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - The focused playlist integrity suite passes 5/5, covering schema and migration constraints, atomic channel creation, guarded edit semantics, canonical playback selection, and channel-locked schedule overlap checks; the wider focused TV integrity/cache set passes 11/11.
   - The correction is an ancestor of live `d62d6b7f`. Deploy run 33619118314 succeeded, its migration transcript records `0043_tv_concurrency_guards.sql` as already applied before application replacement, readiness passed with database health true, and public health reported the exact deployed commit. WTF-BB-038 is Verified.
+
+### WTF-BB-018 - Studio preview ffmpeg jobs run inline without timeout or concurrency guard
+
+- Category: Studio / media processing
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Studio preview guard production verification
+- Last touched: 2026-04-28
+- Score: C4 + F3 + S3 + P1(4) = 14
+- Historical evidence:
+  - Studio uploads awaited preview generation in the request path while `ffmpeg` and `ffprobe` had no explicit deadline, kill path, or global concurrency guard. Malformed or expensive media could hold requests and external processes indefinitely.
+- Correction:
+  - Commit `c70b85d5` added bounded preview-process slots, bounded queue waiting, explicit subprocess deadlines, `SIGKILL` on expiry, output-memory bounds, and `finally`-based slot release.
+  - Commit `bb147bd1` removed derivative generation from the upload request. Uploads now enqueue a file id, return the created record, and let the registered `studio-preview-derivatives` scheduler process a bounded batch with durable queued/processing/ready/failed state, capped retries, stale-processing recovery, and source-size enforcement.
+- Verification (2026-09-02):
+  - The focused Studio preview suite passes 5/5. A real child process that remains alive is killed and rejected at the configured deadline; with concurrency set to one, a second job times out of the saturated queue, the waiter is removed, the first slot releases, and a later job succeeds. Source-policy proof confirms the upload route only enqueues before returning 201 and the scheduler retains bounded batches.
+  - Both correction commits are ancestors of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 passed for that descendant, and production readiness reported database, chain, and scheduler jobs healthy. WTF-BB-018 is Verified.
+
+### WTF-BB-017 - Unauthenticated TV prefetch can force large public media downloads
+
+- Category: TV cache / SSRF-DoS
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex TV cache prefetch production verification
+- Last touched: 2026-05-03
+- Score: C3 + F4 + S3 + P1(4) = 14
+- Historical evidence:
+  - Anonymous callers could submit batches to `POST /api/tv/cache/prefetch` and force outbound downloads plus disk/cache churn against arbitrary public media hosts. Private-address filtering did not prevent public-bandwidth amplification.
+- Correction:
+  - Commit `b565308c` requires authentication on the prefetch route, gives it a dedicated request limiter, and makes TV clients request server-side warming only when a user session exists. The route retains its existing bounded URL batch and normalizes every candidate before scheduling. Later modularization preserves the contract in `server/features/tv/cache-routes.ts`.
+  - Public stream snapshot construction no longer triggers prefetch downloads from unauthenticated read-path traffic; cache warming remains available through bounded authenticated or internal paths.
+- Verification (2026-09-02):
+  - The focused media/TV policy suite passes 19/19, including explicit authentication before `prefetchMediaAsync`, the dedicated limiter, bounded batch, and read-path prefetch exclusion. The correction is an ancestor of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 succeeded.
+  - A production anonymous prefetch request containing a valid public HTTPS candidate returned 401 `Not authenticated`, proving it was rejected before a download could be scheduled; public TV streams remained HTTP 200. WTF-BB-017 is Verified.
+
+### WTF-BB-016 - Media rate-limit bypass is broad enough to cover write-heavy endpoints
+
+- Category: Abuse prevention / rate limits
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex media rate-limit boundary verification
+- Last touched: 2026-05-03
+- Score: C3 + F4 + S3 + P1(4) = 14
+- Historical evidence:
+  - Broad TV/media path-prefix exemptions removed the generic API limiter from upload, cache-warming, and channel mutation routes along with playback reads. Those writes can consume CPU, disk, database, and outbound network resources.
+- Correction:
+  - Commit `b565308c` replaced broad prefix exemptions with method-aware exact playback patterns; non-GET/HEAD methods cannot qualify. Upload and prefetch writes retain dedicated limiters, and commit `1c92b56f` keys authenticated media-file/upload limits by session user before IP fallback.
+- Verification (2026-09-02):
+  - The focused media/TV policy suite passes 19/19. New guards require an empty broad-prefix list, the GET/HEAD method gate, and dedicated prefetch and upload limiters; private file playback keeps its own range-friendly but bounded limiter. Both corrections are ancestors of live `d62d6b7f`, whose Quality Gates 33619118346 and Deploy 33619118314 succeeded.
+  - Production continues to serve public channel streams while anonymous `POST /api/media/upload` and `POST /api/tv/cache/prefetch` both return 401 before doing work. WTF-BB-016 is Verified.
+
+### WTF-BB-015 - Uploaded media files are unauthenticated and enumerable by ID
+
+- Category: Media / access control
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex media access-control production verification
+- Last touched: 2026-05-03
+- Score: C3 + F3 + S4 + P1(4) = 14
+- Historical evidence:
+  - Upload required authentication but the numeric `GET /api/media/:id/file` route served bytes without authentication, ownership, readiness, or a public-playback capability. User uploads were enumerable before intentional publication.
+- Correction:
+  - Commit `b565308c` makes the raw media-library file route require authentication plus owner-or-staff authorization. Public upload-backed TV playback uses `/api/tv/channels/:channelId/media/:mediaItemId/file`, which proves channel visibility, explicit channel/media association, ready status, and upload source before serving through shared object storage/hot cache. Later modularization preserves that boundary.
+- Verification (2026-09-02):
+  - The focused media/TV policy suite passes 19/19, including private metadata and byte ownership, channel-scoped public playback, personal bumper ownership, and prohibition of raw library IDs in TV routes. The correction is an ancestor of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 succeeded for that descendant.
+  - Production `GET /api/media/1/file` returns 401 `Not authenticated`; a nonexistent media id on a visible channel returns association-scoped 404 rather than falling through to a raw library lookup. Public channels, streams, and the production TV embed remain available. WTF-BB-015 is Verified.
 
 ### WTF-BB-012 - Patched transitive leaf versions install cleanly and restore the high-severity production audit gate without a breaking direct-dependency change
 

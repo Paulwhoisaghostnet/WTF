@@ -2594,8 +2594,8 @@
     },
     {
       "id": "WTF-BB-018",
-      "status": "Fixed",
-      "owner": "Swarm A4",
+      "status": "Verified",
+      "owner": "Codex Studio preview guard production verification",
       "lastTouched": "2026-04-28",
       "category": "Studio / media processing",
       "priority": "P1",
@@ -2605,13 +2605,13 @@
       "functionalityDanger": 3,
       "securityDanger": 3,
       "title": "Studio preview ffmpeg jobs run inline without timeout or concurrency guard",
-      "body": "- Evidence: `server/routes/studio-files.ts:184-285` handles uploads in the request path and awaits `generatePreview`. `server/lib/studio/preview/pipeline.ts:158-185` spawns `ffmpeg`/`ffprobe` without an explicit timeout or kill path, and video/audio preview calls at `server/lib/studio/preview/pipeline.ts:294-326` and `359+` process user-provided media buffers inline.\n- Why it matters: A malformed or expensive upload can tie up Node request handling and external processes. Auth and upload caps reduce exposure, but there is no obvious worker queue, global concurrency cap, or process timeout around the heavy preview stage.\n- Likely correction direction: Move preview generation to a bounded worker queue, add ffmpeg/ffprobe timeouts, and return upload success before derivative generation when practical.\n- Local fix note: Added bounded in-process preview slots plus explicit `ffmpeg`/`ffprobe` kill timeouts in `server/lib/studio/preview/pipeline.ts` so heavy preview jobs fail closed instead of hanging indefinitely.\n- Verification: `npm run check`\n- Verification idea: A slow/corrupt media file cannot keep an ffmpeg process alive past the timeout and does not block unrelated Studio requests.",
+      "body": "- Historical evidence:\n  - Studio uploads awaited preview generation in the request path while `ffmpeg` and `ffprobe` had no explicit deadline, kill path, or global concurrency guard. Malformed or expensive media could hold requests and external processes indefinitely.\n- Correction:\n  - Commit `c70b85d5` added bounded preview-process slots, bounded queue waiting, explicit subprocess deadlines, `SIGKILL` on expiry, output-memory bounds, and `finally`-based slot release.\n  - Commit `bb147bd1` removed derivative generation from the upload request. Uploads now enqueue a file id, return the created record, and let the registered `studio-preview-derivatives` scheduler process a bounded batch with durable queued/processing/ready/failed state, capped retries, stale-processing recovery, and source-size enforcement.\n- Verification (2026-09-02):\n  - The focused Studio preview suite passes 5/5. A real child process that remains alive is killed and rejected at the configured deadline; with concurrency set to one, a second job times out of the saturated queue, the waiter is removed, the first slot releases, and a later job succeeds. Source-policy proof confirms the upload route only enqueues before returning 201 and the scheduler retains bounded batches.\n  - Both correction commits are ancestors of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 passed for that descendant, and production readiness reported database, chain, and scheduler jobs healthy. WTF-BB-018 is Verified.",
       "legacyOriginalId": "WTF-BB-018"
     },
     {
       "id": "WTF-BB-017",
-      "status": "Fixed",
-      "owner": "Codex TV hardening pass",
+      "status": "Verified",
+      "owner": "Codex TV cache prefetch production verification",
       "lastTouched": "2026-05-03",
       "category": "TV cache / SSRF-DoS",
       "priority": "P1",
@@ -2621,13 +2621,13 @@
       "functionalityDanger": 4,
       "securityDanger": 3,
       "title": "Unauthenticated TV prefetch can force large public media downloads",
-      "body": "- Evidence: `server/routes/tv.ts:4430-4453` accepts unauthenticated `POST /api/tv/cache/prefetch` requests, normalizes up to 10 submitted URLs, and calls `prefetchMediaAsync`. `server/lib/network-safety.ts:21-39` allows any public host when the allowlist is empty, `.env.example:193` leaves `TV_CACHE_ALLOWED_HOSTS=` blank, and `server/routes/tv.ts:70-85` defaults the remote-file cap to 500 MB with a 25s fetch timeout.\n- Why it matters: Attackers can make the server spend outbound bandwidth and disk/cache churn against arbitrary public media hosts, even if private/local hosts are blocked.\n- Likely correction direction: Require auth or a signed viewer token for prefetch, set a real host allowlist for production, lower public defaults, and rate-limit this route separately.\n- Local fix note: `POST /api/tv/cache/prefetch` now requires authentication and sits behind a dedicated 12-requests-per-minute limiter. The TV clients were also updated to only attempt server-side prefetch when a user session exists, so anonymous public viewers stop generating useless 401 churn against the warm-cache path.\n- Verification: `npm run check`\n- Verification idea: Anonymous prefetch requests are rejected or tightly capped; allowed channel playback still warms expected IPFS media.",
+      "body": "- Historical evidence:\n  - Anonymous callers could submit batches to `POST /api/tv/cache/prefetch` and force outbound downloads plus disk/cache churn against arbitrary public media hosts. Private-address filtering did not prevent public-bandwidth amplification.\n- Correction:\n  - Commit `b565308c` requires authentication on the prefetch route, gives it a dedicated request limiter, and makes TV clients request server-side warming only when a user session exists. The route retains its existing bounded URL batch and normalizes every candidate before scheduling. Later modularization preserves the contract in `server/features/tv/cache-routes.ts`.\n  - Public stream snapshot construction no longer triggers prefetch downloads from unauthenticated read-path traffic; cache warming remains available through bounded authenticated or internal paths.\n- Verification (2026-09-02):\n  - The focused media/TV policy suite passes 19/19, including explicit authentication before `prefetchMediaAsync`, the dedicated limiter, bounded batch, and read-path prefetch exclusion. The correction is an ancestor of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 succeeded.\n  - A production anonymous prefetch request containing a valid public HTTPS candidate returned 401 `Not authenticated`, proving it was rejected before a download could be scheduled; public TV streams remained HTTP 200. WTF-BB-017 is Verified.",
       "legacyOriginalId": "WTF-BB-017"
     },
     {
       "id": "WTF-BB-016",
-      "status": "Fixed",
-      "owner": "Codex TV hardening pass",
+      "status": "Verified",
+      "owner": "Codex media rate-limit boundary verification",
       "lastTouched": "2026-05-03",
       "category": "Abuse prevention / rate limits",
       "priority": "P1",
@@ -2637,13 +2637,13 @@
       "functionalityDanger": 4,
       "securityDanger": 3,
       "title": "Media rate-limit bypass is broad enough to cover write-heavy endpoints",
-      "body": "- Evidence: `server/app.ts:105-112` exempts `/api/tv/cache/`, `/api/tv/channels/`, `/api/tv/bumpers/`, `/api/media/`, and `/api/uploads/` from the generic `/api/` limiter via `skip: isMediaStreamRequest` at `server/app.ts:253-260`. That prefix also covers `POST /api/media/upload` at `server/routes/media-library.ts:189` and `POST /api/tv/cache/prefetch` at `server/routes/tv.ts:4430`.\n- Why it matters: Playback reads need special handling, but broad prefix skips also remove the default guard from upload, cache-warming, and channel mutation paths that can consume CPU, disk, database, and network.\n- Likely correction direction: Narrow the bypass to specific safe read/stream routes and add endpoint-specific limits for uploads, prefetch, and cache mutation.\n- Local fix note: The generic `/api` limiter now exempts only read-only playback routes (cache proxy, stream/now/current, bumper media, and file-serving endpoints) via method-aware exact patterns instead of prefix-wide TV/media skips. Dedicated in-memory limiters were added for `/api/tv/cache/prefetch` and `/api/media/upload`.\n- Verification: `npm run check`\n- Verification idea: Streaming remains smooth, but repeated uploads/prefetches hit a clear endpoint-specific rate limit.",
+      "body": "- Historical evidence:\n  - Broad TV/media path-prefix exemptions removed the generic API limiter from upload, cache-warming, and channel mutation routes along with playback reads. Those writes can consume CPU, disk, database, and outbound network resources.\n- Correction:\n  - Commit `b565308c` replaced broad prefix exemptions with method-aware exact playback patterns; non-GET/HEAD methods cannot qualify. Upload and prefetch writes retain dedicated limiters, and commit `1c92b56f` keys authenticated media-file/upload limits by session user before IP fallback.\n- Verification (2026-09-02):\n  - The focused media/TV policy suite passes 19/19. New guards require an empty broad-prefix list, the GET/HEAD method gate, and dedicated prefetch and upload limiters; private file playback keeps its own range-friendly but bounded limiter. Both corrections are ancestors of live `d62d6b7f`, whose Quality Gates 33619118346 and Deploy 33619118314 succeeded.\n  - Production continues to serve public channel streams while anonymous `POST /api/media/upload` and `POST /api/tv/cache/prefetch` both return 401 before doing work. WTF-BB-016 is Verified.",
       "legacyOriginalId": "WTF-BB-016"
     },
     {
       "id": "WTF-BB-015",
-      "status": "Fixed",
-      "owner": "Codex TV hardening pass",
+      "status": "Verified",
+      "owner": "Codex media access-control production verification",
       "lastTouched": "2026-05-03",
       "category": "Media / access control",
       "priority": "P1",
@@ -2653,7 +2653,7 @@
       "functionalityDanger": 3,
       "securityDanger": 4,
       "title": "Uploaded media files are unauthenticated and enumerable by ID",
-      "body": "- Evidence: `server/routes/media-library.ts:189-249` requires auth to upload and stores `playbackUrl = /api/media/:id/file`, but `server/routes/media-library.ts:256-310` serves that file without `isAuthenticated`, owner checks, status checks, or a signed/public-token gate.\n- Why it matters: User uploads can be fetched by numeric ID, even before a user intentionally places them in a public TV/channel context. That is a privacy and access-control footgun.\n- Likely correction direction: Split private library file access from public playback access, or require signed playback URLs for upload-backed media.\n- Local fix note: `GET /api/media/:id/file` now requires auth and owner-or-staff access, while public TV playback for upload-backed media moved to `/api/tv/channels/:channelId/media/:mediaItemId/file` with channel-visibility checks plus an explicit channel/media association check. Both routes now serve through the shared object-storage + hot-cache helper so TV playback uses the Hetzner-backed storage path instead of leaking raw library IDs.\n- Verification: `node --import tsx/esm --test server/lib/tv-policy.test.ts`; `npm run check`\n- Verification idea: A logged-out request to another user's private upload ID returns 401/403, while intentional public TV playback still works.",
+      "body": "- Historical evidence:\n  - Upload required authentication but the numeric `GET /api/media/:id/file` route served bytes without authentication, ownership, readiness, or a public-playback capability. User uploads were enumerable before intentional publication.\n- Correction:\n  - Commit `b565308c` makes the raw media-library file route require authentication plus owner-or-staff authorization. Public upload-backed TV playback uses `/api/tv/channels/:channelId/media/:mediaItemId/file`, which proves channel visibility, explicit channel/media association, ready status, and upload source before serving through shared object storage/hot cache. Later modularization preserves that boundary.\n- Verification (2026-09-02):\n  - The focused media/TV policy suite passes 19/19, including private metadata and byte ownership, channel-scoped public playback, personal bumper ownership, and prohibition of raw library IDs in TV routes. The correction is an ancestor of live `d62d6b7f`; Quality Gates 33619118346 and Deploy 33619118314 succeeded for that descendant.\n  - Production `GET /api/media/1/file` returns 401 `Not authenticated`; a nonexistent media id on a visible channel returns association-scoped 404 rather than falling through to a raw library lookup. Public channels, streams, and the production TV embed remain available. WTF-BB-015 is Verified.",
       "legacyOriginalId": "WTF-BB-015"
     },
     {
