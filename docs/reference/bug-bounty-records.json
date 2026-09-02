@@ -738,9 +738,9 @@
     },
     {
       "id": "WTF-BB-042",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex TV boot serialization reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "TV microapp / schema drift",
       "priority": "P2",
       "points": 9,
