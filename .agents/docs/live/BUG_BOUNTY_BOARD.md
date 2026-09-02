@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **121** · Verified: **455** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **121** · Verified: **456** · Archived: **4**
 
 ## Canonical Board
 
@@ -79,7 +79,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 186 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
-| WTF-BB-054 | In Progress | Codex canonical TV route retirement verification | 2026-09-02 | TV microapp / platform health | P1 | 13 | 186 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 186 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 271 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
@@ -385,6 +384,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-080 | Verified | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 186 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Verified | Codex Shadowbox evidence reconciliation | 2026-08-31 | Kiln integration / Shadowbox | P1 | 13 | 186 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 13 | 186 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
+| WTF-BB-054 | Verified | Codex canonical TV route retirement verification | 2026-09-02 | TV microapp / platform health | P1 | 13 | 186 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-053 | Verified | Codex canonical TV broken-clip recovery | 2026-09-02 | TV microapp / reliability | P1 | 13 | 186 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 186 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 186 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
@@ -1813,31 +1813,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
   - 2026-07-06 live recheck with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved repo cleanup, deployment identity, static/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof while blocking only on the dedicated WTF.ME credential and live host proof.
   - 2026-07-06 strict final gate with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d npm run pasta:live-readiness:final` proved the same non-WTF.ME surfaces and exited `1` only on the same WTF.ME blockers.
-
-### WTF-BB-054 - Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes
-
-- Category: TV microapp / platform health
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex canonical TV route retirement verification
-- Last touched: 2026-09-02
-- Score: C3 + F3 + S3 + P1(4) = 13
-- Evidence:
-  - `client/src/App.tsx` previously kept `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.
-  - The two code paths were independently maintained and diverged in behavior without a shared TV core.
-- Why it matters:
-  - Without a consolidation strategy, reliability work lands in one implementation and leaves `/tv` users on a different behavior set.
-  - Rollout and rollback are coarse, making production-safe changes harder and increasing support burden.
-- Likely correction direction:
-  - Introduce a shared TV adapter layer and feature flags for TV2 behavior in `/tv`.
-  - Add `/tv2` as a compatibility lane and retire it once `/tv` owns the same features and tests.
-- Local fix note:
-  - Removed the hidden `/tv2` route from `client/src/App.tsx`.
-  - Deleted `client/src/pages/TV2.tsx` after the useful resilience and playback fixes had already been moved into `TV.tsx`.
-  - Cleaned the lingering server comment that still described the skip-banner loop as a TV2-specific path.
-- Verification: `npm run check`; `git diff --check`; `rg -n 'TV2|/tv2' client/src server/routes/tv.ts`
-- Verification idea:
-  - Type `/tv2` directly after deploy and confirm it no longer resolves, while `/tv` still provides the hardened playback behavior.
 
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
@@ -8730,6 +8705,25 @@ Copy this when adding a new issue:
   - Require a signed source token for client log writes and add endpoint-specific, authenticated rate limiting separate from viewer exception paths.
 - Verification idea:
   - Verify anonymous burst traffic to this endpoint no longer succeeds when limits are exceeded and log table growth remains bounded.
+
+### WTF-BB-054 - Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes
+
+- Category: TV microapp / platform health
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex canonical TV route retirement verification
+- Last touched: 2026-09-02
+- Score: C3 + F3 + S3 + P1(4) = 13
+- Historical evidence:
+  - The application previously mapped `/tv` to `TV.tsx` and a hidden `/tv2` route to an independently maintained `TV2.tsx`. Reliability behavior diverged between the two player implementations.
+- Correction:
+  - Commit `2724d92a` removed the `/tv2` route and deleted `TV2.tsx` after its useful recovery behavior moved into canonical TV. The route registry now exposes one OS application at `/tv`.
+  - Commit `72e53a53` added policy that keeps the retired page absent, rejects both the old route and symbol from active route ownership, and requires canonical TV to retain its hardened playback/telemetry modules.
+  - Commit `7232eb21` registers the route-retirement behavior in the inventory and adds negative browser proof.
+- Verification (2026-09-02):
+  - Canonical TV policy passed 3/3; TypeScript, production build, board/environment checks, and inventory coverage passed for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
+  - Focused Chromium passed 3/3: `/tv2` renders no TV shell or power control, while `/tv` renders exactly one TV shell with its power control and the hardened broken-clip recovery remains green.
+  - The correction and policy commits are ancestors of production `ebe26e2a`; Quality Gates run 33678900075 and deploy run 33678900101 succeeded, public readiness reported that exact commit with database, chain, and jobs healthy, and `/tv` returned HTTP 200. WTF-BB-054 is Verified.
 
 ### WTF-BB-053 - Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry)
 

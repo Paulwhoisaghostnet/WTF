@@ -2834,7 +2834,7 @@
     },
     {
       "id": "WTF-BB-054",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Codex canonical TV route retirement verification",
       "lastTouched": "2026-09-02",
       "category": "TV microapp / platform health",
@@ -2845,7 +2845,7 @@
       "functionalityDanger": 3,
       "securityDanger": 3,
       "title": "Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes",
-      "body": "- Evidence:\n  - `client/src/App.tsx` previously kept `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.\n  - The two code paths were independently maintained and diverged in behavior without a shared TV core.\n- Why it matters:\n  - Without a consolidation strategy, reliability work lands in one implementation and leaves `/tv` users on a different behavior set.\n  - Rollout and rollback are coarse, making production-safe changes harder and increasing support burden.\n- Likely correction direction:\n  - Introduce a shared TV adapter layer and feature flags for TV2 behavior in `/tv`.\n  - Add `/tv2` as a compatibility lane and retire it once `/tv` owns the same features and tests.\n- Local fix note:\n  - Removed the hidden `/tv2` route from `client/src/App.tsx`.\n  - Deleted `client/src/pages/TV2.tsx` after the useful resilience and playback fixes had already been moved into `TV.tsx`.\n  - Cleaned the lingering server comment that still described the skip-banner loop as a TV2-specific path.\n- Verification: `npm run check`; `git diff --check`; `rg -n 'TV2|/tv2' client/src server/routes/tv.ts`\n- Verification idea:\n  - Type `/tv2` directly after deploy and confirm it no longer resolves, while `/tv` still provides the hardened playback behavior.",
+      "body": "- Historical evidence:\n  - The application previously mapped `/tv` to `TV.tsx` and a hidden `/tv2` route to an independently maintained `TV2.tsx`. Reliability behavior diverged between the two player implementations.\n- Correction:\n  - Commit `2724d92a` removed the `/tv2` route and deleted `TV2.tsx` after its useful recovery behavior moved into canonical TV. The route registry now exposes one OS application at `/tv`.\n  - Commit `72e53a53` added policy that keeps the retired page absent, rejects both the old route and symbol from active route ownership, and requires canonical TV to retain its hardened playback/telemetry modules.\n  - Commit `7232eb21` registers the route-retirement behavior in the inventory and adds negative browser proof.\n- Verification (2026-09-02):\n  - Canonical TV policy passed 3/3; TypeScript, production build, board/environment checks, and inventory coverage passed for 241 surfaces, 981 handles, 118 routes, and 16 workflows.\n  - Focused Chromium passed 3/3: `/tv2` renders no TV shell or power control, while `/tv` renders exactly one TV shell with its power control and the hardened broken-clip recovery remains green.\n  - The correction and policy commits are ancestors of production `ebe26e2a`; Quality Gates run 33678900075 and deploy run 33678900101 succeeded, public readiness reported that exact commit with database, chain, and jobs healthy, and `/tv` returned HTTP 200. WTF-BB-054 is Verified.",
       "legacyOriginalId": "WTF-BB-054"
     },
     {
