@@ -773,7 +773,7 @@ Variables: **1186**. Source files scanned: **2269**.
 | `TZ2AT_CEX_ADDRESSES` | server/platform | server-runtime | none | no | enumerated / compared | active | 1 (server/routes/tz2at.ts) |
 | `TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK` | server/platform | server-runtime | none | no | enumerated / compared | active | 1 (server/routes/tz2at.ts) |
 | `TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS` | server/platform | server-runtime | none | no | no explicit validation found | active | 1 (server/routes/tz2at.ts) |
-| `TZKT_API_URL` | operations, platform, server/platform | deploy-ops, server-runtime, shared-runtime, test | https://api.tzkt.io/v1 | no | enumerated / compared | active | 7 (.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, scripts/marketplace-v2/run-local-shadownet-puppet-e2e.mjs, ...) |
+| `TZKT_API_URL` | operations, platform, server/platform | deploy-ops, server-runtime, shared-runtime, test | https://api.tzkt.io/v1 | no | enumerated / compared | active | 6 (.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, scripts/marketplace-v2/run-local-shadownet-puppet-e2e.mjs, ...) |
 | `TZKT_HELPER_CACHE_MAX_ENTRIES` | server/platform | server-runtime | 2 | no | parsed or validated | active | 1 (server/tzkt.ts) |
 | `TZKT_MAINNET_API` | operations | deploy-ops, server-runtime | https://api.tzkt.io | no | enumerated / compared | legacy compatibility | 1 (scripts/marketplace-v2/legacy-marketplace-pause.ts) |
 | `TZKT_RESPONSE_CACHE_DISABLED` | server/platform | server-runtime | none | no | parsed or validated | active | 1 (server/tzkt.ts) |

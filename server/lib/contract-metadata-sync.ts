@@ -33,7 +33,7 @@ import { db } from "../db";
 import { contractMetadata, walletHoldings, walletEvents } from "@shared/schema";
 import { register as registerJob, type JobResult } from "./scheduler";
 import { sql } from "drizzle-orm";
-import { getTzktBase } from "./contract-config";
+import { tzkt, UpstreamError } from "./upstream";
 
 const TICK_MS = 15 * 60 * 1000;
 const INITIAL_DELAY_MS = 4 * 60 * 1000;
@@ -42,10 +42,6 @@ const FRESHNESS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // ~8 req/s — comfortably under TzKT's 10 req/s anonymous ceiling.
 const REQUEST_SPACING_MS = 120;
-
-// TzKT sometimes 429s under transient load; back off and try once more.
-const RETRY_DELAY_MS = 2_000;
-const RETRY_COUNT = 2;
 
 export interface TzktContract {
   address?: string;
@@ -64,46 +60,24 @@ async function fetchContract(
   address: string,
   signal?: AbortSignal
 ): Promise<TzktContract | null> {
-  const url = `${getTzktBase()}/contracts/${encodeURIComponent(
-    address
-  )}?select=${SELECT_FIELDS}`;
-  for (let attempt = 0; attempt <= RETRY_COUNT; attempt++) {
-    try {
-      const res = await fetch(url, { signal });
-      if (res.status === 404) {
-        // An address surfaced in wallet_holdings that TzKT doesn't
-        // recognise as a contract is almost certainly a stale or
-        // malformed entry.  Mark it with `kind='unknown'` so we
-        // don't keep retrying forever.
-        return { address, kind: "unknown" };
-      }
-      if (!res.ok) {
-        if (res.status === 429 || res.status >= 500) {
-          if (attempt < RETRY_COUNT) {
-            await sleep(RETRY_DELAY_MS * (attempt + 1));
-            continue;
-          }
-        }
-        console.warn(
-          `[contract-metadata-sync] ${address}: TzKT ${res.status} ${res.statusText}`
-        );
-        return null;
-      }
-      const body = (await res.json()) as TzktContract;
-      return body ?? null;
-    } catch (err) {
-      if (attempt < RETRY_COUNT) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      console.warn(
-        `[contract-metadata-sync] ${address}: fetch failed:`,
-        err instanceof Error ? err.message : err
-      );
-      return null;
+  const path = `/contracts/${encodeURIComponent(address)}?select=${SELECT_FIELDS}`;
+  try {
+    const res = await tzkt.raw(path, { signal });
+    const body = (await res.json()) as TzktContract;
+    return body ?? null;
+  } catch (err) {
+    if (err instanceof UpstreamError && err.status === 404) {
+      // An address surfaced in wallet_holdings that TzKT doesn't recognise as
+      // a contract is stale or malformed. Persist an unknown marker so the
+      // scheduled job does not retry it forever.
+      return { address, kind: "unknown" };
     }
+    console.warn(
+      `[contract-metadata-sync] ${address}: fetch failed:`,
+      err instanceof Error ? err.message : err
+    );
+    return null;
   }
-  return null;
 }
 
 async function sleep(ms: number): Promise<void> {

@@ -28,6 +28,8 @@
 
 /* eslint-disable no-console */
 
+import { getTzktBase } from "./contract-config";
+
 /** Configuration for a single upstream client. */
 export interface UpstreamConfig {
   /** Human-readable tag used in logs: `"tzkt"`, `"objkt"`, etc. */
@@ -209,12 +211,15 @@ export class UpstreamClient {
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+      const requestSignal = init.signal
+        ? AbortSignal.any([init.signal, ctrl.signal])
+        : ctrl.signal;
 
       try {
         const res = await this.fetchImpl(url, {
           ...init,
           headers,
-          signal: ctrl.signal,
+          signal: requestSignal,
         });
         clearTimeout(timer);
 
@@ -274,6 +279,14 @@ export class UpstreamClient {
         return res;
       } catch (err: any) {
         clearTimeout(timer);
+        if (init.signal?.aborted) {
+          throw new UpstreamError({
+            message: `${this.label}: request cancelled by caller`,
+            url,
+            label: this.label,
+            attempt,
+          });
+        }
         const retriable =
           err?.name === "AbortError" ||
           err?.code === "ECONNRESET" ||
@@ -378,7 +391,7 @@ function renderParams(
 // routes that haven't migrated yet + the occasional Retry-After wait.
 export const tzkt = new UpstreamClient({
   label: "tzkt",
-  baseUrl: (process.env.TZKT_API_URL || "https://api.tzkt.io/v1").replace(/\/+$/, ""),
+  baseUrl: getTzktBase(),
   requestsPerSecond: 8,
   burst: 16,
   timeoutMs: 25_000,

@@ -11497,3 +11497,13 @@
 **Rule**: Validate collection shape, element type/format, cardinality, and serialized size before any external fan-out. Reject invalid operator input deterministically instead of truncating it, and make stored configuration pass the same schema used at the write boundary.
 
 ---
+
+## 2026-09-02 — A shared client still drifts if its endpoint has a second authority
+
+**What happened**: Most TzKT readers had moved onto the shared upstream client, but contract metadata still carried an independent fetch/retry loop, and the shared client duplicated endpoint selection instead of consuming the network-aware contract resolver.
+
+**Why it mattered**: Centralized retries do not prevent network drift when the client and contract configuration can choose different base URLs. Moving a cancellable scheduler onto the shared client also required preserving caller cancellation instead of letting the client's timeout signal overwrite it.
+
+**Rule**: Give each upstream one endpoint authority and one request-policy client. Route all core readers through it, combine caller cancellation with client timeouts, and never retry work the caller has explicitly cancelled.
+
+---

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **425** · Archived: **4**
+Total: **637** · Open: **5** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **426** · Archived: **4**
 
 ## Canonical Board
 
@@ -75,7 +75,6 @@ Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-026 | Claimed | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -230,7 +229,7 @@ Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 511 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 511 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 511 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
-| WTF-BB-033 | Fixed | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
+| WTF-BB-026 | Fixed | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 511 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 511 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 572 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
@@ -603,6 +602,7 @@ Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-074 | Verified | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-060 | Verified | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-042 | Verified | Codex TV boot serialization reconciliation | 2026-09-02 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
+| WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 572 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1598,26 +1598,6 @@ Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
-
-- Category: API / reliability
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex TzKT upstream consolidation
-- Last touched: 2026-09-02
-- Score: C3 + F2 + S1 + P2(3) = 9
-- Evidence:
-  - `server/tzprofiles.ts:1-3`, `:8-10`, `:41-47` use hardcoded endpoints and raw `fetch`.
-  - `server/lib/contract-metadata-sync.ts:63-75` and `server/lib/tzkt-ops.ts:33-38` duplicate raw fetch flows.
-  - `server/lib/operator-wallet-balances.ts:24-27` and other files keep local TZKT constants, causing config drift.
-- Why it matters:
-  - Different code paths now have independent fetch behavior and observability.
-  - It increases API drift risk and makes chain/network migration harder.
-- Likely correction direction:
-  - Move these readers onto shared upstream clients and centralized endpoint config.
-- Verification idea:
-  - In staging, override `TZKT_API_URL` and verify these paths hit the overridden host with shared timeout/retry behavior.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -5065,23 +5045,22 @@ Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Block
 - Verification idea:
   - Replay flood traffic with varied `sessionId`s and verify memory and queue-blacklist behavior remain bounded.
 
-### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
+### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
 
-- Category: Data integrity / ops
+- Category: API / reliability
 - Priority: P2
 - Status: Fixed
-- Owner/Session: Codex W groupchat settings hardening
+- Owner/Session: Codex TzKT upstream consolidation
 - Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
+- Score: C3 + F2 + S1 + P2(3) = 9
 - Historical evidence:
-  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.
-- Correction (2026-09-02):
-  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.
-  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.
-  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.
+  - Profile, contract-metadata, operation-verification, and operator-balance readers once owned hardcoded TzKT/TzProfiles URLs and independent raw-fetch/retry behavior, creating multiple endpoint and rate-policy authorities.
+- Correction (completed 2026-09-02):
+  - Earlier ancestor corrections moved profile resolution, operation verification, operator balances, WTF Domains, contract activity, and operator reconciliation onto named shared upstream clients. This pass moved the remaining listed contract-metadata scheduler off its local URL/fetch/retry loop and onto the shared TzKT client while retaining the stale-contract 404 marker.
+  - The shared TzKT client now obtains its base URL from the single network-aware contract-config resolver, so `TZKT_API_URL` overrides and Shadownet selection cannot drift between readers. Callers inherit one rate bucket, timeout, retry budget, Retry-After policy, headers, and error shape. Caller cancellation is combined with the timeout signal and exits without retrying cancelled work.
 - Verification:
-  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.
-  - Source correction is committed locally and awaits the normal `main` deployment/live verification before this record can move from Fixed to Verified.
+  - The focused upstream/kernel suite passes 5/5, proving retry budgets, caller cancellation, and that every file named by this record uses the shared client without raw fetch or local retry constants. Explicit probes route a custom `TZKT_API_URL` to its supplied host and unset-override `TEZOS_NETWORK=shadownet` to `https://api.shadownet.tzkt.io/v1`.
+  - Production build and full TypeScript check pass. The source correction awaits `main` deployment and live verification, so WTF-BB-026 is Fixed.
 
 ### WTF-BB-010 - Entrypoint recursively `chown -R`s mounted volumes every boot
 
@@ -13671,6 +13650,24 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - The focused TV/startup policy suite passes 6/6, proving lock-before-DDL ordering, non-owner early return, unlock-before-client-release cleanup, and completion of one-shot mutations before listener startup.
   - `47a35a1f` is an ancestor of current `main` and of live production commit `15ce5a5a`; public health is alive. The concurrent-writer condition described by this record is absent, so WTF-BB-042 is Verified.
+
+### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
+
+- Category: Data integrity / ops
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex W groupchat settings hardening
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.
+- Correction (2026-09-02):
+  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.
+  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.
+  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.
+- Verification:
+  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.
+  - Exact fix commit `3775bbe2` passed Quality Gates run `33602174137` and Hetzner deploy run `33602174163`; public health reports `commitRef: 3775bbe2`. WTF-BB-033 is Verified.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 

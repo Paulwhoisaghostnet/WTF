@@ -68,3 +68,43 @@ test("upstream refuses Retry-After values that exceed retry budget", async () =>
   );
   assert.deepEqual(sleeps, []);
 });
+
+test("upstream combines caller cancellation with its request timeout", async () => {
+  const caller = new AbortController();
+  let observedSignal: AbortSignal | null = null;
+  let calls = 0;
+  const sleeps: number[] = [];
+  const client = new UpstreamClient({
+    label: "cancelled-upstream",
+    baseUrl: "https://example.test",
+    requestsPerSecond: 100,
+    burst: 100,
+    maxRetries: 3,
+    sleepFn: async (ms) => {
+      sleeps.push(ms);
+    },
+    fetchImpl: async (_url, init) => {
+      calls += 1;
+      observedSignal = init?.signal as AbortSignal;
+      if (observedSignal.aborted) {
+        throw new DOMException("caller cancelled", "AbortError");
+      }
+      return await new Promise<Response>((_resolve, reject) => {
+        observedSignal?.addEventListener("abort", () => {
+          reject(new DOMException("caller cancelled", "AbortError"));
+        });
+      });
+    },
+  });
+
+  const pending = client.raw("/slow", { signal: caller.signal });
+  caller.abort();
+
+  await assert.rejects(
+    pending,
+    (err) => err instanceof UpstreamError && /cancelled by caller/.test(err.message)
+  );
+  assert.equal((observedSignal as AbortSignal | null)?.aborted, true);
+  assert.equal(calls, 1);
+  assert.deepEqual(sleeps, []);
+});

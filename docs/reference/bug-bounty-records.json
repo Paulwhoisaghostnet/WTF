@@ -754,7 +754,7 @@
     },
     {
       "id": "WTF-BB-033",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex W groupchat settings hardening",
       "lastTouched": "2026-09-02",
       "category": "Data integrity / ops",
@@ -765,12 +765,12 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "Unbounded `platform_settings` value payload allows oversized conversation lists",
-      "body": "- Historical evidence:\n  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.\n- Correction (2026-09-02):\n  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.\n  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.\n  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.\n- Verification:\n  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.\n  - Source correction is committed locally and awaits the normal `main` deployment/live verification before this record can move from Fixed to Verified.",
+      "body": "- Historical evidence:\n  - The legacy W admin setter normalized an arbitrarily large caller array, silently discarded malformed values, performed an upstream X lookup for every surviving identity, and only reached the general `platform_settings` character guard at persistence time. DB reads also accepted loose string/comma formats.\n- Correction (2026-09-02):\n  - The operator selection now uses a strict string-array validator before any upstream lookup. It rejects non-array, empty, mixed-type, malformed, over-character-budget, and over-limit inputs with deterministic 400 responses instead of truncating or silently filtering them. Duplicate valid IDs are normalized once.\n  - The 250-entry ceiling reuses the platform's existing persisted X-conversation retention boundary rather than inventing a second capacity policy. Stored DB configuration must pass the same bounded JSON-array schema; legacy env/default inputs remain migration-compatible. Optimistic-lock protection is unchanged.\n  - The interaction inventory and Social domain API registry now catalog the bounded admin contract.\n- Verification:\n  - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.\n  - Exact fix commit `3775bbe2` passed Quality Gates run `33602174137` and Hetzner deploy run `33602174163`; public health reports `commitRef: 3775bbe2`. WTF-BB-033 is Verified.",
       "legacyOriginalId": "WTF-BB-033"
     },
     {
       "id": "WTF-BB-026",
-      "status": "Claimed",
+      "status": "Fixed",
       "owner": "Codex TzKT upstream consolidation",
       "lastTouched": "2026-09-02",
       "category": "API / reliability",
@@ -781,7 +781,7 @@
       "functionalityDanger": 2,
       "securityDanger": 1,
       "title": "Profile and metadata fetchers duplicate hardcoded upstream paths",
-      "body": "- Evidence:\n  - `server/tzprofiles.ts:1-3`, `:8-10`, `:41-47` use hardcoded endpoints and raw `fetch`.\n  - `server/lib/contract-metadata-sync.ts:63-75` and `server/lib/tzkt-ops.ts:33-38` duplicate raw fetch flows.\n  - `server/lib/operator-wallet-balances.ts:24-27` and other files keep local TZKT constants, causing config drift.\n- Why it matters:\n  - Different code paths now have independent fetch behavior and observability.\n  - It increases API drift risk and makes chain/network migration harder.\n- Likely correction direction:\n  - Move these readers onto shared upstream clients and centralized endpoint config.\n- Verification idea:\n  - In staging, override `TZKT_API_URL` and verify these paths hit the overridden host with shared timeout/retry behavior.",
+      "body": "- Historical evidence:\n  - Profile, contract-metadata, operation-verification, and operator-balance readers once owned hardcoded TzKT/TzProfiles URLs and independent raw-fetch/retry behavior, creating multiple endpoint and rate-policy authorities.\n- Correction (completed 2026-09-02):\n  - Earlier ancestor corrections moved profile resolution, operation verification, operator balances, WTF Domains, contract activity, and operator reconciliation onto named shared upstream clients. This pass moved the remaining listed contract-metadata scheduler off its local URL/fetch/retry loop and onto the shared TzKT client while retaining the stale-contract 404 marker.\n  - The shared TzKT client now obtains its base URL from the single network-aware contract-config resolver, so `TZKT_API_URL` overrides and Shadownet selection cannot drift between readers. Callers inherit one rate bucket, timeout, retry budget, Retry-After policy, headers, and error shape. Caller cancellation is combined with the timeout signal and exits without retrying cancelled work.\n- Verification:\n  - The focused upstream/kernel suite passes 5/5, proving retry budgets, caller cancellation, and that every file named by this record uses the shared client without raw fetch or local retry constants. Explicit probes route a custom `TZKT_API_URL` to its supplied host and unset-override `TEZOS_NETWORK=shadownet` to `https://api.shadownet.tzkt.io/v1`.\n  - Production build and full TypeScript check pass. The source correction awaits `main` deployment and live verification, so WTF-BB-026 is Fixed.",
       "legacyOriginalId": "WTF-BB-026"
     },
     {
