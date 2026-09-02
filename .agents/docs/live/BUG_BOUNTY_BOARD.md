@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **4** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **426** · Archived: **4**
+Total: **637** · Open: **4** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **427** · Archived: **4**
 
 ## Canonical Board
 
@@ -74,7 +74,6 @@ Total: **637** · Open: **4** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-022 | Claimed | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 511 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -603,6 +602,7 @@ Total: **637** · Open: **4** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-060 | Verified | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-042 | Verified | Codex TV boot serialization reconciliation | 2026-09-02 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
+| WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 511 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 572 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1585,19 +1585,6 @@ Total: **637** · Open: **4** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
-
-- Category: Deploy / DB operations
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex Supabase boot-backfill reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence: `scripts/run-boot-backfill.ts` resolves region as `process.env.SUPABASE_REGION || "us-west-2"` and builds `aws-1-${region}.pooler.supabase.com`, coupled with forced no-verify SSL mode.
-- Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.
-- Likely correction direction: Fail fast if region is required and absent, and pin the exact production connection target via validated environment configuration.
-- Verification idea: Remove `SUPABASE_REGION` in a non-`us-west-2` test setup and verify the script refuses to run rather than connecting to an unintended host.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13668,6 +13655,23 @@ Copy this when adding a new issue:
 - Verification:
   - Focused W/platform-settings suite passes 17/17, including malformed and over-limit selection, strict DB parsing, global value-size rejection, and concurrent-write protection. Full TypeScript check passes with the production compiler heap policy. Inventory coverage is complete for 241 rows, 981 handles, 118 routes, and 16 workflows.
   - Exact fix commit `3775bbe2` passed Quality Gates run `33602174137` and Hetzner deploy run `33602174163`; public health reports `commitRef: 3775bbe2`. WTF-BB-033 is Verified.
+
+### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
+
+- Category: Deploy / DB operations
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Supabase boot-backfill reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - The `--supabase` boot-backfill runner once synthesized an AWS pooler hostname with `us-west-2` when `SUPABASE_REGION` was absent, risking the wrong target in other regions.
+- Correction:
+  - Ancestor commit `38f806e3` removed the regional guess. Credential-based URL construction now requires an explicit `SUPABASE_REGION` and throws before opening a database connection when it is missing. An operator-pinned `SUPABASE_BACKUP_URL` remains authoritative.
+  - Generated pooler URLs default to `sslmode=require`; `sslmode=no-verify` is available only through the explicit `ALLOW_INSECURE_DB_TLS=1` emergency override and emits a warning.
+- Verification (2026-09-02):
+  - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.
+  - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 

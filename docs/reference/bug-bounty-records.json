@@ -786,7 +786,7 @@
     },
     {
       "id": "WTF-BB-022",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex Supabase boot-backfill reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Deploy / DB operations",
@@ -797,7 +797,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "Backfill pipeline defaults to `us-west-2` when Supabase region is missing",
-      "body": "- Evidence: `scripts/run-boot-backfill.ts` resolves region as `process.env.SUPABASE_REGION || \"us-west-2\"` and builds `aws-1-${region}.pooler.supabase.com`, coupled with forced no-verify SSL mode.\n- Why it matters: In non-western environments this can target the wrong pooler endpoint, causing failed backfill runs, partial state updates, or accidental connect-to-wrong-region behavior during ops.\n- Likely correction direction: Fail fast if region is required and absent, and pin the exact production connection target via validated environment configuration.\n- Verification idea: Remove `SUPABASE_REGION` in a non-`us-west-2` test setup and verify the script refuses to run rather than connecting to an unintended host.",
+      "body": "- Historical evidence:\n  - The `--supabase` boot-backfill runner once synthesized an AWS pooler hostname with `us-west-2` when `SUPABASE_REGION` was absent, risking the wrong target in other regions.\n- Correction:\n  - Ancestor commit `38f806e3` removed the regional guess. Credential-based URL construction now requires an explicit `SUPABASE_REGION` and throws before opening a database connection when it is missing. An operator-pinned `SUPABASE_BACKUP_URL` remains authoritative.\n  - Generated pooler URLs default to `sslmode=require`; `sslmode=no-verify` is available only through the explicit `ALLOW_INSECURE_DB_TLS=1` emergency override and emits a warning.\n- Verification (2026-09-02):\n  - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.\n  - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.",
       "legacyOriginalId": "WTF-BB-022"
     },
     {

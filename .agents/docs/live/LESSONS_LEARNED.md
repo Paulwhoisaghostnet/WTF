@@ -11507,3 +11507,13 @@
 **Rule**: Give each upstream one endpoint authority and one request-policy client. Route all core readers through it, combine caller cancellation with client timeouts, and never retry work the caller has explicitly cancelled.
 
 ---
+
+## 2026-09-02 — Operational location must be explicit, not guessed
+
+**What happened**: The Supabase backfill record stayed Open after its `us-west-2` fallback had been removed. The current runner requires an explicit region when constructing a credential-based pooler URL and retains an operator-pinned full URL as the higher-authority override.
+
+**Why it mattered**: A plausible default region is more dangerous than a clear stop because it can direct privileged maintenance at the wrong infrastructure. Source inspection alone also did not prove the runner stopped before database initialization.
+
+**Rule**: Fail before connection setup when an infrastructure location is required but absent. Verify both the policy source and a real missing-location invocation, and keep insecure TLS behavior behind a named, warning-producing emergency override.
+
+---
