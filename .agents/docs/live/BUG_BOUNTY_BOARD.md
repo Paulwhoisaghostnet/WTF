@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **12** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **418** · Archived: **4**
+Total: **637** · Open: **11** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **418** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
-| WTF-BB-182 | Open | - | 2026-05-28 | In-app market / inventory E2E | P2 | 9 | 511 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-086 | Open | - | - | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-074 | Open | - | 2026-05-03 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
 | WTF-BB-060 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
@@ -82,6 +81,7 @@ Total: **637** · Open: **12** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-182 | Claimed | Codex market-pricing reconciliation | 2026-09-02 | In-app market / inventory E2E | P2 | 9 | 511 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -678,25 +678,6 @@ Total: **637** · Open: **12** · Claimed: **41** · In Progress: **13** · Bloc
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-182 - Inventory market-pricing spec creates a sale that the storefront does not visibly render
-
-- Category: In-app market / inventory E2E
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-05-28
-- Score: C2 + F4 + S0 + P2(3) = 9
-- Evidence:
-  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.
-  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: "9.00"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.
-  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.
-- Why it matters:
-  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.
-- Likely correction direction:
-  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.
-- Verification idea:
-  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.
 
 ### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
 
@@ -1728,6 +1709,27 @@ Total: **637** · Open: **12** · Claimed: **41** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-182 - Inventory market-pricing spec creates a sale that the storefront does not visibly render
+
+- Category: In-app market / inventory E2E
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex market-pricing reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Evidence:
+  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.
+  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: "9.00"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.
+  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.
+- Why it matters:
+  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.
+- Likely correction direction:
+  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.
+- Verification idea:
+  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.
+- Claim (2026-09-02):
+  - Codex claimed the item for stale-record reconciliation after a fresh isolated harness reproduced the entire admin-sale-to-rendered-storefront story successfully.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 

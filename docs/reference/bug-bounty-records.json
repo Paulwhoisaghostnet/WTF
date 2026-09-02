@@ -674,9 +674,9 @@
     },
     {
       "id": "WTF-BB-182",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-05-28",
+      "status": "Claimed",
+      "owner": "Codex market-pricing reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "In-app market / inventory E2E",
       "priority": "P2",
       "points": 9,
@@ -685,7 +685,7 @@
       "functionalityDanger": 4,
       "securityDanger": 0,
       "title": "Inventory market-pricing spec creates a sale that the storefront does not visibly render",
-      "body": "- Evidence:\n  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.\n  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: \"9.00\"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.\n  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.\n- Why it matters:\n  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.\n- Likely correction direction:\n  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.\n- Verification idea:\n  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.",
+      "body": "- Evidence:\n  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.\n  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: \"9.00\"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.\n  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.\n- Why it matters:\n  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.\n- Likely correction direction:\n  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.\n- Verification idea:\n  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.\n- Claim (2026-09-02):\n  - Codex claimed the item for stale-record reconciliation after a fresh isolated harness reproduced the entire admin-sale-to-rendered-storefront story successfully.",
       "legacyOriginalId": "WTF-BB-182"
     },
     {
