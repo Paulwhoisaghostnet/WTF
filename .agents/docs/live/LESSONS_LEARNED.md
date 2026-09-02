@@ -11527,3 +11527,13 @@
 **Rule**: For periodic candidate refreshes, order by product-relevant indexed state with a deterministic tie-breaker, apply the existing bounded limit, and keep schema plus migration definitions under a regression test that forbids random SQL sorting.
 
 ---
+
+## 2026-09-02 — Test harness contracts are executable product dependencies
+
+**What happened**: The browser harness returned a legacy `actions` property for the challenge-automation registry after production and the Admin UI had standardized on `rewardActions`. Tests that stubbed the route locally hid the shared fixture defect, while direct Automation runs could crash.
+
+**Why it mattered**: A harness response is not harmless sample data when product UI executes against it. Source-only parity checks also cannot prove the screen survives the shared fixture without a per-test override.
+
+**Rule**: Keep shared harness response keys under a contract test against both the production route and consumer, then run at least one focused browser story with no route override and assert the visible loaded state.
+
+---

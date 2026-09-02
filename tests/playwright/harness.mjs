@@ -5367,7 +5367,7 @@ function apiMock(req, res) {
     return res.json({
       triggers: [],
       predicates: [],
-      actions: [],
+      rewardActions: [],
     });
   }
   if (pathName.startsWith("/api/admin/challenge-automation/challenges")) {

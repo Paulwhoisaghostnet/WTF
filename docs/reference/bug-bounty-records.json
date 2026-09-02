@@ -834,7 +834,7 @@
     },
     {
       "id": "WTF-BB-317",
-      "status": "Claimed",
+      "status": "Fixed",
       "owner": "Codex challenge automation harness parity",
       "lastTouched": "2026-09-02",
       "category": "E2E / Playwright harness parity",
@@ -845,7 +845,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion",
-      "body": "- Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.",
+      "body": "- Historical evidence:\n  - The local Playwright harness returned `{ triggers, predicates, actions }` for `/api/admin/challenge-automation/registry`, while the production route and Automation UI use `rewardActions`. Direct harness-backed Automation proofs could therefore crash while reading `registry.rewardActions.length`.\n- Correction (2026-09-02):\n  - The shared harness fixture now returns `rewardActions`, matching the production route. A focused contract test compares the harness key, production response, and consuming Admin tab and forbids reintroduction of the legacy `actions` array in that route block.\n  - A focused Chromium story opens `/admin?section=automation` without a route override and asserts the registry panel visibly renders `0 triggers`, `0 predicates`, and `0 reward actions`.\n- Verification:\n  - Harness contract test passes 1/1, focused browser story passes 1/1, and inventory registry coverage remains complete. The correction awaits commit/push and CI before WTF-BB-317 can move from Fixed to Verified.",
       "legacyOriginalId": "WTF-BB-317"
     },
     {

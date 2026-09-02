@@ -23,6 +23,15 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
     await setAdminState(request);
   });
 
+  test("opens Automation against the production-shaped harness registry", async ({ page }) => {
+    await openAdmin(page, "/admin?section=automation");
+
+    await expect(page.getByText("Challenge automation registry", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 triggers", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 predicates", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 reward actions", { exact: true })).toBeVisible();
+  });
+
   test("reviews every user by highest role and opens a complete WTF Passport", async ({ page, request }) => {
     await openAdmin(page, "/admin?section=users");
 
