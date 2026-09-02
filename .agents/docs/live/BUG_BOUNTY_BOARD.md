@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **122** · Verified: **455** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **121** · Verified: **455** · Archived: **4**
 
 ## Canonical Board
 
@@ -79,6 +79,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 186 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
+| WTF-BB-054 | In Progress | Codex canonical TV route retirement verification | 2026-09-02 | TV microapp / platform health | P1 | 13 | 186 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 186 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 271 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
@@ -139,7 +140,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 186 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 186 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 186 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
-| WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 13 | 186 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-661 | Fixed | Codex wallet nonce atomicity pass | 2026-08-30 | Authentication / wallet challenge replay | P1 | 12 | 271 | 2 | 3 | 3 | Wallet challenge consumption is not atomic under concurrent verification |
 | WTF-BB-642 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 271 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 271 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
@@ -1814,6 +1814,31 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - 2026-07-06 live recheck with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved repo cleanup, deployment identity, static/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof while blocking only on the dedicated WTF.ME credential and live host proof.
   - 2026-07-06 strict final gate with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d npm run pasta:live-readiness:final` proved the same non-WTF.ME surfaces and exited `1` only on the same WTF.ME blockers.
 
+### WTF-BB-054 - Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes
+
+- Category: TV microapp / platform health
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex canonical TV route retirement verification
+- Last touched: 2026-09-02
+- Score: C3 + F3 + S3 + P1(4) = 13
+- Evidence:
+  - `client/src/App.tsx` previously kept `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.
+  - The two code paths were independently maintained and diverged in behavior without a shared TV core.
+- Why it matters:
+  - Without a consolidation strategy, reliability work lands in one implementation and leaves `/tv` users on a different behavior set.
+  - Rollout and rollback are coarse, making production-safe changes harder and increasing support burden.
+- Likely correction direction:
+  - Introduce a shared TV adapter layer and feature flags for TV2 behavior in `/tv`.
+  - Add `/tv2` as a compatibility lane and retire it once `/tv` owns the same features and tests.
+- Local fix note:
+  - Removed the hidden `/tv2` route from `client/src/App.tsx`.
+  - Deleted `client/src/pages/TV2.tsx` after the useful resilience and playback fixes had already been moved into `TV.tsx`.
+  - Cleaned the lingering server comment that still described the skip-banner loop as a TV2-specific path.
+- Verification: `npm run check`; `git diff --check`; `rg -n 'TV2|/tv2' client/src server/routes/tv.ts`
+- Verification idea:
+  - Type `/tv2` directly after deploy and confirm it no longer resolves, while `/tv` still provides the hardened playback behavior.
+
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
 - Category: API / reliability
@@ -3102,31 +3127,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Keep contract templates as versioned app assets or package artifacts; keep Kiln service URL/token/timeout explicit in deploy env.
 - Verification idea:
   - Build the app image, run a dry-run collection deployment against host Kiln, and confirm missing/slow Kiln fails fast with a 503 instead of hanging.
-
-### WTF-BB-054 - Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes
-
-- Category: TV microapp / platform health
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex TV2 retirement pass
-- Last touched: 2026-05-04
-- Score: C3 + F3 + S3 + P1(4) = 13
-- Evidence:
-  - `client/src/App.tsx` previously kept `/tv` mapped to `TV.tsx` and `/tv2` as a hidden experimental route pointing at `TV2.tsx`.
-  - The two code paths were independently maintained and diverged in behavior without a shared TV core.
-- Why it matters:
-  - Without a consolidation strategy, reliability work lands in one implementation and leaves `/tv` users on a different behavior set.
-  - Rollout and rollback are coarse, making production-safe changes harder and increasing support burden.
-- Likely correction direction:
-  - Introduce a shared TV adapter layer and feature flags for TV2 behavior in `/tv`.
-  - Add `/tv2` as a compatibility lane and retire it once `/tv` owns the same features and tests.
-- Local fix note:
-  - Removed the hidden `/tv2` route from `client/src/App.tsx`.
-  - Deleted `client/src/pages/TV2.tsx` after the useful resilience and playback fixes had already been moved into `TV.tsx`.
-  - Cleaned the lingering server comment that still described the skip-banner loop as a TV2-specific path.
-- Verification: `npm run check`; `git diff --check`; `rg -n 'TV2|/tv2' client/src server/routes/tv.ts`
-- Verification idea:
-  - Type `/tv2` directly after deploy and confirm it no longer resolves, while `/tv` still provides the hardened playback behavior.
 
 ### WTF-BB-661 - Wallet challenge consumption is not atomic under concurrent verification
 
