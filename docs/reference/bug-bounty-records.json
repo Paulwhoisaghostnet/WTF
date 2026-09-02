@@ -610,9 +610,9 @@
     },
     {
       "id": "WTF-BB-058",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex Tezos identity cache reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "Runtime / memory hygiene",
       "priority": "P2",
       "points": 10,
