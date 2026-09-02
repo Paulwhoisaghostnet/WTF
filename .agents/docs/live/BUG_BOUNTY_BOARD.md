@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **419** · Archived: **4**
+Total: **637** · Open: **10** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **421** · Archived: **4**
 
 ## Canonical Board
 
@@ -80,7 +80,6 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-086 | Claimed | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -214,7 +213,6 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 511 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
 | WTF-BB-650 | Fixed | Codex full-send release verification | - | E2E inventory / WTF Domains | P1 | 9 | 511 | 2 | 3 | 0 | WTF Domains E2E harness shape drift crashes native route smoke |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 511 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
-| WTF-BB-087 | Fixed | Codex cohost least-privilege pass | 2026-09-02 | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 369 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 369 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 369 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -230,12 +228,12 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-073 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / observability | P2 | 10 | 449 | 2 | 3 | 2 | Kiln local activity log path can spam EACCES from `/var/log/kiln` |
 | WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 449 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
 | WTF-BB-024 | Fixed | Swarm A2 | 2026-04-28 | Data integrity / workers | P2 | 10 | 449 | 3 | 3 | 1 | Backfill skip statuses can be overwritten as completed |
-| WTF-BB-310 | Fixed | Codex Hetzner containerized typecheck pass | 2026-09-02 | Ops / Hetzner verification dependencies | P2 | 9 | 511 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
 | WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 511 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
 | WTF-BB-165 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Comms / Mail route resilience | P2 | 9 | 511 | 2 | 4 | 0 | Mail route crashes when mailbox status payload is sparse |
 | WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 511 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
 | WTF-BB-162 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Wallet / WTF Domains route resilience | P2 | 9 | 511 | 2 | 4 | 0 | WTF Domains route crashes when hack.tez config is sparse |
 | WTF-BB-140 | Fixed | Codex Studio media preview pass | 2026-05-09 | Studio / media review UX | P2 | 9 | 511 | 2 | 4 | 0 | Studio image previews and open-original affordances are unreliable or unclear |
+| WTF-BB-086 | Fixed | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 511 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 511 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 511 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
@@ -564,6 +562,7 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-514 | Verified | Codex wtfOS contract release | - | E2E isolation / production data | P2 | 11 | 369 | 3 | 3 | 2 | Production contained a fake live Club Dues puppet row |
 | WTF-BB-343 | Verified | Codex standalone installer publication | 2026-07-01 | Pasta Protocol / individual installers | P2 | 11 | 369 | 2 | 4 | 2 | Gnocchi, Ravioli, Rotini, Penne, and Lasagna Desktop `1.0.0` standalone installers are live on `wtfos.app`: workflows are registered, GitHub release assets exist with SHA-256 digests, runtime production env is configured in `/etc/wtf/wtf.env`, PR #13 deployed audit-fixed live commit `51ab323`, and authenticated live verifiers passed for macOS, Windows, and Raspberry Pi downloads |
 | WTF-BB-193 | Verified | Codex Skywire feed UI/token preview pass | 2026-06-03 | Skywire / feed UX and token previews | P2 | 11 | 369 | 3 | 5 | 0 | Skywire feed cards bury media and reject common Objkt/Teia/OE token href previews |
+| WTF-BB-087 | Verified | Codex cohost least-privilege pass | 2026-09-02 | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-083 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | SSRF / remote fetch | P2 | 11 | 369 | 3 | 3 | 2 | W link preview follows redirects before validating every target |
 | WTF-BB-081 | Verified | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-061 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 369 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
@@ -588,6 +587,7 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-334 | Verified | Codex Pasta live-readiness | 2026-06-30 | E2E / Macaroni Shadownet proof harness | P2 | 9 | 511 | 2 | 4 | 0 | Macaroni Shadownet puppet proof drifted from the Octez active-account lifecycle; the harness now models accepted `octez.connect` session state, active-account events, restore/disconnect behavior, trusted-creator publish gating, and passed `npm run test:e2e:macaroni:shadownet` 5/5 against a disposable Shadownet puppet database |
 | WTF-BB-332 | Verified | Codex Pasta cleanup/status continuation | 2026-07-06 | Repo hygiene / Pasta stale worktrees | P2 | 9 | 511 | 1 | 3 | 2 | Stale `WTF-pasta-deploy` checkout is gone; promoted Spaghetti/Macaroni/IPFS/catalog/docs branches and clean promoted non-Gamma/Beta worktrees were pruned after live verification through PR #30 commit `6f71f14`; current cleanup audit runs inside `pasta:live-readiness`, reports deployed `origin/main`/live at `9652a72d` and local `main` one docs-only evidence commit ahead with no branch/worktree/dirty-work blockers, and warns that historical refs `codex/pasta-live-readiness` and `wip/full-working-tree-20260617` are missing locally and must not be recreated or replayed wholesale |
 | WTF-BB-322 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop OS / Recovery Mode route smoke | P2 | 9 | 511 | 2 | 3 | 1 | Recovery Mode now completes both canonical and Beta-shell route smoke without fatal unauthenticated-probe noise; verified again in the complete 634/634 interaction inventory run |
+| WTF-BB-310 | Verified | Codex Hetzner containerized typecheck pass | 2026-09-02 | Ops / Hetzner verification dependencies | P2 | 9 | 511 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
 | WTF-BB-302 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Observability / public information disclosure | P2 | 9 | 511 | 2 | 2 | 2 | Public health endpoint exposes verbose runtime and chain topology |
 | WTF-BB-292 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / animation export UX | P2 | 9 | 511 | 2 | 4 | 0 | Broot MP4 export now defaults to a neutral still-hold capture and exposes explicit pulse/reveal modes plus duration/FPS controls instead of silently applying a hardcoded pulse; verified live on `wtfos.app` commit `94d26fe` |
 | WTF-BB-290 | Verified | Codex Broot audit implementation full-send | 2026-06-18 | Broot / keyboard and accessibility | P2 | 9 | 511 | 3 | 3 | 0 | Broot now exposes focus-visible styling, object-specific layer labels, keyboard undo/redo/delete/nudge handling, and a focusable canvas workspace; verified live on `wtfos.app` commit `94d26fe` |
@@ -1691,26 +1691,6 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
-
-- Category: Privacy / media validation
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex PFP media boundary pass
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence:
-  - `server/routes/profile.ts:236-256` stores `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`.
-  - The same file imports and uses `sanitizeThumbnailUrl` for token-derived PFP candidates, but the update endpoint bypasses it.
-- Why it matters:
-  - Users can make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts compared with the rest of the NFT media pipeline.
-- Likely correction direction:
-  - Require the chosen PFP URL to pass `sanitizeThumbnailUrl`, and when `tokenContract`/`tokenId` are supplied, require a positive holding row for that user.
-- Verification idea:
-  - Attempt to set a PFP to an unallowlisted host or non-http(s)/ipfs URI; the API should reject it and leave the existing avatar unchanged.
-- Claim (2026-09-02):
-  - Codex reproduced the unsanitized write boundary and claimed the item. The correction will preserve the canvas editor by storing edited output through the existing user-owned media route instead of weakening the URL sanitizer to accept database-resident `data:` images.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -4695,25 +4675,6 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
 
-### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
-
-- Category: RBAC / blast radius
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex cohost least-privilege pass
-- Last touched: 2026-09-02
-- Score: C4 + F2 + S2 + P2(3) = 11
-- Evidence:
-  - Cohost defaults inherited `manage_users`, and the permanent `DELETE /api/admin/users/:id` route used the same permission as ordinary profile, account-access, and moderation support.
-  - The delete transaction cascades through submissions, messages, market records, side-quest completions, and board threads, giving a compromised or misassigned support account disproportionate blast radius.
-- Correction (2026-09-02):
-  - Added the dedicated `delete_users` permission and changed the permanent deletion route to require it. Cohost defaults retain `manage_users` support duties but explicitly exclude `delete_users`; host and admin defaults retain deletion, and the existing admin-only role-permission matrix is the explicit grant path.
-  - The WTF Passport shows the permanent-delete control only when the authenticated operator has `delete_users`; otherwise it explains that account support is available but deletion is separately restricted. Permission descriptions, Admin catalog, surface registry, interaction inventory, and behavior ownership now state the boundary.
-- Verification:
-  - Focused role, server-route, and Admin UI policy tests pass 10/10 and assert both sides of the boundary: cohost support remains granted, cohost deletion is denied by default, host/admin deletion remains granted, and the route no longer accepts `manage_users`.
-  - The focused Admin browser journey passes 1/1 and proves an authorized operator still sees the named Delete account recovery control. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 131 named behavior assertions. TypeScript and the production build pass locally.
-  - Status remains Fixed until the exact commit deploys and the production quality workflow succeeds.
-
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 
 - Category: Runtime / memory hygiene
@@ -5051,28 +5012,6 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
 - Verification:
   - `./node_modules/.bin/tsc --noEmit --pretty false` exited `0` on 2026-04-28 after the manifest/dispatcher change.
 
-### WTF-BB-310 - Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof
-
-- Category: Ops / Hetzner verification dependencies
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex Hetzner containerized typecheck pass
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Historical evidence:
-  - The remote Hetzner repo at `/opt/platform/repos/wtf-app` could run focused policy tests but not `npm run check -- --pretty false` because its intentionally minimal host dependency set omitted development packages such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem`.
-- Why it mattered:
-  - Emergency production fixes needed a trustworthy remote verification path without widening the host checkout or final runtime image.
-- Correction (2026-09-02):
-  - The production Docker builder remains the authoritative Hetzner verification environment: it installs the complete lockfile dependency graph, copies the exact source being deployed, and now runs `npm run check -- --pretty false` before creation-tool vendor generation or the production build.
-  - The check uses the same measured 6,144 MiB Node heap envelope as the Quality Gates typecheck. The host checkout and final runtime image remain production-minimal.
-  - A deploy policy assertion requires the dependency install, source copy, TypeScript check, and production build to remain ordered before the host stops or replaces the running app.
-- Local verification (2026-09-02):
-  - The deploy policy suite passes 10/10, including the new containerized Hetzner typecheck contract.
-  - `NODE_OPTIONS=--max-old-space-size=6144 npm run check -- --pretty false` passes against the exact source graph.
-- Remaining proof before Verified:
-  - The pushed commit must complete the real Hetzner `docker compose build app`, showing the containerized TypeScript step succeeds before deployment and live health reports the same or a descendant commit.
-
 ### WTF-BB-169 - Profile Social & Contact omits linked Skywire/AT identity
 
 - Category: Profile / Identity bridge UX
@@ -5172,6 +5111,29 @@ Total: **637** · Open: **10** · Claimed: **42** · In Progress: **13** · Bloc
   - Verified with `npx tsx --test server/lib/studio/serve-mime.test.ts`, `npm run build`, and `npm run test:e2e:inventory:coverage`.
   - `npm run check -- --pretty false` is blocked by unrelated dirty-tree TypeScript errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
   - `npm run test:e2e:inventory` built successfully, then failed 46 route/market smoke tests after the harness server stopped accepting `127.0.0.1:4173/__test/state`; 163 inventory tests still passed, including Studio subdomain ownership.
+
+### WTF-BB-086 - Profile PFP update stores arbitrary image URLs without sanitizer or ownership check
+
+- Category: Privacy / media validation
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex PFP media boundary pass
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - `PUT /api/profile/pfp` stored `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`, bypassing the thumbnail sanitizer used by token-derived candidates and trusting any supplied token reference.
+- Why it mattered:
+  - Users could make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts. They could also label the PFP as a token they did not hold.
+- Correction (2026-09-02):
+  - Remote PFP writes now require a normalized allowlisted HTTPS/IPFS URL. Data/script/private/unallowlisted URLs fail before the user row update. Token contract/id fields must be supplied together and a positive `wallet_holdings` row for the authenticated user is required before either the remote-URL or edited-media route stores the token reference.
+  - The canvas editor no longer persists a database-resident `data:` URL. It encodes the edited image as PNG, uploads it through the existing media service, then assigns the resulting owner-scoped media ID while preserving the verified token contract/id. Direct image uploads use the same helper and the server retains MIME, size, ready-state, source-type, and media-owner checks.
+  - The interaction inventory now states the server ownership and URL boundary, and the Gamma Profile browser story proves the edited-token upload and assignment request.
+- Local verification (2026-09-02):
+  - Focused sanitizer, token-reference, route-ordering, and Profile presentation tests pass 8/8. They cover normalized HTTP/IPFS media, rejection of data/script/private/unallowlisted URLs, paired bounded token refs, positive-holding checks before updates, and owner-scoped media assignment.
+  - The focused Gamma Profile browser story passes 1/1 and proves Save profile picture uploads the canvas and assigns media ID 91 with the exact held contract/id, then shows the visible success message.
+  - `npm run build` passes. Inventory coverage remains complete.
+- Remaining proof before Verified:
+  - The correction must pass the Node 22 containerized full TypeScript check, deploy successfully, and report its commit from live health.
 
 ### WTF-BB-048 - TV telemetry endpoint can grow session-tracking memory under spam
 
@@ -12798,6 +12760,25 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory`
   - Playwright visual smoke of `http://127.0.0.1:4173/skywire` with the inventory harness media/token fixture confirmed the media card, token preview, Buy/Open buttons, no duplicate generic external card, and zero console errors.
 
+### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
+
+- Category: RBAC / blast radius
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex cohost least-privilege pass
+- Last touched: 2026-09-02
+- Score: C4 + F2 + S2 + P2(3) = 11
+- Evidence:
+  - Cohost defaults inherited `manage_users`, and the permanent `DELETE /api/admin/users/:id` route used the same permission as ordinary profile, account-access, and moderation support.
+  - The delete transaction cascades through submissions, messages, market records, side-quest completions, and board threads, giving a compromised or misassigned support account disproportionate blast radius.
+- Correction (2026-09-02):
+  - Added the dedicated `delete_users` permission and changed the permanent deletion route to require it. Cohost defaults retain `manage_users` support duties but explicitly exclude `delete_users`; host and admin defaults retain deletion, and the existing admin-only role-permission matrix is the explicit grant path.
+  - The WTF Passport shows the permanent-delete control only when the authenticated operator has `delete_users`; otherwise it explains that account support is available but deletion is separately restricted. Permission descriptions, Admin catalog, surface registry, interaction inventory, and behavior ownership now state the boundary.
+- Verification:
+  - Focused role, server-route, and Admin UI policy tests pass 10/10 and assert both sides of the boundary: cohost support remains granted, cohost deletion is denied by default, host/admin deletion remains granted, and the route no longer accepts `manage_users`.
+  - The focused Admin browser journey passes 1/1 and proves an authorized operator still sees the named Delete account recovery control. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 131 named behavior assertions. TypeScript and the production build pass locally.
+  - Quality Gates run `33591745003` succeeded on correction commit `d368bdaa`, a descendant of `e24b302e`, and Deploy to Hetzner run `33592181961` succeeded on descendant `b3c543dd`; live readiness reported `commitRef: "b3c543dd"`. The least-privilege correction is therefore deployed and WTF-BB-087 is Verified.
+
 ### WTF-BB-083 - W link preview follows redirects before validating every target
 
 - Category: SSRF / remote fetch
@@ -13325,6 +13306,27 @@ Copy this when adding a new issue:
 - Verification:
   - Recovery Mode passed both the canonical route fixture and the Beta-shell route fixture during the settled-tree interaction inventory run.
   - The complete inventory suite passed 634/634 on 2026-07-15 without fatal 401 console noise from the route.
+
+### WTF-BB-310 - Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof
+
+- Category: Ops / Hetzner verification dependencies
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Hetzner containerized typecheck pass
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - The remote Hetzner repo at `/opt/platform/repos/wtf-app` could run focused policy tests but not `npm run check -- --pretty false` because its intentionally minimal host dependency set omitted development packages such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem`.
+- Why it mattered:
+  - Emergency production fixes needed a trustworthy remote verification path without widening the host checkout or final runtime image.
+- Correction (2026-09-02):
+  - The production Docker builder remains the authoritative Hetzner verification environment: it installs the complete lockfile dependency graph, copies the exact source being deployed, and now runs `npm run check -- --pretty false` before creation-tool vendor generation or the production build.
+  - The check uses the same measured 6,144 MiB Node heap envelope as the Quality Gates typecheck. The host checkout and final runtime image remain production-minimal.
+  - A deploy policy assertion requires the dependency install, source copy, TypeScript check, and production build to remain ordered before the host stops or replaces the running app.
+- Verification (2026-09-02):
+  - The deploy policy suite passes 10/10, including the new containerized Hetzner typecheck contract.
+  - Deploy to Hetzner run `33592181961` built descendant commit `b3c543dd` on the real host. Its log shows builder step 6/6 running the 6,144 MiB `tsc --noEmit --pretty false` command, completing it before vendor generation and the production build, then replacing the app only after the image succeeded.
+  - Host readiness and the workflow health check passed with live `commitRef: "b3c543dd"`. The missing-module remote verification gap is closed without changing the minimal host/runtime dependency posture, so WTF-BB-310 is Verified.
 
 ### WTF-BB-302 - Public health endpoint exposes verbose runtime and chain topology
 

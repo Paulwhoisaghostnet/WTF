@@ -11447,3 +11447,13 @@
 **Rule**: Rebuild the client, start a non-reused mutable harness, assert the sale in the API, and then assert the exact badge and discounted price inside the named storefront item card. Treat later connection-refused results as harness-lifecycle evidence, not independent product defects.
 
 ---
+
+## 2026-09-02 — Sanitizing a PFP URL must not force edited images back into the database
+
+**What happened**: The remote PFP endpoint trusted arbitrary URLs and token claims, but the visible token editor also sent its canvas as a `data:` URL through that same endpoint. Applying the shared URL sanitizer alone would close the tracking vector by breaking edited PFP saves.
+
+**Why it mattered**: Security boundaries and creator workflows met at one overloaded field. Allowing `data:` would retain oversized database media and inconsistent rendering risk; rejecting it without a replacement would silently remove a commissioned creation feature.
+
+**Rule**: Keep remote media URLs on the shared allowlisted sanitizer, verify any token reference against the authenticated user's positive holding before mutation, and route generated/edited pixels through owner-scoped media storage. Browser proof must assert both the uploaded media ID and retained held-token reference.
+
+---

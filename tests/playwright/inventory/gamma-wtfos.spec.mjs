@@ -4131,6 +4131,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
   });
 
   test("hosts Profile identity, wallet, and avatar chrome in the Gamma presentation style", async ({ page, request }) => {
+    const avatarWrites = [];
     await setHarnessState(request, {
       userRole: "user",
       username: "gamma-profile",
@@ -4193,6 +4194,26 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
           total: 1,
           limit: 100,
           offset: 0,
+        }),
+      });
+    });
+    await page.route("**/api/media/upload", async (route) => {
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ id: 91 }),
+      });
+    });
+    await page.route("**/api/profile/avatar-media", async (route) => {
+      avatarWrites.push(route.request().postDataJSON());
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          mediaId: 91,
+          pfpTokenContract: "KT1GammaProfile",
+          pfpTokenId: "1",
+          pfpImageUrl: "/api/profile/avatar-media/91/file",
+          avatarUrl: "/api/profile/avatar-media/91/file",
         }),
       });
     });
@@ -4309,6 +4330,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     expect(editorMetrics.canvas?.borderWidth).toBeLessThanOrEqual(1);
     expect(editorMetrics.canvas?.radius).toBeLessThanOrEqual(6);
     expect(editorMetrics.canvas?.borderColor).toMatch(/0,\s*210,\s*255/);
+
+    await page.getByRole("button", { name: "Save profile picture" }).click();
+    await expect.poll(() => avatarWrites).toEqual([
+      { mediaId: 91, tokenContract: "KT1GammaProfile", tokenId: "1" },
+    ]);
+    await expect(profileSurface).toContainText("Edited token image is now your profile avatar.");
   });
 
   test("hosts final mixed routes in the Gamma presentation style", async ({ page, request }) => {

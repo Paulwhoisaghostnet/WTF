@@ -31,6 +31,11 @@ import {
 import { serveStoredMediaFile } from "../lib/storage/media-file-serve";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import type { SystemEventType } from "../challenges/events/types";
+import {
+  normalizeProfilePfpTokenReference,
+  sanitizeProfilePfpImageUrl,
+  type ProfilePfpTokenReference,
+} from "../features/profile/pfp-policy";
 
 const router = Router();
 
@@ -108,6 +113,25 @@ function isGameSafeAvatarMime(mimeType: string | null | undefined): boolean {
     mime === "image/webp" ||
     mime === "image/gif"
   );
+}
+
+async function hasPositivePfpHolding(
+  userId: number,
+  token: ProfilePfpTokenReference,
+): Promise<boolean> {
+  const [holding] = await db
+    .select({ id: walletHoldings.id })
+    .from(walletHoldings)
+    .where(
+      and(
+        eq(walletHoldings.userId, userId),
+        eq(walletHoldings.tokenContract, token.tokenContract),
+        eq(walletHoldings.tokenId, token.tokenId),
+        sql`COALESCE(NULLIF(${walletHoldings.balance}, ''), '0')::numeric > 0`,
+      ),
+    )
+    .limit(1);
+  return Boolean(holding);
 }
 
 /* ── GET /api/profile/social  ────────────────────────────────────────────── */
@@ -400,17 +424,28 @@ router.put("/api/profile/pfp", isAuthenticated, async (req, res) => {
     const user = req.user as any;
     const { tokenContract, tokenId, imageUrl } = req.body;
 
-    if (!imageUrl || typeof imageUrl !== "string") {
-      return res.status(400).json({ error: "imageUrl is required" });
+    const safeImageUrl = sanitizeProfilePfpImageUrl(imageUrl);
+    if (!safeImageUrl) {
+      return res.status(400).json({ error: "Use an approved HTTPS or IPFS profile image URL" });
+    }
+    const tokenReference = normalizeProfilePfpTokenReference(tokenContract, tokenId);
+    if (!tokenReference.ok) {
+      return res.status(400).json({ error: tokenReference.error });
+    }
+    if (
+      tokenReference.value &&
+      !(await hasPositivePfpHolding(user.id, tokenReference.value))
+    ) {
+      return res.status(403).json({ error: "You must hold this token before using it as your PFP" });
     }
 
     const [updated] = await db
       .update(users)
       .set({
-        pfpTokenContract: tokenContract || null,
-        pfpTokenId: tokenId != null ? String(tokenId) : null,
-        pfpImageUrl: imageUrl,
-        avatarUrl: imageUrl,
+        pfpTokenContract: tokenReference.value?.tokenContract || null,
+        pfpTokenId: tokenReference.value?.tokenId || null,
+        pfpImageUrl: safeImageUrl,
+        avatarUrl: safeImageUrl,
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id))
@@ -427,9 +462,9 @@ router.put("/api/profile/pfp", isAuthenticated, async (req, res) => {
       userId: user.id,
       metadata: {
         fields: ["pfp"],
-        source: tokenContract ? "token" : "url",
-        tokenContract: tokenContract || null,
-        tokenId: tokenId != null ? String(tokenId) : null,
+        source: tokenReference.value ? "token" : "url",
+        tokenContract: tokenReference.value?.tokenContract || null,
+        tokenId: tokenReference.value?.tokenId || null,
       },
     });
   } catch (err) {
@@ -475,6 +510,19 @@ router.put("/api/profile/avatar-media", isAuthenticated, async (req, res) => {
     if (!Number.isInteger(mediaId) || mediaId <= 0) {
       return res.status(400).json({ error: "Valid mediaId is required" });
     }
+    const tokenReference = normalizeProfilePfpTokenReference(
+      req.body?.tokenContract,
+      req.body?.tokenId,
+    );
+    if (!tokenReference.ok) {
+      return res.status(400).json({ error: tokenReference.error });
+    }
+    if (
+      tokenReference.value &&
+      !(await hasPositivePfpHolding(user.id, tokenReference.value))
+    ) {
+      return res.status(403).json({ error: "You must hold this token before using it as your PFP" });
+    }
 
     const [item] = await db
       .select({
@@ -507,8 +555,8 @@ router.put("/api/profile/avatar-media", isAuthenticated, async (req, res) => {
     const [updated] = await db
       .update(users)
       .set({
-        pfpTokenContract: null,
-        pfpTokenId: null,
+        pfpTokenContract: tokenReference.value?.tokenContract || null,
+        pfpTokenId: tokenReference.value?.tokenId || null,
         pfpImageUrl: imageUrl,
         avatarUrl: imageUrl,
         updatedAt: new Date(),

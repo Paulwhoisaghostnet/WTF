@@ -43,9 +43,11 @@ test("Profile keeps shared account, wallet, avatar, OAuth, and Skywire behavior"
   assert.match(profileSource, /api\.put\("\/api\/profile\/social"/);
   assert.match(profileSource, /api\.delete<SocialProfile>\(`\/api\/profile\/social\/\$\{provider\}`\)/);
   assert.match(profileSource, /api\.post<\{ ok: true \}>\("\/api\/atproto\/unlink"/);
-  assert.match(profileSource, /api\.put\("\/api\/profile\/pfp"/);
   assert.match(profileSource, /fetch\("\/api\/media\/upload"/);
   assert.match(profileSource, /api\.put\("\/api\/profile\/avatar-media"/);
+  assert.match(profileSource, /canvasRef\.current\.toBlob/);
+  assert.match(profileSource, /tokenContract: data\.tokenContract/);
+  assert.doesNotMatch(profileSource, /toDataURL\("image\/png"\)/);
   assert.match(profileSource, /api\.delete\("\/api\/profile\/pfp"\)/);
   assert.match(profileSource, /\/api\/profile\/pfp-candidates\?\$\{pfpQueryParams\}/);
   assert.match(profileSource, /presentationRouteHref\("\/skywire"\)/);

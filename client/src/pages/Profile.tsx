@@ -433,6 +433,41 @@ import { HAMSTER_STICKERS, HAMSTER_SECTION_LABEL } from "../lib/hamster-emoji";
 
 const STICKERS_CLASSIC = ["★", "♥", "✦", "☀", "⚡", "🔥", "💎", "👑", "🎭", "🌟"];
 
+type ProfileAvatarMediaInput = {
+  blob: Blob;
+  filename: string;
+  tokenContract?: string;
+  tokenId?: string;
+};
+
+async function uploadProfileAvatarMedia(input: ProfileAvatarMediaInput) {
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(input.blob.type)) {
+    throw new Error("Use a PNG, JPEG, WEBP, or GIF avatar image");
+  }
+  if (input.blob.size > 2 * 1024 * 1024) {
+    throw new Error("Avatar image must be 2MB or smaller");
+  }
+
+  const form = new FormData();
+  form.append("file", input.blob, input.filename);
+  form.append("title", input.filename || "Profile avatar");
+  form.append("mimeType", input.blob.type);
+  form.append("mediaCategory", "image");
+  const upload = await fetch("/api/media/upload", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const media = await upload.json().catch(() => ({}));
+  if (!upload.ok) throw new Error(media.error || "Avatar upload failed");
+  return api.put("/api/profile/avatar-media", {
+    mediaId: media.id,
+    ...(input.tokenContract && input.tokenId
+      ? { tokenContract: input.tokenContract, tokenId: input.tokenId }
+      : {}),
+  });
+}
+
 /* ── component ───────────────────────────────────────────────────────────── */
 
 export function Profile() {
@@ -856,39 +891,33 @@ export function Profile() {
     mutationFn: (data: {
       tokenContract: string;
       tokenId: string;
-      imageUrl: string;
-    }) => api.put("/api/profile/pfp", data),
+      blob: Blob;
+    }) => uploadProfileAvatarMedia({
+      blob: data.blob,
+      filename: `token-${data.tokenContract}-${data.tokenId}-pfp.png`,
+      tokenContract: data.tokenContract,
+      tokenId: data.tokenId,
+    }),
+    onMutate: () => {
+      setAvatarUploadStatus("Saving edited profile picture...");
+    },
     onSuccess: () => {
+      setAvatarUploadStatus("Edited token image is now your profile avatar.");
       setPfpEditorToken(null);
       setShowPfpPicker(false);
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     },
+    onError: (err: Error) => {
+      setAvatarUploadStatus(err.message);
+    },
   });
 
   const uploadAvatarMutation = useMutation({
-    mutationFn: async (file: File) => {
-      if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
-        throw new Error("Use a PNG, JPEG, WEBP, or GIF avatar image");
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        throw new Error("Avatar image must be 2MB or smaller");
-      }
-
-      const form = new FormData();
-      form.append("file", file);
-      form.append("title", file.name || "Profile avatar");
-      form.append("mimeType", file.type);
-      form.append("mediaCategory", "image");
-      const upload = await fetch("/api/media/upload", {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const media = await upload.json().catch(() => ({}));
-      if (!upload.ok) throw new Error(media.error || "Avatar upload failed");
-      return api.put("/api/profile/avatar-media", { mediaId: media.id });
-    },
+    mutationFn: (file: File) => uploadProfileAvatarMedia({
+      blob: file,
+      filename: file.name || "profile-avatar",
+    }),
     onMutate: () => {
       setAvatarUploadStatus("Uploading avatar...");
     },
@@ -1021,12 +1050,18 @@ export function Profile() {
 
   const handleSavePfp = () => {
     if (!canvasRef.current || !pfpEditorToken) return;
-    const dataUrl = canvasRef.current.toDataURL("image/png");
-    savePfpMutation.mutate({
-      tokenContract: pfpEditorToken.tokenContract,
-      tokenId: pfpEditorToken.tokenId,
-      imageUrl: dataUrl,
-    });
+    const token = pfpEditorToken;
+    canvasRef.current.toBlob((blob) => {
+      if (!blob) {
+        setAvatarUploadStatus("Could not encode the edited profile picture.");
+        return;
+      }
+      savePfpMutation.mutate({
+        tokenContract: token.tokenContract,
+        tokenId: token.tokenId,
+        blob,
+      });
+    }, "image/png");
   };
 
   const handleAvatarUpload = (files: FileList | null) => {
