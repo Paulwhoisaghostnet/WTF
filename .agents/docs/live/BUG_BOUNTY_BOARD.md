@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **408** · Archived: **4**
+Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **409** · Archived: **4**
 
 ## Canonical Board
 
@@ -230,7 +230,6 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 369 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 369 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
 | WTF-BB-021 | Fixed | Swarm A8 | 2026-04-28 | Backup / reliability | P2 | 11 | 369 | 3 | 3 | 2 | Backup upload path keeps full pg_dump output in memory |
-| WTF-BB-669 | Fixed | Codex TommyTezos guide-media correction | 2026-09-01 | FAQ media / instructional clarity | P2 | 10 | 449 | 3 | 4 | 0 | FAQ videos speak production prompts and fail to perform as TommyTezos lessons |
 | WTF-BB-109 | Fixed | Codex desktop item interaction pass | 2026-05-06 | Desktop pet / item interactions | P2 | 10 | 449 | 4 | 3 | 0 | Desktop items need element-owned interaction rules |
 | WTF-BB-106 | Fixed | Division 01 StudioProject leader | 2026-05-06 | Studio client / modularity | P2 | 10 | 449 | 4 | 3 | 0 | StudioProject client page blocks parallel project-workspace work |
 | WTF-BB-105 | Fixed | Division 06 Marketplace client leader | 2026-05-05 | Marketplace client / modularity | P2 | 10 | 449 | 4 | 3 | 0 | Marketplace client page bundles listing, auction, trade-board, and wallet action flows |
@@ -574,6 +573,7 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
 | WTF-BB-081 | Verified | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 369 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-061 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 369 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-032 | Verified | Codex W repair pass | 2026-05-24 | Data safety / input validation | P2 | 11 | 369 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
+| WTF-BB-669 | Verified | Codex TommyTezos guide-media correction | 2026-09-02 | FAQ media / instructional clarity | P2 | 10 | 449 | 3 | 4 | 0 | FAQ videos speak production prompts and fail to perform as TommyTezos lessons |
 | WTF-BB-515 | Verified | Codex Púca’s Fortune integration | - | Arcade / cartridge packaging | P2 | 10 | 449 | 2 | 3 | 2 | Cartridge manifest regeneration dropped static Arcade games |
 | WTF-BB-512 | Verified | Codex wtfOS contract release | - | Casino / wallet integration | P2 | 10 | 449 | 2 | 3 | 2 | Casino browser encoded a scalar entrypoint as a record |
 | WTF-BB-229 | Verified | Codex WTF LIVE WIM identity pass | 2026-06-09 | WTF LIVE / wtfOS identity and WIM buddies | P2 | 10 | 449 | 3 | 4 | 0 | WTF LIVE now binds signed-in room joins to wtfOS usernames, emits account-backed attendance metadata, and lets signed-in viewers add WTF users to WIM buddies from compact roster rows |
@@ -5004,28 +5004,6 @@ Total: **637** · Open: **22** · Claimed: **41** · In Progress: **13** · Bloc
 - Verification:
   - `npm run check` -> passed on 2026-04-28.
   - `git diff --check` -> passed on 2026-04-28.
-
-### WTF-BB-669 - FAQ videos speak production prompts and fail to perform as TommyTezos lessons
-
-- Category: FAQ media / instructional clarity
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex TommyTezos guide-media correction
-- Last touched: 2026-09-01
-- Score: C3 + F4 + S0 + P2(3) = 10
-- Evidence:
-  - The published FAQ narration mixed recording prompts with the words intended for viewers, used a voice inconsistent with Tommy, and pronounced Tezos as tee-zohs.
-  - Some recordings highlighted controls without synchronizing the cursor to the spoken step or visibly completing the linked, verified, or saved result.
-- Why it matters:
-  - The help surface confuses the people it is meant to teach and cannot prove the registration, social, wallet, and storage workflows it describes.
-- Correction:
-  - Rewrote every tutorial as first-person Tommy copy, made `spokenSteps` the sole narration source, and limited phonetic `Tez-ose` substitution to audio generation so captions retain the Tezos spelling.
-  - Re-recorded all workflows as TommyTezos with a visible cursor and action highlights, added the Stuffs-menu open/close/reopen demonstration, and made social, wallet, and cloud tutorials finish on their visible success states.
-  - Added six TommyTezos use-case promos and an isolated wtfOS Guide TV catalog containing only the promos and FAQ tutorials.
-- Local verification:
-  - All 14 MP4s are H.264/AAC 1280x720, every caption cue exactly matches its canonical spoken step, and every manifest names the am_puck voice and TommyTezos account.
-  - All 42 MP4, VTT, and poster objects were uploaded to the configured S3 bucket and verified by downloading each object and matching its SHA-256 digest.
-  - Status remains Fixed until the production FAQ preview, dedicated TV queue, ranged media delivery, and exact live deployment commit are verified.
 
 ### WTF-BB-109 - Desktop items need element-owned interaction rules
 
@@ -12993,6 +12971,29 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory`
 - Verification idea:
   - Add a rejected test where user A submits a valid-known media ID not owned by user A.
+
+### WTF-BB-669 - FAQ videos speak production prompts and fail to perform as TommyTezos lessons
+
+- Category: FAQ media / instructional clarity
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex TommyTezos guide-media correction
+- Last touched: 2026-09-02
+- Score: C3 + F4 + S0 + P2(3) = 10
+- Evidence:
+  - The published FAQ narration mixed recording prompts with the words intended for viewers, used a voice inconsistent with Tommy, and pronounced Tezos as tee-zohs.
+  - Some recordings highlighted controls without synchronizing the cursor to the spoken step or visibly completing the linked, verified, or saved result.
+- Why it matters:
+  - The help surface confuses the people it is meant to teach and cannot prove the registration, social, wallet, and storage workflows it describes.
+- Correction:
+  - Rewrote every tutorial as first-person Tommy copy, made `spokenSteps` the sole narration source, and limited phonetic `Tez-ose` substitution to audio generation so captions retain the Tezos spelling.
+  - Re-recorded all workflows as TommyTezos with a visible cursor and action highlights, added the Stuffs-menu open/close/reopen demonstration, and made social, wallet, and cloud tutorials finish on their visible success states.
+  - Added six TommyTezos use-case promos and an isolated wtfOS Guide TV catalog containing only the promos and FAQ tutorials.
+- Verification (2026-09-02):
+  - All 14 MP4s are H.264/AAC 1280x720, every caption cue exactly matches its canonical spoken step, and every manifest names the am_puck voice and TommyTezos account. All 42 MP4, VTT, and poster objects were uploaded to the configured S3 bucket and verified by downloading each object and matching its SHA-256 digest.
+  - Production health reported exact main commit `bef15d48`; deploy run `33587997430` and Quality Gates run `33587997491` succeeded, including aggregate unit tests, audit, TypeScript, build, complete inventory browser smoke, and external-link safety.
+  - A live browser loaded all eight tutorial cards and six promo cards on `/faq`, resolved real media durations without page errors, and found both viewers labeled `Account: TommyTezos`. A ranged Tezos tutorial request returned HTTP 206 with the expected MP4 content range, while its captions retained the canonical Tezos spelling.
+  - Live wtfOS Guide TV is dial 6 with `videosPerBumper = 0`, no schedule, and exactly 14 stream items: six `/api/faq/promos/` videos plus eight `/api/faq/tutorials/` videos and no unrelated media.
 
 ### WTF-BB-515 - Cartridge manifest regeneration dropped static Arcade games
 
