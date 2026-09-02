@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **121** · Verified: **456** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **120** · Verified: **456** · Archived: **4**
 
 ## Canonical Board
 
@@ -85,9 +85,9 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 371 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 371 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 451 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
+| WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-371 | Blocked | Repository owner / Twitter developer account | 2026-08-30 | Secrets / git history | P0 | 17 | 38 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
 | WTF-BB-313 | Blocked | Codex live user-story gap loop | 2026-06-22 | Skywire / live AT puppet coverage | P1 | 11 | 371 | 2 | 4 | 1 | Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential |
-| WTF-BB-568 | Fixed | Codex human-alpha release completion | - | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-527 | Fixed | Codex Ravioli boundary-40 recovery | - | Pasta Protocol / blind-pack cryptographic portability | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli encrypted non-canonical AAD but pinned a canonical envelope |
 | WTF-BB-425 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Ravioli recipe integrity | P0 | 19 | 3 | 4 | 5 | 5 | Ravioli v3 commits exact allocated payloads and an explicit generated-at-open `None`; the real Studio/holder UI harness now passes all five modes, six atomic opens, two collectors, substitution rejection, SmartPy atomicity/compilation, and strict TzKT FA2/token/balance acceptance, with fresh Shadownet execution still required before Verified |
 | WTF-BB-660 | Fixed | Codex Macaroni V3 authentication pass | 2026-08-30 | Macaroni / automatic reveal authorization | P0 | 18 | 12 | 4 | 5 | 4 | Macaroni V3 reveal registration does not prove control of the contract administrator wallet |
@@ -1947,6 +1947,26 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Verification idea:
   - After enabling, run a dry-run on known wallets and check `collection_items` for non-empty expected listing snapshots.
 
+### WTF-BB-568 - A tracked browser bundle contains a client-side Pinata credential
+
+- Category: Public release boundary / credential exposure
+- Priority: P0
+- Status: Blocked
+- Owner/Session: Pinata credential owner / repository owner
+- Last touched: 2026-09-02
+- Score: C5 + F5 + S5 + P0(5) = 20
+- Evidence:
+  - `public/creation-tools/particle-painter/assets/teiaService-C9fHH67R.js` was a tracked, publicly distributable browser asset containing a JWT-shaped Pinata authorization credential.
+  - Anyone with an old repository, deployment, cache, or pull-request artifact may retain the exposed value; deleting the current bundle cannot revoke it.
+- Repository correction:
+  - Particle Painter now accepts only an explicit user-provided, session-only Pinata credential. The stale bundle was rebuilt and removed, the asset registry points to the corrected entry, and the public-release gate scans text bundles for JWT-shaped material even above the general binary threshold.
+- Current verification (2026-09-02):
+  - `npm run security:public-release-boundary` passed across 6,434 current release inputs. Focused Particle Painter policy passed 2/2, proving source rejects the removed Vite credential path, current public JavaScript contains no JWT-shaped token, and the registry points to the built entry.
+- Blocker:
+  - Repository code cannot invalidate a credential already issued by Pinata. No non-secret provider confirmation of revocation or rotation exists in this workspace, and the credential was intentionally neither printed nor exercised.
+- Required owner action:
+  - The Pinata credential owner must revoke or rotate the exposed credential in Pinata and provide non-secret confirmation. After that, rerun the current-tree release scan and record the provider confirmation; only then can WTF-BB-568 become Verified.
+
 ### WTF-BB-371 - A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite
 
 - Category: Secrets / git history
@@ -1990,30 +2010,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Add a live Skywire connected-account probe that can set/clear actor status, publish a starter signal, and complete or simulate the real OAuth permission upgrade against the connected puppet account.
 - Verification idea:
   - Rerun `tmp/live-user-story-probes/skywire-live.spec.mjs` after provisioning and expect the connected-account blocker test to be replaced by live status set/clear, signal publish, and permission-sync tests.
-
-### WTF-BB-568 - A tracked browser bundle contains a client-side Pinata credential
-
-- Category: Public release boundary / credential exposure
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex human-alpha release completion
-- Last touched: -
-- Score: C5 + F5 + S5 + P0(5) = 20
-- Evidence:
-  - `public/creation-tools/particle-painter/assets/teiaService-C9fHH67R.js` is a tracked, publicly distributable browser asset containing a JWT-shaped Pinata authorization credential.
-  - The same release tree correctly treats Pinata credentials used by Pasta proof tooling as operator-provided environment secrets, so embedding one in browser JavaScript violates the established secret boundary.
-- Why it matters:
-  - Anyone receiving or visiting the public package can extract and reuse the credential outside the application; deleting it from a later bundle does not revoke copies already exposed in repository history or prior deployments.
-- Correction direction:
-  - Remove the credential from every browser artifact and source owner, route authenticated pinning through an operator-controlled boundary or explicit user-provided credential, and have the credential owner revoke/rotate it out of band.
-- Verification idea:
-  - Require repository-wide secret scanning and the public-release-boundary suite to pass with no JWT-shaped Pinata authorization material, then independently confirm the exposed credential has been revoked without exercising it from this workspace.
-- 2026-08-08 correction:
-  - Rebuilt Particle Painter from the corrected source, deleted the stale hashed browser chunk, updated the creation-tool asset registry to the new entry chunk, and added a shared JWT-shaped credential detector to the current-candidate release gate. Text release files remain scannable even when generated bundles exceed the general binary size threshold.
-- 2026-08-08 verification:
-  - `npm run security:public-release-boundary` passes across 5,426 current release inputs; the focused bundle policy confirms no JWT-shaped credential or removed Vite variable remains anywhere in Particle Painter's public JavaScript.
-- Remaining external action:
-  - The exposed credential owner must revoke/rotate the old credential out of band. This workspace did not print, validate, or exercise it, so revocation is intentionally not claimed here.
 
 ### WTF-BB-527 - Ravioli encrypted non-canonical AAD but pinned a canonical envelope
 

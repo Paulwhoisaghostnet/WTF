@@ -11747,3 +11747,13 @@
 **Rule**: Close retired UI routes with both registry/source policy and a browser assertion that the old address renders no retired surface while the canonical address still opens the expected application.
 
 ---
+
+## 2026-09-02 — Removing a leaked credential cannot prove revocation
+
+**What happened**: Particle Painter's current source and public bundles were clean, but the P0 record remained Fixed even though its own evidence required the previously exposed Pinata credential to be revoked by its provider owner.
+
+**Why it mattered**: Current-tree remediation prevents new disclosure; it cannot invalidate copies from old deployments, caches, clones, or pull-request artifacts. Calling the issue fixed without provider evidence understates an external security dependency.
+
+**Rule**: Separate repository remediation from provider revocation. Mark the former with executable secret-scan evidence, keep the record Blocked under the credential owner until non-secret revocation confirmation exists, and never validate an exposed secret merely to test whether it still works.
+
+---

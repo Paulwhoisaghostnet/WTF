@@ -1746,9 +1746,9 @@
     },
     {
       "id": "WTF-BB-568",
-      "status": "Fixed",
-      "owner": "Codex human-alpha release completion",
-      "lastTouched": "-",
+      "status": "Blocked",
+      "owner": "Pinata credential owner / repository owner",
+      "lastTouched": "2026-09-02",
       "category": "Public release boundary / credential exposure",
       "priority": "P0",
       "points": 20,
@@ -1757,7 +1757,7 @@
       "functionalityDanger": 5,
       "securityDanger": 5,
       "title": "A tracked browser bundle contains a client-side Pinata credential",
-      "body": "- Evidence:\n  - `public/creation-tools/particle-painter/assets/teiaService-C9fHH67R.js` is a tracked, publicly distributable browser asset containing a JWT-shaped Pinata authorization credential.\n  - The same release tree correctly treats Pinata credentials used by Pasta proof tooling as operator-provided environment secrets, so embedding one in browser JavaScript violates the established secret boundary.\n- Why it matters:\n  - Anyone receiving or visiting the public package can extract and reuse the credential outside the application; deleting it from a later bundle does not revoke copies already exposed in repository history or prior deployments.\n- Correction direction:\n  - Remove the credential from every browser artifact and source owner, route authenticated pinning through an operator-controlled boundary or explicit user-provided credential, and have the credential owner revoke/rotate it out of band.\n- Verification idea:\n  - Require repository-wide secret scanning and the public-release-boundary suite to pass with no JWT-shaped Pinata authorization material, then independently confirm the exposed credential has been revoked without exercising it from this workspace.\n- 2026-08-08 correction:\n  - Rebuilt Particle Painter from the corrected source, deleted the stale hashed browser chunk, updated the creation-tool asset registry to the new entry chunk, and added a shared JWT-shaped credential detector to the current-candidate release gate. Text release files remain scannable even when generated bundles exceed the general binary size threshold.\n- 2026-08-08 verification:\n  - `npm run security:public-release-boundary` passes across 5,426 current release inputs; the focused bundle policy confirms no JWT-shaped credential or removed Vite variable remains anywhere in Particle Painter's public JavaScript.\n- Remaining external action:\n  - The exposed credential owner must revoke/rotate the old credential out of band. This workspace did not print, validate, or exercise it, so revocation is intentionally not claimed here.",
+      "body": "- Evidence:\n  - `public/creation-tools/particle-painter/assets/teiaService-C9fHH67R.js` was a tracked, publicly distributable browser asset containing a JWT-shaped Pinata authorization credential.\n  - Anyone with an old repository, deployment, cache, or pull-request artifact may retain the exposed value; deleting the current bundle cannot revoke it.\n- Repository correction:\n  - Particle Painter now accepts only an explicit user-provided, session-only Pinata credential. The stale bundle was rebuilt and removed, the asset registry points to the corrected entry, and the public-release gate scans text bundles for JWT-shaped material even above the general binary threshold.\n- Current verification (2026-09-02):\n  - `npm run security:public-release-boundary` passed across 6,434 current release inputs. Focused Particle Painter policy passed 2/2, proving source rejects the removed Vite credential path, current public JavaScript contains no JWT-shaped token, and the registry points to the built entry.\n- Blocker:\n  - Repository code cannot invalidate a credential already issued by Pinata. No non-secret provider confirmation of revocation or rotation exists in this workspace, and the credential was intentionally neither printed nor exercised.\n- Required owner action:\n  - The Pinata credential owner must revoke or rotate the exposed credential in Pinata and provide non-secret confirmation. After that, rerun the current-tree release scan and record the provider confirmation; only then can WTF-BB-568 become Verified.",
       "legacyOriginalId": "WTF-BB-568"
     },
     {
