@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **915 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **920 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 915 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 920 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -131,7 +131,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `discovery` | 3 | Random and spotlight content discovery. |
 | `etherlink` | 9 | Etherlink wallet linking, balances, tokens, and synchronization. |
 | `factory` | 5 | Operations for the factory domain. |
-| `faq` | 4 | FAQ content retrieval and management. |
+| `faq` | 8 | FAQ content retrieval and management. |
 | `gallery` | 1 | Gallery feeds, tokens, collections, and curation. |
 | `game-studio` | 15 | Game Studio projects, builds, files, and publishing. |
 | `gnocchi` | 1 | Operations for the gnocchi domain. |
@@ -146,7 +146,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `marketplace` | 10 | NFT marketplace listings, offers, purchases, and chain synchronization. |
 | `mastodon` | 6 | Mastodon connection, timelines, identity, and posting. |
 | `mcp` | 3 | MCP pairing-token management; the root `/mcp` endpoint carries Streamable HTTP MCP traffic. |
-| `media` | 8 | Media library metadata, uploads, imports, files, and lifecycle management. |
+| `media` | 9 | Media library metadata, uploads, imports, files, and lifecycle management. |
 | `messages` | 21 | Direct-message conversations, messages, participants, and read state. |
 | `mint` | 4 | Mint portal configuration and minting workflows. |
 | `mint-manager` | 2 | Operations for the mint manager domain. |
@@ -192,7 +192,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 442**, **PATCH 36**, **POST 315**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 137**, **Public/handler 211**, **Session 463**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 446**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 215**, **Session 469**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -444,26 +444,26 @@ Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF
 | --- | --- | --- | --- | --- |
 | POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:919` |
 | GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:60` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1518`<br>`server/auth/routes.ts:1528` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1523`<br>`server/auth/routes.ts:1531` |
-| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1203` |
-| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1207` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1537`<br>`server/auth/routes.ts:1547` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1542`<br>`server/auth/routes.ts:1550` |
+| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1222` |
+| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1226` |
 | GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:885` |
 | POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:845` |
 | POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:755` |
 | POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:790` |
 | POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:693` |
 | GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:471` |
-| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1214`<br>`server/auth/routes.ts:1224` |
-| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1232` |
-| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1290` |
+| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1233`<br>`server/auth/routes.ts:1243` |
+| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1251` |
+| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1309` |
 | GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:496` |
 | GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:613` |
-| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1219`<br>`server/auth/routes.ts:1227` |
+| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1238`<br>`server/auth/routes.ts:1246` |
 | GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:807` |
-| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1027` |
-| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1117` |
-| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1044` |
+| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1033` |
+| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1128` |
+| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1052` |
 | POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:812` |
 
 </details>
@@ -989,16 +989,20 @@ Operations for the factory domain.
 </details>
 
 <details>
-<summary><code>faq</code> — 4 operations</summary>
+<summary><code>faq</code> — 8 operations</summary>
 
 FAQ content retrieval and management.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/faq` | Read or list faq. | Public/handler | `server/routes/faq.ts:28` |
-| POST | `/api/faq` | Create, submit, or run faq. | Permission | `server/routes/faq.ts:43` |
-| DELETE | `/api/faq/:id` | Delete, revoke, or stop faq id. | Permission | `server/routes/faq.ts:106` |
-| PUT | `/api/faq/:id` | Replace or set faq id. | Permission | `server/routes/faq.ts:68` |
+| GET | `/api/faq` | Read or list faq. | Public/handler | `server/routes/faq.ts:89` |
+| POST | `/api/faq` | Create, submit, or run faq. | Permission | `server/routes/faq.ts:104` |
+| DELETE | `/api/faq/:id` | Delete, revoke, or stop faq id. | Permission | `server/routes/faq.ts:167` |
+| PUT | `/api/faq/:id` | Replace or set faq id. | Permission | `server/routes/faq.ts:129` |
+| GET | `/api/faq/promos` | Read or list faq promos. | Public/handler | `server/routes/faq.ts:43` |
+| GET | `/api/faq/promos/:slug/:asset` | Read or list faq promos slug asset. | Public/handler | `server/routes/faq.ts:47` |
+| GET | `/api/faq/tutorials` | Read or list faq tutorials. | Public/handler | `server/routes/faq.ts:39` |
+| GET | `/api/faq/tutorials/:slug/:asset` | Read or list faq tutorials slug asset. | Public/handler | `server/routes/faq.ts:68` |
 
 </details>
 
@@ -1238,20 +1242,21 @@ MCP pairing-token management; the root `/mcp` endpoint carries Streamable HTTP M
 </details>
 
 <details>
-<summary><code>media</code> — 8 operations</summary>
+<summary><code>media</code> — 9 operations</summary>
 
 Media library metadata, uploads, imports, files, and lifecycle management.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| DELETE | `/api/media/:id` | Delete, revoke, or stop media id. | Session | `server/routes/media-library.ts:898` |
-| GET | `/api/media/:id` | Read or list media id. | Session | `server/routes/media-library.ts:280` |
-| PUT | `/api/media/:id` | Replace or set media id. | Session | `server/routes/media-library.ts:717` |
-| GET | `/api/media/:id/file` | Read or list media id file. | Session | `server/routes/media-library.ts:678` |
-| GET | `/api/media/:id/usage` | Read or list media id usage. | Session | `server/routes/media-library.ts:806` |
-| POST | `/api/media/import-token` | Create, submit, or run media import token. | Session | `server/routes/media-library.ts:337` |
-| GET | `/api/media/mine` | Read or list media mine. | Session | `server/routes/media-library.ts:210` |
-| POST | `/api/media/upload` | Create, submit, or run media upload. | Session | `server/routes/media-library.ts:486` |
+| DELETE | `/api/media/:id` | Delete, revoke, or stop media id. | Session | `server/routes/media-library.ts:1053` |
+| GET | `/api/media/:id` | Read or list media id. | Session | `server/routes/media-library.ts:304` |
+| PUT | `/api/media/:id` | Replace or set media id. | Session | `server/routes/media-library.ts:872` |
+| POST | `/api/media/:id/drive-backup` | Create, submit, or run media id drive backup. | Session | `server/routes/media-library.ts:743` |
+| GET | `/api/media/:id/file` | Read or list media id file. | Session | `server/routes/media-library.ts:833` |
+| GET | `/api/media/:id/usage` | Read or list media id usage. | Session | `server/routes/media-library.ts:961` |
+| POST | `/api/media/import-token` | Create, submit, or run media import token. | Session | `server/routes/media-library.ts:361` |
+| GET | `/api/media/mine` | Read or list media mine. | Session | `server/routes/media-library.ts:234` |
+| POST | `/api/media/upload` | Create, submit, or run media upload. | Session | `server/routes/media-library.ts:510` |
 
 </details>
 
@@ -1447,17 +1452,17 @@ Current-user profile, social identities, settings, and public user views.
 | PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:185` |
 | PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:471` |
 | GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:547` |
-| GET | `/api/profile/dossier` | Read or list profile dossier. | Session | `server/routes/wallets.ts:1169` |
+| GET | `/api/profile/dossier` | Read or list profile dossier. | Session | `server/routes/wallets.ts:1194` |
 | DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:442` |
 | PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:398` |
 | GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:586` |
 | GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:114` |
 | PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:229` |
 | DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:332` |
-| GET | `/api/profile/tokens` | Read or list profile tokens. | Session | `server/routes/wallets.ts:610` |
-| POST | `/api/profile/tokens/sync` | Create, submit, or run profile tokens sync. | Session | `server/routes/wallets.ts:890` |
-| POST | `/api/profile/tokens/trade-board` | Create, submit, or run profile tokens trade board. | Session | `server/routes/wallets.ts:807` |
-| GET | `/api/profile/wallet-graph` | Read or list profile wallet graph. | Session | `server/routes/wallets.ts:418` |
+| GET | `/api/profile/tokens` | Read or list profile tokens. | Session | `server/routes/wallets.ts:635` |
+| POST | `/api/profile/tokens/sync` | Create, submit, or run profile tokens sync. | Session | `server/routes/wallets.ts:915` |
+| POST | `/api/profile/tokens/trade-board` | Create, submit, or run profile tokens trade board. | Session | `server/routes/wallets.ts:832` |
+| GET | `/api/profile/wallet-graph` | Read or list profile wallet graph. | Session | `server/routes/wallets.ts:443` |
 | GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:682` |
 
 </details>
@@ -1610,14 +1615,14 @@ Side-quest catalogue, progress, and completion.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/side-quests` | Read or list side quests. | Public/handler | `server/routes/side-quests.ts:381` |
-| POST | `/api/side-quests` | Create, submit, or run side quests. | Permission | `server/routes/side-quests.ts:488` |
-| GET | `/api/side-quests/:id` | Read or list side quests id. | Session | `server/routes/side-quests.ts:422` |
-| PUT | `/api/side-quests/:id` | Replace or set side quests id. | Permission | `server/routes/side-quests.ts:525` |
-| POST | `/api/side-quests/:id/complete` | Create, submit, or run side quests id complete. | Session | `server/routes/side-quests.ts:584` |
+| GET | `/api/side-quests` | Read or list side quests. | Public/handler | `server/routes/side-quests.ts:416` |
+| POST | `/api/side-quests` | Create, submit, or run side quests. | Permission | `server/routes/side-quests.ts:523` |
+| GET | `/api/side-quests/:id` | Read or list side quests id. | Session | `server/routes/side-quests.ts:457` |
+| PUT | `/api/side-quests/:id` | Replace or set side quests id. | Permission | `server/routes/side-quests.ts:560` |
+| POST | `/api/side-quests/:id/complete` | Create, submit, or run side quests id complete. | Session | `server/routes/side-quests.ts:619` |
 | POST | `/api/side-quests/:id/entry-fee/:feeId/confirm` | Create, submit, or run side quests id entry fee feeId confirm. | Permission | `server/routes/wtf-recapture.ts:288` |
 | POST | `/api/side-quests/:id/entry-fee/attest` | Create, submit, or run side quests id entry fee attest. | Session | `server/routes/wtf-recapture.ts:195` |
-| GET | `/api/side-quests/my/completions` | Read or list side quests my completions. | Session | `server/routes/side-quests.ts:469` |
+| GET | `/api/side-quests/my/completions` | Read or list side quests my completions. | Session | `server/routes/side-quests.ts:504` |
 
 </details>
 
@@ -1628,7 +1633,7 @@ Operations for the side quest completions domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| PUT | `/api/side-quest-completions/:id/approve` | Replace or set side quest completions id approve. | Permission | `server/routes/side-quests.ts:682` |
+| PUT | `/api/side-quest-completions/:id/approve` | Replace or set side quest completions id approve. | Permission | `server/routes/side-quests.ts:726` |
 
 </details>
 
@@ -1730,11 +1735,11 @@ Studio projects, files, annotations, chat, drive, administration, and workflows.
 | DELETE | `/api/studio/annotations/:id` | Delete, revoke, or stop studio annotations id. | Permission | `server/routes/studio-annotations.ts:405` |
 | PATCH | `/api/studio/annotations/:id` | Partially update studio annotations id. | Permission | `server/routes/studio-annotations.ts:288` |
 | POST | `/api/studio/annotations/:id/comments` | Create, submit, or run studio annotations id comments. | Permission | `server/routes/studio-annotations.ts:467` |
-| GET | `/api/studio/drive/callback` | Read or list studio drive callback. | Permission | `server/routes/studio-drive.ts:141` |
-| POST | `/api/studio/drive/disconnect` | Create, submit, or run studio drive disconnect. | Permission | `server/routes/studio-drive.ts:199` |
-| POST | `/api/studio/drive/refresh-quota` | Create, submit, or run studio drive refresh quota. | Permission | `server/routes/studio-drive.ts:221` |
-| POST | `/api/studio/drive/start` | Create, submit, or run studio drive start. | Permission | `server/routes/studio-drive.ts:94` |
-| GET | `/api/studio/drive/status` | Read or list studio drive status. | Permission | `server/routes/studio-drive.ts:50` |
+| GET | `/api/studio/drive/callback` | Read or list studio drive callback. | Session | `server/routes/studio-drive.ts:152` |
+| POST | `/api/studio/drive/disconnect` | Create, submit, or run studio drive disconnect. | Session | `server/routes/studio-drive.ts:209` |
+| POST | `/api/studio/drive/refresh-quota` | Create, submit, or run studio drive refresh quota. | Session | `server/routes/studio-drive.ts:230` |
+| POST | `/api/studio/drive/start` | Create, submit, or run studio drive start. | Session | `server/routes/studio-drive.ts:106` |
+| GET | `/api/studio/drive/status` | Read or list studio drive status. | Session | `server/routes/studio-drive.ts:48` |
 | DELETE | `/api/studio/files/:id` | Delete, revoke, or stop studio files id. | Permission | `server/routes/studio-files.ts:570` |
 | PATCH | `/api/studio/files/:id` | Partially update studio files id. | Permission | `server/routes/studio-files.ts:463` |
 | GET | `/api/studio/files/:id/annotations` | Read or list studio files id annotations. | Permission | `server/routes/studio-annotations.ts:104` |
@@ -1967,17 +1972,17 @@ Linked Tezos wallets, balances, tokens, domains, dossiers, and synchronization.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/wallets` | Read or list wallets. | Session | `server/routes/wallets.ts:49` |
-| POST | `/api/wallets` | Create, submit, or run wallets. | Session | `server/routes/wallets.ts:151` |
-| GET | `/api/wallets/:address/balance` | Read or list wallets address balance. | Public/handler | `server/routes/wallets.ts:924` |
-| GET | `/api/wallets/:address/dossier` | Read or list wallets address dossier. | Session | `server/routes/wallets.ts:1142` |
-| POST | `/api/wallets/:address/resync` | Create, submit, or run wallets address resync. | Session | `server/routes/wallets.ts:1189` |
-| POST | `/api/wallets/:address/sync` | Create, submit, or run wallets address sync. | Session | `server/routes/wallets.ts:1085` |
-| GET | `/api/wallets/:address/tokens` | Read or list wallets address tokens. | Session | `server/routes/wallets.ts:933` |
-| DELETE | `/api/wallets/:id` | Delete, revoke, or stop wallets id. | Session | `server/routes/wallets.ts:284` |
-| PUT | `/api/wallets/:id/primary` | Replace or set wallets id primary. | Session | `server/routes/wallets.ts:326` |
-| PUT | `/api/wallets/:id/tezos-domain` | Replace or set wallets id tezos domain. | Session | `server/routes/wallets.ts:356` |
-| POST | `/api/wallets/challenge` | Create, submit, or run wallets challenge. | Session | `server/routes/wallets.ts:137` |
+| GET | `/api/wallets` | Read or list wallets. | Session | `server/routes/wallets.ts:50` |
+| POST | `/api/wallets` | Create, submit, or run wallets. | Session | `server/routes/wallets.ts:164` |
+| GET | `/api/wallets/:address/balance` | Read or list wallets address balance. | Public/handler | `server/routes/wallets.ts:949` |
+| GET | `/api/wallets/:address/dossier` | Read or list wallets address dossier. | Session | `server/routes/wallets.ts:1167` |
+| POST | `/api/wallets/:address/resync` | Create, submit, or run wallets address resync. | Session | `server/routes/wallets.ts:1214` |
+| POST | `/api/wallets/:address/sync` | Create, submit, or run wallets address sync. | Session | `server/routes/wallets.ts:1110` |
+| GET | `/api/wallets/:address/tokens` | Read or list wallets address tokens. | Session | `server/routes/wallets.ts:958` |
+| DELETE | `/api/wallets/:id` | Delete, revoke, or stop wallets id. | Session | `server/routes/wallets.ts:309` |
+| PUT | `/api/wallets/:id/primary` | Replace or set wallets id primary. | Session | `server/routes/wallets.ts:351` |
+| PUT | `/api/wallets/:id/tezos-domain` | Replace or set wallets id tezos domain. | Session | `server/routes/wallets.ts:381` |
+| POST | `/api/wallets/challenge` | Create, submit, or run wallets challenge. | Session | `server/routes/wallets.ts:138` |
 
 </details>
 

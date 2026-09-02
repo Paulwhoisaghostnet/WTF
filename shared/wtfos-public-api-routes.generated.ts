@@ -1429,8 +1429,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth discord.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1518",
-      "server/auth/routes.ts:1528"
+      "server/auth/routes.ts:1537",
+      "server/auth/routes.ts:1547"
     ]
   },
   {
@@ -1439,8 +1439,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth discord callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1523",
-      "server/auth/routes.ts:1531"
+      "server/auth/routes.ts:1542",
+      "server/auth/routes.ts:1550"
     ]
   },
   {
@@ -1449,7 +1449,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth github.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1203"
+      "server/auth/routes.ts:1222"
     ]
   },
   {
@@ -1458,7 +1458,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth github callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1207"
+      "server/auth/routes.ts:1226"
     ]
   },
   {
@@ -1521,8 +1521,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1214",
-      "server/auth/routes.ts:1224"
+      "server/auth/routes.ts:1233",
+      "server/auth/routes.ts:1243"
     ]
   },
   {
@@ -1531,7 +1531,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1232"
+      "server/auth/routes.ts:1251"
     ]
   },
   {
@@ -1540,7 +1540,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2 callback.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1290"
+      "server/auth/routes.ts:1309"
     ]
   },
   {
@@ -1567,8 +1567,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1219",
-      "server/auth/routes.ts:1227"
+      "server/auth/routes.ts:1238",
+      "server/auth/routes.ts:1246"
     ]
   },
   {
@@ -1586,7 +1586,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet challenge.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1027"
+      "server/auth/routes.ts:1033"
     ]
   },
   {
@@ -1595,7 +1595,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet register.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1117"
+      "server/auth/routes.ts:1128"
     ]
   },
   {
@@ -1604,7 +1604,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet verify.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1044"
+      "server/auth/routes.ts:1052"
     ]
   },
   {
@@ -3602,7 +3602,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list faq.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/faq.ts:28"
+      "server/routes/faq.ts:89"
     ]
   },
   {
@@ -3611,7 +3611,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run faq.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/faq.ts:43"
+      "server/routes/faq.ts:104"
     ]
   },
   {
@@ -3620,7 +3620,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop faq id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/faq.ts:106"
+      "server/routes/faq.ts:167"
     ]
   },
   {
@@ -3628,6 +3628,42 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "path": "/api/faq/:id",
     "purpose": "Replace or set faq id.",
     "declaredAccess": "Permission",
+    "sources": [
+      "server/routes/faq.ts:129"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/faq/promos",
+    "purpose": "Read or list faq promos.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/faq.ts:43"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/faq/promos/:slug/:asset",
+    "purpose": "Read or list faq promos slug asset.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/faq.ts:47"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/faq/tutorials",
+    "purpose": "Read or list faq tutorials.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/faq.ts:39"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/faq/tutorials/:slug/:asset",
+    "purpose": "Read or list faq tutorials slug asset.",
+    "declaredAccess": "Public/handler",
     "sources": [
       "server/routes/faq.ts:68"
     ]
@@ -4484,7 +4520,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop media id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:898"
+      "server/routes/media-library.ts:1053"
     ]
   },
   {
@@ -4493,7 +4529,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list media id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:280"
+      "server/routes/media-library.ts:304"
     ]
   },
   {
@@ -4502,7 +4538,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set media id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:717"
+      "server/routes/media-library.ts:872"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/media/:id/drive-backup",
+    "purpose": "Create, submit, or run media id drive backup.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/media-library.ts:743"
     ]
   },
   {
@@ -4511,7 +4556,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list media id file.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:678"
+      "server/routes/media-library.ts:833"
     ]
   },
   {
@@ -4520,7 +4565,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list media id usage.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:806"
+      "server/routes/media-library.ts:961"
     ]
   },
   {
@@ -4529,7 +4574,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run media import token.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:337"
+      "server/routes/media-library.ts:361"
     ]
   },
   {
@@ -4538,7 +4583,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list media mine.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:210"
+      "server/routes/media-library.ts:234"
     ]
   },
   {
@@ -4547,7 +4592,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run media upload.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/media-library.ts:486"
+      "server/routes/media-library.ts:510"
     ]
   },
   {
@@ -5240,7 +5285,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list profile dossier.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:1169"
+      "server/routes/wallets.ts:1194"
     ]
   },
   {
@@ -5303,7 +5348,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list profile tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:610"
+      "server/routes/wallets.ts:635"
     ]
   },
   {
@@ -5312,7 +5357,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run profile tokens sync.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:890"
+      "server/routes/wallets.ts:915"
     ]
   },
   {
@@ -5321,7 +5366,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run profile tokens trade board.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:807"
+      "server/routes/wallets.ts:832"
     ]
   },
   {
@@ -5330,7 +5375,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list profile wallet graph.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:418"
+      "server/routes/wallets.ts:443"
     ]
   },
   {
@@ -5627,7 +5672,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set side quest completions id approve.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/side-quests.ts:682"
+      "server/routes/side-quests.ts:726"
     ]
   },
   {
@@ -5636,7 +5681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list side quests.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/side-quests.ts:381"
+      "server/routes/side-quests.ts:416"
     ]
   },
   {
@@ -5645,7 +5690,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run side quests.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/side-quests.ts:488"
+      "server/routes/side-quests.ts:523"
     ]
   },
   {
@@ -5654,7 +5699,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list side quests id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/side-quests.ts:422"
+      "server/routes/side-quests.ts:457"
     ]
   },
   {
@@ -5663,7 +5708,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set side quests id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/side-quests.ts:525"
+      "server/routes/side-quests.ts:560"
     ]
   },
   {
@@ -5672,7 +5717,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run side quests id complete.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/side-quests.ts:584"
+      "server/routes/side-quests.ts:619"
     ]
   },
   {
@@ -5699,7 +5744,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list side quests my completions.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/side-quests.ts:469"
+      "server/routes/side-quests.ts:504"
     ]
   },
   {
@@ -6255,45 +6300,45 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "method": "GET",
     "path": "/api/studio/drive/callback",
     "purpose": "Read or list studio drive callback.",
-    "declaredAccess": "Permission",
+    "declaredAccess": "Session",
     "sources": [
-      "server/routes/studio-drive.ts:141"
+      "server/routes/studio-drive.ts:152"
     ]
   },
   {
     "method": "POST",
     "path": "/api/studio/drive/disconnect",
     "purpose": "Create, submit, or run studio drive disconnect.",
-    "declaredAccess": "Permission",
+    "declaredAccess": "Session",
     "sources": [
-      "server/routes/studio-drive.ts:199"
+      "server/routes/studio-drive.ts:209"
     ]
   },
   {
     "method": "POST",
     "path": "/api/studio/drive/refresh-quota",
     "purpose": "Create, submit, or run studio drive refresh quota.",
-    "declaredAccess": "Permission",
+    "declaredAccess": "Session",
     "sources": [
-      "server/routes/studio-drive.ts:221"
+      "server/routes/studio-drive.ts:230"
     ]
   },
   {
     "method": "POST",
     "path": "/api/studio/drive/start",
     "purpose": "Create, submit, or run studio drive start.",
-    "declaredAccess": "Permission",
+    "declaredAccess": "Session",
     "sources": [
-      "server/routes/studio-drive.ts:94"
+      "server/routes/studio-drive.ts:106"
     ]
   },
   {
     "method": "GET",
     "path": "/api/studio/drive/status",
     "purpose": "Read or list studio drive status.",
-    "declaredAccess": "Permission",
+    "declaredAccess": "Session",
     "sources": [
-      "server/routes/studio-drive.ts:50"
+      "server/routes/studio-drive.ts:48"
     ]
   },
   {
@@ -7582,7 +7627,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wallets.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:49"
+      "server/routes/wallets.ts:50"
     ]
   },
   {
@@ -7591,7 +7636,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wallets.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:151"
+      "server/routes/wallets.ts:164"
     ]
   },
   {
@@ -7600,7 +7645,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wallets address balance.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/wallets.ts:924"
+      "server/routes/wallets.ts:949"
     ]
   },
   {
@@ -7609,7 +7654,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wallets address dossier.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:1142"
+      "server/routes/wallets.ts:1167"
     ]
   },
   {
@@ -7618,7 +7663,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wallets address resync.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:1189"
+      "server/routes/wallets.ts:1214"
     ]
   },
   {
@@ -7627,7 +7672,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wallets address sync.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:1085"
+      "server/routes/wallets.ts:1110"
     ]
   },
   {
@@ -7636,7 +7681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wallets address tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:933"
+      "server/routes/wallets.ts:958"
     ]
   },
   {
@@ -7645,7 +7690,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop wallets id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:284"
+      "server/routes/wallets.ts:309"
     ]
   },
   {
@@ -7654,7 +7699,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set wallets id primary.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:326"
+      "server/routes/wallets.ts:351"
     ]
   },
   {
@@ -7663,7 +7708,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set wallets id tezos domain.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:356"
+      "server/routes/wallets.ts:381"
     ]
   },
   {
@@ -7672,7 +7717,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wallets challenge.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wallets.ts:137"
+      "server/routes/wallets.ts:138"
     ]
   },
   {

@@ -11347,3 +11347,13 @@
 **Rule**: Distinguish compiler diagnostics from runtime termination. When garbage-collection evidence shows heap exhaustion, scope measured headroom to the compiler step, add a workflow policy assertion, and require the exact CI run to finish every downstream gate before marking the release signal verified.
 
 ---
+
+## 2026-09-01 — Tutorial narration is a performance script, not a production prompt
+
+**What happened**: The FAQ voiceovers mixed recording directions and account setup prompts into the words spoken to viewers, used a voice that did not represent Tommy, pronounced Tezos incorrectly, and sometimes highlighted an action without visibly completing its result.
+
+**Why it mattered**: A screen recording can be mechanically valid while still teaching the wrong thing. Viewers heard internal directions instead of a friendly first-person lesson and could not consistently connect each spoken instruction to the cursor action and durable success state on screen.
+
+**Rule**: Keep canonical spoken steps separate from automation instructions. Send only approved first-person copy to text-to-speech, render pronunciation substitutions only in the audio layer, preserve product spelling in captions, synchronize each spoken step to a visible cursor action, and end every tutorial on the linked, verified, or saved state it promises.
+
+---
