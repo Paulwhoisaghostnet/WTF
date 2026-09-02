@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **117** · Verified: **458** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **459** · Archived: **4**
 
 ## Canonical Board
 
@@ -72,13 +72,12 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 271 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 371 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 371 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
-| WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
+| WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 186 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 186 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
@@ -227,6 +226,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-471 | Verified | Codex Ravioli production audit | 2026-08-30 | Pasta Protocol / portable holder fulfillment | P0 | 17 | 38 | 4 | 5 | 3 | Exported Ravioli pages cannot discover the creator's public open kit |
 | WTF-BB-466 | Verified | Codex Ravioli live proof | - | Pasta Protocol / live publish recovery | P0 | 17 | 38 | 4 | 5 | 3 | Ravioli download-only wait concealed partial applied state |
 | WTF-BB-454 | Verified | Codex Ravioli recovery reconciliation | 2026-07-19 | Pasta Protocol / interrupted recovery finalization | P0 | 17 | 38 | 4 | 5 | 3 | Signer-free reconciliation discovered and validated exact applied mints `ooEpd...`/23831420 and `oossz...`/23831421 from the immutable intent plus TzKT, required dual-RPC terminal counters/clear active mempools, unchanged accepted hashes, and exact 2/2 balances with 6/5 supplies, then emitted terminal receipt SHA-256 `47884383830d14a3ff6b3a29a33c2c516068dd484e82133d08b1a7ab7425fcf3`; focused 13/13, combined 35/35, and strict TypeScript pass |
+| WTF-BB-422 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-408 | Verified | Codex full-send release pass | - | CI / release integrity | P0 | 17 | 38 | 4 | 5 | 3 | Quality Gates run below the supported Node floor and before browser prerequisites |
 | WTF-BB-387 | Verified | Codex full-send cleanup pass | 2026-07-15 | Pasta Protocol / primary-sale authorization | P0 | 17 | 38 | 3 | 5 | 4 | Both fixed-sale contracts bind the seller to the authenticated administrator, Colander and native installers bind sale calls to the connected wallet, and forced third-party listings fail in SmartPy tests |
 | WTF-BB-245 | Verified | Codex Macaroni CSS injection hotfix | 2026-06-12 | Macaroni / generated drop website stored CSS safety | P0 | 17 | 38 | 3 | 5 | 4 | Macaroni generated pages now sanitize published theme config server-side and client-side, apply only known themes, hex accent colors, and known font stacks, remove arbitrary stored `customCss`, and regression-test `</style>`, `url(javascript:)`, and malformed custom-property payloads; verified by `node --check public/creation-tools/macaroni/js/studio.js public/creation-tools/macaroni/js/drop.js`, `npx tsx --test server/routes/macaroni-policy.test.ts server/features/macaroni/publish.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check`, `npm run build`, and `npm run test:e2e:macaroni:shadownet` |
@@ -1560,16 +1560,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
 
-### WTF-BB-422 - UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified
-
-- Category: Pasta Protocol / browser-to-chain evidence
-- Priority: P0
-- Status: In Progress
-- Owner/Session: Codex Pasta proof-package pass
-- Last touched: 2026-07-18
-- Score: C4 + F5 + S3 + P0(5) = 17
-- Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
 - Category: Casino / compliance and economy
@@ -1712,7 +1702,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
-### WTF-BB-622 - Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys
+### WTF-BB-622 - Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry
 
 - Category: Desktop OS / commissioned app wayfinding and runtime state
 - Priority: P1
@@ -1720,31 +1710,15 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 - Owner/Session: Codex commission production wayfinding verification
 - Last touched: 2026-09-02
 - Score: C4 + F5 + S0 + P1(4) = 13
-- Evidence:
-  - Production `GET /api/apps/desktop` on 2026-08-29 returned `false` for Arcade, Casino, Console, Game Studio, Studio, IPFS Pinning, Pasta Protocol, and other creator services even though the source defaults enable most of them.
-  - The production FAQ returned an empty list.
-  - `WelcomeMessage.tsx` tells a new user only that the account is ready and offers acknowledgement, Profile, or a novelty Diary path; it does not identify the commissioned Play, Create, Shop, Events, and Talk tasks.
-  - The Start Menu uses internal product-domain labels such as Gameshow, On Chain, and Gaming and duplicates several destinations across groups without one first-run task map.
-  - Production Arcade data has eight published games but zero creator games and zero Game Studio games, while the app itself is disabled.
-- Why it matters:
-  - The customer cannot treat the platform as self-explanatory while commissioned capabilities are unreachable or require an operator to explain internal app names and entitlement history.
-  - Source defaults do not repair existing production registration rows; release evidence must cover the authoritative database-backed app response.
-- Correction direction:
-  - Make the Classic OS the primary shell and expose stable Play, Create, Shop, Events, and Talk entry groups.
-  - Turn the first-run welcome into a task chooser and make the same guide recoverable through Help.
-  - Seed commission help content idempotently and migrate the authoritative desktop registrations for approved commissioned apps without conflating docs freshness with enablement.
-  - Preserve role, membership, wallet, and server authorization gates while giving denied users a reason and recovery path.
-- Verification idea:
-  - Prove fresh-member first run, returning-member Help recovery, Start Menu/desktop/command/direct-route agreement, authoritative local database state, production-shaped migration, inventory coverage, desktop/mobile browser journeys, and the live `/api/apps/desktop` response after deployment.
+- Historical evidence:
+  - Production had disabled commissioned participation apps, returned no FAQ content, and gave new users no plain-language map from their goals to Play, Create, Shop, Events, and Talk. Source defaults did not repair the database-backed app registry.
 - Correction:
-  - Added one shared Classic task map for Play, Create, Shop, Events, and Talk and used it in the welcome event, Help & Start Here, and the leading Start Menu groups.
-  - Reclassified Arcade, Studio, and Game Studio as free core desktop applications and replaced Casino's wagering claim with explicit practice-sandbox language while preserving its membership gate.
-  - Added an idempotent migration that restores commissioned app registrations as enabled/permanent and seeds plain-language FAQ guidance without overwriting operator content.
-  - Updated the live-puppet database preparation, route inventory, behavior registry, and browser harness so first-run completion is persistent and observable.
-- Verification:
-  - Focused wayfinding/catalog tests pass 20/20; the two-scenario browser journey proves task-map agreement, chosen-route launch, persisted welcome completion, public Help recovery, and stale-session recovery.
-  - Production build and inventory coverage pass. The guarded local migration applied successfully; direct reads confirm Arcade, Casino, Game Studio, Studio, WTFIAM, and Mail enabled/registered/permanent, the help seed present, and the Studio workflow column installed.
-  - Production verification remains pending deployment, so this bounty is Fixed rather than Verified.
+  - One shared Classic OS task map now drives first-run welcome, Help & Start Here, and the leading Start Menu groups. An idempotent migration made WTFIAM, Arcade, Casino, Game Studio, Studio, and Mail enabled, registered, and permanent while seeding ten plain-language FAQ entries.
+  - Production verification found one remaining entitlement defect: a user holding the documented `casino-app-pass` still needed an undocumented `wtfos-app-casino` unlock before seeing the launcher. Commit `7e0cf18a` adds catalog-declared access SKUs to desktop personalization, so the Casino pass exposes the surface while the independent membership gate still controls entry.
+- Verification (2026-09-02):
+  - Focused catalog, desktop-gate, registration, and wayfinding tests pass 11/11; TypeScript and the production build pass. The three-scenario Chromium suite proves the shared task map, stale-session recovery, and that a Casino pass holder sees the launcher with the exact `Casino membership card required` reason while inactive membership prevents navigation. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
+  - The authenticated production admin registry reports WTFIAM, Arcade, Casino, Game Studio, Studio, and Mail all enabled, registered, permanent, and installable. The public FAQ returns ten seeded entries beginning with the five-task Start Here guidance.
+  - Exact deploy run `33686283236` succeeded and `https://wtfos.app/api/health/ready` reports commit `7e0cf18a` with database, chain, and jobs healthy. Live authenticated probes for contestant `e2e_bert` and admin `e2e_thecount` now return all six commissioned apps enabled, including Casino from their existing `casino-app-pass`; Casino status still returns `canEnter: false` and inactive membership. A live Chromium check confirms the contestant sees the locked Casino launcher and cannot enter. WTF-BB-622 is Verified.
 
 ### WTF-BB-342 - Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface
 
@@ -5052,6 +5026,16 @@ Copy this when adding a new issue:
 - Status: Verified
 - Owner/Session: Codex Ravioli recovery reconciliation
 - Last touched: 2026-07-19
+- Score: C4 + F5 + S3 + P0(5) = 17
+- Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
+
+### WTF-BB-422 - UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified
+
+- Category: Pasta Protocol / browser-to-chain evidence
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex Pasta proof-package pass
+- Last touched: 2026-07-18
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
 
