@@ -549,7 +549,7 @@ export async function runTvBootBackfill(): Promise<void> {
     );
     results["roger_playlist.item_synced"] = 1;
 
-    // 7) Official wtfOS learning channel. This platform-managed channel
+    // 6b) Official wtfOS learning channel. This platform-managed channel
     //    intentionally contains only the promo catalog and the FAQ
     //    tutorial catalog. Bumpers and schedules stay disabled so no
     //    unrelated TV media can enter the broadcast queue.
@@ -714,7 +714,7 @@ export async function runTvBootBackfill(): Promise<void> {
     );
     results["guide_channel.catalog_items"] = guideVideoIds.length;
 
-    // 8) Dial-number pins.  Executed in this order so a re-claim is
+    // 7) Dial-number pins.  Executed in this order so a re-claim is
     //    a no-op: we only update when dial_number IS NULL.
     const pinDial = async (dial: number, channelId: number) => {
       // First clear the dial from any other channel (except the
@@ -834,7 +834,7 @@ export async function runTvBootBackfill(): Promise<void> {
     await pinDial(PLATFORM_DIAL, platformChannelId);
     results[`dial.${PLATFORM_DIAL}`] = platformChannelId;
 
-    // 9) Auto-assign dial numbers to brand-new channels only.  Dials
+    // 8) Auto-assign dial numbers to brand-new channels only.  Dials
     //    are sticky: once a channel owns a slot it keeps it forever,
     //    and a deleted channel's dial is never recycled to anyone
     //    else.  A small monotonic counter (`tv_dial_counter`) records
@@ -916,7 +916,7 @@ export async function runTvBootBackfill(): Promise<void> {
       results["dial.auto_assigned"] = assigned;
     }
 
-    // 10) Defensive orphan sweep.  Drops playlist items whose video
+    // 9) Defensive orphan sweep.  Drops playlist items whose video
     //    pointer still references a channel-video that got orphaned
     //    before the FK cascade existed.  The migration runs the same
     //    sweep; we repeat here so a re-boot after manual surgery also

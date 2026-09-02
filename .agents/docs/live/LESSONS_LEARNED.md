@@ -11357,3 +11357,13 @@
 **Rule**: Keep canonical spoken steps separate from automation instructions. Send only approved first-person copy to text-to-speech, render pronunciation substitutions only in the audio layer, preserve product spelling in captions, synchronize each spoken step to a visible cursor action, and end every tutorial on the linked, verified, or saved state it promises.
 
 ---
+
+## 2026-09-01 — Source-policy delimiters are compatibility boundaries
+
+**What happened**: Adding the wtfOS Guide TV seed renumbered the comment that marks the beginning of the existing dial-assignment block. The runtime behavior was intact, but Roger Radio's focused source-policy tests could no longer isolate their owned seed block and failed the aggregate quality gate.
+
+**Why it mattered**: Repository policy tests use stable section markers to constrain high-risk SQL ownership and ordering. Renumbering one as cosmetic text silently changed the interface those tests consume.
+
+**Rule**: Before inserting into a shared backfill or migration, search for source-policy readers of its section markers. Preserve existing delimiters and numbering, give additive work a subordinate marker, and run every policy test that slices the shared source—not only the new feature's policy test.
+
+---

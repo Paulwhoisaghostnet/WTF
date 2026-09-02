@@ -5,8 +5,8 @@ import test from "node:test";
 const source = readFileSync("server/lib/tv-boot-backfill.ts", "utf8");
 
 function guideChannelBlock(): string {
-  const start = source.indexOf("// 7) Official wtfOS learning channel.");
-  const end = source.indexOf("// 8) Dial-number pins.");
+  const start = source.indexOf("// 6b) Official wtfOS learning channel.");
+  const end = source.indexOf("// 7) Dial-number pins.");
   assert.notEqual(start, -1, "Guide TV backfill block must exist");
   assert.notEqual(end, -1, "dial pin block must follow Guide TV backfill");
   return source.slice(start, end);
