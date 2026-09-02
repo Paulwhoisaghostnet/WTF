@@ -690,9 +690,9 @@
     },
     {
       "id": "WTF-BB-086",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "-",
+      "status": "Claimed",
+      "owner": "Codex PFP media boundary pass",
+      "lastTouched": "2026-09-02",
       "category": "Privacy / media validation",
       "priority": "P2",
       "points": 9,
@@ -701,7 +701,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "Profile PFP update stores arbitrary image URLs without sanitizer or ownership check",
-      "body": "- Evidence:\n  - `server/routes/profile.ts:236-256` stores `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`.\n  - The same file imports and uses `sanitizeThumbnailUrl` for token-derived PFP candidates, but the update endpoint bypasses it.\n- Why it matters:\n  - Users can make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts compared with the rest of the NFT media pipeline.\n- Likely correction direction:\n  - Require the chosen PFP URL to pass `sanitizeThumbnailUrl`, and when `tokenContract`/`tokenId` are supplied, require a positive holding row for that user.\n- Verification idea:\n  - Attempt to set a PFP to an unallowlisted host or non-http(s)/ipfs URI; the API should reject it and leave the existing avatar unchanged.",
+      "body": "- Evidence:\n  - `server/routes/profile.ts:236-256` stores `imageUrl` directly into both `pfpImageUrl` and `avatarUrl`.\n  - The same file imports and uses `sanitizeThumbnailUrl` for token-derived PFP candidates, but the update endpoint bypasses it.\n- Why it matters:\n  - Users can make profile/avatar surfaces load arbitrary external URLs, enabling tracking pixels and inconsistent handling of disallowed schemes/hosts compared with the rest of the NFT media pipeline.\n- Likely correction direction:\n  - Require the chosen PFP URL to pass `sanitizeThumbnailUrl`, and when `tokenContract`/`tokenId` are supplied, require a positive holding row for that user.\n- Verification idea:\n  - Attempt to set a PFP to an unallowlisted host or non-http(s)/ipfs URI; the API should reject it and leave the existing avatar unchanged.\n- Claim (2026-09-02):\n  - Codex reproduced the unsanitized write boundary and claimed the item. The correction will preserve the canvas editor by storing edited output through the existing user-owned media route instead of weakening the URL sanitizer to accept database-resident `data:` images.",
       "legacyOriginalId": "WTF-BB-086"
     },
     {
