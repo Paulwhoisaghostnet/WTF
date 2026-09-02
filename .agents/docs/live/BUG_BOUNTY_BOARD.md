@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **128** · Verified: **448** · Archived: **4**
+Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **126** · Verified: **450** · Archived: **4**
 
 ## Canonical Board
 
@@ -138,14 +138,12 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-184 | Fixed | Codex wtfOS doc-registry hardening pass | - | wtfOS / app installation governance | P1 | 13 | 185 | 4 | 4 | 1 | Desktop app installs could bypass doc-registry proof |
 | WTF-BB-166 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 185 | 4 | 5 | 0 | Discover opens a side-feed instead of the Actor Feed tab and lacks peer-follow discovery |
 | WTF-BB-158 | Fixed | Codex Skywire Bluesky client pass | 2026-05-24 | Skywire / Bluesky client UX | P1 | 13 | 185 | 4 | 5 | 0 | Skywire links accounts but does not behave like a usable Bluesky client |
-| WTF-BB-131 | Fixed | Codex public-repo risk audit | 2026-05-08 | Build context / key custody | P1 | 13 | 185 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 185 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 185 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 185 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
 | WTF-BB-054 | Fixed | Codex TV2 retirement pass | 2026-05-04 | TV microapp / platform health | P1 | 13 | 185 | 3 | 3 | 3 | Dual TV implementations (`/tv` and `/tv2`) block safe, staged rollout of player behavior changes |
 | WTF-BB-053 | Fixed | Codex TV resilience pass | 2026-05-04 | TV microapp / reliability | P1 | 13 | 185 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Fixed | Swarm A3 | 2026-04-28 | DB connectivity / TLS | P1 | 13 | 185 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
-| WTF-BB-019 | Fixed | Codex security hardening pass | 2026-05-30 | Secrets / key management | P1 | 13 | 185 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-661 | Fixed | Codex wallet nonce atomicity pass | 2026-08-30 | Authentication / wallet challenge replay | P1 | 12 | 270 | 2 | 3 | 3 | Wallet challenge consumption is not atomic under concurrent verification |
 | WTF-BB-642 | Fixed | Codex Rat Race replay stream pass | 2026-05-28 | Tezos / tz2at data freshness | P1 | 12 | 270 | 3 | 4 | 1 | tz2at relay health can be green while indexed firehose data is stale |
 | WTF-BB-624 | Fixed | Codex commission fulfillment | 2026-08-29 | Store / creator contribution and moderation | P1 | 12 | 270 | 3 | 5 | 0 | Trusted creator market API publishes items immediately while the Store exposes no submission/status UI and operators have no explicit approve/reject lifecycle |
@@ -383,10 +381,12 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-200 | Verified | Codex Skywire OAuth permission sync pass | 2026-06-04 | Skywire / AT OAuth permission lifecycle | P1 | 13 | 185 | 2 | 5 | 2 | Skywire chat add-on OAuth completion can strand upgraded permissions in the popup/new window instead of the original client |
 | WTF-BB-173 | Verified | Codex admin app runtime gate audit | 2026-05-25 | WTF OS / admin app gates | P1 | 13 | 185 | 3 | 5 | 1 | Desktop app disables hide launchers but do not fail closed at command palette or direct route runtime |
 | WTF-BB-137 | Verified | Codex live puppet orchestration pass | 2026-05-08 | E2E / live actor orchestration | P1 | 13 | 185 | 3 | 5 | 1 | Inventory E2E needed actor-backed puppet users and signer wallets |
+| WTF-BB-131 | Verified | Codex wallet keyring Docker-boundary verification | 2026-05-08 | Build context / key custody | P1 | 13 | 185 | 1 | 3 | 5 | Docker context did not ignore platform wallet keyring artifacts |
 | WTF-BB-124 | Verified | Codex marketplace signer-binding pass | 2026-08-31 | Tezos marketplace / wallet binding | P1 | 13 | 185 | 3 | 4 | 2 | Marketplace and barter writes do not bind contract sends to the expected wallet |
 | WTF-BB-080 | Verified | Codex paid side-quest fee gate | 2026-08-31 | Authorization / Tezos payment gating | P1 | 13 | 185 | 4 | 3 | 2 | Paid side-quest completion does not require confirmed entry-fee payment |
 | WTF-BB-068 | Verified | Codex Shadowbox evidence reconciliation | 2026-08-31 | Kiln integration / Shadowbox | P1 | 13 | 185 | 4 | 4 | 1 | Shadowbox is still single-contract and cannot emulate product systems |
 | WTF-BB-056 | Verified | Codex security hardening pass | 2026-05-30 | Security / telemetry integrity | P1 | 13 | 185 | 4 | 1 | 4 | Unauthenticated client log ingestion route is exempt from API rate limiting |
+| WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 185 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
 | WTF-BB-670 | Verified | Codex credential-independent Hetzner deploy transport | 2026-09-02 | Deploy / Hetzner source transport | P1 | 12 | 270 | 2 | 5 | 1 | Production deploy intermittently depends on an unavailable GitHub credential stored on the server |
 | WTF-BB-644 | Verified | Codex full-send cleanup pass | - | Build / dirty worktree isolation | P1 | 12 | 270 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
 | WTF-BB-639 | Verified | Codex WTF LIVE stage/attendance layout pass | 2026-06-04 | WTF LIVE / public room stage layout | P1 | 12 | 270 | 2 | 5 | 1 | WTF LIVE room layout does not reserve the bulk of the room for active video/screen share |
@@ -3095,27 +3095,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Skywire AT Protocol bridge"`
   - `HARNESS_PORT=4177 npm run test:e2e:inventory`
 
-### WTF-BB-131 - Docker context did not ignore platform wallet keyring artifacts
-
-- Category: Build context / key custody
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex public-repo risk audit
-- Last touched: 2026-05-08
-- Score: C1 + F3 + S5 + P1(4) = 13
-- Evidence:
-  - `.gitignore` excluded platform wallet keyrings, master-key files, local wallet manifests, and host-local signer directories, but `.dockerignore` did not mirror those patterns.
-  - `Dockerfile` copies the full Docker build context during the builder stage, so a host-local custody artifact created inside the repo could enter build context/layers even while staying out of git.
-  - A local ignored `docs/platform-wallets/` directory exists from platform wallet tooling, proving this artifact class is generated in the working tree.
-- Why it matters:
-  - Wallet custody controls need every packaging boundary to fail closed. Git hygiene alone does not protect Docker contexts, image layers, CI artifact uploads, or future build cache exports.
-- Likely correction direction:
-  - Mirror platform-wallet custody patterns in `.dockerignore`, keep keyring defaults outside the repo tree, and add a public-release/build-context gate that checks secret-related ignore parity.
-- Verification idea:
-  - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.
-- Fix notes:
-  - Added the platform wallet custody ignore patterns to `.dockerignore`.
-
 ### WTF-BB-077 - TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage
 
 - Category: TV microapp / storage pipeline
@@ -3239,19 +3218,6 @@ Total: **638** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `node --check scripts/check-db-connection.mjs` → passed
   - `npm run check` → passed
 - Verification idea: Connection helpers fail when presented with an invalid certificate in staging; production scripts connect only with verified TLS and log verification policy.
-
-### WTF-BB-019 - OAuth and Studio secret encryption fall back to `SESSION_SECRET`
-
-- Category: Secrets / key management
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex security hardening pass
-- Last touched: 2026-05-30
-- Score: C3 + F2 + S4 + P1(4) = 13
-- Evidence: `server/auth/oauth-crypto.ts:8-22` uses `SESSION_SECRET` when `TWITTER_TOKEN_ENCRYPTION_KEY` is missing. `server/lib/studio/crypto.ts:35-50` uses `SESSION_SECRET` when `STUDIO_CRYPTO_KEY` is missing.
-- Why it matters: Session signing, Twitter OAuth token encryption, and Studio credential encryption can collapse onto one secret. That couples rotation plans and widens blast radius if one secret leaks or must be rotated quickly.
-- Likely correction direction: Require dedicated encryption keys in production, add startup diagnostics, and document a rotation/backfill path for already encrypted payloads.
-- Verification idea: Production boot fails or marks integrations unavailable when dedicated encryption keys are missing; session rotation does not invalidate encrypted OAuth/Studio secrets.
 
 ### WTF-BB-661 - Wallet challenge consumption is not atomic under concurrent verification
 
@@ -8701,6 +8667,23 @@ Copy this when adding a new issue:
   - Added local DB prep, live puppet seeding, signer-backed wallet challenge verification, role-aware actor selection, live route/domain orchestration, richer API failure reporting, and worker-rule documentation for maintaining the live harness.
   - Verified with `npm run test:e2e:live:puppets` returning 73 passed.
 
+### WTF-BB-131 - Docker context did not ignore platform wallet keyring artifacts
+
+- Category: Build context / key custody
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex wallet keyring Docker-boundary verification
+- Last touched: 2026-05-08
+- Score: C1 + F3 + S5 + P1(4) = 13
+- Historical evidence:
+  - Git ignored platform-wallet keyrings, master-key files, local manifests, and signer directories, but Docker did not. Because the builder uses `COPY . .`, ignored host-local custody artifacts could still enter build context, layers, or cache exports.
+- Correction:
+  - Commit `46d79797` mirrors platform-wallet custody patterns into `.dockerignore`: `.wtf-gameshow`, `.wtf-platform-keyring`, `platform-wallet-keyring*.json`, master-key files, public/local wallet manifests, and `docs/platform-wallets`. The platform-wallet tool defaults its secret directory outside the repository.
+  - The checked-in Docker-context policy parses the actual ignore file and requires these patterns alongside environment, SSH, certificate, runtime-state, evidence, and test exclusions on every quality run.
+- Verification (2026-09-02):
+  - The Docker-context policy passes all 34 required exclusions and its parser suite passes 3/3. Independent `git check-ignore --no-index` probes confirm representative keyring, master-key, generated-keyring, and local-manifest paths are excluded.
+  - The correction is an ancestor of deployed `47319133`. Deploy run 33630052693 built the real Dockerfile/context and reached exact-commit production health; the same production build boundary was previously inspected in WTF-BB-008 with Vite reporting zero injected `.env` values. WTF-BB-131 is Verified.
+
 ### WTF-BB-124 - Marketplace and barter writes do not bind contract sends to the expected wallet
 
 - Category: Tezos marketplace / wallet binding
@@ -8780,6 +8763,23 @@ Copy this when adding a new issue:
   - Require a signed source token for client log writes and add endpoint-specific, authenticated rate limiting separate from viewer exception paths.
 - Verification idea:
   - Verify anonymous burst traffic to this endpoint no longer succeeds when limits are exceeded and log table growth remains bounded.
+
+### WTF-BB-019 - OAuth and Studio secret encryption fall back to `SESSION_SECRET`
+
+- Category: Secrets / key management
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex dedicated encryption-key production verification
+- Last touched: 2026-05-30
+- Score: C3 + F2 + S4 + P1(4) = 13
+- Historical evidence:
+  - OAuth token encryption and Studio credential sealing fell back to `SESSION_SECRET`, coupling cookie signing and stored-secret encryption to one rotation and blast-radius domain.
+- Correction:
+  - Commit `f8f7e9e1` restricts `SESSION_SECRET` fallback to non-production development. Production OAuth encryption fails with a named `TWITTER_TOKEN_ENCRYPTION_KEY` error, and Studio sealing fails with a named `STUDIO_CRYPTO_KEY` error. Both prefer their dedicated keys when present.
+  - `scripts/server-deploy.sh` requires both dedicated keys before build, migration, or application replacement. The environment reference documents each secret independently.
+- Verification (2026-09-02):
+  - Six focused crypto tests pass: both domains reject session-only production configuration, allow the documented development fallback, and prove dedicated-key precedence. Fourteen focused deploy-policy checks require the dedicated secrets before replacement.
+  - The correction is an ancestor of deployed `47319133`; self-deploy run 33630052693 passed the production secret preflight, build, migrations, replacement, and exact-commit readiness. Public health reported `47319133`. A successful deploy could not have crossed this fail-closed boundary without the dedicated production values. WTF-BB-019 is Verified.
 
 ### WTF-BB-670 - Production deploy intermittently depends on an unavailable GitHub credential stored on the server
 

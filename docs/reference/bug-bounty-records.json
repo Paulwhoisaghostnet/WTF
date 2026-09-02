@@ -2770,8 +2770,8 @@
     },
     {
       "id": "WTF-BB-131",
-      "status": "Fixed",
-      "owner": "Codex public-repo risk audit",
+      "status": "Verified",
+      "owner": "Codex wallet keyring Docker-boundary verification",
       "lastTouched": "2026-05-08",
       "category": "Build context / key custody",
       "priority": "P1",
@@ -2781,7 +2781,7 @@
       "functionalityDanger": 3,
       "securityDanger": 5,
       "title": "Docker context did not ignore platform wallet keyring artifacts",
-      "body": "- Evidence:\n  - `.gitignore` excluded platform wallet keyrings, master-key files, local wallet manifests, and host-local signer directories, but `.dockerignore` did not mirror those patterns.\n  - `Dockerfile` copies the full Docker build context during the builder stage, so a host-local custody artifact created inside the repo could enter build context/layers even while staying out of git.\n  - A local ignored `docs/platform-wallets/` directory exists from platform wallet tooling, proving this artifact class is generated in the working tree.\n- Why it matters:\n  - Wallet custody controls need every packaging boundary to fail closed. Git hygiene alone does not protect Docker contexts, image layers, CI artifact uploads, or future build cache exports.\n- Likely correction direction:\n  - Mirror platform-wallet custody patterns in `.dockerignore`, keep keyring defaults outside the repo tree, and add a public-release/build-context gate that checks secret-related ignore parity.\n- Verification idea:\n  - Confirm `.dockerignore` excludes `.wtf-gameshow`, `.wtf-platform-keyring`, platform keyring JSON, master-key files, and local wallet manifests; then run diff whitespace checks and a Docker-context dry run before production image builds.\n- Fix notes:\n  - Added the platform wallet custody ignore patterns to `.dockerignore`.",
+      "body": "- Historical evidence:\n  - Git ignored platform-wallet keyrings, master-key files, local manifests, and signer directories, but Docker did not. Because the builder uses `COPY . .`, ignored host-local custody artifacts could still enter build context, layers, or cache exports.\n- Correction:\n  - Commit `46d79797` mirrors platform-wallet custody patterns into `.dockerignore`: `.wtf-gameshow`, `.wtf-platform-keyring`, `platform-wallet-keyring*.json`, master-key files, public/local wallet manifests, and `docs/platform-wallets`. The platform-wallet tool defaults its secret directory outside the repository.\n  - The checked-in Docker-context policy parses the actual ignore file and requires these patterns alongside environment, SSH, certificate, runtime-state, evidence, and test exclusions on every quality run.\n- Verification (2026-09-02):\n  - The Docker-context policy passes all 34 required exclusions and its parser suite passes 3/3. Independent `git check-ignore --no-index` probes confirm representative keyring, master-key, generated-keyring, and local-manifest paths are excluded.\n  - The correction is an ancestor of deployed `47319133`. Deploy run 33630052693 built the real Dockerfile/context and reached exact-commit production health; the same production build boundary was previously inspected in WTF-BB-008 with Vite reporting zero injected `.env` values. WTF-BB-131 is Verified.",
       "legacyOriginalId": "WTF-BB-131"
     },
     {
@@ -2882,8 +2882,8 @@
     },
     {
       "id": "WTF-BB-019",
-      "status": "Fixed",
-      "owner": "Codex security hardening pass",
+      "status": "Verified",
+      "owner": "Codex dedicated encryption-key production verification",
       "lastTouched": "2026-05-30",
       "category": "Secrets / key management",
       "priority": "P1",
@@ -2893,7 +2893,7 @@
       "functionalityDanger": 2,
       "securityDanger": 4,
       "title": "OAuth and Studio secret encryption fall back to `SESSION_SECRET`",
-      "body": "- Evidence: `server/auth/oauth-crypto.ts:8-22` uses `SESSION_SECRET` when `TWITTER_TOKEN_ENCRYPTION_KEY` is missing. `server/lib/studio/crypto.ts:35-50` uses `SESSION_SECRET` when `STUDIO_CRYPTO_KEY` is missing.\n- Why it matters: Session signing, Twitter OAuth token encryption, and Studio credential encryption can collapse onto one secret. That couples rotation plans and widens blast radius if one secret leaks or must be rotated quickly.\n- Likely correction direction: Require dedicated encryption keys in production, add startup diagnostics, and document a rotation/backfill path for already encrypted payloads.\n- Verification idea: Production boot fails or marks integrations unavailable when dedicated encryption keys are missing; session rotation does not invalidate encrypted OAuth/Studio secrets.",
+      "body": "- Historical evidence:\n  - OAuth token encryption and Studio credential sealing fell back to `SESSION_SECRET`, coupling cookie signing and stored-secret encryption to one rotation and blast-radius domain.\n- Correction:\n  - Commit `f8f7e9e1` restricts `SESSION_SECRET` fallback to non-production development. Production OAuth encryption fails with a named `TWITTER_TOKEN_ENCRYPTION_KEY` error, and Studio sealing fails with a named `STUDIO_CRYPTO_KEY` error. Both prefer their dedicated keys when present.\n  - `scripts/server-deploy.sh` requires both dedicated keys before build, migration, or application replacement. The environment reference documents each secret independently.\n- Verification (2026-09-02):\n  - Six focused crypto tests pass: both domains reject session-only production configuration, allow the documented development fallback, and prove dedicated-key precedence. Fourteen focused deploy-policy checks require the dedicated secrets before replacement.\n  - The correction is an ancestor of deployed `47319133`; self-deploy run 33630052693 passed the production secret preflight, build, migrations, replacement, and exact-commit readiness. Public health reported `47319133`. A successful deploy could not have crossed this fail-closed boundary without the dedicated production values. WTF-BB-019 is Verified.",
       "legacyOriginalId": "WTF-BB-019"
     },
     {

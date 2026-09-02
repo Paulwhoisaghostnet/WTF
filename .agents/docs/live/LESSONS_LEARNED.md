@@ -11677,3 +11677,13 @@
 **Rule**: Every canonical status or owner patch must include the record ID in the same match hunk, then compare the before/after status set before committing. Restore any accidental cross-scope change immediately without touching that record's implementation.
 
 ---
+
+## 2026-09-02 — Secret separation must survive startup and packaging
+
+**What happened**: Dedicated OAuth/Studio encryption keys and wallet-keyring Docker exclusions were implemented, but their records stayed Fixed because evidence stopped at source changes.
+
+**Why it mattered**: A dedicated-key branch is not a production boundary unless deployment refuses missing values; a Git ignore rule is not a packaging boundary unless the real Docker context independently excludes the same custody artifacts.
+
+**Rule**: Prove secret separation with production-mode rejection, deploy preflight ordering, and a successful real deploy. Prove custody-file exclusion against both Git and Docker using representative generated paths and the actual build-context policy.
+
+---
