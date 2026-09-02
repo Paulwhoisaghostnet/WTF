@@ -380,7 +380,7 @@
 
 ## 2026-07-07 - Gameplay input must never share a rate-limit bucket with auth, and autoplay policy is why "audio works but video is black"
 
-**What happened**: A player interacting with a remote apphost game generated coalesced pointer-move POSTs at up to ~60/s. Those requests drained the generic `/api/*` limiter (200 req/min per IP) in a few seconds, after which the _same IP_ got 429s on `/api/auth/user`, `/api/auth/csrf-token`, and `/api/apps/desktop` — the whole OS shell broke because someone moved a mouse. Separately, the play window stayed black until a manual refresh even though audio played: the session page set `video.muted = false` then called `play()`, which browsers reject without fresh user activation, so nothing rendered until an interaction happened to re-trigger playback. And the earlier `show-pointer=false` fix (made to kill the double cursor) left the user with a wtfOS cursor that visibly did nothing, because the game's own hover/cursor feedback was never streamed.
+**What happened**: A player interacting with a remote apphost game generated coalesced pointer-move POSTs at up to ~60/s. Those requests drained the generic `/api/*` limiter (200 req/min per IP) in a few seconds, after which the *same IP* got 429s on `/api/auth/user`, `/api/auth/csrf-token`, and `/api/apps/desktop` — the whole OS shell broke because someone moved a mouse. Separately, the play window stayed black until a manual refresh even though audio played: the session page set `video.muted = false` then called `play()`, which browsers reject without fresh user activation, so nothing rendered until an interaction happened to re-trigger playback. And the earlier `show-pointer=false` fix (made to kill the double cursor) left the user with a wtfOS cursor that visibly did nothing, because the game's own hover/cursor feedback was never streamed.
 
 **Why it mattered**: Interactive streaming traffic has a fundamentally different request-rate profile than CRUD traffic; putting both behind one IP-keyed quota guarantees that normal gameplay DoSes the user's own session. The autoplay failure was invisible in every server-side metric — frames were encoded and sent; the client just refused to start an unmuted element. And hiding the remote cursor optimized away the exact feedback channel (native cursor, hover states) that makes a streamed desktop app feel controllable.
 
@@ -2838,7 +2838,7 @@
 
 **Why it mattered**: "Classifier returns zero" was misdiagnosed before as a missing/incomplete address book. The real failure was a sampling/recency bias on a multi-network stream: a perfectly correct Tezos classifier can never fire if the only records sampled belong to a different chain whose addresses can never be in a Tezos custody book. Adding more addresses would not have helped.
 
-**Rule**: When an entity classifier on a multi-network or multi-source AT Protocol/relay stream returns all-zero, verify the _sample composition_ (network mix and address formats) before touching the entity book. A recency-ordered `listRecords` head on a mixed Tezos/Etherlink repo is not a representative sample; page the high-volume liquidity collections until enough records of the classifier's target network are present, bounded by a hard page cap and an early-stop target. Keep classifier-adjacent surfaces (e.g. unclassified custody candidates) scoped to the same network family as the book so deeper sampling does not surface cross-chain noise.
+**Rule**: When an entity classifier on a multi-network or multi-source AT Protocol/relay stream returns all-zero, verify the *sample composition* (network mix and address formats) before touching the entity book. A recency-ordered `listRecords` head on a mixed Tezos/Etherlink repo is not a representative sample; page the high-volume liquidity collections until enough records of the classifier's target network are present, bounded by a hard page cap and an early-stop target. Keep classifier-adjacent surfaces (e.g. unclassified custody candidates) scoped to the same network family as the book so deeper sampling does not surface cross-chain noise.
 
 ---
 
@@ -4160,8 +4160,7 @@
 
 **Why it mattered**: X Pay-Per-Use pricing makes every `/users/{id}/tweets` and `/dm_conversations/.../dm_events` call expensive. Without DB-first reads and longer cache TTLs, the app became a credit black hole. The "no posts on timeline" symptom was the direct result of the bearer token expiring after credit exhaustion.
 
-**Fix**:
-
+**Fix**: 
 - Added `x_timeline_posts` table with indexes for fast lookup by author and time.
 - Made `/api/w/timeline` DB-first (`loadTimelineFromDb` before any live call), with automatic persist on successful live fetch.
 - Increased DM/groupchat cache TTLs (fresh 10min, stale 4h for public mirror).
@@ -4205,7 +4204,6 @@
 **Why it mattered**: NFT marketplaces and token swaps fail at integration boundaries: payable XTZ calls, FA2 operator approvals, multi-contract address wiring, storage reads, indexer reads, and wallet/network mismatches. A green result from a structural simulator or stale network card would send builders into Shadownet or mainnet with false confidence.
 
 **Fix**:
-
 - Updated the sibling Kiln app's active Etherlink test rail to Etherlink Shadownet metadata and left old Ghostnet testnet as planned/legacy.
 - Added `amountMutez` plumbing through execute and E2E APIs into Taquito `{ amount, mutez: true }` send options.
 - Added browser-scoped `kiln.project.json` workspace modeling and a project file/graph panel without host filesystem access.
@@ -4283,7 +4281,6 @@
 **Why it mattered**: That mixup created privacy leakage, brittle upload playback, useless same-origin prefetch/probe work, and semantically hijacked a creator-owned channel into an "everything bucket". It also prevented the TV surface from cleanly using Hetzner object storage with the mounted volume as a hot cache, because uploads were not flowing through a context-aware storage-serving route.
 
 **Fix**:
-
 - Split private library access from public TV playback: `/api/media/:id/file` is now owner/staff-only, while public TV playback uses `/api/tv/channels/:channelId/media/:mediaItemId/file`.
 - Route upload-backed TV playback through the shared storage resolver so object-storage objects are promoted into the hot-cache volume on demand.
 - Rewrite TV stream, `/now`, and slug-current responses to emit channel-scoped same-origin playback URLs for upload-backed items.
@@ -4301,7 +4298,6 @@
 **Why it mattered**: That defeats the whole architecture. The point of the attached volume is low-latency serving, and the point of Hetzner object storage is a faster, persistent warm tier so the app can recover from local eviction or restart without begging public gateways again. If IPFS stays the primary delivery source, TV smoothness remains hostage to gateway luck.
 
 **Fix**:
-
 - Added deterministic TV cache object keys under `tv-cache/v1`.
 - TV cache fills now mirror into object storage.
 - Local cache misses now try object-storage promotion before any IPFS/external fetch.
@@ -4319,7 +4315,6 @@
 **Why it mattered**: The app stayed superficially healthy while losing object storage at runtime. For TV, that meant the new storage architecture silently collapsed back to slower external media fetches right after deploy, exactly when stability mattered most.
 
 **Fix**:
-
 - Removed empty-string overrides for `S3_*`, `GDRIVE_REMOTE`, and `RCLONE_CONFIG` from compose.
 - Added `scripts/server-deploy.sh` to materialize a temporary readable copy of `/etc/wtf/wtf.env` for Compose and to source it for build/runtime interpolation.
 - Moved production deploy to that script and removed `drizzle-kit push --force`.
@@ -4335,7 +4330,6 @@
 **Why it mattered**: That kind of mismatch poisons release verification. Operators think they are looking at one revision while the health endpoint reports another, which is how people lose hours chasing phantom “stale deploys” that are really stale metadata.
 
 **Fix**:
-
 - Changed `scripts/server-deploy.sh` to always set `COMMIT_SHA` from `git rev-parse --short HEAD` after checkout.
 - Re-deployed and verified that `/api/health` now reports the real live commit.
 
@@ -4350,7 +4344,6 @@
 **Why it mattered**: That is the worst kind of patchwork: a safer path exists, the live path doesn't use it, and even the "better" path contains dead-state resilience that makes operators think the product is self-healing when it isn't. Viewers still sit through repeat failures, and telemetry understates how broken the loop really feels.
 
 **Fix**:
-
 - Backported skip-notice UX plus `/api/tv/telemetry/item-end` reporting into `client/src/pages/TV.tsx`.
 - Patched both `TV.tsx` and `TV2.tsx` so queue advancement skips session-blacklisted items instead of only recording them.
 
@@ -4365,7 +4358,6 @@
 **Why it mattered**: Under concurrency, those patterns rot immediately. Two requests can both "see nothing" and then collide, or two playlist activations can interleave and leave split-brain active state. That kind of bug is extra nasty because it only shows up when the system is busy, which is exactly when TV has the least room for nonsense.
 
 **Fix**:
-
 - Reworked channel-video creation around insert-first upserts backed by the existing unique keys, with fallback reconciliation on alternate-key conflicts.
 - Added a partial unique index for one active playlist per channel and wrapped active-playlist mutations in channel-row locks inside a transaction.
 
@@ -4380,7 +4372,6 @@
 **Why it mattered**: The code called itself a rolling window, but it was lying. Memory could climb under churn, blacklisting could stay sticky for the wrong reasons, and the protection path itself became an availability risk.
 
 **Fix**:
-
 - Moved TV telemetry into a bounded helper store.
 - Expire old error-session evidence inside each hot bucket on every read/write pass.
 - Cap total tracked video/bumper buckets and distinct error sessions per item.
@@ -4407,7 +4398,6 @@
 **Why it mattered**: That preserves the same DB cost, the same server memory spike, and the same timeout risk while giving everyone a warm placebo called “pagination.”
 
 **Fix**:
-
 - Added bounded `limit`/`offset` handling to the TV channel list route.
 - Added bounded video/playlist/playlist-item windows to TV channel detail.
 - Pushed those bounds down into the actual SQL queries and surfaced pagination metadata so clients can page intentionally.
@@ -4423,7 +4413,6 @@
 **Why it mattered**: That is wasted CPU, repeated DB work, and self-inflicted request amplification right on the hot read path. Worse, concurrent viewers all paid that rebuild cost separately because there was no in-flight coalescing.
 
 **Fix**:
-
 - Added a bounded stream snapshot cache with in-flight request sharing.
 - Keyed cached snapshots by resolved playlist, shuffle window seed, revision aggregates from playlist/video/media/bumper state, and the current blacklist signature.
 - Left auth, visibility, and schedule resolution live so correctness still comes from the database while the expensive deterministic assembly gets reused.
@@ -4451,7 +4440,6 @@
 **Why it mattered**: That turned harmless stream refreshes into visible tears: a video or bumper could start loading, then get yanked to a different clip even though nothing had naturally ended. It also meant the code’s “if the current item disappears, let it finish” comment was a lie because render no longer had a stable copy of the current item once the queue changed underneath it.
 
 **Fix**:
-
 - Added a shared TV playback helper that resolves the active slot by pinned item key first and only falls back to the numeric queue index when the key still matches.
 - Stored the last started playback item as a snapshot so the client can keep rendering it through a server-side queue drop instead of cutting away mid-play.
 - Switched next-item and preload decisions to use the stabilized playback cursor, not the stale raw index.
@@ -4467,7 +4455,6 @@
 **Why it mattered**: Hidden clones rot quietly. Reliability fixes can land in one route and not the other, audits stay noisy because both paths remain "real enough" to worry about, and every future TV change pays a duplication tax for no user benefit.
 
 **Fix**:
-
 - Removed the hidden `/tv2` route from the app router.
 - Deleted `client/src/pages/TV2.tsx` after the important behavior had already been consolidated into `TV.tsx`.
 - Archived the old parity-only bounty item because the clone surface no longer exists.
@@ -4627,7 +4614,6 @@
 **Why it mattered**: Agents need enough power to help users, but they are not browser sessions. If MCP tools reuse cookie auth, expose private rows, ignore admin app toggles, or fabricate marketplace rows without a verified wallet operation hash, the feature becomes an account-control and data-boundary problem instead of a helpful integration.
 
 **Fix**:
-
 - Added one-time-visible MCP pairing tokens stored only as SHA-256 hashes.
 - Mounted a rate-limited Streamable HTTP `/mcp` endpoint authenticated by `Authorization: Bearer wtf_mcp_...`.
 - Added tool-level checks against the same desktop-app config the admin control panel changes.
@@ -4657,7 +4643,6 @@
 **Why it mattered**: Users do not think in foreign keys. “Remove this from channel 03,” “take this bumper out of the community pool,” and “delete this file from my library” are different intents with different consequences. When the UI collapses them into one destructive action, people either hesitate or make the wrong change.
 
 **Fix**:
-
 - Added a channel-scoped detach route for library-backed media.
 - Added a bumper update route so owners can move a bumper between personal and community without deleting it.
 - Reworked the playlist editor to target a selected playlist directly and support add/remove/reorder instead of only editing whichever playlist is active.
@@ -5732,7 +5717,6 @@
 **Fix**: W now serves the configured Gameshow groupchat from persisted DB cache first, exposes one chat in the UI, and uses a shared throttled platform refresh only for stale or explicit refresh reads. Personal inbox, ad hoc DM threads, groupchat sends, compose, and media upload are outside the active W surface.
 
 **Rule**: W chat must remain a platform-account-backed read mirror unless the product intentionally reopens personal DMs. User OAuth scopes should cover read/timeline actions only, not DM permissions.
-
 ## 2026-05-24 — W chat reads must not spend per-user X API calls
 
 **What happened**: W exposed too much of the original X surface area after the product had narrowed to one timeline stream and one gameshow chat mirror. The chat route could still depend on live platform DM resolution patterns, while the UI kept clutter from abandoned DM/inbox/posting plans.
@@ -8028,7 +8012,7 @@
 
 ## 2026-07-06 - A long-lived Steam client silently poisons audio for every game it launches
 
-**What happened**: The apphost launched Jackbox correctly and the WebRTC pipeline negotiated VP8+OPUS, but the browser received pure silence. The game process had no `PULSE_SERVER` in its environment and PulseAudio showed zero sink-inputs while the game was "running with audio". Root cause: the Steam client on the host had been started manually days earlier (operator login session) without the PulseAudio environment. `steam -applaunch` against an already-running client is only an IPC message — the game inherits the _original_ Steam daemon's environment, not the launcher script's. Everything downstream (pressure-vessel remap to `/run/pressure-vessel/pulse/native`, FMOD audio output, `pulsesrc` capture in the streamer) was fine once Steam itself was restarted with `PULSE_SERVER` set. Verified end to end: `pactl list short sink-inputs` shows the game's 6ch stream, `parec` on `auto_null.monitor` measures non-zero RMS, and a real Chromium `RTCPeerConnection` + `AnalyserNode` measured audible lobby music (max RMS ≈ 0.058) with 183 video frames decoded over 8s and ~78 ms RTT.
+**What happened**: The apphost launched Jackbox correctly and the WebRTC pipeline negotiated VP8+OPUS, but the browser received pure silence. The game process had no `PULSE_SERVER` in its environment and PulseAudio showed zero sink-inputs while the game was "running with audio". Root cause: the Steam client on the host had been started manually days earlier (operator login session) without the PulseAudio environment. `steam -applaunch` against an already-running client is only an IPC message — the game inherits the *original* Steam daemon's environment, not the launcher script's. Everything downstream (pressure-vessel remap to `/run/pressure-vessel/pulse/native`, FMOD audio output, `pulsesrc` capture in the streamer) was fine once Steam itself was restarted with `PULSE_SERVER` set. Verified end to end: `pactl list short sink-inputs` shows the game's 6ch stream, `parec` on `auto_null.monitor` measures non-zero RMS, and a real Chromium `RTCPeerConnection` + `AnalyserNode` measured audible lobby music (max RMS ≈ 0.058) with 183 video frames decoded over 8s and ~78 ms RTT.
 
 **Why it mattered**: Every layer reported success — launch confirmed, health check green, WebRTC answer with an OPUS track, RTP audio bytes flowing (comfort noise) — while the user heard nothing. The one signal that actually proves audio is `sink-inputs` being non-empty plus a non-zero RMS on the monitor. Also, `show-pointer=true` in `ximagesrc` was double-drawing the remote X cursor under the browser's local cursor, which read as "input lag" even when injection was fast.
 
@@ -8802,7 +8786,6 @@
 **Rule**: After modifying inline JavaScript produced by a generator, regenerate the artifact and syntax-check the extracted emitted script before browser tests. Prefer generator-safe string operations over escape-heavy literals when crossing template layers.
 
 ---
-
 ## 2026-07-15 — Initialize portable draft helpers before recovery runs
 
 - What went wrong: CH-EASE wrote a valid local draft, but reload replaced it with a fresh project draft because startup recovery called `normalizeDraft()` before its `const` helper functions had initialized. The recovery wrapper caught the temporal-dead-zone `ReferenceError` and treated it like malformed storage.
@@ -8856,7 +8839,6 @@
 - What went wrong: The packaged application passed functional project and tool-launch smoke, but its first-run screenshot showed that both project creation and the contract manager silently defaulted to Mainnet while the review guide told users to begin on Shadownet. Project creation did not expose a network selector at all.
 - Why it mattered: A technically functional default could steer a reviewer or new creator toward irreversible, fee-bearing operations before they had deliberately chosen production. The mismatch was visible immediately in the artifact but not asserted by the earlier lifecycle tests.
 - Rule going forward: Capture and inspect a clean-profile first-run screen for every desktop release. Networked creator tools must show the target network before project creation, default pre-release builds to the designated test network, require explicit Mainnet opt-in, and assert that default in both browser and packaged-artifact tests.
-
 ## 2026-07-15 - Wine under Apple-silicon containers is not a Windows installer acceptance gate
 
 **What happened**: The final Pasta Suite NSIS artifact was exercised through two isolated `linux/amd64` Wine containers on an Apple-silicon Docker host. Docker's x86-64 emulation worked, but the conventional Wine image failed while creating its prefix with `kernel32.dll` unavailable, and a Wine 11 modern-WoW64 image segfaulted during `wineboot` before the installer process began.
@@ -8886,7 +8868,6 @@
 **Rule**: Do not apply CSS filters to fixed, transform-positioned cursor roots over complex scrolling application windows. Keep contrast inside the cursor glyph, visually inspect broad and acute states, and use screenshot-pixel assertions for compositor regressions that DOM checks cannot observe.
 
 ---
-
 ## 2026-07-16 - Ravioli pack fulfillment should be a bounded router, not a Michelson monolith
 
 **What happened**: Expanding Ravioli from manifest-only wrapper burns to five enforceable pack modes made it tempting to place custody, commitment verification, allocated minting, generative minting, sales, and every external protocol shape in one FA2 contract. The first commitment-and-fulfillment router draft compiled to about 12.2 KB in forged script plus initial storage, while current Mainnet reports a 32,768-byte maximum operation-data length for the entire origination operation.
@@ -10094,7 +10075,6 @@
 **Why it mattered**: A first-class OS app identity crosses presentation, authorization, documentation, tests, and persistence. Shared capabilities can survive an app retirement only when their ownership is explicitly transferred to a remaining surface.
 
 **Rule**: Before deleting a first-class app, inventory every canonical key, route, launcher, catalog, admin surface, shared behavior owner, API/MCP gate, asset tree, test fixture, documentation row, and persisted registration. Re-home shared capabilities, delete only app-owned data, preserve user/audit domain data, and verify the production bundle and live APIs contain no retired app identity.
-
 ## 2026-07-24 - A proof must not catch its own expected-failure assertion
 
 **What happened**: Macaroni's read-only negative check placed both the estimator call and `assert.fail("...WALLET_LIMIT")` inside one `try`. When a broken contract accepted the forbidden mint, the assertion was caught as though it were an RPC rejection, and its own marker text satisfied the subsequent regular expression. The recovery checkpoint also wrote `COMPLETED` before its receipt, index, artifact inventory, and manifest had been assembled.
@@ -10464,7 +10444,6 @@
 **Rule**: At a composite deadline boundary, enforce the operational minimum needed for the next irreversible action, then separately enforce child ordering and absolute horizon invariants. Test the exact default composition, and assert durable state plus explicit read/write counters instead of requiring optional browser-console side effects.
 
 ---
-
 ## 2026-08-08 — A recovery lane must resume every safe APPLIED boundary, not only the first observed interruption
 
 - What went wrong: Gnocchi's exact recovery safely resumed an initial six-operation prefix, but Shadownet then exposed two more transient browser-resource HTTP 500 failures after confirmed continuation calls. A recovery implementation tied only to the original interruption would have stranded each later APPLIED operation or tempted a replay.
@@ -10961,7 +10940,6 @@
 **Rule**: For high-value navigation controls, pair accessible-name and route assertions with rendered geometry at default and narrow viewports. When a styled wrapper must beat global control rules, use deliberate component specificity and verify computed size plus screenshot containment after the production build.
 
 ---
-
 ## 2026-08-30 — Bug-board closure needs evidence, not only a status word
 
 **What happened**: Four old Ravioli findings had working fixes and focused regressions in the release tree, but an uncommitted cleanup changed only their `Status` fields from `Claimed` to `Verified`. Their entries still read like open defects and contained no resolution, verification command, target date, or commit linkage.
@@ -11717,15 +11695,5 @@
 **Why it mattered**: An in-memory signer success does not prove a later signer process can decrypt the host-local file, and naming an AES scheme in source does not prove generated secret keys are absent from serialized storage.
 
 **Rule**: For encrypted key custody, create through one instance, inspect file permissions and serialized fields for plaintext secret material, then load and use the same wallet ID through a newly constructed instance before closing the record.
-
----
-
-## 2026-09-02 — Token ownership and token scope are separate boundaries
-
-**What happened**: MCP bearer authentication and paired-user ownership were enforced globally, but several older private-read and user-mutation tools did not call the newer scope guard. A valid narrow token could therefore reach desktop, pet, trade-board, listing-planning, or bundle behavior outside its requested grants.
-
-**Why it mattered**: Acting only as the token owner limits whose data can change, but it does not honor what that owner authorized the agent to do. A revocable token with decorative scopes is still over-broad authority.
-
-**Rule**: Every private read and user-bound mutation must check its domain read/write scope before its first data read or side effect. Live token lifecycle proof must include one missing-scope denial and rejection after revocation, not only successful pairing.
 
 ---

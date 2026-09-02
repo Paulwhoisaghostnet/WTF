@@ -25,8 +25,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "public.versioned-api-openapi-mcp-parity",
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     platformOwner: "public-platform-api",
-    ownerSpec:
-      "server/lib/public-api.test.ts; server/lib/wtf-mcp.test.ts; client/src/features/agent/agent-model.test.ts",
+    ownerSpec: "server/lib/public-api.test.ts; server/lib/wtf-mcp.test.ts; client/src/features/agent/agent-model.test.ts",
     verificationCommand:
       "npx tsx --test client/src/features/agent/agent-model.test.ts server/lib/public-api.test.ts server/lib/wtf-mcp.test.ts",
     userVisibleAssertion:
@@ -40,8 +39,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     platformOwner: "auth-session",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "Each puppet can authenticate and see its own account session.",
+    userVisibleAssertion: "Each puppet can authenticate and see its own account session.",
     durableSideEffectAssertion:
       "The live harness confirms each seeded account remains linked to its expected signer-backed wallet.",
   },
@@ -74,8 +72,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "auth.faq-registration-tutorials",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "faq",
-    ownerSpec:
-      "server/lib/faq-tutorials.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
+    ownerSpec: "server/lib/faq-tutorials.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
     verificationCommand:
       "npx tsx --test server/lib/faq-tutorials.test.ts && npm run build && npx playwright test tests/playwright/inventory/faq-tutorials.spec.mjs",
     userVisibleAssertion:
@@ -116,7 +113,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "renders an inhabited|account tile|routes daily return|keeps the first mobile|signed-in OS session console|Gamma wake queue|signs out from Gamma session controls" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"renders an inhabited|account tile|routes daily return|keeps the first mobile|signed-in OS session console|Gamma wake queue|signs out from Gamma session controls\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma home opens like a usable OS login surface: the boot desk shows a route-backed account tile plus app/daily/people status checks, the session console shows a mounted-workspace table for account, restore target, app passes, and active Gamma shell, the wake queue ranks Resume/Login, Inbox, Daily, People, and Apps as route-backed next steps, persistent session controls offer Desk, Settings, and Sign out/Login, the daily return strip offers Side Quests, Challenges, W people discovery, and Notifications, and all controls stay readable with mobile-sized targets.",
     durableSideEffectAssertion:
@@ -129,7 +126,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "command search" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command search\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma search behaves like an OS launcher: typing a known app, tool, or system route shows command results and opens the matching Gamma route before falling back to Gallery search for unmatched text.",
     durableSideEffectAssertion:
@@ -142,7 +139,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "OS keyboard shortcut" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"OS keyboard shortcut\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma behaves like an operating-system shell: pressing Ctrl/Cmd+K focuses the mounted command search from either the home desk or an app route, then the user can type and launch a Gamma route without pointer-hunting for the field.",
     durableSideEffectAssertion:
@@ -155,7 +152,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "boot desk with Enter" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"boot desk with Enter\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma home behaves like a standard OS start surface: the visible primary Continue/Login action owns focus on the boot desk, and pressing Enter launches it, sending guests to Gamma-hosted login that opens `/gamma/dashboard` after authentication and signed-in users to their Continue route or dashboard.",
     durableSideEffectAssertion:
@@ -168,7 +165,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/dashboard-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/dashboard-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "Dashboard cockpit" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/dashboard-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"Dashboard cockpit\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "After logging into Gamma, the hosted Dashboard starts with a compact next-action rail for Daily proof, Challenges, People, Apps, Inbox, and Profile so the first workspace gives a clear OS-like next step.",
     durableSideEffectAssertion:
@@ -181,7 +178,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "command results from keyboard" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command results from keyboard\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma command search behaves like an OS launcher: after typing in the start-desk or app-route search box, ArrowDown moves focus into the visible results, ArrowUp/ArrowDown cycle result buttons, Escape returns focus to the command input with the query intact, and Enter launches the focused route or Gallery fallback without using the pointer.",
     durableSideEffectAssertion:
@@ -194,7 +191,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "command search with Escape" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"command search with Escape\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma command search behaves like an OS field: pressing Escape after typing in the start-desk or app-route command input clears the query, dismisses focus, and leaves the current Gamma route unchanged.",
     durableSideEffectAssertion:
@@ -207,7 +204,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "keyboard shortcut" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"keyboard shortcut\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A Gamma user can press Alt+Home from a Gamma app route to return to the Gamma desk without using pointer navigation, while editable fields keep the shortcut for normal text/input behavior.",
     durableSideEffectAssertion:
@@ -220,7 +217,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "route history recovery" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"route history recovery\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A Gamma app route exposes standard OS-style Back, Forward, and Desk controls in shell chrome, plus Alt+ArrowLeft and Alt+ArrowRight shortcuts, so users can recover route context without relying on browser chrome or leaving Gamma.",
     durableSideEffectAssertion:
@@ -233,7 +230,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "recent route restore" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"recent route restore\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma remembers recently opened registered routes in the browser session, promotes the newest route into Continue, shows route-backed open-app dock buttons on the home session console, and lets the user recover the front recent app from the Gamma desk by keyboard without scanning the page.",
     durableSideEffectAssertion:
@@ -246,7 +243,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "recent app routes" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"recent app routes\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in Gamma user can move between recent app routes directly from the app-route taskbar, by pointer or keyboard, without returning to Gamma home or seeing the Classic desktop.",
     durableSideEffectAssertion:
@@ -258,7 +255,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["gamma-shell", "side-quests", "messageboard"],
     ownerSpec: "tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "daily side quest handoff" --project=chromium --reporter=list',
+      "npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"daily side quest handoff\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in Gamma user can start on `/gamma`, open the daily return strip, see the daily messageboard check-in inside the Side Quests app, follow its task button to Message Board inside Gamma, claim a verified daily proof, and continue to WTFIAM market unlocks without falling back to Classic.",
     durableSideEffectAssertion:
@@ -271,7 +268,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "signed-in OS session console|first mobile" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"signed-in OS session console|first mobile\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in Gamma user lands on a compact OS session console with profile identity, Home, Inbox, Apps, Settings, Daily proof, People, and Objects controls, with mobile-sized targets instead of a report-style landing page.",
     durableSideEffectAssertion:
@@ -284,7 +281,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "system tray" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma keeps a persistent OS system tray on home and app routes, showing session, shared API health (checking/online/degraded), Signals, Daily, Apps, and People status controls with readable touch-sized targets and a Settings recovery target when shared reads degrade.",
     durableSideEffectAssertion:
@@ -297,7 +294,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "system tray" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma's persistent Signals tray control reports notification state as guest, checking, clear, unread, or degraded, shows an unread count when available, and opens the shared Notification Center inside `/gamma/notifications`.",
     durableSideEffectAssertion:
@@ -310,7 +307,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "locks Gamma" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"locks Gamma\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in Gamma user can choose Lock from the persistent session controls, or press Ctrl+Alt+L outside editable fields, to return to the Gamma desk while staying signed in.",
     durableSideEffectAssertion:
@@ -323,7 +320,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "system tray" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"system tray\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Gamma shows a persistent browser-local clock/date in the system tray on home and app routes, and activating it opens the existing Calendar app inside `/gamma/calendar`.",
     durableSideEffectAssertion:
@@ -333,8 +330,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "calendar.tray-reminders-cross-app-handoffs",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["calendar", "wtf-live", "wim", "messageboard"],
-    ownerSpec:
-      "client/src/pages/calendar-presentation-policy.test.ts; client/src/features/calendar/calendar-reminders.test.ts",
+    ownerSpec: "client/src/pages/calendar-presentation-policy.test.ts; client/src/features/calendar/calendar-reminders.test.ts",
     verificationCommand:
       "npx tsx --test client/src/features/calendar/calendar-reminders.test.ts client/src/pages/calendar-presentation-policy.test.ts",
     userVisibleAssertion:
@@ -349,7 +345,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "server/lib/ttc-calendar.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npx tsx --test server/lib/ttc-calendar.test.ts && npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "hosts Calendar events" --project=chromium --reporter=list',
+      "npx tsx --test server/lib/ttc-calendar.test.ts && npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"hosts Calendar events\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "Calendar restores TTC occurrences earlier than the public iCal feed's rolling next-occurrence anchor, and every Day, Week, Month, or Agenda event card opens details that identify who created it and link directly to the original TTC listing when applicable.",
     durableSideEffectAssertion:
@@ -362,7 +358,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "tests/playwright/inventory/calendar-participation.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/calendar-participation.spec.mjs --project=chromium --reporter=list && WTF_E2E_ACTOR_FILTER=admin,contestant npx playwright test tests/playwright/live/puppet-orchestration.spec.mjs -g "Calendar participation" --project=chromium --reporter=list',
+      "npm run build && npx playwright test tests/playwright/inventory/calendar-participation.spec.mjs --project=chromium --reporter=list && WTF_E2E_ACTOR_FILTER=admin,contestant npx playwright test tests/playwright/live/puppet-orchestration.spec.mjs -g \"Calendar participation\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in member can open a WTF or TTC event, choose Interested or Going, explicitly toggle its task-tray reminder, find the saved choice in My plans after reload, follow the event link, and clear the plan.",
     durableSideEffectAssertion:
@@ -375,7 +371,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "auth return" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"auth return\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A guest opening a protected Gamma route lands on a lock-screen-style gate whose Enter and return action is focused; pressing Enter opens Gamma-hosted login, focuses Username, and after login returns to the attempted Gamma route instead of Classic or the Gamma home page.",
     durableSideEffectAssertion:
@@ -388,7 +384,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/gamma-shell-presentation-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g "app-route taskbar" --project=chromium --reporter=list',
+      "npm run build && npx tsx --test client/src/pages/gamma-shell-presentation-policy.test.ts && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"app-route taskbar\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A Gamma app route shows an OS taskbar with the active app identity plus Close app, Desk/Login, Inbox, Daily, Apps, and Settings controls; real hosted app routes move focus to the active-app strip so the route feels activated, while the buttons remain touch-sized in a narrow viewport.",
     durableSideEffectAssertion:
@@ -439,7 +435,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtfiam"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "wallet-login checkout intent"',
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"wallet-login checkout intent\"",
     userVisibleAssertion:
       "A user who logs in with a signer-backed wallet can prepare a WTF IAM checkout without relinking that wallet.",
     durableSideEffectAssertion:
@@ -449,8 +445,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "wallet.passive-refresh-no-signature",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["profile"],
-    ownerSpec:
-      "client/src/lib/wallet-context-policy.test.ts, client/src/pages/profile-wallet-link-policy.test.ts",
+    ownerSpec: "client/src/lib/wallet-context-policy.test.ts, client/src/pages/profile-wallet-link-policy.test.ts",
     verificationCommand:
       "npx tsx --test client/src/lib/wallet-context-policy.test.ts client/src/pages/profile-wallet-link-policy.test.ts",
     userVisibleAssertion:
@@ -473,12 +468,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "account.cobwebsaints-domain-advanced-readiness",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
-    ownerSurfaceIds: [
-      "system-settings",
-      "wtf-domains",
-      "ipfs-pinning",
-      "creation-tools",
-    ],
+    ownerSurfaceIds: ["system-settings", "wtf-domains", "ipfs-pinning", "creation-tools"],
     ownerSpec: "tests/playwright/inventory/cobwebsaints-account.spec.mjs",
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/cobwebsaints-account.spec.mjs",
@@ -503,8 +493,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "media.mint-manager-durable-receipt",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["file-manager", "creation-tools"],
-    ownerSpec:
-      "tests/playwright/inventory/mint-manager-durable-receipt.spec.mjs",
+    ownerSpec: "tests/playwright/inventory/mint-manager-durable-receipt.spec.mjs",
     verificationCommand:
       "npx playwright test tests/playwright/inventory/mint-manager-durable-receipt.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
@@ -529,8 +518,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],
     ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
-    verificationCommand:
-      "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
     userVisibleAssertion:
       "Broot opens from `/tools/broot`, exposes top-level Open for Broot project files plus common image/GIF/video media, and imports selected media as visible canvas layers with status feedback.",
     durableSideEffectAssertion:
@@ -541,8 +529,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],
     ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
-    verificationCommand:
-      "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
     userVisibleAssertion:
       "Broot saves project documents with the vanity `.broot` extension while keeping the file body JSON-backed and reloadable through the top-level Open action.",
     durableSideEffectAssertion:
@@ -553,8 +540,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools"],
     ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
-    verificationCommand:
-      "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
     userVisibleAssertion:
       "Broot loads local FFmpeg.wasm and glfx engines without browser Babel runtime compilation, keeps tools/layers visible in the default app window, exposes neutral-by-default MP4 export modes plus glfx distortion controls, and adds undo-backed grouping, merging, flattening, and canvas-warp controls.",
     durableSideEffectAssertion:
@@ -565,8 +551,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["creation-tools"],
     ownerSpec: "tests/playwright/inventory/broot.spec.mjs",
-    verificationCommand:
-      "npx playwright test tests/playwright/inventory/broot.spec.mjs",
+    verificationCommand: "npx playwright test tests/playwright/inventory/broot.spec.mjs",
     userVisibleAssertion:
       "Broot restores a previously connected Tezos wallet after refresh, replaces the active Connect Wallet action with connected state, and exposes a Mainnet HEN mint prepare/review/sign flow for the current canvas.",
     durableSideEffectAssertion:
@@ -594,14 +579,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider but does see a greyed, disabled wtfOS publish control whose mouse-hover and keyboard-focus tooltip explains the Trusted Market Creator requirement and directs them to the Contact Admin app; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
     durableSideEffectAssertion:
-      'The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves the hosted publisher is enabled without a permission tooltip for a trusted creator and remains genuinely disabled with hover/focus recovery guidance for a regular account, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, verifies all seven Pasta creation tools ship the same Octez Connect v5 bundle and only attach WalletConnect mobile/QR options from the deployment-owned project ID, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: "shadownet" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page\'s validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.',
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves the hosted publisher is enabled without a permission tooltip for a trusted creator and remains genuinely disabled with hover/focus recovery guidance for a regular account, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, verifies all seven Pasta creation tools ship the same Octez Connect v5 bundle and only attach WalletConnect mobile/QR options from the deployment-owned project ID, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
     id: "macaroni.wtfos-package-source",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["ch-ease", "creation-tools", "ipfs-pinning"],
-    ownerSpec:
-      "server/features/macaroni/packages.test.ts, client/src/pages/MacaroniPackager.tsx",
+    ownerSpec: "server/features/macaroni/packages.test.ts, client/src/pages/MacaroniPackager.tsx",
     verificationCommand:
       "npx tsx --test server/features/macaroni/packages.test.ts server/routes/macaroni-policy.test.ts",
     userVisibleAssertion:
@@ -614,8 +598,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec: "client/src/features/pasta-protocol/pasta-static-policy.test.ts",
-    verificationCommand:
-      "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
     userVisibleAssertion:
       "Pasta publishers show inline status/error notices inside the embedded studio instead of browser-native modal dialogs, and the wtfOS pinner option is hidden unless the embedded signed-in account has trusted_market_creator capability.",
     durableSideEffectAssertion:
@@ -641,7 +624,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "scripts/pasta-protocol/studio-kit/studio-draft.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/studio*.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
     verificationCommand:
-      'node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep "recover drafts" --reporter=list',
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4321 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep \"recover drafts\" --reporter=list",
     userVisibleAssertion:
       "Spaghetti, Gnocchi, Ravioli, Rotini, Penne, and Lasagna visibly autosave unfinished work, restore fixed and app-specific dynamic fields after reload, export/import a portable Pasta draft backup, warn that local files must be reselected, and report resumable work inside the originating Colander project.",
     durableSideEffectAssertion:
@@ -732,7 +715,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "scripts/pasta-protocol/studio-kit/studio-contracts.js, public/creation-tools/{spaghetti,gnocchi,ravioli,rotini,penne,lasagna}/js/studio-contracts.js, client/src/features/pasta-protocol/colander/ColanderApp.tsx, client/src/features/pasta-protocol/colander/colander-workspace.ts, client/src/features/pasta-protocol/pasta-static-policy.test.ts, tests/playwright/inventory/pasta-protocol-publishing.spec.mjs",
     verificationCommand:
-      'node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4372 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep "remember confirmed contracts" --reporter=list',
+      "node scripts/pasta-protocol/sync-site-kit.mjs && npx tsx --test client/src/features/pasta-protocol/colander/colander-workspace.test.ts client/src/features/pasta-protocol/pasta-static-policy.test.ts && npm run build && HARNESS_PORT=4372 npx playwright test tests/playwright/inventory/pasta-protocol-publishing.spec.mjs --project=chromium --grep \"remember confirmed contracts\" --reporter=list",
     userVisibleAssertion:
       "Each newer standalone Pasta studio lists confirmed deployments after restart, verifies pasted KT1 contracts on the selected network before remembering them, restores the correct app-owned contract fields on resume, and lets the creator forget only the local reference; Colander shows the complete KT1, owner app, network, and last verification time with central-manager and owner-app reopen controls.",
     durableSideEffectAssertion:
@@ -783,8 +766,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
       "client/src/features/pasta-protocol/colander/ColanderApp.tsx, public/creation-tools/*/js/studio.js, client/src/features/pasta-protocol/pasta-static-policy.test.ts",
-    verificationCommand:
-      "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
+    verificationCommand: "npx tsx --test client/src/features/pasta-protocol/pasta-static-policy.test.ts",
     userVisibleAssertion:
       "Colander external actions open the matching Pasta tool with contract, network, action, and kind context in the URL so the target studio can prefill the relevant contract field.",
     durableSideEffectAssertion:
@@ -794,8 +776,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "pasta-protocol.wtfme-hosted-pages",
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
-    ownerSpec:
-      "tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs",
+    ownerSpec: "tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs",
     verificationCommand: "npm run pasta:shadownet:wtfme",
     userVisibleAssertion:
       "A claimed WTF.ME host can serve Pasta Protocol landing, mint, and collection pages that show the Shadownet chain id, current proof KT1 contracts, relationship groups, WTF.ME branding, wallet-connect marker, mint action marker, and Shadownet explorer links under user-site wallet-safe headers.",
@@ -806,8 +787,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "pasta-protocol.pinning-recovery",
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
-    ownerSpec:
-      "server/features/ipfs-pinning/pasta-proof.test.ts, server/features/ipfs-pinning/well-known-policy.test.ts, server/routes/ipfs-pinning-pasta-policy.test.ts, scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",
+    ownerSpec: "server/features/ipfs-pinning/pasta-proof.test.ts, server/features/ipfs-pinning/well-known-policy.test.ts, server/routes/ipfs-pinning-pasta-policy.test.ts, scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",
     verificationCommand: "npm run pasta:shadownet:pinning",
     userVisibleAssertion:
       "Pasta publish recovery can expose a public .well-known pin manifest for hosted pages, contract artifacts, token metadata, and relationship metadata only after the user-site PDS binding has a valid repo DID and matching pinManifest AT URI.",
@@ -820,8 +800,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["arcade", "casino", "wtfiam"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "Seeded users can enter gated Casino, Arcade, and Desktop inventory surfaces.",
+    userVisibleAssertion: "Seeded users can enter gated Casino, Arcade, and Desktop inventory surfaces.",
     durableSideEffectAssertion:
       "The harness reads the live market/inventory APIs and asserts the required app-pass, play-card, and desktop item balances.",
   },
@@ -857,8 +836,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["casino"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "A contestant with access can open the Casino game API surfaces.",
+    userVisibleAssertion: "A contestant with access can open the Casino game API surfaces.",
     durableSideEffectAssertion:
       "The harness exercises entry, quote, join, and bet-intent endpoints while preserving fail-closed response contracts.",
   },
@@ -881,8 +859,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["arcade", "console", "game-studio"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "Every Console and Arcade catalog game can start a playable session.",
+    userVisibleAssertion: "Every Console and Arcade catalog game can start a playable session.",
     durableSideEffectAssertion:
       "The harness posts score submissions using run tickets for every catalog slug that exposes a score path.",
   },
@@ -907,8 +884,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "client/src/features/desktop/pet/waterCarePolicy.test.ts, tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
       "npx tsx --test client/src/features/desktop/pet/waterCarePolicy.test.ts && npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "A contestant can update desktop appearance grammar, colors, layout, WX weather, and use desktop pet actions.",
+    userVisibleAssertion: "A contestant can update desktop appearance grammar, colors, layout, WX weather, and use desktop pet actions.",
     durableSideEffectAssertion:
       "The harness writes desktop settings, reloads them through a fresh read, records a desktop event with an event id, confirms the pet action appears in live pet event history, and focused policy coverage keeps water care hydrating thirsty pets before bath/clean care.",
   },
@@ -954,14 +930,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "admin.commission-operator-queue-summary",
     domain: "Administration, Governance, and Operations",
-    ownerSurfaceIds: [
-      "admin-panel",
-      "control-board",
-      "wtfiam",
-      "arcade",
-      "casino",
-      "calendar",
-    ],
+    ownerSurfaceIds: ["admin-panel", "control-board", "wtfiam", "arcade", "casino", "calendar"],
     ownerSpec:
       "server/features/admin/stats-routes.ts; tests/playwright/inventory/operator-commission-queue.spec.mjs; tests/playwright/live/operator-commission-queue.spec.mjs",
     verificationCommand:
@@ -978,7 +947,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/features/admin/admin-control-suite-policy.test.ts; server/lib/desktop-app-registration-policy.test.ts; server/routes/desktop-apps-resilience-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
     verificationCommand:
-      'npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g "app registrations"',
+      "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts server/lib/desktop-app-registration-policy.test.ts server/routes/desktop-apps-resilience-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"app registrations\"",
     userVisibleAssertion:
       "An admin can mark each app license, docs, and install key as non-expiring and can refresh every app registration from one clearly labeled action without changing launcher visibility; a failed registration query becomes a terminal migration-aware error with an explicit retry action instead of an endless loader.",
     durableSideEffectAssertion:
@@ -1004,7 +973,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "shared/types.test.ts; client/src/features/admin/admin-control-suite-policy.test.ts; server/features/admin/users/deletion-permission-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
     verificationCommand:
-      'npx tsx --test shared/types.test.ts client/src/features/admin/admin-control-suite-policy.test.ts server/features/admin/users/deletion-permission-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g "reviews every user"',
+      "npx tsx --test shared/types.test.ts client/src/features/admin/admin-control-suite-policy.test.ts server/features/admin/users/deletion-permission-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"reviews every user\"",
     userVisibleAssertion:
       "A cohost can open a user's WTF Passport and perform ordinary support work, but sees a plain Account deletion restricted explanation instead of a permanent-delete control unless the role was explicitly granted Delete Users.",
     durableSideEffectAssertion:
@@ -1017,7 +986,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/features/admin/help/admin-help-index.test.ts; server/features/admin/help-index-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
     verificationCommand:
-      'npx tsx --test client/src/features/admin/help/admin-help-index.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g "help index"',
+      "npx tsx --test client/src/features/admin/help/admin-help-index.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"help index\"",
     userVisibleAssertion:
       "An admin can describe a complaint in human language or search an exact surface ID, route, native setting, permission, curse, API path, or automation handle and receive a ranked destination plus a human resolution guide and an agent contract.",
     durableSideEffectAssertion:
@@ -1079,7 +1048,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "server/routes/tv-embed-policy.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'npx tsx --test server/routes/tv-embed-policy.test.ts && WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "WTF TV public channel"',
+      "npx tsx --test server/routes/tv-embed-policy.test.ts && WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"WTF TV public channel\"",
     userVisibleAssertion:
       "A contestant can discover a public WTF TV channel and resolve its current broadcast state; independent public embeds tune to the same server-selected item and wall-clock offset instead of starting private queues at zero.",
     durableSideEffectAssertion:
@@ -1091,7 +1060,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["challenges", "side-quests"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "gameshow automation challenge"',
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow automation challenge\"",
     userVisibleAssertion:
       "A contestant action can satisfy a Gameshow automation challenge and produce a completed reward state.",
     durableSideEffectAssertion:
@@ -1103,7 +1072,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["challenges"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "gameshow challenge submission"',
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow challenge submission\"",
     userVisibleAssertion:
       "A contestant can see an active challenge, submit proof, receive a host grade, claim the resulting reward flag, and appear on the XP leaderboard.",
     durableSideEffectAssertion:
@@ -1115,7 +1084,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["challenges", "mission-control", "side-quests"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "gameshow launch surfaces"',
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"gameshow launch surfaces\"",
     userVisibleAssertion:
       "Mission Control, Challenges, and Side Quests render actionable gameshow state for a contestant session.",
     durableSideEffectAssertion:
@@ -1127,7 +1096,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["messageboard", "side-quests"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "canonical side quests"',
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"canonical side quests\"",
     userVisibleAssertion:
       "Contestants can see at least ten daily social/creative side quests with XP and WTF rewards, including the messageboard check-in.",
     durableSideEffectAssertion:
@@ -1151,8 +1120,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["mint-portal", "side-quests"],
     ownerSpec: "server/challenges/services/daily-loop-challenges.test.ts",
-    verificationCommand:
-      "npx tsx --test server/challenges/services/daily-loop-challenges.test.ts",
+    verificationCommand: "npx tsx --test server/challenges/services/daily-loop-challenges.test.ts",
     userVisibleAssertion:
       "Every UTC Monday, a signed-in user can complete Mint Art Monday by minting art to a Tezos wallet linked to their wtfOS account.",
     durableSideEffectAssertion:
@@ -1162,8 +1130,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "dedrooms.mud-core-flow",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["dedrooms"],
-    ownerSpec:
-      "server/features/green-room/engine.test.ts, tests/playwright/inventory/dedrooms.spec.mjs",
+    ownerSpec: "server/features/green-room/engine.test.ts, tests/playwright/inventory/dedrooms.spec.mjs",
     verificationCommand:
       "npx tsx --test server/features/green-room/engine.test.ts && npm run build && npx playwright test tests/playwright/inventory/dedrooms.spec.mjs",
     userVisibleAssertion:
@@ -1177,7 +1144,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["club-dues"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "club dues"',
+      "WTF_E2E_ACTOR_FILTER=bert,thecount npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"club dues\"",
     userVisibleAssertion:
       "A member can see Club Dues state, compile a V2 dues template, and prepare dues payment only with a wallet linked to the current account; staff authority transfer is explicitly proposed and accepted by the destination wallet.",
     durableSideEffectAssertion:
@@ -1186,13 +1153,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
   {
     id: "studio.creator-runway-persistence",
     domain: "Media, Creation, Gallery, and Preservation",
-    ownerSurfaceIds: [
-      "studio",
-      "wim",
-      "ipfs-pinning",
-      "pasta-protocol",
-      "wtf-live",
-    ],
+    ownerSurfaceIds: ["studio", "wim", "ipfs-pinning", "pasta-protocol", "wtf-live"],
     ownerSpec:
       "client/src/features/studio/studio-presentation-policy.test.ts; server/routes/studio-workflow-policy.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
     verificationCommand:
@@ -1208,7 +1169,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["game-studio", "media-library", "studio"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "media upload"',
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"media upload\"",
     userVisibleAssertion:
       "A creator can upload media, retrieve it from the library/file endpoint, inspect media-service dwellings, and build a Game Studio project bundle.",
     durableSideEffectAssertion:
@@ -1218,8 +1179,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "media.personal-drive-backup",
     domain: "Media, Creation, Gallery, and Preservation",
     platformOwner: "media-library",
-    ownerSpec:
-      "server/lib/studio/media-drive-backup-policy.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
+    ownerSpec: "server/lib/studio/media-drive-backup-policy.test.ts; tests/playwright/inventory/faq-tutorials.spec.mjs",
     verificationCommand:
       "npx tsx --test server/lib/studio/media-drive-backup-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/faq-tutorials.spec.mjs",
     userVisibleAssertion:
@@ -1233,20 +1193,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["admin-panel", "content-pages"],
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g "public data APIs"',
+      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"public data APIs\"",
     userVisibleAssertion:
       "Public data APIs and the WTFOS registered inventory remain readable while MCP automation requires an explicit paired token rather than a browser session.",
     durableSideEffectAssertion:
-      "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, denies a desktop mutation missing desktop:write, revokes the token, and rejects reuse after revocation.",
+      "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, and revokes the token.",
   },
   {
     id: "skywire.standalone-at-login",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
-    ownerSpec:
-      "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "standalone AT login"',
+      "npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"standalone AT login\"",
     userVisibleAssertion:
       "Anonymous users can open Skywire directly as a public OVOID-style AT Protocol login screen with Handle-or-DID input and a Continue action before any WTF OS login page appears; the dormant Signals publisher is not promoted on this public entry.",
     durableSideEffectAssertion:
@@ -1256,10 +1215,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "skywire.market-feed-search-source",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
-    ownerSpec:
-      "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "market feed"',
+      "npm run build && npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"market feed\"",
     userVisibleAssertion:
       "Skywire Market Feed renders Bluesky posts containing Objkt/Teia token hrefs with token previews and buy overlays instead of showing a false quiet lane.",
     durableSideEffectAssertion:
@@ -1269,10 +1227,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "skywire.trending-topics-hot-lane",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
-    ownerSpec:
-      "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "hot topics"',
+      "npx tsx --test server/features/atproto/skywire-policy.test.ts && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"hot topics\"",
     userVisibleAssertion:
       "Skywire has a Hot tab that renders current Bluesky trending topics, marks the selected topic, and opens matching posts in the normal Skywire feed card lane.",
     durableSideEffectAssertion:
@@ -1284,7 +1241,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["skywire"],
     ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "signals UI stays hidden"',
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signals UI stays hidden\"",
     userVisibleAssertion:
       "When a live-status record exists, the main Skywire shell shows a WTF LIVE header badge and live banner with an Open WTF LIVE action, while the hidden Signals panel does not expose update controls.",
     durableSideEffectAssertion:
@@ -1296,7 +1253,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["skywire"],
     ownerSpec: "tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "signal starter publisher stays hidden"',
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"signal starter publisher stays hidden\"",
     userVisibleAssertion:
       "Skywire no longer exposes a Signals tab, signal starter presets, signal text fields, or Publish Signal button through visible navigation, public standalone login, quick actions, or direct `/skywire?tab=signals` links.",
     durableSideEffectAssertion:
@@ -1306,10 +1263,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "skywire.oauth-original-window-permission-sync",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
-    ownerSpec:
-      "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
+    ownerSpec: "server/features/atproto/skywire-policy.test.ts, tests/playwright/inventory/skywire-feed.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g "OAuth|Chat add-on"',
+      "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"",
     userVisibleAssertion:
       "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, reports unresolved Bluesky handles instead of looking stalled, returns to the account/settings tab on canonical wtfos.app, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
     durableSideEffectAssertion:
@@ -1319,8 +1275,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "skywire.oauth-canonical-domain-alias",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["skywire"],
-    ownerSpec:
-      "server/lib/canonical-domain.test.ts, scripts/caddy-domain-policy.test.mjs, server/features/atproto/skywire-policy.test.ts",
+    ownerSpec: "server/lib/canonical-domain.test.ts, scripts/caddy-domain-policy.test.mjs, server/features/atproto/skywire-policy.test.ts",
     verificationCommand:
       "npx tsx --test server/lib/canonical-domain.test.ts server/features/atproto/skywire-policy.test.ts && node scripts/caddy-domain-policy.test.mjs",
     userVisibleAssertion:
@@ -1370,7 +1325,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "mic test"',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"mic test\"",
     userVisibleAssertion:
       "A mobile WTF LIVE room user can open the Sharing tray testing icon, run a pre-join microphone test from a minimal drawer, keep browser/permission/device guidance collapsed in a Details drawer, and expand it when recovery details are needed without changing the desktop room layout.",
     durableSideEffectAssertion:
@@ -1394,7 +1349,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "Show Kit soundboard"',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"Show Kit soundboard\"",
     userVisibleAssertion:
       "A signed-in WTF LIVE host can open the Show Kit tab, save a labeled/category audio clip with a safe keyboard shortcut plus volume/cooldown policy, clear local cache, reload the dashboard from server presets, and see duplicate shortcut feedback before adding another clip.",
     durableSideEffectAssertion:
@@ -1406,7 +1361,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "smart room owner controls"',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"smart room owner controls\"",
     userVisibleAssertion:
       "A signed-in WTF LIVE owner can search existing WTF users, add them as room hosts/guests or stage hosts/speakers, send role invites, open settings icon controls, choose guest publishing permissions, associate a saved Show Kit, and schedule the room to WTF/TTC calendar targets from owned public rooms, private rooms, and stages.",
     durableSideEffectAssertion:
@@ -1418,7 +1373,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "game room" --project=chromium --reporter=list',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"game room\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A signed-in WTF LIVE owner can create a game room, see it represented as a game room in the room dashboard and public room frame, start Jackbox host apps from owner-only controls inside that room, publish the hosted game stream as the room's shared screen, control the game from the room frame, and keep room mic/camera controls available for players.",
     durableSideEffectAssertion:
@@ -1442,7 +1397,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live", "wtfiam"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "WTF LIVE tip"',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"WTF LIVE tip\"",
     userVisibleAssertion:
       "A signed-in WTF LIVE room user can open the tip tray from attendance, select an owned WTF LIVE tip item, send it to another signed-in room user, and redeem received tips from the WTFIAM WTF LIVE Tips ledger.",
     durableSideEffectAssertion:
@@ -1452,8 +1407,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "wim.modular-window-roster-tabs",
     domain: "Community, Social, Messaging, and Discord",
     ownerSurfaceIds: ["wim"],
-    ownerSpec:
-      "client/src/pages/Wim.test.ts; tests/playwright/inventory/wim-owner-controls.spec.mjs",
+    ownerSpec: "client/src/pages/Wim.test.ts; tests/playwright/inventory/wim-owner-controls.spec.mjs",
     verificationCommand:
       "node --test client/src/pages/Wim.test.ts && npm run check -- --pretty false && npm run build && npx playwright test tests/playwright/inventory/wim-owner-controls.spec.mjs",
     userVisibleAssertion:
@@ -1503,7 +1457,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtf-live"],
     ownerSpec: "tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     verificationCommand:
-      'npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g "stage rooms gate audience sharing" --project=chromium --reporter=list',
+      "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"stage rooms gate audience sharing\" --project=chromium --reporter=list",
     userVisibleAssertion:
       "A stage owner can open the stage room, edit host and speaker lists in-room, and keep mic/camera/screen/media controls enabled, while an audience guest sees the stage role policy and disabled share controls.",
     durableSideEffectAssertion:
@@ -1517,8 +1471,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "server/features/w/message-routes-settings.test.ts; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
       "node --import tsx --test server/features/w/message-routes-settings.test.ts && npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "W users can read the configured Gameshow groupchat mirror without a send surface.",
+    userVisibleAssertion: "W users can read the configured Gameshow groupchat mirror without a send surface.",
     durableSideEffectAssertion:
       "The focused settings contract rejects malformed, non-array, or over-limit admin selections before upstream lookups or persistence; the live harness asserts the groupchat API is read-only, personal DM writes are disabled, and admin diagnostics expose the active config source.",
   },
@@ -1555,7 +1508,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSpec:
       "client/src/pages/admin-inbox-presentation-policy.test.ts; client/src/features/desktop/DesktopIcons.test.tsx; server/routes/admin-inbox-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs; tests/playwright/inventory/system-integration.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand:
-      'npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts client/src/features/desktop/DesktopIcons.test.tsx server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/system-integration.spec.mjs -g "fresh witness"',
+      "npx tsx --test client/src/pages/admin-inbox-presentation-policy.test.ts client/src/features/desktop/DesktopIcons.test.tsx server/routes/admin-inbox-policy.test.ts && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/system-integration.spec.mjs -g \"fresh witness\"",
     userVisibleAssertion:
       "Contact Admin is a separate core desktop app on every default desktop: non-admin users receive an evidence-oriented compose form with screenshot prompts, while admin-role users receive the inbox, raw field table, email rendering, agent-ready Markdown, screenshot viewer, and reply composer. Inbox also exposes the same conversations under an Admin contact tab.",
     durableSideEffectAssertion:
@@ -1636,8 +1589,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Commerce, Wallets, and Private Operations",
     ownerSurfaceIds: ["objkt-operator"],
     ownerSpec: "tests/playwright/inventory/objkt-operator.spec.mjs",
-    verificationCommand:
-      "npx tsx --test server/features/objkt-operator/policy.test.ts && npm run test:e2e:inventory",
+    verificationCommand: "npx tsx --test server/features/objkt-operator/policy.test.ts && npm run test:e2e:inventory",
     userVisibleAssertion:
       "The configured wtf-admin owner can open Objkt Operator, inspect every creator's weighted sales, buyers, volume, recency, verification, inventory-depth, and floor-fit score before approving or rejecting, then scan approved creators and manage a Kukai-backed signing queue.",
     durableSideEffectAssertion:
@@ -1649,8 +1601,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     platformOwner: "inventory-route-smoke",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "Every registered route fixture renders a visible body without an app crash.",
+    userVisibleAssertion: "Every registered route fixture renders a visible body without an app crash.",
     durableSideEffectAssertion:
       "Authenticated and admin-only routes are opened through the seeded actor sessions that match their access requirements.",
   },
@@ -1660,16 +1611,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     platformOwner: "inventory-domain-workflows",
     ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
     verificationCommand: "npm run test:e2e:live:puppets",
-    userVisibleAssertion:
-      "Every canonical domain workflow opens its representative user routes.",
+    userVisibleAssertion: "Every canonical domain workflow opens its representative user routes.",
     durableSideEffectAssertion:
       "Every domain workflow runs its owned API probes against a real server/database session with expected status contracts.",
   },
 ];
 
-export function buildBehaviorAssertionOwnership(
-  assertions = CORE_BEHAVIOR_ASSERTIONS,
-) {
+export function buildBehaviorAssertionOwnership(assertions = CORE_BEHAVIOR_ASSERTIONS) {
   const surfaceLinks = [];
   const platformAssertions = [];
   for (const assertion of assertions) {
@@ -1686,16 +1634,11 @@ export function buildBehaviorAssertionOwnership(
   return { surfaceLinks, platformAssertions };
 }
 
-export function assertBehaviorAssertions(
-  assertions = CORE_BEHAVIOR_ASSERTIONS,
-  adminSurfaces = [],
-) {
+export function assertBehaviorAssertions(assertions = CORE_BEHAVIOR_ASSERTIONS, adminSurfaces = []) {
   const failures = [];
   const seen = new Set();
   const assertionById = new Map();
-  const surfaceById = new Map(
-    adminSurfaces.map((surface) => [surface.id, surface]),
-  );
+  const surfaceById = new Map(adminSurfaces.map((surface) => [surface.id, surface]));
   for (const assertion of assertions) {
     if (!assertion?.id) failures.push("Behavior assertion is missing an id.");
     if (assertion?.id && seen.has(assertion.id)) {
@@ -1706,29 +1649,20 @@ export function assertBehaviorAssertions(
     const ownerSurfaceIds = Array.isArray(assertion?.ownerSurfaceIds)
       ? assertion.ownerSurfaceIds
       : [];
-    if (
-      ownerSurfaceIds.length === 0 &&
-      typeof assertion?.platformOwner !== "string"
-    ) {
-      failures.push(
-        `${assertion?.id || "unknown"} must declare ownerSurfaceIds or platformOwner.`,
-      );
+    if (ownerSurfaceIds.length === 0 && typeof assertion?.platformOwner !== "string") {
+      failures.push(`${assertion?.id || "unknown"} must declare ownerSurfaceIds or platformOwner.`);
     }
     for (const surfaceId of ownerSurfaceIds) {
       const surface = surfaceById.get(surfaceId);
       if (!surface) {
-        failures.push(
-          `${assertion.id} references unknown owner surface '${surfaceId}'.`,
-        );
+        failures.push(`${assertion.id} references unknown owner surface '${surfaceId}'.`);
         continue;
       }
       const declaredIds = Array.isArray(surface.behaviorAssertionIds)
         ? surface.behaviorAssertionIds
         : [];
       if (!declaredIds.includes(assertion.id)) {
-        failures.push(
-          `${surfaceId} must register behavior assertion '${assertion.id}'.`,
-        );
+        failures.push(`${surfaceId} must register behavior assertion '${assertion.id}'.`);
       }
     }
     for (const key of [
@@ -1738,10 +1672,7 @@ export function assertBehaviorAssertions(
       "userVisibleAssertion",
       "durableSideEffectAssertion",
     ]) {
-      if (
-        typeof assertion?.[key] !== "string" ||
-        assertion[key].trim().length === 0
-      ) {
+      if (typeof assertion?.[key] !== "string" || assertion[key].trim().length === 0) {
         failures.push(`${assertion?.id || "unknown"} is missing ${key}.`);
       }
     }
@@ -1751,19 +1682,15 @@ export function assertBehaviorAssertions(
       ? surface.behaviorAssertionIds
       : [];
     const duplicateDeclaredIds = declaredIds.filter(
-      (id, index, list) => list.indexOf(id) !== index,
+      (id, index, list) => list.indexOf(id) !== index
     );
     for (const id of new Set(duplicateDeclaredIds)) {
-      failures.push(
-        `${surface.id} declares duplicate behavior assertion '${id}'.`,
-      );
+      failures.push(`${surface.id} declares duplicate behavior assertion '${id}'.`);
     }
     for (const id of declaredIds) {
       const assertion = assertionById.get(id);
       if (!assertion) {
-        failures.push(
-          `${surface.id} declares unknown behavior assertion '${id}'.`,
-        );
+        failures.push(`${surface.id} declares unknown behavior assertion '${id}'.`);
         continue;
       }
       const ownerSurfaceIds = Array.isArray(assertion.ownerSurfaceIds)

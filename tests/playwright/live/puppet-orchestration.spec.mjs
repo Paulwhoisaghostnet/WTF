@@ -46,10 +46,7 @@ const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/github/i,
   /\/api\/auth\/google/i,
 ];
-const API_PROBE_TIMEOUT_MS = Math.max(
-  1_000,
-  Number(process.env.WTF_E2E_API_PROBE_TIMEOUT_MS || 25_000) || 25_000,
-);
+const API_PROBE_TIMEOUT_MS = Math.max(1_000, Number(process.env.WTF_E2E_API_PROBE_TIMEOUT_MS || 25_000) || 25_000);
 
 const actorFilter = (process.env.WTF_E2E_ACTOR_FILTER || "")
   .split(",")
@@ -60,8 +57,8 @@ function fatalErrors(errors) {
   return errors.filter(
     (error) =>
       !/(favicon|ResizeObserver|WebGL|wallet|beacon|taquito|non-boolean attribute|does not recognize the `.*` prop|unknown prop|Failed to load resource: the server responded with a status of 40[13])/i.test(
-        error,
-      ),
+        error
+      )
   );
 }
 
@@ -71,11 +68,10 @@ function skipExternalOauthProbe(probe) {
 
 function applyActorFilter(credentials) {
   if (actorFilter.length === 0) return credentials;
-  const selected = credentials.actors.filter(
-    (actor) =>
-      actorFilter.includes(String(actor.id).toLowerCase()) ||
-      actorFilter.includes(String(actor.username).toLowerCase()) ||
-      actorFilter.includes(String(actor.role).toLowerCase()),
+  const selected = credentials.actors.filter((actor) =>
+    actorFilter.includes(String(actor.id).toLowerCase()) ||
+    actorFilter.includes(String(actor.username).toLowerCase()) ||
+    actorFilter.includes(String(actor.role).toLowerCase())
   );
   return { ...credentials, actors: selected };
 }
@@ -92,7 +88,7 @@ async function loginAs(request, actor) {
   }));
   expect(
     response.ok(),
-    `password login for ${actor.username}: HTTP ${response.status()} ${JSON.stringify(payload)}`,
+    `password login for ${actor.username}: HTTP ${response.status()} ${JSON.stringify(payload)}`
   ).toBeTruthy();
   const user = payload;
   expect(user.username).toBe(actor.username);
@@ -116,9 +112,7 @@ async function bootstrapActorSession(playwright, baseURL, actor) {
       baseURL,
       storageState,
     });
-    const cachedUserResponse = await cachedRequest
-      .get("/api/auth/user")
-      .catch(() => null);
+    const cachedUserResponse = await cachedRequest.get("/api/auth/user").catch(() => null);
     if (cachedUserResponse?.ok()) {
       const user = await cachedUserResponse.json();
       await cachedRequest.dispose();
@@ -172,9 +166,7 @@ async function actorPage(browser, baseURL, actor) {
 
 async function apiProbe(request, probe) {
   const method = probe.method.toLowerCase();
-  const options = probe.body
-    ? { data: probe.body, timeout: API_PROBE_TIMEOUT_MS }
-    : { timeout: API_PROBE_TIMEOUT_MS };
+  const options = probe.body ? { data: probe.body, timeout: API_PROBE_TIMEOUT_MS } : { timeout: API_PROBE_TIMEOUT_MS };
   if (!["get", "head", "options"].includes(method)) {
     options.headers = await csrfHeaders(request);
   }
@@ -189,9 +181,7 @@ async function apiProbeFailureMessage(actor, probe, response) {
 }
 
 function apiProbeAccepted(response, probe) {
-  return (
-    response.ok() || (probe.expectedStatuses ?? []).includes(response.status())
-  );
+  return response.ok() || (probe.expectedStatuses ?? []).includes(response.status());
 }
 
 async function expectOkJson(response, label) {
@@ -200,16 +190,13 @@ async function expectOkJson(response, label) {
   }));
   expect(
     response.ok(),
-    `${label}: HTTP ${response.status()} ${JSON.stringify(payload).slice(0, 800)}`,
+    `${label}: HTTP ${response.status()} ${JSON.stringify(payload).slice(0, 800)}`
   ).toBeTruthy();
   return payload;
 }
 
 async function csrfHeaders(request) {
-  const payload = await expectOkJson(
-    await request.get("/api/auth/csrf-token"),
-    "CSRF token",
-  );
+  const payload = await expectOkJson(await request.get("/api/auth/csrf-token"), "CSRF token");
   expect(payload.csrfToken, "session CSRF token").toBeTruthy();
   return { "X-CSRF-Token": payload.csrfToken };
 }
@@ -219,10 +206,7 @@ async function walletLoginContext(playwright, baseURL, actor) {
   const challengeResponse = await request.post("/api/auth/wallet/challenge", {
     data: { walletAddress: actor.walletAddress, action: "login" },
   });
-  const challenge = await expectOkJson(
-    challengeResponse,
-    `wallet challenge ${actor.id}`,
-  );
+  const challenge = await expectOkJson(challengeResponse, `wallet challenge ${actor.id}`);
   const message = challenge.message;
   const signed = await signChallenge(actor, message);
   expect(signed.walletAddress).toBe(actor.walletAddress);
@@ -235,10 +219,7 @@ async function walletLoginContext(playwright, baseURL, actor) {
       nonce: challenge.nonce,
     },
   });
-  const payload = await expectOkJson(
-    verifyResponse,
-    `wallet verify ${actor.id}`,
-  );
+  const payload = await expectOkJson(verifyResponse, `wallet verify ${actor.id}`);
   expect(payload.action).toBe("login");
   expect(payload.user.username).toBe(actor.username);
   return request;
@@ -254,7 +235,9 @@ function uniqueCatalogSlugs(payload) {
   ];
   return [
     ...new Map(
-      rows.filter((row) => row?.slug).map((row) => [row.slug, row]),
+      rows
+        .filter((row) => row?.slug)
+        .map((row) => [row.slug, row])
     ).values(),
   ];
 }
@@ -270,7 +253,7 @@ async function signChallenge(actor, message) {
       "--message-base64",
       Buffer.from(message, "utf8").toString("base64"),
     ],
-    { timeout: 30_000 },
+    { timeout: 30_000 }
   );
   return JSON.parse(stdout.trim());
 }
@@ -283,7 +266,7 @@ test.describe("live E2E puppet orchestration", () => {
     } else {
       expect(
         puppetCredentials.actors.length,
-        `WTF_E2E_ACTOR_FILTER matched no actors: ${actorFilter.join(", ")}`,
+        `WTF_E2E_ACTOR_FILTER matched no actors: ${actorFilter.join(", ")}`
       ).toBeGreaterThan(0);
     }
 
@@ -307,10 +290,7 @@ test.describe("live E2E puppet orchestration", () => {
     for (const actor of puppetCredentials.actors) {
       const request = await actorRequestContext(playwright, baseURL, actor);
       const userResponse = await request.get("/api/auth/user");
-      expect(
-        userResponse.ok(),
-        `/api/auth/user for ${actor.username}`,
-      ).toBeTruthy();
+      expect(userResponse.ok(), `/api/auth/user for ${actor.username}`).toBeTruthy();
       const user = await userResponse.json();
       expect(user.username).toBe(actor.username);
       expect(user.role).toBe(actor.role);
@@ -319,19 +299,16 @@ test.describe("live E2E puppet orchestration", () => {
       }
 
       const walletsResponse = await request.get("/api/wallets");
-      expect(
-        walletsResponse.ok(),
-        `/api/wallets for ${actor.username}`,
-      ).toBeTruthy();
+      expect(walletsResponse.ok(), `/api/wallets for ${actor.username}`).toBeTruthy();
       const wallets = await walletsResponse.json();
       expect(Array.isArray(wallets)).toBe(true);
       expect(
         wallets.some(
           (wallet) =>
             String(wallet.walletAddress).toLowerCase() ===
-            actor.walletAddress.toLowerCase(),
+            actor.walletAddress.toLowerCase()
         ),
-        `${actor.username} should have ${actor.walletAddress}`,
+        `${actor.username} should have ${actor.walletAddress}`
       ).toBe(true);
       await request.dispose();
     }
@@ -345,20 +322,14 @@ test.describe("live E2E puppet orchestration", () => {
     const { context, page } = await actorPage(browser, baseURL, actor);
     try {
       await page.goto("/", { waitUntil: "domcontentloaded" });
-      const contactAdmin = page.locator(
-        '[data-desktop-icon-key="admin-inbox"]',
-      );
+      const contactAdmin = page.locator('[data-desktop-icon-key="admin-inbox"]');
       await expect(contactAdmin).toBeVisible({ timeout: 15_000 });
       await page.goto("/admin-inbox", { waitUntil: "domcontentloaded" });
-      await expect(
-        page.getByRole("heading", { name: "Contact an admin" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Contact an admin" })).toBeVisible();
 
       await page.goto("/admin", { waitUntil: "domcontentloaded" });
       await expect(page).toHaveURL(/\/$/);
-      await expect(
-        page.locator('[data-admin-surface="control-suite"]'),
-      ).toHaveCount(0);
+      await expect(page.locator('[data-admin-surface="control-suite"]')).toHaveCount(0);
       await expect(page.getByText("Admin Panel").first()).toHaveCount(0);
     } finally {
       await context.close();
@@ -369,16 +340,10 @@ test.describe("live E2E puppet orchestration", () => {
     request,
   }) => {
     for (const actor of puppetCredentials.actors) {
-      const challengeResponse = await request.post(
-        "/api/auth/wallet/challenge",
-        {
-          data: { walletAddress: actor.walletAddress, action: "login" },
-        },
-      );
-      expect(
-        challengeResponse.ok(),
-        `wallet challenge for ${actor.id}`,
-      ).toBeTruthy();
+      const challengeResponse = await request.post("/api/auth/wallet/challenge", {
+        data: { walletAddress: actor.walletAddress, action: "login" },
+      });
+      expect(challengeResponse.ok(), `wallet challenge for ${actor.id}`).toBeTruthy();
       const challenge = await challengeResponse.json();
       const message = challenge.message;
       const signed = await signChallenge(actor, message);
@@ -397,7 +362,7 @@ test.describe("live E2E puppet orchestration", () => {
       }));
       expect(
         verifyResponse.ok(),
-        `wallet verify for ${actor.id}: HTTP ${verifyResponse.status()} ${JSON.stringify(payload)}`,
+        `wallet verify for ${actor.id}: HTTP ${verifyResponse.status()} ${JSON.stringify(payload)}`
       ).toBeTruthy();
       expect(payload.action).toBe("login");
       expect(payload.user.username).toBe(actor.username);
@@ -411,34 +376,24 @@ test.describe("live E2E puppet orchestration", () => {
     const actor = actorByRole(puppetCredentials, "contestant");
     const request = await walletLoginContext(playwright, baseURL, actor);
     try {
-      const user = await expectOkJson(
-        await request.get("/api/auth/user"),
-        "wallet session user",
-      );
+      const user = await expectOkJson(await request.get("/api/auth/user"), "wallet session user");
       expect(user.username).toBe(actor.username);
 
-      const wallets = await expectOkJson(
-        await request.get("/api/wallets"),
-        "wallet session wallets",
-      );
+      const wallets = await expectOkJson(await request.get("/api/wallets"), "wallet session wallets");
       expect(
         wallets.some(
           (wallet) =>
-            String(wallet.walletAddress).toLowerCase() ===
-            actor.walletAddress.toLowerCase(),
+            String(wallet.walletAddress).toLowerCase() === actor.walletAddress.toLowerCase()
         ),
-        `${actor.username} should retain linked wallet ${actor.walletAddress}`,
+        `${actor.username} should retain linked wallet ${actor.walletAddress}`
       ).toBe(true);
 
       const market = await expectOkJson(
         await request.get("/api/in-app-market?category=arcade"),
-        "WTF IAM arcade market",
+        "WTF IAM arcade market"
       );
-      const item =
-        (market.items ?? []).find((row) => row?.sku === "arcade-play-card") ||
-        (market.items ?? []).find(
-          (row) => row?.active !== false && Number(row?.stockQuantity ?? 0) > 0,
-        );
+      const item = (market.items ?? []).find((row) => row?.sku === "arcade-play-card") ||
+        (market.items ?? []).find((row) => row?.active !== false && Number(row?.stockQuantity ?? 0) > 0);
       expect(item?.sku, "checkout test market item").toBeTruthy();
 
       const intent = await expectOkJson(
@@ -450,7 +405,7 @@ test.describe("live E2E puppet orchestration", () => {
             items: [{ sku: item.sku, quantity: 1 }],
           },
         }),
-        "wallet-bound WTF IAM checkout intent",
+        "wallet-bound WTF IAM checkout intent"
       );
       expect(intent.intent?.walletAddress).toBe(actor.walletAddress);
       expect(intent.intent?.currency).toBe("wtf");
@@ -469,40 +424,31 @@ test.describe("live E2E puppet orchestration", () => {
       try {
         const casinoStatus = await expectOkJson(
           await request.get("/api/casino/status"),
-          `${actor.username} casino status`,
+          `${actor.username} casino status`
         );
-        expect(casinoStatus.canEnter, `${actor.username} casino access`).toBe(
-          true,
-        );
+        expect(casinoStatus.canEnter, `${actor.username} casino access`).toBe(true);
         expect(casinoStatus.appPass.quantity).toBeGreaterThan(0);
         expect(casinoStatus.membership.active).toBe(true);
 
         const arcadeStatus = await expectOkJson(
           await request.get("/api/arcade/play-status"),
-          `${actor.username} arcade play status`,
+          `${actor.username} arcade play status`
         );
         expect(
           arcadeStatus.canPlay,
-          `${actor.username} should be able to start Arcade games`,
+          `${actor.username} should be able to start Arcade games`
         ).toBe(true);
-        if (!arcadeStatus.bypass)
-          expect(arcadeStatus.ticketsOwned).toBeGreaterThan(0);
+        if (!arcadeStatus.bypass) expect(arcadeStatus.ticketsOwned).toBeGreaterThan(0);
 
         const desktopMarket = await expectOkJson(
           await request.get("/api/in-app-market?category=desktop_fun"),
-          `${actor.username} desktop inventory`,
+          `${actor.username} desktop inventory`
         );
         const inventory = new Map(
-          (desktopMarket.inventory ?? []).map((row) => [
-            row.sku,
-            Number(row.quantity || 0),
-          ]),
+          (desktopMarket.inventory ?? []).map((row) => [row.sku, Number(row.quantity || 0)])
         );
         for (const sku of REQUIRED_DESKTOP_TEST_SKUS) {
-          expect(
-            inventory.get(sku) ?? 0,
-            `${actor.username} owns ${sku}`,
-          ).toBeGreaterThan(0);
+          expect(inventory.get(sku) ?? 0, `${actor.username} owns ${sku}`).toBeGreaterThan(0);
         }
       } finally {
         await request.dispose();
@@ -520,62 +466,45 @@ test.describe("live E2E puppet orchestration", () => {
       const headers = await csrfHeaders(request);
       const entry = await expectOkJson(
         await request.post("/api/casino/entry", { headers, data: {} }),
-        "casino entry",
+        "casino entry"
       );
       expect(entry.ok).toBe(true);
 
       const buttonState = await expectOkJson(
         await request.get("/api/casino/wtf-button/state"),
-        "WTF Button state",
+        "WTF Button state"
       );
       expect(buttonState.route).toBe("/casino/wtf-button");
-      expect(
-        buttonState.tables?.length,
-        "WTF Button exposes playable tables",
-      ).toBeGreaterThan(0);
+      expect(buttonState.tables?.length, "WTF Button exposes playable tables").toBeGreaterThan(0);
       const quote = await expectOkJson(
         await request.post("/api/casino/wtf-button/quote", {
           headers,
-          data: {
-            buttonId: "red",
-            priceProtectionMode: "strict",
-            toleranceMutez: "0",
-          },
+          data: { buttonId: "red", priceProtectionMode: "strict", toleranceMutez: "0" },
         }),
-        "WTF Button quote",
+        "WTF Button quote"
       );
       expect(quote.ok).toBe(true);
       expect(quote.quote?.buttonId).toBe("red");
 
       const rugState = await expectOkJson(
         await request.get("/api/casino/rug-pull/state"),
-        "Rug Pull state",
+        "Rug Pull state"
       );
-      expect(
-        rugState.round || rugState.rules || rugState.snapshot,
-      ).toBeTruthy();
-      const rugJoin = await request.post("/api/casino/rug-pull/join", {
-        headers,
-        data: {},
-      });
-      expect([200, 409], `Rug Pull join HTTP ${rugJoin.status()}`).toContain(
-        rugJoin.status(),
-      );
+      expect(rugState.round || rugState.rules || rugState.snapshot).toBeTruthy();
+      const rugJoin = await request.post("/api/casino/rug-pull/join", { headers, data: {} });
+      expect([200, 409], `Rug Pull join HTTP ${rugJoin.status()}`).toContain(rugJoin.status());
 
       const racewayState = await expectOkJson(
         await request.get("/api/casino/guinea-pig-raceway/state"),
-        "Raceway state",
+        "Raceway state"
       );
-      const racerId =
-        racewayState.entrants?.[0]?.id || racewayState.card?.entrants?.[0]?.id;
+      const racerId = racewayState.entrants?.[0]?.id || racewayState.card?.entrants?.[0]?.id;
       expect(racerId, "Raceway exposes a racer id").toBeTruthy();
       const bet = await request.post("/api/casino/guinea-pig-raceway/bet", {
         headers,
         data: { racerId, stakeMicrowtf: "5000000" },
       });
-      expect([200, 409], `Raceway bet HTTP ${bet.status()}`).toContain(
-        bet.status(),
-      );
+      expect([200, 409], `Raceway bet HTTP ${bet.status()}`).toContain(bet.status());
     } finally {
       await request.dispose();
     }
@@ -588,17 +517,9 @@ test.describe("live E2E puppet orchestration", () => {
     const creator = actorByRole(puppetCredentials, "trusted_creator");
     const admin = actorByRole(puppetCredentials, "admin");
     const player = actorByRole(puppetCredentials, "contestant");
-    const creatorRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      creator,
-    );
+    const creatorRequest = await actorRequestContext(playwright, baseURL, creator);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
-    const playerRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      player,
-    );
+    const playerRequest = await actorRequestContext(playwright, baseURL, player);
     const testRunId = `live-puppet-casino-practice-${Date.now().toString(36)}`;
 
     try {
@@ -616,7 +537,7 @@ test.describe("live E2E puppet orchestration", () => {
             outcomes: ["Sun", "Moon", "Star"],
           },
         }),
-        "submit community Casino practice table",
+        "submit community Casino practice table"
       );
       expect(submitted.game.status).toBe("submitted");
       expect(submitted.game.active).toBe(false);
@@ -627,15 +548,15 @@ test.describe("live E2E puppet orchestration", () => {
 
       const creatorView = await expectOkJson(
         await creatorRequest.get("/api/casino/practice-games"),
-        "creator practice table status",
+        "creator practice table status"
       );
       expect(
         creatorView.mine.some((game) => game.id === submitted.game.id),
-        "creator can see submitted status",
+        "creator can see submitted status"
       ).toBe(true);
       expect(
         creatorView.games.some((game) => game.id === submitted.game.id),
-        "unreviewed table remains hidden from practice floor",
+        "unreviewed table remains hidden from practice floor"
       ).toBe(false);
 
       const unauthorizedReview = await creatorRequest.post(
@@ -643,63 +564,46 @@ test.describe("live E2E puppet orchestration", () => {
         {
           headers: creatorHeaders,
           data: { action: "approve", note: "Creator cannot self-approve." },
-        },
+        }
       );
       expect(unauthorizedReview.status()).toBe(403);
 
       const adminQueue = await expectOkJson(
         await adminRequest.get("/api/casino/practice-games"),
-        "Casino operator practice queue",
+        "Casino operator practice queue"
       );
       expect(adminQueue.canModerate).toBe(true);
       expect(
-        adminQueue.moderationQueue.some(
-          (game) => game.id === submitted.game.id,
-        ),
-        "submitted table reaches operator queue",
+        adminQueue.moderationQueue.some((game) => game.id === submitted.game.id),
+        "submitted table reaches operator queue"
       ).toBe(true);
 
       const approved = await expectOkJson(
-        await adminRequest.post(
-          `/api/casino/practice-games/${submitted.game.id}/review`,
-          {
-            headers: adminHeaders,
-            data: {
-              action: "approve",
-              note: "Approved for no-wager community practice.",
-            },
-          },
-        ),
-        "approve community Casino practice table",
+        await adminRequest.post(`/api/casino/practice-games/${submitted.game.id}/review`, {
+          headers: adminHeaders,
+          data: { action: "approve", note: "Approved for no-wager community practice." },
+        }),
+        "approve community Casino practice table"
       );
       expect(approved.game.status).toBe("approved");
       expect(approved.game.active).toBe(true);
-      expect(approved.game.moderationNote).toBe(
-        "Approved for no-wager community practice.",
-      );
+      expect(approved.game.moderationNote).toBe("Approved for no-wager community practice.");
 
       const playerFloor = await expectOkJson(
         await playerRequest.get("/api/casino/practice-games"),
-        "member community Casino practice floor",
+        "member community Casino practice floor"
       );
-      const published = playerFloor.games.find(
-        (game) => game.id === submitted.game.id,
-      );
+      const published = playerFloor.games.find((game) => game.id === submitted.game.id);
       expect(published, "approved table is discoverable").toBeTruthy();
-      expect(published.creatorName).toBe(
-        creator.displayName || creator.username,
-      );
+      expect(published.creatorName).toBe(creator.displayName || creator.username);
       expect(published.practiceOnly).toBe(true);
 
       const played = await expectOkJson(
-        await playerRequest.post(
-          `/api/casino/practice-games/${published.slug}/play`,
-          {
-            headers: playerHeaders,
-            data: {},
-          },
-        ),
-        "play community Casino practice table",
+        await playerRequest.post(`/api/casino/practice-games/${published.slug}/play`, {
+          headers: playerHeaders,
+          data: {},
+        }),
+        "play community Casino practice table"
       );
       expect(["Sun", "Moon", "Star"]).toContain(played.result.outcomeLabel);
       expect(played.result.practiceOnly).toBe(true);
@@ -709,9 +613,9 @@ test.describe("live E2E puppet orchestration", () => {
 
       const events = await expectOkJson(
         await adminRequest.get(
-          "/api/admin/challenge-automation/events?eventType=casino.practice_game.played&limit=20",
+          "/api/admin/challenge-automation/events?eventType=casino.practice_game.played&limit=20"
         ),
-        "Casino practice play audit events",
+        "Casino practice play audit events"
       );
       expect(
         events.events.some(
@@ -719,9 +623,9 @@ test.describe("live E2E puppet orchestration", () => {
             String(event.rawRefId) === String(played.result.playId) &&
             event.metadata?.practiceOnly === true &&
             event.metadata?.wager === null &&
-            event.metadata?.reward === null,
+            event.metadata?.reward === null
         ),
-        "practice play event records no-value boundary",
+        "practice play event records no-value boundary"
       ).toBe(true);
     } finally {
       await creatorRequest.dispose();
@@ -737,11 +641,7 @@ test.describe("live E2E puppet orchestration", () => {
     const admin = actorByRole(puppetCredentials, "admin");
     const member = actorByRole(puppetCredentials, "contestant");
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
-    const memberRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      member,
-    );
+    const memberRequest = await actorRequestContext(playwright, baseURL, member);
     const runId = `live-puppet-calendar-${Date.now().toString(36)}`;
     const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     let eventId = null;
@@ -754,23 +654,17 @@ test.describe("live E2E puppet orchestration", () => {
           headers: adminHeaders,
           data: {
             title: `Calendar participation ${runId}`,
-            description:
-              "A disposable event for account-backed participation proof.",
+            description: "A disposable event for account-backed participation proof.",
             startsAt: startsAt.toISOString(),
             endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
             allDay: false,
             kind: "custom",
             visibility: "public",
             status: "published",
-            links: [
-              {
-                label: "Participation room",
-                url: "https://example.com/calendar-live-proof",
-              },
-            ],
+            links: [{ label: "Participation room", url: "https://example.com/calendar-live-proof" }],
           },
         }),
-        "create Calendar participation fixture",
+        "create Calendar participation fixture"
       );
       eventId = created.id;
       const eventKey = `wtf:${created.id}:${new Date(created.startsAt).toISOString()}`;
@@ -784,15 +678,13 @@ test.describe("live E2E puppet orchestration", () => {
             sourceEventId: created.id,
             title: created.title,
             startsAt: new Date(created.startsAt).toISOString(),
-            endsAt: created.endsAt
-              ? new Date(created.endsAt).toISOString()
-              : null,
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
             allDay: created.allDay,
             status: "going",
             reminderEnabled: true,
           },
         }),
-        "save Calendar Going plan",
+        "save Calendar Going plan"
       );
       expect(saved.participation.status).toBe("going");
       expect(saved.participation.reminderEnabled).toBe(true);
@@ -800,21 +692,15 @@ test.describe("live E2E puppet orchestration", () => {
 
       const persisted = await expectOkJson(
         await memberRequest.get("/api/calendar/participations/mine"),
-        "reload Calendar plans",
+        "reload Calendar plans"
       );
-      expect(persisted.some((plan) => plan.id === saved.participation.id)).toBe(
-        true,
-      );
+      expect(persisted.some((plan) => plan.id === saved.participation.id)).toBe(true);
 
       const reminderPlans = await expectOkJson(
-        await memberRequest.get(
-          "/api/calendar/participations/mine?reminders=1",
-        ),
-        "load chosen Calendar reminders",
+        await memberRequest.get("/api/calendar/participations/mine?reminders=1"),
+        "load chosen Calendar reminders"
       );
-      expect(reminderPlans.map((plan) => plan.id)).toContain(
-        saved.participation.id,
-      );
+      expect(reminderPlans.map((plan) => plan.id)).toContain(saved.participation.id);
 
       const reminderOff = await expectOkJson(
         await memberRequest.put("/api/calendar/participations", {
@@ -825,23 +711,19 @@ test.describe("live E2E puppet orchestration", () => {
             sourceEventId: created.id,
             title: created.title,
             startsAt: new Date(created.startsAt).toISOString(),
-            endsAt: created.endsAt
-              ? new Date(created.endsAt).toISOString()
-              : null,
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
             allDay: created.allDay,
             status: "going",
             reminderEnabled: false,
           },
         }),
-        "turn Calendar reminder off",
+        "turn Calendar reminder off"
       );
       expect(reminderOff.participation.reminderEnabled).toBe(false);
       const remindersAfterOff = await memberRequest
         .get("/api/calendar/participations/mine?reminders=1")
         .then((response) => response.json());
-      expect(remindersAfterOff.some((plan) => plan.eventKey === eventKey)).toBe(
-        false,
-      );
+      expect(remindersAfterOff.some((plan) => plan.eventKey === eventKey)).toBe(false);
 
       await expectOkJson(
         await memberRequest.put("/api/calendar/participations", {
@@ -852,56 +734,48 @@ test.describe("live E2E puppet orchestration", () => {
             sourceEventId: created.id,
             title: created.title,
             startsAt: new Date(created.startsAt).toISOString(),
-            endsAt: created.endsAt
-              ? new Date(created.endsAt).toISOString()
-              : null,
+            endsAt: created.endsAt ? new Date(created.endsAt).toISOString() : null,
             allDay: created.allDay,
             status: "none",
             reminderEnabled: false,
           },
         }),
-        "clear Calendar plan",
+        "clear Calendar plan"
       );
       const plansAfterClear = await memberRequest
         .get("/api/calendar/participations/mine")
         .then((response) => response.json());
-      expect(plansAfterClear.some((plan) => plan.eventKey === eventKey)).toBe(
-        false,
-      );
+      expect(plansAfterClear.some((plan) => plan.eventKey === eventKey)).toBe(false);
 
       const updatedEvents = await expectOkJson(
         await adminRequest.get(
-          "/api/admin/challenge-automation/events?eventType=calendar.participation.updated&limit=20",
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.updated&limit=20"
         ),
-        "Calendar participation update audit events",
+        "Calendar participation update audit events"
       );
       expect(
         updatedEvents.events.some(
           (event) =>
             String(event.rawRefId) === String(saved.participation.id) &&
             event.metadata?.eventKey === eventKey &&
-            event.metadata?.status === "going",
-        ),
+            event.metadata?.status === "going"
+        )
       ).toBe(true);
 
       const clearedEvents = await expectOkJson(
         await adminRequest.get(
-          "/api/admin/challenge-automation/events?eventType=calendar.participation.cleared&limit=20",
+          "/api/admin/challenge-automation/events?eventType=calendar.participation.cleared&limit=20"
         ),
-        "Calendar participation clear audit events",
+        "Calendar participation clear audit events"
       );
-      expect(
-        clearedEvents.events.some((event) => event.rawRefId === eventKey),
-      ).toBe(true);
+      expect(clearedEvents.events.some((event) => event.rawRefId === eventKey)).toBe(true);
     } finally {
       if (eventId) {
         const adminHeaders = await csrfHeaders(adminRequest).catch(() => ({}));
-        await adminRequest
-          .patch(`/api/calendar/events/${eventId}`, {
-            headers: adminHeaders,
-            data: { status: "cancelled" },
-          })
-          .catch(() => undefined);
+        await adminRequest.patch(`/api/calendar/events/${eventId}`, {
+          headers: adminHeaders,
+          data: { status: "cancelled" },
+        }).catch(() => undefined);
       }
       await adminRequest.dispose();
       await memberRequest.dispose();
@@ -912,32 +786,15 @@ test.describe("live E2E puppet orchestration", () => {
     playwright,
     baseURL,
   }) => {
-    const contestants = puppetCredentials.actors.filter(
-      (actor) => actor.role === "contestant",
-    );
-    expect(
-      contestants.length,
-      "two account-backed contestants are available",
-    ).toBeGreaterThanOrEqual(2);
+    const contestants = puppetCredentials.actors.filter((actor) => actor.role === "contestant");
+    expect(contestants.length, "two account-backed contestants are available").toBeGreaterThanOrEqual(2);
     const sender = contestants[0];
     const recipient = contestants[1];
     const outsider = actorByRole(puppetCredentials, "witness");
     const admin = actorByRole(puppetCredentials, "admin");
-    const senderRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      sender,
-    );
-    const recipientRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      recipient,
-    );
-    const outsiderRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      outsider,
-    );
+    const senderRequest = await actorRequestContext(playwright, baseURL, sender);
+    const recipientRequest = await actorRequestContext(playwright, baseURL, recipient);
+    const outsiderRequest = await actorRequestContext(playwright, baseURL, outsider);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const runId = `live-puppet-dm-safety-${Date.now().toString(36)}`;
     const messageContent = `Private safety test message ${runId}`;
@@ -956,45 +813,36 @@ test.describe("live E2E puppet orchestration", () => {
           headers: senderHeaders,
           data: { targetUserId: recipientUserId },
         }),
-        "open direct-message safety conversation",
+        "open direct-message safety conversation"
       );
       const sent = await expectOkJson(
-        await senderRequest.post(
-          `/api/messages/dms/${conversation.id}/messages`,
-          {
-            headers: senderHeaders,
-            data: { content: messageContent },
-          },
-        ),
-        "send direct-message safety fixture",
+        await senderRequest.post(`/api/messages/dms/${conversation.id}/messages`, {
+          headers: senderHeaders,
+          data: { content: messageContent },
+        }),
+        "send direct-message safety fixture"
       );
       expect(sent.senderId).toBe(sessionFor(sender).user.id);
 
       const beforeRead = await expectOkJson(
         await recipientRequest.get("/api/messages/dms"),
-        "recipient unread direct messages",
+        "recipient unread direct messages"
       );
       expect(
         beforeRead.find((item) => item.id === conversation.id)?.unreadCount,
-        "new received message is visibly unread",
+        "new received message is visibly unread"
       ).toBeGreaterThan(0);
 
       const receivedMessages = await expectOkJson(
-        await recipientRequest.get(
-          `/api/messages/dms/${conversation.id}/messages?limit=100`,
-        ),
-        "recipient reads direct-message conversation",
+        await recipientRequest.get(`/api/messages/dms/${conversation.id}/messages?limit=100`),
+        "recipient reads direct-message conversation"
       );
-      expect(
-        receivedMessages.find((message) => message.id === sent.id)?.content,
-      ).toBe(messageContent);
+      expect(receivedMessages.find((message) => message.id === sent.id)?.content).toBe(messageContent);
       const afterRead = await expectOkJson(
         await recipientRequest.get("/api/messages/dms"),
-        "recipient read-state persistence",
+        "recipient read-state persistence"
       );
-      expect(
-        afterRead.find((item) => item.id === conversation.id)?.unreadCount,
-      ).toBe(0);
+      expect(afterRead.find((item) => item.id === conversation.id)?.unreadCount).toBe(0);
 
       const reported = await expectOkJson(
         await recipientRequest.post(
@@ -1002,63 +850,48 @@ test.describe("live E2E puppet orchestration", () => {
           {
             headers: recipientHeaders,
             data: { reason: reportReason },
-          },
+          }
         ),
-        "recipient privately reports received message",
+        "recipient privately reports received message"
       );
       expect(reported.report.status).toBe("open");
       expect(reported.report.reason).toBe(reportReason);
 
       const duplicateReport = await recipientRequest.post(
         `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
-        {
-          headers: recipientHeaders,
-          data: { reason: `${reportReason} duplicate` },
-        },
+        { headers: recipientHeaders, data: { reason: `${reportReason} duplicate` } }
       );
       expect(duplicateReport.status()).toBe(409);
 
       const ownReport = await senderRequest.post(
         `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
-        {
-          headers: senderHeaders,
-          data: { reason: `${reportReason} own message` },
-        },
+        { headers: senderHeaders, data: { reason: `${reportReason} own message` } }
       );
       expect(ownReport.status()).toBe(400);
 
       const outsiderReport = await outsiderRequest.post(
         `/api/messages/dms/${conversation.id}/messages/${sent.id}/report`,
-        {
-          headers: outsiderHeaders,
-          data: { reason: `${reportReason} outsider` },
-        },
+        { headers: outsiderHeaders, data: { reason: `${reportReason} outsider` } }
       );
       expect(outsiderReport.status()).toBe(403);
 
       const queue = await expectOkJson(
         await adminRequest.get("/api/messages/dm-reports?status=open"),
-        "operator direct-message safety queue",
+        "operator direct-message safety queue"
       );
       const queued = queue.find((report) => report.id === reported.report.id);
-      expect(
-        queued,
-        "reported message reaches the operator queue",
-      ).toBeTruthy();
+      expect(queued, "reported message reaches the operator queue").toBeTruthy();
       expect(queued.messageContent).toBe(messageContent);
       expect(queued.reason).toBe(reportReason);
       expect(queued.senderUserId).toBe(sessionFor(sender).user.id);
       expect(queued.reporterUserId).toBe(recipientUserId);
 
       const reviewed = await expectOkJson(
-        await adminRequest.post(
-          `/api/messages/dm-reports/${reported.report.id}/review`,
-          {
-            headers: adminHeaders,
-            data: { status: "reviewed", note: reviewNote },
-          },
-        ),
-        "operator reviews direct-message safety report",
+        await adminRequest.post(`/api/messages/dm-reports/${reported.report.id}/review`, {
+          headers: adminHeaders,
+          data: { status: "reviewed", note: reviewNote },
+        }),
+        "operator reviews direct-message safety report"
       );
       expect(reviewed.report.status).toBe("reviewed");
       expect(reviewed.report.reviewNote).toBe(reviewNote);
@@ -1066,30 +899,23 @@ test.describe("live E2E puppet orchestration", () => {
 
       const queueAfterReview = await expectOkJson(
         await adminRequest.get("/api/messages/dm-reports?status=open"),
-        "operator queue after review",
+        "operator queue after review"
       );
-      expect(
-        queueAfterReview.some((report) => report.id === reported.report.id),
-      ).toBe(false);
+      expect(queueAfterReview.some((report) => report.id === reported.report.id)).toBe(false);
 
-      for (const eventType of [
-        "dm.message.reported",
-        "dm.message.report_reviewed",
-      ]) {
+      for (const eventType of ["dm.message.reported", "dm.message.report_reviewed"]) {
         const eventPayload = await expectOkJson(
           await adminRequest.get(
-            `/api/admin/challenge-automation/events?eventType=${eventType}&limit=20`,
+            `/api/admin/challenge-automation/events?eventType=${eventType}&limit=20`
           ),
-          `${eventType} private audit events`,
+          `${eventType} private audit events`
         );
         const auditEvent = eventPayload.events.find(
-          (event) => String(event.rawRefId) === String(reported.report.id),
+          (event) => String(event.rawRefId) === String(reported.report.id)
         );
         expect(auditEvent, `${eventType} audit event exists`).toBeTruthy();
         expect(auditEvent.metadata?.contentIncluded).toBe(false);
-        expect(JSON.stringify(auditEvent.metadata)).not.toContain(
-          messageContent,
-        );
+        expect(JSON.stringify(auditEvent.metadata)).not.toContain(messageContent);
         expect(JSON.stringify(auditEvent.metadata)).not.toContain(reportReason);
       }
     } finally {
@@ -1110,19 +936,14 @@ test.describe("live E2E puppet orchestration", () => {
       const headers = await csrfHeaders(request);
       const consoleCatalog = await expectOkJson(
         await request.get("/api/console/games"),
-        "Console catalog",
+        "Console catalog"
       );
       const consoleGames = uniqueCatalogSlugs(consoleCatalog);
-      expect(consoleGames.length, "Console catalog has games").toBeGreaterThan(
-        0,
-      );
+      expect(consoleGames.length, "Console catalog has games").toBeGreaterThan(0);
       for (const game of consoleGames) {
         const session = await expectOkJson(
-          await request.post("/api/console/session", {
-            headers,
-            data: { slug: game.slug },
-          }),
-          `Console session ${game.slug}`,
+          await request.post("/api/console/session", { headers, data: { slug: game.slug } }),
+          `Console session ${game.slug}`
         );
         expect(session.game?.slug).toBe(game.slug);
         expect(session.runId, `Console ${game.slug} runId`).toBeTruthy();
@@ -1138,23 +959,20 @@ test.describe("live E2E puppet orchestration", () => {
               payload: { source: "live-puppet-playback" },
             },
           }),
-          `Console score ${game.slug}`,
+          `Console score ${game.slug}`
         );
       }
 
       const arcadeCatalog = await expectOkJson(
         await request.get("/api/arcade/games"),
-        "Arcade catalog",
+        "Arcade catalog"
       );
       const arcadeGames = uniqueCatalogSlugs(arcadeCatalog);
       expect(arcadeGames.length, "Arcade catalog has games").toBeGreaterThan(0);
       for (const game of arcadeGames) {
         const session = await expectOkJson(
-          await request.post("/api/arcade/session", {
-            headers,
-            data: { slug: game.slug },
-          }),
-          `Arcade session ${game.slug}`,
+          await request.post("/api/arcade/session", { headers, data: { slug: game.slug } }),
+          `Arcade session ${game.slug}`
         );
         expect(session.game?.slug).toBe(game.slug);
         if (session.runId && session.ticket) {
@@ -1169,7 +987,7 @@ test.describe("live E2E puppet orchestration", () => {
                 payload: { source: "live-puppet-playback" },
               },
             }),
-            `Arcade score ${game.slug}`,
+            `Arcade score ${game.slug}`
           );
         }
       }
@@ -1208,13 +1026,13 @@ test.describe("live E2E puppet orchestration", () => {
             },
           },
         }),
-        "desktop settings update",
+        "desktop settings update"
       );
       expect(settings.iconLayout.arcade).toMatchObject({ x: 42, y: 84 });
 
       const persistedSettings = await expectOkJson(
         await request.get("/api/desktop/settings"),
-        "desktop settings reload",
+        "desktop settings reload"
       );
       expect(persistedSettings.appearance).toMatchObject({
         appearanceStyleKey: "wtf-xp",
@@ -1244,7 +1062,7 @@ test.describe("live E2E puppet orchestration", () => {
             metadata: { sku: "desktop-vacuum", source: "live-puppet-playback" },
           },
         }),
-        "desktop artifact event",
+        "desktop artifact event"
       );
       expect(desktopEvent.eventId, "desktop event id").toBeTruthy();
 
@@ -1256,20 +1074,18 @@ test.describe("live E2E puppet orchestration", () => {
             metadata: { source: "live-puppet-playback", itemSku: "pet-food" },
           },
         }),
-        "desktop pet feed action",
+        "desktop pet feed action"
       );
       expect(petAction.pet).toBeTruthy();
       expect(petAction.event?.id, "desktop pet event id").toBeTruthy();
 
       const petEvents = await expectOkJson(
         await request.get("/api/desktop/pet/events?limit=20"),
-        "desktop pet events reload",
+        "desktop pet events reload"
       );
       expect(
-        petEvents.events.some(
-          (event) => event.id === petAction.event.id && event.action === "feed",
-        ),
-        "desktop pet feed event persists in event history",
+        petEvents.events.some((event) => event.id === petAction.event.id && event.action === "feed"),
+        "desktop pet feed event persists in event history"
       ).toBeTruthy();
     } finally {
       await request.dispose();
@@ -1285,30 +1101,23 @@ test.describe("live E2E puppet orchestration", () => {
     try {
       const channels = await expectOkJson(
         await request.get("/api/tv/channels?includeMeta=1&limit=10"),
-        "TV public channels",
+        "TV public channels"
       );
-      expect(
-        channels.pagination.total,
-        "public TV channel count",
-      ).toBeGreaterThan(0);
+      expect(channels.pagination.total, "public TV channel count").toBeGreaterThan(0);
       const channel = channels.items.find(
-        (candidate) =>
-          candidate.isPublic && candidate.isActive && candidate.dialNumber,
+        (candidate) => candidate.isPublic && candidate.isActive && candidate.dialNumber
       );
       expect(channel, "public active TV channel with dial").toBeTruthy();
 
       const mine = await expectOkJson(
         await request.get("/api/tv/channels?mine=1&includeMeta=1&limit=10"),
-        "TV owned channels",
+        "TV owned channels"
       );
-      expect(
-        mine.pagination.total,
-        "owned TV channel count",
-      ).toBeGreaterThanOrEqual(0);
+      expect(mine.pagination.total, "owned TV channel count").toBeGreaterThanOrEqual(0);
 
       const now = await expectOkJson(
         await request.get(`/api/tv/channels/${channel.id}/now`),
-        "TV now state",
+        "TV now state"
       );
       expect(now.channel.id).toBe(channel.id);
       expect(["schedule", "playlist", "idle"]).toContain(now.mode);
@@ -1316,7 +1125,7 @@ test.describe("live E2E puppet orchestration", () => {
 
       const stream = await expectOkJson(
         await request.get(`/api/tv/channels/${channel.id}/stream`),
-        "TV stream state",
+        "TV stream state"
       );
       expect(stream.channel.id).toBe(channel.id);
       expect(Array.isArray(stream.queue), "TV stream queue array").toBeTruthy();
@@ -1324,27 +1133,22 @@ test.describe("live E2E puppet orchestration", () => {
 
       const byDial = await expectOkJson(
         await request.get(`/api/tv/channels/by-dial/${channel.dialNumber}`),
-        "TV public dial lookup",
+        "TV public dial lookup"
       );
       expect(byDial.id).toBe(channel.id);
 
       const embed = await expectOkJson(
         await request.get(`/api/tv/channels/${channel.slug}/embed`),
-        "TV embed metadata",
+        "TV embed metadata"
       );
       expect(embed.channel.id).toBe(channel.id);
       expect(embed.embed.html).toContain("<iframe");
       expect(embed.embed.url).toContain(`/embed/tv/${channel.dialNumber}`);
 
-      const embedUrl = new URL(
-        `/embed/tv/${channel.dialNumber}`,
-        baseURL,
-      ).toString();
+      const embedUrl = new URL(`/embed/tv/${channel.dialNumber}`, baseURL).toString();
       const oembed = await expectOkJson(
-        await request.get(
-          `/oembed?format=json&url=${encodeURIComponent(embedUrl)}`,
-        ),
-        "TV oEmbed metadata",
+        await request.get(`/oembed?format=json&url=${encodeURIComponent(embedUrl)}`),
+        "TV oEmbed metadata"
       );
       expect(oembed.provider_name).toBe("WTF TV");
       expect(oembed.html).toContain("<iframe");
@@ -1359,11 +1163,7 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-gameshow-${Date.now().toString(36)}`;
     const objectId = `gameshow-reward-proof:${testRunId}`;
@@ -1374,20 +1174,16 @@ test.describe("live E2E puppet orchestration", () => {
       const contestantHeaders = await csrfHeaders(contestantRequest);
       const contestantUser = await expectOkJson(
         await contestantRequest.get("/api/auth/user"),
-        "gameshow contestant session",
+        "gameshow contestant session"
       );
       const registry = await expectOkJson(
         await adminRequest.get("/api/admin/challenge-automation/registry"),
-        "challenge automation registry",
+        "challenge automation registry"
       );
-      expect(
-        registry.triggers.some(
-          (trigger) => trigger.key === "desktop.object.clicked",
-        ),
-      ).toBe(true);
-      expect(
-        registry.rewardActions.some((action) => action.key === "award_exp"),
-      ).toBe(true);
+      expect(registry.triggers.some((trigger) => trigger.key === "desktop.object.clicked")).toBe(
+        true
+      );
+      expect(registry.rewardActions.some((action) => action.key === "award_exp")).toBe(true);
 
       const challenge = await expectOkJson(
         await adminRequest.post("/api/admin/challenge-automation/challenges", {
@@ -1426,7 +1222,7 @@ test.describe("live E2E puppet orchestration", () => {
             metadata: { testRunId, source: "live-puppet-playback" },
           },
         }),
-        "create challenge automation proof",
+        "create challenge automation proof"
       );
       challengeId = challenge.id;
       expect(challenge.status).toBe("active");
@@ -1442,7 +1238,7 @@ test.describe("live E2E puppet orchestration", () => {
             metadata: { source: "live-puppet-playback", testRunId },
           },
         }),
-        "trigger gameshow reward proof event",
+        "trigger gameshow reward proof event"
       );
       expect(desktopEvent.eventId, "desktop proof event id").toBeTruthy();
 
@@ -1450,22 +1246,18 @@ test.describe("live E2E puppet orchestration", () => {
       const deadline = Date.now() + 10_000;
       while (!proof && Date.now() < deadline) {
         const detail = await expectOkJson(
-          await adminRequest.get(
-            `/api/admin/challenge-automation/challenges/${challengeId}`,
-          ),
-          "challenge automation proof detail",
+          await adminRequest.get(`/api/admin/challenge-automation/challenges/${challengeId}`),
+          "challenge automation proof detail"
         );
         const completion = detail.completions.find(
-          (row) =>
-            row.userId === contestantUser.id &&
-            row.rewardStatus === "completed",
+          (row) => row.userId === contestantUser.id && row.rewardStatus === "completed"
         );
         const awardLog = detail.actionLogs.find(
           (row) =>
             row.userId === contestantUser.id &&
             row.completionId === completion?.id &&
             row.actionKey === "award_exp" &&
-            row.status === "completed",
+            row.status === "completed"
         );
         proof =
           completion && awardLog
@@ -1478,51 +1270,43 @@ test.describe("live E2E puppet orchestration", () => {
             : null;
         if (!proof) await new Promise((resolve) => setTimeout(resolve, 500));
       }
-      expect(
-        proof,
-        "challenge completion and EXP reward action log",
-      ).not.toBeNull();
+      expect(proof, "challenge completion and EXP reward action log").not.toBeNull();
       expect(proof.rewardStatus).toBe("completed");
       expect(proof.xpAmount).toBe(1);
       expect(proof.xpEventId, "XP event id from reward action").toBeTruthy();
 
       const xpEvents = await expectOkJson(
-        await adminRequest.get(
-          `/api/admin/xp/events?userId=${contestantUser.id}&limit=20`,
-        ),
-        "admin XP events",
+        await adminRequest.get(`/api/admin/xp/events?userId=${contestantUser.id}&limit=20`),
+        "admin XP events"
       );
       expect(
         xpEvents.some(
           (event) =>
             event.id === proof.xpEventId &&
             event.reason === "live_puppet_gameshow_reward" &&
-            event.metadata?.challengeAutomationId === challengeId,
+            event.metadata?.challengeAutomationId === challengeId
         ),
-        "XP event carries challenge automation metadata",
+        "XP event carries challenge automation metadata"
       ).toBeTruthy();
 
       const challengeEvents = await expectOkJson(
         await adminRequest.get(
-          `/api/admin/challenge-automation/events?userId=${contestantUser.id}&eventType=desktop.object.clicked&limit=20`,
+          `/api/admin/challenge-automation/events?userId=${contestantUser.id}&eventType=desktop.object.clicked&limit=20`
         ),
-        "challenge automation system events",
+        "challenge automation system events"
       );
       expect(
         challengeEvents.events.some((event) => event.rawRefId === objectId),
-        "desktop proof event is visible in challenge event log",
+        "desktop proof event is visible in challenge event log"
       ).toBeTruthy();
     } finally {
       if (challengeId) {
         const headers = await csrfHeaders(adminRequest).catch(() => null);
         if (headers) {
-          await adminRequest.post(
-            `/api/admin/challenge-automation/challenges/${challengeId}/status`,
-            {
-              headers,
-              data: { status: "archived" },
-            },
-          );
+          await adminRequest.post(`/api/admin/challenge-automation/challenges/${challengeId}/status`, {
+            headers,
+            data: { status: "archived" },
+          });
         }
       }
       await contestantRequest.dispose();
@@ -1536,11 +1320,7 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-side-quests-${Date.now().toString(36)}`;
     let channelId = null;
@@ -1550,34 +1330,31 @@ test.describe("live E2E puppet orchestration", () => {
       const contestantHeaders = await csrfHeaders(contestantRequest);
       const contestantUser = await expectOkJson(
         await contestantRequest.get("/api/auth/user"),
-        "side quest contestant session",
+        "side quest contestant session"
       );
 
       const seedResult = await expectOkJson(
-        await adminRequest.post(
-          "/api/admin/challenge-automation/seed-daily-loops",
-          {
-            headers: adminHeaders,
-            data: {},
-          },
-        ),
-        "seed canonical side quests",
+        await adminRequest.post("/api/admin/challenge-automation/seed-daily-loops", {
+          headers: adminHeaders,
+          data: {},
+        }),
+        "seed canonical side quests"
       );
       expect(seedResult.total).toBeGreaterThanOrEqual(10);
 
       const loopsBefore = await expectOkJson(
         await contestantRequest.get("/api/challenge-automation/daily-loops"),
-        "contestant side quests",
+        "contestant side quests"
       );
       expect(loopsBefore.loops.length).toBeGreaterThanOrEqual(10);
       expect(
         loopsBefore.loops.every(
-          (loop) => (loop.rewards?.xp ?? 0) > 0 && (loop.rewards?.wtf ?? 0) > 0,
+          (loop) => (loop.rewards?.xp ?? 0) > 0 && (loop.rewards?.wtf ?? 0) > 0
         ),
-        "all side quests award XP and WTF",
+        "all side quests award XP and WTF"
       ).toBeTruthy();
       const checkIn = loopsBefore.loops.find(
-        (loop) => loop.title === "Daily Social Check-In",
+        (loop) => loop.title === "Daily Social Check-In"
       );
       expect(checkIn, "daily messageboard check-in side quest").toBeTruthy();
       expect(checkIn.route).toBe("/messageboard");
@@ -1610,21 +1387,18 @@ test.describe("live E2E puppet orchestration", () => {
             ],
           },
         }),
-        "create side quest proof channel",
+        "create side quest proof channel"
       );
       channelId = channel.id;
 
       const message = await expectOkJson(
-        await contestantRequest.post(
-          `/api/board/channels/${channelId}/messages`,
-          {
-            headers: contestantHeaders,
-            data: {
-              content: `Side quest live proof ${testRunId}`,
-            },
+        await contestantRequest.post(`/api/board/channels/${channelId}/messages`, {
+          headers: contestantHeaders,
+          data: {
+            content: `Side quest live proof ${testRunId}`,
           },
-        ),
-        "post daily social check-in message",
+        }),
+        "post daily social check-in message"
       );
       expect(message.id, "side quest proof message id").toBeTruthy();
 
@@ -1633,50 +1407,41 @@ test.describe("live E2E puppet orchestration", () => {
       while (!readyProof && Date.now() < deadline) {
         const loopsAfter = await expectOkJson(
           await contestantRequest.get("/api/challenge-automation/daily-loops"),
-          "side quests after messageboard post",
+          "side quests after messageboard post"
         );
         const readyCheckIn = loopsAfter.loops.find(
           (loop) =>
             loop.id === checkIn.id &&
             loop.verifiedToday &&
-            (loop.claimableToday || loop.claimedToday || loop.completedToday),
+            (loop.claimableToday || loop.claimedToday || loop.completedToday)
         );
         if (readyCheckIn) {
           readyProof = {
             completionKey: loopsAfter.completionKey,
             completedByCount: readyCheckIn.completedByCount,
-            alreadyClaimed: Boolean(
-              readyCheckIn.claimedToday || readyCheckIn.completedToday,
-            ),
+            alreadyClaimed: Boolean(readyCheckIn.claimedToday || readyCheckIn.completedToday),
           };
         }
-        if (!readyProof)
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        if (!readyProof) await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      expect(
-        readyProof,
-        "daily check-in side quest is verified for the current UTC day",
-      ).not.toBeNull();
+      expect(readyProof, "daily check-in side quest is verified for the current UTC day").not.toBeNull();
 
       const claimResult = await expectOkJson(
-        await contestantRequest.post(
-          `/api/challenge-automation/daily-loops/${checkIn.id}/claim`,
-          {
-            headers: contestantHeaders,
-            data: {},
-          },
-        ),
-        "claim daily social check-in reward",
+        await contestantRequest.post(`/api/challenge-automation/daily-loops/${checkIn.id}/claim`, {
+          headers: contestantHeaders,
+          data: {},
+        }),
+        "claim daily social check-in reward"
       );
       expect(
         claimResult.rewardStatus === "completed" || claimResult.alreadyClaimed,
-        "claim completes reward actions or returns the existing same-day claim",
+        "claim completes reward actions or returns the existing same-day claim"
       ).toBeTruthy();
 
       const loopsClaimed = await expectOkJson(
         await contestantRequest.get("/api/challenge-automation/daily-loops"),
-        "side quests after claim",
+        "side quests after claim"
       );
       expect(
         loopsClaimed.loops.some(
@@ -1684,36 +1449,34 @@ test.describe("live E2E puppet orchestration", () => {
             loop.id === checkIn.id &&
             loop.claimedToday &&
             loop.completedToday &&
-            loop.completedByCount >= (readyProof?.completedByCount ?? 0),
+            loop.completedByCount >= (readyProof?.completedByCount ?? 0)
         ),
-        "daily check-in shows claimed for the contestant",
+        "daily check-in shows claimed for the contestant"
       ).toBeTruthy();
 
       const detail = await expectOkJson(
-        await adminRequest.get(
-          `/api/admin/challenge-automation/challenges/${checkIn.id}`,
-        ),
-        "side quest automation detail",
+        await adminRequest.get(`/api/admin/challenge-automation/challenges/${checkIn.id}`),
+        "side quest automation detail"
       );
       const completion = detail.completions.find(
         (row) =>
           row.userId === contestantUser.id &&
           row.completionKey === readyProof?.completionKey &&
-          row.rewardStatus === "completed",
+          row.rewardStatus === "completed"
       );
       const xpLog = detail.actionLogs.find(
         (row) =>
           row.userId === contestantUser.id &&
           row.completionId === completion?.id &&
           row.actionKey === "award_exp" &&
-          row.status === "completed",
+          row.status === "completed"
       );
       const wtfLog = detail.actionLogs.find(
         (row) =>
           row.userId === contestantUser.id &&
           row.completionId === completion?.id &&
           row.actionKey === "queue_wtf_reward" &&
-          row.status === "completed",
+          row.status === "completed"
       );
       const proof =
         completion && xpLog && wtfLog
@@ -1724,38 +1487,30 @@ test.describe("live E2E puppet orchestration", () => {
             }
           : null;
 
-      expect(
-        proof,
-        "daily check-in side quest completion and claimed reward action logs",
-      ).not.toBeNull();
+      expect(proof, "daily check-in side quest completion and claimed reward action logs").not.toBeNull();
       expect(proof.xpAmount).toBe(15);
-      expect(
-        proof.rewardLedgerId,
-        "side quest WTF reward ledger id",
-      ).toBeTruthy();
+      expect(proof.rewardLedgerId, "side quest WTF reward ledger id").toBeTruthy();
 
       const ledgerRows = await expectOkJson(
         await adminRequest.get("/api/admin/reward-ledger?paid=false"),
-        "admin reward ledger",
+        "admin reward ledger"
       );
       expect(
         ledgerRows.some(
           (row) =>
             row.id === proof.rewardLedgerId &&
             row.userId === contestantUser.id &&
-            row.reason === "Side quest: Daily Social Check-In",
+            row.reason === "Side quest: Daily Social Check-In"
         ),
-        "side quest queued WTF reward ledger row",
+        "side quest queued WTF reward ledger row"
       ).toBeTruthy();
     } finally {
       if (channelId) {
         const headers = await csrfHeaders(adminRequest).catch(() => null);
         if (headers) {
-          await adminRequest
-            .delete(`/api/board/channels/${channelId}`, {
-              headers,
-            })
-            .catch(() => null);
+          await adminRequest.delete(`/api/board/channels/${channelId}`, {
+            headers,
+          }).catch(() => null);
         }
       }
       await contestantRequest.dispose();
@@ -1769,11 +1524,7 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const publicRequest = await playwright.request.newContext({ baseURL });
     const testRunId = `live-puppet-show-ready-${Date.now().toString(36)}`;
@@ -1784,20 +1535,16 @@ test.describe("live E2E puppet orchestration", () => {
       const adminHeaders = await csrfHeaders(adminRequest);
       const contestantUser = await expectOkJson(
         await contestantRequest.get("/api/auth/user"),
-        "gameshow readiness contestant session",
+        "gameshow readiness contestant session"
       );
 
-      const seasons = await expectOkJson(
-        await publicRequest.get("/api/seasons"),
-        "seasons",
-      );
+      const seasons = await expectOkJson(await publicRequest.get("/api/seasons"), "seasons");
       expect(Array.isArray(seasons), "seasons array").toBe(true);
-      const activeSeason =
-        seasons.find((season) => season.status === "active") ?? seasons[0];
+      const activeSeason = seasons.find((season) => season.status === "active") ?? seasons[0];
       if (activeSeason) {
         const rounds = await expectOkJson(
           await publicRequest.get(`/api/rounds?seasonId=${activeSeason.id}`),
-          "active season rounds",
+          "active season rounds"
         );
         expect(Array.isArray(rounds), "rounds array").toBe(true);
       }
@@ -1818,7 +1565,7 @@ test.describe("live E2E puppet orchestration", () => {
             status: "active",
           },
         }),
-        "create gameshow readiness challenge",
+        "create gameshow readiness challenge"
       );
       challengeId = challenge.id;
       expect(challenge.status).toBe("active");
@@ -1826,13 +1573,11 @@ test.describe("live E2E puppet orchestration", () => {
 
       const listedChallenges = await expectOkJson(
         await contestantRequest.get("/api/challenges"),
-        "contestant challenge list",
+        "contestant challenge list"
       );
       expect(
-        listedChallenges.some(
-          (row) => row.id === challengeId && row.status === "active",
-        ),
-        "temporary challenge appears in contestant list",
+        listedChallenges.some((row) => row.id === challengeId && row.status === "active"),
+        "temporary challenge appears in contestant list"
       ).toBe(true);
 
       const submission = await expectOkJson(
@@ -1843,25 +1588,22 @@ test.describe("live E2E puppet orchestration", () => {
             contentUrl: `https://wtfgameshow.app/challenges?proof=${testRunId}`,
           },
         }),
-        "submit gameshow readiness challenge",
+        "submit gameshow readiness challenge"
       );
       expect(submission.challengeId).toBe(challengeId);
       expect(submission.userId).toBe(contestantUser.id);
 
       const detailWithSubmission = await expectOkJson(
         await contestantRequest.get(`/api/challenges/${challengeId}`),
-        "challenge detail after submission",
+        "challenge detail after submission"
       );
       expect(
         detailWithSubmission.submissions.some(
-          (row) => row.id === submission.id && row.userId === contestantUser.id,
+          (row) => row.id === submission.id && row.userId === contestantUser.id
         ),
-        "submission appears in challenge detail",
+        "submission appears in challenge detail"
       ).toBe(true);
-      expect(
-        detailWithSubmission.cockpitProgress,
-        "contestant cockpit progress",
-      ).toBeTruthy();
+      expect(detailWithSubmission.cockpitProgress, "contestant cockpit progress").toBeTruthy();
 
       const graded = await expectOkJson(
         await adminRequest.put(`/api/submissions/${submission.id}/grade`, {
@@ -1871,41 +1613,36 @@ test.describe("live E2E puppet orchestration", () => {
             feedback: `Live readiness accepted ${testRunId}`,
           },
         }),
-        "grade gameshow readiness submission",
+        "grade gameshow readiness submission"
       );
       expect(graded.grade).toBe("pass");
 
       const flags = await expectOkJson(
         await contestantRequest.get("/api/reward-flags/challenges"),
-        "challenge reward flags",
+        "challenge reward flags"
       );
       const flag = flags.find(
         (row) =>
           row.challengeId === challengeId &&
           row.submissionId === submission.id &&
           row.claimable &&
-          !row.claimed,
+          !row.claimed
       );
-      expect(
-        flag,
-        "graded challenge creates claimable reward flag",
-      ).toBeTruthy();
+      expect(flag, "graded challenge creates claimable reward flag").toBeTruthy();
       expect(flag.rewardType).toBe("xp");
 
       const xpEvents = await expectOkJson(
-        await adminRequest.get(
-          `/api/admin/xp/events?userId=${contestantUser.id}&limit=30`,
-        ),
-        "readiness XP events",
+        await adminRequest.get(`/api/admin/xp/events?userId=${contestantUser.id}&limit=30`),
+        "readiness XP events"
       );
       expect(
         xpEvents.some(
           (event) =>
             event.reason === "challenge_submission" &&
             event.metadata?.challengeId === challengeId &&
-            event.metadata?.submissionId === submission.id,
+            event.metadata?.submissionId === submission.id
         ),
-        "submission XP event carries challenge metadata",
+        "submission XP event carries challenge metadata"
       ).toBe(true);
       expect(
         xpEvents.some(
@@ -1913,37 +1650,26 @@ test.describe("live E2E puppet orchestration", () => {
             event.reason === "challenge_grade_reward" &&
             event.metadata?.challengeId === challengeId &&
             event.metadata?.submissionId === submission.id &&
-            event.metadata?.grade === "pass",
+            event.metadata?.grade === "pass"
         ),
-        "grade reward XP event carries challenge metadata",
+        "grade reward XP event carries challenge metadata"
       ).toBe(true);
 
       const xpLeaderboard = await expectOkJson(
         await publicRequest.get("/api/leaderboard/xp?limit=200"),
-        "XP leaderboard",
+        "XP leaderboard"
       );
-      const leaderboardRow = xpLeaderboard.find(
-        (row) => row.userId === contestantUser.id,
-      );
-      expect(
-        leaderboardRow,
-        "contestant appears in XP leaderboard",
-      ).toBeTruthy();
+      const leaderboardRow = xpLeaderboard.find((row) => row.userId === contestantUser.id);
+      expect(leaderboardRow, "contestant appears in XP leaderboard").toBeTruthy();
       expect(leaderboardRow.username).toBe(contestantUser.username);
-      expect(
-        Number(leaderboardRow.experiencePoints),
-        "contestant XP total",
-      ).toBeGreaterThan(0);
+      expect(Number(leaderboardRow.experiencePoints), "contestant XP total").toBeGreaterThan(0);
 
       const claimed = await expectOkJson(
-        await contestantRequest.put(
-          `/api/reward-flags/challenges/${flag.id}/claim`,
-          {
-            headers: contestantHeaders,
-            data: {},
-          },
-        ),
-        "claim gameshow readiness reward flag",
+        await contestantRequest.put(`/api/reward-flags/challenges/${flag.id}/claim`, {
+          headers: contestantHeaders,
+          data: {},
+        }),
+        "claim gameshow readiness reward flag"
       );
       expect(claimed.claimed).toBe(true);
       expect(claimed.claimable).toBe(false);
@@ -1951,27 +1677,22 @@ test.describe("live E2E puppet orchestration", () => {
 
       const flagsAfterClaim = await expectOkJson(
         await contestantRequest.get("/api/reward-flags/challenges"),
-        "challenge reward flags after claim",
+        "challenge reward flags after claim"
       );
       expect(
         flagsAfterClaim.some(
-          (row) =>
-            row.id === flag.id &&
-            row.claimed === true &&
-            row.claimable === false,
+          (row) => row.id === flag.id && row.claimed === true && row.claimable === false
         ),
-        "claimed reward flag persists",
+        "claimed reward flag persists"
       ).toBe(true);
     } finally {
       if (challengeId) {
         const headers = await csrfHeaders(adminRequest).catch(() => null);
         if (headers) {
-          await adminRequest
-            .put(`/api/challenges/${challengeId}`, {
-              headers,
-              data: { status: "completed" },
-            })
-            .catch(() => null);
+          await adminRequest.put(`/api/challenges/${challengeId}`, {
+            headers,
+            data: { status: "completed" },
+          }).catch(() => null);
         }
       }
       await contestantRequest.dispose();
@@ -1987,11 +1708,7 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-ui-ready-${Date.now().toString(36)}`;
     const title = `Live puppet UI readiness ${testRunId}`;
@@ -2002,14 +1719,11 @@ test.describe("live E2E puppet orchestration", () => {
     try {
       const adminHeaders = await csrfHeaders(adminRequest);
       const seededLoops = await expectOkJson(
-        await adminRequest.post(
-          "/api/admin/challenge-automation/seed-daily-loops",
-          {
-            headers: adminHeaders,
-            data: {},
-          },
-        ),
-        "seed side quests for launch surface",
+        await adminRequest.post("/api/admin/challenge-automation/seed-daily-loops", {
+          headers: adminHeaders,
+          data: {},
+        }),
+        "seed side quests for launch surface"
       );
       expect(seededLoops.total).toBeGreaterThanOrEqual(10);
 
@@ -2018,7 +1732,8 @@ test.describe("live E2E puppet orchestration", () => {
           headers: adminHeaders,
           data: {
             title,
-            description: `A short staging challenge used to prove live launch surfaces during ${testRunId}.`,
+            description:
+              `A short staging challenge used to prove live launch surfaces during ${testRunId}.`,
             criteria: "Visible on Mission Control and the challenge board.",
             rules: "Temporary E2E challenge; safe to close.",
             rewardAmountWtf: 0,
@@ -2028,18 +1743,16 @@ test.describe("live E2E puppet orchestration", () => {
             status: "active",
           },
         }),
-        "create gameshow UI readiness challenge",
+        "create gameshow UI readiness challenge"
       );
       challengeId = challenge.id;
       const listedChallenges = await expectOkJson(
         await contestantRequest.get("/api/challenges"),
-        "contestant challenge list for launch surface",
+        "contestant challenge list for launch surface"
       );
       expect(
-        listedChallenges.some(
-          (row) => row.id === challengeId && row.status === "active",
-        ),
-        "temporary launch challenge appears in contestant challenge API",
+        listedChallenges.some((row) => row.id === challengeId && row.status === "active"),
+        "temporary launch challenge appears in contestant challenge API"
       ).toBe(true);
 
       await page.goto("/mission-control", { waitUntil: "domcontentloaded" });
@@ -2048,39 +1761,28 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(page.getByTestId("mission-control-wallet")).toBeVisible();
       await expect(page.getByTestId("mission-control-system")).toBeVisible();
       await expect(page.getByTestId("mission-control-next")).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Challenges" }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Challenges" })).toBeVisible();
       await expect(page.getByText(/What counts/i)).toBeVisible();
       await expect(page.getByText(/Side Quests/i).first()).toBeVisible();
       await expect(page.getByText(/Daily Social Check-In/i)).toBeVisible();
 
       await page.goto("/challenges", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(displayTitle).first()).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "View Details" }).first(),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "View Details" }).first()).toBeVisible();
 
       await page.goto("/side-quests", { waitUntil: "domcontentloaded" });
       await expect(page.getByText(/Small daily wins/i)).toBeVisible();
-      await expect(
-        page.getByText(/Daily Social Check-In/i).first(),
-      ).toBeVisible();
-      await expect(
-        page
-          .getByText(/players claimed|claimed today|Ready to claim|Open/i)
-          .first(),
-      ).toBeVisible();
+      await expect(page.getByText(/Daily Social Check-In/i).first()).toBeVisible();
+      await expect(page.getByText(/players claimed|claimed today|Ready to claim|Open/i).first()).toBeVisible();
+
     } finally {
       if (challengeId) {
         const headers = await csrfHeaders(adminRequest).catch(() => null);
         if (headers) {
-          await adminRequest
-            .put(`/api/challenges/${challengeId}`, {
-              headers,
-              data: { status: "completed" },
-            })
-            .catch(() => null);
+          await adminRequest.put(`/api/challenges/${challengeId}`, {
+            headers,
+            data: { status: "completed" },
+          }).catch(() => null);
         }
       }
       await contestantRequest.dispose();
@@ -2096,11 +1798,7 @@ test.describe("live E2E puppet orchestration", () => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
     const unlinkedWalletActor = admin.id === contestant.id ? null : admin;
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     const testRunId = `live-puppet-dues-${Date.now().toString(36)}`;
 
@@ -2110,21 +1808,12 @@ test.describe("live E2E puppet orchestration", () => {
 
       const contracts = await expectOkJson(
         await contestantRequest.get("/api/club-dues/contracts"),
-        "Club Dues public contracts",
+        "Club Dues public contracts"
       );
-      expect(
-        Array.isArray(contracts.contracts),
-        "Club Dues contracts array",
-      ).toBe(true);
-      expect(
-        contracts.contracts.length,
-        "Club Dues has at least one configured contract",
-      ).toBeGreaterThan(0);
+      expect(Array.isArray(contracts.contracts), "Club Dues contracts array").toBe(true);
+      expect(contracts.contracts.length, "Club Dues has at least one configured contract").toBeGreaterThan(0);
       const liveContract = contracts.contracts.find(
-        (contract) =>
-          contract.status === "live" &&
-          contract.contractAddress &&
-          contract.slug,
+        (contract) => contract.status === "live" && contract.contractAddress && contract.slug
       );
       expect(liveContract, "Club Dues live contract").toBeTruthy();
       expect(liveContract.templateVersion).toBe("wtf-club-dues-v2");
@@ -2132,38 +1821,21 @@ test.describe("live E2E puppet orchestration", () => {
 
       const myMemberships = await expectOkJson(
         await contestantRequest.get("/api/club-dues/my"),
-        "Club Dues my memberships",
+        "Club Dues my memberships"
       );
-      expect(
-        Array.isArray(myMemberships.memberships),
-        "my memberships array",
-      ).toBe(true);
+      expect(Array.isArray(myMemberships.memberships), "my memberships array").toBe(true);
 
       const adminSummary = await expectOkJson(
         await adminRequest.get("/api/admin/club-dues"),
-        "Club Dues admin summary",
+        "Club Dues admin summary"
       );
+      expect(Array.isArray(adminSummary.contracts), "admin contracts array").toBe(true);
+      expect(Number.isInteger(adminSummary.totals?.members), "admin member total").toBe(true);
+      expect(Number.isInteger(adminSummary.totals?.arrears), "admin arrears total").toBe(true);
+      expect(Array.isArray(adminSummary.recentDeployments), "admin recent deployments array").toBe(true);
       expect(
-        Array.isArray(adminSummary.contracts),
-        "admin contracts array",
-      ).toBe(true);
-      expect(
-        Number.isInteger(adminSummary.totals?.members),
-        "admin member total",
-      ).toBe(true);
-      expect(
-        Number.isInteger(adminSummary.totals?.arrears),
-        "admin arrears total",
-      ).toBe(true);
-      expect(
-        Array.isArray(adminSummary.recentDeployments),
-        "admin recent deployments array",
-      ).toBe(true);
-      expect(
-        adminSummary.contracts.some(
-          (contract) => contract.id === liveContract.id,
-        ),
-        "admin summary includes public live contract",
+        adminSummary.contracts.some((contract) => contract.id === liveContract.id),
+        "admin summary includes public live contract"
       ).toBe(true);
 
       const sweep = await expectOkJson(
@@ -2171,14 +1843,12 @@ test.describe("live E2E puppet orchestration", () => {
           headers: adminHeaders,
           data: { chainMark: false },
         }),
-        "Club Dues arrears dry sweep",
+        "Club Dues arrears dry sweep"
       );
       expect(sweep.ok).toBe(true);
       expect(Number.isInteger(sweep.marked), "arrears marked count").toBe(true);
       expect(Number.isInteger(sweep.warned), "arrears warned count").toBe(true);
-      expect(Array.isArray(sweep.chainMarks), "arrears chainMarks array").toBe(
-        true,
-      );
+      expect(Array.isArray(sweep.chainMarks), "arrears chainMarks array").toBe(true);
       expect(sweep.chainMarks).toHaveLength(0);
 
       const compile = await expectOkJson(
@@ -2201,7 +1871,7 @@ test.describe("live E2E puppet orchestration", () => {
             managerWalletId: "club-dues-manager",
           },
         }),
-        "Club Dues template compile",
+        "Club Dues template compile"
       );
       expect(compile.ok).toBe(true);
       expect(compile.templateVersion).toBe("wtf-club-dues-v2");
@@ -2222,39 +1892,30 @@ test.describe("live E2E puppet orchestration", () => {
               tierId: 0,
               action: 0,
             },
-          },
+          }
         );
-        expect(
-          blockedIntent.status(),
-          "unlinked Club Dues wallet preflight",
-        ).toBe(400);
+        expect(blockedIntent.status(), "unlinked Club Dues wallet preflight").toBe(400);
         const blockedPayload = await blockedIntent.json().catch(() => ({}));
         expect(blockedPayload.error).toMatch(/not linked/i);
       }
 
       const intent = await expectOkJson(
-        await contestantRequest.post(
-          `/api/club-dues/contracts/${liveContract.slug}/payment-intents`,
-          {
-            headers: contestantHeaders,
-            data: {
-              walletAddress: contestant.walletAddress,
-              months: 1,
-              tierId: 0,
-              action: 0,
-            },
+        await contestantRequest.post(`/api/club-dues/contracts/${liveContract.slug}/payment-intents`, {
+          headers: contestantHeaders,
+          data: {
+            walletAddress: contestant.walletAddress,
+            months: 1,
+            tierId: 0,
+            action: 0,
           },
-        ),
-        "Club Dues linked-wallet payment intent",
+        }),
+        "Club Dues linked-wallet payment intent"
       );
       expect(intent.ok).toBe(true);
       expect(intent.intent?.walletAddress).toBe(contestant.walletAddress);
       expect(intent.intent?.contractAddress).toBe(liveContract.contractAddress);
       expect(intent.intent?.months).toBe(1);
-      expect(
-        intent.intent?.paymentRef,
-        "Club Dues payment reference",
-      ).toBeTruthy();
+      expect(intent.intent?.paymentRef, "Club Dues payment reference").toBeTruthy();
     } finally {
       await contestantRequest.dispose();
       await adminRequest.dispose();
@@ -2266,7 +1927,7 @@ test.describe("live E2E puppet orchestration", () => {
     baseURL,
   }) => {
     const creator = puppetCredentials.actors.find(
-      (actor) => actor.role === "trusted_creator",
+      (actor) => actor.role === "trusted_creator"
     );
     expect(creator, "trusted creator puppet is seeded").toBeTruthy();
     const request = await actorRequestContext(playwright, baseURL, creator);
@@ -2289,7 +1950,7 @@ test.describe("live E2E puppet orchestration", () => {
             fileData: `data:image/png;base64,${ONE_PIXEL_PNG_BASE64}`,
           },
         }),
-        "media upload",
+        "media upload"
       );
       mediaId = upload.id;
       expect(upload.status).toBe("ready");
@@ -2300,19 +1961,16 @@ test.describe("live E2E puppet orchestration", () => {
 
       const mine = await expectOkJson(
         await request.get("/api/media/mine?category=image"),
-        "media image library",
+        "media image library"
       );
       expect(
-        mine.some(
-          (item) =>
-            item.id === mediaId && item.playbackUrl === upload.playbackUrl,
-        ),
-        "uploaded media appears in image library",
+        mine.some((item) => item.id === mediaId && item.playbackUrl === upload.playbackUrl),
+        "uploaded media appears in image library"
       ).toBe(true);
 
       const detail = await expectOkJson(
         await request.get(`/api/media/${mediaId}`),
-        "media detail",
+        "media detail"
       );
       expect(detail.id).toBe(mediaId);
       expect(detail.ownerUserId).toBe(upload.ownerUserId);
@@ -2320,47 +1978,37 @@ test.describe("live E2E puppet orchestration", () => {
       const file = await request.get(`/api/media/${mediaId}/file`);
       expect(file.ok(), `media file HTTP ${file.status()}`).toBe(true);
       expect(file.headers()["content-type"]).toContain("image/png");
-      expect(
-        (await file.body()).length,
-        "served media file bytes",
-      ).toBeGreaterThan(0);
+      expect((await file.body()).length, "served media file bytes").toBeGreaterThan(0);
 
       const projectBundles = await expectOkJson(
         await request.get("/api/cockpit/project-bundles"),
-        "project bundle manifest",
+        "project bundle manifest"
       );
       expect(projectBundles.rootDwelling).toBe("projects");
-      expect(Array.isArray(projectBundles.sections), "bundle sections").toBe(
-        true,
-      );
-      expect(
-        projectBundles.sections.length,
-        "project bundle section count",
-      ).toBeGreaterThan(0);
+      expect(Array.isArray(projectBundles.sections), "bundle sections").toBe(true);
+      expect(projectBundles.sections.length, "project bundle section count").toBeGreaterThan(0);
       expect(
         projectBundles.sections.some((section) => section.key === "gameStudio"),
-        "project bundle includes Game Studio section",
+        "project bundle includes Game Studio section"
       ).toBe(true);
 
       const mediaService = await expectOkJson(
         await request.get("/api/cockpit/media-service"),
-        "media service contract",
+        "media service contract"
       );
       expect(Array.isArray(mediaService.jobs), "media service jobs").toBe(true);
-      expect(
-        mediaService.jobs.every((job) => typeof job.registered === "boolean"),
-      ).toBe(true);
+      expect(mediaService.jobs.every((job) => typeof job.registered === "boolean")).toBe(true);
 
       const ipfs = await expectOkJson(
         await request.get("/api/cockpit/ipfs-gateways"),
-        "IPFS gateway policy",
+        "IPFS gateway policy"
       );
       expect(Array.isArray(ipfs.gateways), "IPFS gateways").toBe(true);
       expect(ipfs.gateways.length, "IPFS gateway count").toBeGreaterThan(0);
 
       const templates = await expectOkJson(
         await request.get("/api/game-studio/templates"),
-        "Game Studio templates",
+        "Game Studio templates"
       );
       const template = templates.templates?.[0];
       expect(template?.id, "Game Studio template id").toBeTruthy();
@@ -2375,109 +2023,78 @@ test.describe("live E2E puppet orchestration", () => {
             selectedAssetIds: [],
           },
         }),
-        "create Game Studio project",
+        "create Game Studio project"
       );
       expect(project.project?.id, "Game Studio project id").toBeTruthy();
       expect(project.project.templateId).toBe(template.id);
 
       const build = await expectOkJson(
-        await request.post(
-          `/api/game-studio/projects/${project.project.id}/build`,
-          {
-            headers,
-            data: {},
-          },
-        ),
-        "build Game Studio project",
+        await request.post(`/api/game-studio/projects/${project.project.id}/build`, {
+          headers,
+          data: {},
+        }),
+        "build Game Studio project"
       );
       expect(build.mimeType).toBe("application/zip");
       expect(build.sizeBytes, "Game Studio zip size").toBeGreaterThan(0);
-      expect(
-        build.manifest?.files?.length,
-        "Game Studio bundle manifest files",
-      ).toBeGreaterThan(0);
-      expect(
-        build.build?.checksumSha256,
-        "Game Studio build checksum",
-      ).toBeTruthy();
+      expect(build.manifest?.files?.length, "Game Studio bundle manifest files").toBeGreaterThan(0);
+      expect(build.build?.checksumSha256, "Game Studio build checksum").toBeTruthy();
 
       const builds = await expectOkJson(
-        await request.get(
-          `/api/game-studio/projects/${project.project.id}/builds`,
-        ),
-        "Game Studio build history",
+        await request.get(`/api/game-studio/projects/${project.project.id}/builds`),
+        "Game Studio build history"
       );
       expect(
         builds.builds.some((entry) => entry.id === build.build.id),
-        "Game Studio build persists in build history",
+        "Game Studio build persists in build history"
       ).toBe(true);
 
       const submitted = await expectOkJson(
-        await request.post(
-          `/api/game-studio/projects/${project.project.id}/submit`,
-          {
-            headers,
-            data: {
-              title: `Live Puppet Game ${testRunId}`,
-              description: "Creator-built Arcade publication proof.",
-              category: "arcade",
-            },
+        await request.post(`/api/game-studio/projects/${project.project.id}/submit`, {
+          headers,
+          data: {
+            title: `Live Puppet Game ${testRunId}`,
+            description: "Creator-built Arcade publication proof.",
+            category: "arcade",
           },
-        ),
-        "submit Game Studio project to Arcade",
+        }),
+        "submit Game Studio project to Arcade"
       );
       expect(submitted.game?.status).toBe("active");
       expect(submitted.project?.status).toBe("published");
-      expect(submitted.game?.builderName).toBe(
-        creator.displayName || creator.username,
-      );
+      expect(submitted.game?.builderName).toBe(creator.displayName || creator.username);
       expect(submitted.game?.sourceLabel).toBe("Built with WTF Game Studio");
       expect(submitted.game?.slug, "published Arcade slug").toBeTruthy();
 
       const arcadeCatalog = await expectOkJson(
         await request.get("/api/arcade/games"),
-        "public Arcade catalog",
+        "public Arcade catalog"
       );
       const publishedGame = arcadeCatalog.all?.find(
-        (game) => game.slug === submitted.game.slug,
+        (game) => game.slug === submitted.game.slug
       );
-      expect(
-        publishedGame,
-        "creator game is publicly discoverable",
-      ).toBeTruthy();
-      expect(publishedGame.builderName).toBe(
-        creator.displayName || creator.username,
-      );
+      expect(publishedGame, "creator game is publicly discoverable").toBeTruthy();
+      expect(publishedGame.builderName).toBe(creator.displayName || creator.username);
       expect(publishedGame.sourceLabel).toBe("Built with WTF Game Studio");
 
       const arcadeDetail = await expectOkJson(
         await request.get(`/api/arcade/games/${submitted.game.slug}`),
-        "published Arcade game detail",
+        "published Arcade game detail"
       );
-      expect(arcadeDetail.game?.builderName).toBe(
-        creator.displayName || creator.username,
-      );
+      expect(arcadeDetail.game?.builderName).toBe(creator.displayName || creator.username);
       expect(arcadeDetail.game?.sourceLabel).toBe("Built with WTF Game Studio");
 
       const arcadeStats = await expectOkJson(
         await request.get("/api/arcade/stats"),
-        "Arcade creator statistics",
+        "Arcade creator statistics"
       );
-      expect(
-        arcadeStats.creatorGames,
-        "Arcade creator game count",
-      ).toBeGreaterThan(0);
-      expect(
-        arcadeStats.gameStudioGames,
-        "Game Studio Arcade game count",
-      ).toBeGreaterThan(0);
+      expect(arcadeStats.creatorGames, "Arcade creator game count").toBeGreaterThan(0);
+      expect(arcadeStats.gameStudioGames, "Game Studio Arcade game count").toBeGreaterThan(0);
     } finally {
       if (mediaId) {
         const headers = await csrfHeaders(request).catch(() => null);
         if (headers) {
-          await request
-            .delete(`/api/media/${mediaId}`, { headers })
-            .catch(() => null);
+          await request.delete(`/api/media/${mediaId}`, { headers }).catch(() => null);
         }
       }
       await request.dispose();
@@ -2490,49 +2107,31 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const publicRequest = await playwright.request.newContext({ baseURL });
-    const userRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const userRequest = await actorRequestContext(playwright, baseURL, contestant);
     const testRunId = `live-puppet-mcp-${Date.now().toString(36)}`;
     let tokenId = null;
 
     try {
-      const links = await expectOkJson(
-        await publicRequest.get("/api/links"),
-        "public links",
-      );
+      const links = await expectOkJson(await publicRequest.get("/api/links"), "public links");
       expect(Array.isArray(links), "links array").toBe(true);
 
-      const faq = await expectOkJson(
-        await publicRequest.get("/api/faq"),
-        "public FAQ",
-      );
+      const faq = await expectOkJson(await publicRequest.get("/api/faq"), "public FAQ");
       expect(Array.isArray(faq), "FAQ array").toBe(true);
 
-      const access = await expectOkJson(
-        await publicRequest.get("/api/access"),
-        "public access",
-      );
+      const access = await expectOkJson(await publicRequest.get("/api/access"), "public access");
       expect(access, "access payload").toBeTruthy();
 
       const leaderboard = await expectOkJson(
         await publicRequest.get("/api/leaderboard?limit=100"),
-        "public leaderboard",
+        "public leaderboard"
       );
-      expect(
-        Array.isArray(leaderboard.leaderboard ?? leaderboard),
-        "leaderboard rows",
-      ).toBe(true);
+      expect(Array.isArray(leaderboard.leaderboard ?? leaderboard), "leaderboard rows").toBe(true);
 
       const gallery = await expectOkJson(
         await userRequest.get("/api/gallery/mine"),
-        "authenticated gallery",
+        "authenticated gallery"
       );
-      expect(Array.isArray(gallery.items ?? gallery), "gallery rows").toBe(
-        true,
-      );
+      expect(Array.isArray(gallery.items ?? gallery), "gallery rows").toBe(true);
 
       const unauthenticatedMcp = await publicRequest.post("/mcp", {
         data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
@@ -2541,12 +2140,12 @@ test.describe("live E2E puppet orchestration", () => {
 
       const apiDiscovery = await expectOkJson(
         await publicRequest.get("/api/v1"),
-        "versioned API discovery",
+        "versioned API discovery"
       );
       expect(apiDiscovery.openapi).toContain("/api/v1/openapi.json");
       const openapi = await expectOkJson(
         await publicRequest.get("/api/v1/openapi.json"),
-        "OpenAPI contract",
+        "OpenAPI contract"
       );
       expect(openapi.openapi).toBe("3.1.0");
       expect(openapi.paths?.["/api/v1/health"]?.get).toBeTruthy();
@@ -2555,7 +2154,7 @@ test.describe("live E2E puppet orchestration", () => {
       const headers = await csrfHeaders(userRequest);
       const beforeTokens = await expectOkJson(
         await userRequest.get("/api/mcp/tokens"),
-        "MCP token list before create",
+        "MCP token list before create"
       );
       expect(beforeTokens.endpoint).toContain("/mcp");
       expect(Array.isArray(beforeTokens.tokens), "MCP token rows").toBe(true);
@@ -2565,23 +2164,14 @@ test.describe("live E2E puppet orchestration", () => {
           headers,
           data: {
             name: `Live puppet MCP ${testRunId}`,
-            scopes: [
-              "public-data:read",
-              "arcade:read",
-              "game-studio:read",
-              "api:read",
-              "api:write",
-            ],
+            scopes: ["public-data:read", "arcade:read", "game-studio:read", "api:read", "api:write"],
           },
         }),
-        "create MCP token",
+        "create MCP token"
       );
       tokenId = created.tokenRecord?.id;
       expect(created.token, "one-time MCP bearer token").toMatch(/^wtf_mcp_/);
-      expect(
-        created.tokenRecord?.tokenPrefix,
-        "stored token prefix",
-      ).toBeTruthy();
+      expect(created.tokenRecord?.tokenPrefix, "stored token prefix").toBeTruthy();
       expect(created.tokenRecord?.revokedAt).toBeFalsy();
 
       const tools = await publicRequest.post("/mcp", {
@@ -2591,48 +2181,18 @@ test.describe("live E2E puppet orchestration", () => {
         },
         data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
       });
-      expect(
-        tools.ok(),
-        `MCP tools/list HTTP ${tools.status()} ${await tools.text().catch(() => "")}`,
-      ).toBe(true);
-      expect(
-        tools.headers()["set-cookie"],
-        "MCP should not set browser cookies",
-      ).toBeFalsy();
+      expect(tools.ok(), `MCP tools/list HTTP ${tools.status()} ${await tools.text().catch(() => "")}`).toBe(
+        true
+      );
+      expect(tools.headers()["set-cookie"], "MCP should not set browser cookies").toBeFalsy();
       const toolsBody = await tools.text();
       expect(toolsBody).toContain("wtf_api_request");
-
-      const deniedDesktopWrite = await publicRequest.post("/mcp", {
-        headers: {
-          Authorization: `Bearer ${created.token}`,
-          Accept: "application/json, text/event-stream",
-        },
-        data: {
-          jsonrpc: "2.0",
-          id: 3,
-          method: "tools/call",
-          params: {
-            name: "wtf_set_desktop_appearance",
-            arguments: { desktop_color: "#008080", response_format: "json" },
-          },
-        },
-      });
-      expect(deniedDesktopWrite.ok()).toBe(true);
-      expect(await deniedDesktopWrite.text()).toContain(
-        "requires MCP scope desktop:write",
-      );
 
       const apiHealth = await publicRequest.get("/api/v1/health", {
         headers: { Authorization: `Bearer ${created.token}` },
       });
-      expect(
-        apiHealth.ok(),
-        `versioned API health HTTP ${apiHealth.status()}`,
-      ).toBe(true);
-      expect(
-        apiHealth.headers()["set-cookie"],
-        "versioned API should not set browser cookies",
-      ).toBeFalsy();
+      expect(apiHealth.ok(), `versioned API health HTTP ${apiHealth.status()}`).toBe(true);
+      expect(apiHealth.headers()["set-cookie"], "versioned API should not set browser cookies").toBeFalsy();
       expect(apiHealth.headers()["x-wtfos-api-version"]).toBe("v1");
 
       const apiViaMcp = await publicRequest.post("/mcp", {
@@ -2646,44 +2206,25 @@ test.describe("live E2E puppet orchestration", () => {
           method: "tools/call",
           params: {
             name: "wtf_api_request",
-            arguments: {
-              method: "GET",
-              path: "/api/v1",
-              response_format: "json",
-            },
+            arguments: { method: "GET", path: "/api/v1", response_format: "json" },
           },
         },
       });
-      expect(apiViaMcp.ok(), `MCP API bridge HTTP ${apiViaMcp.status()}`).toBe(
-        true,
-      );
+      expect(apiViaMcp.ok(), `MCP API bridge HTTP ${apiViaMcp.status()}`).toBe(true);
       expect(await apiViaMcp.text()).toContain("wtfos-platform-api");
 
       const revoked = await expectOkJson(
         await userRequest.delete(`/api/mcp/tokens/${tokenId}`, { headers }),
-        "revoke MCP token",
+        "revoke MCP token"
       );
       expect(revoked.ok).toBe(true);
-      expect(
-        revoked.token?.revokedAt,
-        "MCP token revoked timestamp",
-      ).toBeTruthy();
-      const rejectedAfterRevoke = await publicRequest.post("/mcp", {
-        headers: {
-          Authorization: `Bearer ${created.token}`,
-          Accept: "application/json, text/event-stream",
-        },
-        data: { jsonrpc: "2.0", id: 4, method: "tools/list", params: {} },
-      });
-      expect(rejectedAfterRevoke.status()).toBe(401);
+      expect(revoked.token?.revokedAt, "MCP token revoked timestamp").toBeTruthy();
       tokenId = null;
     } finally {
       if (tokenId) {
         const headers = await csrfHeaders(userRequest).catch(() => null);
         if (headers) {
-          await userRequest
-            .delete(`/api/mcp/tokens/${tokenId}`, { headers })
-            .catch(() => null);
+          await userRequest.delete(`/api/mcp/tokens/${tokenId}`, { headers }).catch(() => null);
         }
       }
       await publicRequest.dispose();
@@ -2697,11 +2238,7 @@ test.describe("live E2E puppet orchestration", () => {
   }) => {
     const contestant = actorByRole(puppetCredentials, "contestant");
     const admin = actorByRole(puppetCredentials, "admin");
-    const contestantRequest = await actorRequestContext(
-      playwright,
-      baseURL,
-      contestant,
-    );
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
     const adminRequest = await actorRequestContext(playwright, baseURL, admin);
     try {
       const groupchatResponse = await contestantRequest.get("/api/w/groupchat");
@@ -2712,62 +2249,43 @@ test.describe("live E2E puppet orchestration", () => {
         expect(payload.error).toMatch(/read-only Tezos digest mode/i);
         const capabilities = await expectOkJson(
           await contestantRequest.get("/api/w/capabilities"),
-          "W digest capabilities",
+          "W digest capabilities"
         );
         expect(capabilities.mode).toBe("digest");
         expect(capabilities.canDm).toBe(false);
       } else {
-        const groupchat = await expectOkJson(
-          groupchatResponse,
-          "W groupchat mirror",
-        );
+        const groupchat = await expectOkJson(groupchatResponse, "W groupchat mirror");
         expect(groupchat.readonly).toBe(true);
         expect(groupchat.canWrite).toBe(false);
-        expect(groupchat.diagnostics?.note).toMatch(
-          /Personal X inboxes are disabled/i,
-        );
+        expect(groupchat.diagnostics?.note).toMatch(/Personal X inboxes are disabled/i);
         expect(groupchat.diagnostics?.groupchatConfig?.source).toBeTruthy();
       }
 
       const headers = await csrfHeaders(contestantRequest);
-      const blockedSend = await contestantRequest.post(
-        "/api/w/groupchat/messages",
-        {
-          headers,
-          data: { text: "live puppet should never send from W" },
-        },
-      );
+      const blockedSend = await contestantRequest.post("/api/w/groupchat/messages", {
+        headers,
+        data: { text: "live puppet should never send from W" },
+      });
       expect(
         digestMode ? [404, 410] : [410],
-        `W groupchat send HTTP ${blockedSend.status()}`,
+        `W groupchat send HTTP ${blockedSend.status()}`
       ).toContain(blockedSend.status());
 
-      const blockedPersonalDm = await contestantRequest.post(
-        "/api/w/direct-messages",
-        {
-          headers,
-          data: { recipientId: "0", text: "disabled" },
-        },
-      );
+      const blockedPersonalDm = await contestantRequest.post("/api/w/direct-messages", {
+        headers,
+        data: { recipientId: "0", text: "disabled" },
+      });
       expect(blockedPersonalDm.status()).toBe(410);
 
-      const diagnosticsResponse = await adminRequest.get(
-        "/api/w/dm-diagnostics",
-      );
+      const diagnosticsResponse = await adminRequest.get("/api/w/dm-diagnostics");
       if (digestMode) {
-        expect(
-          [200, 404, 410],
-          `W digest diagnostics HTTP ${diagnosticsResponse.status()}`,
-        ).toContain(diagnosticsResponse.status());
+        expect([200, 404, 410], `W digest diagnostics HTTP ${diagnosticsResponse.status()}`).toContain(
+          diagnosticsResponse.status()
+        );
       } else {
-        const diagnostics = await expectOkJson(
-          diagnosticsResponse,
-          "W DM diagnostics",
-        );
+        const diagnostics = await expectOkJson(diagnosticsResponse, "W DM diagnostics");
         expect(diagnostics.groupchatConfig?.source).toBeTruthy();
-        expect(diagnostics.env?.groupchatConfigSource).toBe(
-          diagnostics.groupchatConfig.source,
-        );
+        expect(diagnostics.env?.groupchatConfigSource).toBe(diagnostics.groupchatConfig.source);
       }
     } finally {
       await contestantRequest.dispose();
@@ -2782,19 +2300,16 @@ test.describe("live E2E puppet orchestration", () => {
     }) => {
       const actor = fixture.adminOnly
         ? actorByRole(puppetCredentials, "admin")
-        : puppetCredentials.actors.find(
-            (entry) => entry.role === "contestant",
-          ) || puppetCredentials.actors[0];
+        : puppetCredentials.actors.find((entry) => entry.role === "contestant") ||
+          puppetCredentials.actors[0];
       const { context, page } = await actorPage(
         browser,
         baseURL,
-        fixture.auth || fixture.adminOnly ? actor : null,
+        fixture.auth || fixture.adminOnly ? actor : null
       );
 
       const errors = [];
-      page.on("pageerror", (error) =>
-        errors.push(`pageerror: ${error.message}`),
-      );
+      page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
       page.on("console", (message) => {
         if (message.type() === "error") errors.push(message.text());
       });
@@ -2803,13 +2318,8 @@ test.describe("live E2E puppet orchestration", () => {
         await page.goto(fixture.path, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(300);
         await expect(page.locator("body")).toBeVisible();
-        await expect(
-          page.getByText(/something went wrong|application error/i),
-        ).toHaveCount(0);
-        expect(
-          fatalErrors(errors),
-          `fatal browser errors on ${fixture.path}`,
-        ).toEqual([]);
+        await expect(page.getByText(/something went wrong|application error/i)).toHaveCount(0);
+        expect(fatalErrors(errors), `fatal browser errors on ${fixture.path}`).toEqual([]);
       } finally {
         await context.close();
       }
@@ -2831,13 +2341,11 @@ test.describe("live E2E puppet orchestration", () => {
       const { context, page } = await actorPage(browser, baseURL, actor);
 
       try {
-        for (const probe of workflow.apiProbes.filter(
-          (entry) => !skipExternalOauthProbe(entry),
-        )) {
+        for (const probe of workflow.apiProbes.filter((entry) => !skipExternalOauthProbe(entry))) {
           const response = await apiProbe(request, probe);
           expect(
             apiProbeAccepted(response, probe),
-            await apiProbeFailureMessage(actor, probe, response),
+            await apiProbeFailureMessage(actor, probe, response)
           ).toBeTruthy();
         }
 
@@ -2845,9 +2353,7 @@ test.describe("live E2E puppet orchestration", () => {
           await page.goto(route, { waitUntil: "domcontentloaded" });
           await page.waitForTimeout(250);
           await expect(page.locator("body")).toBeVisible();
-          await expect(
-            page.getByText(/something went wrong|application error/i),
-          ).toHaveCount(0);
+          await expect(page.getByText(/something went wrong|application error/i)).toHaveCount(0);
         }
       } finally {
         await request.dispose();

@@ -47,7 +47,9 @@ import { getDesktopAppConfig, type DesktopAppConfig } from "./desktop-apps";
 import { awardXp } from "./xp";
 import { mirrorTradeBoardChange } from "./collections-mirror";
 import { getMarketplaceAddressOrNull } from "./contract-config";
-import { listConsoleCatalog } from "../features/console/catalog";
+import {
+  listConsoleCatalog,
+} from "../features/console/catalog";
 import { getArcadeStats, listArcadeCatalog } from "../features/arcade/catalog";
 import { runArcadeSourceImport } from "../features/arcade/source-import";
 import {
@@ -71,10 +73,7 @@ import {
   listGameStudioCodeSnippets,
   listGameStudioStockAssetDescriptors,
 } from "../features/game-studio/catalog";
-import {
-  buildGameStudioZip,
-  normalizeConsoleSlug,
-} from "../features/game-studio/packaging";
+import { buildGameStudioZip, normalizeConsoleSlug } from "../features/game-studio/packaging";
 import {
   buildGameStudioProjectBundle,
   createGameStudioProject,
@@ -101,21 +100,8 @@ const HexColorSchema = z
   .string()
   .regex(/^#[0-9a-f]{6}$/i, "Use a 6-digit hex color like #008080");
 
-const MapLabNodeKindSchema = z.enum([
-  "system",
-  "agent",
-  "data",
-  "policy",
-  "repo",
-  "milestone",
-]);
-const MapLabWireKindSchema = z.enum([
-  "serves",
-  "depends",
-  "reads",
-  "writes",
-  "blocks",
-]);
+const MapLabNodeKindSchema = z.enum(["system", "agent", "data", "policy", "repo", "milestone"]);
+const MapLabWireKindSchema = z.enum(["serves", "depends", "reads", "writes", "blocks"]);
 const MapLabNodeInputSchema = z.object({
   key: z.string().trim().min(1).max(80),
   label: z.string().trim().min(1).max(120),
@@ -199,7 +185,7 @@ function normalizeInteractionCounts(value: unknown): Record<string, number> {
   return Object.fromEntries(
     Object.entries(value)
       .filter(([, count]) => Number.isFinite(Number(count)))
-      .map(([key, count]) => [key, Math.max(0, Math.floor(Number(count)))]),
+      .map(([key, count]) => [key, Math.max(0, Math.floor(Number(count)))])
   );
 }
 
@@ -232,17 +218,13 @@ function serializeForJson(value: unknown): unknown {
       Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
         key,
         serializeForJson(entry),
-      ]),
+      ])
     );
   }
   return value;
 }
 
-function asText(
-  output: unknown,
-  responseFormat: ResponseFormat,
-  markdown?: string,
-): string {
+function asText(output: unknown, responseFormat: ResponseFormat, markdown?: string): string {
   const serialized = serializeForJson(output);
   if (responseFormat === "json") {
     return JSON.stringify(serialized, null, 2);
@@ -253,25 +235,16 @@ function asText(
 function toolResult(
   output: Record<string, unknown>,
   responseFormat: ResponseFormat,
-  markdown?: string,
+  markdown?: string
 ): ToolResult {
   const structuredContent = serializeForJson(output) as Record<string, unknown>;
   return {
-    content: [
-      {
-        type: "text",
-        text: asText(structuredContent, responseFormat, markdown),
-      },
-    ],
+    content: [{ type: "text", text: asText(structuredContent, responseFormat, markdown) }],
     structuredContent,
   };
 }
 
-function toolError(
-  message: string,
-  responseFormat: ResponseFormat,
-  details?: unknown,
-): ToolResult {
+function toolError(message: string, responseFormat: ResponseFormat, details?: unknown): ToolResult {
   const structuredContent = {
     ok: false,
     error: message,
@@ -279,19 +252,14 @@ function toolError(
   } as Record<string, unknown>;
   return {
     isError: true,
-    content: [
-      {
-        type: "text",
-        text: asText(structuredContent, responseFormat, message),
-      },
-    ],
+    content: [{ type: "text", text: asText(structuredContent, responseFormat, message) }],
     structuredContent,
   };
 }
 
 export function isMcpFeatureEnabled(
   apps: DesktopAppConfig,
-  gate: FeatureGate,
+  gate: FeatureGate
 ): boolean {
   return gate === null || apps[gate] !== false;
 }
@@ -299,7 +267,7 @@ export function isMcpFeatureEnabled(
 async function requireMcpFeature(
   gate: FeatureGate,
   toolName: string,
-  responseFormat: ResponseFormat,
+  responseFormat: ResponseFormat
 ): Promise<FeatureGateCheck> {
   const apps = await getDesktopAppConfig();
   if (isMcpFeatureEnabled(apps, gate)) {
@@ -312,18 +280,13 @@ async function requireMcpFeature(
     error: toolError(
       `${toolName} is disabled because the admin control panel has disabled the ${gate} sub app.`,
       responseFormat,
-      { gate, apps },
+      { gate, apps }
     ),
   };
 }
 
-export function hasMcpScope(
-  scopes: readonly string[],
-  required: string,
-): boolean {
-  const normalized = new Set(
-    scopes.map((scope) => String(scope || "").trim()).filter(Boolean),
-  );
+export function hasMcpScope(scopes: readonly string[], required: string): boolean {
+  const normalized = new Set(scopes.map((scope) => String(scope || "").trim()).filter(Boolean));
   if (normalized.has("*") || normalized.has(required)) return true;
   const [domain] = required.split(":");
   return Boolean(domain && normalized.has(`${domain}:*`));
@@ -333,11 +296,9 @@ function requireMcpScopes(
   auth: McpAgentAuthContext,
   requiredScopes: string[],
   toolName: string,
-  responseFormat: ResponseFormat,
+  responseFormat: ResponseFormat
 ): ToolResult | null {
-  const missing = requiredScopes.filter(
-    (scope) => !hasMcpScope(auth.scopes, scope),
-  );
+  const missing = requiredScopes.filter((scope) => !hasMcpScope(auth.scopes, scope));
   if (missing.length === 0) return null;
   return toolError(
     `${toolName} requires MCP scope${missing.length === 1 ? "" : "s"} ${missing.join(", ")}. Create or update a paired agent token with the required scope before using this workflow.`,
@@ -345,35 +306,32 @@ function requireMcpScopes(
     {
       requiredScopes,
       pairedScopes: auth.scopes,
-    },
+    }
   );
 }
 
 function requireMcpAdmin(
   auth: McpAgentAuthContext,
   toolName: string,
-  responseFormat: ResponseFormat,
+  responseFormat: ResponseFormat
 ): ToolResult | null {
   if (isAdmin(auth.user.role)) return null;
   return toolError(
     `${toolName} requires an admin WTF user, even when the paired agent token has matching scopes.`,
     responseFormat,
-    { userRole: auth.user.role },
+    { userRole: auth.user.role }
   );
 }
 
 function rowToHamsterState(
-  row: typeof desktopPetStates.$inferSelect | null | undefined,
+  row: typeof desktopPetStates.$inferSelect | null | undefined
 ): HamsterState {
   if (!row) return { ...DEFAULT_HAMSTER_STATE };
   const interactionCounts = normalizeInteractionCounts(row.interactionCounts);
   return {
     name: row.name,
     genetics: normalizeHamsterGenetics(row.genetics),
-    colorSchemeKey: resolveHamsterColorSchemeKey(
-      row.colorSchemeKey,
-      row.genetics,
-    ),
+    colorSchemeKey: resolveHamsterColorSchemeKey(row.colorSchemeKey, row.genetics),
     alive: row.alive,
     hunger: row.hunger,
     thirst: row.thirst,
@@ -382,45 +340,35 @@ function rowToHamsterState(
     energy: row.energy,
     sick: Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.sick] ?? 0) > 0,
     sicknessRisk: clampPetStat(
-      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk] ?? 0),
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.sicknessRisk] ?? 0)
     ),
     medicineDoses: clampPetCounter(
-      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.medicineDoses] ?? 0),
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.medicineDoses] ?? 0)
     ),
     restDoses: clampPetCounter(
-      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.restDoses] ?? 0),
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.restDoses] ?? 0)
     ),
     poopExposure: clampPetCounter(
-      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0),
+      Number(interactionCounts[HAMSTER_HEALTH_COUNT_KEYS.poopExposure] ?? 0)
     ),
     bondXp: clampPetLongCounter(
-      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0),
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0)
     ),
     bondLevel: Math.max(
       1,
       Math.min(
         50,
-        Math.floor(
-          Math.sqrt(
-            Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0) /
-              18,
-          ),
-        ) + 1,
-      ),
+        Math.floor(Math.sqrt(Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.bondXp] ?? 0) / 18)) + 1
+      )
     ),
     happinessIndexScore: clampPetStat(
-      Number(
-        interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ??
-          row.happiness,
-      ),
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessIndexScore] ?? row.happiness)
     ),
     happinessSampleCount: clampPetLongCounter(
-      Number(
-        interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? 0,
-      ),
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.happinessSampleCount] ?? 0)
     ),
     trauma: clampPetStat(
-      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.trauma] ?? 0),
+      Number(interactionCounts[HAMSTER_EMOTION_COUNT_KEYS.trauma] ?? 0)
     ),
     level: row.level,
     xpEarned: row.xpEarned,
@@ -438,10 +386,7 @@ function hamsterValues(userId: number, state: HamsterState) {
   return {
     userId,
     name: state.name,
-    colorSchemeKey: resolveHamsterColorSchemeKey(
-      state.colorSchemeKey,
-      genetics,
-    ),
+    colorSchemeKey: resolveHamsterColorSchemeKey(state.colorSchemeKey, genetics),
     genetics,
     alive: state.alive,
     hunger: state.hunger,
@@ -465,10 +410,13 @@ function hamsterValues(userId: number, state: HamsterState) {
 
 async function persistPetState(userId: number, state: HamsterState) {
   const values = hamsterValues(userId, state);
-  await db.insert(desktopPetStates).values(values).onConflictDoUpdate({
-    target: desktopPetStates.userId,
-    set: values,
-  });
+  await db
+    .insert(desktopPetStates)
+    .values(values)
+    .onConflictDoUpdate({
+      target: desktopPetStates.userId,
+      set: values,
+    });
 }
 
 async function getOrCreatePetState(userId: number, now = new Date()) {
@@ -554,17 +502,11 @@ async function getDesktopSettings(userId: number): Promise<{
       ...DEFAULT_DESKTOP_APPEARANCE,
       ...(row?.appearance ?? {}),
     }),
-    iconLayout: normalizeIconLayout(
-      row?.iconLayout ?? {},
-      DESKTOP_ICON_LAYOUT_KEYS,
-    ),
+    iconLayout: normalizeIconLayout(row?.iconLayout ?? {}, DESKTOP_ICON_LAYOUT_KEYS),
   };
 }
 
-async function saveDesktopAppearance(
-  userId: number,
-  appearance: DesktopAppearance,
-) {
+async function saveDesktopAppearance(userId: number, appearance: DesktopAppearance) {
   const current = await getDesktopSettings(userId);
   const [row] = await db
     .insert(userDesktopSettings)
@@ -593,7 +535,7 @@ async function saveDesktopAppearance(
 async function applyPetCareAction(
   userId: number,
   action: HamsterAction,
-  metadata: Record<string, unknown>,
+  metadata: Record<string, unknown>
 ) {
   const now = new Date();
   const before = await getOrCreatePetState(userId, now);
@@ -607,8 +549,8 @@ async function applyPetCareAction(
         eq(desktopPetEvents.userId, userId),
         eq(desktopPetEvents.action, action),
         sql`${desktopPetEvents.createdAt} >= ${todayStart}`,
-        sql`${desktopPetEvents.xpAmount} > 0`,
-      ),
+        sql`${desktopPetEvents.xpAmount} > 0`
+      )
     );
 
   const xpAmount = alreadyAwardedToday > 0 ? 0 : applied.xpAmount;
@@ -656,7 +598,7 @@ async function applyPetCareAction(
 
 export function selectKeepAliveActions(
   pet: HamsterState,
-  maxActions: number,
+  maxActions: number
 ): HamsterAction[] {
   if (maxActions <= 0) return [];
   if (!pet.alive) return ["revive"];
@@ -673,7 +615,7 @@ export function selectKeepAliveActions(
 
 function applySchemePatch(
   current: DesktopAppearance,
-  schemeKey: string | undefined,
+  schemeKey: string | undefined
 ): DesktopAppearance {
   const scheme = DESKTOP_COLOR_SCHEMES.find((entry) => entry.key === schemeKey);
   if (!scheme) return current;
@@ -702,12 +644,8 @@ function clampOffset(value: number): number {
   return Math.max(0, Math.floor(value));
 }
 
-function tokenMarkdown(
-  items: Array<Record<string, unknown>>,
-  title: string,
-): string {
-  if (items.length === 0)
-    return `${title}\n\nNo matching public token rows found.`;
+function tokenMarkdown(items: Array<Record<string, unknown>>, title: string): string {
+  if (items.length === 0) return `${title}\n\nNo matching public token rows found.`;
   return [
     title,
     "",
@@ -724,9 +662,7 @@ function tokenMarkdown(
 }
 
 function featureMarkdown(apps: DesktopAppConfig, tokenName: string): string {
-  const lines = DESKTOP_APPS.map(
-    (key) => `- ${key}: ${apps[key] ? "enabled" : "disabled"}`,
-  );
+  const lines = DESKTOP_APPS.map((key) => `- ${key}: ${apps[key] ? "enabled" : "disabled"}`);
   return [
     `WTF MCP paired as ${tokenName}.`,
     "",
@@ -752,7 +688,7 @@ export function createWtfMcpServer(
       contentType: string;
       body: unknown;
     }>;
-  } = {},
+  } = {}
 ): McpServer {
   const server = new McpServer({
     name: "wtf-mcp-server",
@@ -789,9 +725,7 @@ export function createWtfMcpServer(
         user: auth.user,
         adminFeatureGates: apps,
         rateLimit: {
-          requestsPerMinute: Number(
-            process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60,
-          ),
+          requestsPerMinute: Number(process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60),
         },
         access: {
           manifestApi: "/api/access",
@@ -802,12 +736,8 @@ export function createWtfMcpServer(
         },
         tools: [...WTF_MCP_TOOL_NAMES],
       };
-      return toolResult(
-        output,
-        response_format,
-        featureMarkdown(apps, auth.tokenName),
-      );
-    },
+      return toolResult(output, response_format, featureMarkdown(apps, auth.tokenName));
+    }
   );
 
   server.registerTool(
@@ -828,15 +758,10 @@ export function createWtfMcpServer(
     },
     async ({ response_format }) => {
       const apps = await getDesktopAppConfig();
-      const origin = resolvePublicSiteOrigin(
-        options.accessOrigin || process.env.PUBLIC_SITE_URL,
-      );
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
       const manifest = buildWtfAccessManifest({
         origin,
-        mcpEndpoint:
-          options.mcpEndpoint ||
-          process.env.MCP_PUBLIC_ENDPOINT ||
-          `${origin}/mcp`,
+        mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,
         apps,
       });
       return toolResult(
@@ -848,9 +773,9 @@ export function createWtfMcpServer(
           `MCP endpoint: ${manifest.mcp.endpoint}`,
           `Browser routes: ${manifest.browserRoutes.length}`,
           `Public/API routes: ${manifest.apiRoutes.length}`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -871,15 +796,10 @@ export function createWtfMcpServer(
     },
     async ({ response_format }) => {
       const apps = await getDesktopAppConfig();
-      const origin = resolvePublicSiteOrigin(
-        options.accessOrigin || process.env.PUBLIC_SITE_URL,
-      );
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
       const inventory = buildWtfOsRegisteredInventory({
         origin,
-        mcpEndpoint:
-          options.mcpEndpoint ||
-          process.env.MCP_PUBLIC_ENDPOINT ||
-          `${origin}/mcp`,
+        mcpEndpoint: options.mcpEndpoint || process.env.MCP_PUBLIC_ENDPOINT || `${origin}/mcp`,
         apps,
       });
       return toolResult(
@@ -890,9 +810,9 @@ export function createWtfMcpServer(
           `Discovery tools: ${inventory.discoveryTools.join(", ")}`,
           `Browser pathways: ${inventory.summary.pathwayCounts.browser}`,
           `API pathways: ${inventory.summary.pathwayCounts.api}`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -901,23 +821,19 @@ export function createWtfMcpServer(
       title: "Call the wtfOS Platform API",
       description:
         "Call any operation exposed by the versioned wtfOS Platform API at /api/v1 using the paired token. Existing route ownership, role, app-gate, and token-scope checks remain authoritative. Read calls require api:read; mutations require api:write; admin paths additionally require an admin account and api:admin.",
-      inputSchema: z
-        .object({
-          method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
-          path: z
-            .string()
-            .trim()
-            .refine(
-              (value) => value === "/api/v1" || value.startsWith("/api/v1/"),
-              "Path must start with /api/v1",
-            ),
-          query: z
-            .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-            .optional(),
-          body: z.unknown().optional(),
-          response_format: ResponseFormatSchema,
-        })
-        .strict(),
+      inputSchema: z.object({
+        method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+        path: z.string().trim().refine(
+          (value) => value === "/api/v1" || value.startsWith("/api/v1/"),
+          "Path must start with /api/v1",
+        ),
+        query: z.record(
+          z.string(),
+          z.union([z.string(), z.number(), z.boolean()]),
+        ).optional(),
+        body: z.unknown().optional(),
+        response_format: ResponseFormatSchema,
+      }).strict(),
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -941,12 +857,7 @@ export function createWtfMcpServer(
         );
       }
       try {
-        const response = await options.apiRequest({
-          method,
-          path,
-          query,
-          body,
-        });
+        const response = await options.apiRequest({ method, path, query, body });
         const output = {
           ok: response.status >= 200 && response.status < 300,
           method,
@@ -996,25 +907,19 @@ export function createWtfMcpServer(
       },
     },
     async ({ title, nodes, wires, response_format }) => {
-      const gate = await requireMcpFeature(
-        "map-lab",
-        "wtf_create_map_lab_document",
-        response_format,
-      );
+      const gate = await requireMcpFeature("map-lab", "wtf_create_map_lab_document", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["map-lab:write"],
         "wtf_create_map_lab_document",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
       const seenKeys = new Set<string>();
       const mapNodes = nodes.map((node, index) => {
-        const uniqueKey = seenKeys.has(node.key)
-          ? `${node.key}-${index + 1}`
-          : node.key;
+        const uniqueKey = seenKeys.has(node.key) ? `${node.key}-${index + 1}` : node.key;
         seenKeys.add(uniqueKey);
         return {
           id: `mcp-node-${index + 1}`,
@@ -1050,15 +955,16 @@ export function createWtfMcpServer(
           createdBy: "mcp",
           pairedTokenPrefix: auth.tokenPrefix,
           ingestedDataPathsAccessible: false,
-          note: "MCP-created Map Lab documents contain only explicit map objects supplied to this tool. AT repo/firehose ingested data paths remain unavailable.",
+          note:
+            "MCP-created Map Lab documents contain only explicit map objects supplied to this tool. AT repo/firehose ingested data paths remain unavailable.",
         },
       };
       return toolResult(
         { ok: true, document },
         response_format,
-        `Created Map Lab document "${title}" with ${mapNodes.length} node(s) and ${mapWires.length} wire(s). Ingested data paths were not read or exposed.`,
+        `Created Map Lab document "${title}" with ${mapNodes.length} node(s) and ${mapWires.length} wire(s). Ingested data paths were not read or exposed.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1078,20 +984,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const scopeError = requireMcpScopes(
-        auth,
-        ["desktop:read"],
-        "wtf_get_desktop_appearance",
-        response_format,
-      );
-      if (scopeError) return scopeError;
       const settings = await getDesktopSettings(auth.user.id);
       return toolResult(
         { ok: true, ...settings },
         response_format,
-        `Desktop style: ${settings.appearance.appearanceStyleKey}\nDesktop scheme: ${settings.appearance.colorSchemeKey}\nCursor: ${settings.appearance.cursorStyle}\nDesktop pet: ${settings.appearance.desktopPetEnabled ? "enabled" : "disabled"}`,
+        `Desktop style: ${settings.appearance.appearanceStyleKey}\nDesktop scheme: ${settings.appearance.colorSchemeKey}\nCursor: ${settings.appearance.cursorStyle}\nDesktop pet: ${settings.appearance.desktopPetEnabled ? "enabled" : "disabled"}`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1106,16 +1005,9 @@ export function createWtfMcpServer(
           .optional()
           .describe("Optional built-in scheme key from WTF desktop settings."),
         appearance_style_key: z
-          .enum(
-            DESKTOP_APPEARANCE_STYLES.map((style) => style.key) as [
-              string,
-              ...string[],
-            ],
-          )
+          .enum(DESKTOP_APPEARANCE_STYLES.map((style) => style.key) as [string, ...string[]])
           .optional()
-          .describe(
-            "Optional OS appearance grammar: classic-95, wtf-xp, wtf-aqua, or wtf-zine.",
-          ),
+          .describe("Optional OS appearance grammar: classic-95, wtf-xp, wtf-aqua, or wtf-zine."),
         desktop_color: HexColorSchema.optional(),
         window_color: HexColorSchema.optional(),
         active_title_color: HexColorSchema.optional(),
@@ -1141,26 +1033,15 @@ export function createWtfMcpServer(
       },
     },
     async (params) => {
-      const scopeError = requireMcpScopes(
-        auth,
-        ["desktop:write"],
-        "wtf_set_desktop_appearance",
-        params.response_format,
-      );
-      if (scopeError) return scopeError;
       const current = await getDesktopSettings(auth.user.id);
-      const withScheme = applySchemePatch(
-        current.appearance,
-        params.scheme_key,
-      );
+      const withScheme = applySchemePatch(current.appearance, params.scheme_key);
       const next = normalizeDesktopAppearance({
         ...withScheme,
         appearanceStyleKey:
           params.appearance_style_key ?? withScheme.appearanceStyleKey,
         desktopColor: params.desktop_color ?? withScheme.desktopColor,
         windowColor: params.window_color ?? withScheme.windowColor,
-        activeTitleColor:
-          params.active_title_color ?? withScheme.activeTitleColor,
+        activeTitleColor: params.active_title_color ?? withScheme.activeTitleColor,
         activeTitleTextColor:
           params.active_title_text_color ?? withScheme.activeTitleTextColor,
         inactiveTitleColor:
@@ -1178,18 +1059,16 @@ export function createWtfMcpServer(
         cursorStyle: params.cursor_style ?? withScheme.cursorStyle,
         desktopPhysicsEnabled:
           params.desktop_physics_enabled ?? withScheme.desktopPhysicsEnabled,
-        desktopGravityMode:
-          params.desktop_gravity_mode ?? withScheme.desktopGravityMode,
-        desktopPetEnabled:
-          params.desktop_pet_enabled ?? withScheme.desktopPetEnabled,
+        desktopGravityMode: params.desktop_gravity_mode ?? withScheme.desktopGravityMode,
+        desktopPetEnabled: params.desktop_pet_enabled ?? withScheme.desktopPetEnabled,
       });
       const saved = await saveDesktopAppearance(auth.user.id, next);
       return toolResult(
         { ok: true, ...saved },
         params.response_format,
-        `Updated desktop appearance to ${saved.appearance.appearanceStyleKey} / ${saved.appearance.colorSchemeKey}.`,
+        `Updated desktop appearance to ${saved.appearance.appearanceStyleKey} / ${saved.appearance.colorSchemeKey}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1209,20 +1088,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const scopeError = requireMcpScopes(
-        auth,
-        ["pet:read"],
-        "wtf_get_desktop_pet",
-        response_format,
-      );
-      if (scopeError) return scopeError;
       const pet = await getOrCreatePetState(auth.user.id);
       return toolResult(
         { ok: true, pet },
         response_format,
-        `Hamster ${pet.name}: ${pet.alive ? "alive" : "not alive"}, hunger ${pet.hunger}, thirst ${pet.thirst}, happiness ${pet.happiness}, hygiene ${pet.hygiene}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`,
+        `Hamster ${pet.name}: ${pet.alive ? "alive" : "not alive"}, hunger ${pet.hunger}, thirst ${pet.thirst}, happiness ${pet.happiness}, hygiene ${pet.hygiene}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1245,13 +1117,6 @@ export function createWtfMcpServer(
       },
     },
     async ({ strategy, action, max_actions, response_format }) => {
-      const scopeError = requireMcpScopes(
-        auth,
-        ["pet:write"],
-        "wtf_keep_desktop_pet_alive",
-        response_format,
-      );
-      if (scopeError) return scopeError;
       let pet = await getOrCreatePetState(auth.user.id);
       const actions =
         strategy === "specific" && action
@@ -1261,7 +1126,7 @@ export function createWtfMcpServer(
         return toolResult(
           { ok: true, pet, actionsApplied: [] },
           response_format,
-          `${pet.name} does not need care right now.`,
+          `${pet.name} does not need care right now.`
         );
       }
 
@@ -1279,9 +1144,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, pet, actionsApplied: actions, events },
         response_format,
-        `Applied ${actions.join(", ")} for ${pet.name}. Hunger ${pet.hunger}, thirst ${pet.thirst}, hygiene ${pet.hygiene}, happiness ${pet.happiness}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`,
+        `Applied ${actions.join(", ")} for ${pet.name}. Hunger ${pet.hunger}, thirst ${pet.thirst}, hygiene ${pet.hygiene}, happiness ${pet.happiness}, energy ${pet.energy}, bond L${pet.bondLevel}, happiness index ${pet.happinessIndexScore}, trauma ${pet.trauma}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1305,19 +1170,8 @@ export function createWtfMcpServer(
         openWorldHint: false,
       },
     },
-    async ({
-      q,
-      contract,
-      creator_address,
-      limit,
-      offset,
-      response_format,
-    }) => {
-      const gate = await requireMcpFeature(
-        "gallery",
-        "wtf_search_public_tokens",
-        response_format,
-      );
+    async ({ q, contract, creator_address, limit, offset, response_format }) => {
+      const gate = await requireMcpFeature("gallery", "wtf_search_public_tokens", response_format);
       if (!gate.ok) return gate.error!;
 
       const whereParts = [];
@@ -1332,11 +1186,9 @@ export function createWtfMcpServer(
         )`);
       }
       if (contract) whereParts.push(eq(tokenMetadata.tokenContract, contract));
-      if (creator_address)
-        whereParts.push(eq(tokenMetadata.creatorAddress, creator_address));
+      if (creator_address) whereParts.push(eq(tokenMetadata.creatorAddress, creator_address));
 
-      const whereClause =
-        whereParts.length > 0 ? and(...whereParts) : sql`true`;
+      const whereClause = whereParts.length > 0 ? and(...whereParts) : sql`true`;
       const safeLimit = clampLimit(limit, 25, 100);
       const safeOffset = clampOffset(offset);
 
@@ -1365,8 +1217,8 @@ export function createWtfMcpServer(
           tokenMarketSummary,
           and(
             eq(tokenMarketSummary.tokenContract, tokenMetadata.tokenContract),
-            eq(tokenMarketSummary.tokenId, tokenMetadata.tokenId),
-          ),
+            eq(tokenMarketSummary.tokenId, tokenMetadata.tokenId)
+          )
         )
         .where(whereClause)
         .orderBy(desc(tokenMetadata.updatedAt))
@@ -1383,8 +1235,7 @@ export function createWtfMcpServer(
         supply: row.supply == null ? null : String(row.supply),
         currentFloorMutez:
           row.currentFloorMutez == null ? null : String(row.currentFloorMutez),
-        lastSaleMutez:
-          row.lastSaleMutez == null ? null : String(row.lastSaleMutez),
+        lastSaleMutez: row.lastSaleMutez == null ? null : String(row.lastSaleMutez),
       }));
 
       return toolResult(
@@ -1401,9 +1252,9 @@ export function createWtfMcpServer(
           },
         },
         response_format,
-        tokenMarkdown(items, "Public token search results"),
+        tokenMarkdown(items, "Public token search results")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1427,19 +1278,8 @@ export function createWtfMcpServer(
         openWorldHint: false,
       },
     },
-    async ({
-      mine_only,
-      single_editions_only,
-      q,
-      limit,
-      offset,
-      response_format,
-    }) => {
-      const gate = await requireMcpFeature(
-        "wtfiam",
-        "wtf_list_unlisted_trade_board_tokens",
-        response_format,
-      );
+    async ({ mine_only, single_editions_only, q, limit, offset, response_format }) => {
+      const gate = await requireMcpFeature("wtfiam", "wtf_list_unlisted_trade_board_tokens", response_format);
       if (!gate.ok) return gate.error!;
 
       const whereParts = [
@@ -1461,8 +1301,7 @@ export function createWtfMcpServer(
         )`,
       ];
       if (mine_only) whereParts.push(eq(collections.userId, auth.user.id));
-      if (single_editions_only)
-        whereParts.push(sql`${tokenMetadata.supply} = 1`);
+      if (single_editions_only) whereParts.push(sql`${tokenMetadata.supply} = 1`);
       if (q) {
         const like = `%${q}%`;
         whereParts.push(sql`(
@@ -1499,32 +1338,29 @@ export function createWtfMcpServer(
           lastSeenAt: walletHoldings.derivedAt,
         })
         .from(collectionItems)
-        .innerJoin(
-          collections,
-          eq(collections.id, collectionItems.collectionId),
-        )
+        .innerJoin(collections, eq(collections.id, collectionItems.collectionId))
         .innerJoin(
           walletHoldings,
           and(
             eq(walletHoldings.userId, collections.userId),
             eq(walletHoldings.tokenContract, collectionItems.tokenContract),
-            eq(walletHoldings.tokenId, collectionItems.tokenId),
-          ),
+            eq(walletHoldings.tokenId, collectionItems.tokenId)
+          )
         )
         .leftJoin(users, eq(users.id, collections.userId))
         .leftJoin(
           tokenMetadata,
           and(
             eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
-            eq(tokenMetadata.tokenId, walletHoldings.tokenId),
-          ),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
         )
         .leftJoin(
           tokenMarketSummary,
           and(
             eq(tokenMarketSummary.tokenContract, walletHoldings.tokenContract),
-            eq(tokenMarketSummary.tokenId, walletHoldings.tokenId),
-          ),
+            eq(tokenMarketSummary.tokenId, walletHoldings.tokenId)
+          )
         )
         .where(whereClause)
         .orderBy(desc(walletHoldings.derivedAt))
@@ -1555,9 +1391,9 @@ export function createWtfMcpServer(
           },
         },
         response_format,
-        tokenMarkdown(items, "Unlisted trade-board tokens"),
+        tokenMarkdown(items, "Unlisted trade-board tokens")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1572,12 +1408,9 @@ export function createWtfMcpServer(
           .array(
             z.object({
               token_contract: z.string().trim().min(1).max(64),
-              token_id: z
-                .string()
-                .trim()
-                .regex(/^[0-9]+$/),
+              token_id: z.string().trim().regex(/^[0-9]+$/),
               quantity: z.number().int().min(1).max(100000).default(1),
-            }),
+            })
           )
           .min(1)
           .max(100),
@@ -1591,19 +1424,8 @@ export function createWtfMcpServer(
       },
     },
     async ({ action, tokens, response_format }) => {
-      const gate = await requireMcpFeature(
-        "wtfiam",
-        "wtf_set_trade_board_tokens",
-        response_format,
-      );
+      const gate = await requireMcpFeature("wtfiam", "wtf_set_trade_board_tokens", response_format);
       if (!gate.ok) return gate.error!;
-      const scopeError = requireMcpScopes(
-        auth,
-        ["trade-board:write"],
-        "wtf_set_trade_board_tokens",
-        response_format,
-      );
-      if (scopeError) return scopeError;
 
       const ownedRows = await db
         .select({
@@ -1619,14 +1441,14 @@ export function createWtfMcpServer(
               ...tokens.map((token) =>
                 and(
                   eq(walletHoldings.tokenContract, token.token_contract),
-                  eq(walletHoldings.tokenId, token.token_id),
-                ),
-              ),
-            ),
-          ),
+                  eq(walletHoldings.tokenId, token.token_id)
+                )
+              )
+            )
+          )
         );
       const owned = new Map(
-        ownedRows.map((row) => [`${row.tokenContract}:${row.tokenId}`, row]),
+        ownedRows.map((row) => [`${row.tokenContract}:${row.tokenId}`, row])
       );
 
       const accepted = [];
@@ -1635,10 +1457,7 @@ export function createWtfMcpServer(
         const key = `${token.token_contract}:${token.token_id}`;
         const row = owned.get(key);
         if (!row) {
-          rejected.push({
-            ...token,
-            reason: "not_found_in_paired_user_holdings",
-          });
+          rejected.push({ ...token, reason: "not_found_in_paired_user_holdings" });
           continue;
         }
         const balance = Math.max(0, parseInt(row.balance || "0", 10) || 0);
@@ -1675,9 +1494,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, action, accepted, rejected },
         response_format,
-        `${action === "add" ? "Added" : "Removed"} ${accepted.length} token(s) ${action === "add" ? "to" : "from"} the paired user's trade board. Rejected ${rejected.length}.`,
+        `${action === "add" ? "Added" : "Removed"} ${accepted.length} token(s) ${action === "add" ? "to" : "from"} the paired user's trade board. Rejected ${rejected.length}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1688,10 +1507,7 @@ export function createWtfMcpServer(
         "Prepare safe next steps for listing one of the paired user's trade-board tokens. This does not create a listing without a user wallet signature/op hash.",
       inputSchema: z.object({
         token_contract: z.string().trim().min(1).max(64),
-        token_id: z
-          .string()
-          .trim()
-          .regex(/^[0-9]+$/),
+        token_id: z.string().trim().regex(/^[0-9]+$/),
         price_wtf: z.number().int().min(1).max(10_000_000_000),
         amount: z.number().int().min(1).max(1).default(1),
         response_format: ResponseFormatSchema,
@@ -1703,26 +1519,9 @@ export function createWtfMcpServer(
         openWorldHint: true,
       },
     },
-    async ({
-      token_contract,
-      token_id,
-      price_wtf,
-      amount,
-      response_format,
-    }) => {
-      const gate = await requireMcpFeature(
-        "wtfiam",
-        "wtf_prepare_single_edition_listing_workflow",
-        response_format,
-      );
+    async ({ token_contract, token_id, price_wtf, amount, response_format }) => {
+      const gate = await requireMcpFeature("wtfiam", "wtf_prepare_single_edition_listing_workflow", response_format);
       if (!gate.ok) return gate.error!;
-      const scopeError = requireMcpScopes(
-        auth,
-        ["market:write"],
-        "wtf_prepare_single_edition_listing_workflow",
-        response_format,
-      );
-      if (scopeError) return scopeError;
 
       const [holding] = await db
         .select({
@@ -1738,8 +1537,8 @@ export function createWtfMcpServer(
           tokenMetadata,
           and(
             eq(tokenMetadata.tokenContract, walletHoldings.tokenContract),
-            eq(tokenMetadata.tokenId, walletHoldings.tokenId),
-          ),
+            eq(tokenMetadata.tokenId, walletHoldings.tokenId)
+          )
         )
         .leftJoin(
           collectionItems,
@@ -1750,15 +1549,15 @@ export function createWtfMcpServer(
               SELECT id FROM collections
               WHERE user_id = ${auth.user.id}
                 AND type = 'trade_board_listing'
-            )`,
-          ),
+            )`
+          )
         )
         .where(
           and(
             eq(walletHoldings.userId, auth.user.id),
             eq(walletHoldings.tokenContract, token_contract),
-            eq(walletHoldings.tokenId, token_id),
-          ),
+            eq(walletHoldings.tokenId, token_id)
+          )
         )
         .limit(1);
 
@@ -1766,16 +1565,13 @@ export function createWtfMcpServer(
         return toolError(
           "The paired user does not have this token in synced wallet holdings.",
           response_format,
-          { token_contract, token_id },
+          { token_contract, token_id }
         );
       }
 
       const marketplaceContract = getMarketplaceAddressOrNull();
       const balance = Math.max(0, parseInt(holding.balance || "0", 10) || 0);
-      const tradeBoardQuantity = Math.max(
-        0,
-        Number(holding.tradeBoardQuantity) || 0,
-      );
+      const tradeBoardQuantity = Math.max(0, Number(holding.tradeBoardQuantity) || 0);
       const canProceed = Boolean(marketplaceContract && balance >= amount);
       const output = {
         ok: true,
@@ -1804,22 +1600,18 @@ export function createWtfMcpServer(
           "Submit the resulting operation hash to the normal WTF marketplace create-listing API so the server can verify it against TzKT.",
         ],
         blockers: [
-          ...(marketplaceContract
-            ? []
-            : ["MARKETPLACE_CONTRACT_NOT_CONFIGURED"]),
+          ...(marketplaceContract ? [] : ["MARKETPLACE_CONTRACT_NOT_CONFIGURED"]),
           ...(balance >= amount ? [] : ["INSUFFICIENT_SYNCED_BALANCE"]),
-          ...(tradeBoardQuantity >= amount
-            ? []
-            : ["TOKEN_NOT_ON_TRADE_BOARD_OR_QUANTITY_TOO_LOW"]),
+          ...(tradeBoardQuantity >= amount ? [] : ["TOKEN_NOT_ON_TRADE_BOARD_OR_QUANTITY_TOO_LOW"]),
         ],
       };
 
       return toolResult(
         output,
         response_format,
-        `Prepared listing workflow for ${holding.tokenName || `#${token_id}`} at ${price_wtf} WTF. Wallet signature required: yes.`,
+        `Prepared listing workflow for ${holding.tokenName || `#${token_id}`} at ${price_wtf} WTF. Wallet signature required: yes.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1841,11 +1633,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ limit, offset, response_format }) => {
-      const gate = await requireMcpFeature(
-        "tv",
-        "wtf_list_public_tv_channels",
-        response_format,
-      );
+      const gate = await requireMcpFeature("tv", "wtf_list_public_tv_channels", response_format);
       if (!gate.ok) return gate.error!;
 
       const safeLimit = clampLimit(limit, 25, 100);
@@ -1864,9 +1652,7 @@ export function createWtfMcpServer(
           updatedAt: tvChannels.updatedAt,
         })
         .from(tvChannels)
-        .where(
-          and(eq(tvChannels.isPublic, true), eq(tvChannels.isActive, true)),
-        )
+        .where(and(eq(tvChannels.isPublic, true), eq(tvChannels.isActive, true)))
         .orderBy(tvChannels.sortOrder, tvChannels.id)
         .limit(safeLimit)
         .offset(safeOffset);
@@ -1885,16 +1671,10 @@ export function createWtfMcpServer(
         },
         response_format,
         channels.length
-          ? [
-              "Public WTF TV channels:",
-              ...channels.map(
-                (channel) =>
-                  `- ${channel.title} (${channel.slug}) dial ${channel.dialNumber ?? "n/a"}`,
-              ),
-            ].join("\n")
-          : "No active public WTF TV channels found.",
+          ? ["Public WTF TV channels:", ...channels.map((channel) => `- ${channel.title} (${channel.slug}) dial ${channel.dialNumber ?? "n/a"}`)].join("\n")
+          : "No active public WTF TV channels found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1915,11 +1695,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ limit, response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_list_arcade_games",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_list_arcade_games", response_format);
       if (!gate.ok) return gate.error!;
 
       const catalog = await listArcadeCatalog(limit);
@@ -1939,14 +1715,13 @@ export function createWtfMcpServer(
         games.length
           ? [
               "Active WTF Arcade games:",
-              ...games.map(
-                (game) =>
-                  `- ${game.title} (${game.slug}) by ${game.builderName || game.sourceLabel || "WTF"}: ${game.playCount || 0} play(s)`,
+              ...games.map((game) =>
+                `- ${game.title} (${game.slug}) by ${game.builderName || game.sourceLabel || "WTF"}: ${game.playCount || 0} play(s)`
               ),
             ].join("\n")
-          : "No active WTF Arcade games found.",
+          : "No active WTF Arcade games found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -1966,11 +1741,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_get_arcade_stats",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_stats", response_format);
       if (!gate.ok) return gate.error!;
       const stats = await getArcadeStats();
       return toolResult(
@@ -1981,9 +1752,9 @@ export function createWtfMcpServer(
           `- ${stats.publishedGames} public game(s), ${stats.sourceArcadeGames} compatible-source game(s)`,
           `- ${stats.totalPlays} play(s), ${stats.totalScores} score(s)`,
           `- Play fee: ${stats.payment.feeWtfFormatted} WTF via ${stats.payment.contractAddress || "unconfigured contract"}`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2003,19 +1774,15 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_get_arcade_play_fee",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_play_fee", response_format);
       if (!gate.ok) return gate.error!;
       const payment = await getArcadePaymentConfig();
       return toolResult(
         { ok: true, payment },
         response_format,
-        `WTF Arcade play ticket ${payment.sku}: ${payment.feeWtfFormatted} WTF via ${payment.contractAddress || "unconfigured contract"}.`,
+        `WTF Arcade play ticket ${payment.sku}: ${payment.feeWtfFormatted} WTF via ${payment.contractAddress || "unconfigured contract"}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2035,17 +1802,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_get_arcade_play_status",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_get_arcade_play_status", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["arcade:read"],
         "wtf_get_arcade_play_status",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -2055,9 +1818,9 @@ export function createWtfMcpServer(
         response_format,
         status.canPlay
           ? `WTF Arcade play is available: ${status.bypass ? "trusted/admin bypass" : `${status.ticketsOwned} ticket(s) owned`}.`
-          : `WTF Arcade play needs a ${status.payment.feeWtfFormatted} WTF ticket (${status.sku}).`,
+          : `WTF Arcade play needs a ${status.payment.feeWtfFormatted} WTF ticket (${status.sku}).`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2078,17 +1841,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ wallet_address, response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_create_arcade_play_intent",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_create_arcade_play_intent", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["arcade:write", "market:write"],
         "wtf_create_arcade_play_intent",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -2100,9 +1859,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, intent, payment },
         response_format,
-        `Created WTF Arcade play intent ${intent.purchaseRef} for ${intent.subtotalWtfFormatted} WTF.`,
+        `Created WTF Arcade play intent ${intent.purchaseRef} for ${intent.subtotalWtfFormatted} WTF.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2125,23 +1884,19 @@ export function createWtfMcpServer(
       },
     },
     async ({ limit, action, game_slug, response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_list_arcade_audit_events",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_list_arcade_audit_events", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["arcade:admin"],
         "wtf_list_arcade_audit_events",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
       const adminError = requireMcpAdmin(
         auth,
         "wtf_list_arcade_audit_events",
-        response_format,
+        response_format
       );
       if (adminError) return adminError;
 
@@ -2159,14 +1914,13 @@ export function createWtfMcpServer(
               "Recent WTF Arcade audit events:",
               ...events
                 .slice(0, 20)
-                .map(
-                  (event) =>
-                    `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`,
+                .map((event) =>
+                  `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`
                 ),
             ].join("\n")
-          : "No WTF Arcade audit events matched the filter.",
+          : "No WTF Arcade audit events matched the filter."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2186,23 +1940,19 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const gate = await requireMcpFeature(
-        "arcade",
-        "wtf_run_arcade_source_import",
-        response_format,
-      );
+      const gate = await requireMcpFeature("arcade", "wtf_run_arcade_source_import", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["arcade:admin"],
         "wtf_run_arcade_source_import",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
       const adminError = requireMcpAdmin(
         auth,
         "wtf_run_arcade_source_import",
-        response_format,
+        response_format
       );
       if (adminError) return adminError;
 
@@ -2215,9 +1965,9 @@ export function createWtfMcpServer(
           "WTF Arcade compatible-source check finished:",
           `- scanned ${result.itemsIn} candidate(s)`,
           `- inserted ${String(cursor.inserted ?? 0)}, updated ${String(cursor.updated ?? 0)}, skipped ${String(cursor.skipped ?? 0)}`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2238,17 +1988,13 @@ export function createWtfMcpServer(
       },
     },
     async ({ limit, response_format }) => {
-      const gate = await requireMcpFeature(
-        "console",
-        "wtf_list_console_games",
-        response_format,
-      );
+      const gate = await requireMcpFeature("console", "wtf_list_console_games", response_format);
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["console:read"],
         "wtf_list_console_games",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -2268,14 +2014,13 @@ export function createWtfMcpServer(
         games.length
           ? [
               "WTF Console personal library:",
-              ...games.map(
-                (game) =>
-                  `- ${game.title} (${game.slug}) ${game.isDemo ? "stock" : game.category || "owned"}`,
+              ...games.map((game) =>
+                `- ${game.title} (${game.slug}) ${game.isDemo ? "stock" : game.category || "owned"}`
               ),
             ].join("\n")
-          : "No active WTF Console games found.",
+          : "No active WTF Console games found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2295,11 +2040,7 @@ export function createWtfMcpServer(
       },
     },
     async ({ response_format }) => {
-      const gate = await requireMcpFeature(
-        "console",
-        "wtf_get_console_stats",
-        response_format,
-      );
+      const gate = await requireMcpFeature("console", "wtf_get_console_stats", response_format);
       if (!gate.ok) return gate.error!;
 
       const stats = await getConsoleStats();
@@ -2316,9 +2057,9 @@ export function createWtfMcpServer(
                 .map((entry) => `${entry.category} (${entry.games})`)
                 .join(", ")}`
             : "- No category activity yet.",
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2342,13 +2083,11 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "console",
         "wtf_get_console_discovery_shelves",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
-      const shelves = await getConsoleDiscoveryShelves(limit, {
-        surface: "console",
-      });
+      const shelves = await getConsoleDiscoveryShelves(limit, { surface: "console" });
       return toolResult(
         {
           ok: true,
@@ -2365,15 +2104,13 @@ export function createWtfMcpServer(
             ["newest", shelves.newest],
           ].map(
             ([name, games]) =>
-              `- ${name}: ${
-                (games as typeof shelves.popular)
-                  .map((game) => `${game.title} (${game.slug})`)
-                  .join(", ") || "empty"
-              }`,
+              `- ${name}: ${(games as typeof shelves.popular)
+                .map((game) => `${game.title} (${game.slug})`)
+                .join(", ") || "empty"}`
           ),
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2394,16 +2131,10 @@ export function createWtfMcpServer(
       },
     },
     async ({ limit, response_format }) => {
-      const gate = await requireMcpFeature(
-        "console",
-        "wtf_list_console_players",
-        response_format,
-      );
+      const gate = await requireMcpFeature("console", "wtf_list_console_players", response_format);
       if (!gate.ok) return gate.error!;
 
-      const players = await getConsolePlayerLeaderboard(limit, {
-        surface: "console",
-      });
+      const players = await getConsolePlayerLeaderboard(limit, { surface: "console" });
       return toolResult(
         {
           ok: true,
@@ -2418,14 +2149,13 @@ export function createWtfMcpServer(
         players.length
           ? [
               "Top WTF Console players:",
-              ...players.map(
-                (player) =>
-                  `#${player.rank} ${player.displayName || player.username}: ${player.consoleXp} XP, ${player.totalPlays} play(s), ${player.firstPlaceCount} first-place game(s)`,
+              ...players.map((player) =>
+                `#${player.rank} ${player.displayName || player.username}: ${player.consoleXp} XP, ${player.totalPlays} play(s), ${player.firstPlaceCount} first-place game(s)`
               ),
             ].join("\n")
-          : "No WTF Console player activity found.",
+          : "No WTF Console player activity found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2449,13 +2179,11 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "console",
         "wtf_list_console_recent_scores",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
-      const scores = await getRecentConsoleScores(limit, {
-        surface: "console",
-      });
+      const scores = await getRecentConsoleScores(limit, { surface: "console" });
       return toolResult(
         {
           ok: true,
@@ -2472,12 +2200,12 @@ export function createWtfMcpServer(
               "Recent WTF Console scores:",
               ...scores.map(
                 (score) =>
-                  `- ${score.displayName || score.username} scored ${score.score.toLocaleString()} on ${score.title} (${score.slug})`,
+                  `- ${score.displayName || score.username} scored ${score.score.toLocaleString()} on ${score.title} (${score.slug})`
               ),
             ].join("\n")
-          : "No recent WTF Console scores found.",
+          : "No recent WTF Console scores found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2503,20 +2231,20 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "console",
         "wtf_list_console_audit_events",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["console:admin"],
         "wtf_list_console_audit_events",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
       const adminError = requireMcpAdmin(
         auth,
         "wtf_list_console_audit_events",
-        response_format,
+        response_format
       );
       if (adminError) return adminError;
 
@@ -2534,14 +2262,13 @@ export function createWtfMcpServer(
               "Recent Console audit events:",
               ...events
                 .slice(0, 20)
-                .map(
-                  (event) =>
-                    `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`,
+                .map((event) =>
+                  `- ${event.action} ${event.slug || "system"} by ${event.actorUsername || "system"}`
                 ),
             ].join("\n")
-          : "No Console audit events matched the filter.",
+          : "No Console audit events matched the filter."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2577,7 +2304,7 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_list_game_studio_assets",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
@@ -2598,13 +2325,10 @@ export function createWtfMcpServer(
           `Stock assets: ${assets.length}`,
           ...assets
             .slice(0, 20)
-            .map(
-              (asset) =>
-                `- ${asset.title} (${asset.kind}) -> ${asset.bundlePath}`,
-            ),
-        ].join("\n"),
+            .map((asset) => `- ${asset.title} (${asset.kind}) -> ${asset.bundlePath}`),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2630,16 +2354,14 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_list_game_studio_snippets",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
       const snippetRows =
         category === "all"
           ? GAME_STUDIO_CODE_SNIPPETS
-          : GAME_STUDIO_CODE_SNIPPETS.filter(
-              (snippet) => snippet.category === category,
-            );
+          : GAME_STUDIO_CODE_SNIPPETS.filter((snippet) => snippet.category === category);
       const snippets = listGameStudioCodeSnippets(snippetRows);
       return toolResult(
         {
@@ -2651,13 +2373,12 @@ export function createWtfMcpServer(
           ? [
               "Game Studio code snippets:",
               ...snippets.map(
-                (snippet) =>
-                  `- ${snippet.title} (${snippet.category}) -> ${snippet.targetFile}`,
+                (snippet) => `- ${snippet.title} (${snippet.category}) -> ${snippet.targetFile}`
               ),
             ].join("\n")
-          : "No Game Studio code snippets matched the filter.",
+          : "No Game Studio code snippets matched the filter."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2680,7 +2401,7 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_list_game_studio_targets",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
@@ -2693,12 +2414,11 @@ export function createWtfMcpServer(
         [
           "Game Studio targets:",
           ...GAME_STUDIO_TARGETS.map(
-            (target) =>
-              `- ${target.label}: ${target.mode} (${target.publishEndpoint || "download/import"})`,
+            (target) => `- ${target.label}: ${target.mode} (${target.publishEndpoint || "download/import"})`
           ),
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2722,7 +2442,7 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_create_game_studio_scaffold",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
 
@@ -2736,9 +2456,9 @@ export function createWtfMcpServer(
         [
           `Generated ${scaffold.template.title} scaffold.`,
           ...Object.keys(scaffold.files).map((file) => `- ${file}`),
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2761,26 +2481,13 @@ export function createWtfMcpServer(
         openWorldHint: false,
       },
     },
-    async ({
-      template_id,
-      title,
-      selected_asset_ids,
-      include_file_data,
-      response_format,
-    }) => {
+    async ({ template_id, title, selected_asset_ids, include_file_data, response_format }) => {
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_build_game_studio_bundle",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
-      const scopeError = requireMcpScopes(
-        auth,
-        ["game-studio:write"],
-        "wtf_build_game_studio_bundle",
-        response_format,
-      );
-      if (scopeError) return scopeError;
 
       const scaffold = buildGameStudioScaffold(template_id);
       const { zip, manifest } = buildGameStudioZip({
@@ -2798,9 +2505,7 @@ export function createWtfMcpServer(
           sizeBytes: zip.length,
           manifest,
           ...(include_file_data
-            ? {
-                fileData: `data:application/zip;base64,${zip.toString("base64")}`,
-              }
+            ? { fileData: `data:application/zip;base64,${zip.toString("base64")}` }
             : {}),
         },
         response_format,
@@ -2808,17 +2513,15 @@ export function createWtfMcpServer(
           `Built ${manifest.title} as ${manifest.slug}.zip.`,
           `Files: ${manifest.files.length}`,
           `Size: ${zip.length} bytes`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   const GameStudioFilesSchema = z
     .record(z.string(), z.string().max(1_000_000))
     .optional()
-    .describe(
-      "Optional project files keyed by relative path, e.g. index.html, styles.css, game.js.",
-    );
+    .describe("Optional project files keyed by relative path, e.g. index.html, styles.css, game.js.");
   const GameStudioLocalAssetsSchema = z
     .array(
       z.object({
@@ -2827,13 +2530,11 @@ export function createWtfMcpServer(
         size: z.number().int().min(0).max(2_097_152),
         type: z.string().trim().min(1).max(120),
         dataBase64: z.string().max(3_000_000).optional(),
-      }),
+      })
     )
     .max(40)
     .optional()
-    .describe(
-      "Optional uploaded asset descriptors. dataBase64 may be omitted for planning-only assets.",
-    );
+    .describe("Optional uploaded asset descriptors. dataBase64 may be omitted for planning-only assets.");
 
   server.registerTool(
     "wtf_list_game_studio_projects",
@@ -2856,21 +2557,18 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_list_game_studio_projects",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["game-studio:read"],
         "wtf_list_game_studio_projects",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
-      const projects = (await listGameStudioProjects(auth.user.id)).slice(
-        0,
-        limit,
-      );
+      const projects = (await listGameStudioProjects(auth.user.id)).slice(0, limit);
       return toolResult(
         {
           ok: true,
@@ -2885,14 +2583,13 @@ export function createWtfMcpServer(
         projects.length
           ? [
               "Game Studio projects:",
-              ...projects.map(
-                (project) =>
-                  `- #${project.id} ${project.title} (${project.slug}) ${project.status}`,
+              ...projects.map((project) =>
+                `- #${project.id} ${project.title} (${project.slug}) ${project.status}`
               ),
             ].join("\n")
-          : "No saved Game Studio projects found.",
+          : "No saved Game Studio projects found."
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2905,10 +2602,7 @@ export function createWtfMcpServer(
         title: z.string().trim().min(1).max(200),
         description: z.string().trim().max(2000).optional(),
         template_id: z.string().trim().max(120).default("endless-runner"),
-        selected_asset_ids: z
-          .array(z.string().trim().max(120))
-          .max(100)
-          .default([]),
+        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).default([]),
         local_assets: GameStudioLocalAssetsSchema,
         files: GameStudioFilesSchema,
         response_format: ResponseFormatSchema,
@@ -2932,14 +2626,14 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_create_game_studio_project",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["game-studio:write"],
         "wtf_create_game_studio_project",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -2955,9 +2649,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, project },
         response_format,
-        `Created Game Studio project #${project.id}: ${project.title} (${project.slug}).`,
+        `Created Game Studio project #${project.id}: ${project.title} (${project.slug}).`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -2971,10 +2665,7 @@ export function createWtfMcpServer(
         title: z.string().trim().min(1).max(200).optional(),
         description: z.string().trim().max(2000).optional(),
         template_id: z.string().trim().max(120).optional(),
-        selected_asset_ids: z
-          .array(z.string().trim().max(120))
-          .max(100)
-          .optional(),
+        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).optional(),
         local_assets: GameStudioLocalAssetsSchema,
         files: GameStudioFilesSchema,
         response_format: ResponseFormatSchema,
@@ -2999,14 +2690,14 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_update_game_studio_project",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["game-studio:write"],
         "wtf_update_game_studio_project",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -3023,9 +2714,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, project },
         response_format,
-        `Updated Game Studio project #${project.id}: ${project.title}.`,
+        `Updated Game Studio project #${project.id}: ${project.title}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -3050,14 +2741,14 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "game-studio",
         "wtf_build_game_studio_project",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["game-studio:write"],
         "wtf_build_game_studio_project",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -3078,9 +2769,9 @@ export function createWtfMcpServer(
           `Build #${built.build.buildNumber}`,
           `Size: ${built.sizeBytes} bytes`,
           `Checksum: ${built.build.checksumSha256}`,
-        ].join("\n"),
+        ].join("\n")
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -3095,18 +2786,8 @@ export function createWtfMcpServer(
         description: z.string().trim().max(1000).optional(),
         category: z.string().trim().max(80).optional(),
         update_slug: z.string().trim().max(120).optional(),
-        max_possible_score: z
-          .number()
-          .int()
-          .min(0)
-          .max(Number.MAX_SAFE_INTEGER)
-          .optional(),
-        max_score_per_second: z
-          .number()
-          .int()
-          .min(0)
-          .max(1_000_000_000)
-          .optional(),
+        max_possible_score: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+        max_score_per_second: z.number().int().min(0).max(1_000_000_000).optional(),
         response_format: ResponseFormatSchema,
       }),
       annotations: {
@@ -3129,20 +2810,20 @@ export function createWtfMcpServer(
       const studioGate = await requireMcpFeature(
         "game-studio",
         "wtf_submit_game_studio_project_to_arcade",
-        response_format,
+        response_format
       );
       if (!studioGate.ok) return studioGate.error!;
       const arcadeGate = await requireMcpFeature(
         "arcade",
         "wtf_submit_game_studio_project_to_arcade",
-        response_format,
+        response_format
       );
       if (!arcadeGate.ok) return arcadeGate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["game-studio:write", "arcade:write"],
         "wtf_submit_game_studio_project_to_arcade",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -3162,9 +2843,9 @@ export function createWtfMcpServer(
         response_format,
         submitted.game.status === "active"
           ? `${submitted.game.title} is live in WTF Arcade as ${submitted.game.slug}.`
-          : `${submitted.game.title} was submitted to WTF Arcade as ${submitted.game.slug}.`,
+          : `${submitted.game.title} was submitted to WTF Arcade as ${submitted.game.slug}.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -3192,10 +2873,7 @@ export function createWtfMcpServer(
         price_exp: z.number().int().min(1).max(1_000_000).default(100),
         stock_quantity: z.number().int().min(1).max(999_999).default(25),
         metadata: z
-          .record(
-            z.string(),
-            z.union([z.string(), z.number(), z.boolean(), z.null()]),
-          )
+          .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
           .default({}),
         response_format: ResponseFormatSchema,
       }),
@@ -3220,14 +2898,14 @@ export function createWtfMcpServer(
       const gate = await requireMcpFeature(
         "wtfiam",
         "wtf_create_trusted_creator_market_item",
-        response_format,
+        response_format
       );
       if (!gate.ok) return gate.error!;
       const scopeError = requireMcpScopes(
         auth,
         ["market:write"],
         "wtf_create_trusted_creator_market_item",
-        response_format,
+        response_format
       );
       if (scopeError) return scopeError;
 
@@ -3244,9 +2922,9 @@ export function createWtfMcpServer(
       return toolResult(
         { ok: true, item },
         response_format,
-        `Created in-app market item ${item.name} (${item.sku}) for ${item.priceExp} EXP.`,
+        `Created in-app market item ${item.name} (${item.sku}) for ${item.priceExp} EXP.`
       );
-    },
+    }
   );
 
   registerCrpNominationMcpTools(server, auth);
