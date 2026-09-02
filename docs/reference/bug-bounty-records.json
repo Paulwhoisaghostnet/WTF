@@ -722,7 +722,7 @@
     },
     {
       "id": "WTF-BB-060",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex DEX cache reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Runtime / API scaling",
@@ -733,7 +733,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)",
-      "body": "- Evidence:\n  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.\n  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.\n  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.\n- Why it matters:\n  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.\n- Likely correction direction:\n  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.\n- Verification idea:\n  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.\n- Claim (2026-09-02):\n  - Codex claimed the item for stale-record reconciliation after current source and focused tests showed the route already delegates every DEX cache key, including tag and pair ID variants, to the shared bounded/expiring cache.",
+      "body": "- Historical evidence:\n  - DEX counterpart and metrics routes once derived process-cache keys from arbitrary `:tag` and `:pairId` inputs without an overall cap or stale-key sweep.\n- Why it mattered:\n  - High-cardinality callers could retain distinct cache identities across the process lifetime even after individual values were no longer useful.\n- Correction:\n  - Ancestor commit `2c3d64996` moved the route to `createBoundedExpiringCache`. All fixed, tag-derived, and pair-derived DEX entries share a 30-second TTL and one `DEX_CACHE_MAX_ENTRIES` ceiling with a validated minimum and 500-entry default.\n  - The shared primitive sweeps expired entries periodically and evicts least-recently-used overflow entries, so splitting requests across `counterparts` and `metrics` prefixes cannot bypass the process-wide cap. The DEX route policy rejects restoration of the old raw cache map.\n- Verification (2026-09-02):\n  - The focused DEX/shared-cache suite passes 4/4: current route ownership, live reads before TTL, expired-key removal, and five-key churn stabilizing at a configured three-entry ceiling.\n  - Commit `2c3d64996` is an ancestor of current production, and live health reports descendant `15ce5a5a`. The unbounded map described by the Open record is absent, so WTF-BB-060 is Verified.",
       "legacyOriginalId": "WTF-BB-060"
     },
     {

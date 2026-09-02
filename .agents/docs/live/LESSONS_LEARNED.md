@@ -11467,3 +11467,13 @@
 **Rule**: Pin deployment CLIs, isolate their npm cache from user-global state, derive a bounded cold-install guard from measured resolution time, and distinguish successful tool execution from authentication/site linkage. A status check may prove the tool path without authorizing a deploy.
 
 ---
+
+## 2026-09-02 — Cache prefixes do not create separate memory budgets
+
+**What happened**: The DEX bounty described attacker-controlled counterpart and metrics keys as unbounded after the route had already moved every prefix into one bounded, expiring cache. The important property was not validation of each possible token tag or pair ID; it was the shared process-wide ceiling across them.
+
+**Why it mattered**: Per-prefix reasoning can miss aggregate growth when callers spread cardinality across several endpoints. Conversely, a single global cap plus expiry can make arbitrary but harmless lookup identities safe without rejecting legitimate new market pairs.
+
+**Rule**: For related request-derived cache keys, prove one aggregate cardinality ceiling, stale expiry, and overflow eviction across all prefixes. Reconcile route ownership and correction ancestry before adding redundant per-endpoint maps or validators.
+
+---

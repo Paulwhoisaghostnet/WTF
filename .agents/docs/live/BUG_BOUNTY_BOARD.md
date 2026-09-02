@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **8** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **423** · Archived: **4**
+Total: **637** · Open: **8** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **424** · Archived: **4**
 
 ## Canonical Board
 
@@ -78,7 +78,6 @@ Total: **637** · Open: **8** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-060 | Claimed | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -603,6 +602,7 @@ Total: **637** · Open: **8** · Claimed: **42** · In Progress: **13** · Block
 | WTF-BB-112 | Verified | Codex arcade/console split pass | 2026-05-07 | Frontend / link safety | P2 | 9 | 511 | 1 | 2 | 3 | Provenance/support links failed external-link safety gate |
 | WTF-BB-086 | Verified | Codex PFP media boundary pass | 2026-09-02 | Privacy / media validation | P2 | 9 | 511 | 2 | 3 | 1 | Profile PFP update stores arbitrary image URLs without sanitizer or ownership check |
 | WTF-BB-074 | Verified | Codex Netlify rollback verification | 2026-09-02 | Kiln integration / deploy tooling | P2 | 9 | 511 | 2 | 2 | 2 | Netlify CLI rollback path is blocked by root-owned npm cache |
+| WTF-BB-060 | Verified | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 572 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 572 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 572 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1654,27 +1654,6 @@ Total: **637** · Open: **8** · Claimed: **42** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-060 - DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)
-
-- Category: Runtime / API scaling
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex DEX cache reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence:
-  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.
-  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.
-  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.
-- Why it matters:
-  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.
-- Likely correction direction:
-  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.
-- Verification idea:
-  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.
-- Claim (2026-09-02):
-  - Codex claimed the item for stale-record reconciliation after current source and focused tests showed the route already delegates every DEX cache key, including tag and pair ID variants, to the shared bounded/expiring cache.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13674,6 +13653,25 @@ Copy this when adding a new issue:
   - Direct `npx --yes netlify-cli@latest status` reproduces the original root-cache `EACCES`.
   - The wrapper policy test passes and locks the local cache, pinned CLI, Node 22 preference, ignored cache directory, and measured timeout.
   - `npm run deploy:netlify:status` completes without `EACCES` and reaches the Netlify CLI's actual result: `Not logged in. Please log in to see site status.` It exits 0. Authentication is now the explicit operator prerequisite rather than an npm ownership failure; no preview or production deploy was attempted. WTF-BB-074 is Verified.
+
+### WTF-BB-060 - DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)
+
+- Category: Runtime / API scaling
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex DEX cache reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - DEX counterpart and metrics routes once derived process-cache keys from arbitrary `:tag` and `:pairId` inputs without an overall cap or stale-key sweep.
+- Why it mattered:
+  - High-cardinality callers could retain distinct cache identities across the process lifetime even after individual values were no longer useful.
+- Correction:
+  - Ancestor commit `2c3d64996` moved the route to `createBoundedExpiringCache`. All fixed, tag-derived, and pair-derived DEX entries share a 30-second TTL and one `DEX_CACHE_MAX_ENTRIES` ceiling with a validated minimum and 500-entry default.
+  - The shared primitive sweeps expired entries periodically and evicts least-recently-used overflow entries, so splitting requests across `counterparts` and `metrics` prefixes cannot bypass the process-wide cap. The DEX route policy rejects restoration of the old raw cache map.
+- Verification (2026-09-02):
+  - The focused DEX/shared-cache suite passes 4/4: current route ownership, live reads before TTL, expired-key removal, and five-key churn stabilizing at a configured three-entry ceiling.
+  - Commit `2c3d64996` is an ancestor of current production, and live health reports descendant `15ce5a5a`. The unbounded map described by the Open record is absent, so WTF-BB-060 is Verified.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 
