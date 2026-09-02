@@ -2514,9 +2514,9 @@
     },
     {
       "id": "WTF-BB-346",
-      "status": "Fixed",
-      "owner": "Codex WTF LIVE smart-room goal",
-      "lastTouched": "2026-07-01",
+      "status": "In Progress",
+      "owner": "Codex WTF LIVE smart-room production verification",
+      "lastTouched": "2026-09-02",
       "category": "WTF LIVE / user-aware room operations",
       "priority": "P1",
       "points": 14,

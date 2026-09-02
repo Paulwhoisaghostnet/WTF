@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **120** · Verified: **456** · Archived: **4**
+Total: **639** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **119** · Verified: **456** · Archived: **4**
 
 ## Canonical Board
 
@@ -75,6 +75,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
+| WTF-BB-346 | In Progress | Codex WTF LIVE smart-room production verification | 2026-09-02 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
@@ -128,7 +129,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 371 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
-| WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 186 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-622 | Fixed | Codex commission fulfillment | 2026-08-29 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Production disables commissioned Arcade, Casino, Game Studio, Studio, and creator services while first-run help and FAQ do not explain Play/Create/Shop/Events/Talk journeys |
 | WTF-BB-447 | Fixed | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / historical indexer evidence | P1 | 13 | 186 | 3 | 4 | 2 | Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized |
@@ -1635,6 +1635,33 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
   - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
+### WTF-BB-346 - WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E
+
+- Category: WTF LIVE / user-aware room operations
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex WTF LIVE smart-room production verification
+- Last touched: 2026-09-02
+- Score: C4 + F5 + S1 + P1(4) = 14
+- Evidence:
+  - 2026-07-01 user request: room and stage owners can now create/join rooms, but owner operations still do not know existing wtfOS users well enough to select users for host/speaker/guest roles or send invites.
+  - Stage rooms, public rooms, and private rooms lack a room-owned "schedule event" handoff that can write to WTF Calendar, TTC Events, or both.
+  - Owned rooms need a settings icon surface for permissions, Show Kit usage, and the chosen Show Kit; Show Kits need persistence and per-room association instead of only ad hoc clip use.
+- Why it matters:
+  - Live-room logistics depend on identity, permissions, timing, and reusable show materials. Without user-aware controls and durable room settings, hosts must coordinate outside wtfOS and can invite or authorize the wrong people.
+  - Calendar and TTC event mirroring are cross-app public commitments; they need explicit owner review, target selection, and durable event writes.
+- Likely correction:
+  - Add a signed-in user search/selection API suitable for room ownership controls, role/invite persistence, room settings persistence, calendar/TTC event creation, and saved Show Kit records that can be associated with stage, public, and private rooms.
+  - Wire the controls through owned room/stage dashboard cards and in-room owner controls, updating interaction inventory and behavior coverage.
+- Verification idea:
+  - Focused server/source tests for identity search, permission updates, event target handling, and Show Kit/room association.
+  - Focused WTF LIVE Playwright for owner role selection, scheduling, settings, and Show Kit assignment; `npm run test:e2e:inventory:coverage` plus touched inventory workflows.
+- Fix/Verification:
+  - Added persistent smart-room schema and APIs for wtfOS user search, host/guest/speaker roles, room invites, room settings, room calendar events, and saved Show Kits with room association.
+  - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
+  - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
+  - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
+
 ### WTF-BB-298 - Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing
 
 - Category: API / app gates and information disclosure
@@ -2870,33 +2897,6 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npm run check -- --pretty false` passed.
 - Remaining target-environment proof before Verified:
   - Configure a dedicated production bucket with Object Lock enabled, run the pipeline, delete the local dump in a controlled drill, restore from the remote-only object, and record row-count/media-manifest proof plus the actual RPO/RTO.
-
-### WTF-BB-346 - WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E
-
-- Category: WTF LIVE / user-aware room operations
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex WTF LIVE smart-room goal
-- Last touched: 2026-07-01
-- Score: C4 + F5 + S1 + P1(4) = 14
-- Evidence:
-  - 2026-07-01 user request: room and stage owners can now create/join rooms, but owner operations still do not know existing wtfOS users well enough to select users for host/speaker/guest roles or send invites.
-  - Stage rooms, public rooms, and private rooms lack a room-owned "schedule event" handoff that can write to WTF Calendar, TTC Events, or both.
-  - Owned rooms need a settings icon surface for permissions, Show Kit usage, and the chosen Show Kit; Show Kits need persistence and per-room association instead of only ad hoc clip use.
-- Why it matters:
-  - Live-room logistics depend on identity, permissions, timing, and reusable show materials. Without user-aware controls and durable room settings, hosts must coordinate outside wtfOS and can invite or authorize the wrong people.
-  - Calendar and TTC event mirroring are cross-app public commitments; they need explicit owner review, target selection, and durable event writes.
-- Likely correction:
-  - Add a signed-in user search/selection API suitable for room ownership controls, role/invite persistence, room settings persistence, calendar/TTC event creation, and saved Show Kit records that can be associated with stage, public, and private rooms.
-  - Wire the controls through owned room/stage dashboard cards and in-room owner controls, updating interaction inventory and behavior coverage.
-- Verification idea:
-  - Focused server/source tests for identity search, permission updates, event target handling, and Show Kit/room association.
-  - Focused WTF LIVE Playwright for owner role selection, scheduling, settings, and Show Kit assignment; `npm run test:e2e:inventory:coverage` plus touched inventory workflows.
-- Fix/Verification:
-  - Added persistent smart-room schema and APIs for wtfOS user search, host/guest/speaker roles, room invites, room settings, room calendar events, and saved Show Kits with room association.
-  - Wired owned public rooms, private rooms, and stages to role pickers, invite actions, schedule buttons, settings buttons, and Show Kit association; owners/hosts also get in-room settings controls for permissions and Show Kit usage.
-  - Updated inventory docs, workflow probes, behavior assertions, admin registry coverage, Playwright harness state, and WTF LIVE owner-control coverage.
-  - Passed `npm run check -- --pretty false`, `npm run build`, `npm run test:e2e:inventory:coverage`, focused WTF LIVE smart-room/Show Kit/private-room Playwright probes, and full `HARNESS_PORT=4192 npm run test:e2e:inventory` with 580/580 passing.
 
 ### WTF-BB-641 - Rat Race hot-edition feed is backed by an empty local market index
 
