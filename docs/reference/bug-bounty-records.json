@@ -722,9 +722,9 @@
     },
     {
       "id": "WTF-BB-060",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex DEX cache reconciliation",
+      "lastTouched": "2026-09-02",
       "category": "Runtime / API scaling",
       "priority": "P2",
       "points": 9,
@@ -733,7 +733,7 @@
       "functionalityDanger": 3,
       "securityDanger": 1,
       "title": "DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)",
-      "body": "- Evidence:\n  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.\n  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.\n  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.\n- Why it matters:\n  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.\n- Likely correction direction:\n  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.\n- Verification idea:\n  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.",
+      "body": "- Evidence:\n  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.\n  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.\n  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.\n- Why it matters:\n  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.\n- Likely correction direction:\n  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.\n- Verification idea:\n  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.\n- Claim (2026-09-02):\n  - Codex claimed the item for stale-record reconciliation after current source and focused tests showed the route already delegates every DEX cache key, including tag and pair ID variants, to the shared bounded/expiring cache.",
       "legacyOriginalId": "WTF-BB-060"
     },
     {

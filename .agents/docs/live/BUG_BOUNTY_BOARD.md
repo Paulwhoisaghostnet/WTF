@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **9** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **423** · Archived: **4**
+Total: **637** · Open: **8** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **423** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
-| WTF-BB-060 | Open | - | 2026-04-27 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-042 | Open | - | 2026-04-27 | TV microapp / schema drift | P2 | 9 | 511 | 2 | 2 | 2 | Boot-time TV backfill applies schema-like changes without single-writer lock |
 | WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
@@ -79,6 +78,7 @@ Total: **637** · Open: **9** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-060 | Claimed | Codex DEX cache reconciliation | 2026-09-02 | Runtime / API scaling | P2 | 9 | 511 | 2 | 3 | 1 | DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`) |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -678,25 +678,6 @@ Total: **637** · Open: **9** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-060 - DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)
-
-- Category: Runtime / API scaling
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence:
-  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.
-  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.
-  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.
-- Why it matters:
-  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.
-- Likely correction direction:
-  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.
-- Verification idea:
-  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.
 
 ### WTF-BB-042 - Boot-time TV backfill applies schema-like changes without single-writer lock
 
@@ -1673,6 +1654,27 @@ Total: **637** · Open: **9** · Claimed: **41** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-060 - DEX cache keyspace is unbounded by request params (`counterparts`, `metrics`)
+
+- Category: Runtime / API scaling
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex DEX cache reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence:
+  - `server/routes/dex.ts:18` stores all cache entries in a single process module map.
+  - `server/routes/dex.ts:200` and `server/routes/dex.ts:267` create cache keys from `:tag` and `:pairId` path params.
+  - `server/routes/dex.ts` does not cap map length or run background cleanup; keys stay until TTL check hits and are recomputed per distinct input.
+- Why it matters:
+  - A malicious/high-volume caller can force unique cache keys by passing rare tags/pairs, leaving stale cache entries to accumulate across process lifetime.
+- Likely correction direction:
+  - Normalize/validate the allowed key cardinality, cap per-prefix entry counts, and periodically prune stale keys outside TTL.
+- Verification idea:
+  - Drive high-cardinality DEX queries and confirm the cache never exceeds a configured cap.
+- Claim (2026-09-02):
+  - Codex claimed the item for stale-record reconciliation after current source and focused tests showed the route already delegates every DEX cache key, including tag and pair ID variants, to the shared bounded/expiring cache.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
