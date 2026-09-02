@@ -11617,3 +11617,13 @@
 **Rule**: Classify deploy failures at the exact failing boundary, then require a successful descendant deployment, an exact live commit report, and behavior-level production evidence before closing the affected record.
 
 ---
+
+## 2026-09-02 — Attribute a red suite to the failing contract
+
+**What happened**: The automation-harness correction's initial aggregate run ended red even though its focused contract and browser story had passed; the sole failure belonged to an unrelated domain story. A later descendant passed the complete aggregate suite.
+
+**Why it mattered**: A red workflow blocks release confidence, but it does not prove every included correction is defective. Conversely, focused green checks alone do not erase a red aggregate result.
+
+**Rule**: Preserve the failed aggregate result, identify its exact owner, re-prove the affected correction directly, and require a later all-green descendant before reconciling its record as Verified.
+
+---

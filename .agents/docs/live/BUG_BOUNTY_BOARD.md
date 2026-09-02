@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **135** · Verified: **440** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **134** · Verified: **441** · Archived: **4**
 
 ## Canonical Board
 
@@ -221,7 +221,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 572 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 572 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 511 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
-| WTF-BB-317 | Fixed | Codex challenge automation harness parity | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 608 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
 | WTF-BB-509 | Verified | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / deployment artifact identity | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's deployment certificate authenticated only half of its four-contract product |
@@ -658,6 +657,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 630 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 630 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 369 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
+| WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 608 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 630 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 636 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 636 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
@@ -4860,22 +4860,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Verification idea: Main route loads without wallet mega-chunks; wallet flows still work after lazy import.
 - 2026-05-06 fix note: Added browser-safe aliases for `fs`/`crypto` side-effect imports from wallet UI packages, split wallet dependencies into `vendor-taquito`, `vendor-octez`, `vendor-beacon`, and `vendor-crypto`, and set an explicit 2 MB Vite chunk budget for those lazy wallet chunks.
 - Verification: `npm run build` completed without browser-externalized Node core warnings or the generic Vite chunk-size warning.
-
-### WTF-BB-317 - Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion
-
-- Category: E2E / Playwright harness parity
-- Priority: P3
-- Status: Fixed
-- Owner/Session: Codex challenge automation harness parity
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S0 + P3(2) = 7
-- Historical evidence:
-  - The local Playwright harness returned `{ triggers, predicates, actions }` for `/api/admin/challenge-automation/registry`, while the production route and Automation UI use `rewardActions`. Direct harness-backed Automation proofs could therefore crash while reading `registry.rewardActions.length`.
-- Correction (2026-09-02):
-  - The shared harness fixture now returns `rewardActions`, matching the production route. A focused contract test compares the harness key, production response, and consuming Admin tab and forbids reintroduction of the legacy `actions` array in that route block.
-  - A focused Chromium story opens `/admin?section=automation` without a route override and asserts the registry panel visibly renders `0 triggers`, `0 predicates`, and `0 reward actions`.
-- Verification:
-  - Harness contract test passes 1/1, focused browser story passes 1/1, and inventory registry coverage remains complete. The correction awaits commit/push and CI before WTF-BB-317 can move from Fixed to Verified.
 
 ### WTF-BB-508 - Reward escrow is tested but absent from the live reward path
 
@@ -14773,6 +14757,22 @@ Copy this when adding a new issue:
   - Completed: preserve the distinction between TzKT operation hashes and numeric entity ids.
 - Verification idea:
   - Completed with focused policy/unit tests, the exact live TzKT row, and post-deploy readiness verification.
+
+### WTF-BB-317 - Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion
+
+- Category: E2E / Playwright harness parity
+- Priority: P3
+- Status: Verified
+- Owner/Session: Codex challenge automation harness parity verification
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S0 + P3(2) = 7
+- Historical evidence:
+  - The local Playwright harness returned `{ triggers, predicates, actions }` for `/api/admin/challenge-automation/registry`, while the production route and Automation UI use `rewardActions`. Direct harness-backed Automation proofs could therefore crash while reading `registry.rewardActions.length`.
+- Correction (2026-09-02):
+  - Commit `896f7761` changes the shared harness fixture to return `rewardActions`, matching the production route. A focused contract test compares the harness key, production response, and consuming Admin tab and forbids reintroduction of the legacy `actions` array in that route block.
+  - A focused Chromium story opens `/admin?section=automation` without a route override and asserts the registry panel visibly renders `0 triggers`, `0 predicates`, and `0 reward actions`.
+- Verification:
+  - The harness contract test passes 1/1, the focused Chromium story passes 1/1, and inventory registry coverage remains complete. Quality Gates run 33619118346 passed the complete suite for descendant `d62d6b7f`; Deploy run 33619118314 successfully placed that descendant in production, and public `/api/health` reported the exact deployed commit. The earlier correction-run failure occurred in an unrelated domain interoperability story after this record's focused proof passed. WTF-BB-317 is Verified.
 
 ### WTF-BB-230 - WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay
 
