@@ -11717,3 +11717,13 @@
 **Rule**: Emit and normalize Supabase URLs to `sslmode=verify-full`, including supplied override URLs, before constructing a database client. Keep any downgrade behind one explicit warning-backed emergency flag and prove the default rejects a self-signed endpoint.
 
 ---
+
+## 2026-09-02 — Recovery feedback must change the failing state
+
+**What happened**: Canonical TV displayed a broken-clip notice and emitted error telemetry, but its hard-error handler refreshed the server's unchanged wall-clock cursor. The same broken item could immediately return instead of yielding to the healthy item already present in the client queue.
+
+**Why it mattered**: Visible feedback and telemetry made the recovery path look complete without delivering the viewer-facing outcome. A source scan could prove the pieces existed while missing that they were wired to the wrong queue transition.
+
+**Rule**: For recoverable playback errors, prove the UI leaves the failing item. Advance to the next non-blacklisted local queue entry when one exists, retain authoritative refresh only as the fallback, and browser-test the notice, next-media rendering, and emitted session telemetry together.
+
+---

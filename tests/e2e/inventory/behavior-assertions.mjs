@@ -1055,6 +1055,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The live harness proves the same public active channel resolves through channel list, owned-channel scope, now/stream state, dial lookup, embed metadata, and oEmbed metadata without requiring private media access; source policy locks boundary refetch, offset seeking, and a single media authority into the generated embed player.",
   },
   {
+    id: "tv.broken-clip-recovery",
+    domain: "WTF TV, Playback, Channels, and Embeds",
+    ownerSurfaceIds: ["tv"],
+    ownerSpec:
+      "tests/playwright/inventory/wtfos-guide-tv.spec.mjs; server/lib/tv-telemetry.test.ts",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/wtfos-guide-tv.spec.mjs && npx tsx --test server/lib/tv-telemetry.test.ts",
+    userVisibleAssertion:
+      "When the canonical WTF TV encounters a broken clip, the viewer sees an immediate plain-language skip notice and playback advances to the next healthy queue item instead of silently retrying the broken on-air cursor.",
+    durableSideEffectAssertion:
+      "The browser harness captures an error item-end event carrying the broken video id and a non-empty session id, while the server telemetry tests prove distinct-session blacklisting remains bounded and windowed.",
+  },
+  {
     id: "gameshow.automation-completion-reward-proof",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["challenges", "side-quests"],

@@ -1,5 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useCallback } from "react";
+import { findNextQueueTarget, queueItemKey } from "../../lib/tv-playback";
 import { reportItemEnd, tvLog } from "./telemetry";
 import type { BumperPoolItem, StreamQueueItem } from "./types";
 
@@ -28,6 +29,10 @@ type UseTVMediaEventHandlersArgs = {
   setBumperError: StateSetter<boolean>;
   setActiveBumper: StateSetter<BumperPoolItem | null>;
   flashSkipNotice: (message: string) => void;
+  advanceQueue: (options?: {
+    targetIdx?: number;
+    skippedBlacklisted?: number;
+  }) => void;
   stepStream: () => void;
   finishTransition: () => void;
   pickNextBumper: () => BumperPoolItem | null;
@@ -56,6 +61,7 @@ export function useTVMediaEventHandlers({
   setBumperError,
   setActiveBumper,
   flashSkipNotice,
+  advanceQueue,
   stepStream,
   finishTransition,
   pickNextBumper,
@@ -98,9 +104,11 @@ export function useTVMediaEventHandlers({
   ]);
 
   const handleCurrentMediaError = useCallback(() => {
-    const directSource = streamCurrent?.sourceUri || "";
+    const queue = streamQueue || [];
+    const queueActive = queue[clientQueueIdx] ?? streamCurrent ?? null;
+    const directSource = queueActive?.sourceUri || "";
     const start = currentItemStartRef.current;
-    if (streamCurrent?.kind !== "embed" && !currentMediaUseDirect && directSource) {
+    if (queueActive?.kind !== "embed" && !currentMediaUseDirect && directSource) {
       tvLog("item.error.fallback", {
         key: currentKeyRef.current,
         elapsedMs: start > 0 ? Date.now() - start : null,
@@ -114,7 +122,8 @@ export function useTVMediaEventHandlers({
     mediaReadyRef.current = false;
     setCurrentMediaError(true);
 
-    const failKey = currentKeyRef.current || "unknown";
+    const failKey =
+      currentKeyRef.current || (queueActive ? queueItemKey(queueActive) : "unknown");
     const prevFails = failedItemCountsRef.current.get(failKey) ?? 0;
     const nextFails = prevFails + 1;
     failedItemCountsRef.current.set(failKey, nextFails);
@@ -133,8 +142,6 @@ export function useTVMediaEventHandlers({
       sessionBlacklisted: justBlacklisted,
     });
 
-    const queueActive =
-      (streamQueue || [])[clientQueueIdx] ?? streamCurrent ?? null;
     if (queueActive) {
       reportItemEnd({
         sessionId: sessionIdRef.current,
@@ -156,8 +163,24 @@ export function useTVMediaEventHandlers({
         : "Skipping broken clip..."
     );
 
-    stepStream();
+    const currentQueueIdx = queue.findIndex(
+      (item) => queueItemKey(item) === failKey
+    );
+    const next = findNextQueueTarget(
+      queue,
+      currentQueueIdx >= 0 ? currentQueueIdx : clientQueueIdx,
+      sessionSkipListRef.current
+    );
+    if (next.nextItem && next.nextKey !== failKey) {
+      advanceQueue({
+        targetIdx: next.nextIdx,
+        skippedBlacklisted: next.skippedBlacklisted,
+      });
+    } else {
+      stepStream();
+    }
   }, [
+    advanceQueue,
     clientQueueIdx,
     currentItemStartRef,
     currentKeyRef,

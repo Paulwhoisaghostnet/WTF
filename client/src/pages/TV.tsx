@@ -579,6 +579,7 @@ export function TV() {
     setBumperError,
     setActiveBumper,
     flashSkipNotice,
+    advanceQueue,
     stepStream,
     finishTransition,
     pickNextBumper,

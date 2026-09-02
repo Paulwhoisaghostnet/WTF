@@ -1088,7 +1088,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["WTF TV", "Content", "Automation"],
     nativeSettings: ["source mode", "playlist size", "bumpers", "refresh cadence", "cache policy"],
     automationHandles: ["tv.telemetry.ingested", "media.tv_added", "app.interaction.tracked"],
-    behaviorAssertionIds: ["tv.public-channel-stream-embed"],
+    behaviorAssertionIds: [
+      "tv.public-channel-stream-embed",
+      "tv.broken-clip-recovery",
+    ],
   },
   {
     id: "media-library",
