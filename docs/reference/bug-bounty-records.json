@@ -2546,7 +2546,7 @@
     },
     {
       "id": "WTF-BB-092",
-      "status": "Fixed",
+      "status": "In Progress",
       "owner": "Codex MCP agent layer pass",
       "lastTouched": "2026-05-04",
       "category": "MCP / agent access control",
