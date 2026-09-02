@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **14** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **416** · Archived: **4**
+Total: **637** · Open: **14** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **417** · Archived: **4**
 
 ## Canonical Board
 
@@ -84,7 +84,6 @@ Total: **637** · Open: **14** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-071 | Claimed | Codex jstz adapter proof reconciliation | 2026-09-02 | Kiln integration / jstz adapter | P2 | 10 | 449 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -576,6 +575,7 @@ Total: **637** · Open: **14** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-512 | Verified | Codex wtfOS contract release | - | Casino / wallet integration | P2 | 10 | 449 | 2 | 3 | 2 | Casino browser encoded a scalar entrypoint as a record |
 | WTF-BB-229 | Verified | Codex WTF LIVE WIM identity pass | 2026-06-09 | WTF LIVE / wtfOS identity and WIM buddies | P2 | 10 | 449 | 3 | 4 | 0 | WTF LIVE now binds signed-in room joins to wtfOS usernames, emits account-backed attendance metadata, and lets signed-in viewers add WTF users to WIM buddies from compact roster rows |
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 449 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
+| WTF-BB-071 | Verified | Codex jstz adapter proof reconciliation | 2026-09-02 | Kiln integration / jstz adapter | P2 | 10 | 449 | 4 | 2 | 1 | jstz is only planned/configurable and has no executable Kiln adapter |
 | WTF-BB-062 | Verified | Codex W repair pass | 2026-05-24 | Runtime / API scaling | P2 | 10 | 449 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
 | WTF-BB-059 | Verified | Codex board webhook limiter reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
 | WTF-BB-058 | Verified | Codex Tezos identity cache reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
@@ -1764,23 +1764,6 @@ Total: **637** · Open: **14** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-071 - jstz is only planned/configurable and has no executable Kiln adapter
-
-- Category: Kiln integration / jstz adapter
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex jstz adapter proof reconciliation
-- Last touched: 2026-09-02
-- Score: C4 + F2 + S1 + P2(3) = 10
-- Evidence:
-  - jstz docs say there is not yet a stable production network; local Kiln now marks jstz as planned/local only and does not expose active execution.
-- Why it matters:
-  - Kiln should be future-facing without giving builders a fake green path for jstz deploy/test.
-- Likely correction direction:
-  - Add a real jstz CLI/sandbox adapter for local smart-function deploy/run and make external jstz networks configurable only when endpoints are provided.
-- Verification idea:
-  - Deploy and run a local jstz counter function through Kiln, capturing request/response evidence and failure output.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13046,6 +13029,23 @@ Copy this when adding a new issue:
   - Updated inventory docs and system specs for the Start Menu gate semantics.
   - Verified with `npx tsx --test client/src/components/layout/start-menu-app-gates.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run build`, `npx playwright test tests/playwright/inventory/system-integration.spec.mjs`, and `npm run test:e2e:inventory` (209 passed).
   - `npm run check -- --pretty false` remains blocked by unrelated dirty-worktree type errors in `client/src/pages/Hoard.tsx` and `server/features/game-studio/catalog.ts`.
+
+### WTF-BB-071 - jstz is only planned/configurable and has no executable Kiln adapter
+
+- Category: Kiln integration / jstz adapter
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex jstz adapter proof reconciliation
+- Last touched: 2026-09-02
+- Score: C4 + F2 + S1 + P2(3) = 10
+- Historical evidence:
+  - jstz was initially represented only as planned/local configuration, with no executable deploy/run proof. The bounty correctly required a real CLI/sandbox counter journey while forbidding a fake production-ready signal.
+- Correction and executable proof:
+  - Commit `ab995d28cf8e3bf326b35b03f128aa7c592bca26` added the adapter gate and recorded the May 18 local proof using official `@jstz-dev/cli@0.1.1-alpha.5` with `docker.io/jstzdev/jstzd:0.1.1-alpha.5`. The sandbox deployed a counter smart function and returned `Current value is 0`, `Incremented. Current value is 1`, then `Current value is 1`.
+  - `scripts/check-jstz-adapter.mjs` keeps jstz planned/disabled by default. When required, it fails closed unless `KILN_JSTZ_ENABLED` is set, the configured executable exists, and a non-shell JSON argv proof command exits successfully; failures capture status, stdout, and stderr.
+- Verification (2026-09-02):
+  - The adapter gate suite passes 5/5 for planned-disabled, required-disabled, malformed-command, failed-proof, and successful-proof states. The constitutional acceptance suite passes 21/21 and retains the official counter evidence plus the explicit local-only boundary.
+  - The proof commit is on `main`. This closes the requested executable local adapter proof without claiming an external production jstz network or enabling jstz in production.
 
 ### WTF-BB-062 - X DM cache maps never garbage-collect stale user-context keys
 

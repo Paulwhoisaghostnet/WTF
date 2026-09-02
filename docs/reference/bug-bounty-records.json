@@ -578,7 +578,7 @@
     },
     {
       "id": "WTF-BB-071",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex jstz adapter proof reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Kiln integration / jstz adapter",
@@ -589,7 +589,7 @@
       "functionalityDanger": 2,
       "securityDanger": 1,
       "title": "jstz is only planned/configurable and has no executable Kiln adapter",
-      "body": "- Evidence:\n  - jstz docs say there is not yet a stable production network; local Kiln now marks jstz as planned/local only and does not expose active execution.\n- Why it matters:\n  - Kiln should be future-facing without giving builders a fake green path for jstz deploy/test.\n- Likely correction direction:\n  - Add a real jstz CLI/sandbox adapter for local smart-function deploy/run and make external jstz networks configurable only when endpoints are provided.\n- Verification idea:\n  - Deploy and run a local jstz counter function through Kiln, capturing request/response evidence and failure output.",
+      "body": "- Historical evidence:\n  - jstz was initially represented only as planned/local configuration, with no executable deploy/run proof. The bounty correctly required a real CLI/sandbox counter journey while forbidding a fake production-ready signal.\n- Correction and executable proof:\n  - Commit `ab995d28cf8e3bf326b35b03f128aa7c592bca26` added the adapter gate and recorded the May 18 local proof using official `@jstz-dev/cli@0.1.1-alpha.5` with `docker.io/jstzdev/jstzd:0.1.1-alpha.5`. The sandbox deployed a counter smart function and returned `Current value is 0`, `Incremented. Current value is 1`, then `Current value is 1`.\n  - `scripts/check-jstz-adapter.mjs` keeps jstz planned/disabled by default. When required, it fails closed unless `KILN_JSTZ_ENABLED` is set, the configured executable exists, and a non-shell JSON argv proof command exits successfully; failures capture status, stdout, and stderr.\n- Verification (2026-09-02):\n  - The adapter gate suite passes 5/5 for planned-disabled, required-disabled, malformed-command, failed-proof, and successful-proof states. The constitutional acceptance suite passes 21/21 and retains the official counter evidence plus the explicit local-only boundary.\n  - The proof commit is on `main`. This closes the requested executable local adapter proof without claiming an external production jstz network or enabling jstz in production.",
       "legacyOriginalId": "WTF-BB-071"
     },
     {

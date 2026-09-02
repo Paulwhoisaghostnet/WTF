@@ -11407,3 +11407,13 @@
 **Rule**: For any in-memory limiter or cache, separately prove the admission ceiling, stale-key expiry, and per-key behavior. Reconcile the bounty against current route ownership and production ancestry before changing a defect that may already be gone.
 
 ---
+
+## 2026-09-02 — Local adapter proof does not imply production network readiness
+
+**What happened**: The jstz bounty remained Open even after an official CLI and `jstzd` sandbox deployed and ran the requested counter function. The same acceptance record deliberately kept jstz disabled in production because the executable local proof and stable external-network readiness are different claims.
+
+**Why it mattered**: Treating the local proof as insufficient kept completed adapter work on the board; treating it as production clearance would create the fake green path the bounty was designed to prevent.
+
+**Rule**: Record execution environment and clearance separately. A local adapter may be Verified when a real sandbox deploy/run succeeds and the gate captures failures, while production stays disabled unless its own endpoint, host configuration, and network evidence are explicitly proven.
+
+---
