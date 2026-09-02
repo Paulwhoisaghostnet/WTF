@@ -74,6 +74,17 @@ test("Hetzner deploys queue and hold one host-side lock instead of orphaning can
   assert.doesNotMatch(deployWorkflow, /cancel-in-progress: true/);
 });
 
+test("Hetzner image builder runs the full TypeScript check with the CI dependency graph", () => {
+  assert.match(
+    dockerfile,
+    /RUN npm ci[\s\S]*COPY \. \.[\s\S]*NODE_OPTIONS=--max-old-space-size=6144 npm run check -- --pretty false[\s\S]*npm run build/,
+  );
+  assert.match(
+    deploy,
+    /docker compose build[\s\S]*app[\s\S]*docker compose stop app/,
+  );
+});
+
 test("LAW.DR4/04 deploy dry-run evidence locks health readiness fields", () => {
   for (const field of [
     "db: DbHealth",

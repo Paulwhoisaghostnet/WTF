@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **12** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **418** · Archived: **4**
+Total: **637** · Open: **12** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **418** · Archived: **4**
 
 ## Canonical Board
 
@@ -82,7 +82,6 @@ Total: **637** · Open: **12** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-310 | Claimed | Codex Hetzner containerized typecheck pass | 2026-09-02 | Ops / Hetzner verification dependencies | P2 | 9 | 511 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -232,6 +231,7 @@ Total: **637** · Open: **12** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-073 | Fixed | Codex Kiln 2026 pass | 2026-05-03 | Kiln integration / observability | P2 | 10 | 449 | 2 | 3 | 2 | Kiln local activity log path can spam EACCES from `/var/log/kiln` |
 | WTF-BB-028 | Fixed | Swarm A2 | 2026-04-28 | Data quality / pipeline | P2 | 10 | 449 | 3 | 3 | 1 | Seeder `LIMIT` queries have no deterministic order |
 | WTF-BB-024 | Fixed | Swarm A2 | 2026-04-28 | Data integrity / workers | P2 | 10 | 449 | 3 | 3 | 1 | Backfill skip statuses can be overwritten as completed |
+| WTF-BB-310 | Fixed | Codex Hetzner containerized typecheck pass | 2026-09-02 | Ops / Hetzner verification dependencies | P2 | 9 | 511 | 2 | 3 | 1 | Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof |
 | WTF-BB-169 | Fixed | Codex Skywire discovery/Tezos pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 9 | 511 | 2 | 4 | 0 | Profile Social & Contact omits linked Skywire/AT identity |
 | WTF-BB-165 | Fixed | Codex Skywire actor feed pass | 2026-05-24 | Comms / Mail route resilience | P2 | 9 | 511 | 2 | 4 | 0 | Mail route crashes when mailbox status payload is sparse |
 | WTF-BB-163 | Fixed | Codex inventory route smoke unblock | 2026-05-24 | Comms / Digest route resilience | P2 | 9 | 511 | 2 | 4 | 0 | Digest route crashes when comms items payload is sparse |
@@ -1728,26 +1728,6 @@ Total: **637** · Open: **12** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-310 - Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof
-
-- Category: Ops / Hetzner verification dependencies
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex Hetzner containerized typecheck pass
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence:
-  - During the production hotfix pass, the remote Hetzner repo at `/opt/platform/repos/wtf-app` could run focused policy tests and inventory coverage, but `npm run check -- --pretty false` failed before checking the hotfix because dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` were missing from that worktree.
-  - The deploy path still completed and live health verified commit `12cbaf6`, so this is a remote verification-tooling gap rather than a production runtime outage.
-- Why it matters:
-  - Emergency production fixes need a trustworthy remote verification path. If the server worktree cannot run the same TypeScript check as CI, agents can either over-trust narrow focused tests or spend time debugging dependency drift unrelated to the fix.
-- Correction:
-  - Define whether Hetzner should keep a dev-dependency capable verification checkout, delegate all full checks to GitHub Actions only, or expose a documented containerized check command with the same dependency graph as CI.
-- Verification:
-  - Run the chosen command on Hetzner and confirm it can complete a full TypeScript check without missing-module failures.
-- Claim (2026-09-02):
-  - Codex selected the existing production image builder as the authoritative Hetzner verification environment because it already installs the complete lockfile dependency graph while the host checkout and final runtime image intentionally remain production-only.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -5087,6 +5067,28 @@ Total: **637** · Open: **12** · Claimed: **42** · In Progress: **13** · Bloc
   - `complete()` now updates only rows still in `in_progress` and returns whether it actually transitioned the row; the dispatcher counts a false return as `skipped` instead of `ok`.
 - Verification:
   - `./node_modules/.bin/tsc --noEmit --pretty false` exited `0` on 2026-04-28 after the manifest/dispatcher change.
+
+### WTF-BB-310 - Hetzner production repo worktree cannot run the full TypeScript check because dev dependencies such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem` are missing; production hotfix verification had to rely on focused tests, GitHub deploy, live health, and live puppet proof
+
+- Category: Ops / Hetzner verification dependencies
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex Hetzner containerized typecheck pass
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Historical evidence:
+  - The remote Hetzner repo at `/opt/platform/repos/wtf-app` could run focused policy tests but not `npm run check -- --pretty false` because its intentionally minimal host dependency set omitted development packages such as `three`, `@atproto/api`, AWS SDK, MCP SDK, and `viem`.
+- Why it mattered:
+  - Emergency production fixes needed a trustworthy remote verification path without widening the host checkout or final runtime image.
+- Correction (2026-09-02):
+  - The production Docker builder remains the authoritative Hetzner verification environment: it installs the complete lockfile dependency graph, copies the exact source being deployed, and now runs `npm run check -- --pretty false` before creation-tool vendor generation or the production build.
+  - The check uses the same measured 6,144 MiB Node heap envelope as the Quality Gates typecheck. The host checkout and final runtime image remain production-minimal.
+  - A deploy policy assertion requires the dependency install, source copy, TypeScript check, and production build to remain ordered before the host stops or replaces the running app.
+- Local verification (2026-09-02):
+  - The deploy policy suite passes 10/10, including the new containerized Hetzner typecheck contract.
+  - `NODE_OPTIONS=--max-old-space-size=6144 npm run check -- --pretty false` passes against the exact source graph.
+- Remaining proof before Verified:
+  - The pushed commit must complete the real Hetzner `docker compose build app`, showing the containerized TypeScript step succeeds before deployment and live health reports the same or a descendant commit.
 
 ### WTF-BB-169 - Profile Social & Contact omits linked Skywire/AT identity
 

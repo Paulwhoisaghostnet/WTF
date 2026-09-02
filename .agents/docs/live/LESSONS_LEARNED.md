@@ -11427,3 +11427,13 @@
 **Rule**: Bind flat-config imports to the exports of the lockfile-installed plugin, run the nested package's real lint command in the shared quality workflow, and treat a configuration-loader failure separately from the source findings it masks.
 
 ---
+
+## 2026-09-02 — Production verification belongs in the dependency-complete build stage
+
+**What happened**: The Hetzner repository checkout and final application image intentionally omitted development dependencies, so an emergency operator could run focused checks but not the repository's full TypeScript check. The production Docker builder already installed the complete lockfile graph and built every deployment, but it did not invoke TypeScript directly.
+
+**Why it mattered**: Installing development packages into the host checkout or final runtime would widen and drift production merely to gain a verification command. Relying only on concurrent CI also allowed the deploy path to proceed without independently proving the source graph it was about to package.
+
+**Rule**: Put deploy-blocking compile verification in the dependency-complete, disposable builder stage. Keep the host checkout and final runtime minimal, use the same measured compiler heap envelope as CI, and require the build log to prove the check completed before the running app is replaced.
+
+---

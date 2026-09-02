@@ -28,7 +28,13 @@ ENV VITE_WALLETCONNECT_PROJECT_ID=$VITE_WALLETCONNECT_PROJECT_ID
 ENV VITE_BARTER_CONTRACT_ADDRESS=$VITE_BARTER_CONTRACT_ADDRESS
 
 COPY . .
-RUN npm run creation-tools:build-tezos-vendors && npm run build
+# The production host checkout intentionally has runtime-only dependencies.
+# Verify the full source graph here, where `npm ci` has installed the same
+# lockfile-backed development graph used by CI. The heap value matches the
+# measured TypeScript headroom enforced by the Quality Gates workflow.
+RUN NODE_OPTIONS=--max-old-space-size=6144 npm run check -- --pretty false && \
+    npm run creation-tools:build-tezos-vendors && \
+    npm run build
 
 FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
 
