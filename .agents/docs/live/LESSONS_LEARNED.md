@@ -11597,3 +11597,13 @@
 **Rule**: Every TV consumer must take `current` and `offsetSeconds` from the server, re-read that authority at natural/error boundaries, and explicitly stop the prior media element before changing media types. Prove synchronization with two independent production viewers after deployment.
 
 ---
+
+## 2026-09-02 — Human identity belongs in the payload contract
+
+**What happened**: Tezos identity enrichment was already deployed across the shared resolver and high-traffic token APIs, but its bounty remained Fixed with only local verification notes.
+
+**Why it mattered**: Component-level formatting can hide raw addresses in one screen while leaving every other consumer anonymous. Conversely, source inspection cannot prove production data actually resolves useful artist and collection names.
+
+**Rule**: Resolve creator and collection identity at the server data boundary, preserve the address as provenance, test fallback precedence, and inspect real public payloads for human names before marking cross-surface identity work Verified.
+
+---

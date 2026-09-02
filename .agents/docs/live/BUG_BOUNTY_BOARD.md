@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **137** · Verified: **438** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **136** · Verified: **439** · Archived: **4**
 
 ## Canonical Board
 
@@ -129,7 +129,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 369 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-392 | Fixed | Codex Objkt Operator persistence | 2026-07-15 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Replaced the temporary localStorage/dev-server portal with an owner-gated wtfOS app backed by PostgreSQL; creator score review, policy, scans, queue state, and public wallet metadata now persist locally, with focused browser and service checks passing; production deployment verification remains pending |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 93 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
-| WTF-BB-649 | Fixed | Codex Tezos identity resolver pass | - | Tezos identity / token display | P1 | 14 | 126 | 5 | 4 | 1 | Tezos creator and collection displays fall back to raw addresses |
 | WTF-BB-346 | Fixed | Codex WTF LIVE smart-room goal | 2026-07-01 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-129 | Fixed | Codex platform wallet keyring pass | 2026-05-08 | Tezos platform wallets / key custody | P1 | 14 | 126 | 4 | 4 | 2 | Platform wallet custody depends on one legacy env secret instead of a role-aware keyring |
 | WTF-BB-092 | Fixed | Codex MCP agent layer pass | 2026-05-04 | MCP / agent access control | P1 | 14 | 126 | 4 | 4 | 2 | Public MCP agent layer needs per-user token auth, rate limits, public-data boundaries, and admin feature gates |
@@ -315,6 +314,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-666 | Verified | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
 | WTF-BB-664 | Verified | Codex Kiln dependency remediation | 2026-09-01 | Kiln dependencies / production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Kiln production dependency graph contains five high-severity transitive advisories |
 | WTF-BB-663 | Verified | Codex Octez 5 production advisory verification | 2026-08-31 | Dependencies / moderate production advisories | P1 | 14 | 126 | 3 | 3 | 4 | Production audit now reports six moderate Hono, body-parser, URI decoding, and wallet-crypto advisories |
+| WTF-BB-649 | Verified | Codex Tezos identity resolver pass | 2026-09-02 | Tezos identity / token display | P1 | 14 | 126 | 5 | 4 | 1 | Tezos creator and collection displays fall back to raw addresses |
 | WTF-BB-647 | Verified | Codex legacy board authorization pass | 2026-08-30 | Authorization / message board | P1 | 14 | 126 | 4 | 4 | 2 | Legacy channel message endpoints bypass board channel permissions |
 | WTF-BB-617 | Verified | Codex Media Mint Manager integration | 2026-08-20 | PixAlerce / media and mint workflow | P1 | 14 | 126 | 4 | 4 | 2 | Owned Media now opens one resumable destination-aware Mint Manager for HEN, Objkt-ready Pasta, associated contracts, or new Pasta contracts, with exact indexed receipt verification |
 | WTF-BB-564 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / Ravioli recovery identity | P1 | 14 | 126 | 3 | 5 | 2 | Active Ravioli recovery accepts only enumerated schemas and exact opened identity, while the retired current-v4 executable fixture is quarantined behind its fail-closed retirement boundary |
@@ -2892,34 +2892,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - `npm run check -- --pretty false` passed.
 - Remaining target-environment proof before Verified:
   - Configure a dedicated production bucket with Object Lock enabled, run the pipeline, delete the local dump in a controlled drill, restore from the remote-only object, and record row-count/media-manifest proof plus the actual RPO/RTO.
-
-### WTF-BB-649 - Tezos creator and collection displays fall back to raw addresses
-
-- Category: Tezos identity / token display
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Tezos identity resolver pass
-- Last touched: -
-- Score: C5 + F4 + S1 + P1(4) = 14
-- Legacy identity: this distinct record formerly reused WTF-BB-111; it was assigned WTF-BB-649 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - User report on 2026-05-06: token cards, media libraries, WTF TV, and dashboard-style surfaces still showed wallet/contract addresses instead of Objkt/Tezos identities and collection titles.
-  - Existing `objkt-identity` code only mapped X handles to Tezos addresses; high-traffic token endpoints pulled `creators[0]` from metadata and returned it directly.
-- Why it matters:
-  - Raw addresses make the app feel anonymous and break scanning across creator, collection, TV, and media workflows. Identity resolution must happen at the data boundary, not by one-off React formatting.
-- Likely correction direction:
-  - Add a shared Tezos identity extractor plus a server resolver that batches `address_labels`, linked-wallet Tezos domains, X identity hints, Objkt holder aliases, and contract metadata titles. Wire the resolver into token, gallery, media-library, marketplace, and TV payloads.
-- Verification idea:
-  - Focused identity extraction/resolver tests, `npm run check -- --pretty false`, `git diff --check`, and `npm run build`.
-- Fix:
-  - Added `shared/tezos-identity.ts` for address detection, safe short-address fallback, creator extraction, and collection-title extraction.
-  - Added `server/lib/tezos-identity.ts` to batch identity resolution through local label tables, linked wallets, X hints, Objkt holder aliases, and contract metadata.
-  - Enriched `/api/profile/tokens`, `/api/wallets/:address/tokens`, `/api/gallery/mine`, `/api/media/*`, `/api/tv/me/playable-tokens`, TV playlist writes/refreshes/live overlays, colleKT tokens, PFP candidates, and trade-board token payloads.
-  - Updated shared token card, owned-token gallery, media token searches, and TV token picker displays to prefer human creator/collection names and only show shortened addresses as fallback.
-- Local verification:
-  - `node --import tsx --test shared/tezos-identity.test.ts server/lib/tezos-identity.test.ts`
-  - `npm run check -- --pretty false`
-  - `git diff --check`
 
 ### WTF-BB-346 - WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E
 
@@ -6958,6 +6930,24 @@ Copy this when adding a new issue:
   - Root and Particle Painter each report `found 0 vulnerabilities` from `npm audit --omit=dev --audit-level=moderate`. The installed production graph resolves MCP 1.30.0, Hono 4.13.5, `@hono/node-server` 2.1.1, `body-parser` 2.3.0, Octez Connect 5.0.3, and WalletConnect core/sign-client/utils 2.23.6.
   - Forty-one focused dependency/wallet tests, TypeScript checking, root and Particle Painter production builds, all 2,509 unit tests, creation-tool synchronization checks, environment and interaction-inventory coverage, and the complete Chromium interaction inventory (700/700 in 14.4 minutes) passed.
   - Hetzner deployment run 33457599586 succeeded. Production health reports exact main commit `286e20db`; `/`, `/tools/macaroni`, `/tools/particle-painter`, and `/payroll` return HTTP 200, and the live Macaroni Octez bundle matches the tested `21d50452fec9da2f6eba9cdf6c70bd96525542bb82745a4918a0f7b56e94372f` hash.
+
+### WTF-BB-649 - Tezos creator and collection displays fall back to raw addresses
+
+- Category: Tezos identity / token display
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Tezos identity resolver pass
+- Last touched: 2026-09-02
+- Score: C5 + F4 + S1 + P1(4) = 14
+- Legacy identity: this distinct record formerly reused WTF-BB-111; it was assigned WTF-BB-649 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Historical evidence:
+  - Token cards, media libraries, WTF TV, and dashboard surfaces showed raw wallet/contract addresses instead of Objkt/Tezos identities and collection titles. Identity lookup was limited to X-to-Tezos hints, while high-traffic token endpoints returned raw `creators[0]` metadata.
+- Correction:
+  - Shared extraction rejects addresses as human display names and derives creator/collection fields from common metadata shapes. The server batches local labels, linked-wallet `.tez` domains, X hints, Objkt aliases, and contract metadata, with short addresses only as the final fallback.
+  - Profile tokens, wallet tokens, gallery, media, TV, colleKT, PFP, marketplace, and trade-board payloads are enriched at the data boundary; shared cards and pickers prefer those human fields.
+- Verification (2026-09-02):
+  - Focused extraction/resolver tests pass 5/5, including address rejection, creator-object aliases, bounded/deduplicated Objkt lookup, and display precedence. Full TypeScript and production build pass on the current descendant.
+  - Public production TV payloads return human creator identities (`nikoalerce.tez`, `silverhand.tez`, `thecollective.tez`, `intersect`) and collection titles; public marketplace payloads return creator, Tezos identity, and collection names while retaining addresses as provenance. Correction commit `33ed492f` is an ancestor of live commit `896f7761`. WTF-BB-649 is Verified.
 
 ### WTF-BB-647 - Legacy channel message endpoints bypass board channel permissions
 
