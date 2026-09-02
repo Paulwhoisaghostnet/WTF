@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **7** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **425** · Archived: **4**
+Total: **637** · Open: **6** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **145** · Verified: **425** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
-| WTF-BB-033 | Open | - | 2026-04-27 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 511 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 572 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
@@ -77,6 +76,7 @@ Total: **637** · Open: **7** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-033 | Claimed | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 511 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -678,23 +678,6 @@ Total: **637** · Open: **7** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
-
-- Category: Data integrity / ops
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C2 + F3 + S1 + P2(3) = 9
-- Evidence: `server/routes/w.ts:1075-1083` writes caller-supplied JSON string directly to `platform_settings.value`; `parseConversationIds` (1094-1105) accepts arbitrary arrays/strings and trims only by ID format.
-- Why it matters:
-  - A bug or compromised admin session could write an unbounded array/garbage to `platform_settings`, affecting startup and endpoint behavior that depends on DM configuration.
-  - Without row-level constraints, malformed payloads become a DB-sized resilience risk.
-- Likely correction direction:
-  - Enforce length/element-count caps on setter + strict JSON schema for this setting, plus validation before persistence.
-- Verification idea:
-  - Attempt to write oversized/invalid payloads and verify endpoint rejects with deterministic 4xx, not silently accepting.
 
 ### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
 
@@ -1635,6 +1618,23 @@ Total: **637** · Open: **7** · Claimed: **41** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-033 - Unbounded `platform_settings` value payload allows oversized conversation lists
+
+- Category: Data integrity / ops
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex W groupchat settings hardening
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence: `server/routes/w.ts:1075-1083` writes caller-supplied JSON string directly to `platform_settings.value`; `parseConversationIds` (1094-1105) accepts arbitrary arrays/strings and trims only by ID format.
+- Why it matters:
+  - A bug or compromised admin session could write an unbounded array/garbage to `platform_settings`, affecting startup and endpoint behavior that depends on DM configuration.
+  - Without row-level constraints, malformed payloads become a DB-sized resilience risk.
+- Likely correction direction:
+  - Enforce length/element-count caps on setter + strict JSON schema for this setting, plus validation before persistence.
+- Verification idea:
+  - Attempt to write oversized/invalid payloads and verify endpoint rejects with deterministic 4xx, not silently accepting.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
