@@ -610,7 +610,7 @@
     },
     {
       "id": "WTF-BB-058",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex Tezos identity cache reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Runtime / memory hygiene",
@@ -621,7 +621,7 @@
       "functionalityDanger": 3,
       "securityDanger": 2,
       "title": "Shared on-boot/domain-profile caches are global maps without key eviction",
-      "body": "- Evidence:\n  - `server/teznames.ts` uses `const domainCache = new Map...` and never removes stale keys.\n  - `server/tzprofiles.ts` uses `const profileCache = new Map...` with only timestamp checks and no key cleanup.\n  - Both are hit from wallet/profile resolution paths and can grow with user/address cardinality.\n- Why it matters:\n  - Unbounded cache growth can accumulate over long uptimes under high distinct-address traffic, increasing memory pressure without a clear cleanup path.\n  - This can become a recurring reliability issue during high-volume periods or long-lived process runs.\n- Likely correction direction:\n  - Add bounded eviction, periodic stale-key reaping, and hard caps per map, with tests for cardinality stabilization.\n- Verification idea:\n  - Replay many unique addresses and confirm resident map size stabilizes after TTL/eviction policy.",
+      "body": "- Historical evidence:\n  - `server/teznames.ts` and `server/tzprofiles.ts` once owned process-global maps that checked timestamps on lookup but did not bound or evict the overall address keyspace.\n- Why it matters:\n  - Distinct-address traffic could accumulate cache identities over long uptimes and add avoidable memory pressure.\n- Correction:\n  - Commit `c70b85d52bd1d06073dc83bf06068ec5b68019cf` moved both identity paths to `createBoundedExpiringCache`. Each cache uses a 30-minute TTL and a configurable ceiling with a 5,000-entry default; the shared implementation periodically removes expired entries and evicts least-recently-used entries when it crosses its cap.\n  - Current source-policy tests explicitly reject raw `profileCache = new Map` and `domainCache = new Map` ownership. The correction is an ancestor of the production commit reported by `/api/health`.\n- Verification (2026-09-02):\n  - The focused cache and Tezos identity policy set passes 5/5: live values survive before TTL, expired entries are removed, five distinct keys stabilize at a configured three-entry ceiling, both identity resolvers use the shared bounded cache, and wallet surfaces retain the Tezos Domains path.\n  - The reported unbounded maps are absent from current source and production lineage, so the stale Open record is now reconciled as Verified.",
       "legacyOriginalId": "WTF-BB-058"
     },
     {

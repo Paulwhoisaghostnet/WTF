@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **15** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **415** · Archived: **4**
+Total: **637** · Open: **15** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **416** · Archived: **4**
 
 ## Canonical Board
 
@@ -85,7 +85,6 @@ Total: **637** · Open: **15** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-058 | Claimed | Codex Tezos identity cache reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -579,6 +578,7 @@ Total: **637** · Open: **15** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-139 | Verified | Codex admin polish/app-gate pass | 2026-05-09 | Desktop OS / admin UX | P2 | 10 | 449 | 3 | 4 | 0 | Desktop app gates hide icons but leave Start Menu entries live |
 | WTF-BB-062 | Verified | Codex W repair pass | 2026-05-24 | Runtime / API scaling | P2 | 10 | 449 | 3 | 2 | 2 | X DM cache maps never garbage-collect stale user-context keys |
 | WTF-BB-059 | Verified | Codex board webhook limiter reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Board webhook rate limiter retains per token+IP keys without TTL-based eviction |
+| WTF-BB-058 | Verified | Codex Tezos identity cache reconciliation | 2026-09-02 | Runtime / memory hygiene | P2 | 10 | 449 | 2 | 3 | 2 | Shared on-boot/domain-profile caches are global maps without key eviction |
 | WTF-BB-051 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Dependencies / reproducibility | P2 | 10 | 449 | 3 | 2 | 2 | `latest` versions in package manifests create non-reproducible dependency behavior |
 | WTF-BB-031 | Verified | Codex W repair pass | 2026-05-24 | Config reliability | P2 | 10 | 449 | 2 | 2 | 3 | DM conversation resolution hides DB state when setting missing/invalid |
 | WTF-BB-640 | Verified | Codex Skywire registration hotfix | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 511 | 2 | 4 | 0 | Skywire registration autofill can submit WTF username as email |
@@ -1781,26 +1781,6 @@ Total: **637** · Open: **15** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-058 - Shared on-boot/domain-profile caches are global maps without key eviction
-
-- Category: Runtime / memory hygiene
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex Tezos identity cache reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F3 + S2 + P2(3) = 10
-- Evidence:
-  - `server/teznames.ts` uses `const domainCache = new Map...` and never removes stale keys.
-  - `server/tzprofiles.ts` uses `const profileCache = new Map...` with only timestamp checks and no key cleanup.
-  - Both are hit from wallet/profile resolution paths and can grow with user/address cardinality.
-- Why it matters:
-  - Unbounded cache growth can accumulate over long uptimes under high distinct-address traffic, increasing memory pressure without a clear cleanup path.
-  - This can become a recurring reliability issue during high-volume periods or long-lived process runs.
-- Likely correction direction:
-  - Add bounded eviction, periodic stale-key reaping, and hard caps per map, with tests for cardinality stabilization.
-- Verification idea:
-  - Replay many unique addresses and confirm resident map size stabilizes after TTL/eviction policy.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13112,6 +13092,25 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - The focused limiter suite passes 4/4: key material is bounded, 12 distinct token/IP pairs stabilize at the configured three-key test ceiling, a quiet key disappears after the 60-second request window, and the 21st request for one key still returns 429.
   - The original unbounded-key condition is absent from current source and production lineage, so this was a stale Open record rather than an outstanding runtime defect.
+
+### WTF-BB-058 - Shared on-boot/domain-profile caches are global maps without key eviction
+
+- Category: Runtime / memory hygiene
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Tezos identity cache reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Historical evidence:
+  - `server/teznames.ts` and `server/tzprofiles.ts` once owned process-global maps that checked timestamps on lookup but did not bound or evict the overall address keyspace.
+- Why it matters:
+  - Distinct-address traffic could accumulate cache identities over long uptimes and add avoidable memory pressure.
+- Correction:
+  - Commit `c70b85d52bd1d06073dc83bf06068ec5b68019cf` moved both identity paths to `createBoundedExpiringCache`. Each cache uses a 30-minute TTL and a configurable ceiling with a 5,000-entry default; the shared implementation periodically removes expired entries and evicts least-recently-used entries when it crosses its cap.
+  - Current source-policy tests explicitly reject raw `profileCache = new Map` and `domainCache = new Map` ownership. The correction is an ancestor of the production commit reported by `/api/health`.
+- Verification (2026-09-02):
+  - The focused cache and Tezos identity policy set passes 5/5: live values survive before TTL, expired entries are removed, five distinct keys stabilize at a configured three-entry ceiling, both identity resolvers use the shared bounded cache, and wallet surfaces retain the Tezos Domains path.
+  - The reported unbounded maps are absent from current source and production lineage, so the stale Open record is now reconciled as Verified.
 
 ### WTF-BB-051 - `latest` versions in package manifests create non-reproducible dependency behavior
 
