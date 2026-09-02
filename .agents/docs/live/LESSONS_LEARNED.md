@@ -11577,3 +11577,13 @@
 **Rule**: Reconcile linked OAuth incidents as an ordered contract: canonical origin, exact persisted token shape, non-destructive restore lifecycle, fail-closed callback handoff, durable permission refresh, then deployed ancestry and public metadata verification.
 
 ---
+
+## 2026-09-02 — Canonical IDs do not prove record identity
+
+**What happened**: WTF-BB-378 carried the title, ownership, severity, and category of a production outage but the detailed body of a distinct desktop concurrency incident. The historical board had reused the same ID; canonicalization preserved the desktop incident separately as WTF-BB-637 but left its body attached to the outage record too.
+
+**Why it mattered**: Status counts and remediation claims are unreliable when a record's summary and evidence describe different failures. Tests can appear relevant while proving an entirely different contract.
+
+**Rule**: Before reconciling a stale bounty, compare title, category, owner, body, and legacy history as one identity. If canonicalization crossed records, preserve the distinct canonical successor and repair the corrupted record before evaluating its status.
+
+---

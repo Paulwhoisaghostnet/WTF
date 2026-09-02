@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **138** · Verified: **437** · Archived: **4**
+Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **137** · Verified: **438** · Archived: **4**
 
 ## Canonical Board
 
@@ -109,7 +109,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-497 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / holder-side generative authenticity | P0 | 16 | 71 | 4 | 4 | 3 | Ravioli generative rendering did not bind the opener account across the local render window |
 | WTF-BB-443 | Fixed | Codex Ravioli live proof | 2026-07-18 | Pasta Protocol / UI-LIVE storage projection memory safety | P0 | 16 | 71 | 4 | 5 | 2 | Ravioli's first strict UI-LIVE run exhausted Node's 4 GB V8 heap by passing a raw Taquito `BigMapAbstraction` into an unbounded bridge serializer; bounded fresh-map projections, a fail-closed shared serializer, poisoned-provider regressions, and a 1.5 GB runtime heap ceiling now pass all non-writing gates, with a fresh complete Shadownet replacement proof still required for Verified |
 | WTF-BB-439 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Macaroni operation finality and storage | P0 | 16 | 71 | 4 | 5 | 2 | Macaroni attempt 3 accepted a safe fee but `add_tokens_v2` backtracked because the fallback storage limit was 320 bytes versus 621 consumed, after which Studio displayed sync success; the production fallback is now conservatively unit-sized and every Studio/drop operation requires independently indexed `applied` status, with a fresh Shadownet replacement proof still required |
-| WTF-BB-378 | Fixed | Codex production outage repair | 2026-07-15 | Deploy / runtime and migration failure recovery | P0 | 16 | 71 | 3 | 5 | 3 | Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending |
 | WTF-BB-577 | Fixed | Codex Ravioli generation-independent restart safety | - | Pasta Protocol / Ravioli restart safety | P0 | 15 | 93 | 3 | 5 | 2 | Fresh Ravioli has no generation-independent mid-journal resume |
 | WTF-BB-534 | Fixed | Codex Pasta alpha installer hardening | 2026-07-24 | Pasta Protocol / alpha installer traceability and runtime verification | P0 | 15 | 93 | 3 | 5 | 2 | All nine alpha packages now carry clean exact-commit/target provenance, bind CI artifacts and existing release tags to `GITHUB_SHA`, and run product-complete macOS/Windows installed-runtime plus stable-origin relaunch smoke; clean platform jobs and an arm64 device gate remain before Verified |
 | WTF-BB-498 | Fixed | Codex Ravioli holder-runtime hardening | - | Pasta Protocol / holder-side backing verification | P0 | 15 | 93 | 4 | 4 | 2 | Ravioli rendered generative children without rechecking adapter reservation capacity |
@@ -257,6 +256,7 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-463 | Verified | Codex Ravioli LE dependency proof | - | Pasta Protocol / FA2 lifecycle evidence | P0 | 16 | 71 | 4 | 5 | 2 | Ravioli dependency proof required an index row before first mint |
 | WTF-BB-411 | Verified | Codex full-send release pass | - | Operations / scheduler readiness | P0 | 16 | 71 | 4 | 5 | 2 | Scheduler audit counters overflow and orphan completed jobs |
 | WTF-BB-410 | Verified | Codex full-send release pass | - | Desktop / Windows release integrity | P0 | 16 | 71 | 4 | 5 | 2 | Pasta Suite Windows serves the package directory at `/` |
+| WTF-BB-378 | Verified | Codex production outage repair | 2026-09-02 | Deploy / runtime and migration failure recovery | P0 | 16 | 71 | 3 | 5 | 3 | Production deploy failure could stop the serving app and block recovery startup |
 | WTF-BB-363 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Deploy / DB migration integrity | P0 | 16 | 71 | 3 | 5 | 3 | Production migration ledger records checksums without enforcing checksum equality and can bootstrap every migration as applied from the existence of one table |
 | WTF-BB-216 | Verified | Codex Skywire platform actor OAuth repair | 2026-06-06 | Skywire / AT OAuth platform actor intent | P0 | 16 | 71 | 3 | 5 | 3 | Skywire permission picker silently refused intentional `wtfgameshow.bsky.social` OAuth before browser navigation; fixed with explicit platform actor intent, callback identity checks, and verified by `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run check -- --pretty false`, `npm run test:e2e:inventory:coverage`, and `npm run test:e2e:inventory` |
 | WTF-BB-160 | Verified | Codex Skywire session persistence hardening | 2026-09-02 | Skywire / AT Protocol session lifecycle | P0 | 16 | 71 | 3 | 5 | 3 | OAuth SDK delete/restore paths can erase or hide persisted AT sessions across refreshes |
@@ -2446,26 +2446,6 @@ Total: **637** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-07-18
 - Score: C4 + F5 + S2 + P0(5) = 16
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-378 - Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending
-
-- Category: Deploy / runtime and migration failure recovery
-- Priority: P0
-- Status: Fixed
-- Owner/Session: Codex production outage repair
-- Last touched: 2026-07-15
-- Score: C3 + F5 + S3 + P0(5) = 16
-- Evidence:
-  - The actor-backed desktop workflow sent `updatedAt: null` for a first-write insert and received `400 desktop_settings_bad_concurrency_token`, even though the API error and insert branch explicitly advertise null as valid.
-  - The route selected `body.updatedAt ?? body.ifUnmodifiedSince`, which converted the intentional null sentinel to `undefined` before validation.
-- Why it matters:
-  - New settings rows cannot use the documented compare-and-insert contract, so valid clients are rejected before persistence and the concurrency API contradicts itself.
-- Correction direction:
-  - Preserve an explicitly supplied `updatedAt` value, including null, and fall back to the legacy alias only when the primary field is absent.
-- Verification idea:
-  - Lock the null-preservation expression with the focused concurrency policy test and rerun the authenticated desktop actor workflow.
-- Verification:
-  - `server/desktop-settings-concurrency-policy.test.ts` passes and prevents nullish coalescing from returning; the focused `desktop os app shell loop` actor workflow passes.
 
 ### WTF-BB-577 - Fresh Ravioli has no generation-independent mid-journal resume
 
@@ -5708,6 +5688,26 @@ Copy this when adding a new issue:
   - Pasta Suite desktop policy passes 6/6, including POSIX root, Windows root, nested asset, traversal, and malformed-encoding cases.
   - Native Colander browser behavior passes 4/4 and inventory registry coverage remains complete.
   - Installer run `29562793478` passed on Windows x64, macOS universal, and Raspberry Pi arm64. The Windows job silently installed the NSIS package, found both shortcuts, rendered Colander, created a Shadownet project, opened bundled CH-EASE, and uninstalled without leaving the executable behind.
+
+### WTF-BB-378 - Production deploy failure could stop the serving app and block recovery startup
+
+- Category: Deploy / runtime and migration failure recovery
+- Priority: P0
+- Status: Verified
+- Owner/Session: Codex production outage repair
+- Last touched: 2026-09-02
+- Score: C3 + F5 + S3 + P0(5) = 16
+- Historical evidence:
+  - Production once stopped the serving app before immutable migration validation. A checksum rejection then exited with the app down, while an ATProto dependency required Node 22 but both image stages still used Node 20. After the runtime correction, startup reconciliation found 1,100 abandoned scheduler rows whose elapsed milliseconds overflowed PostgreSQL `integer`.
+- Why it mattered:
+  - Independent fail-closed safeguards amplified into a full origin outage: migration rejection removed traffic, the replacement image could not run, and stale-state repair could itself prevent boot.
+- Correction:
+  - Production validates and applies immutable migrations before stopping the serving app. Both Docker stages are digest-pinned to Node 22, satisfying the bundled `undici@8` runtime floor. Scheduler reconciliation clamps elapsed milliseconds to PostgreSQL int32 maximum before casting and completes before jobs are armed.
+- Verification (2026-09-02):
+  - Current deploy/migration policy passes 19/19 and scheduler reconciliation policy passes 1/1. The Dockerfile retains Node 22 in both stages, and source preserves migration-before-replacement plus the bounded stale-duration expression.
+  - Outage repair commits `9ce35055` and `5be400ea` are ancestors of live production commit `896f7761`. Hetzner deploy run `33612787081` succeeded; the public root, liveness, and readiness endpoints are healthy with database, chain configuration, and scheduler checks passing. WTF-BB-378 is Verified.
+- Record repair:
+  - Deterministic board canonicalization had paired this outage summary with the detail body of the distinct desktop-settings concurrency record. That separate incident remains preserved and Verified as WTF-BB-637; this record now describes its own production-outage evidence.
 
 ### WTF-BB-363 - Production migration ledger records checksums without enforcing checksum equality and can bootstrap every migration as applied from the existence of one table
 

@@ -2098,9 +2098,9 @@
     },
     {
       "id": "WTF-BB-378",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex production outage repair",
-      "lastTouched": "2026-07-15",
+      "lastTouched": "2026-09-02",
       "category": "Deploy / runtime and migration failure recovery",
       "priority": "P0",
       "points": 16,
@@ -2108,8 +2108,8 @@
       "complexity": 3,
       "functionalityDanger": 5,
       "securityDanger": 3,
-      "title": "Restored public `wtfos.app`, moved immutable migration execution ahead of app stop, pinned both Docker stages to Node 22 for ATProto's `undici@8`, capped abandoned scheduler durations at PostgreSQL int32 max, and repaired 1,100 stale production run rows. Verified by public root/health smoke on `9ce35055`, application build, deploy/migration policy tests 16/16, scheduler policy, inventory coverage, and diff check; clean final deploy rerun remains pending",
-      "body": "- Evidence:\n  - The actor-backed desktop workflow sent `updatedAt: null` for a first-write insert and received `400 desktop_settings_bad_concurrency_token`, even though the API error and insert branch explicitly advertise null as valid.\n  - The route selected `body.updatedAt ?? body.ifUnmodifiedSince`, which converted the intentional null sentinel to `undefined` before validation.\n- Why it matters:\n  - New settings rows cannot use the documented compare-and-insert contract, so valid clients are rejected before persistence and the concurrency API contradicts itself.\n- Correction direction:\n  - Preserve an explicitly supplied `updatedAt` value, including null, and fall back to the legacy alias only when the primary field is absent.\n- Verification idea:\n  - Lock the null-preservation expression with the focused concurrency policy test and rerun the authenticated desktop actor workflow.\n- Verification:\n  - `server/desktop-settings-concurrency-policy.test.ts` passes and prevents nullish coalescing from returning; the focused `desktop os app shell loop` actor workflow passes.",
+      "title": "Production deploy failure could stop the serving app and block recovery startup",
+      "body": "- Historical evidence:\n  - Production once stopped the serving app before immutable migration validation. A checksum rejection then exited with the app down, while an ATProto dependency required Node 22 but both image stages still used Node 20. After the runtime correction, startup reconciliation found 1,100 abandoned scheduler rows whose elapsed milliseconds overflowed PostgreSQL `integer`.\n- Why it mattered:\n  - Independent fail-closed safeguards amplified into a full origin outage: migration rejection removed traffic, the replacement image could not run, and stale-state repair could itself prevent boot.\n- Correction:\n  - Production validates and applies immutable migrations before stopping the serving app. Both Docker stages are digest-pinned to Node 22, satisfying the bundled `undici@8` runtime floor. Scheduler reconciliation clamps elapsed milliseconds to PostgreSQL int32 maximum before casting and completes before jobs are armed.\n- Verification (2026-09-02):\n  - Current deploy/migration policy passes 19/19 and scheduler reconciliation policy passes 1/1. The Dockerfile retains Node 22 in both stages, and source preserves migration-before-replacement plus the bounded stale-duration expression.\n  - Outage repair commits `9ce35055` and `5be400ea` are ancestors of live production commit `896f7761`. Hetzner deploy run `33612787081` succeeded; the public root, liveness, and readiness endpoints are healthy with database, chain configuration, and scheduler checks passing. WTF-BB-378 is Verified.\n- Record repair:\n  - Deterministic board canonicalization had paired this outage summary with the detail body of the distinct desktop-settings concurrency record. That separate incident remains preserved and Verified as WTF-BB-637; this record now describes its own production-outage evidence.",
       "legacyOriginalId": "WTF-BB-378"
     },
     {
