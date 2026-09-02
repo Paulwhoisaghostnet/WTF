@@ -2850,9 +2850,9 @@
     },
     {
       "id": "WTF-BB-053",
-      "status": "Fixed",
-      "owner": "Codex TV resilience pass",
-      "lastTouched": "2026-05-04",
+      "status": "In Progress",
+      "owner": "Codex canonical TV resilience verification",
+      "lastTouched": "2026-09-02",
       "category": "TV microapp / reliability",
       "priority": "P1",
       "points": 13,
