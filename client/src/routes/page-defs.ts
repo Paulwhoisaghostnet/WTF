@@ -298,6 +298,7 @@ export interface PageDef {
   group?: "gameshow" | "social" | "market" | "media" | "create" | "casino" | "gaming" | "desktop-os" | "admin" | "public";
   startMenu?: boolean;
   desktopIcon?: boolean;
+  publicDemoWhenAppUnavailable?: boolean;
 }
 
 export type DesktopAppAvailability = Partial<Record<DesktopAppKey, boolean>>;
@@ -506,7 +507,16 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
-  { pattern: "/map-lab", component: WtfMapLabPage, auth: false, title: "WTF Map Lab", group: "desktop-os", startMenu: true, desktopIcon: true },
+  {
+    pattern: "/map-lab",
+    component: WtfMapLabPage,
+    auth: false,
+    title: "WTF Map Lab",
+    group: "desktop-os",
+    startMenu: true,
+    desktopIcon: true,
+    publicDemoWhenAppUnavailable: true,
+  },
   { pattern: "/trade-boards", component: TradeBoardsPage, auth: true, title: "Trade Boards", group: "market", startMenu: true },
   { pattern: "/w", component: WPage, auth: true, title: "W Feed", group: "social", startMenu: true },
   { pattern: "/w/post/:id", component: WPage, auth: true, title: "W Post", group: "social" },
@@ -768,6 +778,10 @@ export function getPageAccessState(
   });
 
   if (state.allowed) {
+    return { allowed: true, surfaceId: state.surfaceId, appKey: state.appKey };
+  }
+
+  if (state.reason === "app-disabled" && def.publicDemoWhenAppUnavailable) {
     return { allowed: true, surfaceId: state.surfaceId, appKey: state.appKey };
   }
 

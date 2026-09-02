@@ -11377,3 +11377,13 @@
 **Rule**: Inspect the destination schema for every generated-media field before seeding. Preserve precise duration in the media catalog, round up only at a whole-second playlist boundary so playback is not truncated, test that conversion explicitly, and verify the live queue count—not merely the channel row—after deployment.
 
 ---
+
+## 2026-09-02 — Public routes and paid launcher entries are separate access contracts
+
+**What happened**: Map Lab was consistently advertised as an anonymous public route, but direct production navigation still rendered an app-disabled message because the page gate reused the personalized paid-app entitlement returned to the desktop launcher.
+
+**Why it mattered**: Route manifests, help links, and browser smoke could all claim the demo was public while a first-time customer saw no demo at all. Enabling the paid launcher entry globally would have hidden the symptom by changing the store contract instead of fixing the route contract.
+
+**Rule**: Model public demo access separately from launcher, store, role, and ownership entitlements. Test the public URL with an explicitly unavailable paid app, prove its read-only surface renders anonymously, and prove an unrelated paid route remains denied.
+
+---

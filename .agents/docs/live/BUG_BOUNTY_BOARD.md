@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **409** · Archived: **4**
+Total: **637** · Open: **18** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **413** · Archived: **4**
 
 ## Canonical Board
 
@@ -88,10 +88,6 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-300 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
-| WTF-BB-069 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
-| WTF-BB-006 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
-| WTF-BB-655 | Claimed | Codex top-priority stale bounty reconciliation | 2026-09-01 | E2E live puppets / Console seed data | P1 | 9 | 511 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -217,10 +213,10 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-122 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos wallet / checkout | P1 | 11 | 369 | 2 | 4 | 1 | Persisted wallet address can reach checkout without Taquito wallet provider |
 | WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 369 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 369 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
-| WTF-BB-668 | Fixed | Codex quality typecheck memory repair | 2026-09-01 | CI / TypeScript release gate | P1 | 10 | 449 | 2 | 4 | 0 | Quality typecheck exhausts Node's default heap after the FAQ release |
 | WTF-BB-652 | Fixed | Codex full-send release verification | - | E2E live puppets / Casino | P1 | 10 | 449 | 3 | 3 | 0 | Casino workflow schema missing from local puppet DB prep |
 | WTF-BB-643 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 449 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 449 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
+| WTF-BB-300 | Fixed | Codex top-priority stale bounty reconciliation | 2026-09-02 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-186 | Fixed | Cursor comparable-mutez deploy (2026-05-30) | - | Tezos / tz2at ecosystem analytics | P1 | 10 | 449 | 2 | 4 | 0 | tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez |
 | WTF-BB-656 | Fixed | Codex full-send casino release verification | - | E2E inventory / Swap DEX | P1 | 9 | 511 | 2 | 3 | 0 | DEX route smoke receives object-shaped array fixtures |
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 511 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
@@ -521,6 +517,7 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 369 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 369 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 369 | 2 | 3 | 2 | X token refresh updates users table without serialization |
+| WTF-BB-668 | Verified | Codex quality typecheck memory repair | 2026-09-02 | CI / TypeScript release gate | P1 | 10 | 449 | 2 | 4 | 0 | Quality typecheck exhausts Node's default heap after the FAQ release |
 | WTF-BB-665 | Verified | Codex Kiln clean-checkout fixture repair | 2026-09-01 | Kiln CI / hermetic test data | P1 | 10 | 449 | 2 | 4 | 0 | Kiln main CI depends on a gitignored local reference-contract corpus |
 | WTF-BB-657 | Verified | Codex Skywire full-send deploy | - | Deploy / Hetzner checkout | P1 | 10 | 449 | 3 | 3 | 0 | Hetzner deploy checkout fails on divergent server branch |
 | WTF-BB-637 | Verified | Codex full-send cleanup pass | 2026-07-15 | Desktop API / optimistic concurrency | P1 | 10 | 449 | 3 | 3 | 0 | Desktop settings preserves an explicit null first-write concurrency token; the focused policy test and authenticated desktop actor workflow pass |
@@ -550,6 +547,9 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
 | WTF-BB-222 | Verified | Codex full-send verification repair | 2026-06-07 | Public leaderboard / profile alias hydration | P1 | 10 | 449 | 2 | 4 | 0 | Public leaderboard profile alias hydration could spend the live-puppet public data budget during TzKT/TzProfiles retries; fixed by capping/timeboxing optional enrichment and verified by the full live puppet suite |
 | WTF-BB-221 | Verified | Codex full-send verification repair | 2026-06-07 | tz2at / ecosystem analytics reliability | P1 | 10 | 449 | 2 | 4 | 0 | tz2at ecosystem analytics could outlive the live-puppet workflow budget when ATProto sampling was slow; fixed with a route budget, abort propagation, explicit 504 handling, and verified by the full live puppet suite |
 | WTF-BB-176 | Verified | Codex pending batch live puppet cleanup | 2026-06-03 | Live E2E / local environment drift | P1 | 10 | 449 | 2 | 4 | 0 | Live puppet harness has stale local DB/storage prerequisites |
+| WTF-BB-069 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | Kiln integration / network metadata | P1 | 10 | 449 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
+| WTF-BB-006 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | DB migrations | P1 | 10 | 449 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
+| WTF-BB-655 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | E2E live puppets / Console seed data | P1 | 9 | 511 | 2 | 3 | 0 | Console game seed upsert blocks live puppet harness |
 | WTF-BB-654 | Verified | Codex OS ergonomics pass | - | Desktop OS / interaction polish | P1 | 9 | 511 | 2 | 3 | 0 | WTF OS lacks Win95 shortcut and alternate-click desktop affordances |
 | WTF-BB-636 | Verified | Codex main commission integration | 2026-08-30 | Release governance / environment inventory | P1 | 9 | 511 | 1 | 4 | 0 | The merged commission tree changed scanned sources and environment references without regenerating the deterministic inventory, stopping main Quality Gates before typecheck, build, or inventory smoke |
 | WTF-BB-632 | Verified | Codex commission fulfillment | - | Test infrastructure / Calendar | P1 | 9 | 511 | 2 | 3 | 0 | Calendar participation proof disappears after a late-night run |
@@ -1838,85 +1838,6 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
-
-- Category: Desktop OS / route contract
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex top-priority stale bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence:
-  - Local registry comparison on 2026-06-21 found `/map-lab` as `auth:true` in `client/src/routes/page-defs.ts` and `tests/e2e/inventory/route-fixtures.mjs`, but `auth:false` in `shared/wtf-browser-routes.ts`.
-  - Production `/api/cli/routes` lists `/map-lab` for anonymous callers, and `/api/access` advertises it public.
-  - Mobile browser smoke of `https://wtfos.app/map-lab` returned 200 but showed only the desktop, a Map Lab icon/taskbar entry, and no visible Map Lab window or demo content.
-- Why it matters:
-  - The recently fixed public Map Lab demo can look reachable to CLI/manifests while failing the actual anonymous visual task, and the current dirty registry state could redeploy the wrong auth contract.
-- Likely correction direction:
-  - Decide whether `/map-lab` remains public demo or signed-in app, sync every route registry, and ensure direct anonymous navigation opens the demo surface visibly on desktop and mobile.
-- Verification idea:
-  - Add focused Playwright for anonymous `/map-lab` with a rendered demo marker, route metadata sync, no horizontal overflow, and CLI/access manifest parity.
-- Related Gamma note:
-  - 2026-06-29 Gamma Map Lab containment was fixed without changing shared auth or route policy. `/gamma/map-lab` now has host-scoped presentation chrome and browser proof for workspace and demo states, but the public-route/auth drift described above remains open for a separate non-Gamma pass.
-
-### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
-
-- Category: Kiln integration / network metadata
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex top-priority stale bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S1 + P1(4) = 10
-- Evidence:
-  - Browser/API probes of `kiln.wtfgameshow.app` showed the public catalog advertising Etherlink testnet at `https://node.ghostnet.etherlink.com`, chain ID `128123`.
-  - Official Etherlink docs identify Etherlink Shadownet as RPC `https://node.shadownet.etherlink.com`, chain ID `127823`.
-  - Public re-probe on 2026-05-02 still returned `etherlink-testnet` as active/supported and `/api/kiln/capabilities?networkId=etherlink-shadownet` still reported Tezos Shadownet runtime defaults.
-- Why it matters:
-  - Builders will deploy and test against the wrong L2 test rail if the public network card remains stale.
-- Likely correction direction:
-  - Deploy the local Kiln network catalog update and verify `/api/networks` lists `etherlink-shadownet` with chain ID `127823`.
-- Verification idea:
-  - Curl production `/api/networks` and `/api/kiln/capabilities?networkId=etherlink-shadownet` after deploy.
-- Local fix note (2026-05-02):
-  - The sibling Kiln app now lists `etherlink-shadownet` locally with chain ID `127823`, leaves old `etherlink-testnet` as planned/legacy, and resolves requested-network capabilities locally.
-- Production verification note (2026-05-03):
-  - Deployed commit `09ca113` to `kiln.wtfgameshow.app`.
-  - Public `/api/networks` now lists `etherlink-shadownet` with RPC `https://node.shadownet.etherlink.com` and chain ID `127823`.
-  - Public `/api/kiln/capabilities?networkId=etherlink-shadownet` now reports `runtimeNetwork: etherlink-shadownet`, Solidity source support, and explicit no-stub blocker statuses.
-
-### WTF-BB-006 - `0031_wtf_recapture.sql` is not idempotent for enum type creation
-
-- Category: DB migrations
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex top-priority stale bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S1 + P1(4) = 10
-- Evidence: `0031_wtf_recapture.sql` uses `CREATE TYPE buyback_window_status AS ENUM (...)` without a guard; log showed `ERROR: type "buyback_window_status" already exists`.
-- Why it matters: The deploy script claims every `0015+` file is idempotent, but this file aborts once the type exists.
-- Likely correction direction: Use a guarded `DO $$ BEGIN CREATE TYPE ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;` pattern or split one-time type creation into a tracked migration.
-- Verification idea: Running the migration twice succeeds both times.
-
-### WTF-BB-655 - Console game seed upsert blocks live puppet harness
-
-- Category: E2E live puppets / Console seed data
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex top-priority stale bounty reconciliation
-- Last touched: 2026-09-01
-- Score: C2 + F3 + S0 + P1(4) = 9
-- Legacy identity: this distinct record formerly reused WTF-BB-117; it was assigned WTF-BB-655 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
-- Evidence:
-  - `npm run test:e2e:live:puppets` failed during `tests/e2e/puppets/seed.ts` before Playwright launched.
-  - The failing query was an upsert into `console_games` using `on conflict ("slug") do update` for the `adrift` fixture.
-  - Local verification for the onboarding release therefore could not complete the actor-backed live puppet pass, even though inventory coverage, inventory route smoke, typecheck, build, deploy health, and production smoke passed.
-- Why it matters:
-  - The live puppet suite is the durable login/wallet/workflow verification gate. Seed fixture drift should not block unrelated release verification or mask real product regressions.
-- Likely correction direction:
-  - Inspect `console_games` schema/indexes and the seed fixture set for duplicate or stale uniqueness assumptions, then make the seed upsert idempotent against the current database contract.
-- Verification idea:
-  - Run `npm run test:e2e:live:puppets` and confirm the seed completes and the full actor-backed suite reaches Playwright assertions.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -4719,26 +4640,6 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
 - Verification note: repo-wide `npm run check` is currently blocked by unrelated existing Desktop worktree errors in `client/src/components/layout/Desktop.tsx` (missing hamster/pet UI symbols), not by the TV overlay patch.
 - Verification idea: Imported token media added through the library should show human-readable creator credit plus Objkt links in TV, upload-backed media without custom credit should show `from <username>'s media`, and overlays should appear at viewer start and viewer end without sticking on screen the whole time.
 
-### WTF-BB-668 - Quality typecheck exhausts Node's default heap after the FAQ release
-
-- Category: CI / TypeScript release gate
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex quality typecheck memory repair
-- Last touched: 2026-09-01
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence (2026-09-01):
-  - Quality run `33565809564` passed all 2,543 aggregate unit checks, generated and uploaded the SBOM, then aborted in `npm run check` with `FATAL ERROR: Ineffective mark-compacts near heap limit`.
-  - The final garbage collections operated at 4,030-4,032 MB, proving the TypeScript program outgrew Node's default old-space allowance rather than finding a type error.
-- Why it matters:
-  - A healthy combined release remains red before build and navigation smoke, so `main` cannot provide a trustworthy ship signal even though local TypeScript validation passes.
-- Correction (2026-09-01):
-  - The workflow gives only the Typecheck step a 6,144 MB old-space allowance. This is derived from the measured 4,032 MB exhaustion plus 2,112 MB compiler headroom and does not raise memory for unrelated build or test processes.
-  - The CI policy suite asserts the allowance appears exactly once and is structurally scoped to `npm run check`.
-- Verification:
-  - The focused CI and Club Dues policy set passes 7/7. The repository-wide TypeScript check passes locally under the same Node allowance, and inventory coverage remains complete for 239 surfaces, 978 handles, and 118 routes.
-  - Status remains Fixed until an exact-commit GitHub quality run completes typecheck, build, inventory route smoke, and external-link safety.
-
 ### WTF-BB-652 - Casino workflow schema missing from local puppet DB prep
 
 - Category: E2E live puppets / Casino
@@ -4803,6 +4704,27 @@ Total: **637** · Open: **18** · Claimed: **45** · In Progress: **13** · Bloc
   - Passed `./node_modules/.bin/tsx --test client/src/features/desktop/pet/waterCarePolicy.test.ts shared/desktop.test.ts`.
   - Passed `./node_modules/.bin/tsc --noEmit`.
   - `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts` is blocked by the pre-existing unrelated registry error: `hoard must register behavior assertion 'auth.wallet-provider-login-lifecycle'`.
+
+### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
+
+- Category: Desktop OS / route contract
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `/map-lab` is consistently marked public in the current page, inventory, and shared browser registries, but an anonymous production probe on 2026-09-02 rendered only `WTF Map Lab - disabled` with no `[data-map-lab-shell]`.
+  - `/api/apps/desktop` correctly withholds the paid Map Lab app entitlement from anonymous users. The page access gate incorrectly reused that launcher/store entitlement to deny the separately advertised public demo route.
+- Why it matters:
+  - A customer can follow a public route or help link and see a disabled-app message instead of the promised self-explanatory demo, even while manifests report the route as available.
+- Correction (2026-09-02):
+  - Page definitions now distinguish a public demo route from paid launcher/store availability. `/map-lab` may render its read-only demo when the app entitlement is unavailable, while unrelated paid routes remain denied.
+  - The interaction inventory and behavior registry document the direct anonymous demo contract without unlocking Map Lab in the launcher or store.
+  - Focused mobile Playwright now proves the shell, populated demo, read-only controls, run summary, and absence of horizontal overflow at 390x844.
+- Verification:
+  - The focused route policy, migration replay, and puppet seed policy suite passes 13/13. Inventory coverage is complete for 241 surfaces, 981 handles, and 118 routes.
+  - Status remains Fixed until the exact commit deploys and a direct anonymous production browser probe renders the Map Lab shell without horizontal overflow.
 
 ### WTF-BB-186 - tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez
 
@@ -11746,6 +11668,26 @@ Copy this when adding a new issue:
   - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
   - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
 
+### WTF-BB-668 - Quality typecheck exhausts Node's default heap after the FAQ release
+
+- Category: CI / TypeScript release gate
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex quality typecheck memory repair
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence (2026-09-01):
+  - Quality run `33565809564` passed all 2,543 aggregate unit checks, generated and uploaded the SBOM, then aborted in `npm run check` with `FATAL ERROR: Ineffective mark-compacts near heap limit`.
+  - The final garbage collections operated at 4,030-4,032 MB, proving the TypeScript program outgrew Node's default old-space allowance rather than finding a type error.
+- Why it matters:
+  - A healthy combined release remains red before build and navigation smoke, so `main` cannot provide a trustworthy ship signal even though local TypeScript validation passes.
+- Correction (2026-09-01):
+  - The workflow gives only the Typecheck step a 6,144 MB old-space allowance. This is derived from the measured 4,032 MB exhaustion plus 2,112 MB compiler headroom and does not raise memory for unrelated build or test processes.
+  - The CI policy suite asserts the allowance appears exactly once and is structurally scoped to `npm run check`.
+- Verification (2026-09-02):
+  - Exact-commit Quality Gates run `33567720417` succeeded for `f6a50607419d402ceca484037f0fdbd4b0d22e40`, including aggregate unit tests, audit, TypeScript, build, inventory registry coverage, 17-minute route smoke, and external-link safety.
+  - Exact-commit deploy run `33567720510` also succeeded, including its production health check. The focused CI and Club Dues policy set passed 7/7 and inventory coverage remained complete for 239 surfaces, 978 handles, and 118 routes.
+
 ### WTF-BB-665 - Kiln main CI depends on a gitignored local reference-contract corpus
 
 - Category: Kiln CI / hermetic test data
@@ -12425,6 +12367,60 @@ Copy this when adding a new issue:
   - `node --test --import tsx server/features/rat-race/tz2at-atproto.test.ts`
   - Targeted Playwright: `wallet portfolio to commerce loop` passed in 29.3s.
   - `npm run test:e2e:live:puppets` passed 126/126 on 2026-06-03.
+
+### WTF-BB-069 - Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata
+
+- Category: Kiln integration / network metadata
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Historical evidence:
+  - The deployed Kiln catalog once advertised Etherlink Ghostnet-era RPC `https://node.ghostnet.etherlink.com` and chain ID `128123`, while current Etherlink Shadownet uses chain ID `127823`.
+- Why it matters:
+  - Builders would deploy and test against the wrong L2 test rail if the public network card remained stale.
+- Correction:
+  - The sibling Kiln app lists `etherlink-shadownet`, keeps the old `etherlink-testnet` identity planned/legacy, and resolves requested-network capabilities instead of falling back to Tezos defaults.
+- Verification (2026-09-02):
+  - A fresh public probe of `https://kiln.wtfgameshow.app/api/networks` reports active, supported `etherlink-shadownet` with RPC `https://node.shadownet.etherlink.com` and EVM chain ID `127823`; the old `etherlink-testnet` entry is planned/legacy.
+  - A fresh public probe of `/api/kiln/capabilities?networkId=etherlink-shadownet` reports `runtimeNetwork: etherlink-shadownet`, Solidity support, and explicit no-stub blockers. The original stale deployment condition no longer exists.
+
+### WTF-BB-006 - `0031_wtf_recapture.sql` is not idempotent for enum type creation
+
+- Category: DB migrations
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S1 + P1(4) = 10
+- Historical evidence:
+  - Migration `0031_wtf_recapture.sql` once created `buyback_window_status` without a guard, and replay aborted because the type already existed.
+- Why it matters:
+  - Production migration replay must be safe; a duplicate enum must not halt deployment.
+- Correction:
+  - Commit `c70b85d52` guarded all three enum types in migration 0031—`buyback_window_status`, `wtf_auction_status`, and `side_quest_entry_fee_status`—with `pg_type` existence checks before creation.
+- Verification (2026-09-02):
+  - The production migration policy suite now asserts all three guards and passes 9/9. Current source inspection and blame both confirm the replay-safe correction is already present, so the original report was stale rather than an outstanding defect.
+
+### WTF-BB-655 - Console game seed upsert blocks live puppet harness
+
+- Category: E2E live puppets / Console seed data
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Legacy identity: this distinct record formerly reused WTF-BB-117; it was assigned WTF-BB-655 during canonicalization. The original representation remains in `docs/reference/BUG_BOUNTY_BOARD_LEGACY_2026-08-30.md`.
+- Historical evidence:
+  - The live puppet harness once stopped before Playwright because its `console_games` upsert conflicted on the `adrift` slug.
+- Why it matters:
+  - The actor-backed harness is the durable login, wallet, and workflow gate; fixture drift must not hide product regressions.
+- Correction:
+  - `console_games.slug` is unique in the current schema, and the seed uses that exact column as its `onConflictDoUpdate` target. A focused policy test now locks the schema, conflict target, and seeded-count summary together.
+- Verification (2026-09-02):
+  - `npm run test:e2e:puppets:seed` completed for all 12 actors and reported nine Console stock games seeded.
+  - The subsequent focused actor-backed Club Dues run reached Playwright and passed 2/2, directly proving the Console upsert no longer blocks browser assertions. The seed policy suite passes 2/2.
 
 ### WTF-BB-654 - WTF OS lacks Win95 shortcut and alternate-click desktop affordances
 

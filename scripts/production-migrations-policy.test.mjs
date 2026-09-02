@@ -10,6 +10,7 @@ const transparentArtHandleMigration = readFileSync(
   "drizzle/0113_w_digest_transparentart_handle.sql",
   "utf8"
 );
+const wtfRecaptureMigration = readFileSync("drizzle/0031_wtf_recapture.sql", "utf8");
 
 test("LAW.TT1/10 production migrations fail closed on SQL errors", () => {
   assert.match(migrations, /set -euo pipefail/);
@@ -103,4 +104,19 @@ test("W digest handle correction is forward-only and preserves referenced posts"
     /DELETE FROM w_digest_handles\s+WHERE handle = 'transparentart';/
   );
   assert.match(transparentArtHandleMigration, /COMMIT;/);
+});
+
+test("WTF recapture enum creation is safe when migration 0031 is replayed", () => {
+  assert.match(
+    wtfRecaptureMigration,
+    /IF NOT EXISTS \(SELECT 1 FROM pg_type WHERE typname = 'buyback_window_status'\) THEN\s+CREATE TYPE buyback_window_status AS ENUM/,
+  );
+  assert.match(
+    wtfRecaptureMigration,
+    /IF NOT EXISTS \(SELECT 1 FROM pg_type WHERE typname = 'wtf_auction_status'\) THEN\s+CREATE TYPE wtf_auction_status AS ENUM/,
+  );
+  assert.match(
+    wtfRecaptureMigration,
+    /IF NOT EXISTS \(SELECT 1 FROM pg_type WHERE typname = 'side_quest_entry_fee_status'\) THEN\s+CREATE TYPE side_quest_entry_fee_status AS ENUM/,
+  );
 });

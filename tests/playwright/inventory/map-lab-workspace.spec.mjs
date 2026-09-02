@@ -219,6 +219,7 @@ test.describe("Map Lab workspace", () => {
     page,
     request,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await setHarnessRole(request, "anonymous");
     await page.route("**/api/apps/desktop", async (route) => {
       await route.fulfill({
@@ -243,6 +244,10 @@ test.describe("Map Lab workspace", () => {
 
     await expect(shell).toBeVisible();
     await expect(viewport).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+      "anonymous Map Lab must not overflow the mobile viewport",
+    ).toBe(true);
     await expect(page.locator("[data-map-lab-template='gradio-space']")).toBeDisabled();
     await expect(page.getByRole("button", { name: "Run workflow map" })).toBeDisabled();
 

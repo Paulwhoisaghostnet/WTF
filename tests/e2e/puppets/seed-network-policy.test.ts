@@ -18,3 +18,17 @@ test("puppet seed repairs stale keyring network metadata before linking wallets"
   assert.match(networkSource, /tcinfra\.net\/rpc\/tezos\/shadownet/);
   assert.match(networkSource, /expectedChainId && chainId !== expectedChainId/);
 });
+
+test("console game seed is idempotent against the schema's unique slug contract", () => {
+  const schemaSource = readFileSync(
+    new URL("../../../shared/schema-liveops.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(schemaSource, /slug:\s*varchar\("slug", \{ length: 120 \}\)\.notNull\(\)\.unique\(\)/);
+  assert.match(
+    seedSource,
+    /\.insert\(consoleGames\)[\s\S]*?\.onConflictDoUpdate\(\{\s*target:\s*consoleGames\.slug,/,
+  );
+  assert.match(seedSource, /consoleStockGamesSeeded:\s*consoleSeedCount/);
+});
