@@ -26,4 +26,6 @@ test("Guide TV reconciles the channel to only catalog videos", () => {
   assert.match(block, /DELETE FROM tv_channel_videos[\s\S]*NOT \(id = ANY\(\$2::int\[\]\)\)/);
   assert.match(block, /entry\.tokenContract/);
   assert.match(block, /accountName: entry\.accountName/);
+  assert.match(block, /const playlistDurationSeconds = Math\.ceil\(entry\.durationSeconds\)/);
+  assert.match(block, /entry\.sortOrder, playlistDurationSeconds/);
 });

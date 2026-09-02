@@ -686,6 +686,9 @@ export async function runTvBootBackfill(): Promise<void> {
       );
       const videoId = synced.rows[0]!.id;
       guideVideoIds.push(videoId);
+      // TV playlist durations are whole seconds in PostgreSQL. Round up so
+      // the player never advances before the final fractional second ends.
+      const playlistDurationSeconds = Math.ceil(entry.durationSeconds);
       await client.query(
         `INSERT INTO tv_playlist_items
            (playlist_id, video_id, media_item_id, sort_order,
@@ -696,7 +699,7 @@ export async function runTvBootBackfill(): Promise<void> {
             sort_order = EXCLUDED.sort_order,
             duration_seconds = EXCLUDED.duration_seconds,
             updated_at = NOW()`,
-        [guidePlaylistId, videoId, entry.sortOrder, entry.durationSeconds]
+        [guidePlaylistId, videoId, entry.sortOrder, playlistDurationSeconds]
       );
     }
 

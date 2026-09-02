@@ -11367,3 +11367,13 @@
 **Rule**: Before inserting into a shared backfill or migration, search for source-policy readers of its section markers. Preserve existing delimiters and numbering, give additive work a subordinate marker, and run every policy test that slices the shared source—not only the new feature's policy test.
 
 ---
+
+## 2026-09-01 — Media precision must narrow deliberately at database boundaries
+
+**What happened**: Guide manifests correctly kept fractional video durations, but the TV seed passed those decimal values directly into the integer `duration_seconds` playlist column. Production created the channel and then stopped on the first duration, leaving a visible but empty queue without a dial.
+
+**Why it mattered**: Catalog and media validation proved exact timing, while the production persistence boundary required a different representation. A partial idempotent seed made the failure look like a usable channel until its stream was inspected.
+
+**Rule**: Inspect the destination schema for every generated-media field before seeding. Preserve precise duration in the media catalog, round up only at a whole-second playlist boundary so playback is not truncated, test that conversion explicitly, and verify the live queue count—not merely the channel row—after deployment.
+
+---
