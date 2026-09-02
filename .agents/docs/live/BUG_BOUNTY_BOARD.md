@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **11** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **418** · Archived: **4**
+Total: **637** · Open: **11** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **147** · Verified: **419** · Archived: **4**
 
 ## Canonical Board
 
@@ -81,7 +81,6 @@ Total: **637** · Open: **11** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-182 | Claimed | Codex market-pricing reconciliation | 2026-09-02 | In-app market / inventory E2E | P2 | 9 | 511 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -597,6 +596,7 @@ Total: **637** · Open: **11** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-225 | Verified | Codex WTF LIVE chat keyboard pass | 2026-06-09 | WTF LIVE / room chat keyboard UX | P2 | 9 | 511 | 2 | 4 | 0 | WTF LIVE room chat now submits with Enter and keeps Shift+Enter for multiline drafts; verified by focused failing/passing Playwright, TypeScript, inventory coverage, and full inventory E2E |
 | WTF-BB-192 | Verified | Codex desktop environment corrections | 2026-06-03 | Desktop OS / shell UX | P2 | 9 | 511 | 3 | 3 | 0 | Desktop icon movement, WX controls, and experimental app affordances drift from current shell expectations |
 | WTF-BB-183 | Verified | Codex Skywire UI polish pass | 2026-05-28 | Skywire / sparse account resilience | P2 | 9 | 511 | 2 | 4 | 0 | Skywire account shell crashed when sparse harness payload omitted `tezosIdentity` |
+| WTF-BB-182 | Verified | Codex market-pricing reconciliation | 2026-09-02 | In-app market / inventory E2E | P2 | 9 | 511 | 2 | 4 | 0 | Inventory market-pricing spec creates a sale that the storefront does not visibly render |
 | WTF-BB-174 | Verified | Codex full-send merge audit | 2026-05-25 | Desktop OS / merge safety | P2 | 9 | 511 | 2 | 4 | 0 | Merged desktop app arrays duplicated Skywire and Mail icons |
 | WTF-BB-153 | Verified | Codex Skywire OAuth connect hardening pass | 2026-05-24 | Skywire / AT Protocol connection UX | P2 | 9 | 511 | 2 | 4 | 0 | Bluesky connect can fail before OAuth when given a short username |
 | WTF-BB-152 | Verified | Codex Skywire official signup UI pass | 2026-05-24 | Skywire / AT Protocol registration UX | P2 | 9 | 511 | 2 | 4 | 0 | Official-signup-managed PDSes still expose Skywire registration form fields |
@@ -1709,27 +1709,6 @@ Total: **637** · Open: **11** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-182 - Inventory market-pricing spec creates a sale that the storefront does not visibly render
-
-- Category: In-app market / inventory E2E
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex market-pricing reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F4 + S0 + P2(3) = 9
-- Evidence:
-  - `npm run test:e2e:inventory` failed first in `tests/playwright/inventory/market-pricing.spec.mjs` waiting for `-10%` after the spec posted an active `arcade-play-ticket` sale.
-  - The API assertion immediately before page navigation confirmed the market payload had `discountPercent: 10` and `salePriceWtfFormatted: "9.00"`, but the rendered `/wtfiam?category=arcade` page still showed `10.00 WTF`.
-  - Later route failures were `ECONNREFUSED 127.0.0.1:4173` after the first failure, while a focused Rat Race route smoke passed.
-- Why it matters:
-  - The inventory pricing test is meant to prove admin sales and storefront pricing stay connected. If the API and UI diverge, operators may believe a sale is live while shoppers see stale prices.
-- Likely correction direction:
-  - Trace the in-app market storefront fetch/cache path for category sales after `/api/admin/in-app-market/sales`; verify whether the sale response is omitted from the route fixture, cached stale in the client query, or rendered without the sale badge/discount price.
-- Verification idea:
-  - Re-run `npm run test:e2e:inventory` or at minimum `npx playwright test tests/playwright/inventory/market-pricing.spec.mjs` and confirm the `-10%` badge plus `9.00 WTF` render after sale creation.
-- Claim (2026-09-02):
-  - Codex claimed the item for stale-record reconciliation after a fresh isolated harness reproduced the entire admin-sale-to-rendered-storefront story successfully.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -13540,6 +13519,26 @@ Copy this when adding a new issue:
   - Fixed locally by making `AtprotoMe.tezosIdentity` optional on the client and normalizing account-panel reads through a nullable local value before rendering preferred `.tez`, wallet, and domain bridge fields.
 - Verification idea:
   - Verified with `npm run check -- --pretty false`, `npx tsx --test server/features/atproto/skywire-policy.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run test:e2e:inventory`, and direct desktop/mobile Playwright visual smoke.
+
+### WTF-BB-182 - Inventory market-pricing spec creates a sale that the storefront does not visibly render
+
+- Category: In-app market / inventory E2E
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex market-pricing reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P2(3) = 9
+- Historical evidence:
+  - An inventory run once observed the API return a 10% `arcade-play-ticket` sale while the rendered `/wtfiam?category=arcade` page still showed its base price; later route checks then cascaded into harness `ECONNREFUSED` failures.
+- Why it mattered:
+  - The inventory pricing story must prove admin sale state reaches the shopper-visible badge and price, not stop at an API assertion.
+- Current ownership:
+  - The harness sale serializer selects active SKU/category sales and returns `discountPercent`, `salePriceWtfUnits`, and `salePriceWtfFormatted` on each market item. `WtfIamItemCard` renders the sale badge, discounted price, and old base price from those fields.
+  - The inventory script rebuilds the client before Playwright, and the Playwright configuration requires a fresh non-reused harness so stale assets or a previous mutable fixture cannot satisfy the story.
+- Verification (2026-09-02):
+  - A fresh isolated run of `tests/playwright/inventory/market-pricing.spec.mjs` passes 2/2. The first story creates the 10% sale, confirms the API reports `9.00`, then proves the rendered `WTF Arcade Credit` card visibly contains the exact `-10%` badge and `9.00 WTF` price.
+  - The second story independently proves role-gated Apps pricing/availability rendering, showing the harness remains healthy after the sale story.
+  - The reported API/UI divergence is not reproducible in current source and its durable browser assertion is passing, so WTF-BB-182 is Verified.
 
 ### WTF-BB-174 - Merged desktop app arrays duplicated Skywire and Mail icons
 

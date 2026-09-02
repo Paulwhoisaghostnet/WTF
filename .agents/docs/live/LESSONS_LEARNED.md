@@ -11437,3 +11437,13 @@
 **Rule**: Put deploy-blocking compile verification in the dependency-complete, disposable builder stage. Keep the host checkout and final runtime minimal, use the same measured compiler heap envelope as CI, and require the build log to prove the check completed before the running app is replaced.
 
 ---
+
+## 2026-09-02 — Storefront pricing proof must cross the rendered boundary on fresh assets
+
+**What happened**: A market-pricing run confirmed a discounted sale in the API but once rendered the base price, followed by connection-refused failures after the harness stopped. Current source already carries the sale fields through the market serializer and item card, and a fresh isolated browser run completes the exact story.
+
+**Why it mattered**: An API-only assertion cannot prove shoppers see an operator's sale, while a stale built client or dead shared harness can imitate an API/UI contract defect that is not present in current source.
+
+**Rule**: Rebuild the client, start a non-reused mutable harness, assert the sale in the API, and then assert the exact badge and discounted price inside the named storefront item card. Treat later connection-refused results as harness-lifecycle evidence, not independent product defects.
+
+---
