@@ -51,8 +51,8 @@ export const ADMIN_SECTION_CATALOG: AdminSectionCatalogEntry[] = [
     inspect: ["Identity and account health", "Assigned roles and curses", "Effective permissions and wtfOS access", "Desktop settings", "Wallets, domains, and recent EXP"],
     change: ["Identity", "Roles", "Curses", "EXP", "Desktop settings", "Social connections", "Temporary password", "Account deletion"],
     risk: "sensitive",
-    permissionKeys: ["manage_users", "award_xp"],
-    apiRoutes: ["GET /api/admin/users", "GET /api/admin/users/:id/passport", "PUT /api/admin/users/:id/passport/desktop-settings"],
+    permissionKeys: ["manage_users", "award_xp", "delete_users"],
+    apiRoutes: ["GET /api/admin/users", "GET /api/admin/users/:id/passport", "PUT /api/admin/users/:id/passport/desktop-settings", "DELETE /api/admin/users/:id"],
     automationHandles: ["admin.user.passport.viewed", "admin.user.desktop_settings.updated"],
   },
   {

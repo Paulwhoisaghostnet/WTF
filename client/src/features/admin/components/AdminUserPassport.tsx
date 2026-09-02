@@ -271,6 +271,7 @@ export type AdminUserPassportProps = {
   updateIdentityMutation: AdminMutation<UpdateIdentityPayload>;
   clearUserSocialMutation: AdminMutation<ClearUserSocialPayload>;
   deleteUserMutation: AdminMutation<number>;
+  canDeleteUsers: boolean;
   setTempPasswordMutation: AdminMutation<SetTempPasswordPayload>;
   clearTempPasswordMutation: AdminMutation<number>;
 };
@@ -290,6 +291,7 @@ export function AdminUserPassport({
   updateIdentityMutation,
   clearUserSocialMutation,
   deleteUserMutation,
+  canDeleteUsers,
   setTempPasswordMutation,
   clearTempPasswordMutation,
 }: AdminUserPassportProps) {
@@ -713,13 +715,19 @@ export function AdminUserPassport({
             </ActionRow>
           </UiPanel>
 
-          <UiPanel compact title="Delete account" tone="danger">
-            <UiNotice tone="danger"><AlertTriangle size={15} aria-hidden="true" /> Permanent account deletion removes the user and related account records. Use only after less destructive recovery paths fail.</UiNotice>
-            <ConfirmAction label="Review permanent deletion" confirmLabel={`Permanently delete @${user.username}`} disabled={deleteUserMutation.isPending} onConfirm={() => {
-              deleteUserMutation.mutate(user.id);
-              onDeleted();
-            }} />
-          </UiPanel>
+          {canDeleteUsers ? (
+            <UiPanel compact title="Delete account" tone="danger">
+              <UiNotice tone="danger"><AlertTriangle size={15} aria-hidden="true" /> Permanent account deletion removes the user and related account records. Use only after less destructive recovery paths fail.</UiNotice>
+              <ConfirmAction label="Review permanent deletion" confirmLabel={`Permanently delete @${user.username}`} disabled={deleteUserMutation.isPending} onConfirm={() => {
+                deleteUserMutation.mutate(user.id);
+                onDeleted();
+              }} />
+            </UiPanel>
+          ) : (
+            <UiPanel compact title="Account deletion restricted" tone="warning">
+              <UiNotice tone="warning"><AlertTriangle size={15} aria-hidden="true" /> Your role can support this account, but permanent deletion requires the separate Delete Users permission.</UiNotice>
+            </UiPanel>
+          )}
         </Stack>
       ) : null}
 

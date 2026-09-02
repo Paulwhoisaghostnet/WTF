@@ -434,7 +434,7 @@
     },
     {
       "id": "WTF-BB-300",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex top-priority stale bounty reconciliation",
       "lastTouched": "2026-09-02",
       "category": "Desktop OS / route contract",
@@ -445,7 +445,7 @@
       "functionalityDanger": 4,
       "securityDanger": 0,
       "title": "Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified",
-      "body": "- Evidence:\n  - `/map-lab` is consistently marked public in the current page, inventory, and shared browser registries, but an anonymous production probe on 2026-09-02 rendered only `WTF Map Lab - disabled` with no `[data-map-lab-shell]`.\n  - `/api/apps/desktop` correctly withholds the paid Map Lab app entitlement from anonymous users. The page access gate incorrectly reused that launcher/store entitlement to deny the separately advertised public demo route.\n- Why it matters:\n  - A customer can follow a public route or help link and see a disabled-app message instead of the promised self-explanatory demo, even while manifests report the route as available.\n- Correction (2026-09-02):\n  - Page definitions now distinguish a public demo route from paid launcher/store availability. `/map-lab` may render its read-only demo when the app entitlement is unavailable, while unrelated paid routes remain denied.\n  - The interaction inventory and behavior registry document the direct anonymous demo contract without unlocking Map Lab in the launcher or store.\n  - Focused mobile Playwright now proves the shell, populated demo, read-only controls, run summary, and absence of horizontal overflow at 390x844.\n- Verification:\n  - The focused route policy, migration replay, and puppet seed policy suite passes 13/13. Inventory coverage is complete for 241 surfaces, 981 handles, and 118 routes.\n  - Status remains Fixed until the exact commit deploys and a direct anonymous production browser probe renders the Map Lab shell without horizontal overflow.",
+      "body": "- Evidence:\n  - `/map-lab` is consistently marked public in the current page, inventory, and shared browser registries, but an anonymous production probe on 2026-09-02 rendered only `WTF Map Lab - disabled` with no `[data-map-lab-shell]`.\n  - `/api/apps/desktop` correctly withholds the paid Map Lab app entitlement from anonymous users. The page access gate incorrectly reused that launcher/store entitlement to deny the separately advertised public demo route.\n- Why it matters:\n  - A customer can follow a public route or help link and see a disabled-app message instead of the promised self-explanatory demo, even while manifests report the route as available.\n- Correction (2026-09-02):\n  - Page definitions now distinguish a public demo route from paid launcher/store availability. `/map-lab` may render its read-only demo when the app entitlement is unavailable, while unrelated paid routes remain denied.\n  - The interaction inventory and behavior registry document the direct anonymous demo contract without unlocking Map Lab in the launcher or store.\n  - Focused mobile Playwright proves the shell, populated demo, read-only controls, run summary, and absence of horizontal overflow at 390x844.\n- Verification (2026-09-02):\n  - The focused route policy, migration replay, and puppet seed policy suite passes 13/13. Inventory coverage is complete for 241 surfaces, 981 handles, and 118 routes.\n  - Production health reported exact commit `db188081`. A direct anonymous 390x844 browser probe opened `https://wtfos.app/map-lab`, entered `wtfos-demo` read-only mode, rendered 241 nodes, ran 479 routes across 241 connected nodes, and had no horizontal overflow.",
       "legacyOriginalId": "WTF-BB-300"
     },
     {
@@ -514,7 +514,7 @@
     },
     {
       "id": "WTF-BB-087",
-      "status": "Claimed",
+      "status": "Fixed",
       "owner": "Codex cohost least-privilege pass",
       "lastTouched": "2026-09-02",
       "category": "RBAC / blast radius",
@@ -525,7 +525,7 @@
       "functionalityDanger": 2,
       "securityDanger": 2,
       "title": "Broad cohost default permissions include destructive user-management actions",
-      "body": "- Evidence:\n  - `shared/types.ts:468-473` grants cohosts every permission except `manage_roles` and `manage_rewards`.\n  - `server/routes/admin.ts:301-386` allows any role with `manage_users` to delete users and cascade/delete related submissions, listings, messages, board threads, and other rows. Only admin/host targets are protected from non-admin deletion.\n- Why it matters:\n  - A compromised or misassigned cohost account has enough privilege to delete large amounts of user content and account data. This is exactly the kind of blast radius a rogue insider scenario exploits.\n- Likely correction direction:\n  - Split `manage_users` into low-risk profile support, temp-password support, and destructive delete/disable permissions. Prefer soft-disable over hard delete for pre-launch public accounts.\n- Verification idea:\n  - A cohost should be able to perform intended support actions but should receive 403 for hard delete unless explicitly granted a dedicated destructive permission.",
+      "body": "- Evidence:\n  - Cohost defaults inherited `manage_users`, and the permanent `DELETE /api/admin/users/:id` route used the same permission as ordinary profile, account-access, and moderation support.\n  - The delete transaction cascades through submissions, messages, market records, side-quest completions, and board threads, giving a compromised or misassigned support account disproportionate blast radius.\n- Correction (2026-09-02):\n  - Added the dedicated `delete_users` permission and changed the permanent deletion route to require it. Cohost defaults retain `manage_users` support duties but explicitly exclude `delete_users`; host and admin defaults retain deletion, and the existing admin-only role-permission matrix is the explicit grant path.\n  - The WTF Passport shows the permanent-delete control only when the authenticated operator has `delete_users`; otherwise it explains that account support is available but deletion is separately restricted. Permission descriptions, Admin catalog, surface registry, interaction inventory, and behavior ownership now state the boundary.\n- Verification:\n  - Focused role, server-route, and Admin UI policy tests pass 10/10 and assert both sides of the boundary: cohost support remains granted, cohost deletion is denied by default, host/admin deletion remains granted, and the route no longer accepts `manage_users`.\n  - The focused Admin browser journey passes 1/1 and proves an authorized operator still sees the named Delete account recovery control. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 131 named behavior assertions. TypeScript and the production build pass locally.\n  - Status remains Fixed until the exact commit deploys and the production quality workflow succeeds.",
       "legacyOriginalId": "WTF-BB-087"
     },
     {

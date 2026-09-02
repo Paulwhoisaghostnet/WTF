@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UiButton, UiPanel } from "../components/wtfos-ui";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { useAuth } from "../lib/auth-context";
 import { BoardAdminTab } from "../features/admin/tabs/BoardAdminTab";
 import { ChallengeAutomationAdminTab } from "../features/admin/tabs/ChallengeAutomationAdminTab";
 import {
@@ -547,6 +548,7 @@ function ConfirmButton({
 
 export function Admin() {
   const presentation = usePresentationShell();
+  const { hasPermission } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState(adminTabFromLocation);
   const [navSearch, setNavSearch] = useState("");
@@ -989,6 +991,7 @@ export function Admin() {
             updateIdentityMutation={updateIdentityMutation}
             clearUserSocialMutation={clearUserSocialMutation}
             deleteUserMutation={deleteUserMutation}
+            canDeleteUsers={hasPermission("delete_users")}
             setTempPasswordMutation={setTempPasswordMutation}
             clearTempPasswordMutation={clearTempPasswordMutation}
           />

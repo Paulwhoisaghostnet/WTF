@@ -49,6 +49,7 @@ type UsersAdminTabProps = {
   updateIdentityMutation: AdminMutation<UpdateIdentityPayload>;
   clearUserSocialMutation: AdminMutation<ClearUserSocialPayload>;
   deleteUserMutation: AdminMutation<number>;
+  canDeleteUsers: boolean;
   setTempPasswordMutation: AdminMutation<SetTempPasswordPayload>;
   clearTempPasswordMutation: AdminMutation<number>;
 };
@@ -127,6 +128,7 @@ export function UsersAdminTab({
   updateIdentityMutation,
   clearUserSocialMutation,
   deleteUserMutation,
+  canDeleteUsers,
   setTempPasswordMutation,
   clearTempPasswordMutation,
 }: UsersAdminTabProps) {
@@ -319,6 +321,7 @@ export function UsersAdminTab({
           updateIdentityMutation={updateIdentityMutation}
           clearUserSocialMutation={clearUserSocialMutation}
           deleteUserMutation={deleteUserMutation}
+          canDeleteUsers={canDeleteUsers}
           setTempPasswordMutation={setTempPasswordMutation}
           clearTempPasswordMutation={clearTempPasswordMutation}
         />

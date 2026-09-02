@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **413** · Archived: **4**
+Total: **637** · Open: **17** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **414** · Archived: **4**
 
 ## Canonical Board
 
@@ -87,7 +87,6 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-087 | Claimed | Codex cohost least-privilege pass | 2026-09-02 | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -216,12 +215,12 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-652 | Fixed | Codex full-send release verification | - | E2E live puppets / Casino | P1 | 10 | 449 | 3 | 3 | 0 | Casino workflow schema missing from local puppet DB prep |
 | WTF-BB-643 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 449 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 449 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
-| WTF-BB-300 | Fixed | Codex top-priority stale bounty reconciliation | 2026-09-02 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-186 | Fixed | Cursor comparable-mutez deploy (2026-05-30) | - | Tezos / tz2at ecosystem analytics | P1 | 10 | 449 | 2 | 4 | 0 | tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez |
 | WTF-BB-656 | Fixed | Codex full-send casino release verification | - | E2E inventory / Swap DEX | P1 | 9 | 511 | 2 | 3 | 0 | DEX route smoke receives object-shaped array fixtures |
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 511 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
 | WTF-BB-650 | Fixed | Codex full-send release verification | - | E2E inventory / WTF Domains | P1 | 9 | 511 | 2 | 3 | 0 | WTF Domains E2E harness shape drift crashes native route smoke |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 511 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
+| WTF-BB-087 | Fixed | Codex cohost least-privilege pass | 2026-09-02 | RBAC / blast radius | P2 | 11 | 369 | 4 | 2 | 2 | Broad cohost default permissions include destructive user-management actions |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 369 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 369 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 369 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -538,6 +537,7 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
 | WTF-BB-372 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / puppet database preparation | P1 | 10 | 449 | 3 | 3 | 0 | Local actor traffic no longer fails on the desktop localization API because puppet DB preparation applies migration `0108` and a unit policy locks the requirement |
 | WTF-BB-355 | Verified | Codex Pasta release-evidence guardrail + Cursor live deploy | 2026-07-06 | Deploy / release metadata | P1 | 10 | 449 | 2 | 4 | 0 | Source blocks placeholder/mismatched deployment markers in Pasta readiness and production container startup; guardrails shipped in commit `360bd6e7`, normal Hetzner deploys restored and preserved the live marker through current commit `9652a72d` (Deploy to Hetzner run `28830687989`, Quality Gates run `28830687933`), and `https://wtfos.app/api/health` now reports `version.commitRef:"9652a72d"` with `nodeEnv:"production"` and `db.ok:true` |
 | WTF-BB-316 | Verified | Codex Macaroni share/calendar repair | 2026-06-23 | Macaroni / exported drop sharing and sale reminders | P1 | 10 | 449 | 2 | 4 | 0 | Exported Macaroni drop share copy could exceed the standard X 280-character post limit and sale stages lacked prefilled add-to-calendar actions; fixed in `50083c5` and verified live on `https://wtfos.app` |
+| WTF-BB-300 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | Desktop OS / route contract | P1 | 10 | 449 | 2 | 4 | 0 | Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified |
 | WTF-BB-282 | Verified | Codex Pasta Protocol implementation/full-send pass | - | Pasta Protocol / embedded creation-tool feedback | P1 | 10 | 449 | 2 | 4 | 0 | Embedded Pasta publishers rely on blocked native modals for critical feedback |
 | WTF-BB-277 | Verified | Codex inventory harness contract repair | 2026-06-18 | E2E / CH-EASE and WTF LIVE harness parity | P1 | 10 | 449 | 2 | 4 | 0 | CH-EASE and WTF LIVE inventory specs now use stateful package, handoff, soundboard, media-deck, and event mocks instead of generic catch-all responses; verified by focused inventory specs, full inventory 343/343, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live route/static smoke |
 | WTF-BB-275 | Verified | Codex Broot direct-route full-send | 2026-06-18 | Creation tools / shared route metadata | P1 | 10 | 449 | 2 | 4 | 0 | Generated creation-tool routes could exist in `PAGE_DEFS` while missing from `BROWSER_ROUTE_META` and `/api/access`, causing direct `/tools/broot` opens or agent route discovery to miss Broot; fixed by mirroring generated routes across both manifests and verified live on wtfos.app |
@@ -1820,24 +1820,6 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
-
-- Category: RBAC / blast radius
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex cohost least-privilege pass
-- Last touched: 2026-09-02
-- Score: C4 + F2 + S2 + P2(3) = 11
-- Evidence:
-  - `shared/types.ts:468-473` grants cohosts every permission except `manage_roles` and `manage_rewards`.
-  - `server/routes/admin.ts:301-386` allows any role with `manage_users` to delete users and cascade/delete related submissions, listings, messages, board threads, and other rows. Only admin/host targets are protected from non-admin deletion.
-- Why it matters:
-  - A compromised or misassigned cohost account has enough privilege to delete large amounts of user content and account data. This is exactly the kind of blast radius a rogue insider scenario exploits.
-- Likely correction direction:
-  - Split `manage_users` into low-risk profile support, temp-password support, and destructive delete/disable permissions. Prefer soft-disable over hard delete for pre-launch public accounts.
-- Verification idea:
-  - A cohost should be able to perform intended support actions but should receive 403 for hard delete unless explicitly granted a dedicated destructive permission.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -4705,27 +4687,6 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
   - Passed `./node_modules/.bin/tsc --noEmit`.
   - `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts` is blocked by the pre-existing unrelated registry error: `hoard must register behavior assertion 'auth.wallet-provider-login-lifecycle'`.
 
-### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
-
-- Category: Desktop OS / route contract
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex top-priority stale bounty reconciliation
-- Last touched: 2026-09-02
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence:
-  - `/map-lab` is consistently marked public in the current page, inventory, and shared browser registries, but an anonymous production probe on 2026-09-02 rendered only `WTF Map Lab - disabled` with no `[data-map-lab-shell]`.
-  - `/api/apps/desktop` correctly withholds the paid Map Lab app entitlement from anonymous users. The page access gate incorrectly reused that launcher/store entitlement to deny the separately advertised public demo route.
-- Why it matters:
-  - A customer can follow a public route or help link and see a disabled-app message instead of the promised self-explanatory demo, even while manifests report the route as available.
-- Correction (2026-09-02):
-  - Page definitions now distinguish a public demo route from paid launcher/store availability. `/map-lab` may render its read-only demo when the app entitlement is unavailable, while unrelated paid routes remain denied.
-  - The interaction inventory and behavior registry document the direct anonymous demo contract without unlocking Map Lab in the launcher or store.
-  - Focused mobile Playwright now proves the shell, populated demo, read-only controls, run summary, and absence of horizontal overflow at 390x844.
-- Verification:
-  - The focused route policy, migration replay, and puppet seed policy suite passes 13/13. Inventory coverage is complete for 241 surfaces, 981 handles, and 118 routes.
-  - Status remains Fixed until the exact commit deploys and a direct anonymous production browser probe renders the Map Lab shell without horizontal overflow.
-
 ### WTF-BB-186 - tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez
 
 - Category: Tezos / tz2at ecosystem analytics
@@ -4842,6 +4803,25 @@ Total: **637** · Open: **17** · Claimed: **42** · In Progress: **13** · Bloc
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
+
+### WTF-BB-087 - Broad cohost default permissions include destructive user-management actions
+
+- Category: RBAC / blast radius
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex cohost least-privilege pass
+- Last touched: 2026-09-02
+- Score: C4 + F2 + S2 + P2(3) = 11
+- Evidence:
+  - Cohost defaults inherited `manage_users`, and the permanent `DELETE /api/admin/users/:id` route used the same permission as ordinary profile, account-access, and moderation support.
+  - The delete transaction cascades through submissions, messages, market records, side-quest completions, and board threads, giving a compromised or misassigned support account disproportionate blast radius.
+- Correction (2026-09-02):
+  - Added the dedicated `delete_users` permission and changed the permanent deletion route to require it. Cohost defaults retain `manage_users` support duties but explicitly exclude `delete_users`; host and admin defaults retain deletion, and the existing admin-only role-permission matrix is the explicit grant path.
+  - The WTF Passport shows the permanent-delete control only when the authenticated operator has `delete_users`; otherwise it explains that account support is available but deletion is separately restricted. Permission descriptions, Admin catalog, surface registry, interaction inventory, and behavior ownership now state the boundary.
+- Verification:
+  - Focused role, server-route, and Admin UI policy tests pass 10/10 and assert both sides of the boundary: cohost support remains granted, cohost deletion is denied by default, host/admin deletion remains granted, and the route no longer accepts `manage_users`.
+  - The focused Admin browser journey passes 1/1 and proves an authorized operator still sees the named Delete account recovery control. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 131 named behavior assertions. TypeScript and the production build pass locally.
+  - Status remains Fixed until the exact commit deploys and the production quality workflow succeeds.
 
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 
@@ -12136,6 +12116,27 @@ Copy this when adding a new issue:
   - Local source checks passed: `node --check public/creation-tools/macaroni/js/drop.js`, `./node_modules/.bin/tsx --test server/routes/macaroni-policy.test.ts`, `./node_modules/.bin/tsx tests/e2e/inventory/coverage.ts`, and `git diff --check` for the touched Macaroni/inventory docs.
   - Rendered static-drop harness passed with a fake copied-page storage shape using `max_per_wallet: "5"`: the sale row and X compose text both showed `max 5/wallet`, the X post weighted to 236/280 while preserving the mint URL and cover URL, `.ics` and Google Calendar links rendered, and `macaroni.drop_shared` / `macaroni.drop_calendar_added` click handles fired.
   - GitHub Deploy to Hetzner completed for `50083c5`, and live `https://wtfos.app` smoke verified the exported drop sharing/calendar behavior.
+
+### WTF-BB-300 - Map Lab public route contract drift remains for a dedicated shared route-policy pass; Gamma containment is now separately verified
+
+- Category: Desktop OS / route contract
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex top-priority stale bounty reconciliation
+- Last touched: 2026-09-02
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence:
+  - `/map-lab` is consistently marked public in the current page, inventory, and shared browser registries, but an anonymous production probe on 2026-09-02 rendered only `WTF Map Lab - disabled` with no `[data-map-lab-shell]`.
+  - `/api/apps/desktop` correctly withholds the paid Map Lab app entitlement from anonymous users. The page access gate incorrectly reused that launcher/store entitlement to deny the separately advertised public demo route.
+- Why it matters:
+  - A customer can follow a public route or help link and see a disabled-app message instead of the promised self-explanatory demo, even while manifests report the route as available.
+- Correction (2026-09-02):
+  - Page definitions now distinguish a public demo route from paid launcher/store availability. `/map-lab` may render its read-only demo when the app entitlement is unavailable, while unrelated paid routes remain denied.
+  - The interaction inventory and behavior registry document the direct anonymous demo contract without unlocking Map Lab in the launcher or store.
+  - Focused mobile Playwright proves the shell, populated demo, read-only controls, run summary, and absence of horizontal overflow at 390x844.
+- Verification (2026-09-02):
+  - The focused route policy, migration replay, and puppet seed policy suite passes 13/13. Inventory coverage is complete for 241 surfaces, 981 handles, and 118 routes.
+  - Production health reported exact commit `db188081`. A direct anonymous 390x844 browser probe opened `https://wtfos.app/map-lab`, entered `wtfos-demo` read-only mode, rendered 241 nodes, ran 479 routes across 241 connected nodes, and had no horizontal overflow.
 
 ### WTF-BB-282 - Embedded Pasta publishers rely on blocked native modals for critical feedback
 

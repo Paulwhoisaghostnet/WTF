@@ -838,7 +838,8 @@ export const PERMISSIONS: PermissionDef[] = [
 
   // ── Admin ──
   { key: "access_admin_panel", label: "Access Admin Panel", description: "Open the admin panel", category: "admin" },
-  { key: "manage_users", label: "Manage Users", description: "Edit user profiles, assign roles, delete accounts", category: "admin" },
+  { key: "manage_users", label: "Manage Users", description: "Support user profiles, account access, and moderation workflows", category: "admin" },
+  { key: "delete_users", label: "Delete Users", description: "Permanently delete accounts and related user content", category: "admin" },
   { key: "manage_roles", label: "Manage Roles", description: "Configure role permissions", category: "admin" },
   { key: "manage_seasons", label: "Manage Seasons", description: "Create and edit seasons, rounds", category: "admin" },
   { key: "manage_challenges", label: "Manage Challenges", description: "Create, edit, grade challenges and submissions", category: "admin" },
@@ -871,7 +872,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   admin: [...PERMISSION_KEYS],
   host: [...PERMISSION_KEYS],
   cohost: PERMISSION_KEYS.filter(
-    (k) => k !== "manage_roles" && k !== "manage_rewards"
+    (k) => k !== "manage_roles" && k !== "manage_rewards" && k !== "delete_users"
   ),
   resident_wizard: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",

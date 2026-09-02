@@ -38,7 +38,7 @@ export function registerAdminUserDeletionRoutes(
 
   router.delete(
     "/api/admin/users/:id",
-    requirePermission("manage_users"),
+    requirePermission("delete_users"),
     async (req, res) => {
       try {
         const actor = req.user as any;

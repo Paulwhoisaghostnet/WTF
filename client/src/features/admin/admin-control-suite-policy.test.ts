@@ -25,6 +25,11 @@ test("user administration is a broad role review with an acute WTF Passport", as
   assert.match(passport, /desktopSettingsMutation/);
   assert.match(passport, /WalletDossier/);
   assert.match(passport, /Complete settings snapshot/);
+  assert.match(passport, /canDeleteUsers \?/);
+  assert.match(passport, /Account deletion restricted/);
+  assert.match(passport, /separate Delete Users permission/);
+  assert.match(users, /canDeleteUsers=\{canDeleteUsers\}/);
+  assert.match(page, /hasPermission\("delete_users"\)/);
   assert.match(page, /section\.slug/);
   assert.match(page, /openUserPassport/);
 });

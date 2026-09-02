@@ -33,6 +33,13 @@ test("trusted creator can create and manage multiple TV channels", () => {
   assert.equal(canManageMultipleTvChannels("trusted_creator"), true);
 });
 
+test("cohost support access excludes permanent account deletion by default", () => {
+  assert.ok(DEFAULT_ROLE_PERMISSIONS.cohost.includes("manage_users"));
+  assert.equal(DEFAULT_ROLE_PERMISSIONS.cohost.includes("delete_users"), false);
+  assert.ok(DEFAULT_ROLE_PERMISSIONS.host.includes("delete_users"));
+  assert.ok(DEFAULT_ROLE_PERMISSIONS.admin.includes("delete_users"));
+});
+
 test("cobwebsaints full user role grants full non-admin user permissions", () => {
   assert.equal(ROLE_LABELS[COBWEBSAINTS_FULL_USER_ROLE], "Cobwebsaints Full User");
   const roleDefinition = DEFAULT_ROLE_CATALOG.find((role) => role.slug === COBWEBSAINTS_FULL_USER_ROLE);

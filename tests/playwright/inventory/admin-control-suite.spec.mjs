@@ -78,6 +78,10 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
     await expect((await saveResponse).ok()).toBeTruthy();
     await expect(passport.getByLabel("Color scheme")).toHaveValue("arcade-carpet");
 
+    await passport.getByRole("tab", { name: "Recovery" }).click();
+    await expect(passport.getByText("Delete account", { exact: true })).toBeVisible();
+    await expect(passport.getByText("Account deletion restricted", { exact: true })).toHaveCount(0);
+
     const state = await request.get("/__test/state").then((response) => response.json());
     expect(state.interactionLog.some((event) => event.eventType === "admin.user.passport.viewed")).toBe(true);
     expect(state.interactionLog.some((event) => event.eventType === "admin.user.desktop_settings.updated")).toBe(true);

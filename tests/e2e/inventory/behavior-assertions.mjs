@@ -967,6 +967,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused source and browser harness assert the user Passport composes canonical roles, permissions, curses, wtfOS access, desktop settings, wallets, domains, and EXP activity; desktop settings saves use optimistic concurrency and audited admin routes; role and curse handoffs preserve the selected user context.",
   },
   {
+    id: "admin.user-deletion-least-privilege",
+    domain: "Administration, Governance, and Operations",
+    ownerSurfaceIds: ["admin-panel"],
+    ownerSpec:
+      "shared/types.test.ts; client/src/features/admin/admin-control-suite-policy.test.ts; server/features/admin/users/deletion-permission-policy.test.ts; tests/playwright/inventory/admin-control-suite.spec.mjs",
+    verificationCommand:
+      "npx tsx --test shared/types.test.ts client/src/features/admin/admin-control-suite-policy.test.ts server/features/admin/users/deletion-permission-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs -g \"reviews every user\"",
+    userVisibleAssertion:
+      "A cohost can open a user's WTF Passport and perform ordinary support work, but sees a plain Account deletion restricted explanation instead of a permanent-delete control unless the role was explicitly granted Delete Users.",
+    durableSideEffectAssertion:
+      "The permanent DELETE /api/admin/users/:id route requires delete_users rather than manage_users; cohost defaults deny that dedicated permission, host/admin defaults retain it, and the existing role-permission matrix remains the only explicit grant path.",
+  },
+  {
     id: "admin.help-index-coverage",
     domain: "Administration, Governance, and Operations",
     ownerSurfaceIds: ["admin-panel"],

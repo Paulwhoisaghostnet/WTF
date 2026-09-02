@@ -11387,3 +11387,13 @@
 **Rule**: Model public demo access separately from launcher, store, role, and ownership entitlements. Test the public URL with an explicitly unavailable paid app, prove its read-only surface renders anonymously, and prove an unrelated paid route remains denied.
 
 ---
+
+## 2026-09-02 — Irreversible account actions need their own permission
+
+**What happened**: The broad `manage_users` permission covered ordinary profile and account-support work but also authorized permanent account deletion and its cross-domain content cascade. Cohost defaults inherited that umbrella permission.
+
+**Why it mattered**: A support role needed the non-destructive duties, so removing the entire permission would break operations; leaving it intact preserved a rogue or compromised cohost's destructive blast radius.
+
+**Rule**: Separate irreversible actions from the support permission that leads operators to them. Enforce the dedicated permission on the server, exclude it from support-role defaults, expose any exceptional grant only through the role-permission system, and make the UI state the boundary instead of presenting a control that will fail later.
+
+---

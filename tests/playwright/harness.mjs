@@ -694,6 +694,7 @@ app.get("/api/auth/user", (_req, res) => {
       state.userRole === "admin"
         ? {
             access_admin_panel: true,
+            delete_users: true,
             manage_roles: true,
             manage_desktop_apps: true,
             manage_gameshow: true,
