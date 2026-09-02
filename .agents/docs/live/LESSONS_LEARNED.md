@@ -11727,3 +11727,13 @@
 **Rule**: For recoverable playback errors, prove the UI leaves the failing item. Advance to the next non-blacklisted local queue entry when one exists, retain authoritative refresh only as the fallback, and browser-test the notice, next-media rendering, and emitted session telemetry together.
 
 ---
+
+## 2026-09-02 — A newly red audit gate is a new bounty fact
+
+**What happened**: A release that passed the production dependency audit earlier in the day began failing after npm published new advisories for the installed `fast-uri` and `qs` transitive versions.
+
+**Why it mattered**: The application change was unrelated, but `main` no longer had a green ship signal and the production graph now carried disclosed URI-normalization and parser risks. Treating the failure as historical noise would make a Verified dependency record conceal a new incident.
+
+**Rule**: When advisory data changes, create a new identity-scoped bounty record, pin the smallest compatible patched leaves, prove the exact clean-installed graph, and require the production audit plus consumer tests to pass again. Do not rewrite the prior Verified incident.
+
+---
