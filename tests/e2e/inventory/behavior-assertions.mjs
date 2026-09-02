@@ -1068,6 +1068,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The browser harness captures an error item-end event carrying the broken video id and a non-empty session id, while the server telemetry tests prove distinct-session blacklisting remains bounded and windowed.",
   },
   {
+    id: "tv.canonical-route-only",
+    domain: "WTF TV, Playback, Channels, and Embeds",
+    ownerSurfaceIds: ["tv"],
+    ownerSpec:
+      "server/features/tv/canonical-tv-route-policy.test.ts; tests/playwright/inventory/wtfos-guide-tv.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/tv/canonical-tv-route-policy.test.ts && npx playwright test tests/playwright/inventory/wtfos-guide-tv.spec.mjs",
+    userVisibleAssertion:
+      "The OS exposes one WTF TV application at `/tv`; entering the retired `/tv2` address cannot open a divergent second player.",
+    durableSideEffectAssertion:
+      "Source policy keeps the TV2 page deleted and the route registry free of `/tv2`, while Chromium proves only `/tv` renders the TV shell and power control.",
+  },
+  {
     id: "gameshow.automation-completion-reward-proof",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["challenges", "side-quests"],

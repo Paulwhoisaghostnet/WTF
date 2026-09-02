@@ -43,6 +43,18 @@ test("wtfOS Guide TV contains only promos and TommyTezos FAQ videos", async ({ p
   await expect(page.locator('[data-tv-region="osd"]')).toContainText("CH 77");
 });
 
+test("retired TV2 route cannot open a second player implementation", async ({ page }) => {
+  await useTommyTezos(page);
+
+  await page.goto("/tv2");
+  await expect(page.locator('[data-tv-surface="tv-shell"]')).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Turn TV power on" })).toHaveCount(0);
+
+  await page.goto("/tv");
+  await expect(page.locator('[data-tv-surface="tv-shell"]')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Turn TV power on" })).toBeVisible();
+});
+
 test("canonical TV explains a broken clip, reports it, and advances to healthy media", async ({
   page,
 }) => {

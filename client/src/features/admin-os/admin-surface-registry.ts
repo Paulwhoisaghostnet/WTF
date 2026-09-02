@@ -1091,6 +1091,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: [
       "tv.public-channel-stream-embed",
       "tv.broken-clip-recovery",
+      "tv.canonical-route-only",
     ],
   },
   {

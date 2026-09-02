@@ -11737,3 +11737,13 @@
 **Rule**: When advisory data changes, create a new identity-scoped bounty record, pin the smallest compatible patched leaves, prove the exact clean-installed graph, and require the production audit plus consumer tests to pass again. Do not rewrite the prior Verified incident.
 
 ---
+
+## 2026-09-02 — Route retirement needs negative browser proof
+
+**What happened**: The alternate TV source file and route had been removed, but the bounty record remained Fixed with only source-search and typecheck evidence.
+
+**Why it mattered**: A deleted import does not by itself prove an old address cannot still resolve through another registry, redirect, or compatibility wrapper. For customers, consolidation means there is visibly one application, not merely one filename.
+
+**Rule**: Close retired UI routes with both registry/source policy and a browser assertion that the old address renders no retired surface while the canonical address still opens the expected application.
+
+---
