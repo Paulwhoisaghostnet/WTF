@@ -6,6 +6,7 @@ const mediaRoutes = readFileSync("server/routes/media-library.ts", "utf8");
 const tvPlaybackRoutes = readFileSync("server/features/tv/playback-routes.ts", "utf8");
 const tvBumperRoutes = readFileSync("server/features/tv/bumper-routes.ts", "utf8");
 const tvStreamSnapshot = readFileSync("server/features/tv/stream-snapshot.ts", "utf8");
+const tvCacheRoutes = readFileSync("server/features/tv/cache-routes.ts", "utf8");
 const appRoutes = readFileSync("server/app.ts", "utf8");
 
 function routeBody(path: string): string {
@@ -57,6 +58,43 @@ test("private media file playback has a dedicated limiter despite stream bypass"
     /"\/api\/media\/upload"[\s\S]*keyGenerator:\s*sessionOrIpRateLimitKey/,
     "media upload limits should be keyed by session user before falling back to IP"
   );
+});
+
+test("write-heavy media routes cannot inherit read-only playback rate-limit bypasses", () => {
+  assert.match(
+    appRoutes,
+    /const MEDIA_RATE_LIMIT_BYPASS_PREFIXES: readonly string\[\] = \[\]/,
+    "broad path prefixes must not exempt media writes from the generic API limiter"
+  );
+  assert.match(
+    appRoutes,
+    /if \(method !== "GET" && method !== "HEAD"\) \{\s*return false;\s*\}/,
+    "only GET and HEAD requests may match the playback bypass patterns"
+  );
+  assert.match(
+    appRoutes,
+    /"\/api\/tv\/cache\/prefetch"[\s\S]*name: "tv-cache-prefetch"[\s\S]*max: 12/,
+    "TV cache writes must retain their dedicated limiter"
+  );
+  assert.match(
+    appRoutes,
+    /"\/api\/media\/upload"[\s\S]*name: "media-upload"[\s\S]*max: 20/,
+    "media uploads must retain their dedicated limiter"
+  );
+});
+
+test("TV cache prefetch requires authentication before it can schedule downloads", () => {
+  assert.match(
+    tvCacheRoutes,
+    /router\.post\("\/api\/tv\/cache\/prefetch", isAuthenticated/,
+    "anonymous viewers must not be able to trigger cache downloads"
+  );
+  assert.match(
+    tvCacheRoutes,
+    /for \(const value of raw\.slice\(0, 10\)\)/,
+    "one authenticated request must retain the existing bounded URL batch"
+  );
+  assert.match(tvCacheRoutes, /for \(const uri of uris\) prefetchMediaAsync\(uri\)/);
 });
 
 test("public TV playback uses channel-scoped media routes, not raw library IDs", () => {
