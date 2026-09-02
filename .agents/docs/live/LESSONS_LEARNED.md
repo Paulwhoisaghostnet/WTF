@@ -11637,3 +11637,13 @@
 **Rule**: For TV state races, require the route transaction, database constraint, and production migration transcript. For stream caches, require bounded/coalesced unit behavior plus observable live miss-to-hit transitions on the deployed correction.
 
 ---
+
+## 2026-09-02 — Deployment transport must carry its own source authority
+
+**What happened**: The Actions runner could reach Hetzner, but the host intermittently failed before build because its repository remote required a GitHub credential that the deploy workflow did not own.
+
+**Why it mattered**: A healthy CI checkout and an authorized server SSH channel still could not release code when the final source transfer silently depended on mutable host-local authentication.
+
+**Rule**: Package the exact checked-out commit on the runner, verify it, transport it through the deployment channel, verify it again before reset, and bind readiness to that commit. Do not make the target host re-fetch the source from a separately authenticated service.
+
+---

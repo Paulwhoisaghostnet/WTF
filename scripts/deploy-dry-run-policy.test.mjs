@@ -70,8 +70,24 @@ test("Hetzner deploys queue and hold one host-side lock instead of orphaning can
   assert.match(deployWorkflow, /group: hetzner-deploy-main/);
   assert.match(deployWorkflow, /cancel-in-progress: false/);
   assert.match(deployWorkflow, /exec 9>\/tmp\/wtf-app-deploy\.lock/);
-  assert.match(deployWorkflow, /flock 9[\s\S]*git fetch origin[\s\S]*server-deploy\.sh/);
+  assert.match(deployWorkflow, /flock 9[\s\S]*git fetch "\$DEPLOY_BUNDLE" HEAD[\s\S]*server-deploy\.sh/);
   assert.doesNotMatch(deployWorkflow, /cancel-in-progress: true/);
+});
+
+test("Hetzner deploy transports the exact checked-out commit without server GitHub credentials", () => {
+  assert.match(deployWorkflow, /fetch-depth: 0/);
+  assert.match(deployWorkflow, /DEPLOY_COMMIT: \$\{\{ github\.sha \}\}/);
+  assert.match(deployWorkflow, /git bundle create "\$LOCAL_BUNDLE" HEAD "\^\$\{SERVER_HEAD\}"/);
+  assert.match(deployWorkflow, /git bundle verify "\$LOCAL_BUNDLE"/);
+  assert.match(deployWorkflow, /scp -i ~\/\.ssh\/id_ed25519 "\$LOCAL_BUNDLE"/);
+  assert.match(deployWorkflow, /BUNDLED_COMMIT=\$\(git rev-parse FETCH_HEAD\)/);
+  assert.match(deployWorkflow, /git checkout -B main "\$BUNDLED_COMMIT"/);
+  assert.doesNotMatch(deployWorkflow, /git fetch origin/);
+  assert.match(deployWorkflow, /EXPECTED_COMMIT="\$\{DEPLOY_COMMIT:0:8\}"/);
+  assert.ok(
+    deployWorkflow.includes('grep -q "\\"commitRef\\":\\"$EXPECTED_COMMIT\\""'),
+    "post-deploy readiness must report the exact requested commit"
+  );
 });
 
 test("Hetzner image builder runs the full TypeScript check with the CI dependency graph", () => {
