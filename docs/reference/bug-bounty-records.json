@@ -770,9 +770,9 @@
     },
     {
       "id": "WTF-BB-026",
-      "status": "Open",
-      "owner": "-",
-      "lastTouched": "2026-04-27",
+      "status": "Claimed",
+      "owner": "Codex TzKT upstream consolidation",
+      "lastTouched": "2026-09-02",
       "category": "API / reliability",
       "priority": "P2",
       "points": 9,

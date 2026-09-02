@@ -23,14 +23,13 @@
 
 ## Canonical Counts
 
-Total: **637** · Open: **6** · Claimed: **41** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **425** · Archived: **4**
+Total: **637** · Open: **5** · Claimed: **42** · In Progress: **13** · Blocked: **2** · Fixed: **146** · Verified: **425** · Archived: **4**
 
 ## Canonical Board
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 511 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
-| WTF-BB-026 | Open | - | 2026-04-27 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Open | - | 2026-04-27 | Deploy / DB operations | P2 | 9 | 511 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 572 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-043 | Open | - | 2026-04-27 | TV microapp / refresh scale | P2 | 8 | 572 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
@@ -76,6 +75,7 @@ Total: **637** · Open: **6** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 270 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
+| WTF-BB-026 | Claimed | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 511 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -678,26 +678,6 @@ Total: **637** · Open: **6** · Claimed: **41** · In Progress: **13** · Block
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
-
-### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
-
-- Category: API / reliability
-- Priority: P2
-- Status: Open
-- Owner/Session: -
-- Last touched: 2026-04-27
-- Score: C3 + F2 + S1 + P2(3) = 9
-- Evidence:
-  - `server/tzprofiles.ts:1-3`, `:8-10`, `:41-47` use hardcoded endpoints and raw `fetch`.
-  - `server/lib/contract-metadata-sync.ts:63-75` and `server/lib/tzkt-ops.ts:33-38` duplicate raw fetch flows.
-  - `server/lib/operator-wallet-balances.ts:24-27` and other files keep local TZKT constants, causing config drift.
-- Why it matters:
-  - Different code paths now have independent fetch behavior and observability.
-  - It increases API drift risk and makes chain/network migration harder.
-- Likely correction direction:
-  - Move these readers onto shared upstream clients and centralized endpoint config.
-- Verification idea:
-  - In staging, override `TZKT_API_URL` and verify these paths hit the overridden host with shared timeout/retry behavior.
 
 ### WTF-BB-022 - Backfill pipeline defaults to `us-west-2` when Supabase region is missing
 
@@ -1618,6 +1598,26 @@ Total: **637** · Open: **6** · Claimed: **41** · In Progress: **13** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
+
+### WTF-BB-026 - Profile and metadata fetchers duplicate hardcoded upstream paths
+
+- Category: API / reliability
+- Priority: P2
+- Status: Claimed
+- Owner/Session: Codex TzKT upstream consolidation
+- Last touched: 2026-09-02
+- Score: C3 + F2 + S1 + P2(3) = 9
+- Evidence:
+  - `server/tzprofiles.ts:1-3`, `:8-10`, `:41-47` use hardcoded endpoints and raw `fetch`.
+  - `server/lib/contract-metadata-sync.ts:63-75` and `server/lib/tzkt-ops.ts:33-38` duplicate raw fetch flows.
+  - `server/lib/operator-wallet-balances.ts:24-27` and other files keep local TZKT constants, causing config drift.
+- Why it matters:
+  - Different code paths now have independent fetch behavior and observability.
+  - It increases API drift risk and makes chain/network migration harder.
+- Likely correction direction:
+  - Move these readers onto shared upstream clients and centralized endpoint config.
+- Verification idea:
+  - In staging, override `TZKT_API_URL` and verify these paths hit the overridden host with shared timeout/retry behavior.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
