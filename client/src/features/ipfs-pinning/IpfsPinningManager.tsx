@@ -245,7 +245,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
             <span>Hosted cache root: {overview.provider.storageRoot}</span>
             <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/porcupin-setup")}>
               <ExternalLink size={15} />
-              Connect Porcupin
+              Own-node setup
             </TextButton>
             <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/anchor")}>
               <ExternalLink size={15} />

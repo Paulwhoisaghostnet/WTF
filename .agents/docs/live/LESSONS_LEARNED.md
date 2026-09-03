@@ -11797,3 +11797,13 @@
 **Rule**: Give an independent alternative its own admin-observability surface without the restricted service's desktop app key. Keep the cross-link visible, but do not transfer the service's ownership or permission gate onto the alternative.
 
 ---
+
+## 2026-09-02 — Adding an alternative must preserve established interaction labels
+
+**What happened**: Adding Anchor beside Porcupin also renamed the existing IPFS Pinning Manager action from “Own-node setup” to “Connect Porcupin.” The repository-wide Gamma browser inventory still addressed that established action by its accessible name, so one of 716 interaction checks failed even though the new Anchor flow passed.
+
+**Why it mattered**: The Anchor addition was meant to be additive. Renaming an unrelated, already-inventoried control expanded the change into a compatibility break and made the existing Porcupin setup path undiscoverable to automation using its canonical label.
+
+**Rule**: When introducing a peer option, retain the existing option's accessible name and add the new control independently unless the contract explicitly includes a rename. Treat inventory selectors by role and accessible name as public interaction contracts.
+
+---
