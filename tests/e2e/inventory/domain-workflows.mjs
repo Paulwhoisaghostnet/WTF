@@ -30,6 +30,7 @@ export const DOMAIN_WORKFLOWS = [
       "auth.stale-session-welcome-recovery",
       "auth.faq-registration-tutorials",
       "wtfos.guide-promo-channel",
+      "profile.pfp-preview-gateway-fallback",
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },

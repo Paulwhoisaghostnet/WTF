@@ -40,7 +40,11 @@ import {
   presentationRouteHref,
   usePresentationShell,
 } from "../lib/presentation-shell";
-import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import {
+  advanceResolvedMediaFallback,
+  resolveTokenThumbnail,
+  type ResolvedThumbnail,
+} from "../lib/media-resolve";
 import { getCanvasFont } from "../features/appearance/get-canvas-font";
 
 /* ── styled helpers ──────────────────────────────────────────────────────── */
@@ -403,15 +407,11 @@ interface PfpCandidate {
 
 /* ── ipfs helper ─────────────────────────────────────────────────────────── */
 
-function resolveTokenImage(token: PfpCandidate): string | null {
-  const meta = token.metadata as any;
-  const uri =
-    token.tokenThumbnail ||
-    meta?.thumbnailUri ||
-    meta?.displayUri ||
-    meta?.artifactUri;
-  if (!uri) return null;
-  return normalizeIpfsUri(uri);
+function resolveProfileTokenImage(token: PfpCandidate): ResolvedThumbnail | null {
+  return resolveTokenThumbnail({
+    thumbnail: token.tokenThumbnail,
+    metadata: token.metadata,
+  });
 }
 
 function hasPfpTag(token: PfpCandidate): boolean {
@@ -967,7 +967,7 @@ export function Profile() {
 
   /* ── PFP editor ────────────────────────────────────────────────────────── */
 
-  const loadImageToCanvas = useCallback((src: string) => {
+  const loadImageToCanvas = useCallback((resolved: ResolvedThumbnail) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -983,14 +983,17 @@ export function Profile() {
       ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
       imgRef.current = img;
     };
-    img.src = src;
+    img.onerror = () => {
+      advanceResolvedMediaFallback(img, resolved);
+    };
+    img.src = resolved.src;
   }, []);
 
   const openEditor = (token: PfpCandidate) => {
     setPfpEditorToken(token);
-    const src = resolveTokenImage(token);
-    if (src) {
-      requestAnimationFrame(() => loadImageToCanvas(src));
+    const resolved = resolveProfileTokenImage(token);
+    if (resolved) {
+      requestAnimationFrame(() => loadImageToCanvas(resolved));
     }
   };
 
@@ -1043,8 +1046,8 @@ export function Profile() {
 
   const handleResetEditor = () => {
     if (pfpEditorToken) {
-      const src = resolveTokenImage(pfpEditorToken);
-      if (src) loadImageToCanvas(src);
+      const resolved = resolveProfileTokenImage(pfpEditorToken);
+      if (resolved) loadImageToCanvas(resolved);
     }
   };
 
@@ -1747,7 +1750,7 @@ export function Profile() {
 
               <PfpGrid>
                 {pfpCandidates?.items.map((token) => {
-                  const src = resolveTokenImage(token);
+                  const resolved = resolveProfileTokenImage(token);
                   const isPfp = hasPfpTag(token);
                   return (
                     <PfpCandidate
@@ -1759,11 +1762,16 @@ export function Profile() {
                       title={token.tokenName || `#${token.tokenId}`}
                     >
                       {isPfp && <PfpBadge>Profile</PfpBadge>}
-                      {src ? (
+                      {resolved ? (
                         <img
-                          src={src}
+                          src={resolved.src}
                           alt={token.tokenName || ""}
                           loading="lazy"
+                          onError={(event) => {
+                            const image = event.currentTarget;
+                            if (advanceResolvedMediaFallback(image, resolved)) return;
+                            image.style.display = "none";
+                          }}
                         />
                       ) : (
                         <span style={{ fontSize: PROFILE_CAPTION_TYPE, padding: 4 }}>

@@ -10,6 +10,13 @@ test("sanitizeThumbnailUrl rewrites ipfs thumbnails through the shared primary g
   );
 });
 
+test("sanitizeThumbnailUrl accepts canonical Fileship preview URLs", () => {
+  assert.equal(
+    sanitizeThumbnailUrl("https://ipfs.fileship.xyz/bafybeigdyrzt/thumb.png"),
+    "https://ipfs.fileship.xyz/bafybeigdyrzt/thumb.png"
+  );
+});
+
 test("sanitizeThumbnailUrl rejects private hosts and strips http credentials", () => {
   assert.equal(sanitizeThumbnailUrl("https://127.0.0.1/secret.png"), null);
   assert.equal(

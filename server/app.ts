@@ -24,6 +24,7 @@ import {
   publicApiRateLimitKey,
   rewritePublicApiVersion,
 } from "./lib/public-api";
+import { DEFAULT_IPFS_GATEWAY_ORIGINS } from "../shared/ipfs-gateways";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -254,8 +255,7 @@ export async function createApp() {
     "https://tcinfra.net",
     "https://*.tcinfra.net",
     "https://api.pinata.cloud",
-    "https://gateway.pinata.cloud",
-    "https://ipfs.io",
+    ...DEFAULT_IPFS_GATEWAY_ORIGINS,
     "https://*.nftstorage.link",
     "https://*.fileship.xyz",
     "https://api.bsky.app",
@@ -268,8 +268,7 @@ export async function createApp() {
     "https://*.wtfos.me",
   ];
   const trustedContentSources = [
-    "https://ipfs.io",
-    "https://gateway.pinata.cloud",
+    ...DEFAULT_IPFS_GATEWAY_ORIGINS,
     "https://*.nftstorage.link",
     "https://*.fileship.xyz",
     "https://*.backblazeb2.com",

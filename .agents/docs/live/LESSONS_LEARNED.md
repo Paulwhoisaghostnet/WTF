@@ -11807,3 +11807,13 @@
 **Rule**: When introducing a peer option, retain the existing option's accessible name and add the new control independently unless the contract explicitly includes a rename. Treat inventory selectors by role and accessible name as public interaction contracts.
 
 ---
+
+## 2026-09-03 — Media fallback code and browser policy must share one gateway source
+
+**What happened**: The Profile picture picker collapsed IPFS artwork to one gateway and had no error-driven recovery in either its tiles or editor canvas. After adding FileShip-first resolution, the browser console exposed a second boundary: production CSP admitted only part of the shared gateway list, including a wildcard that did not cover the exact NFT.Storage apex origin. The same console hash identified the shell's own pre-module `window.global` shim as rejected inline code.
+
+**Why it mattered**: A fallback URL is not a fallback when `img-src` blocks the browser from requesting it, and an app-owned inline bootstrap cannot run under the shell's deliberately strict `script-src`. Together these failures produced blank profile previews even when the immutable content remained reachable.
+
+**Rule**: Derive CSP image, media, and network origins from the same ordered gateway configuration used by media resolution; browser-test forced primary failure through a real alternate; and keep required pre-module compatibility shims in same-origin external files rather than granting `unsafe-inline` or maintaining hand-copied hashes.
+
+---

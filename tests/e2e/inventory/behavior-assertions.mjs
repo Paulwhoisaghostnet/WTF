@@ -404,6 +404,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The server stores the expected X handle in the OAuth session, canonicalizes legacy wtfgameshow.app callback origins to wtfos.app, and rejects mismatched callbacks before updating twitterId/twitterHandle/token fields or running X onboarding.",
   },
   {
+    id: "profile.pfp-preview-gateway-fallback",
+    domain: "Entry, Authentication, and Account Identity",
+    ownerSurfaceIds: ["profile"],
+    ownerSpec:
+      "shared/ipfs-gateways.test.ts; client/src/lib/media-resolve.test.ts; client/src/pages/profile-pfp-preview-policy.test.ts; server/app-csp-policy.test.ts; server/features/tv/media-urls.test.ts; server/lib/thumbnail-url.test.ts; tests/playwright/inventory/gamma-wtfos.spec.mjs",
+    verificationCommand:
+      "node --import tsx --test shared/ipfs-gateways.test.ts client/src/lib/media-resolve.test.ts client/src/pages/profile-pfp-preview-policy.test.ts server/app-csp-policy.test.ts server/features/tv/media-urls.test.ts server/lib/thumbnail-url.test.ts && npm run build && HARNESS_PORT=4360 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs -g \"Profile identity\" --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "The profile-picture picker and editor load token art through the same-origin media cache using FileShip's canonical gateway first, then recover through CSP-permitted ordered alternate IPFS gateways when the cache or FileShip request fails.",
+    durableSideEffectAssertion:
+      "Shared gateway, CSP, and media-cache tests lock FileShip-first canonical URL parsing, derive every allowed content origin from the alternate candidate list, and reject executable inline shell bootstraps; the focused browser story forces cache and FileShip failures, observes an alternate preview in the picker, and proves that the editor canvas receives image pixels through the same fallback chain.",
+  },
+  {
     id: "auth.wallet-challenge-login",
     domain: "Wallets, Tokens, Portfolio, and On-Chain State",
     ownerSurfaceIds: ["profile"],

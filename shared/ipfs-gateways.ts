@@ -1,10 +1,15 @@
 export const DEFAULT_IPFS_GATEWAYS = [
+  "https://ipfs.fileship.xyz/",
   "https://nftstorage.link/ipfs/",
   "https://w3s.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
   "https://dweb.link/ipfs/",
   "https://cf-ipfs.com/ipfs/",
   "https://ipfs.io/ipfs/",
+] as const;
+
+export const DEFAULT_IPFS_GATEWAY_ORIGINS = [
+  ...new Set(DEFAULT_IPFS_GATEWAYS.map((gateway) => new URL(gateway).origin)),
 ] as const;
 
 const CID_RE = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|baf[1-9A-Za-z][1-9A-Za-z]+)(?:\/.*)?$/i;
@@ -16,6 +21,15 @@ export function normalizeIpfsGatewayBase(input: string): string | null {
     const parsed = new URL(raw);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
     const cleanPath = parsed.pathname.replace(/\/+$/, "");
+    if (
+      parsed.hostname.toLowerCase() === "ipfs.fileship.xyz" &&
+      (cleanPath === "" || cleanPath.toLowerCase() === "/ipfs")
+    ) {
+      parsed.pathname = "/";
+      parsed.search = "";
+      parsed.hash = "";
+      return parsed.toString();
+    }
     const pathWithIpfs = cleanPath.toLowerCase().endsWith("/ipfs")
       ? cleanPath
       : `${cleanPath}/ipfs`;
@@ -62,6 +76,11 @@ export function extractIpfsPath(uri: string | null | undefined): string | null {
     const pathMatch = parsed.pathname.match(/^\/ipfs\/(.+)$/i);
     if (pathMatch?.[1]) return `${pathMatch[1]}${parsed.search || ""}`;
 
+    if (parsed.hostname.toLowerCase() === "ipfs.fileship.xyz") {
+      const cleanPath = parsed.pathname.replace(/^\/+/, "");
+      return cleanPath ? `${cleanPath}${parsed.search || ""}` : null;
+    }
+
     const subdomain = parsed.hostname.match(/^([a-z0-9]+)\.ipfs\./i);
     if (subdomain?.[1]) {
       const cleanPath = parsed.pathname.replace(/^\/+/, "");
@@ -103,7 +122,7 @@ export function buildWtfIpfsGatewayPolicy(gateways?: readonly string[] | string 
     finalFallbackGateway: normalizedGateways.at(-1) || DEFAULT_IPFS_GATEWAYS.at(-1)!,
     invariants: [
       "IPFS rendering uses ordered gateway candidates instead of a single hard-coded gateway.",
-      "Gateway bases are normalized to HTTPS /ipfs/ roots before use.",
+      "Gateway bases are normalized to their canonical HTTPS content roots before use.",
       "ipfs.io remains a fallback by default, not the only rendering path.",
     ] as const,
   };

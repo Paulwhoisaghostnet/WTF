@@ -18,6 +18,7 @@ const DEFAULT_ALLOWED_HOSTS = [
   "dweb.link",
   "w3s.link",
   "nftstorage.link",
+  "ipfs.fileship.xyz",
   "gateway.pinata.cloud",
   "pinata.cloud",
   "cf-ipfs.com",

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **459** · Archived: **4**
+Total: **640** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **460** · Archived: **4**
 
 ## Canonical Board
 
@@ -661,6 +661,7 @@ Total: **639** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 371 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 610 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 632 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 638 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 638 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 638 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 186 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
@@ -14792,6 +14793,24 @@ Copy this when adding a new issue:
   - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9, after shrinking the themed toolbar from 46px to a capped 36px row.
   - `npm run test:e2e:inventory` ran after the fix; WTF LIVE passed inside the full suite and the suite ended 294/295 because `/trade-boards` hit a transient `dist/public/index.html` 404 resource read unrelated to WTF LIVE. The exact failed route then passed with `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Trade boards/barter"`.
   - `git diff --check` passed.
+
+### WTF-BB-672 - Profile picture picker bypassed FileShip and had no alternate gateway recovery
+
+- Category: Profile / IPFS preview reliability
+- Priority: P3
+- Status: Verified
+- Owner/Session: Codex profile picture preview repair
+- Last touched: 2026-09-03
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence:
+  - `Profile.tsx` called the low-level `normalizeIpfsUri` helper directly, selected the prior NFT.Storage default, and collapsed each owned-token preview to one URL. Picker images and the canvas loader had no error-driven recovery.
+  - FileShip root-style URLs were not recognized when deriving cache fallback candidates. Browser diagnostics also showed production CSP blocking alternate origins, and the reported inline-script hash matched the shell's own `window.global = globalThis` bootstrap.
+- Correction:
+  - Made FileShip the shared primary gateway and retained NFT.Storage, Web3.Storage, Pinata, dweb, Cloudflare, and ipfs.io as ordered alternates. Routed picker tiles and editor loading through the shared same-origin cache resolver with error-driven fallback.
+  - Derived production image, media, and network CSP origins from that gateway configuration, admitted FileShip through thumbnail sanitization, and moved the global compatibility shim into a same-origin external script without weakening `script-src`.
+- Verification (2026-09-03):
+  - Focused gateway, resolver, cache, sanitizer, archive, desktop, Profile, and CSP tests pass. The production build contains the external shim with zero executable inline scripts.
+  - Chromium forces both cache and FileShip failure, then proves the picker renders through NFT.Storage and the editor canvas receives image pixels through the same fallback chain.
 
 ### WTF-BB-120 - Regular Console SDK exposed source compatibility alias
 

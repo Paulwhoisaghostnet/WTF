@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { DEFAULT_IPFS_GATEWAY_ORIGINS } from "../shared/ipfs-gateways";
 
 const appSource = readFileSync("server/app.ts", "utf8");
+const indexSource = readFileSync("index.html", "utf8");
 
 test("production CSP keeps WalletConnect/Reown, Beacon, trusted calendar, and WTF TV embeds as explicit frame sources", () => {
   for (const source of [
@@ -71,6 +73,29 @@ test("production shell scripts are strict by default", () => {
   assert.doesNotMatch(baseScriptBlock, /data:/);
   assert.doesNotMatch(baseScriptBlock, /wasm-unsafe-eval/);
   assert.doesNotMatch(appSource, /CSP_STRICT_SCRIPTS/);
+});
+
+test("production shell bootstrap uses a same-origin external script", () => {
+  assert.match(indexSource, /<script src="\/global-shim\.js"><\/script>/);
+  const executableInlineScripts = [...indexSource.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((match) => match[1]?.trim())
+    .filter(Boolean);
+  assert.deepEqual(executableInlineScripts, []);
+});
+
+test("production image and media CSP inherit every configured IPFS gateway origin", () => {
+  assert.ok(DEFAULT_IPFS_GATEWAY_ORIGINS.includes("https://ipfs.fileship.xyz"));
+  assert.ok(DEFAULT_IPFS_GATEWAY_ORIGINS.includes("https://nftstorage.link"));
+  assert.ok(DEFAULT_IPFS_GATEWAY_ORIGINS.includes("https://w3s.link"));
+  assert.ok(DEFAULT_IPFS_GATEWAY_ORIGINS.includes("https://dweb.link"));
+  assert.ok(DEFAULT_IPFS_GATEWAY_ORIGINS.includes("https://cf-ipfs.com"));
+
+  const networkBlock = appSource.match(/const trustedNetworkSources = \[([\s\S]*?)\n  \];/)?.[1] || "";
+  const contentBlock = appSource.match(/const trustedContentSources = \[([\s\S]*?)\n  \];/)?.[1] || "";
+  assert.match(networkBlock, /\.\.\.DEFAULT_IPFS_GATEWAY_ORIGINS/);
+  assert.match(contentBlock, /\.\.\.DEFAULT_IPFS_GATEWAY_ORIGINS/);
+  assert.match(appSource, /"img-src": \["'self'", "data:", "blob:", \.\.\.trustedContentSources\]/);
+  assert.match(appSource, /"media-src": \["'self'", "data:", "blob:", \.\.\.trustedContentSources\]/);
 });
 
 test("legacy cartridge capabilities are isolated to named route exceptions", () => {

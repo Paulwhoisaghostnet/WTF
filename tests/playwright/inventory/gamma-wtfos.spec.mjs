@@ -4132,6 +4132,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
 
   test("hosts Profile identity, wallet, and avatar chrome in the Gamma presentation style", async ({ page, request }) => {
     const avatarWrites = [];
+    const attemptedPreviewUrls = [];
     await setHarnessState(request, {
       userRole: "user",
       username: "gamma-profile",
@@ -4174,6 +4175,27 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await page.route("**/api/etherlink/wallets", async (route) => {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify([]) });
     });
+    await page.route("**/api/cache/media**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      attemptedPreviewUrls.push(requestUrl.searchParams.get("url") || requestUrl.toString());
+      await route.fulfill({ status: 502, contentType: "text/plain", body: "primary cache miss" });
+    });
+    await page.route("https://ipfs.fileship.xyz/**", async (route) => {
+      attemptedPreviewUrls.push(route.request().url());
+      await route.fulfill({ status: 502, contentType: "text/plain", body: "fileship unavailable" });
+    });
+    await page.route("https://nftstorage.link/ipfs/**", async (route) => {
+      attemptedPreviewUrls.push(route.request().url());
+      await route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        headers: { "access-control-allow-origin": "*" },
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      });
+    });
     await page.route("**/api/profile/pfp-candidates**", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -4184,10 +4206,10 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
               tokenContract: "KT1GammaProfile",
               tokenId: "1",
               tokenName: "Gamma Avatar Token",
-              tokenThumbnail: "/__test/media/harness-alpha-token.png",
+              tokenThumbnail: "ipfs://bafybeigammaprofilefixture/avatar.png",
               metadata: {
                 tags: ["pfp"],
-                thumbnailUri: "/__test/media/harness-alpha-token.png",
+                thumbnailUri: "ipfs://bafybeigammaprofilefixture/avatar.png",
               },
             },
           ],
@@ -4275,6 +4297,13 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     await expect(picker).toBeVisible();
     await expect(picker).toContainText("Choose profile picture token");
     await expect(profileSurface.locator('[data-profile-region="pfp-candidate"]')).toContainText("Profile");
+    const candidateImage = profileSurface.locator('[data-profile-region="pfp-candidate"] img');
+    await expect(candidateImage).toBeVisible();
+    await expect(candidateImage).toHaveAttribute("src", /https:\/\/nftstorage\.link\/ipfs\//);
+    expect(attemptedPreviewUrls[0]).toContain("https://ipfs.fileship.xyz/");
+    expect(attemptedPreviewUrls).toContain(
+      "https://ipfs.fileship.xyz/bafybeigammaprofilefixture/avatar.png",
+    );
 
     const pickerMetrics = await profileSurface.evaluate((surface) => {
       const read = (selector) => {
@@ -4303,7 +4332,12 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
 
     await page.getByRole("button", { name: "Edit Gamma Avatar Token as profile picture" }).click();
     await expect(profileSurface.locator('[data-profile-region="editor-toolbar"]')).toBeVisible();
-    await expect(profileSurface.locator('[data-profile-region="editor-canvas"]')).toBeVisible();
+    const editorCanvas = profileSurface.locator('[data-profile-region="editor-canvas"]');
+    await expect(editorCanvas).toBeVisible();
+    await expect.poll(() => editorCanvas.evaluate((canvas) => {
+      const context = canvas.getContext("2d");
+      return context ? context.getImageData(0, 0, 1, 1).data[3] : 0;
+    })).toBeGreaterThan(0);
     const editorMetrics = await profileSurface.evaluate((surface) => {
       const toolbar = surface.querySelector('[data-profile-region="editor-toolbar"]');
       const canvas = surface.querySelector('[data-profile-region="editor-canvas"]');

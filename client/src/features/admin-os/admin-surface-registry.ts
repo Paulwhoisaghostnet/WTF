@@ -959,6 +959,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "auth.wallet-challenge-login",
       "auth.wallet-provider-login-lifecycle",
       "wallet.passive-refresh-no-signature",
+      "profile.pfp-preview-gateway-fallback",
     ],
   },
   {

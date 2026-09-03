@@ -10214,6 +10214,21 @@
       "securityDanger": 4,
       "title": "New fast-uri and qs advisories fail the production dependency audit",
       "body": "- Evidence (2026-09-02):\n  - Exact-main Quality Gates run `33675092343` failed `npm run security:audit` after npm published four high-severity `fast-uri` host-confusion/SSRF advisories affecting 3.1.5 and two moderate `qs` parsing/denial-of-service advisories affecting 6.15.2.\n  - The installed paths were transitive through Ajv and Express/body-parser; npm reported compatible fixes.\n- Correction:\n  - Commit `ebe26e2a` pins `fast-uri` 3.1.6 and `qs` 6.16.0 through root overrides and regenerates the lockfile without changing direct framework versions.\n- Verification:\n  - A clean `npm ci` resolved the exact patched leaves. Both `npm audit --omit=dev --audit-level=high` and the stricter moderate-level production audit reported zero vulnerabilities.\n  - Focused Express public-API/cache/health/static tests passed 11/11, supply-chain policy passed 4/4, and local TypeScript and production build passed.\n  - Exact-commit Quality Gates run 33678900075 succeeded, including the production audit, all aggregate unit tests, SBOM, TypeScript, build, full inventory route smoke, SmartPy, and external-link safety. Deploy run 33678900101 succeeded and production readiness reported exact commit `ebe26e2a` with database, chain, and jobs healthy. WTF-BB-671 is Verified."
+    },
+    {
+      "id": "WTF-BB-672",
+      "status": "Verified",
+      "owner": "Codex profile picture preview repair",
+      "lastTouched": "2026-09-03",
+      "category": "Profile / IPFS preview reliability",
+      "priority": "P3",
+      "points": 5,
+      "rank": 638,
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "title": "Profile picture picker bypassed FileShip and had no alternate gateway recovery",
+      "body": "- Evidence:\n  - `Profile.tsx` called the low-level `normalizeIpfsUri` helper directly, selected the prior NFT.Storage default, and collapsed each owned-token preview to one URL. Picker images and the canvas loader had no error-driven recovery.\n  - FileShip root-style URLs were not recognized when deriving cache fallback candidates. Browser diagnostics also showed production CSP blocking alternate origins, and the reported inline-script hash matched the shell's own `window.global = globalThis` bootstrap.\n- Correction:\n  - Made FileShip the shared primary gateway and retained NFT.Storage, Web3.Storage, Pinata, dweb, Cloudflare, and ipfs.io as ordered alternates. Routed picker tiles and editor loading through the shared same-origin cache resolver with error-driven fallback.\n  - Derived production image, media, and network CSP origins from that gateway configuration, admitted FileShip through thumbnail sanitization, and moved the global compatibility shim into a same-origin external script without weakening `script-src`.\n- Verification (2026-09-03):\n  - Focused gateway, resolver, cache, sanitizer, archive, desktop, Profile, and CSP tests pass. The production build contains the external shim with zero executable inline scripts.\n  - Chromium forces both cache and FileShip failure, then proves the picker renders through NFT.Storage and the editor canvas receives image pixels through the same fallback chain."
     }
   ]
 }
