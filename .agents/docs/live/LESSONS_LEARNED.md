@@ -11787,3 +11787,13 @@
 **Rule**: Catalog every inventory SKU that grants launcher access and make desktop personalization use that catalog declaration. Test launcher access and in-app membership as separate gates: the pass exposes the surface, while active membership controls entry.
 
 ---
+
+## 2026-09-02 — Independent alternatives must not inherit service app gates
+
+**What happened**: Anchor was first registered under the IPFS Pinning Manager admin surface, so an ordinary signed-in user without that app pass saw a disabled-app notice even though Anchor itself needs neither hosted pinning nor Pin Collector access.
+
+**Why it mattered**: Reusing the parent service gate contradicted the product contract: Anchor is meant to remain available as an independent alternative when hosted Porcupin is unavailable to the user.
+
+**Rule**: Give an independent alternative its own admin-observability surface without the restricted service's desktop app key. Keep the cross-link visible, but do not transfer the service's ownership or permission gate onto the alternative.
+
+---

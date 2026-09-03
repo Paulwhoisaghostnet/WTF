@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **920 unique method/path operations**, grouped into **98 route families** and declared across **125 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **921 unique method/path operations**, grouped into **99 route families** and declared across **126 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 920 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 921 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -43,49 +43,49 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | Tool | Use | Source |
 | --- | --- | --- |
 | `wtf_api_request` | Call any operation exposed by the versioned wtfOS Platform API at /api/v1 using the paired token. Existing route ownership, role, app-gate, and token-scope checks remain authoritative. Read calls require api:read; mutations require api:write; admin paths additionally require an admin account and api:admin. | `server/lib/wtf-mcp.ts:818` |
-| `wtf_build_game_studio_bundle` | Build an SDK-compatible ZIP bundle from a Game Studio template and selected stock assets. | `server/lib/wtf-mcp.ts:2464` |
-| `wtf_build_game_studio_project` | Build and validate a saved Game Studio project, recording a build snapshot and returning SDK-compatible ZIP metadata. | `server/lib/wtf-mcp.ts:2722` |
-| `wtf_create_arcade_play_intent` | Create a WTF in-app market payment intent for one WTF Arcade Play ticket for the paired user. | `server/lib/wtf-mcp.ts:1826` |
-| `wtf_create_game_studio_project` | Create a saved Game Studio project for the paired user from a template, optional source files, and optional stock or uploaded assets. | `server/lib/wtf-mcp.ts:2595` |
-| `wtf_create_game_studio_scaffold` | Generate a starter browser-game project scaffold wired to the WTF Game SDK. | `server/lib/wtf-mcp.ts:2424` |
+| `wtf_build_game_studio_bundle` | Build an SDK-compatible ZIP bundle from a Game Studio template and selected stock assets. | `server/lib/wtf-mcp.ts:2506` |
+| `wtf_build_game_studio_project` | Build and validate a saved Game Studio project, recording a build snapshot and returning SDK-compatible ZIP metadata. | `server/lib/wtf-mcp.ts:2771` |
+| `wtf_create_arcade_play_intent` | Create a WTF in-app market payment intent for one WTF Arcade Play ticket for the paired user. | `server/lib/wtf-mcp.ts:1868` |
+| `wtf_create_game_studio_project` | Create a saved Game Studio project for the paired user from a template, optional source files, and optional stock or uploaded assets. | `server/lib/wtf-mcp.ts:2644` |
+| `wtf_create_game_studio_scaffold` | Generate a starter browser-game project scaffold wired to the WTF Game SDK. | `server/lib/wtf-mcp.ts:2466` |
 | `wtf_create_map_lab_document` | Create a sanitized WTF Map Lab document payload from explicit MCP-provided nodes and wires. This tool can create map objects but cannot read, use, or expose ingested AT repo/firehose data paths. | `server/lib/wtf-mcp.ts:890` |
-| `wtf_create_trusted_creator_market_item` | Create an EXP-priced in-app market item in the paired user's trusted market creator lane. Requires the paired WTF user to have the trusted_market_creator permission. | `server/lib/wtf-mcp.ts:2851` |
+| `wtf_create_trusted_creator_market_item` | Create an EXP-priced in-app market item in the paired user's trusted market creator lane. Requires the paired WTF user to have the trusted_market_creator permission. | `server/lib/wtf-mcp.ts:2900` |
 | `wtf_get_access_manifest` | Return the standard WTF browser, JSON API, and paired MCP access map. Use this before navigating or automating WTF so agent access stays aligned with the web-browser experience. | `server/lib/wtf-mcp.ts:743` |
-| `wtf_get_arcade_play_fee` | Return the current WTF Arcade play-ticket SKU, WTF price, and in-app market contract wiring. | `server/lib/wtf-mcp.ts:1760` |
-| `wtf_get_arcade_play_status` | Return the paired user's WTF Arcade ticket inventory, trusted/admin bypass status, and current play-fee wiring. | `server/lib/wtf-mcp.ts:1788` |
-| `wtf_get_arcade_stats` | Get aggregate WTF Arcade stats plus the current in-app market play-fee wiring. | `server/lib/wtf-mcp.ts:1727` |
+| `wtf_get_arcade_play_fee` | Return the current WTF Arcade play-ticket SKU, WTF price, and in-app market contract wiring. | `server/lib/wtf-mcp.ts:1802` |
+| `wtf_get_arcade_play_status` | Return the paired user's WTF Arcade ticket inventory, trusted/admin bypass status, and current play-fee wiring. | `server/lib/wtf-mcp.ts:1830` |
+| `wtf_get_arcade_stats` | Get aggregate WTF Arcade stats plus the current in-app market play-fee wiring. | `server/lib/wtf-mcp.ts:1769` |
 | `wtf_get_capabilities` | Return paired user context, admin feature gates, MCP rate-limit hints, and available WTF agent workflows. | `server/lib/wtf-mcp.ts:698` |
-| `wtf_get_console_discovery_shelves` | Get active WTF Console discovery shelves for the stock console surface. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2065` |
-| `wtf_get_console_stats` | Get aggregate WTF Console health stats for the personal stock-console surface only. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2026` |
+| `wtf_get_console_discovery_shelves` | Get active WTF Console discovery shelves for the stock console surface. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2107` |
+| `wtf_get_console_stats` | Get aggregate WTF Console health stats for the personal stock-console surface only. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2068` |
 | `wtf_get_crp_nomination_credits` | Return the privacy-preserving anonymous nomination credit count for the paired user. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:284` |
 | `wtf_get_crp_nomination_status` | Probe whether the dedicated CRP nominations AT repo is configured. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:171` |
 | `wtf_get_desktop_appearance` | Read the paired user's WTF desktop appearance settings, including color scheme, wallpaper, cursor, physics, and desktop pet switch. | `server/lib/wtf-mcp.ts:970` |
-| `wtf_get_desktop_pet` | Read the paired user's desktop hamster state and recent care status. This tool only accesses the paired user's own pet. | `server/lib/wtf-mcp.ts:1074` |
+| `wtf_get_desktop_pet` | Read the paired user's desktop hamster state and recent care status. This tool only accesses the paired user's own pet. | `server/lib/wtf-mcp.ts:1088` |
 | `wtf_get_registered_inventory` | Return the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. Use this for agent handshakes that need the live creation and service registry. | `server/lib/wtf-mcp.ts:781` |
-| `wtf_keep_desktop_pet_alive` | Care for the paired user's desktop hamster. With strategy='auto', the tool chooses the most urgent safe care actions and applies up to max_actions. | `server/lib/wtf-mcp.ts:1100` |
-| `wtf_list_arcade_audit_events` | List recent WTF Arcade moderation, compatible-source check, report, and score audit events. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1867` |
-| `wtf_list_arcade_games` | List active public WTF Arcade games, including compatible-source games and creator/Game Studio submissions. Console stock cartridges are excluded. | `server/lib/wtf-mcp.ts:1680` |
-| `wtf_list_console_audit_events` | List recent WTF Console moderation/import/score audit events. Requires an admin WTF user and console:admin MCP scope. | `server/lib/wtf-mcp.ts:2211` |
-| `wtf_list_console_games` | List WTF Console cartridges that live on every user's personal console: stock console games plus owned media when paired user scope allows it. | `server/lib/wtf-mcp.ts:1973` |
-| `wtf_list_console_players` | List top public WTF Console players ranked by Console XP, score volume, plays, and first-place finishes. | `server/lib/wtf-mcp.ts:2116` |
-| `wtf_list_console_recent_scores` | List recent valid public WTF Console score submissions with game, player, score, and timestamp. | `server/lib/wtf-mcp.ts:2161` |
+| `wtf_keep_desktop_pet_alive` | Care for the paired user's desktop hamster. With strategy='auto', the tool chooses the most urgent safe care actions and applies up to max_actions. | `server/lib/wtf-mcp.ts:1121` |
+| `wtf_list_arcade_audit_events` | List recent WTF Arcade moderation, compatible-source check, report, and score audit events. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1909` |
+| `wtf_list_arcade_games` | List active public WTF Arcade games, including compatible-source games and creator/Game Studio submissions. Console stock cartridges are excluded. | `server/lib/wtf-mcp.ts:1722` |
+| `wtf_list_console_audit_events` | List recent WTF Console moderation/import/score audit events. Requires an admin WTF user and console:admin MCP scope. | `server/lib/wtf-mcp.ts:2253` |
+| `wtf_list_console_games` | List WTF Console cartridges that live on every user's personal console: stock console games plus owned media when paired user scope allows it. | `server/lib/wtf-mcp.ts:2015` |
+| `wtf_list_console_players` | List top public WTF Console players ranked by Console XP, score volume, plays, and first-place finishes. | `server/lib/wtf-mcp.ts:2158` |
+| `wtf_list_console_recent_scores` | List recent valid public WTF Console score submissions with game, player, score, and timestamp. | `server/lib/wtf-mcp.ts:2203` |
 | `wtf_list_crp_categories` | Return official Tezos Commons CRP categories for the paired user's CRP Nominations app. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:141` |
-| `wtf_list_game_studio_assets` | List stock assets and templates available in the WTF Game Studio creator app. | `server/lib/wtf-mcp.ts:2274` |
-| `wtf_list_game_studio_projects` | List saved Game Studio projects owned by the paired user, including last build and submission metadata. | `server/lib/wtf-mcp.ts:2539` |
-| `wtf_list_game_studio_snippets` | List copy-ready WTF Game SDK and browser-game code snippets available in the Game Studio creator app. | `server/lib/wtf-mcp.ts:2334` |
-| `wtf_list_game_studio_targets` | List the WTF Game Studio SDK target surfaces: WTF Arcade for public paid play, and WTF Console for personal owned media. | `server/lib/wtf-mcp.ts:2384` |
+| `wtf_list_game_studio_assets` | List stock assets and templates available in the WTF Game Studio creator app. | `server/lib/wtf-mcp.ts:2316` |
+| `wtf_list_game_studio_projects` | List saved Game Studio projects owned by the paired user, including last build and submission metadata. | `server/lib/wtf-mcp.ts:2588` |
+| `wtf_list_game_studio_snippets` | List copy-ready WTF Game SDK and browser-game code snippets available in the Game Studio creator app. | `server/lib/wtf-mcp.ts:2376` |
+| `wtf_list_game_studio_targets` | List the WTF Game Studio SDK target surfaces: WTF Arcade for public paid play, and WTF Console for personal owned media. | `server/lib/wtf-mcp.ts:2426` |
 | `wtf_list_my_crp_nominations` | List attributed nominations for the paired user plus anonymous nomination credit count. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:242` |
-| `wtf_list_public_tv_channels` | List active public WTF TV channels from the database. Disabled automatically when admin disables the TV sub app. | `server/lib/wtf-mcp.ts:1617` |
-| `wtf_list_unlisted_trade_board_tokens` | Find public trade-board token rows that do not currently have active listing rows in WTF's public marketplace/listing caches. This is for agent research and listing planning. | `server/lib/wtf-mcp.ts:1260` |
-| `wtf_prepare_single_edition_listing_workflow` | Prepare safe next steps for listing one of the paired user's trade-board tokens. This does not create a listing without a user wallet signature/op hash. | `server/lib/wtf-mcp.ts:1502` |
+| `wtf_list_public_tv_channels` | List active public WTF TV channels from the database. Disabled automatically when admin disables the TV sub app. | `server/lib/wtf-mcp.ts:1659` |
+| `wtf_list_unlisted_trade_board_tokens` | Find public trade-board token rows that do not currently have active listing rows in WTF's public marketplace/listing caches. This is for agent research and listing planning. | `server/lib/wtf-mcp.ts:1288` |
+| `wtf_prepare_single_edition_listing_workflow` | Prepare safe next steps for listing one of the paired user's trade-board tokens. This does not create a listing without a user wallet signature/op hash. | `server/lib/wtf-mcp.ts:1537` |
 | `wtf_resolve_crp_nominee` | Merge Tezos wallet, .tez domain, X handle, or Bluesky handle into nominee bundles for the paired user. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:204` |
-| `wtf_run_arcade_source_import` | Run the WTF Arcade compatible-source check job immediately. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1926` |
-| `wtf_search_public_tokens` | Search public WTF token metadata and market-summary database rows derived from Objkt, TzKT, IPFS, and on-chain data. Does not return private user data. | `server/lib/wtf-mcp.ts:1152` |
-| `wtf_set_desktop_appearance` | Update the paired user's WTF desktop color scheme and appearance. Use this when a user asks their agent to apply a custom color scheme or cursor. | `server/lib/wtf-mcp.ts:996` |
-| `wtf_set_trade_board_tokens` | Add or remove the paired user's owned tokens from the WTF trade board by contract/token id. This mutates only the paired user's trade-board collection. | `server/lib/wtf-mcp.ts:1399` |
+| `wtf_run_arcade_source_import` | Run the WTF Arcade compatible-source check job immediately. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1968` |
+| `wtf_search_public_tokens` | Search public WTF token metadata and market-summary database rows derived from Objkt, TzKT, IPFS, and on-chain data. Does not return private user data. | `server/lib/wtf-mcp.ts:1180` |
+| `wtf_set_desktop_appearance` | Update the paired user's WTF desktop color scheme and appearance. Use this when a user asks their agent to apply a custom color scheme or cursor. | `server/lib/wtf-mcp.ts:1003` |
+| `wtf_set_trade_board_tokens` | Add or remove the paired user's owned tokens from the WTF trade board by contract/token id. This mutates only the paired user's trade-board collection. | `server/lib/wtf-mcp.ts:1427` |
 | `wtf_submit_crp_nomination` | Publish a CRP nomination for the paired user. Anonymous submissions omit nominator identity from the CRP repo. Requires crp-nominations:write. Agents act on behalf of the MCP token owner, who remains liable for abuse. | `server/features/crp-nominations/mcp.ts:320` |
-| `wtf_submit_game_studio_project_to_arcade` | Build a saved Game Studio project and submit it to WTF Arcade review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Arcade games. | `server/lib/wtf-mcp.ts:2777` |
-| `wtf_update_game_studio_project` | Update a saved Game Studio project owned by the paired user. Only supplied fields are changed. | `server/lib/wtf-mcp.ts:2657` |
+| `wtf_submit_game_studio_project_to_arcade` | Build a saved Game Studio project and submit it to WTF Arcade review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Arcade games. | `server/lib/wtf-mcp.ts:2826` |
+| `wtf_update_game_studio_project` | Update a saved Game Studio project owned by the paired user. Only supplied fields are changed. | `server/lib/wtf-mcp.ts:2706` |
 
 ## Route-family map
 
@@ -94,6 +94,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `access` | 1 | Public capability and canonical-origin discovery. |
 | `admin` | 88 | Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration. |
 | `admin-inbox` | 6 | User-to-admin support threads and replies. |
+| `anchor` | 1 | Operations for the anchor domain. |
 | `apphost` | 12 | Authenticated proxy for launching, streaming, controlling, and stopping host-run applications. |
 | `apps` | 1 | Desktop application catalogue and launchability. |
 | `arcade` | 24 | Arcade catalogue, sessions, scores, leaderboards, reports, and source imports. |
@@ -192,7 +193,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 446**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 215**, **Session 469**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 447**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 215**, **Session 470**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -223,9 +224,9 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | POST | `/api/admin/app-registry/verify-integrity` | Create, submit, or run admin app registry verify integrity. | Admin | `server/features/app-registry/admin-routes.ts:218` |
 | POST | `/api/admin/app-registry/wizard/install` | Create, submit, or run admin app registry wizard install. | Admin | `server/features/app-registry/admin-routes.ts:251` |
 | POST | `/api/admin/app-registry/wizard/preview` | Create, submit, or run admin app registry wizard preview. | Admin | `server/features/app-registry/admin-routes.ts:234` |
-| GET | `/api/admin/apps/desktop` | Read or list admin apps desktop. | Admin | `server/routes/desktop-apps.ts:82` |
-| PUT | `/api/admin/apps/desktop/:appKey` | Replace or set admin apps desktop appKey. | Admin | `server/routes/desktop-apps.ts:180` |
-| POST | `/api/admin/apps/desktop/refresh-all` | Create, submit, or run admin apps desktop refresh all. | Admin | `server/routes/desktop-apps.ts:96` |
+| GET | `/api/admin/apps/desktop` | Read or list admin apps desktop. | Admin | `server/routes/desktop-apps.ts:85` |
+| PUT | `/api/admin/apps/desktop/:appKey` | Replace or set admin apps desktop appKey. | Admin | `server/routes/desktop-apps.ts:183` |
+| POST | `/api/admin/apps/desktop/refresh-all` | Create, submit, or run admin apps desktop refresh all. | Admin | `server/routes/desktop-apps.ts:99` |
 | GET | `/api/admin/atproto/observability` | Read or list admin atproto observability. | Admin | `server/features/atproto-spine/admin-routes.ts:10` |
 | GET | `/api/admin/challenge-automation/audit` | Read or list admin challenge automation audit. | Admin | `server/challenges/routes/admin.ts:308` |
 | GET | `/api/admin/challenge-automation/challenges` | Read or list admin challenge automation challenges. | Admin | `server/challenges/routes/admin.ts:132` |
@@ -320,6 +321,17 @@ User-to-admin support threads and replies.
 </details>
 
 <details>
+<summary><code>anchor</code> — 1 operations</summary>
+
+Operations for the anchor domain.
+
+| Method | Path | Use | Access | Source |
+| --- | --- | --- | --- | --- |
+| GET | `/api/anchor/downloads` | Read or list anchor downloads. | Session | `server/routes/anchor.ts:189` |
+
+</details>
+
+<details>
 <summary><code>apphost</code> — 12 operations</summary>
 
 Authenticated proxy for launching, streaming, controlling, and stopping host-run applications.
@@ -348,7 +360,7 @@ Desktop application catalogue and launchability.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/apps/desktop` | Read or list apps desktop. | Public/handler | `server/routes/desktop-apps.ts:72` |
+| GET | `/api/apps/desktop` | Read or list apps desktop. | Public/handler | `server/routes/desktop-apps.ts:75` |
 
 </details>
 
@@ -1060,11 +1072,11 @@ Liveness, readiness, authenticated diagnostics, metrics, and disk status.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:231` |
-| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:252` |
-| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:302` |
-| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:237` |
-| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:270` |
+| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:232` |
+| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:253` |
+| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:303` |
+| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:238` |
+| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:271` |
 
 </details>
 
@@ -1448,22 +1460,22 @@ Current-user profile, social identities, settings, and public user views.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:160` |
-| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:185` |
-| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:471` |
-| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:547` |
+| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:184` |
+| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:209` |
+| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:506` |
+| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:595` |
 | GET | `/api/profile/dossier` | Read or list profile dossier. | Session | `server/routes/wallets.ts:1194` |
-| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:442` |
-| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:398` |
-| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:586` |
-| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:114` |
-| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:229` |
-| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:332` |
+| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:477` |
+| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:422` |
+| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:634` |
+| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:138` |
+| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:253` |
+| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:356` |
 | GET | `/api/profile/tokens` | Read or list profile tokens. | Session | `server/routes/wallets.ts:635` |
 | POST | `/api/profile/tokens/sync` | Create, submit, or run profile tokens sync. | Session | `server/routes/wallets.ts:915` |
 | POST | `/api/profile/tokens/trade-board` | Create, submit, or run profile tokens trade board. | Session | `server/routes/wallets.ts:832` |
 | GET | `/api/profile/wallet-graph` | Read or list profile wallet graph. | Session | `server/routes/wallets.ts:443` |
-| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:682` |
+| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:730` |
 
 </details>
 
@@ -1481,7 +1493,7 @@ Non-REST protocol and discovery endpoints.
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |
 | GET | `/internal/tls/allow` | Read or list internal tls allow. | Internal | `server/routes/wtf-sites.ts:49` |
 | ALL | `/mcp` | Handle the supported methods for mcp. | MCP bearer | `server/routes/mcp.ts:282` |
-| GET | `/oembed` | Read or list oembed. | Public/handler | `server/routes/tv-embed.ts:186` |
+| GET | `/oembed` | Read or list oembed. | Public/handler | `server/routes/tv-embed.ts:185` |
 | GET | `/xrpc/app.wtfos.appview.getRecord` | Read or list xrpc app.wtfos.appview.getRecord. | Public/handler | `server/features/atproto-spine/appview/router.ts:73` |
 | GET | `/xrpc/app.wtfos.appview.getRecords` | Read or list xrpc app.wtfos.appview.getRecords. | Public/handler | `server/features/atproto-spine/appview/router.ts:72` |
 
@@ -1494,10 +1506,10 @@ Operations for the public domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:214` |
-| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:214` |
-| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:224` |
-| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:219` |
+| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:215` |
+| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:215` |
+| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:225` |
+| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:220` |
 
 </details>
 
@@ -1848,7 +1860,7 @@ WTF TV channels, playlists, schedules, playback, cache, telemetry, and media.
 | DELETE | `/api/tv/channels/:channelId` | Delete, revoke, or stop tv channels channelId. | Session | `server/features/tv/channel-routes.ts:432` |
 | GET | `/api/tv/channels/:channelId` | Read or list tv channels channelId. | Session | `server/features/tv/channel-routes.ts:158` |
 | PUT | `/api/tv/channels/:channelId` | Replace or set tv channels channelId. | Session | `server/features/tv/channel-routes.ts:365` |
-| GET | `/api/tv/channels/:channelId/embed` | Read or list tv channels channelId embed. | Public/handler | `server/routes/tv-embed.ts:156` |
+| GET | `/api/tv/channels/:channelId/embed` | Read or list tv channels channelId embed. | Public/handler | `server/routes/tv-embed.ts:155` |
 | DELETE | `/api/tv/channels/:channelId/media/:mediaItemId` | Delete, revoke, or stop tv channels channelId media mediaItemId. | Session | `server/features/tv/channel-routes.ts:1150` |
 | GET | `/api/tv/channels/:channelId/media/:mediaItemId/file` | Read or list tv channels channelId media mediaItemId file. | Public/handler | `server/features/tv/playback-routes.ts:32` |
 | GET | `/api/tv/channels/:channelId/now` | Read or list tv channels channelId now. | Public/handler | `server/features/tv/live-routes.ts:32` |
@@ -1861,7 +1873,7 @@ WTF TV channels, playlists, schedules, playback, cache, telemetry, and media.
 | POST | `/api/tv/channels/:channelId/videos` | Create, submit, or run tv channels channelId videos. | Session | `server/features/tv/channel-routes.ts:605` |
 | DELETE | `/api/tv/channels/:channelId/videos/:videoId` | Delete, revoke, or stop tv channels channelId videos videoId. | Session | `server/features/tv/channel-routes.ts:1122` |
 | PUT | `/api/tv/channels/:channelId/videos/:videoId` | Replace or set tv channels channelId videos videoId. | Session | `server/features/tv/channel-routes.ts:1070` |
-| GET | `/api/tv/channels/by-dial/:dial` | Read or list tv channels by dial dial. | Public/handler | `server/routes/tv-embed.ts:137` |
+| GET | `/api/tv/channels/by-dial/:dial` | Read or list tv channels by dial dial. | Public/handler | `server/routes/tv-embed.ts:136` |
 | GET | `/api/tv/channels/by-slug/:slug/current` | Read or list tv channels by slug slug current. | Public/handler | `server/features/tv/live-routes.ts:457` |
 | GET | `/api/tv/me/playable-tokens` | Read or list tv me playable tokens. | Session | `server/features/tv/channel-routes.ts:453` |
 | PUT | `/api/tv/media/:mediaItemId/bumper` | Replace or set tv media mediaItemId bumper. | Session | `server/features/tv/bumper-routes.ts:287` |
@@ -1904,11 +1916,11 @@ Public user profiles, activity, listings, DMs, and trade boards.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:713` |
-| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:955` |
-| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:984` |
-| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:912` |
-| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:806` |
+| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:761` |
+| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:1003` |
+| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:1032` |
+| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:960` |
+| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:854` |
 
 </details>
 
@@ -1922,25 +1934,25 @@ W social timeline, posts, reactions, follows, spaces, group chat, and DMs.
 | GET | `/api/w/admin/digest-handles` | Read or list w admin digest handles. | Session | `server/features/w/digest/routes.ts:79` |
 | PUT | `/api/w/admin/digest-handles` | Replace or set w admin digest handles. | Session | `server/features/w/digest/routes.ts:96` |
 | DELETE | `/api/w/admin/digest-handles/:handle` | Delete, revoke, or stop w admin digest handles handle. | Session | `server/features/w/digest/routes.ts:129` |
-| GET | `/api/w/admin/dm-conversations` | Read or list w admin dm conversations. | Session | `server/features/w/message-routes.ts:1329` |
+| GET | `/api/w/admin/dm-conversations` | Read or list w admin dm conversations. | Session | `server/features/w/message-routes.ts:1331` |
 | ALL | `/api/w/admin/groupchat` | Handle the supported methods for w admin groupchat. | Session | `server/features/w/digest/routes.ts:65` |
-| PUT | `/api/w/admin/groupchat` | Replace or set w admin groupchat. | Session | `server/features/w/message-routes.ts:1361` |
+| PUT | `/api/w/admin/groupchat` | Replace or set w admin groupchat. | Session | `server/features/w/message-routes.ts:1363` |
 | ALL | `/api/w/admin/stream-rules` | Handle the supported methods for w admin stream rules. | Session | `server/features/w/digest/routes.ts:62` |
-| GET | `/api/w/admin/stream-rules` | Read or list w admin stream rules. | Session | `server/features/w/message-routes.ts:1428` |
-| PUT | `/api/w/admin/stream-rules` | Replace or set w admin stream rules. | Session | `server/features/w/message-routes.ts:1478` |
-| GET | `/api/w/admin/stream-status` | Read or list w admin stream status. | Session | `server/features/w/message-routes.ts:1569` |
+| GET | `/api/w/admin/stream-rules` | Read or list w admin stream rules. | Session | `server/features/w/message-routes.ts:1433` |
+| PUT | `/api/w/admin/stream-rules` | Replace or set w admin stream rules. | Session | `server/features/w/message-routes.ts:1483` |
+| GET | `/api/w/admin/stream-status` | Read or list w admin stream status. | Session | `server/features/w/message-routes.ts:1574` |
 | GET | `/api/w/capabilities` | Read or list w capabilities. | Session | `server/features/w/digest/routes.ts:26`<br>`server/features/w/social-routes.ts:164` |
 | ALL | `/api/w/direct-messages` | Handle the supported methods for w direct messages. | Session | `server/features/w/digest/routes.ts:57` |
-| POST | `/api/w/direct-messages` | Create, submit, or run w direct messages. | Session | `server/features/w/message-routes.ts:1609` |
-| GET | `/api/w/dm-diagnostics` | Read or list w dm diagnostics. | Session | `server/features/w/message-routes.ts:1126` |
+| POST | `/api/w/direct-messages` | Create, submit, or run w direct messages. | Session | `server/features/w/message-routes.ts:1614` |
+| GET | `/api/w/dm-diagnostics` | Read or list w dm diagnostics. | Session | `server/features/w/message-routes.ts:1128` |
 | GET | `/api/w/follows` | Read or list w follows. | Session | `server/features/w/social-routes.ts:139` |
 | POST | `/api/w/follows` | Create, submit, or run w follows. | Session | `server/features/w/social-routes.ts:151` |
 | GET | `/api/w/follows/summary` | Read or list w follows summary. | Session | `server/features/w/social-routes.ts:133` |
 | ALL | `/api/w/groupchat` | Handle the supported methods for w groupchat. | Session | `server/features/w/digest/routes.ts:57` |
-| GET | `/api/w/groupchat` | Read or list w groupchat. | Session | `server/features/w/message-routes.ts:1326` |
-| POST | `/api/w/groupchat/messages` | Create, submit, or run w groupchat messages. | Session | `server/features/w/message-routes.ts:1587` |
+| GET | `/api/w/groupchat` | Read or list w groupchat. | Session | `server/features/w/message-routes.ts:1328` |
+| POST | `/api/w/groupchat/messages` | Create, submit, or run w groupchat messages. | Session | `server/features/w/message-routes.ts:1592` |
 | ALL | `/api/w/groupchats` | Handle the supported methods for w groupchats. | Session | `server/features/w/digest/routes.ts:57` |
-| GET | `/api/w/groupchats` | Read or list w groupchats. | Session | `server/features/w/message-routes.ts:1327` |
+| GET | `/api/w/groupchats` | Read or list w groupchats. | Session | `server/features/w/message-routes.ts:1329` |
 | ALL | `/api/w/like` | Handle the supported methods for w like. | Session | `server/features/w/digest/routes.ts:57` |
 | POST | `/api/w/like` | Create, submit, or run w like. | Session | `server/features/w/action-routes.ts:347` |
 | POST | `/api/w/link-preview` | Create, submit, or run w link preview. | Session | `server/features/w/link-preview-routes.ts:10` |
@@ -1958,10 +1970,10 @@ W social timeline, posts, reactions, follows, spaces, group chat, and DMs.
 | GET | `/api/w/tezos-identities` | Read or list w tezos identities. | Session | `server/features/w/tezos-identity-routes.ts:22` |
 | GET | `/api/w/timeline` | Read or list w timeline. | Session | `server/features/w/digest/routes.ts:69`<br>`server/features/w/timeline-routes.ts:83` |
 | ALL | `/api/w/user-dms` | Handle the supported methods for w user dms. | Session | `server/features/w/digest/routes.ts:57` |
-| GET | `/api/w/user-dms` | Read or list w user dms. | Session | `server/features/w/message-routes.ts:1593` |
-| GET | `/api/w/user-dms/:conversationId/messages` | Read or list w user dms conversationId messages. | Session | `server/features/w/message-routes.ts:1597` |
-| POST | `/api/w/user-dms/:conversationId/messages` | Create, submit, or run w user dms conversationId messages. | Session | `server/features/w/message-routes.ts:1601` |
-| POST | `/api/w/user-dms/direct` | Create, submit, or run w user dms direct. | Session | `server/features/w/message-routes.ts:1605` |
+| GET | `/api/w/user-dms` | Read or list w user dms. | Session | `server/features/w/message-routes.ts:1598` |
+| GET | `/api/w/user-dms/:conversationId/messages` | Read or list w user dms conversationId messages. | Session | `server/features/w/message-routes.ts:1602` |
+| POST | `/api/w/user-dms/:conversationId/messages` | Create, submit, or run w user dms conversationId messages. | Session | `server/features/w/message-routes.ts:1606` |
+| POST | `/api/w/user-dms/direct` | Create, submit, or run w user dms direct. | Session | `server/features/w/message-routes.ts:1610` |
 
 </details>
 
