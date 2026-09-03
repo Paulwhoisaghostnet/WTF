@@ -141,8 +141,10 @@ across all WTFOS surfaces:
 1. Ask for the access manifest.
 2. Ask for the artifact inventory.
 3. Filter by access mode, app gate, and agent scope.
-4. Call the relevant domain tool, or use `wtf_api_request` with a path from
-   `/api/v1/openapi.json`.
+4. Search the allowed API catalog with `wtf_search_api_operations`, inspect the
+   selected contract with `wtf_get_api_operation`, and call it by stable
+   `operationId` with `wtf_call_api_operation`; use `wtf_api_request` only when
+   a caller already has a concrete `/api/v1` method and path.
 5. Verify the response against the same interface contract.
 
 The agent should not need a custom lookup path for each app.
@@ -165,6 +167,9 @@ Tool names are scoped, explicit, and domain-oriented:
 - `wtf_get_access_manifest`
 - `wtf_get_capabilities`
 - `wtf_get_registered_inventory`
+- `wtf_search_api_operations`
+- `wtf_get_api_operation`
+- `wtf_call_api_operation`
 - `wtf_api_request`
 - `wtf_list_game_studio_projects`
 - `wtf_create_game_studio_project`

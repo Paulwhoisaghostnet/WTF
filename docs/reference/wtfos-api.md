@@ -6,11 +6,11 @@ This is the source-derived inventory of the main wtfOS HTTP API: **921 unique me
 
 ## Public platform surface
 
-wtfOS exposes 921 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 44 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 921 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
-MCP retains its workflow-specific tools and adds `wtf_api_request`, which gives paired agents comprehensive access to the same `/api/v1` contract subject to read/write/admin scopes, account roles, ownership checks, and app gates.
+MCP retains its workflow-specific tools and mirrors the complete `/api/v1` contract through an agent-friendly portal: search allowed operations, inspect one operation, call it by stable `operationId`, or use the backward-compatible `wtf_api_request` path bridge. Both call paths retain read/write/admin scopes, account roles, ownership checks, and app gates.
 
 ## How the API is structured
 
@@ -38,54 +38,57 @@ The `Access` column is intentionally conservative: `Public/handler` means no reu
 
 ## MCP surface
 
-The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a paired bearer token and limited to 60 requests/minute by default. The browser-session routes `GET/POST /api/mcp/tokens` and `DELETE /api/mcp/tokens/:id` bootstrap pairing; versioned aliases live at `/api/v1/tokens`. The server currently registers 44 tools, including comprehensive `wtf_api_request` coverage:
+The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a paired bearer token and limited to 60 requests/minute by default. The browser-session routes `GET/POST /api/mcp/tokens` and `DELETE /api/mcp/tokens/:id` bootstrap pairing; versioned aliases live at `/api/v1/tokens`. The server currently registers 47 tools, including searchable, operationId-based API coverage plus the backward-compatible `wtf_api_request` path bridge:
 
 | Tool | Use | Source |
 | --- | --- | --- |
-| `wtf_api_request` | Call any operation exposed by the versioned wtfOS Platform API at /api/v1 using the paired token. Existing route ownership, role, app-gate, and token-scope checks remain authoritative. Read calls require api:read; mutations require api:write; admin paths additionally require an admin account and api:admin. | `server/lib/wtf-mcp.ts:818` |
-| `wtf_build_game_studio_bundle` | Build an SDK-compatible ZIP bundle from a Game Studio template and selected stock assets. | `server/lib/wtf-mcp.ts:2506` |
-| `wtf_build_game_studio_project` | Build and validate a saved Game Studio project, recording a build snapshot and returning SDK-compatible ZIP metadata. | `server/lib/wtf-mcp.ts:2771` |
-| `wtf_create_arcade_play_intent` | Create a WTF in-app market payment intent for one WTF Arcade Play ticket for the paired user. | `server/lib/wtf-mcp.ts:1868` |
-| `wtf_create_game_studio_project` | Create a saved Game Studio project for the paired user from a template, optional source files, and optional stock or uploaded assets. | `server/lib/wtf-mcp.ts:2644` |
-| `wtf_create_game_studio_scaffold` | Generate a starter browser-game project scaffold wired to the WTF Game SDK. | `server/lib/wtf-mcp.ts:2466` |
-| `wtf_create_map_lab_document` | Create a sanitized WTF Map Lab document payload from explicit MCP-provided nodes and wires. This tool can create map objects but cannot read, use, or expose ingested AT repo/firehose data paths. | `server/lib/wtf-mcp.ts:890` |
-| `wtf_create_trusted_creator_market_item` | Create an EXP-priced in-app market item in the paired user's trusted market creator lane. Requires the paired WTF user to have the trusted_market_creator permission. | `server/lib/wtf-mcp.ts:2900` |
-| `wtf_get_access_manifest` | Return the standard WTF browser, JSON API, and paired MCP access map. Use this before navigating or automating WTF so agent access stays aligned with the web-browser experience. | `server/lib/wtf-mcp.ts:743` |
-| `wtf_get_arcade_play_fee` | Return the current WTF Arcade play-ticket SKU, WTF price, and in-app market contract wiring. | `server/lib/wtf-mcp.ts:1802` |
-| `wtf_get_arcade_play_status` | Return the paired user's WTF Arcade ticket inventory, trusted/admin bypass status, and current play-fee wiring. | `server/lib/wtf-mcp.ts:1830` |
-| `wtf_get_arcade_stats` | Get aggregate WTF Arcade stats plus the current in-app market play-fee wiring. | `server/lib/wtf-mcp.ts:1769` |
-| `wtf_get_capabilities` | Return paired user context, admin feature gates, MCP rate-limit hints, and available WTF agent workflows. | `server/lib/wtf-mcp.ts:698` |
-| `wtf_get_console_discovery_shelves` | Get active WTF Console discovery shelves for the stock console surface. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2107` |
-| `wtf_get_console_stats` | Get aggregate WTF Console health stats for the personal stock-console surface only. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2068` |
+| `wtf_api_request` | Call any operation exposed by the versioned wtfOS Platform API at /api/v1 using the paired token. Existing route ownership, role, app-gate, and token-scope checks remain authoritative. Read calls require api:read; mutations require api:write; admin paths additionally require an admin account and api:admin. | `server/lib/wtf-mcp.ts:1030` |
+| `wtf_build_game_studio_bundle` | Build an SDK-compatible ZIP bundle from a Game Studio template and selected stock assets. | `server/lib/wtf-mcp.ts:2718` |
+| `wtf_build_game_studio_project` | Build and validate a saved Game Studio project, recording a build snapshot and returning SDK-compatible ZIP metadata. | `server/lib/wtf-mcp.ts:2983` |
+| `wtf_call_api_operation` | Call an allowed wtfOS API operation by its stable OpenAPI operationId. The portal fills encoded path parameters and then uses the paired token through the same API middleware, ownership checks, account role, app gates, and handler validation as a direct /api/v1 request. | `server/lib/wtf-mcp.ts:960` |
+| `wtf_create_arcade_play_intent` | Create a WTF in-app market payment intent for one WTF Arcade Play ticket for the paired user. | `server/lib/wtf-mcp.ts:2080` |
+| `wtf_create_game_studio_project` | Create a saved Game Studio project for the paired user from a template, optional source files, and optional stock or uploaded assets. | `server/lib/wtf-mcp.ts:2856` |
+| `wtf_create_game_studio_scaffold` | Generate a starter browser-game project scaffold wired to the WTF Game SDK. | `server/lib/wtf-mcp.ts:2678` |
+| `wtf_create_map_lab_document` | Create a sanitized WTF Map Lab document payload from explicit MCP-provided nodes and wires. This tool can create map objects but cannot read, use, or expose ingested AT repo/firehose data paths. | `server/lib/wtf-mcp.ts:1102` |
+| `wtf_create_trusted_creator_market_item` | Create an EXP-priced in-app market item in the paired user's trusted market creator lane. Requires the paired WTF user to have the trusted_market_creator permission. | `server/lib/wtf-mcp.ts:3112` |
+| `wtf_get_access_manifest` | Return the standard WTF browser, JSON API, and paired MCP access map. Use this before navigating or automating WTF so agent access stays aligned with the web-browser experience. | `server/lib/wtf-mcp.ts:765` |
+| `wtf_get_api_operation` | Return the OpenAPI details for one operation that this paired agent is allowed to call, including parameters, request body, responses, required scopes, and required role. | `server/lib/wtf-mcp.ts:905` |
+| `wtf_get_arcade_play_fee` | Return the current WTF Arcade play-ticket SKU, WTF price, and in-app market contract wiring. | `server/lib/wtf-mcp.ts:2014` |
+| `wtf_get_arcade_play_status` | Return the paired user's WTF Arcade ticket inventory, trusted/admin bypass status, and current play-fee wiring. | `server/lib/wtf-mcp.ts:2042` |
+| `wtf_get_arcade_stats` | Get aggregate WTF Arcade stats plus the current in-app market play-fee wiring. | `server/lib/wtf-mcp.ts:1981` |
+| `wtf_get_capabilities` | Return paired user context, admin feature gates, MCP rate-limit hints, and available WTF agent workflows. | `server/lib/wtf-mcp.ts:720` |
+| `wtf_get_console_discovery_shelves` | Get active WTF Console discovery shelves for the stock console surface. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2319` |
+| `wtf_get_console_stats` | Get aggregate WTF Console health stats for the personal stock-console surface only. Public Arcade/source/creator games are excluded. | `server/lib/wtf-mcp.ts:2280` |
 | `wtf_get_crp_nomination_credits` | Return the privacy-preserving anonymous nomination credit count for the paired user. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:284` |
 | `wtf_get_crp_nomination_status` | Probe whether the dedicated CRP nominations AT repo is configured. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:171` |
-| `wtf_get_desktop_appearance` | Read the paired user's WTF desktop appearance settings, including color scheme, wallpaper, cursor, physics, and desktop pet switch. | `server/lib/wtf-mcp.ts:970` |
-| `wtf_get_desktop_pet` | Read the paired user's desktop hamster state and recent care status. This tool only accesses the paired user's own pet. | `server/lib/wtf-mcp.ts:1088` |
-| `wtf_get_registered_inventory` | Return the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. Use this for agent handshakes that need the live creation and service registry. | `server/lib/wtf-mcp.ts:781` |
-| `wtf_keep_desktop_pet_alive` | Care for the paired user's desktop hamster. With strategy='auto', the tool chooses the most urgent safe care actions and applies up to max_actions. | `server/lib/wtf-mcp.ts:1121` |
-| `wtf_list_arcade_audit_events` | List recent WTF Arcade moderation, compatible-source check, report, and score audit events. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1909` |
-| `wtf_list_arcade_games` | List active public WTF Arcade games, including compatible-source games and creator/Game Studio submissions. Console stock cartridges are excluded. | `server/lib/wtf-mcp.ts:1722` |
-| `wtf_list_console_audit_events` | List recent WTF Console moderation/import/score audit events. Requires an admin WTF user and console:admin MCP scope. | `server/lib/wtf-mcp.ts:2253` |
-| `wtf_list_console_games` | List WTF Console cartridges that live on every user's personal console: stock console games plus owned media when paired user scope allows it. | `server/lib/wtf-mcp.ts:2015` |
-| `wtf_list_console_players` | List top public WTF Console players ranked by Console XP, score volume, plays, and first-place finishes. | `server/lib/wtf-mcp.ts:2158` |
-| `wtf_list_console_recent_scores` | List recent valid public WTF Console score submissions with game, player, score, and timestamp. | `server/lib/wtf-mcp.ts:2203` |
+| `wtf_get_desktop_appearance` | Read the paired user's WTF desktop appearance settings, including color scheme, wallpaper, cursor, physics, and desktop pet switch. | `server/lib/wtf-mcp.ts:1182` |
+| `wtf_get_desktop_pet` | Read the paired user's desktop hamster state and recent care status. This tool only accesses the paired user's own pet. | `server/lib/wtf-mcp.ts:1300` |
+| `wtf_get_registered_inventory` | Return the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. Use this for agent handshakes that need the live creation and service registry. | `server/lib/wtf-mcp.ts:803` |
+| `wtf_keep_desktop_pet_alive` | Care for the paired user's desktop hamster. With strategy='auto', the tool chooses the most urgent safe care actions and applies up to max_actions. | `server/lib/wtf-mcp.ts:1333` |
+| `wtf_list_arcade_audit_events` | List recent WTF Arcade moderation, compatible-source check, report, and score audit events. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:2121` |
+| `wtf_list_arcade_games` | List active public WTF Arcade games, including compatible-source games and creator/Game Studio submissions. Console stock cartridges are excluded. | `server/lib/wtf-mcp.ts:1934` |
+| `wtf_list_console_audit_events` | List recent WTF Console moderation/import/score audit events. Requires an admin WTF user and console:admin MCP scope. | `server/lib/wtf-mcp.ts:2465` |
+| `wtf_list_console_games` | List WTF Console cartridges that live on every user's personal console: stock console games plus owned media when paired user scope allows it. | `server/lib/wtf-mcp.ts:2227` |
+| `wtf_list_console_players` | List top public WTF Console players ranked by Console XP, score volume, plays, and first-place finishes. | `server/lib/wtf-mcp.ts:2370` |
+| `wtf_list_console_recent_scores` | List recent valid public WTF Console score submissions with game, player, score, and timestamp. | `server/lib/wtf-mcp.ts:2415` |
 | `wtf_list_crp_categories` | Return official Tezos Commons CRP categories for the paired user's CRP Nominations app. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:141` |
-| `wtf_list_game_studio_assets` | List stock assets and templates available in the WTF Game Studio creator app. | `server/lib/wtf-mcp.ts:2316` |
-| `wtf_list_game_studio_projects` | List saved Game Studio projects owned by the paired user, including last build and submission metadata. | `server/lib/wtf-mcp.ts:2588` |
-| `wtf_list_game_studio_snippets` | List copy-ready WTF Game SDK and browser-game code snippets available in the Game Studio creator app. | `server/lib/wtf-mcp.ts:2376` |
-| `wtf_list_game_studio_targets` | List the WTF Game Studio SDK target surfaces: WTF Arcade for public paid play, and WTF Console for personal owned media. | `server/lib/wtf-mcp.ts:2426` |
+| `wtf_list_game_studio_assets` | List stock assets and templates available in the WTF Game Studio creator app. | `server/lib/wtf-mcp.ts:2528` |
+| `wtf_list_game_studio_projects` | List saved Game Studio projects owned by the paired user, including last build and submission metadata. | `server/lib/wtf-mcp.ts:2800` |
+| `wtf_list_game_studio_snippets` | List copy-ready WTF Game SDK and browser-game code snippets available in the Game Studio creator app. | `server/lib/wtf-mcp.ts:2588` |
+| `wtf_list_game_studio_targets` | List the WTF Game Studio SDK target surfaces: WTF Arcade for public paid play, and WTF Console for personal owned media. | `server/lib/wtf-mcp.ts:2638` |
 | `wtf_list_my_crp_nominations` | List attributed nominations for the paired user plus anonymous nomination credit count. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:242` |
-| `wtf_list_public_tv_channels` | List active public WTF TV channels from the database. Disabled automatically when admin disables the TV sub app. | `server/lib/wtf-mcp.ts:1659` |
-| `wtf_list_unlisted_trade_board_tokens` | Find public trade-board token rows that do not currently have active listing rows in WTF's public marketplace/listing caches. This is for agent research and listing planning. | `server/lib/wtf-mcp.ts:1288` |
-| `wtf_prepare_single_edition_listing_workflow` | Prepare safe next steps for listing one of the paired user's trade-board tokens. This does not create a listing without a user wallet signature/op hash. | `server/lib/wtf-mcp.ts:1537` |
+| `wtf_list_public_tv_channels` | List active public WTF TV channels from the database. Disabled automatically when admin disables the TV sub app. | `server/lib/wtf-mcp.ts:1871` |
+| `wtf_list_unlisted_trade_board_tokens` | Find public trade-board token rows that do not currently have active listing rows in WTF's public marketplace/listing caches. This is for agent research and listing planning. | `server/lib/wtf-mcp.ts:1500` |
+| `wtf_prepare_single_edition_listing_workflow` | Prepare safe next steps for listing one of the paired user's trade-board tokens. This does not create a listing without a user wallet signature/op hash. | `server/lib/wtf-mcp.ts:1749` |
 | `wtf_resolve_crp_nominee` | Merge Tezos wallet, .tez domain, X handle, or Bluesky handle into nominee bundles for the paired user. Requires crp-nominations:read. | `server/features/crp-nominations/mcp.ts:204` |
-| `wtf_run_arcade_source_import` | Run the WTF Arcade compatible-source check job immediately. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:1968` |
-| `wtf_search_public_tokens` | Search public WTF token metadata and market-summary database rows derived from Objkt, TzKT, IPFS, and on-chain data. Does not return private user data. | `server/lib/wtf-mcp.ts:1180` |
-| `wtf_set_desktop_appearance` | Update the paired user's WTF desktop color scheme and appearance. Use this when a user asks their agent to apply a custom color scheme or cursor. | `server/lib/wtf-mcp.ts:1003` |
-| `wtf_set_trade_board_tokens` | Add or remove the paired user's owned tokens from the WTF trade board by contract/token id. This mutates only the paired user's trade-board collection. | `server/lib/wtf-mcp.ts:1427` |
+| `wtf_run_arcade_source_import` | Run the WTF Arcade compatible-source check job immediately. Requires an admin WTF user and arcade:admin MCP scope. | `server/lib/wtf-mcp.ts:2180` |
+| `wtf_search_api_operations` | Search the OpenAPI operation catalog that this paired agent is allowed to call. Results are filtered by the token's API scopes and the owner's account role. Use '*' to list the complete allowed catalog. | `server/lib/wtf-mcp.ts:840` |
+| `wtf_search_public_tokens` | Search public WTF token metadata and market-summary database rows derived from Objkt, TzKT, IPFS, and on-chain data. Does not return private user data. | `server/lib/wtf-mcp.ts:1392` |
+| `wtf_set_desktop_appearance` | Update the paired user's WTF desktop color scheme and appearance. Use this when a user asks their agent to apply a custom color scheme or cursor. | `server/lib/wtf-mcp.ts:1215` |
+| `wtf_set_trade_board_tokens` | Add or remove the paired user's owned tokens from the WTF trade board by contract/token id. This mutates only the paired user's trade-board collection. | `server/lib/wtf-mcp.ts:1639` |
 | `wtf_submit_crp_nomination` | Publish a CRP nomination for the paired user. Anonymous submissions omit nominator identity from the CRP repo. Requires crp-nominations:write. Agents act on behalf of the MCP token owner, who remains liable for abuse. | `server/features/crp-nominations/mcp.ts:320` |
-| `wtf_submit_game_studio_project_to_arcade` | Build a saved Game Studio project and submit it to WTF Arcade review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Arcade games. | `server/lib/wtf-mcp.ts:2826` |
-| `wtf_update_game_studio_project` | Update a saved Game Studio project owned by the paired user. Only supplied fields are changed. | `server/lib/wtf-mcp.ts:2706` |
+| `wtf_submit_game_studio_project_to_arcade` | Build a saved Game Studio project and submit it to WTF Arcade review or the paired user's trusted creator auto-publish lane. Use update_slug to submit a new version of one of the paired user's existing Arcade games. | `server/lib/wtf-mcp.ts:3038` |
+| `wtf_update_game_studio_project` | Update a saved Game Studio project owned by the paired user. Only supplied fields are changed. | `server/lib/wtf-mcp.ts:2918` |
 
 ## Route-family map
 
@@ -1247,9 +1250,9 @@ MCP pairing-token management; the root `/mcp` endpoint carries Streamable HTTP M
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/mcp/tokens` | Read or list mcp tokens. | Session | `server/routes/mcp.ts:171` |
-| POST | `/api/mcp/tokens` | Create, submit, or run mcp tokens. | Session | `server/routes/mcp.ts:198` |
-| DELETE | `/api/mcp/tokens/:id` | Delete, revoke, or stop mcp tokens id. | Session | `server/routes/mcp.ts:247` |
+| GET | `/api/mcp/tokens` | Read or list mcp tokens. | Session | `server/routes/mcp.ts:173` |
+| POST | `/api/mcp/tokens` | Create, submit, or run mcp tokens. | Session | `server/routes/mcp.ts:200` |
+| DELETE | `/api/mcp/tokens/:id` | Delete, revoke, or stop mcp tokens id. | Session | `server/routes/mcp.ts:249` |
 
 </details>
 
@@ -1492,7 +1495,7 @@ Non-REST protocol and discovery endpoints.
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |
 | GET | `/internal/tls/allow` | Read or list internal tls allow. | Internal | `server/routes/wtf-sites.ts:49` |
-| ALL | `/mcp` | Handle the supported methods for mcp. | MCP bearer | `server/routes/mcp.ts:282` |
+| ALL | `/mcp` | Handle the supported methods for mcp. | MCP bearer | `server/routes/mcp.ts:284` |
 | GET | `/oembed` | Read or list oembed. | Public/handler | `server/routes/tv-embed.ts:185` |
 | GET | `/xrpc/app.wtfos.appview.getRecord` | Read or list xrpc app.wtfos.appview.getRecord. | Public/handler | `server/features/atproto-spine/appview/router.ts:73` |
 | GET | `/xrpc/app.wtfos.appview.getRecords` | Read or list xrpc app.wtfos.appview.getRecords. | Public/handler | `server/features/atproto-spine/appview/router.ts:72` |

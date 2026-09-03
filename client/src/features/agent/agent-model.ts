@@ -924,6 +924,30 @@ export const AGENT_MCP_RESOURCE_POLICIES: AgentMcpResourcePolicy[] = [
 
 export const AGENT_MCP_TOOL_POLICIES: AgentMcpToolPolicy[] = [
   {
+    name: "wtf_search_api_operations",
+    label: "Search the wtfOS API",
+    description: "Find OpenAPI operations available to the paired user's role and token scopes.",
+    scope: "api:read",
+    accessLevel: "read",
+    requiredPermissions: ["read"],
+  },
+  {
+    name: "wtf_get_api_operation",
+    label: "Inspect a wtfOS API operation",
+    description: "Read parameters, payload guidance, responses, scopes, and role for one allowed operationId.",
+    scope: "api:read",
+    accessLevel: "read",
+    requiredPermissions: ["read"],
+  },
+  {
+    name: "wtf_call_api_operation",
+    label: "Call a wtfOS API operation",
+    description: "Call an allowed operationId as the paired user; mutation operations additionally require api:write.",
+    scope: "api:read",
+    accessLevel: "read",
+    requiredPermissions: ["read"],
+  },
+  {
     name: "wtf_api_request",
     label: "Call the wtfOS API",
     description: "Call an OpenAPI-listed /api/v1 operation; mutations additionally require api:write.",

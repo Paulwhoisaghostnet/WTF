@@ -1194,6 +1194,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/v1/openapi.json" },
       { method: "GET", path: "/api/v1/docs" },
       { method: "GET", path: "/api/v1/health", expectedStatuses: [401] },
+      { method: "GET", path: "/api/v1/message-threads/1", expectedStatuses: [401] },
+      { method: "GET", path: "/api/v1/tv/dials/1", expectedStatuses: [401] },
       { method: "GET", path: "/api/leaderboard?limit=100" },
       { method: "GET", path: "/api/leaderboard/rewards/wtf?limit=100" },
       { method: "GET", path: "/api/leaderboard/rewards/exp?limit=100" },

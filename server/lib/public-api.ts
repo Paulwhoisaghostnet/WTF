@@ -45,6 +45,8 @@ function targetForVersionedPath(versionedPath: string): string {
   if (suffix === "/me") return "/api/auth/user";
   if (suffix === "/tokens") return "/api/mcp/tokens";
   if (suffix.startsWith("/tokens/")) return `/api/mcp/tokens/${suffix.slice("/tokens/".length)}`;
+  if (suffix.startsWith("/message-threads/")) return `/api/messages/threads/${suffix.slice("/message-threads/".length)}`;
+  if (suffix.startsWith("/tv/dials/")) return `/api/tv/channels/by-dial/${suffix.slice("/tv/dials/".length)}`;
   return `/api${suffix}`;
 }
 
@@ -93,11 +95,30 @@ function scopeAllows(scopes: readonly string[], required: string): boolean {
   return separator > 0 && scopes.includes(`${required.slice(0, separator)}:*`);
 }
 
+export function publicApiRequiredScopes(method: string, pathname: string, declaredAccess = ""): string[] {
+  const normalizedMethod = method.toUpperCase();
+  const scopes = [normalizedMethod === "GET" || normalizedMethod === "HEAD" || normalizedMethod === "OPTIONS"
+    ? "api:read"
+    : "api:write"];
+  if (pathname.startsWith(`${WTFOS_PUBLIC_API_PREFIX}/admin/`) || declaredAccess === "Admin") {
+    scopes.push("api:admin");
+  }
+  return scopes;
+}
+
 function routePatternMatches(pattern: string, pathname: string): boolean {
   const patternParts = pattern.split("/").filter(Boolean);
   const pathParts = pathname.split("/").filter(Boolean);
   if (patternParts.length !== pathParts.length) return false;
   return patternParts.every((part, index) => part.startsWith(":") || part === pathParts[index]);
+}
+
+function registeredPublicApiRoute(method: string, targetPath: string) {
+  return WTFOS_PUBLIC_API_ROUTES.find(
+    (candidate) =>
+      (candidate.method === method || candidate.method === "ALL") &&
+      routePatternMatches(candidate.path, targetPath),
+  );
 }
 
 async function publicApiAppGateAllows(
@@ -191,7 +212,8 @@ export function createPublicApiAuthenticator(dependencies: {
       res.status(403).json({ error: `Token requires ${requiredScope} scope` });
       return;
     }
-    if (context.targetPath.startsWith("/api/admin/")) {
+    const registeredRoute = registeredPublicApiRoute(method, context.targetPath);
+    if (context.targetPath.startsWith("/api/admin/") || registeredRoute?.declaredAccess === "Admin") {
       if (!isAdmin(auth.user.role) || !scopeAllows(auth.scopes, "api:admin")) {
         res.status(403).json({ error: "Admin API access requires an admin account and api:admin scope" });
         return;
@@ -216,9 +238,11 @@ export function createPublicApiAuthenticator(dependencies: {
 
 export const authenticatePublicApi = createPublicApiAuthenticator();
 
-function openApiPath(pathname: string): string | null {
+export function openApiPath(pathname: string): string | null {
   if (!pathname.startsWith("/api/")) return null;
   if (pathname.startsWith("/^")) return null;
+  if (pathname === "/api/messages/threads/:id") return `${WTFOS_PUBLIC_API_PREFIX}/message-threads/{id}`;
+  if (pathname === "/api/tv/channels/by-dial/:dial") return `${WTFOS_PUBLIC_API_PREFIX}/tv/dials/{dial}`;
   return pathname.replace(/^\/api/, WTFOS_PUBLIC_API_PREFIX).replace(/:([A-Za-z0-9_]+)/g, "{$1}");
 }
 
@@ -242,8 +266,22 @@ function discoveryOperation(operationId: string, summary: string, contentType = 
     responses: {
       "200": {
         description: "Successful response",
-        content: { [contentType]: { schema: contentType === "application/json" ? { type: "object" } : { type: "string" } } },
+        headers: { "X-WTFOS-API-Version": { $ref: "#/components/headers/ApiVersion" } },
+        content: { [contentType]: { schema: contentType === "application/json" ? { $ref: "#/components/schemas/JsonValue" } : { type: "string" } } },
       },
+      "429": { $ref: "#/components/responses/RateLimited" },
+    },
+  };
+}
+
+function genericSuccessResponse(description: string) {
+  return {
+    description,
+    headers: { "X-WTFOS-API-Version": { $ref: "#/components/headers/ApiVersion" } },
+    content: {
+      "application/json": { schema: { $ref: "#/components/schemas/JsonValue" } },
+      "text/plain": { schema: { type: "string" } },
+      "application/octet-stream": { schema: { type: "string", format: "binary" } },
     },
   };
 }
@@ -272,28 +310,43 @@ export function buildWtfOsOpenApiDocument(origin: string) {
     paths[pathname] ||= {};
     for (const method of methods) {
       if (paths[pathname]![method]) continue;
+      const requiredScopes = publicApiRequiredScopes(method, pathname, route.declaredAccess);
+      const requiredRole = route.declaredAccess === "Admin" || pathname.startsWith(`${WTFOS_PUBLIC_API_PREFIX}/admin/`)
+        ? "admin"
+        : String(route.declaredAccess) === "App key"
+          ? "application-credential"
+          : route.declaredAccess === "Permission"
+            ? "token-owner-permission"
+            : "token-owner";
       paths[pathname]![method] = {
         operationId: operationId(method, pathname),
         summary: route.purpose,
+        description: `${route.purpose} This versioned operation delegates to the established wtfOS handler, so its resource ownership, account-role, validation, and enabled-app checks remain authoritative.`,
         tags: [tagForPath(pathname)],
         security: [{ bearerAuth: [] }],
-        parameters: pathParameters,
+        parameters: pathParameters.map((parameter) => ({
+          ...parameter,
+          description: `Route identifier for ${parameter.name}.`,
+        })),
         ...(method === "post" || method === "put" || method === "patch"
           ? {
               requestBody: {
                 required: false,
-                content: { "application/json": { schema: { type: "object", additionalProperties: true } } },
+                description: "JSON payload accepted by the underlying wtfOS domain handler. Consult handler validation errors for domain-specific fields.",
+                content: { "application/json": { schema: { $ref: "#/components/schemas/JsonObject" } } },
               },
             }
           : {}),
         responses: {
-          "200": { description: "Successful response" },
+          "200": genericSuccessResponse("Successful response from the underlying wtfOS domain handler"),
           "400": { $ref: "#/components/responses/BadRequest" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
           "429": { $ref: "#/components/responses/RateLimited" },
         },
+        "x-wtfos-required-scopes": requiredScopes,
+        "x-wtfos-required-role": requiredRole,
         "x-wtfos-declared-access": route.declaredAccess,
         "x-wtfos-source": route.sources,
       };
@@ -319,9 +372,11 @@ export function buildWtfOsOpenApiDocument(origin: string) {
       tags: ["identity"],
       security: [{ bearerAuth: [] }],
       responses: {
-        "200": { description: "Current user" },
+        "200": genericSuccessResponse("Current user"),
         "401": { $ref: "#/components/responses/Unauthorized" },
       },
+      "x-wtfos-required-scopes": ["api:read"],
+      "x-wtfos-required-role": "token-owner",
     },
   };
   paths[`${WTFOS_PUBLIC_API_PREFIX}/tokens`] = {
@@ -330,7 +385,9 @@ export function buildWtfOsOpenApiDocument(origin: string) {
       summary: "List access-token records owned by the current user",
       tags: ["identity"],
       security: [{ bearerAuth: [] }],
-      responses: { "200": { description: "Access-token records" }, "401": { $ref: "#/components/responses/Unauthorized" } },
+      responses: { "200": genericSuccessResponse("Access-token records"), "401": { $ref: "#/components/responses/Unauthorized" } },
+      "x-wtfos-required-scopes": ["api:read"],
+      "x-wtfos-required-role": "token-owner",
     },
     post: {
       operationId: "wtfos_create_access_token",
@@ -351,7 +408,9 @@ export function buildWtfOsOpenApiDocument(origin: string) {
           },
         },
       },
-      responses: { "201": { description: "One-time-visible access token" }, "401": { $ref: "#/components/responses/Unauthorized" } },
+      responses: { "201": genericSuccessResponse("One-time-visible access token"), "401": { $ref: "#/components/responses/Unauthorized" } },
+      "x-wtfos-required-scopes": ["api:write"],
+      "x-wtfos-required-role": "token-owner",
     },
   };
   paths[`${WTFOS_PUBLIC_API_PREFIX}/tokens/{id}`] = {
@@ -361,7 +420,9 @@ export function buildWtfOsOpenApiDocument(origin: string) {
       tags: ["identity"],
       security: [{ bearerAuth: [] }],
       parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
-      responses: { "200": { description: "Revoked token record" }, "401": { $ref: "#/components/responses/Unauthorized" }, "404": { $ref: "#/components/responses/NotFound" } },
+      responses: { "200": genericSuccessResponse("Revoked token record"), "401": { $ref: "#/components/responses/Unauthorized" }, "404": { $ref: "#/components/responses/NotFound" } },
+      "x-wtfos-required-scopes": ["api:write"],
+      "x-wtfos-required-role": "token-owner",
     },
   };
 
@@ -380,11 +441,13 @@ export function buildWtfOsOpenApiDocument(origin: string) {
 
   return {
     openapi: "3.1.0",
+    jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema",
     info: {
       title: "wtfOS Platform API",
       version: "1.0.0",
-      description: "Additive bearer-authenticated public API over the existing wtfOS domain routes.",
+      description: "Bearer-authenticated, versioned access to wtfOS. Every operation delegates to the same domain handler used by the application, preserving resource ownership, role checks, app gates, and validation while leaving existing /api/* routes unchanged.",
     },
+    externalDocs: { url: `${origin}${WTFOS_PUBLIC_API_PREFIX}/docs`, description: "Human-readable API reference" },
     servers: [{ url: origin, description: "Canonical wtfOS origin" }],
     tags,
     security: [{ bearerAuth: [] }],
@@ -399,6 +462,20 @@ export function buildWtfOsOpenApiDocument(origin: string) {
         },
       },
       schemas: {
+        JsonValue: {
+          oneOf: [
+            { $ref: "#/components/schemas/JsonObject" },
+            { type: "array", items: { $ref: "#/components/schemas/JsonValue" } },
+            { type: "string" },
+            { type: "number" },
+            { type: "boolean" },
+            { type: "null" },
+          ],
+        },
+        JsonObject: {
+          type: "object",
+          additionalProperties: { $ref: "#/components/schemas/JsonValue" },
+        },
         Error: {
           type: "object",
           required: ["error"],
@@ -409,6 +486,12 @@ export function buildWtfOsOpenApiDocument(origin: string) {
             requestId: { type: "string" },
           },
           additionalProperties: true,
+        },
+      },
+      headers: {
+        ApiVersion: {
+          description: "Version of the public wtfOS API facade that handled the request.",
+          schema: { type: "string", const: WTFOS_PUBLIC_API_VERSION },
         },
       },
       responses: {
@@ -427,6 +510,72 @@ export function buildWtfOsOpenApiDocument(origin: string) {
     "x-wtfos-regexp-routes": regexpRoutes,
     "x-wtfos-websockets": ["/ws", "/ws/wtf-live", "/ws/dedrooms", "/ws/apphost"],
   };
+}
+
+export interface WtfOsApiOperationDescriptor {
+  operationId: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  summary: string;
+  description: string;
+  tags: string[];
+  public: boolean;
+  requiredScopes: string[];
+  requiredRole: string;
+  declaredAccess: string;
+  parameters: unknown[];
+  requestBody?: unknown;
+  responses: unknown;
+}
+
+export function listWtfOsApiOperations(origin: string): WtfOsApiOperationDescriptor[] {
+  const document = buildWtfOsOpenApiDocument(origin) as any;
+  const operations: WtfOsApiOperationDescriptor[] = [];
+  for (const [pathname, pathItem] of Object.entries(document.paths) as Array<[string, any]>) {
+    for (const method of ["get", "post", "put", "patch", "delete"] as const) {
+      const operation = pathItem[method];
+      if (!operation) continue;
+      operations.push({
+        operationId: operation.operationId,
+        method: method.toUpperCase() as WtfOsApiOperationDescriptor["method"],
+        path: pathname,
+        summary: operation.summary || `${method.toUpperCase()} ${pathname}`,
+        description: operation.description || operation.summary || "",
+        tags: operation.tags || [],
+        public: Array.isArray(operation.security) && operation.security.length === 0,
+        requiredScopes: operation["x-wtfos-required-scopes"] || [],
+        requiredRole: operation["x-wtfos-required-role"] || "public",
+        declaredAccess: operation["x-wtfos-declared-access"] || (operation.security?.length === 0 ? "public" : "token"),
+        parameters: operation.parameters || [],
+        requestBody: operation.requestBody,
+        responses: operation.responses,
+      });
+    }
+  }
+  return operations.sort((a, b) => a.operationId.localeCompare(b.operationId));
+}
+
+export function apiOperationAllowedForAgent(
+  operation: WtfOsApiOperationDescriptor,
+  auth: Pick<McpAgentAuthContext, "scopes" | "user">,
+): boolean {
+  if (operation.public) return true;
+  if (operation.requiredRole === "admin" && !isAdmin(auth.user.role)) return false;
+  if (operation.requiredRole === "application-credential") return false;
+  return operation.requiredScopes.every((scope) => scopeAllows(auth.scopes, scope));
+}
+
+export function resolveWtfOsApiOperationCall(
+  operation: WtfOsApiOperationDescriptor,
+  pathParameters: Record<string, string | number | boolean> = {},
+): { method: WtfOsApiOperationDescriptor["method"]; path: string } {
+  const required = [...operation.path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+  const missing = required.filter((name) => pathParameters[name] === undefined);
+  if (missing.length) throw new Error(`Missing path parameter${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`);
+  const path = operation.path.replace(/\{([^}]+)\}/g, (_match, name: string) =>
+    encodeURIComponent(String(pathParameters[name])),
+  );
+  return { method: operation.method, path };
 }
 
 export function publicApiSummary(origin: string) {
@@ -461,19 +610,37 @@ function escapeHtml(value: unknown): string {
 
 export function renderWtfOsApiDocs(origin: string): string {
   const specification = buildWtfOsOpenApiDocument(origin) as {
-    paths: Record<string, Record<string, { summary?: string; tags?: string[]; security?: unknown[] }>>;
+    paths: Record<string, Record<string, {
+      operationId?: string;
+      summary?: string;
+      tags?: string[];
+      security?: unknown[];
+      "x-wtfos-required-scopes"?: string[];
+      "x-wtfos-required-role"?: string;
+    }>>;
   };
-  const groups = new Map<string, Array<{ method: string; path: string; summary: string; public: boolean }>>();
+  const groups = new Map<string, Array<{
+    operationId: string;
+    method: string;
+    path: string;
+    summary: string;
+    public: boolean;
+    scopes: string[];
+    role: string;
+  }>>();
   for (const [pathname, operations] of Object.entries(specification.paths)) {
     for (const [method, operation] of Object.entries(operations)) {
       if (!["get", "post", "put", "patch", "delete"].includes(method)) continue;
       const tag = operation.tags?.[0] || "platform";
       if (!groups.has(tag)) groups.set(tag, []);
       groups.get(tag)!.push({
+        operationId: operation.operationId || `${method}-${pathname}`,
         method: method.toUpperCase(),
         path: pathname,
         summary: operation.summary || `${method.toUpperCase()} ${pathname}`,
         public: Array.isArray(operation.security) && operation.security.length === 0,
+        scopes: operation["x-wtfos-required-scopes"] || [],
+        role: operation["x-wtfos-required-role"] || "public",
       });
     }
   }
@@ -481,11 +648,12 @@ export function renderWtfOsApiDocs(origin: string): string {
     <details>
       <summary><strong>${escapeHtml(tag)}</strong> <span>${operations.length} operations</span></summary>
       <div class="operations">${operations.map((operation) => `
-        <article class="operation">
+        <article class="operation" id="${escapeHtml(operation.operationId)}">
           <code class="method ${operation.method.toLowerCase()}">${operation.method}</code>
           <code class="path">${escapeHtml(operation.path)}</code>
           ${operation.public ? '<span class="public">public discovery</span>' : ""}
           <p>${escapeHtml(operation.summary)}</p>
+          <p class="contract"><a href="#${escapeHtml(operation.operationId)}">${escapeHtml(operation.operationId)}</a> · ${operation.scopes.length ? `scopes: <code>${escapeHtml(operation.scopes.join(", "))}</code>` : "no token required"} · role: <code>${escapeHtml(operation.role)}</code></p>
         </article>`).join("")}
       </div>
     </details>`).join("");
@@ -493,7 +661,7 @@ export function renderWtfOsApiDocs(origin: string): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>wtfOS Platform API</title>
-<style>body{margin:0;background:#0d1117;color:#e6edf3;font:15px/1.5 ui-sans-serif,system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:40px 20px 80px}a{color:#58a6ff}code{font-family:ui-monospace,SFMono-Regular,monospace}.hero,.quick,details{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:0 0 16px}.hero h1{margin:0 0 8px;font-size:32px}.hero p{max-width:780px;color:#b1bac4}.quick pre{overflow:auto;background:#0d1117;padding:14px;border-radius:6px}summary{cursor:pointer;display:flex;justify-content:space-between;gap:20px}.operations{margin-top:16px}.operation{display:grid;grid-template-columns:72px minmax(260px,1fr) auto;gap:10px;align-items:center;border-top:1px solid #30363d;padding:12px 0}.operation p{grid-column:2/-1;margin:0;color:#b1bac4}.method{font-weight:700}.get{color:#3fb950}.post{color:#58a6ff}.put,.patch{color:#d29922}.delete{color:#f85149}.public{font-size:12px;color:#a5d6ff;border:1px solid #388bfd;border-radius:12px;padding:1px 8px}@media(max-width:700px){.operation{grid-template-columns:60px 1fr}.public{display:none}}</style>
+<style>body{margin:0;background:#0d1117;color:#e6edf3;font:15px/1.5 ui-sans-serif,system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:40px 20px 80px}a{color:#58a6ff}code{font-family:ui-monospace,SFMono-Regular,monospace}.hero,.quick,details{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:0 0 16px}.hero h1{margin:0 0 8px;font-size:32px}.hero p{max-width:780px;color:#b1bac4}.quick pre{overflow:auto;background:#0d1117;padding:14px;border-radius:6px}summary{cursor:pointer;display:flex;justify-content:space-between;gap:20px}.operations{margin-top:16px}.operation{display:grid;grid-template-columns:72px minmax(260px,1fr) auto;gap:10px;align-items:center;border-top:1px solid #30363d;padding:12px 0;scroll-margin-top:20px}.operation p{grid-column:2/-1;margin:0;color:#b1bac4}.operation .contract{font-size:12px;color:#8b949e}.method{font-weight:700}.get{color:#3fb950}.post{color:#58a6ff}.put,.patch{color:#d29922}.delete{color:#f85149}.public{font-size:12px;color:#a5d6ff;border:1px solid #388bfd;border-radius:12px;padding:1px 8px}@media(max-width:700px){.operation{grid-template-columns:60px 1fr}.public{display:none}}</style>
 </head><body><main>
 <section class="hero"><h1>wtfOS Platform API</h1><p>Versioned access to wtfOS through the same domain handlers used by the application, with bearer-token scopes layered on top. Existing <code>/api/*</code> browser routes remain unchanged.</p><p><a href="${WTFOS_PUBLIC_API_PREFIX}/openapi.json">Download OpenAPI 3.1 JSON</a> · <a href="${WTFOS_PUBLIC_API_PREFIX}/capabilities">Capabilities</a></p></section>
 <section class="quick"><h2>Quick start</h2><p>Create a paired access token in wtfOS Settings, then send it as a bearer token:</p><pre>curl -H 'Authorization: Bearer wtf_mcp_…' \\

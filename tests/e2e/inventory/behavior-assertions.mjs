@@ -31,7 +31,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "API developers can discover `/api/v1`, download a valid OpenAPI 3.1 contract, browse grouped human documentation, authenticate with a paired bearer token, and use friendly current-user/token aliases while existing `/api/*` browser and internal calls remain unchanged.",
     durableSideEffectAssertion:
-      "Source-derived route generation proves every existing API method/path is represented in OpenAPI; bearer middleware enforces read/write/admin scopes, account role, ownership, and app gates before dispatching to the established handlers; `wtf_api_request` exposes the same versioned surface to MCP without removing any existing workflow tool.",
+      "Source-derived route generation proves every existing API method/path is represented by an unambiguous canonical OpenAPI operation with explicit scopes, roles, and success content; bearer middleware enforces read/write/admin scopes, account role, ownership, and app gates before dispatching to the established handlers; MCP agents can search allowed operations, inspect one contract, call it by stable operationId, or use the backward-compatible `wtf_api_request` bridge without removing any existing workflow tool.",
   },
   {
     id: "auth.password-session-linked-wallet",

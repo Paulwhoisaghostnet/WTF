@@ -7,8 +7,12 @@ import {
   authenticatePublicApi,
   buildWtfOsOpenApiDocument,
   createPublicApiAuthenticator,
+  apiOperationAllowedForAgent,
+  listWtfOsApiOperations,
+  openApiPath,
   publicApiRateLimitKey,
   renderWtfOsApiDocs,
+  resolveWtfOsApiOperationCall,
   rewritePublicApiVersion,
 } from "./public-api";
 import { DEFAULT_DESKTOP_APP_CONFIG } from "@shared/desktop-apps";
@@ -31,6 +35,7 @@ async function listen(app: express.Express): Promise<{
 test("OpenAPI 3.1 contract has stable versioned paths, security, and unique operation ids", () => {
   const document = buildWtfOsOpenApiDocument("https://wtfos.app") as any;
   assert.equal(document.openapi, "3.1.0");
+  assert.equal(document.jsonSchemaDialect, "https://json-schema.org/draft/2020-12/schema");
   assert.deepEqual(document.servers, [{ url: "https://wtfos.app", description: "Canonical wtfOS origin" }]);
   assert.ok(document.paths["/api/v1/health"]?.get);
   assert.ok(document.paths["/api/v1/me"]?.get);
@@ -38,6 +43,8 @@ test("OpenAPI 3.1 contract has stable versioned paths, security, and unique oper
   assert.ok(document.paths["/api/v1/docs"]?.get);
   assert.equal(document.paths["/api/v1/openapi.json"].get.security.length, 0);
   assert.equal(document.paths["/api/v1/health"].get.security[0].bearerAuth.length, 0);
+  assert.deepEqual(document.paths["/api/v1/admin-inbox/messages"].get["x-wtfos-required-scopes"], ["api:read", "api:admin"]);
+  assert.equal(document.paths["/api/v1/admin-inbox/messages"].get["x-wtfos-required-role"], "admin");
   assert.equal(document.components.securitySchemes.bearerAuth.scheme, "bearer");
   assert.equal(document.components.schemas.Error.required[0], "error");
 
@@ -49,13 +56,20 @@ test("OpenAPI 3.1 contract has stable versioned paths, security, and unique oper
       if (!operation) continue;
       assert.ok(operation.operationId, `${method.toUpperCase()} ${pathname} needs an operationId`);
       operationIds.push(operation.operationId);
-      assert.ok(operation.responses?.["200"] || operation.responses?.["201"]);
+      const success = operation.responses?.["200"] || operation.responses?.["201"];
+      assert.ok(success);
+      assert.ok(success.content, `${method.toUpperCase()} ${pathname} should describe successful response content`);
+      if (operation.security?.length) {
+        assert.ok(operation["x-wtfos-required-scopes"]?.length, `${method.toUpperCase()} ${pathname} needs explicit scopes`);
+        assert.ok(operation["x-wtfos-required-role"], `${method.toUpperCase()} ${pathname} needs an explicit role`);
+      }
     }
   }
   assert.equal(new Set(operationIds).size, operationIds.length, "operation ids must be unique");
   for (const route of WTFOS_PUBLIC_API_ROUTES) {
     if (!route.path.startsWith("/api/") || route.path.startsWith("/^\\/api") || route.path.startsWith("/api/public")) continue;
-    const pathname = route.path.replace(/^\/api/, "/api/v1").replace(/:([A-Za-z0-9_]+)/g, "{$1}");
+    const pathname = openApiPath(route.path);
+    assert.ok(pathname, `missing canonical public path for ${route.path}`);
     const methods = route.method === "ALL"
       ? ["get", "post", "put", "patch", "delete"]
       : [route.method.toLowerCase()];
@@ -63,6 +77,41 @@ test("OpenAPI 3.1 contract has stable versioned paths, security, and unique oper
       assert.ok(document.paths[pathname]?.[method], `missing ${method.toUpperCase()} ${pathname}`);
     }
   }
+});
+
+test("agent API catalog filters by token scopes and account role and safely resolves path parameters", () => {
+  const operations = listWtfOsApiOperations("https://wtfos.app");
+  const health = operations.find((operation) => operation.path === "/api/v1/health" && operation.method === "GET");
+  const admin = operations.find((operation) => operation.path.startsWith("/api/v1/admin/") && operation.method === "GET");
+  const parameterized = operations.find((operation) => operation.path.includes("{id}"));
+  assert.ok(health);
+  assert.ok(admin);
+  assert.ok(parameterized);
+
+  const reader = {
+    scopes: ["api:read"],
+    user: { id: 1, username: "reader", displayName: "Reader", role: "user" },
+  } as any;
+  const administrator = {
+    scopes: ["api:read", "api:admin"],
+    user: { id: 2, username: "admin", displayName: "Admin", role: "admin" },
+  } as any;
+  assert.equal(apiOperationAllowedForAgent(health!, reader), true);
+  assert.equal(apiOperationAllowedForAgent(admin!, reader), false);
+  assert.equal(apiOperationAllowedForAgent(admin!, administrator), true);
+
+  const parameterName = String(parameterized!.path.match(/\{([^}]+)\}/)?.[1]);
+  const resolved = resolveWtfOsApiOperationCall(parameterized!, { [parameterName]: "a/b c" });
+  assert.equal(resolved.path.includes("a%2Fb%20c"), true);
+  assert.throws(() => resolveWtfOsApiOperationCall(parameterized!), /Missing path parameter/);
+});
+
+test("canonical public aliases remove ambiguous OpenAPI paths without disabling legacy versioned aliases", () => {
+  const document = buildWtfOsOpenApiDocument("https://wtfos.app") as any;
+  assert.ok(document.paths["/api/v1/message-threads/{id}"]?.get || document.paths["/api/v1/message-threads/{id}"]?.patch);
+  assert.ok(document.paths["/api/v1/tv/dials/{dial}"]?.get);
+  assert.equal(document.paths["/api/v1/messages/threads/{id}"], undefined);
+  assert.equal(document.paths["/api/v1/tv/channels/by-dial/{dial}"], undefined);
 });
 
 test("human API docs provide familiar discovery, auth, curl, and grouped endpoints", () => {
@@ -137,6 +186,10 @@ test("bearer scopes dispatch through legacy handlers while app gates and admin g
       tokenId: 3, tokenName: "admin", tokenPrefix: "admin", scopes: ["api:read", "api:write", "api:admin"],
       user: { id: 9, username: "admin", displayName: "Admin", role: "admin" },
     },
+    adminRead: {
+      tokenId: 4, tokenName: "admin-read", tokenPrefix: "admin-read", scopes: ["api:read"],
+      user: { id: 9, username: "admin", displayName: "Admin", role: "admin" },
+    },
   };
   const authenticator = createPublicApiAuthenticator({
     authenticateBearer: (async (header: unknown) => {
@@ -158,6 +211,9 @@ test("bearer scopes dispatch through legacy handlers while app gates and admin g
   app.get("/api/test-resource", (req, res) => res.json({ userId: (req.user as any)?.id || null }));
   app.post("/api/test-resource", (req, res) => res.json({ userId: (req.user as any)?.id || null, body: req.body }));
   app.get("/api/admin/test-resource", (_req, res) => res.json({ admin: true }));
+  app.get("/api/admin-inbox/messages", (_req, res) => res.json({ adminInbox: true }));
+  app.get("/api/messages/threads/:id", (req, res) => res.json({ threadId: req.params.id }));
+  app.get("/api/tv/channels/by-dial/:dial", (req, res) => res.json({ dial: req.params.dial }));
   app.get("/api/arcade/games", (_req, res) => res.json({ shouldNotReach: true }));
   app.get("/api/arcade/unlisted-test-route", (_req, res) => res.json({ shouldNotReach: true }));
   app.get("/api/crp-nominations/status", (_req, res) => res.json({
@@ -190,6 +246,15 @@ test("bearer scopes dispatch through legacy handlers while app gates and admin g
   assert.equal(nonAdmin.status, 403);
   const admin = await fetch(`${server.baseUrl}/api/v1/admin/test-resource`, { headers: { Authorization: "Bearer admin" } });
   assert.equal(admin.status, 200);
+  const adminScopeDeniedOutsideAdminPrefix = await fetch(`${server.baseUrl}/api/v1/admin-inbox/messages`, { headers: { Authorization: "Bearer adminRead" } });
+  assert.equal(adminScopeDeniedOutsideAdminPrefix.status, 403);
+  const adminOutsideAdminPrefix = await fetch(`${server.baseUrl}/api/v1/admin-inbox/messages`, { headers: { Authorization: "Bearer admin" } });
+  assert.equal(adminOutsideAdminPrefix.status, 200);
+
+  const canonicalThread = await fetch(`${server.baseUrl}/api/v1/message-threads/abc`, { headers: { Authorization: "Bearer read" } });
+  assert.deepEqual(await canonicalThread.json(), { threadId: "abc" });
+  const canonicalDial = await fetch(`${server.baseUrl}/api/v1/tv/dials/7`, { headers: { Authorization: "Bearer read" } });
+  assert.deepEqual(await canonicalDial.json(), { dial: "7" });
 
   const disabledApp = await fetch(`${server.baseUrl}/api/v1/arcade/games`, { headers: { Authorization: "Bearer read" } });
   assert.equal(disabledApp.status, 404);

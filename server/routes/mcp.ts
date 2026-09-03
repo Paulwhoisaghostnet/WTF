@@ -127,7 +127,9 @@ function mcpInventoryEventsForTool(toolName: string | null): string[] {
         : "mcp.crp.read"
     );
   }
-  if (toolName === "wtf_api_request") events.push("mcp.api.called");
+  if (toolName === "wtf_api_request" || toolName === "wtf_call_api_operation") {
+    events.push("mcp.api.called");
+  }
   return [...new Set(events)];
 }
 

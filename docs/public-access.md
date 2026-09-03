@@ -1,6 +1,6 @@
 # Public API, MCP, and Access Routes
 
-Last reviewed: 2026-08-09
+Last reviewed: 2026-09-03
 
 This page is the public-facing index for the wtfOS access surface:
 browser routes, JSON APIs, MCP agent pairing, embeds, media playback, and
@@ -19,7 +19,7 @@ supported. For local development, use `http://localhost:3000`.
 | Anonymous public | No credential | Public pages, published content, public Tezos/IPFS/Objkt/TzKT-derived rows, public TV playback, embeds, health checks. |
 | Browser session | `connect.sid` cookie from normal login | User account actions, profile settings, wallet-linked actions, messages, media library, Studio, personal TV controls. |
 | Versioned API client | `Authorization: Bearer wtf_mcp_...` on `/api/v1/*` | Public integrations call the complete versioned API as the token owner. Reads require `api:read`; writes require `api:write`; admin routes also require an admin account and `api:admin`. |
-| Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user through domain tools or the generic `wtf_api_request` bridge. |
+| Paired MCP agent | `Authorization: Bearer wtf_mcp_...` on `/mcp` | Agent acts for the paired user through domain tools or the searchable API portal; the generic `wtf_api_request` bridge remains compatible. |
 | Role-gated session | Browser session plus permissions | Admin panel, control board, content management, TV management, app enable/disable controls. |
 | Trusted creator session | Browser session with `trusted_creator` role or matching trusted creator permissions | Narrow creator lanes that bypass manual review where explicitly supported: `trusted_arcade_creator`, `trusted_console_creator`, `trusted_tv_creator`, and `trusted_market_creator`. |
 | Discord bot | Server-to-server bot credentials/HMAC where configured | Dicksword proof/activity and Discord role automation. |
@@ -79,6 +79,12 @@ internal routes are unchanged.
 | `GET/POST /api/v1/tokens` | List or create scoped access tokens. |
 | `DELETE /api/v1/tokens/:id` | Revoke one owned access token. |
 | `/api/v1/<existing path>` | Versioned form of the corresponding `/api/<existing path>` operation. |
+
+Two ambiguous legacy shapes have clearer canonical public names: message thread
+operations use `/api/v1/message-threads/{id}`, and TV dial lookup uses
+`/api/v1/tv/dials/{dial}`. Their existing `/api/v1/messages/threads/*`,
+`/api/v1/tv/channels/by-dial/*`, and legacy `/api/*` forms continue to dispatch
+unchanged, but generated clients use the unambiguous canonical paths.
 
 Discovery and documentation routes are anonymous. All domain operations use a
 paired bearer token, do not set browser cookies, and are rate-limited by a
@@ -461,6 +467,13 @@ Default token scopes:
 - `game-studio:write`
 - `market:write`
 - `trade-board:write`
+- `map-lab:write`
+- `crp-nominations:read`
+- `crp-nominations:write`
+- `api:read`
+
+`api:write` is opt-in for normal users. `api:admin` is available only when both
+the token owner is an admin and the token carries the admin API scope.
 
 Current tools:
 
@@ -468,6 +481,10 @@ Current tools:
 | --- | --- | --- | --- |
 | `wtf_get_capabilities` | Read | All gates reported | Returns paired user context, token metadata, admin feature gates, rate-limit hints, and available workflows. |
 | `wtf_get_registered_inventory` | Read | All gates reported | Returns the standardized WTFOS app/package inventory with current pathways, provenance, witness metadata, and deployment state. |
+| `wtf_search_api_operations` | Read contract | User role + API scopes | Searches only OpenAPI operations the paired agent is allowed to call. Use `*` to list the complete allowed catalog. |
+| `wtf_get_api_operation` | Read contract | User role + API scopes | Returns parameters, body contract, responses, scopes, and role for one allowed `operationId`. |
+| `wtf_call_api_operation` | Read or mutate through API | User role + API scopes + handler gates | Resolves a stable `operationId`, safely fills path parameters, and calls the same `/api/v1` middleware and domain handler as a direct API client. |
+| `wtf_api_request` | Read or mutate through API | User role + API scopes + handler gates | Backward-compatible direct method/path bridge for `/api/v1`; normal ownership, role, app-gate, and validation checks remain authoritative. |
 | `wtf_get_desktop_appearance` | Read paired user | User token | Reads desktop color scheme, wallpaper, cursor, physics, and pet switch. |
 | `wtf_set_desktop_appearance` | Mutate paired user | User token | Updates the paired user's appearance and custom colors. |
 | `wtf_get_desktop_pet` | Read paired user | User token | Reads the paired user's pet state and care status. |

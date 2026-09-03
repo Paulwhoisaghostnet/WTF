@@ -216,6 +216,9 @@ test("Agent MCP access preview explains allowed and blocked tools from visible g
   assert.ok(preview.scopes.includes("desktop:read"));
   assert.ok(preview.resources.some((resource) => resource.id === "public-data"));
   assert.ok(preview.allowedTools.some((tool) => tool.name === "wtf_get_access_manifest"));
+  assert.ok(preview.allowedTools.some((tool) => tool.name === "wtf_search_api_operations"));
+  assert.ok(preview.allowedTools.some((tool) => tool.name === "wtf_get_api_operation"));
+  assert.ok(preview.allowedTools.some((tool) => tool.name === "wtf_call_api_operation"));
   assert.ok(preview.allowedTools.some((tool) => tool.name === "wtf_create_map_lab_document"));
   assert.ok(preview.blockedTools.some((tool) => tool.name === "wtf_create_arcade_play_intent"));
   assert.ok(preview.blockedTools.some((tool) => tool.name === "wtf_create_trusted_creator_market_item"));

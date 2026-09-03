@@ -11817,3 +11817,13 @@
 **Rule**: Derive CSP image, media, and network origins from the same ordered gateway configuration used by media resolution; browser-test forced primary failure through a real alternate; and keep required pre-module compatibility shims in same-origin external files rather than granting `unsafe-inline` or maintaining hand-copied hashes.
 
 ---
+
+## 2026-09-03 — Route coverage alone is not a usable API contract
+
+**What happened**: The versioned facade represented every Express operation and passed OpenAPI syntax validation, but almost every success response had no content schema, mutation bodies were anonymous objects, two templated path pairs were ambiguous to generators, and the MCP bridge required an agent to already know an exact method and path.
+
+**Why it mattered**: A complete route list proved reachability, not developer usability. Generated clients could not model results, standard linters could not resolve two route pairs, and agents had no permission-aware way to discover or inspect the operation catalog before calling it.
+
+**Rule**: Prove public API work at three layers: every handler has one unambiguous canonical operation, each operation declares response content plus its scope/role boundary, and MCP exposes permission-filtered search, inspection, and stable-operation calls while reusing the API's authoritative authorization path. Preserve old route forms as compatibility aliases rather than forcing internal callers onto the public shape.
+
+---

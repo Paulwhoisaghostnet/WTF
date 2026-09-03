@@ -128,11 +128,73 @@ test("capability tool catalog stays in sync with registered MCP tools", async ()
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_arcade_play_status"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_access_manifest"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_registered_inventory"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_search_api_operations"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_get_api_operation"));
+  assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_call_api_operation"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_api_request"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_create_map_lab_document"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_run_arcade_source_import"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_game_studio_project_to_arcade"));
   assert.ok(WTF_MCP_TOOL_NAMES.includes("wtf_submit_crp_nomination"));
+});
+
+test("MCP API portal discovers and calls only operations allowed by the paired role and scopes", async (t) => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+  const { createWtfMcpServer } = await import("./wtf-mcp");
+  const calls: Array<Record<string, unknown>> = [];
+  const server = createWtfMcpServer(
+    {
+      tokenId: 10,
+      tokenName: "read-only-agent",
+      tokenPrefix: "wtf_mcp_test",
+      scopes: ["api:read"],
+      user: { id: 7, username: "reader", displayName: "Reader", role: "user" },
+    },
+    {
+      accessOrigin: "https://wtfos.app",
+      apiRequest: async (input) => {
+        calls.push(input);
+        return { status: 200, contentType: "application/json", body: { status: "alive" } };
+      },
+    },
+  );
+  const client = new Client({ name: "wtfos-api-portal-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+  t.after(async () => Promise.all([client.close(), server.close()]));
+
+  const listed = await client.listTools();
+  assert.ok(listed.tools.some((tool) => tool.name === "wtf_search_api_operations"));
+  assert.ok(listed.tools.some((tool) => tool.name === "wtf_call_api_operation"));
+
+  const search = await client.callTool({
+    name: "wtf_search_api_operations",
+    arguments: { query: "health", response_format: "json" },
+  }) as any;
+  assert.equal(search.structuredContent.ok, true);
+  assert.ok(search.structuredContent.operations.length > 0);
+  assert.ok(search.structuredContent.operations.every((operation: any) => !operation.path.startsWith("/api/v1/admin/")));
+  const health = search.structuredContent.operations.find((operation: any) => operation.path === "/api/v1/health");
+  assert.ok(health);
+
+  const called = await client.callTool({
+    name: "wtf_call_api_operation",
+    arguments: { operation_id: health.operationId, response_format: "json" },
+  }) as any;
+  assert.equal(called.structuredContent.ok, true);
+  assert.deepEqual(calls, [{ method: "GET", path: "/api/v1/health", query: undefined, body: undefined }]);
+
+  const { listWtfOsApiOperations } = await import("./public-api");
+  const adminOperation = listWtfOsApiOperations("https://wtfos.app")
+    .find((operation) => operation.path.startsWith("/api/v1/admin/"));
+  assert.ok(adminOperation);
+  const denied = await client.callTool({
+    name: "wtf_get_api_operation",
+    arguments: { operation_id: adminOperation!.operationId, response_format: "json" },
+  }) as any;
+  assert.equal(denied.isError, true);
+  assert.equal(denied.structuredContent.ok, false);
 });
 
 test("standard access manifest exposes browser, API, and MCP without cookie/bearer overlap", async () => {

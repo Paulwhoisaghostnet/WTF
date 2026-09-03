@@ -84,6 +84,11 @@ import {
 import { createTrustedCreatorMarketItem } from "../features/in-app-market/creator-items";
 import { buildWtfAccessManifest } from "./wtf-access";
 import { buildWtfOsRegisteredInventory } from "./wtfos-inventory";
+import {
+  apiOperationAllowedForAgent,
+  listWtfOsApiOperations,
+  resolveWtfOsApiOperationCall,
+} from "./public-api";
 import { registerCrpNominationMcpTools } from "../features/crp-nominations/mcp";
 import {
   grantNewPetStarterFood,
@@ -95,6 +100,20 @@ import type { McpAgentAuthContext } from "./mcp-agent-auth";
 const RESPONSE_FORMATS = ["markdown", "json"] as const;
 const ResponseFormatSchema = z.enum(RESPONSE_FORMATS).default("markdown");
 type ResponseFormat = (typeof RESPONSE_FORMATS)[number];
+
+const ApiOperationSummaryOutputSchema = z.object({
+  operationId: z.string(),
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  path: z.string(),
+  summary: z.string(),
+  tags: z.array(z.string()),
+  requiredScopes: z.array(z.string()),
+  requiredRole: z.string(),
+});
+const ApiPortalErrorOutputShape = {
+  error: z.string().optional(),
+  details: z.unknown().optional(),
+};
 
 const HexColorSchema = z
   .string()
@@ -122,6 +141,9 @@ export const WTF_MCP_TOOL_NAMES = [
   "wtf_get_capabilities",
   "wtf_get_access_manifest",
   "wtf_get_registered_inventory",
+  "wtf_search_api_operations",
+  "wtf_get_api_operation",
+  "wtf_call_api_operation",
   "wtf_api_request",
   "wtf_create_map_lab_document",
   "wtf_get_desktop_appearance",
@@ -813,6 +835,196 @@ export function createWtfMcpServer(
         ].join("\n")
       );
     }
+  );
+
+  server.registerTool(
+    "wtf_search_api_operations",
+    {
+      title: "Search the wtfOS API",
+      description:
+        "Search the OpenAPI operation catalog that this paired agent is allowed to call. Results are filtered by the token's API scopes and the owner's account role. Use '*' to list the complete allowed catalog.",
+      inputSchema: z.object({
+        query: z.string().trim().min(1).describe("Words from an operation id, method, path, tag, or summary; use * for all allowed operations."),
+        method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).optional(),
+        tag: z.string().trim().min(1).optional(),
+        response_format: ResponseFormatSchema,
+      }).strict(),
+      outputSchema: z.object({
+        ok: z.boolean(),
+        query: z.string().optional(),
+        count: z.number().int().optional(),
+        operations: z.array(ApiOperationSummaryOutputSchema).optional(),
+        ...ApiPortalErrorOutputShape,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ query, method, tag, response_format }) => {
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
+      const terms = query === "*" ? [] : query.toLowerCase().split(/\s+/).filter(Boolean);
+      const operations = listWtfOsApiOperations(origin)
+        .filter((operation) => apiOperationAllowedForAgent(operation, auth))
+        .filter((operation) => !method || operation.method === method)
+        .filter((operation) => !tag || operation.tags.some((value) => value.toLowerCase() === tag.toLowerCase()))
+        .filter((operation) => {
+          const searchable = [
+            operation.operationId,
+            operation.method,
+            operation.path,
+            operation.summary,
+            ...operation.tags,
+          ].join(" ").toLowerCase();
+          return terms.every((term) => searchable.includes(term));
+        })
+        .map((operation) => ({
+          operationId: operation.operationId,
+          method: operation.method,
+          path: operation.path,
+          summary: operation.summary,
+          tags: operation.tags,
+          requiredScopes: operation.requiredScopes,
+          requiredRole: operation.requiredRole,
+        }));
+      return toolResult(
+        { ok: true, query, count: operations.length, operations },
+        response_format,
+        operations.length
+          ? [
+              `Found ${operations.length} allowed wtfOS API operation(s):`,
+              ...operations.map((operation) => `- ${operation.operationId}: ${operation.method} ${operation.path} — ${operation.summary}`),
+            ].join("\n")
+          : "No allowed wtfOS API operations matched that search.",
+      );
+    },
+  );
+
+  server.registerTool(
+    "wtf_get_api_operation",
+    {
+      title: "Get a wtfOS API Operation",
+      description:
+        "Return the OpenAPI details for one operation that this paired agent is allowed to call, including parameters, request body, responses, required scopes, and required role.",
+      inputSchema: z.object({
+        operation_id: z.string().trim().min(1),
+        response_format: ResponseFormatSchema,
+      }).strict(),
+      outputSchema: z.object({
+        ok: z.boolean(),
+        operation: z.object({
+          operationId: z.string(),
+          method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+          path: z.string(),
+          summary: z.string(),
+          description: z.string(),
+          tags: z.array(z.string()),
+          public: z.boolean(),
+          requiredScopes: z.array(z.string()),
+          requiredRole: z.string(),
+          declaredAccess: z.string(),
+          parameters: z.array(z.unknown()),
+          requestBody: z.unknown().optional(),
+          responses: z.unknown(),
+        }).optional(),
+        ...ApiPortalErrorOutputShape,
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ operation_id, response_format }) => {
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
+      const operation = listWtfOsApiOperations(origin).find((candidate) => candidate.operationId === operation_id);
+      if (!operation || !apiOperationAllowedForAgent(operation, auth)) {
+        return toolError("That API operation does not exist or is not available to this paired agent.", response_format);
+      }
+      return toolResult(
+        { ok: true, operation: operation as unknown as Record<string, unknown> },
+        response_format,
+        [
+          `${operation.operationId}`,
+          `${operation.method} ${operation.path}`,
+          operation.summary,
+          `Scopes: ${operation.requiredScopes.join(", ") || "none"}; role: ${operation.requiredRole}.`,
+        ].join("\n"),
+      );
+    },
+  );
+
+  server.registerTool(
+    "wtf_call_api_operation",
+    {
+      title: "Call a wtfOS API Operation",
+      description:
+        "Call an allowed wtfOS API operation by its stable OpenAPI operationId. The portal fills encoded path parameters and then uses the paired token through the same API middleware, ownership checks, account role, app gates, and handler validation as a direct /api/v1 request.",
+      inputSchema: z.object({
+        operation_id: z.string().trim().min(1),
+        path_parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+          .describe("Values for every {parameter} in the selected operation path. Values are URL-encoded by the portal.")
+          .optional(),
+        query: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+        body: z.unknown().optional(),
+        response_format: ResponseFormatSchema,
+      }).strict(),
+      outputSchema: z.object({
+        ok: z.boolean(),
+        operationId: z.string().optional(),
+        method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).optional(),
+        path: z.string().optional(),
+        status: z.number().int().optional(),
+        contentType: z.string().optional(),
+        body: z.unknown().optional(),
+        ...ApiPortalErrorOutputShape,
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ operation_id, path_parameters, query, body, response_format }) => {
+      const origin = resolvePublicSiteOrigin(options.accessOrigin || process.env.PUBLIC_SITE_URL);
+      const operation = listWtfOsApiOperations(origin).find((candidate) => candidate.operationId === operation_id);
+      if (!operation || !apiOperationAllowedForAgent(operation, auth)) {
+        return toolError("That API operation does not exist or is not available to this paired agent.", response_format);
+      }
+      if (!options.apiRequest) {
+        return toolError("The versioned API transport is unavailable in this MCP runtime.", response_format);
+      }
+      try {
+        const request = resolveWtfOsApiOperationCall(operation, path_parameters);
+        const response = await options.apiRequest({ ...request, query, body });
+        const output = {
+          ok: response.status >= 200 && response.status < 300,
+          operationId: operation.operationId,
+          method: request.method,
+          path: request.path,
+          status: response.status,
+          contentType: response.contentType,
+          body: response.body,
+        };
+        if (!output.ok) {
+          return toolError(
+            `wtfOS API operation failed with HTTP ${response.status}. The API's scope, role, ownership, app-gate, and handler checks remain authoritative.`,
+            response_format,
+            output,
+          );
+        }
+        return toolResult(output, response_format, `${operation.operationId} succeeded with HTTP ${response.status}.`);
+      } catch (error) {
+        return toolError(
+          `wtfOS API operation could not be completed: ${error instanceof Error ? error.message : String(error)}`,
+          response_format,
+        );
+      }
+    },
   );
 
   server.registerTool(

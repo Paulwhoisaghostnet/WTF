@@ -4502,7 +4502,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list mcp tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:171"
+      "server/routes/mcp.ts:173"
     ]
   },
   {
@@ -4511,7 +4511,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run mcp tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:198"
+      "server/routes/mcp.ts:200"
     ]
   },
   {
@@ -4520,7 +4520,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop mcp tokens id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:247"
+      "server/routes/mcp.ts:249"
     ]
   },
   {
@@ -8266,7 +8266,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Handle the supported methods for mcp.",
     "declaredAccess": "MCP bearer",
     "sources": [
-      "server/routes/mcp.ts:282"
+      "server/routes/mcp.ts:284"
     ]
   },
   {
