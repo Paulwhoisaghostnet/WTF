@@ -1236,7 +1236,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     userVisibleAssertion:
       "Public data APIs and the WTFOS registered inventory remain readable while MCP automation requires an explicit paired token rather than a browser session.",
     durableSideEffectAssertion:
-      "The live harness reads public links, FAQ, access, leaderboard, gallery state, and the WTFOS inventory tool, rejects unauthenticated MCP calls, creates a scoped MCP token, proves tools/list works without setting cookies, denies a desktop mutation missing desktop:write, revokes the token, and rejects reuse after revocation.",
+      "The live harness reads public links, FAQ, access, leaderboard, and gallery state; rejects unauthenticated MCP calls; creates a scoped MCP token; proves tools/list works without setting cookies; searches, inspects, and calls an allowed OpenAPI operation through the agent portal while excluding admin operations; denies a desktop mutation missing desktop:write; revokes the token; and rejects reuse after revocation.",
   },
   {
     id: "skywire.standalone-at-login",

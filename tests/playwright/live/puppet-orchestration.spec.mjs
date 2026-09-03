@@ -2187,6 +2187,73 @@ test.describe("live E2E puppet orchestration", () => {
       expect(tools.headers()["set-cookie"], "MCP should not set browser cookies").toBeFalsy();
       const toolsBody = await tools.text();
       expect(toolsBody).toContain("wtf_api_request");
+      expect(toolsBody).toContain("wtf_search_api_operations");
+      expect(toolsBody).toContain("wtf_get_api_operation");
+      expect(toolsBody).toContain("wtf_call_api_operation");
+
+      const searchApi = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 5,
+          method: "tools/call",
+          params: {
+            name: "wtf_search_api_operations",
+            arguments: { query: "health", response_format: "json" },
+          },
+        },
+      });
+      expect(searchApi.ok(), `MCP API search HTTP ${searchApi.status()}`).toBe(true);
+      const searchApiBody = await searchApi.text();
+      expect(searchApiBody).toContain("wtfos_get_api_v1_health");
+      expect(searchApiBody).not.toContain("/api/v1/admin/");
+
+      const inspectApi = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 6,
+          method: "tools/call",
+          params: {
+            name: "wtf_get_api_operation",
+            arguments: {
+              operation_id: "wtfos_get_api_v1_health",
+              response_format: "json",
+            },
+          },
+        },
+      });
+      expect(inspectApi.ok(), `MCP API inspect HTTP ${inspectApi.status()}`).toBe(true);
+      expect(await inspectApi.text()).toContain("/api/v1/health");
+
+      const callApi = await publicRequest.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          Accept: "application/json, text/event-stream",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: {
+            name: "wtf_call_api_operation",
+            arguments: {
+              operation_id: "wtfos_get_api_v1_health",
+              response_format: "json",
+            },
+          },
+        },
+      });
+      expect(callApi.ok(), `MCP API operation call HTTP ${callApi.status()}`).toBe(true);
+      const callApiBody = await callApi.text();
+      expect(callApiBody).toContain("wtfos_get_api_v1_health");
+      expect(callApiBody).toContain("/api/v1/health");
 
       const deniedDesktopWrite = await publicRequest.post("/mcp", {
         headers: {

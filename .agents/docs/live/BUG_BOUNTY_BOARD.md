@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **640** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **460** · Archived: **4**
+Total: **640** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **117** · Verified: **461** · Archived: **4**
 
 ## Canonical Board
 
@@ -74,7 +74,6 @@ Total: **640** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 371 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
-| WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
 | WTF-BB-266 | In Progress | Codex Macaroni PDS user-site publish investigation | 2026-06-15 | Macaroni / PDS-backed user-site serving | P1 | 14 | 126 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 126 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 186 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
@@ -312,6 +311,7 @@ Total: **640** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-354 | Verified | Codex apphost pre-live hardening + Cursor live playability verification | 2026-07-06 | Desktop OS / Remote Applications apphost | P1 | 14 | 126 | 3 | 4 | 3 | Local hardening (no provider passwords in user launches, room-join-gated `/ws/apphost` input, window-managed play surface coverage) plus live Hetzner verification: root-caused silent audio to a stale Steam client started without `PULSE_SERVER` (games inherit the running Steam daemon's env over `-applaunch` IPC), added a `steam-launch.sh` guard that restarts a Steam missing `PULSE_SERVER`, disabled double cursor via `show-pointer=false`, deployed with `--apply`, relaunched Jackbox 10, and proved playability end to end: remote input drove menu → Tee K.O. 2 → live lobby with on-screen `JOIN AT JACKBOX.TV / ROOM CODE MIIH`, PulseAudio sink-input present, monitor RMS 1079, and a real Chromium WebRTC peer received decoded video frames and audible OPUS audio (analyser max RMS 0.058, RTT 78 ms, jitter 4 ms) |
 | WTF-BB-346 | Verified | Codex WTF LIVE smart-room production verification | 2026-09-02 | WTF LIVE / user-aware room operations | P1 | 14 | 126 | 4 | 5 | 1 | WTF LIVE now has user-aware owner role/invite controls, owner room/stage scheduling to WTF/TTC targets, persisted room settings, and saved Show Kits that can be associated with public rooms, private rooms, and stages; verified with TypeScript, build, inventory coverage, focused WTF LIVE Playwright, and full inventory E2E |
 | WTF-BB-329 | Verified | Codex Pasta live-readiness | 2026-06-30 | Tezos / Pasta production deployment | P1 | 14 | 126 | 2 | 5 | 3 | Live `wtfos.app` Pasta/Macaroni creator-tool wallet bundles no longer serve Taquito `24.3.0`; all seven live creation-tool bundles passed stale-marker and Octez RPC marker probes on commit `f32dbe8` |
+| WTF-BB-298 | Verified | Codex public API/MCP pass | 2026-09-03 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Public `/api/v1` and the MCP operation portal enforce app gates, roles, scopes, and redacted discovery without changing legacy internal routing |
 | WTF-BB-274 | Verified | Codex Macaroni V2 editions full-send | 2026-06-17 | Macaroni / contract versions, editions, and minter royalties | P1 | 14 | 126 | 4 | 5 | 1 | Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy |
 | WTF-BB-189 | Verified | Codex Skywire wallet identity hardening pass | 2026-06-03 | Skywire / wallet identity boundary | P1 | 14 | 126 | 2 | 5 | 3 | Direct Skywire buys can trust stale browser wallet state without rechecking current-user wallet ownership |
 | WTF-BB-130 | Verified | Codex architectural quick-wins pass | 2026-07-14 | Public repo / operational intel | P1 | 14 | 126 | 3 | 3 | 4 | Public GitHub exposes internal attack map and live-risk backlog |
@@ -1611,27 +1611,6 @@ Total: **640** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - Focused owner-policy, settings, discovery, scoring, and candidate-policy tests pass 7/7. Focused Chromium passes the owner creator-review and reload-persistence story 1/1. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
   - `https://operator.wtfos.app/` serves valid TLS, redirects to `/objkt-operator`, and the app route returns HTTP 200. Production has the migration table and one configured-owner row: `wtf-admin`, state version 16, 25 creator records, and an empty purchase queue. This verifies durable production use without mutating shared acquisition state.
   - A separate authenticated production administrator, `e2e_thecount`, receives `{ allowed: false }` from the read-only access probe and HTTP 403 from the state route. The production allowlist includes `wtf-admin` and excludes that test administrator. WTF-BB-392 is Verified.
-
-### WTF-BB-298 - Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing
-
-- Category: API / app gates and information disclosure
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex public API/MCP pass
-- Last touched: 2026-06-21
-- Score: C3 + F4 + S3 + P1(4) = 14
-- Evidence:
-  - 2026-06-21 production audit found `/api/access` marking app-gated public APIs as `enabled:false` while direct requests still returned 200.
-  - Examples: `/api/arcade/games`, `/api/arcade/stats`, `/api/game-studio/templates`, `/api/game-studio/assets`, `/api/crp-nominations/categories`, and `/api/crp-nominations/status`.
-  - 2026-08-09 claim note: the public API/MCP pass will enforce app-gate and role/scope policy at the additive `/api/v1` bearer boundary and omit internal topology from public discovery; legacy `/api/*` paths remain behavior-compatible for existing browser/internal callers.
-  - 2026-08-09 local verification: `/api/v1` now applies app gates across each registered app domain, requires API read/write/admin scopes as appropriate, redacts CRP repository topology, and has route tests proving disabled-domain denial plus unchanged legacy dispatch. The original legacy-browser exposure remains intentionally unchanged pending a separately compatible migration.
-  - `/api/crp-nominations/status` exposed internal deployment details including a private PDS URL shaped like `http://10.0.0.3:3001` while the `crp-nominations` gate was disabled.
-- Why it matters:
-  - The UI and manifest claim app gates are closed, but the underlying APIs remain open. This weakens operator controls and exposes internal service topology through public endpoints.
-- Likely correction direction:
-  - Enforce app gates in API middleware for every route with an `appGate`, and redact internal topology from public status payloads.
-- Verification idea:
-  - Add route-level tests that disabled app gates return 403 or a redacted public fallback for browser and API access; include CRP status redaction assertions.
 
 ### WTF-BB-266 - App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live
 
@@ -6952,6 +6931,32 @@ Copy this when adding a new issue:
   - Deploy to Hetzner run `28467035058` passed and live `https://wtfos.app/api/health` reported commit `f32dbe8`.
   - Main Quality Gates run `28467035060` passed SmartPy, Typecheck, Vite env policy, Build, Inventory coverage, Inventory Playwright smoke, and External link safety.
   - Live bundle probe passed for `macaroni`, `spaghetti`, `gnocchi`, `ravioli`, `rotini`, `penne`, and `lasagna`: every `vendor/tezos.js` returned `200` with `staleTaquito=false`, and every `js/common.js` returned `200` with Octez mainnet and Shadownet RPC markers.
+
+### WTF-BB-298 - Public `/api/v1` and the MCP operation portal enforce app gates, roles, scopes, and redacted discovery without changing legacy internal routing
+
+- Category: API / app gates and information disclosure
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex public API/MCP pass
+- Last touched: 2026-09-03
+- Score: C3 + F4 + S3 + P1(4) = 14
+- Evidence:
+  - 2026-06-21 production audit found `/api/access` marking app-gated public APIs as `enabled:false` while direct requests still returned 200.
+  - Examples: `/api/arcade/games`, `/api/arcade/stats`, `/api/game-studio/templates`, `/api/game-studio/assets`, `/api/crp-nominations/categories`, and `/api/crp-nominations/status`.
+  - 2026-08-09 claim note: the public API/MCP pass will enforce app-gate and role/scope policy at the additive `/api/v1` bearer boundary and omit internal topology from public discovery; legacy `/api/*` paths remain behavior-compatible for existing browser/internal callers.
+  - 2026-08-09 local verification: `/api/v1` now applies app gates across each registered app domain, requires API read/write/admin scopes as appropriate, redacts CRP repository topology, and has route tests proving disabled-domain denial plus unchanged legacy dispatch. The original legacy-browser exposure remains intentionally unchanged pending a separately compatible migration.
+  - `/api/crp-nominations/status` exposed internal deployment details including a private PDS URL shaped like `http://10.0.0.3:3001` while the `crp-nominations` gate was disabled.
+  - 2026-09-03 correction: the generated OpenAPI 3.1 contract now exposes 790 canonical paths and 950 uniquely identified operations with explicit success media schemas, parameter descriptions, API scopes, account roles, JSON Schema 2020-12 dialect metadata, and unambiguous message-thread and TV-dial aliases. Declared admin operations outside the literal `/api/admin/*` prefix now require both an admin account and `api:admin`. Existing `/api/*` browser routes and compatibility rewrites remain intact.
+  - 2026-09-03 MCP correction: paired agents can search their allowed operation catalog, inspect one OpenAPI operation, and call it by stable `operationId`. Catalog results are filtered by the owner's current role and token scopes; execution reuses the same bearer token, versioned API middleware, app gates, ownership rules, and domain handlers. The raw path bridge remains available for compatibility.
+- Why it matters:
+  - The UI and manifest claim app gates are closed, but the underlying APIs remain open. This weakens operator controls and exposes internal service topology through public endpoints.
+- Likely correction direction:
+  - Enforce app gates in API middleware for every route with an `appGate`, and redact internal topology from public status payloads.
+- Verification idea:
+  - Add route-level tests that disabled app gates return 403 or a redacted public fallback for browser and API access; include CRP status redaction assertions.
+  - Verified 2026-09-03: focused API/MCP/client tests passed 30/30; TypeScript, production build, generated-doc drift, and inventory coverage passed. The full inventory suite passed 715/716, with its sole PixAlerce timeout passing 1/1 in isolation. Redocly CLI 2.51.0 validated the generated OpenAPI contract as valid; all 950 operations have unique IDs and explicit success content.
+  - Hetzner deployment run `33815805165` passed for commit `a1b97ff7`. Public readiness reported that exact commit with database, chain, and jobs healthy. Live discovery, OpenAPI JSON, human docs, protected routes, both canonical aliases, and anonymous MCP rejection were smoke-tested.
+  - A production-scoped `e2e_bert` contestant proof created a temporary hashed token with `api:read`/`api:write`, listed all three operation-portal tools without setting cookies, searched and inspected the health operation, called it successfully by `operationId`, confirmed an admin operation was hidden, confirmed direct API parity, revoked the token, and received 401 on reuse. No bearer value was logged; cleanup ran in `finally`. WTF-BB-298 is Verified.
 
 ### WTF-BB-274 - Macaroni Studio only generated the V1 blind-mint contract, so creators could not choose shared-token editions, V2 minter royalty policies, or multiple delayed-reveal placeholder artifacts; fixed with a V1/V2 selector, SmartPy V2 contract template, compiled public artifact, generated config, and source-policy coverage; verified live on wtfos.app after Hetzner deploy
 
