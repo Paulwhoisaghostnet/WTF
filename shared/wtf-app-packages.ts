@@ -928,6 +928,43 @@ export const WTF_INTEGRATION_PLUGIN_ACCEPTANCE = [
     },
   },
   {
+    id: "integration:anchor",
+    key: "anchor",
+    label: "Anchor — Permanent by Design",
+    kind: "integration-plugin",
+    state: "active",
+    domain: domainGuides.mediaTvStudio,
+    routeEvidence: [
+      "/apps/anchor",
+      "/api/anchor/downloads",
+      "/ipfs-pinning",
+    ],
+    provenance: {
+      owner: "zabuxx and daggiedee (Anchor — Permanent by Design)",
+      source: "anchor-permanent-by-design/anchor@v0.2.4",
+      evidence: [
+        "client/src/features/anchor",
+        "server/routes/anchor.ts",
+        "docs/integrations/anchor.md",
+      ],
+    },
+    permissionSummary: {
+      userAccess: "Session to open the wtfOS download center; the downloaded appliance reads public wallet data and requires no wallet signing or Pin Collector role.",
+      adminAccess: "Publish exact boot-image URLs and matching SHA-256 digests before wtfOS exposes appliance downloads.",
+      dataTouched: [],
+      externalSystems: ["GitLab source archive", "Quay container registry", "User-owned IPFS and Arweave infrastructure"],
+    },
+    rollback: {
+      method: "Remove the Anchor route, download manifest, and IPFS Pinning Manager handoff.",
+      evidence: ["client/src/routes/page-defs.ts", "server/routes/anchor.ts"],
+    },
+    uninstall: {
+      method: "Remove only the wtfOS download-center integration; user-owned Anchor appliances and preserved data remain untouched.",
+      preservesUserData: true,
+      evidence: ["client/src/features/anchor", "server/routes/anchor.ts"],
+    },
+  },
+  {
     id: "integration:mindwalk",
     key: "mindwalk",
     label: "MindWalk Arcade",

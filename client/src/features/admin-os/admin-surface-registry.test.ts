@@ -183,6 +183,15 @@ test("IPFS Pinning Manager owns Pasta project-bundle recovery publish API", () =
   assert(surface?.behaviorAssertionIds?.includes("pasta-protocol.pinning-recovery"));
 });
 
+test("Anchor is independently observable without inheriting the IPFS Pinning app gate", () => {
+  const surface = surfaceById("anchor");
+  assert(surface, "Anchor should be registered for admin observability");
+  assert.equal(surface?.desktopAppKey, undefined);
+  assert(surface?.routePatterns.includes("/apps/anchor"));
+  assert(surface?.adminRoutes?.includes("/api/anchor/downloads"));
+  assert(surface?.automationHandles.includes("anchor.download_manifest.viewed"));
+});
+
 test("desktop app admin surface bindings are one-to-one", () => {
   const counts = new Map<string, number>();
   for (const surface of ALL_ADMIN_SURFACES) {

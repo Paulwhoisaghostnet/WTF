@@ -13,6 +13,7 @@ Primary launchable surfaces:
 - My Photos
 - My Music
 - Browser / media helpers
+- Anchor (`/apps/anchor`) — independent preservation-appliance downloads alongside hosted Porcupin
 
 ## MCP Registry
 
@@ -28,11 +29,13 @@ Common event families:
 - `gallery.*`
 - `upload.*`
 - `playback.*`
+- `anchor.download_manifest.viewed`
 
 Registry rule:
 
 - Media playback, upload, and publish events should be bounded and should preserve provenance metadata.
 - If a new media surface can publish publicly, it needs explicit rollback and moderation evidence.
+- Anchor download artifacts stay hidden until both a safe URL and the matching SHA-256 are configured; access to its download manifest does not grant hosted Porcupin permissions.
 
 ## Install Policy
 

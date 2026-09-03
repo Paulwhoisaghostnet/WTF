@@ -87,6 +87,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/ipfs-pinning", path: "/ipfs-pinning", title: "IPFS Pinning Manager", domain: "media", subdomain: "PDS-backed IPFS pinning", auth: true },
   { pattern: "/apps/porcupin-setup", path: "/apps/porcupin-setup", title: "Porcupin Setup", domain: "media", subdomain: "Porcupin", auth: true },
   { pattern: "/apps/porcupin-dashboard", path: "/apps/porcupin-dashboard", title: "Porcupin Dashboard", domain: "media", subdomain: "Porcupin", auth: true },
+  { pattern: "/apps/anchor", path: "/apps/anchor", title: "Anchor", domain: "media", subdomain: "Independent preservation appliance", auth: true },
   { pattern: "/tools/pixel-patterns", path: "/tools/pixel-patterns", title: "PixelPatterns", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/tools/penrose-backgrounds", path: "/tools/penrose-backgrounds", title: "PenRose Backgrounds", domain: "media", subdomain: "Creation tools", auth: true },
   { pattern: "/studio/:id", path: "/studio/1", title: "Studio Project", domain: "media", subdomain: "Studio workspace", auth: true },
