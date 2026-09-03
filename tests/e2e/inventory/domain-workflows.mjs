@@ -1202,6 +1202,15 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "anchor independent preservation appliance",
+    domain: "Media, Creation, Gallery, and Preservation",
+    routes: ["/apps/anchor", "/ipfs-pinning"],
+    eventHandles: ["anchor.download_manifest.viewed"],
+    apiProbes: [
+      { method: "GET", path: "/api/anchor/downloads", expectedStatuses: [200, 401] },
+    ],
+  },
+  {
     name: "skullzarmy fafolab integration loop",
     domain: "Skullzarmy / FAFOlab Integrations (skllzrmy)",
     routes: [

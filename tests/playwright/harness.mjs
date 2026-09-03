@@ -3823,6 +3823,52 @@ function apiMock(req, res) {
   }
   if (pathName === "/api/porcupin/connection") return res.json(null);
   if (pathName === "/api/porcupin/status") return res.json({ connected: false });
+  if (pathName === "/api/anchor/downloads") {
+    return res.json({
+      ok: true,
+      product: "anchor",
+      label: "Anchor — Permanent by Design",
+      status: "beta",
+      version: "0.2.4",
+      upstreamTag: "v0.2.4",
+      upstreamCommit: "74326162c6b5c17165fe6e14768a53f325840982",
+      repositoryUrl: "https://gitlab.com/anchor-permanent-by-design/anchor",
+      maintainers: ["zabuxx", "daggiedee"],
+      license: "AGPL-3.0-or-later",
+      daemonImage: "quay.io/zabuxx/anchor-daemon@sha256:c72ae7e91be7c82214f52c4dc038c45e52e937ccc94a5eb380e61ee77f487a14",
+      source: {
+        key: "source",
+        label: "Verified source bundle",
+        kind: "source",
+        format: "TAR.GZ",
+        architecture: "source",
+        useCase: "Build an ISO or virtual-machine image with Anchor's documented release targets.",
+        fileName: "anchor-v0.2.4-source.tar.gz",
+        available: true,
+        url: "https://gitlab.com/anchor-permanent-by-design/anchor/-/archive/v0.2.4/anchor-v0.2.4.tar.gz",
+        sha256: "daf0759eff05b699b5197ec5d81ca9d68efc5750cd866ce5c064b1e5286fcaa0",
+      },
+      appliances: [
+        {
+          key: "iso-x86_64",
+          label: "Installer ISO · Intel / AMD",
+          kind: "appliance",
+          format: "ISO",
+          architecture: "x86_64",
+          useCase: "Bare metal or a hypervisor; installs unattended to the selected disk.",
+          fileName: "anchor-0.2.4-vda-x86_64.iso",
+          available: false,
+          url: null,
+          sha256: null,
+        },
+      ],
+      summary: {
+        sourceAvailable: true,
+        applianceAvailable: false,
+        availableApplianceCount: 0,
+      },
+    });
+  }
   if (pathName === "/api/porcupin/premium-eligibility") {
     return res.json({
       wtfBalanceOk: false,

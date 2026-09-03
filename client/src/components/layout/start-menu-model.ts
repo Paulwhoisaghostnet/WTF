@@ -109,6 +109,7 @@ const ICONS: Record<string, string> = {
   "/my-music": "🎵",
   "/music": "🎶",
   "/ipfs-pinning": "PIN",
+  "/apps/anchor": "A",
   "/my-gallery": "🖌️",
   "/collekt": "KT",
   "/tools/broot": "BR",

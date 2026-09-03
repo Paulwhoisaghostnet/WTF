@@ -75,7 +75,7 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
           <Kicker data-ipfs-pinning-region="kicker">{legacyMode ? "Porcupin alias" : "wtfOS organ"}</Kicker>
           <h1>IPFS Pinning Manager</h1>
           <p>
-            Hosted Porcupin, Hetzner Object Storage, and public PDS pin records for Tezos media preservation.
+            Hosted Porcupin and independent Anchor appliances, with public PDS pin records for Tezos media preservation.
           </p>
         </TitleBlock>
         <HeaderActions data-ipfs-pinning-region="header-actions">
@@ -115,6 +115,10 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
               <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/wtfiam?category=preservation")}>
                 <ShoppingBag size={15} />
                 Market
+              </TextButton>
+              <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/anchor")}>
+                <ExternalLink size={15} />
+                Download Anchor
               </TextButton>
             </Notice>
           )}
@@ -241,7 +245,11 @@ export function IpfsPinningManager({ legacyMode }: { legacyMode?: "setup" | "das
             <span>Hosted cache root: {overview.provider.storageRoot}</span>
             <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/porcupin-setup")}>
               <ExternalLink size={15} />
-              Own-node setup
+              Connect Porcupin
+            </TextButton>
+            <TextButton data-ipfs-pinning-region="text-button" onClick={() => wm.openPage("/apps/anchor")}>
+              <ExternalLink size={15} />
+              Download Anchor
             </TextButton>
           </FooterStrip>
         </>

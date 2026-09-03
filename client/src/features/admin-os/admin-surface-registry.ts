@@ -1402,6 +1402,18 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     ],
   },
   {
+    id: "anchor",
+    label: "Anchor",
+    domain: "Media",
+    subdomain: "Independent preservation appliance",
+    kind: "app",
+    routePatterns: ["/apps/anchor"],
+    adminRoutes: ["/api/anchor/downloads"],
+    adminPanelTabs: ["System Logs", "Automation"],
+    nativeSettings: ["Anchor appliance release URLs and checksums"],
+    automationHandles: ["anchor.download_manifest.viewed"],
+  },
+  {
     id: "discovery-engine",
     label: "NFT Discovery",
     domain: "Commerce",

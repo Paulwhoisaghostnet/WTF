@@ -30,6 +30,7 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
   assert.equal(isStartMenuItemEnabled("/tools/macaroni-packager", { "ch-ease": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/colander", { "pasta-protocol": false }), false);
   assert.equal(isStartMenuItemEnabled("/tools/spaghetti", { "pasta-protocol": false }), false);
+  assert.equal(isStartMenuItemEnabled("/apps/anchor", { "ipfs-pinning": false }), true);
   assert.equal(isStartMenuItemEnabled("/links", apps), true);
 });
 

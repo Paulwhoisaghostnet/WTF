@@ -204,6 +204,9 @@ const IpfsPinningPage = lazy(() =>
 const PorcupinPage = lazy(() =>
   import("../pages/Porcupin").then((m) => ({ default: m.Porcupin }))
 );
+const AnchorPage = lazy(() =>
+  import("../pages/Anchor").then((m) => ({ default: m.Anchor }))
+);
 const StudioPage = lazy(() =>
   import("../pages/Studio").then((m) => ({ default: m.Studio }))
 );
@@ -596,6 +599,14 @@ export const PAGE_DEFS: PageDef[] = [
     auth: true,
     title: "Porcupin Dashboard",
     group: "media",
+  },
+  {
+    pattern: "/apps/anchor",
+    component: AnchorPage,
+    auth: true,
+    title: "Anchor",
+    group: "media",
+    startMenu: true,
   },
   {
     pattern: "/studio/:id",

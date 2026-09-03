@@ -85,6 +85,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/ipfs-pinning", auth: true, title: "IPFS Pinning Manager" },
   { pattern: "/apps/porcupin-setup", auth: true, title: "Porcupin Setup" },
   { pattern: "/apps/porcupin-dashboard", auth: true, title: "Porcupin Dashboard" },
+  { pattern: "/apps/anchor", auth: true, title: "Anchor" },
   { pattern: "/studio/:id", auth: true, title: "Studio" },
   { pattern: "/studio", auth: true, title: "Studio" },
   { pattern: "/leaderboard", auth: false, title: "Leaderboard" },

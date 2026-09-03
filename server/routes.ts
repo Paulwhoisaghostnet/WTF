@@ -97,6 +97,7 @@ import socialAutomationRoutes from "./features/social-automation/routes";
 import musicRoutes from "./routes/music";
 import mastodonRoutes from "./routes/mastodon";
 import porcupinRoutes from "./routes/porcupin";
+import anchorRoutes from "./routes/anchor";
 import { buildHealthSnapshot, type HealthSnapshot } from "./lib/health";
 import {
   buildRuntimeMetricsSnapshot,
@@ -432,5 +433,6 @@ export function registerRoutes(app: Express) {
   app.use(musicRoutes);
   app.use(mastodonRoutes);
   app.use(porcupinRoutes);
+  app.use(anchorRoutes);
   app.use(socialAutomationRoutes);
 }
