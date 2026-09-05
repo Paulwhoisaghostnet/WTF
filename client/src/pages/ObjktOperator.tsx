@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppWindow } from "../components/layout/AppWindow";
+import { RecoverableIpfsImage } from "../components/RecoverableIpfsImage";
 import { UiButton, UiNotice, UiPanel } from "../components/wtfos-ui";
 import { api } from "../lib/api";
 import { useWallet } from "../lib/wallet-context";
@@ -276,7 +277,7 @@ const PortfolioCard = styled.article`
   background: var(--wtf-app-surface-raised, #fff);
 `;
 
-const PortfolioImage = styled.img`
+const PortfolioImage = styled(RecoverableIpfsImage)`
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
@@ -409,7 +410,7 @@ const SCORE_LABELS = {
 
 function mediaUrl(uri?: string | null) {
   if (!uri) return "";
-  if (uri.startsWith("ipfs://")) return `https://ipfs.fileship.xyz/${uri.slice(7)}`;
+  if (uri.startsWith("ipfs://")) return uri;
   return /^https:\/\//.test(uri) ? uri : "";
 }
 

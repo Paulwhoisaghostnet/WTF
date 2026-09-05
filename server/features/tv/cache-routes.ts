@@ -19,10 +19,13 @@ async function handleCacheMedia(req: any, res: any) {
     const normalized = normalizeMediaUri(input);
     if (!normalized) return res.status(400).json({ error: "Unsupported media URL" });
 
-    const allowImages = String(req.path || "") === "/api/cache/media";
+    const path = String(req.path || "");
+    const allowArtifacts = path === "/api/cache/artifact";
+    const allowImages = path === "/api/cache/media" || allowArtifacts;
     await streamMediaThroughCache(req, res, normalized, {
       allowRange: true,
       allowImages,
+      allowArtifacts,
     });
   } catch (err) {
     console.error("[tv] failed to proxy/cache media:", err);
@@ -41,6 +44,7 @@ async function handleCacheMedia(req: any, res: any) {
 export function registerTvCacheRoutes(router: Router): void {
   router.get("/api/tv/cache/media", handleCacheMedia);
   router.get("/api/cache/media", handleCacheMedia);
+  router.get("/api/cache/artifact", handleCacheMedia);
 
   router.get("/api/tv/cache/stats", isAuthenticated, async (req, res) => {
     try {
@@ -71,7 +75,8 @@ export function registerTvCacheRoutes(router: Router): void {
         try {
           if (
             candidate.startsWith("/api/tv/cache/media") ||
-            candidate.startsWith("/api/cache/media")
+            candidate.startsWith("/api/cache/media") ||
+            candidate.startsWith("/api/cache/artifact")
           ) {
             const url = new URL(candidate, "http://local");
             candidate = url.searchParams.get("url") || "";

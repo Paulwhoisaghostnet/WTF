@@ -63,6 +63,16 @@ test.describe("interaction inventory — CH-EASE", () => {
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(`console: ${message.text()}`);
     });
+    await page.route(/\/api\/cache\/(?:media|artifact)\?/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      }),
+    );
 
     await page.goto("/tools/ch-ease", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("CH-EASE").first()).toBeVisible();

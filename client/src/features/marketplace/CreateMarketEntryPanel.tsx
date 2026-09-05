@@ -1,5 +1,6 @@
 import { Button, GroupBox, Select, TextInput } from "react95";
 import { OwnedTokensGallery } from "../../components/OwnedTokensGallery";
+import { RecoverableIpfsImage } from "../../components/RecoverableIpfsImage";
 import { Field, SelectedTokenPreview } from "./MarketplaceChrome";
 import type { CreateFormState, SelectedToken } from "./types";
 
@@ -36,7 +37,7 @@ export function CreateMarketEntryPanel({
         <>
           <SelectedTokenPreview>
             {selectedToken.thumbnail ? (
-              <img src={selectedToken.thumbnail} alt={selectedToken.name || "Token"} />
+              <RecoverableIpfsImage src={selectedToken.thumbnail} alt={selectedToken.name || "Token"} />
             ) : (
               <div
                 style={{

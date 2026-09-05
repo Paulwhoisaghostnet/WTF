@@ -1,4 +1,5 @@
 import { externalMarketplaceInfo } from "@shared/external-marketplaces";
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { isSkywireTezosContract } from "@shared/skywire-token-links";
 import type { RatRacePurchaseIntent } from "@shared/tezos-intel";
 
@@ -127,14 +128,8 @@ function teiaReferenceFromTokenId(url: URL, tokenId: string | null | undefined, 
 export function normalizeTokenImageUrl(uri: string | null | undefined): string | null {
   const value = pickString(uri);
   if (!value) return null;
-  if (value.startsWith("ipfs://ipfs/")) {
-    return `https://ipfs.io/ipfs/${value.slice("ipfs://ipfs/".length)}`;
-  }
-  if (value.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${value.slice("ipfs://".length)}`;
-  }
-  if (value.startsWith("/ipfs/")) return `https://ipfs.io${value}`;
-  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/ipfs/")) return normalizeIpfsUri(`ipfs://${value.slice("/ipfs/".length)}`);
+  if (value.startsWith("ipfs://") || /^https?:\/\//i.test(value)) return normalizeIpfsUri(value);
   return null;
 }
 

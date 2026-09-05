@@ -91,7 +91,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "gamma next-action rail",
     ],
     automationHandles: ["dashboard.viewed", "xp.awarded", "app.interaction.tracked"],
-    behaviorAssertionIds: ["gamma.dashboard-next-actions"],
+    behaviorAssertionIds: [
+      "gamma.dashboard-next-actions",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "gamma-shell",
@@ -454,6 +457,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "skywire.signals-hidden-from-navigation",
       "skywire.oauth-original-window-permission-sync",
       "skywire.oauth-canonical-domain-alias",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -960,6 +964,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "auth.wallet-provider-login-lifecycle",
       "wallet.passive-refresh-no-signature",
       "profile.pfp-preview-gateway-fallback",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -972,6 +977,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Users", "XP Log", "Automation"],
     nativeSettings: ["identity fields", "public social visibility", "profile abuse review"],
     automationHandles: ["profile.public.viewed", "profile.updated", "app.interaction.tracked"],
+    behaviorAssertionIds: ["media.fileship-preview-artifact-recovery"],
   },
   {
     id: "wtfiam",
@@ -1017,6 +1023,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     behaviorAssertionIds: [
       "marketplace.offer-accept-explicit-terms",
       "collekt.duplicate-art-scan-and-offer",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -1093,6 +1100,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "tv.public-channel-stream-embed",
       "tv.broken-clip-recovery",
       "tv.canonical-route-only",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -1106,7 +1114,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Content", "Automation", "System Logs"],
     nativeSettings: ["media storage", "public gallery curation", "token import rules", "TV attachment"],
     automationHandles: ["media.imported", "media.uploaded", "token_archive.requested"],
-    behaviorAssertionIds: ["media.creation-gallery-preservation-proof"],
+    behaviorAssertionIds: [
+      "media.creation-gallery-preservation-proof",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "tezosbeats",
@@ -1128,7 +1139,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "music.track_played",
       "music.playlist_create",
     ],
-    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
+    behaviorAssertionIds: [
+      "skullzarmy.fafolab-integration-contracts",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "studio",
@@ -1298,6 +1312,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.wtfme-hosted-pages",
       "pasta-protocol.pinning-recovery",
       "studio.creator-runway-persistence",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -1337,6 +1352,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "macaroni.v3-commitment-reveal",
       "macaroni.shadownet-rpc-wallet-setup",
       "macaroni.wtfos-package-source",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -1400,6 +1416,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "pasta-protocol.wtfme-hosted-pages",
       "pasta-protocol.pinning-recovery",
       "studio.creator-runway-persistence",
+      "media.fileship-preview-artifact-recovery",
     ],
   },
   {
@@ -1425,7 +1442,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Commerce", "System Logs"],
     nativeSettings: ["spotlight rotation", "TzKT source contracts"],
     automationHandles: ["discovery.random_artist", "discovery.random_nft", "discovery.spotlight"],
-    behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
+    behaviorAssertionIds: [
+      "skullzarmy.fafolab-integration-contracts",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "social-automation",
@@ -1560,7 +1580,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Arcade", "System Logs", "Automation"],
     nativeSettings: ["stock cartridges", "reports", "score anti-cheat", "cache dependencies"],
     automationHandles: ["console.session.created", "console.score.accepted", "console.audit.score_rejected"],
-    behaviorAssertionIds: ["arcade-console.sessions-and-scores"],
+    behaviorAssertionIds: [
+      "arcade-console.sessions-and-scores",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "leaderboard",
@@ -1692,7 +1715,10 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "objkt_operator.candidate_queued",
       "objkt_operator.purchase_signed",
     ],
-    behaviorAssertionIds: ["objkt-operator.owner-persistence-and-score-review"],
+    behaviorAssertionIds: [
+      "objkt-operator.owner-persistence-and-score-review",
+      "media.fileship-preview-artifact-recovery",
+    ],
   },
   {
     id: "payroll",

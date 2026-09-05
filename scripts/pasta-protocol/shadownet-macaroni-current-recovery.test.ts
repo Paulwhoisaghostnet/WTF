@@ -693,6 +693,8 @@ test("one-shot source checkpoints before signer loading and permits no recovered
   assert.match(source, /onOperationSubmitted/);
   assert.match(source, /APPLIED/);
   assert.match(source, /routeRecoveredIpfsBytes/);
+  assert.match(source, /ipfs\.fileship\.xyz/);
+  assert.match(source, /dweb\.link\/ipfs/);
   assert.match(source, /walletLimitReadOnlySimulationRejected/);
   assert.match(source, /observer:\s*\{\s*onEvent:/);
   assert.match(source, /CONTINUATION_APPLIED_AWAITING_PACKAGE/);

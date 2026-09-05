@@ -11827,3 +11827,23 @@
 **Rule**: Prove public API work at three layers: every handler has one unambiguous canonical operation, each operation declares response content plus its scope/role boundary, and MCP exposes permission-filtered search, inspection, and stable-operation calls while reusing the API's authoritative authorization path. Preserve old route forms as compatibility aliases rather than forcing internal callers onto the public shape.
 
 ---
+
+## 2026-09-05 — IPFS recovery must cover artifact policy and proof tooling, not only image URLs
+
+**What happened**: The shared FileShip-first image resolver fixed Profile previews, but other live surfaces still built single gateway URLs, audio and ZIP consumers had no artifact-safe proxy, and Pasta verification treated one public gateway response as proof of CID availability. FileShip's canonical root URL also needed to resolve to the same immutable cache key as `/ipfs/` gateway URLs.
+
+**Why it mattered**: A gateway outage could still blank token previews, stop audio or game ZIP playback, and falsely fail a successfully pinned proof. Simply adding another image host would not repair those non-image and server-side paths; broadly reusing the old media cache policy would either reject the files or risk admitting active HTML.
+
+**Rule**: Treat IPFS recovery as one end-to-end contract: parse immutable CID identity once, use an ordered FileShip-first candidate list in browsers and proof verifiers, deduplicate cache entries by CID, and define explicit passive artifact content classes with `nosniff` while rejecting HTML. Force the primary gateway to fail in tests for every consumer class.
+
+---
+
+## 2026-09-05 — Browser fixtures must serve newly rendered media-proxy requests
+
+**What happened**: CH-EASE began rendering uploaded package previews through the production same-origin media cache, but its browser harness did not implement that read. The synthetic harness response failed as an image, triggering direct public-gateway fallbacks and browser console errors even though the production route and focused cache contract were valid.
+
+**Why it mattered**: The complete interaction inventory correctly rejected the unexpected console errors, exposing that the browser story no longer modeled all network behavior created by its own upload flow.
+
+**Rule**: When a UI starts rendering through an established proxy, extend the owning browser fixture with representative safe bytes and content type before claiming the interaction story. Keep production proxy security covered separately by route-level allowlist, type, and header tests.
+
+---

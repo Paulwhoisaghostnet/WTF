@@ -3,9 +3,21 @@ import test from "node:test";
 import { DEFAULT_IPFS_GATEWAYS } from "@shared/ipfs-gateways";
 import {
   advanceResolvedMediaFallback,
+  resolveArtifactUri,
   resolveTokenArtifact,
   resolveTokenThumbnail,
 } from "./media-resolve";
+
+test("IPFS artifacts use the artifact cache with FileShip-first server fallback", () => {
+  const resolved = resolveArtifactUri("ipfs://bafybeigdyrzt/game.zip");
+
+  assert.ok(resolved);
+  assert.equal(
+    resolved.src,
+    `/api/cache/artifact?url=${encodeURIComponent(`${DEFAULT_IPFS_GATEWAYS[0]}bafybeigdyrzt/game.zip`)}`
+  );
+  assert.equal(resolved.fallbackCandidates?.[0], `${DEFAULT_IPFS_GATEWAYS[0]}bafybeigdyrzt/game.zip`);
+});
 
 test("token thumbnails expose ordered IPFS gateway fallbacks", () => {
   const resolved = resolveTokenThumbnail({
@@ -33,6 +45,7 @@ test("token artifacts expose IPFS gateway fallbacks for playable media", () => {
   });
 
   assert.ok(resolved);
+  assert.match(resolved.src, /^\/api\/cache\/artifact\?url=/);
   assert.equal(resolved.fallbackSrc, `${DEFAULT_IPFS_GATEWAYS[0]}bafybeigdyrzt/game.zip`);
   assert.equal(resolved.fallbackCandidates?.length, DEFAULT_IPFS_GATEWAYS.length);
 });

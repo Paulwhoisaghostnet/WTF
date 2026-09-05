@@ -118,7 +118,7 @@ test("Skywire token market resolver maps the lowest tez listing to a direct purc
   );
 
   assert.equal(market.token?.title, "Radio Token");
-  assert.equal(market.token?.imageUrl, "https://ipfs.io/ipfs/bafy/thumb.png");
+  assert.equal(market.token?.imageUrl, "https://ipfs.fileship.xyz/bafy/thumb.png");
   assert.equal(market.listing?.priceTez, "2.5");
   assert.equal(market.purchaseIntent.supported, true);
   assert.equal(market.purchaseIntent.entrypoint, "fulfill_ask");

@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **921 unique method/path operations**, grouped into **99 route families** and declared across **126 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **922 unique method/path operations**, grouped into **99 route families** and declared across **126 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 921 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 922 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -109,7 +109,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `board` | 23 | Message-board channels, posts, reactions, moderation, search, and inbound webhooks. |
 | `browser` | 2 | Server-assisted browser/session tooling. |
 | `buyback-windows` | 7 | Operations for the buyback windows domain. |
-| `cache` | 1 | Operations for the cache domain. |
+| `cache` | 2 | Operations for the cache domain. |
 | `calendar` | 11 | Calendar sources, events, subscriptions, and synchronization. |
 | `casino` | 21 | Casino catalogue, game sessions, balances, wagers, and leaderboards. |
 | `ch-ease` | 1 | Operations for the ch ease domain. |
@@ -196,7 +196,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 447**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 215**, **Session 470**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 448**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 216**, **Session 470**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -558,13 +558,14 @@ Operations for the buyback windows domain.
 </details>
 
 <details>
-<summary><code>cache</code> — 1 operations</summary>
+<summary><code>cache</code> — 2 operations</summary>
 
 Operations for the cache domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/cache/media` | Read or list cache media. | Public/handler | `server/features/tv/cache-routes.ts:43` |
+| GET | `/api/cache/artifact` | Read or list cache artifact. | Public/handler | `server/features/tv/cache-routes.ts:47` |
+| GET | `/api/cache/media` | Read or list cache media. | Public/handler | `server/features/tv/cache-routes.ts:46` |
 
 </details>
 
@@ -1855,9 +1856,9 @@ WTF TV channels, playlists, schedules, playback, cache, telemetry, and media.
 | GET | `/api/tv/bumpers/:bumperId/media` | Read or list tv bumpers bumperId media. | Public/handler | `server/features/tv/bumper-routes.ts:465` |
 | GET | `/api/tv/bumpers/community` | Read or list tv bumpers community. | Public/handler | `server/features/tv/bumper-routes.ts:250` |
 | GET | `/api/tv/bumpers/pool` | Read or list tv bumpers pool. | Public/handler | `server/features/tv/bumper-routes.ts:175` |
-| GET | `/api/tv/cache/media` | Read or list tv cache media. | Public/handler | `server/features/tv/cache-routes.ts:42` |
-| POST | `/api/tv/cache/prefetch` | Create, submit, or run tv cache prefetch. | Session | `server/features/tv/cache-routes.ts:63` |
-| GET | `/api/tv/cache/stats` | Read or list tv cache stats. | Session | `server/features/tv/cache-routes.ts:45` |
+| GET | `/api/tv/cache/media` | Read or list tv cache media. | Public/handler | `server/features/tv/cache-routes.ts:45` |
+| POST | `/api/tv/cache/prefetch` | Create, submit, or run tv cache prefetch. | Session | `server/features/tv/cache-routes.ts:67` |
+| GET | `/api/tv/cache/stats` | Read or list tv cache stats. | Session | `server/features/tv/cache-routes.ts:49` |
 | GET | `/api/tv/channels` | Read or list tv channels. | Public/handler | `server/features/tv/channel-routes.ts:76` |
 | POST | `/api/tv/channels` | Create, submit, or run tv channels. | Session | `server/features/tv/channel-routes.ts:278` |
 | DELETE | `/api/tv/channels/:channelId` | Delete, revoke, or stop tv channels channelId. | Session | `server/features/tv/channel-routes.ts:432` |

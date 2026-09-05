@@ -70,6 +70,7 @@ test("current Gnocchi recovery checkpoints before side effects and never replays
   assert.match(source, /validatePrefixInventory\(appRoot\)/);
   assert.match(source, /readRpcIdentity\(SHADOWNET_RPC_PRIMARY\)/);
   assert.match(source, /readRpcIdentity\(SHADOWNET_RPC_FALLBACK\)/);
+  assert.match(source, /ipfs\.fileship\.xyz/);
   assert.match(source, /dweb\.link\/ipfs/);
   assert.match(source, /ordinaryRerunForbidden: true/);
   assert.match(source, /initialOperationSequence: resumeState \? 6 : 4/);

@@ -10,6 +10,7 @@ import {
   MenuTitle,
 } from "../TVChrome";
 import type { ChannelDetailResponse, TVBumper } from "../types";
+import { resolveTokenThumbnail } from "../../../lib/media-resolve";
 import {
   BumperAssignmentToggles,
   type BumperCategory,
@@ -31,6 +32,15 @@ type MutationLike<TVariables> = {
     }
   ) => void;
 };
+
+function recoveredVideoUrl(uri: string): string {
+  return resolveTokenThumbnail({ metadata: { artifactUri: uri } }, { preferVideo: true })?.src || uri;
+}
+
+function recoveredPosterUrl(uri: string | null | undefined): string | undefined {
+  if (!uri) return undefined;
+  return resolveTokenThumbnail({ thumbnail: uri })?.src || uri;
+}
 
 type ChannelVideosScreenProps = {
   detailQuery: QueryLike<ChannelDetailResponse>;
@@ -80,8 +90,8 @@ export function ChannelVideosScreen({
                 }}
               >
                 <video
-                  src={video.sourceUri}
-                  poster={video.thumbnailUri || undefined}
+                  src={recoveredVideoUrl(video.sourceUri)}
+                  poster={recoveredPosterUrl(video.thumbnailUri)}
                   muted
                   playsInline
                   preload="metadata"

@@ -369,7 +369,7 @@ signature and a verifiable operation hash.
 | `GET /api/tv/channels/:channelId/embed` | Public | Embed metadata for public channel. |
 | `GET /api/tv/channels/:channelId/stream` | Public | Deterministic playback queue for public channel. |
 | `GET /api/tv/channels/:channelId/media/:mediaItemId/file` | Public playback | Channel-scoped media file access. |
-| `GET /api/tv/cache/media` and `GET /api/cache/media` | Public playback proxy | Cache/media proxy for safe playback. |
+| `GET /api/tv/cache/media`, `GET /api/cache/media`, and `GET /api/cache/artifact` | Public playback proxy | Allowlisted cache proxy with FileShip-first IPFS recovery; the artifact route adds audio and ZIP while rejecting HTML. |
 | `POST /api/tv/playback/events` | Public write | Anonymous playback telemetry with bounded payload shape and TV telemetry rate limits. |
 | `POST /api/tv/telemetry/item-end` | Public write | Rate-limited item-end telemetry. |
 | `GET /api/tv/bumpers/pool` | Public | Public bumper pool. |

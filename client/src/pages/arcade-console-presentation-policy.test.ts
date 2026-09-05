@@ -64,3 +64,9 @@ test("Arcade and Console keep shared APIs, iframe sandboxing, and external exits
   assert.match(consoleSource, /rel="noopener noreferrer"/);
   assert.doesNotMatch(consoleSource, /\/api\/gamma/);
 });
+
+test("wallet-owned ZIP cartridges use the FileShip-first artifact recovery cache", () => {
+  assert.match(consoleSource, /resolveArtifactUri/);
+  assert.match(consoleSource, /resolvedArtifact\?\.src/);
+  assert.doesNotMatch(consoleSource, /zipUrl = `\/api\/cache\/media\?url=/);
+});

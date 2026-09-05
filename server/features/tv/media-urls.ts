@@ -84,11 +84,16 @@ export function normalizeExternalTvEmbedUrl(uri: string): string | null {
 
 export function isAllowedMediaCacheContentType(
   contentType: string,
-  options: { allowImages?: boolean } = {}
+  options: { allowImages?: boolean; allowArtifacts?: boolean } = {}
 ): boolean {
   const value = String(contentType || "").toLowerCase().trim();
   if (value.startsWith("video/") || value === "image/gif") return true;
-  return options.allowImages === true && value.startsWith("image/");
+  if ((options.allowImages === true || options.allowArtifacts === true) && value.startsWith("image/")) {
+    return true;
+  }
+  if (options.allowArtifacts !== true) return false;
+  if (value.startsWith("audio/")) return true;
+  return value === "application/zip" || value === "application/x-zip-compressed";
 }
 
 export function normalizeIpfsUri(uri: string): string {

@@ -29,6 +29,7 @@ const POLYHAVEN_PREFERRED_RESOLUTIONS = process.env.POLYHAVEN_PREFERRED_RESOLUTI
 const POLYHAVEN_MAX_MODELS_TO_IMPORT = Math.max(1, Number(process.env.POLYHAVEN_MAX_MODELS_TO_IMPORT || "20"));
 const POLYHAVEN_MAX_FILES_PER_CANDIDATE = Math.max(1, Number(process.env.POLYHAVEN_MAX_FILES_PER_CANDIDATE || "20"));
 const OBJKT_IPFS_GATEWAYS = [
+  "https://ipfs.fileship.xyz/",
   "https://ipfs.io/ipfs/",
   "https://w3s.link/ipfs/",
   "https://dweb.link/ipfs/",

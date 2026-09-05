@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
+import { RecoverableIpfsImage } from "../components/RecoverableIpfsImage";
 import { MOBILE } from "../global-styles";
 import { api, fetchWithCsrf } from "../lib/api";
+import { resolveArtifactUri } from "../lib/media-resolve";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { logClientSystemEvent } from "../lib/system-log";
 import { usePastaFavicon } from "../features/pasta-protocol/pasta-favicon";
@@ -1060,8 +1062,8 @@ const MiniToken = styled.div`
   font-size: var(--wtf-type-caption, 13px);
 `;
 
-function ipfsUrl(cid: string | null | undefined) {
-  return cid ? `https://ipfs.fileship.xyz/${cid}` : "";
+function ipfsUri(cid: string | null | undefined) {
+  return cid ? `ipfs://${cid}` : "";
 }
 
 function formatBytes(bytes: number) {
@@ -1201,12 +1203,12 @@ function targetMeta(targetId: ExportTarget) {
 }
 
 function mediaPreview(item: PackageItem) {
-  const url = ipfsUrl(item.mediaCid);
+  const uri = ipfsUri(item.mediaCid);
   if (item.mimeType.startsWith("image/")) {
-    return <img src={url} alt={item.tokenName || item.originalTitle} loading="lazy" />;
+    return <RecoverableIpfsImage src={uri} alt={item.tokenName || item.originalTitle} loading="lazy" />;
   }
   if (item.mimeType.startsWith("video/")) {
-    return <video src={url} muted controls={false} aria-label={item.tokenName || item.originalTitle} />;
+    return <video src={resolveArtifactUri(uri)?.src || ""} muted controls={false} aria-label={item.tokenName || item.originalTitle} />;
   }
   if (item.mimeType.startsWith("audio/")) {
     return <Muted>audio</Muted>;

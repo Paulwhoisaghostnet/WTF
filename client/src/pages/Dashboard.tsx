@@ -35,6 +35,7 @@ import { usePresentationShell } from "../lib/presentation-shell";
 import { formatWtf } from "@shared/types";
 import { useLocation } from "wouter";
 import { DiscoveryCard } from "../features/discovery/DiscoveryCard";
+import { RecoverableIpfsImage } from "../components/RecoverableIpfsImage";
 
 const DASHBOARD_CAPTION_TYPE = "var(--wtf-type-caption, 13px)";
 
@@ -940,7 +941,7 @@ export function Dashboard() {
                       <ActivityRow key={`${r.opHash ?? "noop"}-${idx}`}>
                         <Thumb>
                           {r.thumbnailUri ? (
-                            <img src={r.thumbnailUri} alt="" />
+                            <RecoverableIpfsImage src={r.thumbnailUri} alt="" />
                           ) : null}
                         </Thumb>
                         <span
@@ -992,7 +993,7 @@ export function Dashboard() {
                         <ActivityRow key={`${r.opHash}-${idx}`}>
                           <Thumb>
                             {r.thumbnailUri ? (
-                              <img src={r.thumbnailUri} alt="" />
+                              <RecoverableIpfsImage src={r.thumbnailUri} alt="" />
                             ) : null}
                           </Thumb>
                           <span

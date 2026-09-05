@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { resolveArtifactUri } from "../lib/media-resolve";
 import {
   provenanceCreatorLabel,
   provenanceSupportLinks,
@@ -106,6 +107,7 @@ export function MyMusic() {
               {filtered.map((item) => {
                 const provenance = readEmbeddedProvenance(item);
                 const supportLink = provenanceSupportLinks(provenance)[0] || null;
+                const resolvedAudio = resolveArtifactUri(item.playbackUrl || item.sourceUrl);
                 return (
                   <TrackCard key={item.id} data-my-music-region="track-card">
                     <TrackMeta data-my-music-region="track-meta">
@@ -125,7 +127,7 @@ export function MyMusic() {
                         </span>
                       )}
                     </TrackMeta>
-                    <audio data-my-music-region="audio-player" controls preload="metadata" src={item.playbackUrl || item.sourceUrl} />
+                    <audio data-my-music-region="audio-player" controls preload="metadata" src={resolvedAudio?.src || ""} />
                   </TrackCard>
                 );
               })}

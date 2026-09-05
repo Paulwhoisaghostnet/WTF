@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { DEFAULT_IPFS_GATEWAYS, buildIpfsGatewayCandidates } from "@shared/ipfs-gateways";
 import { WTF_USER_SITE_HOME_SLUG } from "@shared/wtf-user-sites";
 import { HOSTED_PORCUPIN_PROVIDER_KEY } from "./constants";
 import {
@@ -329,13 +330,14 @@ export function buildPastaPublishPinningProof(input: PastaPublishPinningProofInp
     accessibility: {
       publicHost: `https://${host}/`,
       wellKnownPinsUrl,
-      gatewayBase: "https://ipfs.io/ipfs/",
+      gatewayBase: DEFAULT_IPFS_GATEWAYS[0],
       items: items.map((item) => ({
         kind: item.kind,
         app: item.app,
         sourceUri: item.sourceUri,
         ipfsUri: `ipfs://${item.cid}`,
-        gatewayUrl: `https://ipfs.io/ipfs/${item.cid}`,
+        gatewayUrl: buildIpfsGatewayCandidates(`ipfs://${item.cid}`)[0],
+        gatewayCandidates: buildIpfsGatewayCandidates(`ipfs://${item.cid}`),
         mirrorKey: item.storageRef.s3Key,
       })),
     },
@@ -511,7 +513,9 @@ export function buildPastaPinningRecoveryDrill(proof: PastaPublishPinningProof) 
       mirrorKey: item.storageRef.s3Key,
     }));
   const objectMirrorKeys = manifest.items.map((item) => item.storageRef.s3Key).filter((key): key is string => Boolean(key));
-  const ipfsGatewayUrls = manifest.items.map((item) => `https://ipfs.io/ipfs/${item.cid}`);
+  const ipfsGatewayUrls = manifest.items.map(
+    (item) => buildIpfsGatewayCandidates(`ipfs://${item.cid}`)[0]!
+  );
   const checks = {
     wellKnownLinksManifest: wellKnown.manifestUri === proof.recovery.manifestAtUri,
     itemRecordsMatchManifest: missingRecords.length === 0,

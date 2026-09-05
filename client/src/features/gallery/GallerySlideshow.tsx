@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, GroupBox } from "react95";
 import styled from "styled-components";
+import { RecoverableIpfsImage } from "../../components/RecoverableIpfsImage";
 
 export interface GalleryToken {
   id: number | string;
@@ -56,7 +57,7 @@ const Thumb = styled.div`
   margin-bottom: 6px;
 `;
 
-const ThumbImg = styled.img`
+const ThumbImg = styled(RecoverableIpfsImage)`
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -111,7 +112,7 @@ const Spotlight = styled.div`
   margin-bottom: 10px;
 `;
 
-const SpotlightImg = styled.img`
+const SpotlightImg = styled(RecoverableIpfsImage)`
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
@@ -197,9 +198,7 @@ export function GallerySlideshow({
             <SpotlightImg
               src={current.displayUri ?? current.artifactUri ?? ""}
               alt={current.name}
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
+              onError={(event) => { event.currentTarget.style.display = "none"; }}
             />
           ) : (
             <span style={{ color: "#444", fontSize: 14 }}>No preview</span>
@@ -222,9 +221,7 @@ export function GallerySlideshow({
                 <ThumbImg
                   src={token.displayUri ?? token.artifactUri ?? ""}
                   alt={token.name}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  onError={(event) => { event.currentTarget.style.display = "none"; }}
                 />
               ) : (
                 <span style={{ color: "#333", fontSize: 24 }}>🎨</span>

@@ -55,6 +55,10 @@ export function cacheProxyUrl(sourceUrl: string): string {
   return `/api/cache/media?url=${encodeURIComponent(sourceUrl)}`;
 }
 
+export function artifactCacheProxyUrl(sourceUrl: string): string {
+  return `/api/cache/artifact?url=${encodeURIComponent(sourceUrl)}`;
+}
+
 export interface ResolvedThumbnail {
   src: string;
   fallbackSrc?: string;
@@ -113,13 +117,17 @@ export function resolveTokenArtifact(
   const metadata = token.metadata;
   if (!metadata) return null;
   const rawUri = metadataUri(metadata, "artifactUri", "artifact_uri");
+  return resolveArtifactUri(rawUri);
+}
+
+export function resolveArtifactUri(rawUri: string | null | undefined): ResolvedThumbnail | null {
   if (!rawUri) return null;
   const normalized = normalizeIpfsUri(rawUri);
   if (!normalized) return null;
   const fallbackCandidates = fallbackCandidatesFor(rawUri, normalized);
-  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+  if (buildIpfsGatewayCandidates(rawUri).length > 0) {
     return {
-      src: cacheProxyUrl(normalized),
+      src: artifactCacheProxyUrl(normalized),
       fallbackSrc: fallbackCandidates[0] ?? normalized,
       fallbackCandidates,
     };

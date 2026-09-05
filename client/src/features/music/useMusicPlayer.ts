@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { setNowPlaying, type MusicPlaylistTrack } from "./api";
+import { resolveArtifactUri } from "../../lib/media-resolve";
 
 export interface TrackRef {
   tokenContract: string;
@@ -30,7 +31,8 @@ export function useMusicPlayer() {
       if (!audio) return;
 
       if (currentTrack?.tokenId !== track.tokenId || currentTrack?.tokenContract !== track.tokenContract) {
-        audio.src = track.audioUrl ?? "";
+        const resolvedAudio = resolveArtifactUri(track.audioUrl);
+        audio.src = resolvedAudio?.src ?? "";
         setCurrentTrack(track);
       }
 

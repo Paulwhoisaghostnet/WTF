@@ -113,6 +113,7 @@ export function shortHashForLog(input: string): string {
 
 export function isImmutableSource(url: string): boolean {
   const raw = String(url || "").toLowerCase();
+  if (extractIpfsPath(url)) return true;
   if (raw.startsWith("ipfs://")) return true;
   if (raw.includes("/ipfs/")) return true;
   return false;

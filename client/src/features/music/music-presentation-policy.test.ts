@@ -8,6 +8,7 @@ const playlistSource = readFileSync(new URL("./MusicPlaylist.tsx", import.meta.u
 const tezampSource = readFileSync(new URL("../../pages/Tezamp.tsx", import.meta.url), "utf8");
 const musicNftsSource = readFileSync(new URL("./useMusicNfts.ts", import.meta.url), "utf8");
 const musicApiSource = readFileSync(new URL("./api.ts", import.meta.url), "utf8");
+const musicPlayerHookSource = readFileSync(new URL("./useMusicPlayer.ts", import.meta.url), "utf8");
 
 test("TezosBeats exposes Gamma host markers for app-owned player chrome", () => {
   assert.match(musicPlayerSource, /usePresentationShell/);
@@ -35,6 +36,8 @@ test("legacy Tezamp route exposes Gamma host markers without changing queue beha
   assert.match(tezampSource, /data-tezamp-region="queue-button"/);
   assert.match(tezampSource, /api\.get<MusicItem\[\]>\("\/api\/media\/mine\?category=audio"\)/);
   assert.match(tezampSource, /wm\.openPage\("\/my-music"\)/);
+  assert.match(tezampSource, /resolveArtifactUri/);
+  assert.match(tezampSource, /resolvedAudio\?\.src/);
 });
 
 test("TezosBeats shared data and playlist APIs stay raw", () => {
@@ -46,4 +49,9 @@ test("TezosBeats shared data and playlist APIs stay raw", () => {
   assert.match(musicApiSource, /api\.put<MusicNowPlaying>\("\/api\/music\/now-playing", body\)/);
   assert.doesNotMatch(musicPlayerSource, /api\.get|api\.post|fetch\(/);
   assert.doesNotMatch(nowPlayingSource, /api\.get|api\.post|fetch\(/);
+});
+
+test("TezosBeats resolves IPFS audio through the artifact recovery cache", () => {
+  assert.match(musicPlayerHookSource, /resolveArtifactUri/);
+  assert.match(musicPlayerHookSource, /resolvedAudio\?\.src/);
 });

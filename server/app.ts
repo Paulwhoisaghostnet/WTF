@@ -46,6 +46,7 @@ const MEDIA_RATE_LIMIT_BYPASS_PATTERNS: readonly RegExp[] = [
   /^\/api\/console\/dependency$/,
   /^\/api\/tv\/cache\/media$/,
   /^\/api\/cache\/media$/,
+  /^\/api\/cache\/artifact$/,
   /^\/api\/tv\/channels\/\d+\/stream$/,
   /^\/api\/tv\/channels\/\d+\/now$/,
   /^\/api\/tv\/channels\/\d+\/media\/\d+\/file$/,

@@ -47,6 +47,12 @@ test("Swap keeps shared DEX and wallet behavior raw", () => {
   assert.doesNotMatch(swapSource, /\/api\/gamma/);
 });
 
+test("Swap token icons use the shared FileShip-first preview recovery chain", () => {
+  assert.match(swapSource, /resolveTokenThumbnail/);
+  assert.match(swapSource, /advanceResolvedMediaFallback/);
+  assert.doesNotMatch(swapSource, /https:\/\/gateway\.pinata\.cloud\/ipfs\//);
+});
+
 test("Swap Gamma proof seeds the current accepted wallet session provider", () => {
   assert.match(walletSource, /parsed\.providerName !== "octez\.connect"/);
   assert.match(gammaSpecSource, /"wtf:wallet-session"/);

@@ -53,3 +53,8 @@ test("Skywire keeps shared AT Protocol, wallet, Tezos, and route behavior", () =
   assert.match(skywireSource, /presentationRouteHref\("\/live"\)/);
   assert.doesNotMatch(skywireSource, /\/api\/gamma/);
 });
+
+test("Skywire token previews use the shared FileShip-first recovery chain", () => {
+  assert.match(skywireSource, /resolveTokenThumbnail/);
+  assert.match(skywireSource, /advanceResolvedMediaFallback/);
+});

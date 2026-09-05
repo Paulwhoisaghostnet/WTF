@@ -103,7 +103,7 @@ test("Pasta publish pinning proof covers artifacts, metadata, files, redundancy,
 
   const serialized = JSON.stringify(proof);
   assert.doesNotMatch(serialized, /X-Amz-Signature=|Bearer\s+|file:\/\//i);
-  assert.match(serialized, /https:\/\/ipfs\.io\/ipfs\/bafybeipastaproof/);
+  assert.match(serialized, /https:\/\/ipfs\.fileship\.xyz\/bafybeipastaproof/);
   assert.match(serialized, new RegExp(`https://${HOST}/collection`));
 });
 
@@ -147,6 +147,7 @@ test("Pasta pinning proof can be restored from public discovery, manifest, and p
   assert.equal(drill.contractArtifacts.length, PASTA_PINNING_CONTRACT_ARTIFACTS.length);
   assert.equal(drill.metadataItems.length, PASTA_WTFME_PROOF_CONTRACTS.length * 2);
   assert.equal(drill.ipfsGatewayUrls.length, proof.manifestPayload.items.length);
+  assert.ok(drill.ipfsGatewayUrls.every((url) => url.startsWith("https://ipfs.fileship.xyz/")));
   assert.equal(drill.objectMirrorKeys.length, proof.manifestPayload.items.length);
   assert.equal(drill.publicDiscoveryUrl, `https://${HOST}/.well-known/wtfos-pins`);
   assert.match(JSON.stringify(drill), new RegExp(`https://${HOST}/\\.well-known/wtfos-pins`));

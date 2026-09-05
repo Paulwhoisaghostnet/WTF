@@ -6,6 +6,7 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { usePresentationShell } from "../lib/presentation-shell";
 import { useWindowManager } from "../lib/window-context";
+import { resolveArtifactUri } from "../lib/media-resolve";
 
 interface MusicItem {
   id: number;
@@ -30,6 +31,10 @@ export function Tezamp() {
     () => tracks.find((track) => track.id === selectedId) ?? tracks[0] ?? null,
     [selectedId, tracks]
   );
+  const resolvedAudio = useMemo(
+    () => resolveArtifactUri(selected?.playbackUrl || selected?.sourceUrl),
+    [selected]
+  );
 
   return (
     <AppWindow title="Tezamp">
@@ -49,7 +54,7 @@ export function Tezamp() {
             <span>Tezos playlist engine stub</span>
           </NowPlaying>
           {selected ? (
-            <audio data-tezamp-region="audio-player" controls src={selected.playbackUrl || selected.sourceUrl} />
+            <audio data-tezamp-region="audio-player" controls src={resolvedAudio?.src || ""} />
           ) : (
             <Button data-tezamp-region="open-library-button" onClick={() => wm.openPage("/my-music")}>Open My Music</Button>
           )}

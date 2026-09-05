@@ -25,7 +25,7 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const GATEWAYS = (
   process.env.GM_NFT_IPFS_GATEWAYS ||
   process.env.TV_IPFS_GATEWAYS ||
-  "https://ipfs.io/ipfs/,https://cloudflare-ipfs.com/ipfs/,https://nftstorage.link/ipfs/"
+  "https://ipfs.fileship.xyz/,https://nftstorage.link/ipfs/,https://w3s.link/ipfs/,https://gateway.pinata.cloud/ipfs/,https://dweb.link/ipfs/,https://cf-ipfs.com/ipfs/,https://ipfs.io/ipfs/"
 )
   .split(",")
   .map((gateway) => gateway.trim())

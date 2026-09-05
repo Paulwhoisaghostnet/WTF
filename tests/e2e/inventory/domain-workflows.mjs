@@ -944,6 +944,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     behaviorAssertionIds: [
       "media.creation-gallery-preservation-proof",
+      "media.fileship-preview-artifact-recovery",
       "media.personal-drive-backup",
       "arcade.creator-build-publish-discover",
       "macaroni.v3-commitment-reveal",
@@ -955,6 +956,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/cockpit/project-bundles" },
       { method: "GET", path: "/api/cockpit/media-service" },
       { method: "GET", path: "/api/cockpit/ipfs-gateways" },
+      { method: "GET", path: "/api/cache/artifact", expectedStatuses: [400] },
       { method: "GET", path: "/api/studio/projects" },
       { method: "PATCH", path: "/api/studio/projects/1/workflow", body: { phase: "release", targetNetwork: "shadownet", checklist: { media_pinned: true }, references: { pinCid: "ipfs://bafy-inventory" } }, expectedStatuses: [200, 400, 401, 403, 404, 500] },
       { method: "GET", path: "/api/game-studio/projects" },

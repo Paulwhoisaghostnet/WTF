@@ -13,6 +13,10 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import {
+  advanceResolvedMediaFallback,
+  resolveTokenThumbnail,
+} from "../lib/media-resolve";
+import {
   presentationRouteHref,
   usePresentationShell,
 } from "../lib/presentation-shell";
@@ -2503,6 +2507,9 @@ function SkywireTokenMarketCard({ url }: { url: string }) {
   const market = marketQuery.data;
   if (!market) return null;
   const token = market.token;
+  const tokenImage = token?.imageUrl
+    ? resolveTokenThumbnail({ thumbnail: token.imageUrl })
+    : null;
   const listing = market.listing;
   const priceLabel = listing?.priceTez ? formatTez(listing.priceTez) : "Open";
   const canDirectBuy = Boolean(market.purchaseIntent.supported && market.reference.faContract);
@@ -2526,7 +2533,18 @@ function SkywireTokenMarketCard({ url }: { url: string }) {
   return (
     <TokenMarketCard data-skywire-token-preview="true">
       <TokenThumb>
-        {token?.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+        {tokenImage ? (
+          <TokenThumbImage
+            src={tokenImage.src}
+            alt=""
+            loading="lazy"
+            onError={(event) => {
+              const image = event.currentTarget;
+              if (advanceResolvedMediaFallback(image, tokenImage)) return;
+              image.style.display = "none";
+            }}
+          />
+        ) : null}
       </TokenThumb>
       <TokenMarketBody>
         <strong>{token?.title || "Tezos token"}</strong>
@@ -3169,10 +3187,24 @@ function SkywireVaultTokenTile({
   const creator = skywireVaultCreatorLabel(token);
   const collection = token.collectionName || shortAddress(token.faContract);
   const mintedDate = formatDateOnly(token.mintedAt) || "Unknown";
+  const tokenImage = token.imageUrl
+    ? resolveTokenThumbnail({ thumbnail: token.imageUrl })
+    : null;
   return (
     <VaultTokenCard data-skywire-vault-token={context}>
       <VaultTokenThumb href={token.marketUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${token.title}`}>
-        {token.imageUrl ? <TokenThumbImage src={token.imageUrl} alt="" loading="lazy" /> : null}
+        {tokenImage ? (
+          <TokenThumbImage
+            src={tokenImage.src}
+            alt=""
+            loading="lazy"
+            onError={(event) => {
+              const image = event.currentTarget;
+              if (advanceResolvedMediaFallback(image, tokenImage)) return;
+              image.style.display = "none";
+            }}
+          />
+        ) : null}
       </VaultTokenThumb>
       <VaultTokenText>
         <VaultTokenFact>

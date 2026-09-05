@@ -772,7 +772,7 @@ export async function finalizeRotiniUiLiveReadOnly(input: {
   assert.equal(onChainCodeSha256, artifactCodeSha256);
   const artifactSha256 = sha256(currentContractBytes);
 
-  const publicGateway = input.publicIpfsGateway || process.env.PASTA_SHADOWNET_IPFS_GATEWAY || "https://ipfs.io/ipfs";
+  const publicGateway = input.publicIpfsGateway || process.env.PASTA_SHADOWNET_IPFS_GATEWAY || "https://ipfs.fileship.xyz";
   const contentArtifacts: JsonObject[] = [];
   const contentRetrievals: JsonObject[] = [];
   for (const [index, definition] of CONTENT_DEFINITIONS.entries()) {

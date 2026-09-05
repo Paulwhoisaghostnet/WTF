@@ -1,6 +1,6 @@
 import { Button, GroupBox, Hourglass, Tab, Tabs } from "react95";
 import styled from "styled-components";
-import { cacheProxyUrl } from "../../lib/media-resolve";
+import { cacheProxyUrl, resolveTokenThumbnail } from "../../lib/media-resolve";
 import {
   BumperAssignmentToggles,
   type BumperCategory,
@@ -37,6 +37,11 @@ export type MyVideoChannelDetail = {
   channel: MyVideoChannel;
   videos: MyVideoChannelVideo[];
 };
+
+function recoveredPosterUrl(uri: string | null | undefined): string | undefined {
+  if (!uri) return undefined;
+  return resolveTokenThumbnail({ thumbnail: uri })?.src || uri;
+}
 
 type ChannelBucketsPanelProps = {
   channels: MyVideoChannel[];
@@ -378,7 +383,7 @@ export function ChannelBucketsPanel({
                               ? mediaPlaybackUrl(mediaItem)
                               : channelVideoPlaybackUrl(video)
                           }
-                          poster={video.thumbnailUri || undefined}
+                          poster={recoveredPosterUrl(video.thumbnailUri)}
                           muted
                           playsInline
                           preload="metadata"

@@ -15,6 +15,10 @@ import { api } from "../lib/api";
 import { usePresentationShell } from "../lib/presentation-shell";
 import { executeSwap, type SwapParams } from "../lib/tezos/dex";
 import {
+  advanceResolvedMediaFallback,
+  resolveTokenThumbnail,
+} from "../lib/media-resolve";
+import {
   type SpicyToken,
   type SpicyPool,
   getPoolByTags,
@@ -289,6 +293,14 @@ export function Swap() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [swapping, setSwapping] = useState(false);
+  const fromTokenIcon = useMemo(
+    () => fromToken.img ? resolveTokenThumbnail({ thumbnail: fromToken.img }) : null,
+    [fromToken.img]
+  );
+  const toTokenIcon = useMemo(
+    () => toToken.img ? resolveTokenThumbnail({ thumbnail: toToken.img }) : null,
+    [toToken.img]
+  );
 
   const { data: rawCounterparts } = useCounterparts(fromToken?.tag);
   const counterparts = Array.isArray(rawCounterparts) ? rawCounterparts : [];
@@ -456,15 +468,14 @@ export function Swap() {
                   </div>
                 </TokenRow>
                 <TokenInfo>
-                  {fromToken.img && (
+                  {fromTokenIcon && (
                     <TokenIcon
-                      src={fromToken.img.replace(
-                        "ipfs://",
-                        "https://gateway.pinata.cloud/ipfs/",
-                      )}
+                      src={fromTokenIcon.src}
                       alt={fromToken.symbol}
-                      onError={(e: any) => {
-                        e.target.style.display = "none";
+                      onError={(event) => {
+                        const image = event.currentTarget;
+                        if (advanceResolvedMediaFallback(image, fromTokenIcon)) return;
+                        image.style.display = "none";
                       }}
                     />
                   )}
@@ -513,15 +524,14 @@ export function Swap() {
                   </div>
                 </TokenRow>
                 <TokenInfo>
-                  {toToken.img && (
+                  {toTokenIcon && (
                     <TokenIcon
-                      src={toToken.img.replace(
-                        "ipfs://",
-                        "https://gateway.pinata.cloud/ipfs/",
-                      )}
+                      src={toTokenIcon.src}
                       alt={toToken.symbol}
-                      onError={(e: any) => {
-                        e.target.style.display = "none";
+                      onError={(event) => {
+                        const image = event.currentTarget;
+                        if (advanceResolvedMediaFallback(image, toTokenIcon)) return;
+                        image.style.display = "none";
                       }}
                     />
                   )}

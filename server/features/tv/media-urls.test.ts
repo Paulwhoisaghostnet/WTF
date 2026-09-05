@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildMediaFetchCandidates,
   fetchWithRedirectGuard,
+  isAllowedMediaCacheContentType,
   normalizeExternalTvEmbedUrl,
   normalizeMediaUri,
   resolveTvPlayableMedia,
@@ -11,6 +12,13 @@ import {
 } from "./media-urls";
 
 const IPFS_PATH = "bafybeigdyrztfixturecid/channel.gif";
+
+test("artifact cache policy admits audio and ZIP bytes without admitting HTML", () => {
+  assert.equal(isAllowedMediaCacheContentType("audio/mpeg", { allowArtifacts: true }), true);
+  assert.equal(isAllowedMediaCacheContentType("application/zip", { allowArtifacts: true }), true);
+  assert.equal(isAllowedMediaCacheContentType("application/x-zip-compressed", { allowArtifacts: true }), true);
+  assert.equal(isAllowedMediaCacheContentType("text/html", { allowArtifacts: true }), false);
+});
 
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;

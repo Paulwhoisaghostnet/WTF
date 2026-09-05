@@ -44,3 +44,9 @@ test("CH-EASE Gamma chrome follows the presentation style budget", () => {
   assert.match(cheaseSource, /border-radius:\s*6px/);
   assert.doesNotMatch(cheaseSource, /linear-gradient\(180deg,[\s\S]*?\[data-chease-presentation-host="gamma"\]/);
 });
+
+test("CH-EASE package previews use shared FileShip-first media recovery", () => {
+  assert.match(cheaseSource, /RecoverableIpfsImage/);
+  assert.match(cheaseSource, /resolveArtifactUri/);
+  assert.doesNotMatch(cheaseSource, /https:\/\/ipfs\.fileship\.xyz\/\$\{cid\}/);
+});

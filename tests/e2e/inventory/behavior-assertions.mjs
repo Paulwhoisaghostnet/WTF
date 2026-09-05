@@ -1580,6 +1580,34 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The shared app catalog covers every DesktopAppKey, `/api/in-app-market?category=apps` serializes app-unlock SKUs from that catalog, checkout intents reject missing prerequisites before payment, and `/api/apps/desktop` personalizes app availability from owned app-unlock inventory.",
   },
   {
+    id: "media.fileship-preview-artifact-recovery",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: [
+      "dashboard",
+      "discovery-engine",
+      "profile",
+      "public-profile",
+      "marketplace",
+      "skywire",
+      "media-library",
+      "tezosbeats",
+      "console",
+      "tv",
+      "pasta-protocol",
+      "creation-tools",
+      "ipfs-pinning",
+      "objkt-operator",
+    ],
+    ownerSpec:
+      "shared/ipfs-gateways.test.ts; client/src/lib/media-resolve.test.ts; client/src/pages/macaroni-packager-presentation-policy.test.ts; client/src/pages/objkt-operator-ipfs-preview-policy.test.ts; server/features/ipfs-pinning/pasta-proof.test.ts; server/features/tv/cache-files.test.ts; server/features/tv/media-urls.test.ts; server/routes/tv-cache-security.test.ts; tests/playwright/inventory/macaroni-packager.spec.mjs",
+    verificationCommand:
+      "DATABASE_URL=postgresql://wtfos_test:wtfos_test@127.0.0.1:1/wtfos_test npx tsx --test shared/ipfs-gateways.test.ts client/src/lib/media-resolve.test.ts client/src/pages/macaroni-packager-presentation-policy.test.ts client/src/pages/objkt-operator-ipfs-preview-policy.test.ts server/features/ipfs-pinning/pasta-proof.test.ts server/features/tv/media-urls.test.ts server/features/tv/cache-files.test.ts server/routes/tv-cache-security.test.ts && HARNESS_PORT=4174 npx playwright test tests/playwright/inventory/macaroni-packager.spec.mjs --project=chromium --reporter=list && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "Tezos token previews, audio artifacts, video posters, and wallet-owned ZIP cartridges resolve through FileShip first and recover through an ordered independent IPFS gateway chain instead of disappearing after one gateway failure.",
+    durableSideEffectAssertion:
+      "The same-origin cache deduplicates immutable content by CID across gateway URLs, retains its existing host and byte limits, serves only established media plus audio and ZIP types with nosniff, and rejects HTML artifacts.",
+  },
+  {
     id: "ipfs-pinning.pds-backed-wallet-backup",
     domain: "Media, Storage, AT Protocol, and WTF Domains",
     ownerSurfaceIds: ["ipfs-pinning", "wtf-domains", "creation-tools"],

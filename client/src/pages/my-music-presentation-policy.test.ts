@@ -25,3 +25,8 @@ test("MyMusic keeps audio library behavior on shared media APIs", () => {
   assert.match(myMusicSource, /file\.type\.startsWith\("audio\/"\)/);
   assert.doesNotMatch(myMusicSource, /presentationRouteHref/);
 });
+
+test("MyMusic routes IPFS audio through the shared artifact recovery cache", () => {
+  assert.match(myMusicSource, /resolveArtifactUri/);
+  assert.match(myMusicSource, /resolvedAudio\?\.src/);
+});

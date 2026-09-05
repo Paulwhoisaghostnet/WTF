@@ -15,6 +15,7 @@ import {
 } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
+import { RecoverableIpfsImage } from "../../components/RecoverableIpfsImage";
 import { useEtherlinkWallet } from "../../lib/etherlink";
 
 interface EtherlinkWalletRow {
@@ -378,7 +379,7 @@ export function EtherlinkWalletsPanel() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Thumbnail>
                         {asset.thumbnail ? (
-                          <img src={asset.thumbnail} alt="" />
+                          <RecoverableIpfsImage src={asset.thumbnail} alt="" />
                         ) : (
                           <span>{asset.tokenStandard.replace("ERC-", "")}</span>
                         )}

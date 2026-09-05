@@ -37,7 +37,7 @@ import {
 
 export async function ensureMediaCached(
   url: string,
-  opts: { allowImages?: boolean } = {}
+  opts: { allowImages?: boolean; allowArtifacts?: boolean } = {}
 ): Promise<{
   mediaPath: string;
   contentType: string;
@@ -61,6 +61,7 @@ export async function ensureMediaCached(
   const meta = await readCacheMeta(base);
   const sourceTag = shortHashForLog(url);
   const allowImages = opts.allowImages === true;
+  const allowArtifacts = opts.allowArtifacts === true;
 
   try {
     const stat = await fsPromises.stat(mediaPath);
@@ -80,7 +81,7 @@ export async function ensureMediaCached(
       };
       const effectiveContentType =
         effectiveMeta.contentType || "application/octet-stream";
-      if (!isAllowedMediaCacheContentType(effectiveContentType, { allowImages })) {
+      if (!isAllowedMediaCacheContentType(effectiveContentType, { allowImages, allowArtifacts })) {
         throw new Error(`Unsupported cached media content type: ${effectiveContentType}`);
       }
       queueTvCacheMirror(base, effectiveMeta);
@@ -122,7 +123,7 @@ export async function ensureMediaCached(
     });
     const promotedContentType =
       promoted.meta.contentType || guessMimeTypeFromUri(url) || "application/octet-stream";
-    if (!isAllowedMediaCacheContentType(promotedContentType, { allowImages })) {
+    if (!isAllowedMediaCacheContentType(promotedContentType, { allowImages, allowArtifacts })) {
       throw new Error(`Unsupported object media content type: ${promotedContentType}`);
     }
     return {
@@ -158,7 +159,7 @@ export async function ensureMediaCached(
   const contentType =
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
     guessMimeTypeFromUri(resolvedUrl);
-  if (!isAllowedMediaCacheContentType(contentType, { allowImages })) {
+  if (!isAllowedMediaCacheContentType(contentType, { allowImages, allowArtifacts })) {
     throw new Error(`Unsupported remote media content type: ${contentType}`);
   }
 
@@ -245,7 +246,7 @@ export async function streamMediaThroughCache(
   req: any,
   res: any,
   url: string,
-  opts: { allowRange?: boolean; allowImages?: boolean } = {}
+  opts: { allowRange?: boolean; allowImages?: boolean; allowArtifacts?: boolean } = {}
 ): Promise<void> {
   const startedAt = Date.now();
   const sourceTag = shortHashForLog(url);
@@ -261,6 +262,9 @@ export async function streamMediaThroughCache(
   const meta = await readCacheMeta(base);
   const allowRange = opts.allowRange !== false;
   const allowImages = opts.allowImages === true;
+  const allowArtifacts = opts.allowArtifacts === true;
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
 
   await ensureCacheDir();
   cleanupTvCache().catch(() => undefined);
@@ -305,7 +309,7 @@ export async function streamMediaThroughCache(
       } catch {
         /* no transcode available — serve the original */
       }
-      if (!isAllowedMediaCacheContentType(serveContentType, { allowImages })) {
+      if (!isAllowedMediaCacheContentType(serveContentType, { allowImages, allowArtifacts })) {
         logCacheEvent({
           event: "serve.error",
           source: sourceTag,
@@ -405,7 +409,7 @@ export async function streamMediaThroughCache(
     } catch {
       /* no local transcode yet */
     }
-    if (!isAllowedMediaCacheContentType(serveContentType, { allowImages })) {
+    if (!isAllowedMediaCacheContentType(serveContentType, { allowImages, allowArtifacts })) {
       logCacheEvent({
         event: "serve.error",
         source: sourceTag,
@@ -545,7 +549,7 @@ export async function streamMediaThroughCache(
     response.headers.get("content-type")?.split(";")[0]?.trim() ||
     guessMimeTypeFromUri(resolvedUrl) ||
     "application/octet-stream";
-  if (!isAllowedMediaCacheContentType(upstreamContentType, { allowImages })) {
+  if (!isAllowedMediaCacheContentType(upstreamContentType, { allowImages, allowArtifacts })) {
     logCacheEvent({
       event: "serve.error",
       source: sourceTag,

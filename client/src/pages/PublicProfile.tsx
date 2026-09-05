@@ -19,6 +19,7 @@ import styled from "styled-components";
 import { useRoute } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { UserLink } from "../components/UserLink";
+import { RecoverableIpfsImage } from "../components/RecoverableIpfsImage";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { usePresentationShell } from "../lib/presentation-shell";
@@ -479,7 +480,7 @@ function TradeBoardTab({ tokens }: { tokens?: TradeBoardToken[] }) {
           </CardTitleBar>
           <Thumb data-public-profile-region="token-thumb">
             {t.thumbnail ? (
-              <img src={t.thumbnail} alt={t.tokenName} />
+              <RecoverableIpfsImage src={t.thumbnail} alt={t.tokenName} />
             ) : (
               <span style={{ fontSize: 28, color: "#808080" }}>?</span>
             )}

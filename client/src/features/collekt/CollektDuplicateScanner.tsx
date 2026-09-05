@@ -19,6 +19,7 @@ import type {
 } from "@shared/collekt";
 import { WTF_TOKEN } from "@shared/types";
 import { api } from "../../lib/api";
+import { RecoverableIpfsImage } from "../../components/RecoverableIpfsImage";
 import { useWallet } from "../../lib/wallet-context";
 import {
   approveMarketplaceForWtf,
@@ -443,7 +444,7 @@ export function CollektDuplicateScanner({ presentationHost }: { presentationHost
                   return (
                     <Card key={item.key}>
                       <Media>
-                        {item.thumbnailUri ? <img src={item.thumbnailUri} alt="" loading="lazy" /> : <Layers3 size={54} aria-hidden="true" style={{ position: "absolute", inset: "50% auto auto 50%", transform: "translate(-50%,-50%)", opacity: .45 }} />}
+                        {item.thumbnailUri ? <RecoverableIpfsImage src={item.thumbnailUri} alt="" loading="lazy" /> : <Layers3 size={54} aria-hidden="true" style={{ position: "absolute", inset: "50% auto auto 50%", transform: "translate(-50%,-50%)", opacity: .45 }} />}
                         <span>{item.balance} of {item.totalSupply} editions</span>
                       </Media>
                       <CardBody>

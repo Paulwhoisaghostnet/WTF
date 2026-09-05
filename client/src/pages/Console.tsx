@@ -14,6 +14,7 @@ import {
   provenanceXLabel,
   readEmbeddedProvenance,
 } from "../lib/provenance";
+import { resolveArtifactUri } from "../lib/media-resolve";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1724,7 +1725,8 @@ export function Console({ surface = "console" }: { surface?: ConsoleSurface } = 
           !zipUrl.startsWith("/") &&
           !zipUrl.startsWith("blob:")
         ) {
-          zipUrl = `/api/cache/media?url=${encodeURIComponent(zipUrl)}`;
+          const resolvedArtifact = resolveArtifactUri(zipUrl);
+          zipUrl = resolvedArtifact?.src || zipUrl;
         }
 
         const resp = await fetch(zipUrl);

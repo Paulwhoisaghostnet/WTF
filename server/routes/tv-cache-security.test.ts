@@ -83,4 +83,47 @@ test("TV cache rejects arbitrary URLs while generic cache still serves allowlist
     (await tvImageResponse.json()).error,
     /^Unsupported (cached|remote) media content type$/
   );
+
+  const zipUrl = "https://ipfs.fileship.xyz/fake-game.zip";
+  globalThis.fetch = (async (input, init) => {
+    const target = typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+    if (target.startsWith(server.baseUrl)) {
+      return realFetch(input as Parameters<typeof fetch>[0], init);
+    }
+    return new Response(Uint8Array.from([80, 75, 3, 4]), {
+      headers: {
+        "content-type": "application/zip",
+        "content-length": "4",
+      },
+    });
+  }) as typeof fetch;
+
+  const artifactResponse = await realFetch(
+    `${server.baseUrl}/api/cache/artifact?url=${encodeURIComponent(zipUrl)}`
+  );
+  assert.equal(artifactResponse.status, 200);
+  assert.equal(artifactResponse.headers.get("content-type"), "application/zip");
+  assert.equal(artifactResponse.headers.get("x-content-type-options"), "nosniff");
+
+  globalThis.fetch = (async (input, init) => {
+    const target = typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+    if (target.startsWith(server.baseUrl)) {
+      return realFetch(input as Parameters<typeof fetch>[0], init);
+    }
+    return new Response("<html></html>", {
+      headers: { "content-type": "text/html", "content-length": "13" },
+    });
+  }) as typeof fetch;
+  const htmlArtifactResponse = await realFetch(
+    `${server.baseUrl}/api/cache/artifact?url=${encodeURIComponent("https://ipfs.fileship.xyz/fake.html")}`
+  );
+  assert.equal(htmlArtifactResponse.status, 415);
 });

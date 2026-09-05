@@ -2,6 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
+import {
+  advanceResolvedMediaFallback,
+  resolveTokenThumbnail,
+} from "../../lib/media-resolve";
+import { RecoverableIpfsImage } from "../../components/RecoverableIpfsImage";
 
 const CardGrid = styled.div`
   display: grid;
@@ -84,6 +89,14 @@ export function DiscoveryCard() {
       queryFn: () => api.get<RandomNftResult>("/api/discovery/random-nft"),
       staleTime: 5 * 60_000,
     });
+  const nftPreview = nft
+    ? resolveTokenThumbnail({
+        metadata: {
+          displayUri: nft.displayUri,
+          artifactUri: nft.artifactUri,
+        },
+      })
+    : null;
 
   return (
     <GroupBox label="✦ Discovery">
@@ -96,9 +109,10 @@ export function DiscoveryCard() {
             <>
               <Thumb>
                 {artist.avatarUri ? (
-                  <ThumbImg
+                  <RecoverableIpfsImage
                     src={artist.avatarUri}
                     alt={artist.displayName ?? artist.address}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
                   <span>👤</span>
@@ -129,12 +143,14 @@ export function DiscoveryCard() {
           ) : nft ? (
             <>
               <Thumb>
-                {nft.displayUri || nft.artifactUri ? (
+                {nftPreview ? (
                   <ThumbImg
-                    src={nft.displayUri ?? nft.artifactUri ?? ""}
+                    src={nftPreview.src}
                     alt={nft.title ?? "NFT"}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    onError={(event) => {
+                      const image = event.currentTarget;
+                      if (advanceResolvedMediaFallback(image, nftPreview)) return;
+                      image.style.display = "none";
                     }}
                   />
                 ) : (

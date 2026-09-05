@@ -1933,11 +1933,20 @@ export const WTFOS_PUBLIC_API_ROUTES =
   },
   {
     "method": "GET",
+    "path": "/api/cache/artifact",
+    "purpose": "Read or list cache artifact.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/features/tv/cache-routes.ts:47"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/api/cache/media",
     "purpose": "Read or list cache media.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/features/tv/cache-routes.ts:43"
+      "server/features/tv/cache-routes.ts:46"
     ]
   },
   {
@@ -6806,7 +6815,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list tv cache media.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/features/tv/cache-routes.ts:42"
+      "server/features/tv/cache-routes.ts:45"
     ]
   },
   {
@@ -6815,7 +6824,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run tv cache prefetch.",
     "declaredAccess": "Session",
     "sources": [
-      "server/features/tv/cache-routes.ts:63"
+      "server/features/tv/cache-routes.ts:67"
     ]
   },
   {
@@ -6824,7 +6833,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list tv cache stats.",
     "declaredAccess": "Session",
     "sources": [
-      "server/features/tv/cache-routes.ts:45"
+      "server/features/tv/cache-routes.ts:49"
     ]
   },
   {
