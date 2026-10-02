@@ -16,11 +16,16 @@ type WalletOptions = {
   rpcUrl: string;
   create?: boolean;
   exclusive?: boolean;
+  allowGroupRead?: boolean;
 };
 
-async function privateFile(path: string) {
+async function privateFile(path: string, allowGroupRead = false) {
   const info = await stat(path);
-  if (!info.isFile() || (info.mode & 0o077) !== 0) throw new Error(`Custody file must be private (0600): ${path}`);
+  const permissions = info.mode & 0o777;
+  const establishedGroupRead = allowGroupRead && permissions === 0o640;
+  if (!info.isFile() || ((permissions & 0o077) !== 0 && !establishedGroupRead)) {
+    throw new Error(`Custody file must be private (0600)${allowGroupRead ? " or operator group-readable (0640)" : ""}: ${path}`);
+  }
 }
 
 export async function loadWallet(options: WalletOptions) {
@@ -35,7 +40,7 @@ export async function loadWallet(options: WalletOptions) {
       if (error.code !== "EEXIST") throw error;
     }
   }
-  await privateFile(options.masterKeyFile);
+  await privateFile(options.masterKeyFile, options.allowGroupRead);
   const masterKey = (await readFile(options.masterKeyFile, "utf8")).trim();
   const env = {
     WTF_PLATFORM_KEYRING_PATH: options.keyringPath,
@@ -54,7 +59,7 @@ export async function loadWallet(options: WalletOptions) {
     await keyring.createWallet({ id: options.walletId, label: "wtfOS Aleatory Render Agent", role: "custom", network: options.network });
     wallets = await keyring.listPublicWallets();
   }
-  await privateFile(options.keyringPath);
+  await privateFile(options.keyringPath, options.allowGroupRead);
   const result = await keyring.getSigner(options.walletId);
   const expected = options.network === "mainnet" ? "NetXdQprcVkpaWU" : "NetXsqzbfFenSTS";
   if (result.wallet.network !== options.network || result.wallet.chainId !== expected) throw new Error("Wallet network mismatch");
@@ -84,6 +89,9 @@ export async function operatorWallet(config: ProviderConfig) {
     walletId: required(process.env, "WTF_ALEATORY_OPERATOR_WALLET_ID"),
     network: config.network,
     rpcUrl: config.rpcUrl,
+    // Reuse the established root:wtf-signer custody without copying keys or
+    // changing its permissions. The dedicated agent never receives this opt-in.
+    allowGroupRead: true,
   });
   if (result.wallet.address !== config.operatorAddress) throw new Error("Configured operator differs from custody wallet");
   return result;
