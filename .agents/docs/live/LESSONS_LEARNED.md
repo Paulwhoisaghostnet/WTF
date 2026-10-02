@@ -11847,3 +11847,33 @@
 **Rule**: When a UI starts rendering through an established proxy, extend the owning browser fixture with representative safe bytes and content type before claiming the interaction story. Keep production proxy security covered separately by route-level allowlist, type, and header tests.
 
 ---
+
+## 2026-10-02 — Release manifests must cover the archive actually produced
+
+**What happened**: The isolated Aleatory provider assembler selected only committed, allowlisted files, but macOS tar still added AppleDouble `._*` entries. The release verifier correctly rejected the archive because its contents differed from the manifest.
+
+**Why it mattered**: A Git source allowlist did not guarantee an identical release archive across operating systems. Unlisted filesystem metadata broke installation even though the source selection was correct.
+
+**Rule**: Suppress macOS copyfile metadata with `COPYFILE_DISABLE=1`, use a stable locale when assembling the archive, and verify the exact archive inventory and hashes before extraction. Exercise the real archive in the packaging fixture; source-path checks alone do not prove the deployable artifact.
+
+---
+
+## 2026-10-02 — Independent ESM services must verify CommonJS custody imports at runtime
+
+**What happened**: The Aleatory provider runs as an independently installed ESM package, while the reused operator-signer keyring and network modules belong to a CommonJS package. Named imports could type-check while failing during actual provider startup.
+
+**Why it mattered**: A source-level check would miss a module-format boundary that prevents the service or operator command from starting. Custody helpers must remain usable without copying signing secrets or changing the original package's semantics.
+
+**Rule**: Resolve the imported namespace through its default export when present (`module.default ?? module`) at the cross-package boundary, and verify real runtime imports from the independent package after dependency installation. This pass verified the provider runtime imports; that evidence is distinct from a deployed service or successful chain operation.
+
+---
+
+## 2026-10-02 — IPFS proof tools must honor the configured gateway path convention
+
+**What happened**: The Aleatory provider's diagnostic pin proof initially appended `/ipfs/` to the FileShip gateway, although shared gateway definitions specify FileShip's root form `${base}/${cid}`. Review caught and corrected the proof URL before live use.
+
+**Why it mattered**: A successful pin could be reported as unreachable because the verification tool constructed the wrong gateway URL. Upload success and public byte retrieval are separate parts of the proof.
+
+**Rule**: Match gateway URL construction to the shared definitions: FileShip uses `${base}/${cid}`, while conventional gateways may require an `/ipfs` path in their configured base. Verify the retrieved artifact bytes and metadata against the published content; do not infer retrieval success from the upload response.
+
+---

@@ -33,6 +33,9 @@ Use this as the seed for:
   and the native `AppWindow` admin panel.
 - Inventory-driven E2E coverage: `tests/e2e/inventory`, `tests/playwright/inventory`,
   and `npm run test:e2e:inventory:coverage`.
+- Host-only provider command ownership: `tests/e2e/inventory/system-commands.mjs`
+  and `extensions/aleatory-provider`; these commands do not create browser routes
+  or imply emitted wtfOS telemetry events.
 - Comms mesh schemas: `shared/schema-comms.ts` and `shared/schema-mail.ts`.
 - Current feature routes/modules under `server/routes`, `server/features`,
   `client/src/pages`, and `client/src/features`.
@@ -52,6 +55,11 @@ The inventory is executable through the modular E2E scheme:
 - System integration tests verify strict-admin visibility, native app admin
   tooling, central challenge automation access, and normalized event-shape
   coverage for every handle in this inventory.
+- Host-only system commands have a separate registry in
+  `tests/e2e/inventory/system-commands.mjs`, linked from their owning domain
+  workflow. The coverage gate checks command documentation, ownership and source
+  paths without running services, signing chain operations, rendering or pinning.
+  Command IDs below are not normalized event handles or claims of live delivery.
 - Feature-depth accounting lives in
   `tests/e2e/inventory/coverage-layers.mjs` and
   `tests/playwright/inventory/feature-depth.spec.mjs`. It intentionally
@@ -418,6 +426,37 @@ Pasta Protocol is the Tezos publishing-app suite. Each specialized app compiles,
 | Backup Manager | Admin | Open `/backup-manager`; inspect latest backup run, backup artifact, targets, checksums, restore drill status, row-count/media-manifest requirements, and whether the system may truthfully claim backup safety; when opened through Gamma, keep status cells, restore proof panels, targets, and Recovery/Admin handoffs inside Gamma-owned presentation chrome while preserving shared restore-proof APIs and system events. | `backup_manager.viewed`, `backup_manager.opened` |
 | System logs/health | Public/session/admin/system | Fetch minimal public liveness from `GET /api/health`; fetch dependency and scheduler readiness from `GET /api/health/ready` with `503` on degradation; fetch full runtime/job diagnostics from authenticated `GET /api/health/diagnostics`, which likewise returns structured diagnostics with 503 while degraded; fetch disk diagnostics from authenticated `GET /api/health/disk`; ingest bounded client logs; admin query logs, summaries, and events by source/type/severity/status/user. Routine scheduler starts and successes remain available from canonical `sync_runs` state and the rotating file trace; scheduler failures, skips, missing jobs, and other actionful events remain database-queryable. | `system.health.checked`, `system.readiness.checked`, `system.diagnostics.checked`, `system.disk_health.checked`, `system.client_log.ingested`, `system.log.viewed`, `system.error.recorded` |
 | UX Lab | Admin | Open `/dev/ux-lab` portfolio/collection workspace and quick links for design/UX testing; when opened through Gamma, keep the collection workspace and quick-link handoffs inside the Gamma shell while preserving shared wallet, portfolio, collection, and token queries. | `ux_lab.opened`, `ux_lab.collection_workspace.used` |
+
+## Host-only system command inventory
+
+These commands belong to Administration, Governance, and Operations. Their
+canonical IDs identify operational entrypoints; they are not emitted
+`SystemEvent` names. The provider adds no wtfOS app, browser route or public API.
+Browser admin access does not grant host custody or authorize chain operations.
+
+| Domain | Subdomain | Access | Interaction and command | Canonical command handle |
+| --- | --- | --- | --- | --- |
+| Administration, Governance, and Operations | Aleatory provider / operator status | Host operator with private receipt-directory access | Run `node --import tsx extensions/aleatory-provider/src/operator.mts status` to inspect configured network, provider registration, wallet balances and public receipt state; may reconcile an existing local receipt, but submits no chain operation. | `aleatory_provider.operator.status` |
+| Administration, Governance, and Operations | Aleatory provider / operation estimate | Host operator with separately controlled operator and agent keyrings | Run `operator.mts estimate --for <action>` for `originate`, `register`, `fund-agent`, `reveal-agent` or `set-price`; show fee, storage burn and explicit funding/repricing values before execution. Estimation does not inject operations. | `aleatory_provider.operator.estimate` |
+| Administration, Governance, and Operations | Aleatory provider / signed operations | Authorized host operator using the action's required custody wallet | Run `operator.mts <action> --execute` only for the authorized operation. Funding requires `--amount-mutez`, repricing requires `--price-mutez`, and both executions require a stable `--request-id`. Persist a signed-operation receipt before injection and reconcile the same intent on retry. Mainnet operator custody stays outside the polling service. | `aleatory_provider.operator.execute` |
+| Administration, Governance, and Operations | Aleatory provider / chain and queue check | Host operator with public configuration and local health-file access; no signing custody required | Run `node --import tsx extensions/aleatory-provider/src/check.mts` to verify network and router/registry/provider identities, inspect upstream-sampled pending tokens and read local `health.json`. A queue sample does not prove completed delivery. | `aleatory_provider.queue.check` |
+| Administration, Governance, and Operations | Aleatory provider / renderer and pin proof | Host operator with selected Cloudflare credentials; Pinata credential required for `--pin` | Run `node --import tsx extensions/aleatory-provider/src/prove.mts` to compare repeated captures, traits and readiness and save local proof files. `--generator KT1... --token N` reads an existing token for rendering only. `--pin` publishes only the diagnostic fixture PNG and unminted metadata document and verifies public retrieval; it is rejected for another artist's generator. No token metadata is signed or changed. | `aleatory_provider.render.prove` |
+| Administration, Governance, and Operations | Aleatory provider / canonical metadata delivery | Dedicated systemd user with an agent-only encrypted keyring and selected credentials | Run `node --import tsx extensions/aleatory-provider/src/daemon.mts` through `wtf-aleatory-provider.service`: poll assigned work, render and pin canonical output, sign metadata publication with the agent, and persist recovery and health state. No push listener or public port exists. | `aleatory_provider.daemon.run` |
+| Administration, Governance, and Operations | Aleatory provider / isolated release operations | Local release operator; host root for installation and activation | Run `sudo bash extensions/aleatory-provider/ops/install.sh RELEASE.tar.gz [--activate]` for the committed provider-only artifact and independent locked dependencies. Activation verifies agent custody before service startup. This does not deploy the web app or originate/register/fund the provider. | `aleatory_provider.release.install` |
+
+`tests/e2e/inventory/system-commands.mjs` registers these commands under the
+Admin/Ops domain workflow. The inventory coverage gate verifies documentation,
+source paths and local test ownership without executing external operations.
+Local behavior checks are owned by
+`node --import tsx --test extensions/aleatory-provider/tests/*.test.mts extensions/aleatory-provider/vendor/provider/runtime.test.mts`
+and
+`python3 -m unittest discover -s extensions/aleatory-provider/ops -p 'test_*.py'`.
+The browser inventory and session-backed puppet harness cannot authorize this
+host keyring boundary and do not run these commands. Live provider completion
+requires separate evidence: the isolated service's current health, an assigned
+token's confirmed metadata operation, the expected URI/CID and publicly retrieved
+bytes. An idle service, successful diagnostic proof or registry entry alone does
+not establish that delivery.
 
 ## Concern: Public Data, Embeds, APIs, Agents, and Automation
 

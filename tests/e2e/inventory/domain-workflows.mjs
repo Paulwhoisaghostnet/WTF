@@ -1107,6 +1107,15 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "admin os control loop",
     domain: "Administration, Governance, and Operations",
+    systemCommandIds: [
+      "aleatory_provider.operator.status",
+      "aleatory_provider.operator.estimate",
+      "aleatory_provider.operator.execute",
+      "aleatory_provider.queue.check",
+      "aleatory_provider.render.prove",
+      "aleatory_provider.daemon.run",
+      "aleatory_provider.release.install",
+    ],
     routes: ["/admin", "/control-board", "/operator-wallet", "/payroll", "/objkt-operator", "/contract-factory", "/desktop-settings"],
     eventHandles: [
       "admin.dashboard.viewed",

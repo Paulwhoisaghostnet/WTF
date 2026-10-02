@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { PAGE_DEFS } from "../../../client/src/routes/page-defs";
 import {
   ALL_ADMIN_SURFACES,
@@ -14,6 +14,7 @@ import {
 } from "./parser.mjs";
 import { ROUTE_FIXTURES } from "./route-fixtures.mjs";
 import { DOMAIN_WORKFLOWS } from "./domain-workflows.mjs";
+import { SYSTEM_COMMANDS, assertSystemCommands } from "./system-commands.mjs";
 import {
   assertCoverageLayerReport,
   buildCoverageLayerReport,
@@ -33,6 +34,14 @@ if (shapeFailures.length > 0) {
 const pagePatterns = new Set(PAGE_DEFS.map((def) => def.pattern));
 const fixturePatterns = new Set(ROUTE_FIXTURES.map((fixture) => fixture.pattern));
 const inventoryMarkdown = readFileSync(".agents/docs/live/user-interaction-inventory.md", "utf8");
+const systemCommandFailures = assertSystemCommands({
+  inventoryMarkdown,
+  domainWorkflows: DOMAIN_WORKFLOWS,
+  sourceExists: existsSync,
+});
+if (systemCommandFailures.length > 0) {
+  fail(`System command inventory failures:\n${systemCommandFailures.join("\n")}`);
+}
 const routeBackedAdminSurfaces = ALL_ADMIN_SURFACES.flatMap((surface) =>
   surface.routePatterns
     .filter((pattern) => pattern.startsWith("/"))
@@ -187,6 +196,8 @@ console.log(
       uniqueHandles: handleCount,
       routeFixtures: ROUTE_FIXTURES.length,
       domainWorkflows: DOMAIN_WORKFLOWS.length,
+      systemCommands: SYSTEM_COMMANDS.length,
+      systemCommandCoverage: "Command ownership and source registry only; does not execute live services, signers, renderers or pins.",
       adminSurfaces: ALL_ADMIN_SURFACES.length,
     },
     null,
