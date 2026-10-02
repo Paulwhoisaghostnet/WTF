@@ -1,0 +1,17 @@
+{
+  "name": "wtfos-aleatory-provider",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@taquito/signer": "25.0.0",
+    "@taquito/taquito": "25.0.0",
+    "@taquito/utils": "25.0.0",
+    "blakejs": "1.2.1",
+    "dotenv": "17.4.1",
+    "tsx": "4.21.0"
+  }
+}

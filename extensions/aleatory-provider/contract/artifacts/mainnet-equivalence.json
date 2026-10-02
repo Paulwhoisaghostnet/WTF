@@ -1,0 +1,17 @@
+{
+  "network": "mainnet",
+  "referenceProvider": "KT1DGd6RcA9zKErjLurg9JGQ8txNCLoFHkmv",
+  "referenceUrl": "https://api.tzkt.io/v1/contracts/KT1DGd6RcA9zKErjLurg9JGQ8txNCLoFHkmv/code",
+  "verifiedAt": "2026-10-02T15:11:45.220013+00:00",
+  "comparison": "Exact Micheline section values, keyed by section and view name; top-level ordering normalized only. Annotations retained.",
+  "equal": true,
+  "sections": [
+    "code",
+    "parameter",
+    "storage",
+    "view:get_agent",
+    "view:get_operator",
+    "view:get_render_gas"
+  ],
+  "canonicalSectionsSha256": "dfccbb1571c160ff33474f94d872132a0187c637ae394ae58baa35c83cbaab22"
+}

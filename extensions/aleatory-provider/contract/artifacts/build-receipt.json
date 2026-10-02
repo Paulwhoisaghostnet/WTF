@@ -1,0 +1,20 @@
+{
+  "upstreamRepository": "https://github.com/skullzarmy/aleatory",
+  "upstreamCommit": "82bea97b21bd477f3bd66cb4e189c0f1627c9654",
+  "upstreamPath": "contract/aleatory.py",
+  "sourceSha256": "27a3974c1a45d775b7027ddb9339a4d06ffae71f8ab3f8c82e7557b9e9ff697a",
+  "compiler": {
+    "package": "smartpy-tezos",
+    "version": "0.24.1"
+  },
+  "contract": "aleatory.AleatoryProvider",
+  "sourceModified": false,
+  "conformance": "passed",
+  "chainWrites": false,
+  "files": {
+    "compile_provider.py": "1c49ed3ca12b8a33480d70496be8b731a89f21b2d0a541a67c537f875b4ecb9f",
+    "test_provider.py": "894fc144296ce4a8d0b4fadd460a818e9222b767faecd80723db93e03933c80c",
+    "artifacts/AleatoryProvider.json": "abb456bed19b4699140315a21cec7c9ffc653a116be832e23b2f64ce32b046be",
+    "artifacts/AleatoryProvider.tz": "56d8194a6e4d64284db712b1cf8b50f053010f53ce1f9981fd3a708d8a8edd70"
+  }
+}
