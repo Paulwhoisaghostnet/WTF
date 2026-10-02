@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { MichelsonMap, TezosToolkit } from "@taquito/taquito";
+import { DEFAULT_FEE_PARAMS, Estimate, feeParamsFromMempoolFilter, MichelsonMap, TezosToolkit } from "@taquito/taquito";
 import { encodeOpHash } from "@taquito/utils";
 import { readConfig, verifyNetwork, type ProviderConfig } from "./config.mts";
 import { agentWallet, operatorWallet } from "./custody.mts";
@@ -205,6 +205,66 @@ function checkPreapply(results: any[]) {
   if (failures.length || !results.length) throw new OperatorCommandError("Preapplication did not apply every operation; nothing submitted");
 }
 
+async function insufficientOriginationQuote(error: any, params: any, source: string, toolkit: any) {
+  const expectedFundingError = (entry: any) => typeof entry?.id === "string" &&
+    /(?:^|\.)(?:cannot_pay_storage_fee|balance_too_low|tez\.subtraction_underflow)$/.test(entry.id);
+  const rows = error?.operationsWithResults;
+  const errors = error?.errors;
+  if (error?.name !== "TezosOperationError" || !Array.isArray(errors) ||
+      !errors.some((entry) => entry.id?.endsWith(".cannot_pay_storage_fee")) ||
+      !errors.every(expectedFundingError) || !Array.isArray(rows) || rows.length !== 1 ||
+      rows[0].kind !== "origination" || rows[0].source !== source || !source.startsWith("tz1")) return null;
+  const result = rows[0].metadata?.operation_result;
+  if (result?.status !== "backtracked" || result.originated_contracts?.length !== 1 ||
+      rows[0].metadata?.internal_operation_results?.length ||
+      !Array.isArray(result.errors) || !result.errors.every(expectedFundingError)) return null;
+  const integer = (value: any) => /^\d+$/.test(String(value)) && Number.isSafeInteger(Number(value));
+  if (!integer(result.consumed_milligas) || Number(result.consumed_milligas) <= 0 ||
+      !integer(result.paid_storage_size_diff) || Number(result.paid_storage_size_diff) <= 0) return null;
+  // This reconstruction is only for an already revealed tz1 with one
+  // origination. Other operation groups must retain their original error.
+  if (!await toolkit.rpc.getManagerKey(source)) return null;
+  const [constants, balance, prepared] = await Promise.all([
+    toolkit.rpc.getConstants(), toolkit.tz.getBalance(source), toolkit.prepare.originate(params),
+  ]);
+  if (!integer(constants.cost_per_byte) || Number(constants.cost_per_byte) <= 0 ||
+      !integer(constants.origination_size) || Number(constants.origination_size) <= 0 ||
+      !integer(balance.toString())) return null;
+  const { branch, contents } = prepared.opOb;
+  if (contents.length !== 1 || contents[0].kind !== "origination" || contents[0].source !== source) return null;
+  const forged = await toolkit.rpc.forgeOperations({ branch, contents });
+  if (typeof forged !== "string" || !/^(?:[a-fA-F0-9]{2})+$/.test(forged)) return null;
+  let feeParams = DEFAULT_FEE_PARAMS;
+  let feeParametersSource = "Taquito 25 default fee parameters (RPC mempool filter unavailable)";
+  try {
+    feeParams = feeParamsFromMempoolFilter(await toolkit.rpc.getMempoolFilter({ include_default: true }));
+    feeParametersSource = "Live RPC mempool filter";
+  } catch { /* Same default fallback used by Taquito 25's estimator. */ }
+  const paidStorageBytes = Number(result.paid_storage_size_diff);
+  const allocationBytes = Number(constants.origination_size);
+  const costPerByte = Number(constants.cost_per_byte);
+  const consumedMilligas = Number(result.consumed_milligas);
+  // Match Taquito 25 RPCEstimateProvider buffers and tz1 signature size:
+  // 100000 milligas, 20 storage bytes, and 64 signature bytes respectively.
+  const estimate = new Estimate(consumedMilligas + 100_000, paidStorageBytes + allocationBytes + 20,
+    forged.length / 2 + 64, costPerByte, undefined, feeParams);
+  const measuredStorageBurnMutez = (paidStorageBytes + allocationBytes) * costPerByte;
+  const estimatedOperationCostMutez = estimate.suggestedFeeMutez + estimate.burnFeeMutez;
+  if (![measuredStorageBurnMutez, estimatedOperationCostMutez].every(Number.isSafeInteger)) return null;
+  const currentOperatorBalanceMutez = Number(balance.toString());
+  return {
+    status: "insufficient-funds", executed: false,
+    basis: "Origination simulation completed but storage payment was backtracked. Measured burn excludes SDK buffers; the quote and required top-up include Taquito 25's gas/storage buffers and apply only to origination.",
+    measuredStorageBurnMutez, paidStorageBytes, allocationBytes, consumedMilligas,
+    estimatedFeeMutez: estimate.suggestedFeeMutez,
+    estimatedStorageBurnMutez: estimate.burnFeeMutez,
+    estimatedOperationCostMutez, gasLimit: estimate.gasLimit, storageLimit: estimate.storageLimit,
+    currentOperatorBalanceMutez,
+    requiredTopUpForOriginationMutez: Math.max(0, estimatedOperationCostMutez - currentOperatorBalanceMutez),
+    feeParametersSource, transferFundingMutez: 0,
+  };
+}
+
 export async function runOperator(argv: string[], overrides: Partial<Dependencies> = {}) {
   const options = parseOptions(argv);
   const deps = { ...defaults, ...overrides };
@@ -308,7 +368,18 @@ export async function runOperator(argv: string[], overrides: Partial<Dependencie
     const prior = await readReceipt(path);
     if (prior) return resume(prior);
     const estimator = action === "originate" ? toolkit.estimate.originate.bind(toolkit.estimate) : action === "reveal-agent" ? toolkit.estimate.reveal.bind(toolkit.estimate) : toolkit.estimate.transfer.bind(toolkit.estimate);
-    const estimate = await estimator(params);
+    let estimate;
+    try { estimate = await estimator(params); }
+    catch (error) {
+      if (action === "originate") {
+        const quote = await insufficientOriginationQuote(error, params, source, toolkit);
+        if (quote) {
+          if (options.execute) throw new OperatorCommandError("Origination simulation cannot pay storage fees; nothing signed or submitted. Run estimate --for originate to review the measured funding shortfall.");
+          return { ...quote, action, network: config.network, source, intent, agentFunding: await fundingEvidence(config, toolkit) };
+        }
+      }
+      throw error;
+    }
     if (!estimate) throw new OperatorCommandError("Estimator returned no operation; refresh status before proceeding");
     const quote = {
       action, network: config.network, source, intent,

@@ -18,7 +18,7 @@ async function fixture(t: any) {
   const stateDir = await mkdtemp(join(tmpdir(), "alea-operator-test-"));
   t.after(() => rm(stateDir, { recursive: true, force: true }));
   const config: ProviderConfig = { network: "mainnet", chainId: "NetXdQprcVkpaWU", rpcUrl: "https://example.invalid", tzktApi: "https://indexer.invalid", router: ROUTER, registry: REGISTRY, operatorAddress: OPERATOR, agentAddress: AGENT, renderGasMutez: 500_000, stateDir };
-  const state = { signs: 0, prepares: 0, estimates: 0, estimatedParams: null as any, renderGas: 500_000, injections: [] as string[], indexed: false, registered: false, revealed: false, failInjection: false, action: "origination", source: OPERATOR, observedDurableReceipt: false };
+  const state = { signs: 0, prepares: 0, estimates: 0, estimatedParams: null as any, renderGas: 500_000, injections: [] as string[], indexed: false, registered: false, revealed: false, operatorRevealed: true, operatorBalance: 0, failInjection: false, action: "origination", source: OPERATOR, observedDurableReceipt: false };
   const signer = (agent: boolean) => ({
     publicKeyHash: async () => agent ? AGENT : OPERATOR,
     sign: async () => { state.signs++; return { sbytes: (0xa9 + state.signs).toString(16).repeat(96), prefixSig: "test-signature" }; },
@@ -26,12 +26,13 @@ async function fixture(t: any) {
   const estimate = async (params: any) => { state.estimates++; state.estimatedParams = params; return { suggestedFeeMutez: 2100, burnFeeMutez: 600000, gasLimit: 9000, storageLimit: 2400 }; };
   const prepare = async () => { state.prepares++; return { opOb: { branch: "test-branch", protocol: "test-protocol", contents: [{ kind: state.action, source: state.source }] } }; };
   const toolkit = {
-    tz: { getBalance: async () => ({ toString: () => "0" }) },
+    tz: { getBalance: async (address?: string) => ({ toString: () => address === OPERATOR ? String(state.operatorBalance) : "0" }) },
     estimate: { originate: estimate, transfer: estimate, reveal: estimate },
     prepare: { originate: prepare, transaction: prepare, reveal: prepare },
     rpc: {
-      getConstants: async () => ({ cost_per_byte: "250" }),
-      getManagerKey: async () => state.revealed ? "public-key" : null,
+      getConstants: async () => ({ cost_per_byte: "250", origination_size: 257 }),
+      getManagerKey: async (address?: string) => (address === OPERATOR ? state.operatorRevealed : state.revealed) ? "public-key" : null,
+      getMempoolFilter: async () => ({ minimal_fees: "100", minimal_nanotez_per_gas_unit: ["100", "1"], minimal_nanotez_per_byte: ["1000", "1"] }),
       forgeOperations: async () => "00".repeat(32),
       preapplyOperations: async () => [{ contents: [{ kind: state.action, metadata: { operation_result: { status: "applied" } } }] }],
       injectOperation: async (bytes: string) => {
@@ -208,4 +209,74 @@ test("CLI diagnostics never relay dependency errors containing signing material"
   assert.match(result, /suppressed/);
   try { parseOptions(["originate", "--execute", "--execute"]); }
   catch (error) { assert.match(operatorFailureMessage(error), /Duplicate option/); }
+});
+
+function insufficientBalanceError() {
+  const errors = [
+    { id: "proto.025-PsUshuai.cannot_pay_storage_fee" },
+    { id: "proto.025-PsUshuai.contract.balance_too_low", balance: "232369", amount: "374500" },
+    { id: "proto.025-PsUshuai.tez.subtraction_underflow" },
+  ];
+  return Object.assign(new Error("RPC payload must never be output"), {
+    name: "TezosOperationError", errors,
+    operationsWithResults: [{ kind: "origination", source: OPERATOR, metadata: { operation_result: {
+      status: "backtracked", consumed_milligas: "1403743", paid_storage_size_diff: "1498",
+      originated_contracts: ["SIMULATED-CONTRACT-ONLY"], errors,
+    } } }],
+  });
+}
+
+test("underfunded origination reports measured allocation-inclusive burn and SDK quote without signing", async (t) => {
+  const f = await fixture(t);
+  f.state.operatorBalance = 232369;
+  f.toolkit.estimate.originate = async () => { throw insufficientBalanceError(); };
+  const result: any = await runOperator(["estimate", "--for", "originate"], f.deps);
+  assert.equal(result.status, "insufficient-funds");
+  assert.equal(result.measuredStorageBurnMutez, 438750);
+  assert.equal(result.estimatedStorageBurnMutez, 443750);
+  assert.equal(result.gasLimit, 1504);
+  assert.equal(result.storageLimit, 1775);
+  assert.equal(result.estimatedFeeMutez, 367); // Fixture forge is32bytes plus64-byte tz1 signature.
+  assert.equal(result.estimatedOperationCostMutez, 444117);
+  assert.equal(result.requiredTopUpForOriginationMutez, 211748);
+  assert.equal(result.currentOperatorBalanceMutez, 232369);
+  assert.equal(result.agentFunding.onePublicationAndRevealCeilingMutez, 82948);
+  assert.doesNotMatch(JSON.stringify(result), /SIMULATED-CONTRACT|RPC payload/);
+  assert.equal(result.executed, false);
+  assert.equal(f.state.signs, 0);
+  assert.deepEqual(f.state.injections, []);
+});
+
+test("underfunded execution refuses before signing and never creates a submission receipt", async (t) => {
+  const f = await fixture(t);
+  f.toolkit.estimate.originate = async () => { throw insufficientBalanceError(); };
+  await assert.rejects(runOperator(["originate", "--execute"], f.deps), /nothing signed or submitted/);
+  assert.equal(f.state.signs, 0);
+  assert.deepEqual(f.state.injections, []);
+  assert.deepEqual(await readdir(join(f.stateDir, "operator")), []);
+});
+
+test("unrelated or combined simulation failures retain their original error", async (t) => {
+  const f = await fixture(t);
+  const unrelated = new Error("Unrelated RPC failure");
+  f.toolkit.estimate.originate = async () => { throw unrelated; };
+  await assert.rejects(runOperator(["estimate", "--for", "originate"], f.deps), (error) => error === unrelated);
+  const mixed = insufficientBalanceError();
+  mixed.errors.push({ id: "proto.025-PsUshuai.michelson_v1.script_rejected" });
+  f.toolkit.estimate.originate = async () => { throw mixed; };
+  await assert.rejects(runOperator(["estimate", "--for", "originate"], f.deps), (error) => error === mixed);
+  assert.equal(f.state.prepares, 0);
+});
+
+test("funding reconstruction refuses unrevealed sources and multi-operation groups", async (t) => {
+  const f = await fixture(t);
+  const error = insufficientBalanceError();
+  f.toolkit.estimate.originate = async () => { throw error; };
+  f.state.operatorRevealed = false;
+  await assert.rejects(runOperator(["estimate", "--for", "originate"], f.deps), (caught) => caught === error);
+  f.state.operatorRevealed = true;
+  error.operationsWithResults.push(error.operationsWithResults[0]);
+  await assert.rejects(runOperator(["estimate", "--for", "originate"], f.deps), (caught) => caught === error);
+  assert.equal(f.state.signs, 0);
+  assert.equal(f.state.prepares, 0);
 });

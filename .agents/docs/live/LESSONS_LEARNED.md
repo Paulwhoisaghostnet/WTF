@@ -11887,3 +11887,13 @@
 **Rule**: Keep dedicated render-agent files at `0600`. Explicitly permit group-read access only when loading the preexisting operator custody; continue rejecting group write/execute and all world access. Verify both cases with filesystem-backed tests and run the actual hosted estimate before claiming onboarding works.
 
 ---
+
+## 2026-10-02 — Failed storage payment still carries useful simulation evidence
+
+**What happened**: Provider origination simulation reported `cannot_pay_storage_fee` with 374500 mutez as the first unpaid charge. That amount omitted the separate 64250 mutez origination allocation and transaction fee.
+
+**Why it mattered**: Treating the first error amount as the full setup cost would underfund deployment. Generic error redaction also hid the actionable public funding facts.
+
+**Rule**: For the narrowly recognized insufficient-balance case, preserve backtracked gas and paid storage, add live protocol allocation costs, and distinguish measured burn from SDK estimation buffers. Keep failed simulations unable to sign or submit. Never present a simulated KT1 address as a deployed contract, and never print full dependency errors or signing inputs to expose public cost facts.
+
+---
