@@ -11877,3 +11877,13 @@
 **Rule**: Match gateway URL construction to the shared definitions: FileShip uses `${base}/${cid}`, while conventional gateways may require an `/ipfs` path in their configured base. Verify the retrieved artifact bytes and metadata against the published content; do not infer retrieval success from the upload response.
 
 ---
+
+## 2026-10-02 — Provider custody must preserve the established operator service boundary
+
+**What happened**: The new Aleatory wrapper applied its agent-only `0600` rule to the existing production operator master file, which is deliberately `root:wtf-signer` and `0640`. Hosted estimation stopped before any signing or chain write.
+
+**Why it mattered**: A stricter new-agent policy cannot silently redefine access for an established operator service. Changing that production file or copying the master into a new location would unnecessarily disturb the custody boundary.
+
+**Rule**: Keep dedicated render-agent files at `0600`. Explicitly permit group-read access only when loading the preexisting operator custody; continue rejecting group write/execute and all world access. Verify both cases with filesystem-backed tests and run the actual hosted estimate before claiming onboarding works.
+
+---
