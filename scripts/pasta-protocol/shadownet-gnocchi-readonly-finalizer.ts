@@ -977,7 +977,7 @@ export async function finalizeGnocchiUiLiveReadOnly(input: {
   const collectionBytes = await readRegularFile(path.join(artifactRoot, "collection-metadata.json"), "Gnocchi collection metadata artifact");
   objectValue(JSON.parse(Buffer.from(collectionBytes).toString("utf8")), "Gnocchi collection metadata artifact");
   const mediaUris = metadataValues.map((metadata, tokenId) => requireIpfsUri(metadata.artifactUri, `Gnocchi token ${tokenId} media URI`));
-  const publicGateway = input.publicIpfsGateway || process.env.PASTA_SHADOWNET_IPFS_GATEWAY || "https://ipfs.io/ipfs";
+  const publicGateway = input.publicIpfsGateway || process.env.PASTA_SHADOWNET_IPFS_GATEWAY || "https://ipfs.fileship.xyz";
   const contentDefinitions = [
     { id: "token-0-media", kind: "token-media", fileName: "token-0-media.png", uri: mediaUris[0] },
     { id: "collection-metadata", kind: "collection-metadata", fileName: "collection-metadata.json", uri: collectionMetadataUri },

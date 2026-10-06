@@ -76,6 +76,38 @@ const bundledTools = [
   { id: "lasagna", title: /Lasagna/i, entryPath: "/creation-tools/lasagna/index.html" },
 ];
 
+const macaroniV35CompanionRequiredPaths = Object.freeze([
+  "companion/macaroni-v35/package.json",
+  "companion/macaroni-v35/API.md",
+  "companion/macaroni-v35/DESKTOP_SETUP.md",
+  "companion/macaroni-v35/desktop-adapter.cjs",
+  "companion/macaroni-v35/desktop-setup.cjs",
+  "companion/macaroni-v35/src/index.mjs",
+  "companion/macaroni-v35/src/http-service.mjs",
+  "companion/macaroni-v35/scripts/install-macos-linux.sh",
+  "companion/macaroni-v35/scripts/install-windows.ps1",
+  "companion/macaroni-v35/contract/macaroni-v35.contract.json",
+  "companion/macaroni-v35/contract/macaroni-v35.storage.tz",
+  "companion/macaroni-v35/contract/macaroni-v35.template.json",
+]);
+
+const macaroniV35CompanionForbiddenPaths = Object.freeze([
+  "companion/macaroni-v35/.env",
+  "companion/macaroni-v35/data",
+  "companion/macaroni-v35/secrets",
+  "companion/macaroni-v35/node_modules",
+  "companion/macaroni-v35/state.sqlite",
+]);
+
+function macaroniV35Payload(primaryContractPath) {
+  return Object.freeze({
+    primaryContractPath,
+    companionContractPath: "companion/macaroni-v35/contract/macaroni-v35.contract.json",
+    requiredPaths: macaroniV35CompanionRequiredPaths,
+    forbiddenPaths: macaroniV35CompanionForbiddenPaths,
+  });
+}
+
 function prefixedAssets(prefix, paths) {
   return paths.map((assetPath) => `${prefix}${assetPath}`);
 }
@@ -88,6 +120,9 @@ const suiteAssetPaths = [
   "/creation-tools/macaroni/drop.html",
   "/creation-tools/macaroni/contract/mydrop.contract.json",
   "/creation-tools/macaroni/contract/macaroni-v3.contract.json",
+  "/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+  "/creation-tools/macaroni/contract/macaroni-v35.storage.tz",
+  "/creation-tools/macaroni/contract/macaroni-v35.template.json",
   ...Object.entries(publisherAssets).flatMap(([app, paths]) =>
     prefixedAssets(`/creation-tools/${app}`, paths),
   ),
@@ -123,6 +158,9 @@ export const PRODUCTS = Object.freeze({
     title: /Pasta Suite/i,
     assetPaths: suiteAssetPaths,
     bundledTools,
+    v35Payload: macaroniV35Payload(
+      "pasta/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+    ),
   },
   macaroni: {
     key: "macaroni",
@@ -138,7 +176,11 @@ export const PRODUCTS = Object.freeze({
       "/js/site-bundle.js",
       "/contract/mydrop.contract.json",
       "/contract/macaroni-v3.contract.json",
+      "/contract/macaroni-v35.contract.json",
+      "/contract/macaroni-v35.storage.tz",
+      "/contract/macaroni-v35.template.json",
     ],
+    v35Payload: macaroniV35Payload("macaroni/contract/macaroni-v35.contract.json"),
   },
   spaghetti: {
     key: "spaghetti",
@@ -283,6 +325,60 @@ async function readBuildProvenance(electronApp) {
   });
 }
 
+async function assertPackagedV35Payload(electronApp, payload) {
+  const result = await electronApp.evaluate(({ app }, descriptor) => {
+    const crypto = process.getBuiltinModule("crypto");
+    const fs = process.getBuiltinModule("fs");
+    const path = process.getBuiltinModule("path");
+    const appPath = app.getAppPath();
+    const absolute = (relativePath) => path.join(appPath, relativePath);
+    const required = descriptor.requiredPaths.map((relativePath) => {
+      const filePath = absolute(relativePath);
+      const stat = fs.statSync(filePath);
+      return {
+        relativePath,
+        file: stat.isFile(),
+        bytes: stat.size,
+      };
+    });
+    const forbidden = descriptor.forbiddenPaths.map((relativePath) => ({
+      relativePath,
+      exists: fs.existsSync(absolute(relativePath)),
+    }));
+    const primaryContract = fs.readFileSync(absolute(descriptor.primaryContractPath));
+    const companionContract = fs.readFileSync(absolute(descriptor.companionContractPath));
+    return {
+      required,
+      forbidden,
+      contractsEqual: primaryContract.equals(companionContract),
+      primaryContractBytes: primaryContract.byteLength,
+      companionContractBytes: companionContract.byteLength,
+      contractSha256: crypto.createHash("sha256").update(primaryContract).digest("hex"),
+    };
+  }, payload);
+
+  for (const entry of result.required) {
+    assert.equal(entry.file, true, `${entry.relativePath} should be a packaged file`);
+    assert.ok(entry.bytes > 0, `${entry.relativePath} should contain packaged bytes`);
+  }
+  for (const entry of result.forbidden) {
+    assert.equal(entry.exists, false, `${entry.relativePath} must not be packaged`);
+  }
+  assert.equal(
+    result.contractsEqual,
+    true,
+    "the packaged Studio and Companion must use the identical V3.5 contract artifact",
+  );
+  assert.ok(result.primaryContractBytes > 0, "the packaged Studio V3.5 contract must not be empty");
+  assert.equal(
+    result.primaryContractBytes,
+    result.companionContractBytes,
+    "the packaged Studio and Companion V3.5 contract byte lengths should match",
+  );
+  assert.match(result.contractSha256, /^[0-9a-f]{64}$/, "the packaged V3.5 contract should be hashable");
+  return result;
+}
+
 function captureRuntimeErrors(page, runtimeErrors, label, expectedOrigin) {
   const observedRequests = new WeakSet();
   const expectedStubResponses = new WeakSet();
@@ -373,6 +469,44 @@ async function assertPackagedAssets(page, assetPaths) {
   return results;
 }
 
+async function assertNativeCompanionSetup(page) {
+  const card = page.locator("#nativeCompanionSetup");
+  await card.waitFor({ state: "visible", timeout: 15_000 });
+  await page.locator("#nativeCompanionSetupTitle").waitFor({ state: "visible" });
+
+  const bridge = await page.evaluate(() => ({
+    native: window.MACARONI_DESKTOP?.native === true,
+    guide: typeof window.MACARONI_DESKTOP?.openCompanionSetupGuide === "function",
+    config: typeof window.MACARONI_DESKTOP?.openCompanionConfigFolder === "function",
+  }));
+  assert.deepEqual(
+    bridge,
+    { native: true, guide: true, config: true },
+    "the installed Studio should expose only the protected native Companion setup actions",
+  );
+
+  for (const selector of [
+    "#btnOpenCompanionSetupGuide",
+    "#btnOpenCompanionConfigFolder",
+    "#btnCheckCompanionAgain",
+  ]) {
+    await page.locator(selector).waitFor({ state: "visible" });
+    assert.equal(await page.locator(selector).isEnabled(), true, `${selector} should be actionable`);
+  }
+
+  await page.locator("#btnCheckCompanionAgain").click();
+  await page.waitForFunction(() => {
+    const button = document.querySelector("#btnCheckCompanionAgain");
+    const status = document.querySelector("#nativeCompanionActionStatus");
+    return button && !button.disabled && status && !status.textContent?.startsWith("Checking");
+  });
+  const reason = (await page.locator("#nativeCompanionSetupReason").textContent())?.trim() || "";
+  const status = (await page.locator("#nativeCompanionActionStatus").textContent())?.trim() || "";
+  assert.ok(reason.length > 0, "native Companion setup should explain the current readiness state");
+  assert.ok(status.length > 0, "Check again should return an actionable readiness result");
+  return { visible: true, checkAgainCompleted: true, reason, status };
+}
+
 async function exerciseSuite(electronApp, page, runtimeErrors) {
   assert.equal(await page.locator(".tool-card").count(), bundledTools.length, "suite should expose all eight tools");
   assert.equal(await page.locator("#project-network").inputValue(), "shadownet");
@@ -383,6 +517,7 @@ async function exerciseSuite(electronApp, page, runtimeErrors) {
   await page.locator("#create-project").click();
   await page.locator("#project-list").getByText("Installer artifact proof", { exact: true }).waitFor();
 
+  let macaroniSetup = null;
   for (const tool of bundledTools) {
     const popupPromise = electronApp.waitForEvent("window", { timeout: 15_000 });
     await page.locator(`.tool-card[data-tool="${tool.id}"] button`).click();
@@ -397,8 +532,13 @@ async function exerciseSuite(electronApp, page, runtimeErrors) {
     assert.equal(popupUrl.origin, PRODUCTS["pasta-suite"].origin);
     assert.equal(popupUrl.pathname, tool.entryPath);
     assert.match(await popup.title(), tool.title);
+    if (tool.id === "macaroni") {
+      macaroniSetup = await assertNativeCompanionSetup(popup);
+    }
     await popup.close();
   }
+  assert.ok(macaroniSetup, "Pasta Suite should expose the native Companion setup inside Macaroni");
+  return macaroniSetup;
 }
 
 async function launchArtifact(executablePath, profilePath) {
@@ -445,13 +585,19 @@ export async function runArtifactSmoke({
       expectedTarget,
       expectedGitSha,
     });
+    const v35Payload = product.v35Payload
+      ? await assertPackagedV35Payload(electronApp, product.v35Payload)
+      : null;
 
     await page.evaluate(
       ([key, value]) => localStorage.setItem(key, value),
       [PERSISTENCE_KEY, PERSISTENCE_VALUE],
     );
-    if (appKey === "pasta-suite") {
-      await exerciseSuite(electronApp, page, runtimeErrors);
+    let nativeCompanionSetup = null;
+    if (appKey === "macaroni") {
+      nativeCompanionSetup = await assertNativeCompanionSetup(page);
+    } else if (appKey === "pasta-suite") {
+      nativeCompanionSetup = await exerciseSuite(electronApp, page, runtimeErrors);
     }
     if (screenshotPath) await page.screenshot({ path: screenshotPath, fullPage: true });
 
@@ -487,6 +633,8 @@ export async function runArtifactSmoke({
       stableOriginRelaunch: true,
       bundledToolsOpened: product.bundledTools?.length || 0,
       provenance,
+      v35Payload,
+      nativeCompanionSetup,
       screenshotPath: screenshotPath || null,
     };
     if (resultPath) {

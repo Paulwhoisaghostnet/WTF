@@ -9,7 +9,16 @@ const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceDir = path.join(repoRoot, "public/creation-tools/macaroni");
 const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
+const companionSourceRoot = path.join(repoRoot, "companion/macaroni-v35");
 const outDir = path.join(appDir, "macaroni");
+const companionOutDir = path.join(appDir, "companion/macaroni-v35");
+const companionExcludedTopLevel = new Set(["node_modules", "data", "secrets", ".env"]);
+
+function includeCompanionSource(source) {
+  const relative = path.relative(companionSourceRoot, source);
+  if (!relative) return true;
+  return !companionExcludedTopLevel.has(relative.split(path.sep)[0]);
+}
 
 const required = [
   "studio.html",
@@ -18,9 +27,12 @@ const required = [
   "js/common.js",
   "js/studio.js",
   "js/site-bundle.js",
+  "js/octez-wallet.js",
   "vendor/tezos.js",
+  "vendor/octez-connect.js",
   "contract/mydrop.contract.json",
   "contract/macaroni-v3.contract.json",
+  "contract/macaroni-v35.contract.json",
 ];
 
 if (!existsSync(sourceDir)) {
@@ -28,6 +40,9 @@ if (!existsSync(sourceDir)) {
   process.exit(1);
 }
 if (!existsSync(iconSourceRoot)) throw new Error(`Pasta icon assets not found: ${iconSourceRoot}`);
+if (!existsSync(path.join(companionSourceRoot, "package.json")) || !existsSync(path.join(companionSourceRoot, "templates/pasta-service.json"))) {
+  throw new Error(`Macaroni Companion assets not found: ${companionSourceRoot}`);
+}
 
 for (const rel of required) {
   const target = path.join(sourceDir, rel);
@@ -38,6 +53,7 @@ for (const rel of required) {
 }
 
 rmSync(outDir, { recursive: true, force: true });
+rmSync(companionOutDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 
@@ -48,5 +64,8 @@ for (const entry of readdirSync(sourceDir)) {
   if (stats.isDirectory()) cpSync(from, to, { recursive: true });
   else if (stats.isFile()) copyFileSync(from, to);
 }
+
+mkdirSync(path.dirname(companionOutDir), { recursive: true });
+cpSync(companionSourceRoot, companionOutDir, { recursive: true, filter: includeCompanionSource });
 
 console.log(`Prepared Macaroni desktop assets in ${path.relative(repoRoot, outDir)}`);

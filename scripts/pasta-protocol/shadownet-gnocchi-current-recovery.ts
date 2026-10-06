@@ -467,7 +467,9 @@ async function readPrefixContent(ipfs: IpfsProofConfig): Promise<Array<ExpectedC
   sources: string[];
 }>> {
   const publicBase = normalizeBase(ipfs.publicGatewayUrl);
-  const independentPublicBase = "https://dweb.link/ipfs";
+  const independentPublicBase = new URL(publicBase).hostname === "ipfs.fileship.xyz"
+    ? "https://dweb.link/ipfs"
+    : "https://ipfs.fileship.xyz";
   const output = [];
   for (const content of PREFIX_CONTENT) {
     const sources = [

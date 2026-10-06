@@ -20,6 +20,12 @@ const FAQ_TUTORIALS = JSON.parse(
 const WTFOS_PROMOS = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../shared/wtfos-promos.json"), "utf8")
 );
+const MACARONI_V35_TEMPLATE = JSON.parse(
+  readFileSync(
+    path.resolve(__dirname, "../../public/creation-tools/macaroni/contract/macaroni-v35.template.json"),
+    "utf8",
+  )
+);
 const PORT = Number(process.env.HARNESS_PORT || 4173);
 const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
@@ -699,6 +705,7 @@ app.get("/api/auth/user", (_req, res) => {
             manage_gameshow: true,
             manage_rewards: true,
             trusted_market_creator: true,
+            use_managed_macaroni: true,
             access_studio: true,
             create_studio_projects: true,
           }
@@ -711,6 +718,7 @@ app.get("/api/auth/user", (_req, res) => {
               trusted_tv_creator: true,
               trusted_market_creator: true,
               use_wtfos_pinning: true,
+              use_managed_macaroni: true,
               access_admin_panel: false,
               manage_roles: false,
             }
@@ -733,6 +741,70 @@ app.get("/api/auth/social/config", (_req, res) => {
     twitterOauth2: true,
     discord: true,
     publicSiteUrl: "http://127.0.0.1",
+  });
+});
+
+app.get("/api/macaroni/v35/capabilities", (_req, res) => {
+  const authUser = currentAuthUser();
+  const eligibleRoles = new Set([
+    "admin",
+    "host",
+    "cohost",
+    "trusted_creator",
+    COBWEBSAINTS_FULL_USER_ROLE,
+  ]);
+  const allowed = Boolean(authUser && eligibleRoles.has(state.userRole));
+  const funding = MACARONI_V35_TEMPLATE.measuredFundingPolicy || {};
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    schema: "wtfos.macaroni-v35-capabilities.v1",
+    authenticated: Boolean(authUser),
+    managed: {
+      allowed,
+      requiredPermission: "use_managed_macaroni",
+      requiredRole: "Trusted Creator or another role explicitly granted Use Managed Macaroni",
+      defaultEligibleRoles: ["Administrator", "Host", "Co-host", "Trusted Creator", "Cobwebsaints Full User"],
+      assignedRoles: authUser ? [state.userRole] : [],
+      reason: "Managed Macaroni stores unrevealed assets privately and uses wtfOS fulfillment infrastructure, so access is limited to reviewed creator accounts.",
+      denial: allowed ? null : {
+        code: authUser ? "managed_macaroni_permission_required" : "sign_in_required",
+        adminInboxPath: "/admin-inbox",
+        requestText: "Please grant me Managed Macaroni access for secure private staging and automatic blind-mint fulfillment.",
+        nextStep: authUser
+          ? "Open Admin Inbox, send the request text, and wait for a wtfOS administrator to grant the Managed Macaroni capability."
+          : "Sign in, then open Admin Inbox and request Managed Macaroni access.",
+      },
+      service: {
+        ready: false,
+        code: "fulfillment_pipeline_unavailable",
+        reason: "The inventory harness does not run production private storage or a funded finalizer.",
+      },
+      fundingPolicy: {
+        ready: true,
+        evidence: funding.evidence,
+        version: funding.version,
+        settlementStorageBurnMutez: funding.maximumSettlementStorageBurnMutez,
+        historicalRevealFeeMutez: funding.highestHistoricalAppliedRevealFeeMutez,
+        fulfillmentSubsidyMutez: funding.fulfillmentSubsidyMutez,
+        initialContractReserveMutez: funding.initialContractReserveMutez,
+        armFulfillmentCostMutez: funding.armFulfillmentCostMutez,
+        finalizerLiquidStartupFloorMutez: funding.finalizerLiquidStartupFloorMutez,
+        initialReserveClaims: 5,
+        freeStageRule: "physical_supply_times_subsidy",
+      },
+    },
+    selfHostedAlternative: {
+      available: true,
+      name: "Macaroni Companion",
+      accessRequired: false,
+      keepsDropPageStatic: true,
+      instructions: "Install the included companion and complete its doctor check.",
+      packagePath: "companion/macaroni-v35",
+    },
+    assetStrategies: {
+      pin_on_claim: { default: true },
+      public_prepin_private_manifest: { default: false, advanced: true, available: true },
+    },
   });
 });
 

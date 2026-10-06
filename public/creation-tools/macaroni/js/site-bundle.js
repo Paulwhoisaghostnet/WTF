@@ -102,8 +102,123 @@ const MDSiteBundle = (() => {
     return new Uint8Array(await res.arrayBuffer());
   }
 
+  function parseConfigJs(configJs) {
+    let body = String(configJs || "").trim();
+    const match = body.match(/^window\.DROP_CONFIG\s*=\s*([\s\S]*?);?\s*$/);
+    if (match) body = match[1];
+    const config = JSON.parse(body);
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      throw new Error("drop.config.js must contain one configuration object");
+    }
+    return config;
+  }
+
+  function assertNoSecretFields(value, path = "DROP_CONFIG") {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => assertNoSecretFields(item, `${path}[${index}]`));
+      return;
+    }
+    if (!value || typeof value !== "object") {
+      const text = typeof value === "string" ? value.trim() : "";
+      if (/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(text) || /^(?:edsk|spsk|p2sk)[1-9A-HJ-NP-Za-km-z]{40,}$/.test(text)) {
+        throw new Error(`${path} contains a credential or private key`);
+      }
+      return;
+    }
+    for (const [key, item] of Object.entries(value)) {
+      if (/(?:secret|private.?key|api.?key|jwt|credential|nonce|preimage)/i.test(key)) {
+        throw new Error(`${path}.${key} is private and cannot be included in a static site`);
+      }
+      assertNoSecretFields(item, `${path}.${key}`);
+    }
+  }
+
+  function assertPublicHttpsUrl(value, label) {
+    const text = String(value || "").trim();
+    if (!text) throw new Error(`Secure V3.5 ${label} is required`);
+    let url;
+    try {
+      url = new URL(text);
+    } catch (_) {
+      throw new Error(`Secure V3.5 ${label} must be a valid public HTTPS URL`);
+    }
+    if (url.protocol !== "https:" || url.username || url.password || url.hash) {
+      throw new Error(`Secure V3.5 ${label} must be a credential-free public HTTPS URL`);
+    }
+    const hostname = url.hostname.toLowerCase();
+    if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
+      throw new Error(`Secure V3.5 ${label} cannot point collectors to a local-only service`);
+    }
+    return url;
+  }
+
+  function assertPublicHttpsTemplate(value, placeholder, label) {
+    const text = String(value || "").trim();
+    const token = `{${placeholder}}`;
+    if (!text.includes(token) || text.indexOf(token) !== text.lastIndexOf(token)) {
+      throw new Error(`Secure V3.5 ${label} must contain exactly one ${token} placeholder`);
+    }
+    const withoutToken = text.replace(token, `macaroni-${placeholder}-placeholder`);
+    if (/[{}]/.test(withoutToken)) {
+      throw new Error(`Secure V3.5 ${label} contains an unsupported URL placeholder`);
+    }
+    return assertPublicHttpsUrl(withoutToken, label);
+  }
+
+  function assertSecretFreeConfig(configJs) {
+    const config = parseConfigJs(configJs);
+    assertNoSecretFields(config);
+    const profileId = String(config.profile?.id || config.contractVersion || "");
+    if (profileId !== "macaroni-secure-v35") return config;
+
+    const allowedServiceKeys = new Set([
+      "schema",
+      "provider",
+      "publicStatusUrl",
+      "claimStatusUrlTemplate",
+      "purchaseStatusUrlTemplate",
+      "wakeUrl",
+      "projectId",
+    ]);
+    for (const key of Object.keys(config.service || {})) {
+      if (!allowedServiceKeys.has(key)) {
+        throw new Error(`Secure V3.5 static service descriptor contains unsupported field ${key}`);
+      }
+    }
+    const service = config.service || {};
+    if (service.schema !== "wtfos.macaroni-v35-public-service.v1") {
+      throw new Error("Secure V3.5 static service descriptor has an unsupported schema");
+    }
+    if (!["wtfos_managed", "creator_companion"].includes(service.provider)) {
+      throw new Error("Secure V3.5 static service descriptor has an unsupported provider");
+    }
+    assertPublicHttpsUrl(service.publicStatusUrl, "public status URL");
+    assertPublicHttpsTemplate(service.claimStatusUrlTemplate, "claimId", "claim status URL template");
+    assertPublicHttpsTemplate(service.purchaseStatusUrlTemplate, "operationHash", "purchase status URL template");
+    assertPublicHttpsUrl(service.wakeUrl, "fulfillment wake URL");
+    if (!/^[A-Za-z0-9_-]{1,120}$/.test(String(service.projectId || ""))) {
+      throw new Error("Secure V3.5 static service descriptor needs a valid project ID");
+    }
+    for (const [index, token] of (Array.isArray(config.tokens) ? config.tokens : []).entries()) {
+      const allowedTokenKeys = new Set(["id", "displayId", "quantity"]);
+      for (const key of Object.keys(token || {})) {
+        if (!allowedTokenKeys.has(key)) {
+          throw new Error(`Secure V3.5 token ${index + 1} exposes ${key}; private inventory cannot be bundled`);
+        }
+      }
+    }
+    if (Array.isArray(config.reveal?.placeholderPool) && config.reveal.placeholderPool.length) {
+      throw new Error("Secure V3.5 placeholder inventory cannot be bundled into the static site");
+    }
+    if (String(config.reveal?.serviceUrl || "").trim()) {
+      throw new Error("Secure V3.5 uses only its non-secret public service descriptor");
+    }
+    return config;
+  }
+
   /** Build a zip containing index.html, drop.config.js, and the wallet/mint stack. */
   async function buildSiteZip(configJs) {
+    assertSecretFreeConfig(configJs);
     const dropHtml = await fetchAsset("drop.html");
     const files = [
       { path: "index.html", data: dropHtml },
@@ -162,7 +277,7 @@ const MDSiteBundle = (() => {
     }
   }
 
-  return { ASSETS, buildSiteZip, downloadSiteZip, recordColanderSite };
+  return { ASSETS, parseConfigJs, assertSecretFreeConfig, buildSiteZip, downloadSiteZip, recordColanderSite };
 })();
 
 window.MDSiteBundle = MDSiteBundle;

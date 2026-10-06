@@ -30,6 +30,7 @@
       "package.json",
       "src/**/*",
       "pasta/**/*",
+      "companion/**/*",
       "provenance/**/*"
     ],
     "directories": {
@@ -116,6 +117,16 @@
       "packageCategory": "devel",
       "maintainer": "wtfOS <support@wtfos.app>"
     }
+  },
+  "dependencies": {
+    "@ipld/car": "5.4.7",
+    "@taquito/michel-codec": "25.0.0",
+    "@taquito/michelson-encoder": "25.0.0",
+    "@taquito/signer": "25.0.0",
+    "@taquito/taquito": "25.0.0",
+    "@taquito/utils": "25.0.0",
+    "ipfs-unixfs-importer": "17.0.1",
+    "multiformats": "14.0.5"
   },
   "devDependencies": {
     "electron": "42.4.0",

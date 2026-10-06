@@ -62,6 +62,74 @@ test("artifact smoke registry requires current Ravioli and Rotini runtime assets
   }
 });
 
+test("Macaroni and Pasta Suite artifact smoke require the full V3.5 contract and Companion payload", () => {
+  const productExpectations = [
+    {
+      product: PRODUCTS.macaroni,
+      assets: [
+        "/contract/macaroni-v35.contract.json",
+        "/contract/macaroni-v35.storage.tz",
+        "/contract/macaroni-v35.template.json",
+      ],
+      primaryContractPath: "macaroni/contract/macaroni-v35.contract.json",
+    },
+    {
+      product: PRODUCTS["pasta-suite"],
+      assets: [
+        "/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+        "/creation-tools/macaroni/contract/macaroni-v35.storage.tz",
+        "/creation-tools/macaroni/contract/macaroni-v35.template.json",
+      ],
+      primaryContractPath:
+        "pasta/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+    },
+  ];
+
+  for (const { product, assets, primaryContractPath } of productExpectations) {
+    for (const assetPath of assets) {
+      assert.ok(product.assetPaths.includes(assetPath), `${product.key} should smoke ${assetPath}`);
+    }
+    assert.equal(product.v35Payload.primaryContractPath, primaryContractPath);
+    assert.equal(
+      product.v35Payload.companionContractPath,
+      "companion/macaroni-v35/contract/macaroni-v35.contract.json",
+    );
+    for (const requiredPath of [
+      "companion/macaroni-v35/package.json",
+      "companion/macaroni-v35/API.md",
+      "companion/macaroni-v35/DESKTOP_SETUP.md",
+      "companion/macaroni-v35/src/index.mjs",
+      "companion/macaroni-v35/desktop-adapter.cjs",
+      "companion/macaroni-v35/desktop-setup.cjs",
+      "companion/macaroni-v35/contract/macaroni-v35.contract.json",
+    ]) {
+      assert.ok(
+        product.v35Payload.requiredPaths.includes(requiredPath),
+        `${product.key} should verify packaged ${requiredPath}`,
+      );
+    }
+    for (const forbiddenPath of [
+      "companion/macaroni-v35/.env",
+      "companion/macaroni-v35/data",
+      "companion/macaroni-v35/secrets",
+      "companion/macaroni-v35/node_modules",
+    ]) {
+      assert.ok(
+        product.v35Payload.forbiddenPaths.includes(forbiddenPath),
+        `${product.key} should reject packaged ${forbiddenPath}`,
+      );
+    }
+  }
+
+  assert.match(artifactSmokeSource, /assertPackagedV35Payload/);
+  assert.match(artifactSmokeSource, /assertNativeCompanionSetup/);
+  assert.match(artifactSmokeSource, /btnOpenCompanionSetupGuide/);
+  assert.match(artifactSmokeSource, /btnOpenCompanionConfigFolder/);
+  assert.match(artifactSmokeSource, /btnCheckCompanionAgain/);
+  assert.match(artifactSmokeSource, /contractsEqual/);
+  assert.match(artifactSmokeSource, /contractSha256/);
+});
+
 test("suite artifact smoke traverses every bundled tool", () => {
   assert.deepEqual(
     PRODUCTS["pasta-suite"].bundledTools.map((tool) => tool.id),

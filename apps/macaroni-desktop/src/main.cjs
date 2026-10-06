@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess } = require("electron");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const http = require("node:http");
@@ -8,6 +8,8 @@ const path = require("node:path");
 const { listenOnStableOrigin } = require("./loopback-origin.cjs");
 
 const PRODUCT_NAME = "Macaroni Studio";
+const COMPANION_SETUP_IPC_CHANNEL = "macaroni:companion-setup";
+const COMPANION_STUDIO_PATH = "/studio.html";
 
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -24,6 +26,7 @@ const MIME = {
 let server;
 let baseUrl = "";
 let mainWindow;
+let companionAdapter;
 
 function appRoot() {
   return app.getAppPath();
@@ -31,6 +34,55 @@ function appRoot() {
 
 function macaroniRoot() {
   return path.join(appRoot(), "macaroni");
+}
+
+function companionRoot() {
+  return path.join(appRoot(), "companion", "macaroni-v35");
+}
+
+function companionSetupRoot() {
+  return path.join(app.getPath("documents"), "Macaroni", "Companion Setup");
+}
+
+function assertTrustedCompanionRenderer(event) {
+  const senderUrl = event.senderFrame?.url || event.sender?.getURL?.() || "";
+  let sender;
+  let appOrigin;
+  try {
+    sender = new URL(senderUrl);
+    appOrigin = new URL(baseUrl).origin;
+  } catch {
+    throw new Error("Companion setup action was rejected");
+  }
+  if (sender.origin !== appOrigin || sender.pathname !== COMPANION_STUDIO_PATH) {
+    throw new Error("Companion setup action is available only from Macaroni Studio");
+  }
+}
+
+async function prepareCompanionSetupKit() {
+  const { prepareDesktopSetupKit } = require(path.join(companionRoot(), "desktop-setup.cjs"));
+  return prepareDesktopSetupKit({ companionRoot: companionRoot(), destinationRoot: companionSetupRoot() });
+}
+
+function registerCompanionSetupIpc() {
+  ipcMain.removeHandler(COMPANION_SETUP_IPC_CHANNEL);
+  ipcMain.handle(COMPANION_SETUP_IPC_CHANNEL, async (event, request = {}) => {
+    assertTrustedCompanionRenderer(event);
+    const action = String(request.action || "");
+    if (action === "open-guide") {
+      const { guidePath } = await prepareCompanionSetupKit();
+      const failure = await shell.openPath(guidePath);
+      if (failure) throw new Error("Macaroni could not open the copied setup guide");
+      return { ok: true, action };
+    }
+    if (action === "open-config-folder") {
+      if (!companionAdapter?.envPath) throw new Error("Companion configuration is not initialized yet");
+      await fsp.access(companionAdapter.envPath);
+      shell.showItemInFolder(companionAdapter.envPath);
+      return { ok: true, action };
+    }
+    throw new Error("Unsupported Companion setup action");
+  });
 }
 
 function sendJson(res, status, payload) {
@@ -110,8 +162,9 @@ async function exportSite(req, res) {
     await fsp.mkdir(outRoot, { recursive: true });
     await fsp.copyFile(path.join(macaroniRoot(), "drop.html"), path.join(outRoot, "index.html"));
     await fsp.writeFile(path.join(outRoot, "drop.config.js"), config, "utf8");
-    for (const rel of ["css/theme.css", "js/common.js", "js/drop.js", "vendor/tezos.js"])
+    for (const rel of ["css/theme.css", "js/common.js", "js/drop.js", "js/octez-wallet.js", "vendor/tezos.js", "vendor/octez-connect.js"])
       await copyDropAsset(rel, outRoot);
+    await fsp.copyFile(path.join(companionRoot(), "templates", "pasta-service.json"), path.join(outRoot, "pasta-service.json"));
     return sendJson(res, 200, { ok: true, path: outRoot });
   } catch (err) {
     return sendJson(res, 500, { ok: false, error: err.message || "Export failed" });
@@ -121,6 +174,14 @@ async function exportSite(req, res) {
 async function handleRequest(req, res) {
   setBaseHeaders(res);
   const parsed = new URL(req.url || "/", "http://127.0.0.1");
+
+  if (parsed.pathname.startsWith("/api/macaroni/v35/companion")) {
+    if (companionAdapter && await companionAdapter.proxy(req, res, parsed)) return;
+    return sendJson(res, 404, {
+      error: "companion_route_not_available",
+      message: "This private Companion action is not available in Macaroni Studio.",
+    });
+  }
 
   if (req.method === "GET" && parsed.pathname === "/api/auth/user") {
     return sendJson(res, 401, {
@@ -174,6 +235,19 @@ async function startLocalServer() {
   baseUrl = await listenOnStableOrigin(nextServer, PRODUCT_NAME);
   server = nextServer;
   return baseUrl;
+}
+
+async function startCompanionAdapter() {
+  const { createDesktopCompanionAdapter } = require(path.join(companionRoot(), "desktop-adapter.cjs"));
+  companionAdapter = createDesktopCompanionAdapter({
+    companionRoot: companionRoot(),
+    runtimeRoot: path.join(app.getPath("userData"), "macaroni-v35-companion"),
+    studioOrigin: baseUrl,
+    managementUrl: `${baseUrl}/studio.html#secure-v35-companion`,
+    launchChild: (modulePath, args, options) => utilityProcess.fork(modulePath, args, options),
+  });
+  await companionAdapter.initialize();
+  await companionAdapter.kickstart();
 }
 
 function isSafeExternalUrl(value) {
@@ -264,6 +338,8 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     try {
       await startLocalServer();
+      await startCompanionAdapter().catch(() => undefined);
+      registerCompanionSetupIpc();
       createWindow();
     } catch (err) {
       dialog.showErrorBox("Macaroni Studio failed to start", err.message || String(err));
@@ -281,5 +357,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  companionAdapter?.stop();
   if (server) server.close();
 });

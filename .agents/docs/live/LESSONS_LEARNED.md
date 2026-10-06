@@ -11347,3 +11347,13 @@
 **Rule**: Distinguish compiler diagnostics from runtime termination. When garbage-collection evidence shows heap exhaustion, scope measured headroom to the compiler step, add a workflow policy assertion, and require the exact CI run to finish every downstream gate before marking the release signal verified.
 
 ---
+
+## 2026-10-06 — Reviewer handoffs need an exact source and evidence boundary
+
+**What happened**: Pasta's source, installer definitions and historical alpha evidence were spread across the wtfOS repository. The September review referred to uncommitted V3.5 work; older installer versions and mocked readiness stories could be mistaken for proof of the current installed runtime.
+
+**Correction**: Added a Pasta-only review hub, preserved the relevant source on an isolated review branch, ignored generated Companion copies, and separated historical claims from installed-artifact evidence. The handoff labels unresolved findings and does not promote production or Mainnet readiness.
+
+**Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
+
+**Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.

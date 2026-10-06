@@ -277,7 +277,8 @@
     "load:test": "npx tsx tests/load/run-load.mjs",
     "load:test:prod-baseline": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_LABEL=prod-baseline WTF_LOAD_STEPS=1,3 WTF_LOAD_MIX=public:1 WTF_LOAD_MAX_RPS=4 WTF_LOAD_STEP_SECONDS=20 WTF_LOAD_AUTH=guest npx tsx tests/load/run-load.mjs",
     "load:test:prod-ramp": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_AUTH=wallet WTF_LOAD_LABEL=prod-ramp WTF_LOAD_STEPS=1,3,5,10 WTF_LOAD_STEP_SECONDS=25 npx tsx tests/load/run-load.mjs",
-    "load:ui:wtf-live": "npx tsx tests/load/ui-wtf-live-scenario.mjs"
+    "load:ui:wtf-live": "npx tsx tests/load/ui-wtf-live-scenario.mjs",
+    "contract:macaroni-v35:compile": "node scripts/macaroni/compile-v35-contract-template.mjs"
   },
   "dependencies": {
     "@atproto/api": "^0.20.4",
@@ -327,7 +328,12 @@
     "wouter": "^3.9.0",
     "ws": "^8.21.1",
     "zod": "^4.3.6",
-    "zod-validation-error": "^5.0.0"
+    "zod-validation-error": "^5.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.1041.0",
+    "@ipld/car": "5.4.7",
+    "ipfs-unixfs-importer": "17.0.1",
+    "multiformats": "14.0.5",
+    "pinata": "2.5.6"
   },
   "overrides": {
     "esbuild": "0.28.0",

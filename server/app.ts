@@ -132,6 +132,7 @@ function requestPath(req: any): string {
 
 function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: string): boolean {
   if (path === "/api/macaroni/reveal-request") return true;
+  if (/^\/api\/macaroni\/v35\/(status|wake)\//.test(path)) return true;
   if (!origin || ![
     "/api/macaroni/reveal-operator",
     "/api/macaroni/reveal-automation",
@@ -181,7 +182,7 @@ function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0]
 
   return (req, callback) => {
     if (shouldAllowMacaroniRevealOrigin(req.headers.origin, requestPath(req))) {
-      return callback(null, { origin: true, credentials: false });
+      return callback(null, { origin: "*", credentials: false });
     }
     if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
       return callback(null, arcadeSourceNullOriginOptions);

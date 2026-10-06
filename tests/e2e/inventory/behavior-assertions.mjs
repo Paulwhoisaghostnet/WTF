@@ -1,5 +1,31 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "macaroni.v35-managed-secure",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "pasta-protocol", "wtf-domains"],
+    ownerSpec:
+      "contracts/wtf-collections/MacaroniBlindMintFA2V35.py, scripts/macaroni/v35-contract-policy.test.mjs, public/creation-tools/macaroni/{studio.html,js/studio.js,drop.html,js/drop.js,js/site-bundle.js}, server/features/macaroni/{v35-crypto.ts,v35-entropy.test.ts,v35-managed-assets.ts,v35-managed-policy.test.ts,v35-managed-worker.ts,v35-private-staging.test.ts,v35-service.ts,v35-worker.test.ts}, server/routes/{macaroni.ts,macaroni-policy.test.ts}, tests/playwright/inventory/macaroni-v35-static-collector.spec.mjs",
+    verificationCommand:
+      "node --test scripts/macaroni/v35-contract-policy.test.mjs && npx tsx --test server/features/macaroni/v35-entropy.test.ts server/features/macaroni/v35-managed-policy.test.ts server/features/macaroni/v35-private-staging.test.ts server/features/macaroni/v35-worker.test.ts server/routes/macaroni-policy.test.ts && npx playwright test tests/playwright/inventory/macaroni-v35-static-collector.spec.mjs",
+    userVisibleAssertion:
+      "An eligible wtfOS creator starts on the simple Secure Blind Mint profile, sees private-until-assigned and automatic-fulfillment promises plus the custodian limitation, chooses immediate or automatic-later display, privately stages the collection, sees measured deployment/reserve/finalizer costs, and receives one pleasant explained wallet review at a time. An ineligible creator sees the exact missing role, request-access route, and self-hosted alternative; Legacy and public pre-pinning remain Advanced and require their risk acknowledgements. A collector signs one amount-only purchase and sees purchase confirmed, allocation locked, publishing, and final NFT status without a manual reveal.",
+    durableSideEffectAssertion:
+      "Focused contract, managed-service, worker, private-staging, Studio policy, and real-browser cross-origin tests prove physical weighted allocation without replacement, strict FIFO settlement, token-specific commitments, hidden private staging, local duplicate detection, server-authored exact-size setup actions, five-operation measured reserve funding, durable prompt/submission/reconciliation state, two-block finality, fulfillment arming before activation, automatic final mint, final-only reserve sweep, permanent close recovery, secret-free static exports, credential-free status/purchase/claim/wake calls from an unrelated static origin, creator-endpoint isolation, and live network-specific fail-closed managed-role/runtime readiness even when persisted readiness is stale.",
+  },
+  {
+    id: "macaroni.v35-companion-self-hosted",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "pasta-protocol"],
+    ownerSpec:
+      "companion/macaroni-v35/test/{creator-setup,desktop-adapter,desktop-setup,http,runtime-e2e,watcher}.test.mjs, scripts/{macaroni-desktop-package-policy,pasta-suite-desktop-package-policy}.test.mjs, tests/playwright/inventory/macaroni-native-companion-setup.spec.mjs",
+    verificationCommand:
+      "npm test --prefix companion/macaroni-v35 && node --test scripts/macaroni-desktop-package-policy.test.mjs scripts/pasta-suite-desktop-package-policy.test.mjs && npx playwright test tests/playwright/inventory/macaroni-native-companion-setup.spec.mjs",
+    userVisibleAssertion:
+      "An installed creator sees a native-only Companion setup card with the current readiness reason, can open a copied secret-free guide/standalone kit and the active private config location, explicitly checks again after a correction, and sees creation unlock only after the complete local doctor passes; they then upload the public cover plus private originals and optional previews without exposing private CIDs, receive one plain-language wallet action at a time, can leave and resume safely, and export a static buyer page that uses only explicit public status URLs.",
+    durableSideEffectAssertion:
+      "Focused Companion tests prove encrypted private CAR/entropy custody, immutable creator plans and attempts, exact padded forged-size batching at the Tezos protocol limit, two-block finality, hashless post-broadcast recovery, raw identified remote-wallet abort acceptance with transformed/identity-free errors quarantined, finalized origination-derived contract binding, finalizer arming, forced FIFO settlement, artifact-before-metadata publication, same-origin desktop proxy isolation, and secret-free public/static responses; setup-copy tests reject private runtime paths and copy a usable standalone package; desktop policies prove exact Studio-path IPC authorization and no renderer access to config contents; the browser story proves guide/config actions and user-triggered readiness recovery in both native shells' shared Studio.",
+  },
+  {
     id: "public.static-discovery-metadata",
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     platformOwner: "public-static-discovery",

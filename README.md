@@ -2,6 +2,8 @@
 
 wtfOS is a Tezos-connected community platform presented as a desktop OS at [wtfos.app](https://wtfos.app). It brings the WTF Gameshow, arcade, creator tools, media, marketplace, social surfaces, and wallet-aware profile system into one browser app.
 
+**Here to review Pasta Protocol? Start with the [Pasta review hub](pasta-protocol/README.md).** It maps the complete suite, local installer, source, contracts, tests, and known issues. You do not need to learn or run wtfOS to review the desktop tools.
+
 ## What Is In The App
 
 - wtfOS desktop shell with draggable windows, app icons, settings, and role-gated admin surfaces.

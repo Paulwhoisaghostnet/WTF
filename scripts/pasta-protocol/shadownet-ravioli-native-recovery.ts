@@ -1608,7 +1608,10 @@ function assertRavioliNativePublicPinDescriptor(input: {
   assert.equal(publicUrl.protocol, "https:", `${label} public gateway must use HTTPS`);
   assert.equal(publicUrl.search, "", `${label} public gateway URL may not contain a query`);
   assert.equal(publicUrl.hash, "", `${label} public gateway URL may not contain a fragment`);
-  assert.equal(publicUrl.pathname, `/ipfs/${input.proof.cid}`, `${label} public gateway path differs from its CID`);
+  const publicCidPath = decodeURIComponent(publicUrl.pathname)
+    .replace(/^\/ipfs\//i, "")
+    .replace(/^\/+/, "");
+  assert.equal(publicCidPath, input.proof.cid, `${label} public gateway path differs from its CID`);
   assert.equal(input.proof.publicGatewayVerified, true, `${label} was not public-gateway verified during recovery`);
   assert.equal(input.proof.byteLength, input.bytes.byteLength, `${label} receipt byte length drift`);
   assert.equal(input.proof.sha256, sha256(input.bytes), `${label} receipt SHA-256 drift`);

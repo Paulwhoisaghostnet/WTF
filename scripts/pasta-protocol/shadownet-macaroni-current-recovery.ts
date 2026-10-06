@@ -652,9 +652,9 @@ async function readRecoveredContent(ipfs: IpfsProofConfig): Promise<Array<
   typeof MACARONI_RECOVERED_CONTENT[number] & { bytes: Uint8Array; sources: string[] }
 >> {
   const configured = normalizeBase(ipfs.publicGatewayUrl);
-  const alternate = new URL(configured).hostname === "dweb.link"
-    ? "https://ipfs.io/ipfs"
-    : "https://dweb.link/ipfs";
+  const alternate = new URL(configured).hostname === "ipfs.fileship.xyz"
+    ? "https://dweb.link/ipfs"
+    : "https://ipfs.fileship.xyz";
   const output = [];
   for (const expected of MACARONI_RECOVERED_CONTENT) {
     const sources = [`${configured}/${expected.cid}`, `${alternate}/${expected.cid}`];
