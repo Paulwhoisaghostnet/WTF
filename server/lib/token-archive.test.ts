@@ -19,14 +19,14 @@ test("normalizeIpfsArchiveUrl maps IPFS URIs to archive gateway targets", () => 
   assert.deepEqual(normalizeIpfsArchiveUrl("ipfs://QmExample/artifact.png"), {
     cidPath: "QmExample/artifact.png",
     sourceUri: "ipfs://QmExample/artifact.png",
-    archiveUrl: "https://nftstorage.link/ipfs/QmExample/artifact.png",
+    archiveUrl: "https://ipfs.fileship.xyz/QmExample/artifact.png",
   });
   assert.deepEqual(
     normalizeIpfsArchiveUrl("https://gateway.pinata.cloud/ipfs/bafyExample/track.mp3?download=1"),
     {
       cidPath: "bafyExample/track.mp3",
       sourceUri: "https://gateway.pinata.cloud/ipfs/bafyExample/track.mp3?download=1",
-      archiveUrl: "https://nftstorage.link/ipfs/bafyExample/track.mp3",
+      archiveUrl: "https://ipfs.fileship.xyz/bafyExample/track.mp3",
     }
   );
 });
@@ -38,5 +38,5 @@ test("extractArchiveTargetFromMetadata prefers token artifact IPFS target", () =
     formats: [{ uri: "ipfs://bafy-audio/display.png", mime_type: "image/png" }],
   });
   assert.equal(target?.cidPath, "bafy-audio/track.mp3");
-  assert.equal(target?.archiveUrl, "https://nftstorage.link/ipfs/bafy-audio/track.mp3");
+  assert.equal(target?.archiveUrl, "https://ipfs.fileship.xyz/bafy-audio/track.mp3");
 });

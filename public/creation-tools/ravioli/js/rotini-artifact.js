@@ -139,13 +139,25 @@ main,canvas{width:100%;height:100%;display:block}aside{position:fixed;left:12px;
 <script>
 "use strict";
 const TOKEN=${escapeJson(config)};
+window.$alea = {
+  version: 2,
+  standard: "ALEATORY-001",
+  seed: TOKEN.seed,
+  tokenId: TOKEN.tokenId,
+  params: TOKEN.params || {},
+  traits: TOKEN.traits || [],
+  ready: function() { window.$aleaLoaded = true; }
+};
 const canvas=document.getElementById("art"),ctx=canvas.getContext("2d"),images=[];
 let pointer={x:0,y:0};
 function resize(){const ratio=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.max(1,Math.round(innerWidth*ratio));canvas.height=Math.max(1,Math.round(innerHeight*ratio));draw()}
 function draw(){if(!images.length)return;ctx.clearRect(0,0,canvas.width,canvas.height);const size=Math.min(canvas.width,canvas.height),left=(canvas.width-size)/2,top=(canvas.height-size)/2;images.forEach((image,index)=>{const depth=(index+1)/images.length,dx=pointer.x*depth*8,dy=pointer.y*depth*8;ctx.drawImage(image,left+dx,top+dy,size,size)})}
 addEventListener("pointermove",event=>{pointer={x:event.clientX/innerWidth-.5,y:event.clientY/innerHeight-.5};draw()});
 addEventListener("resize",resize);
-Promise.all(TOKEN.layers.map(layer=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{images.push(image);resolve()};image.onerror=reject;image.src=layer.path}))).then(resize);
+Promise.all(TOKEN.layers.map(layer=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{images.push(image);resolve()};image.onerror=reject;image.src=layer.path}))).then(()=>{
+  resize();
+  window.$alea.ready();
+});
 </script>
 </body>
 </html>`;

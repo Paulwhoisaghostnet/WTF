@@ -50,6 +50,9 @@ test("interactive ZIP contains a top-level runtime and no external dependencies"
   );
   const html = ascii(built.validation.files[0].data);
   assert.match(html, /<canvas id="art"/);
+  assert.match(html, /window\.\$alea/);
+  assert.match(html, /"ALEATORY-001"/);
+  assert.match(html, /\$alea\.ready\(\)/);
   assert.doesNotMatch(html, /https?:\/\//);
   assert.doesNotMatch(html, /\bfetch\s*\(/);
   assert.deepEqual(

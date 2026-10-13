@@ -787,6 +787,10 @@ export async function installMacaroniBrowserAdapters(
         };
       };
     }
+    if (!toolkit.estimate) toolkit.estimate = {};
+    toolkit.estimate.originate = async function () {
+      return { gasLimit: 100000, storageLimit: 5000, suggestedFeeMutez: 100000, burnFeeMutez: 50000 };
+    };
     md.ensureSessionNetwork = async function () { return md.getAccount(); };
     md.withRpcFallback = async function (fn) { return fn(); };
     md.withRpcReadFallback = async function (fn) { return fn(); };
@@ -809,6 +813,26 @@ export async function installMacaroniBrowserAdapters(
     }
     md.fetchOwnedTokenIds = async function (_network, contractAddress, holder) { return ownedIds(contractAddress, holder); };
     md.fetchMintedTokenIds = async function (_network, contractAddress, holder) { return ownedIds(contractAddress, holder); };
+    const reviewDialog = document.getElementById("transactionReviewDialog");
+    if (reviewDialog && typeof reviewDialog.showModal === "function") {
+      const originalShowModal = reviewDialog.showModal.bind(reviewDialog);
+      reviewDialog.showModal = function () {
+        originalShowModal();
+        queueMicrotask(() => {
+          const btn = document.getElementById("btnApproveTransaction");
+          if (btn) btn.click();
+        });
+      };
+      const observer = new MutationObserver(() => {
+        if (reviewDialog.open) {
+          queueMicrotask(() => {
+            const btn = document.getElementById("btnApproveTransaction");
+            if (btn) btn.click();
+          });
+        }
+      });
+      observer.observe(reviewDialog, { attributes: true, attributeFilter: ["open"] });
+    }
     window.__macaroniUiLiveAdaptersInstalled = true;
   })();` });
   await page.waitForFunction(() => (window as any).__macaroniUiLiveAdaptersInstalled === true);
@@ -828,7 +852,19 @@ export async function configureMacaroniStudio(
   publicGatewayUrl = "https://proof.invalid/ipfs",
 ): Promise<void> {
   await page.selectOption("#network", "shadownet");
+  if (await page.locator("#advancedOptions").count()) {
+    await page.evaluate(() => {
+      const advanced = document.getElementById("advancedOptions") as HTMLDetailsElement | null;
+      if (advanced) advanced.open = true;
+    });
+  }
   await page.selectOption("#contractVersion", "macaroni-editions-v2");
+  if (await page.locator("#legacyRiskAcknowledged").count()) {
+    await page.check("#legacyRiskAcknowledged");
+  }
+  if (await page.locator("#btnUseCompatibilityProfile").count()) {
+    await page.click("#btnUseCompatibilityProfile");
+  }
   await page.fill("#dropTitle", `Macaroni UI-LIVE ${runId}`);
   await page.fill("#dropSymbol", "MACUI");
   await page.fill("#dropDesc", "Actual Macaroni Studio blind-drop proof with an independently operated exported collector page.");
@@ -874,7 +910,19 @@ export async function configureMacaroniV1Studio(
   publicGatewayUrl = "https://proof.invalid/ipfs",
 ): Promise<void> {
   await page.selectOption("#network", "shadownet");
+  if (await page.locator("#advancedOptions").count()) {
+    await page.evaluate(() => {
+      const advanced = document.getElementById("advancedOptions") as HTMLDetailsElement | null;
+      if (advanced) advanced.open = true;
+    });
+  }
   await page.selectOption("#contractVersion", "macaroni-v1");
+  if (await page.locator("#legacyRiskAcknowledged").count()) {
+    await page.check("#legacyRiskAcknowledged");
+  }
+  if (await page.locator("#btnUseCompatibilityProfile").count()) {
+    await page.click("#btnUseCompatibilityProfile");
+  }
   await page.fill("#dropTitle", `Macaroni V1 UI-LIVE ${runId}`);
   await page.fill("#dropSymbol", "MACV1");
   await page.fill("#dropDesc", "Actual Macaroni V1 Studio and independently operated exported collector-page proof.");

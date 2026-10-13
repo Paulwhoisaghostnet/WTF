@@ -157,6 +157,19 @@ export async function createCompanionHttpServer({
         return;
       }
 
+      match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)\/stuck-work$/);
+      if (request.method === "GET" && match) {
+        const dropRef = decoded(match, 1);
+        const stuckItems = typeof projectService.listManualReviewWork === "function"
+          ? projectService.listManualReviewWork(dropRef)
+          : projectService.journal.listManualReviewWork(dropRef);
+        writeJson(response, 200, {
+          dropRef,
+          stuckItems,
+        }, origin);
+        return;
+      }
+
       match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)\/uploads\/([^/]+)$/);
       if (request.method === "PUT" && match) {
         writeJson(response, 201, await projectService.uploadArtifact({
