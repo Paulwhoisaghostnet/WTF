@@ -11389,3 +11389,13 @@
 **Why it mattered**: Test fixtures using Linux-incompatible stdout redirection or obsolete UI selectors/copy fail quality gates despite runtime code correctness. Rigorous preflight guards (like canvas emptiness checks) intentionally reject invalid or solid black generator templates, requiring realistic test fixtures.
 
 **Rule**: Always use temporary files (`mkdtempSync`) for OpenSSL certificate/key generation in test fixtures rather than concurrent `/dev/stdout` redirection. When creation tool settings reside in collapsed details disclosure panels or require profile application buttons, tests must expand details panels and trigger activation buttons. Test image fixtures for generative creation tools must supply visible, non-black colored pixels to satisfy canvas preflight assertions. Compute workflow timeout budgets with adequate headroom for high-density CI test runs.
+
+---
+
+## 2026-10-13 — Injected test hooks in deferred module scripts require explicit readiness synchronization
+
+**What happened**: `scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts` failed in CI with `page.evaluate: Error: recovery canonicalization test hook was not installed`. The fixture injected `window.__ravioliRecoveryTest` by appending it to `creation-tools/ravioli/js/studio.js` via Playwright route interception. However, `studio.js` is loaded as an ES module (`<script type="module">`), which executes deferred after HTML parsing. `openStudio` waited only for synchronous script globals (`window.MD` and `window.TZ`), occasionally returning before the deferred module finished evaluation under CI resource contention.
+
+**Why it mattered**: Tests asserting internal test hooks race against module evaluation if the fixture does not synchronize on the hook itself. When CI runners experience load, asynchronous module execution delays cause intermittent hook-not-found errors.
+
+**Rule**: In browser adapter test fixtures that inject custom test hooks or global APIs into deferred or module scripts via route interception, always explicitly wait for the hook's presence (`page.waitForFunction(() => Boolean(window.__hookName))`) before returning the mounted page fixture to the test runner.
