@@ -11379,3 +11379,13 @@
 **Why it mattered**: Import-time side effects break test harnesses before route assertions can run. Unhandled UI review dialogs hang headless browser flows indefinitely. Unprepared transient assets cause fresh-checkout CI runs to fail despite code correctness.
 
 **Rule**: Always defer storage directory creation to request time with lazy disk storage and respect `WTF_DATA_DIR` / `WTF_DATA_ROOT`. In browser adapter test fixtures, always hook modal review confirmation dialogs (`transactionReviewDialog`) so automated tests can authorize simulated wallet submissions. Unit test runners must ensure fresh-checkout prerequisites (like desktop asset preparation) are satisfied before executing policy suites.
+
+---
+
+## 2026-10-13 — OpenSSL test fixture cross-platform file handling, collapsed UI profile switching, and generative canvas preflight fixtures
+
+**What happened**: Five inventory Playwright tests failed in CI during route smoke: (1) `macaroni-v35-static-collector.spec.mjs` failed in OpenSSL key/cert generation because `-keyout /dev/stdout -out /dev/stdout` caused concurrent write conflicts on Linux; (2) `cobwebsaints-account.spec.mjs` failed trying to click link "Open Studio" (now labeled "Create a secure drop") and select `#contractVersion` without expanding collapsed `<details id="advancedOptions">` or clicking `#btnUseCompatibilityProfile`; (3) `gamma-wtfos.spec.mjs` failed clicking Porcupin setup button whose label shifted from "Own-node setup" to "Connect Porcupin"; (4) `pasta-protocol-publishing.spec.mjs` failed Rotini project publish because test fixture image was a 1x1 solid black pixel, triggering the new ALEATORY-001 blank/solid-black canvas preflight check; and (5) `domain-interoperability.spec.mjs` pasta publishing suite loop timed out after 60s under heavy CI runner load across 8 full-page navigations and 68 event handle posts.
+
+**Why it mattered**: Test fixtures using Linux-incompatible stdout redirection or obsolete UI selectors/copy fail quality gates despite runtime code correctness. Rigorous preflight guards (like canvas emptiness checks) intentionally reject invalid or solid black generator templates, requiring realistic test fixtures.
+
+**Rule**: Always use temporary files (`mkdtempSync`) for OpenSSL certificate/key generation in test fixtures rather than concurrent `/dev/stdout` redirection. When creation tool settings reside in collapsed details disclosure panels or require profile application buttons, tests must expand details panels and trigger activation buttons. Test image fixtures for generative creation tools must supply visible, non-black colored pixels to satisfy canvas preflight assertions. Compute workflow timeout budgets with adequate headroom for high-density CI test runs.

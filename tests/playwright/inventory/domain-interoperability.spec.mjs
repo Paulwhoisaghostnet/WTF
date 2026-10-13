@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { DOMAIN_WORKFLOWS } from "../../e2e/inventory/domain-workflows.mjs";
 
-const BASE_WORKFLOW_TIMEOUT_MS = 60_000;
-const WORKFLOW_OVERHEAD_MS = 20_000;
-const API_PROBE_BUDGET_MS = 400;
-const EVENT_HANDLE_BUDGET_MS = 100;
-const ROUTE_BUDGET_MS = 2_000;
+const BASE_WORKFLOW_TIMEOUT_MS = 90_000;
+const WORKFLOW_OVERHEAD_MS = 30_000;
+const API_PROBE_BUDGET_MS = 600;
+const EVENT_HANDLE_BUDGET_MS = 250;
+const ROUTE_BUDGET_MS = 5_000;
 
 function workflowTimeoutMs(workflow) {
   return Math.max(
