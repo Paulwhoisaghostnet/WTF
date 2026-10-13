@@ -275,7 +275,14 @@ async function originateCollection(provider, me, generatorUri, imageUri) {
     symbol: $("collSymbol").value.trim() || undefined,
     imageUri,
     relationship,
-    extra: { rotini: { generatorUri, mintModel: "collector-finalized-artifact-v2" } },
+    interfaces: ["TZIP-012", "TZIP-016", "TZIP-021", "ALEATORY-001"],
+    extra: {
+      rotini: {
+        generatorUri,
+        mintModel: "collector-finalized-artifact-v2",
+        standard: "ALEATORY-001",
+      },
+    },
   });
   log("pinning collection metadata…");
   const metaCid = await MD.pinJson(provider, metadata, "collection.json");
@@ -356,6 +363,7 @@ async function pinGeneratorManifest(provider, config, baseName, size, outputMode
   }
   const manifest = {
     schema: "pasta-rotini-generator@2",
+    standard: "ALEATORY-001",
     name: baseName,
     description: $("collDesc").value.trim() || undefined,
     creator,
@@ -364,6 +372,7 @@ async function pinGeneratorManifest(provider, config, baseName, size, outputMode
     outputMode,
     seedField: "pasta:seed",
     selection: "weighted-deterministic",
+    prng: "xmur3-sfc32",
     layers,
   };
   log("pinning generator manifest…");
@@ -375,6 +384,9 @@ async function publish() {
   try {
     if (!MD.getAccount()) throw new Error("connect your wallet first");
     if (state.editions.length === 0) throw new Error("generate a preview first");
+    if (state.editions[0]?.canvas && window.RotiniAleatory?.isBlankOrSolidBlackCanvas(state.editions[0].canvas)) {
+      throw new Error("preview canvas is blank or empty; ensure canvas draws visible pixels before publishing");
+    }
     const me = MD.getAccount();
     const provider = pinProvider();
     await MD.assertOperationSafety();

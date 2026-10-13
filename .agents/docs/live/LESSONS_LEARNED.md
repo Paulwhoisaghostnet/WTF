@@ -11357,3 +11357,14 @@
 **Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
 
 **Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.
+
+
+---
+
+## 2026-10-12 — Companion admin routing must delegate through service contracts and verify sandboxed socket lifecycle
+
+**What happened**: The new Macaroni V3.5 stuck-work endpoint `/v1/admin/projects/:dropRef/stuck-work` directly referenced an unimported, unprovided `journal` identifier inside `createCompanionHttpServer`, throwing a 500 ReferenceError instead of querying the journal. Concurrently, Rotini's interactive artifact generator required standard `ALEATORY-001` ambient `$alea` context and canvas pixel preflight to prevent deploying empty generative templates.
+
+**Why it mattered**: An admin inspection endpoint that crashes on unhandled service references leaves operators unable to diagnose manual-review items during a live drop. Similarly, interactive generator artifacts that omit standard parameter and ready-state hooks break marketplace interoperability and collector render guarantees.
+
+**Rule**: Always expose journal and datastore queries through the owning service class (`CompanionProjectService`) and test the HTTP adapter against that contract. All exported interactive generative artifacts must provide the standard `$alea` runtime context (`version: 2`, `standard: "ALEATORY-001"`, `ready()`), and generator preflight must reject blank or solid black canvas draws before on-chain commitment.

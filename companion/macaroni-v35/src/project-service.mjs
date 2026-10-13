@@ -895,4 +895,9 @@ export class CompanionProjectService {
       }[claim.state] || "Fulfillment is continuing.",
     };
   }
+
+  listManualReviewWork(dropRef) {
+    requireProject(this.journal, dropRef);
+    return this.journal.listManualReviewWork(dropRef);
+  }
 }

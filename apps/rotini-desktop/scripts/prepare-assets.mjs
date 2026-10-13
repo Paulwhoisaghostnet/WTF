@@ -23,6 +23,7 @@ const required = [
   "js/rotini-artifact.js",
   "js/rotini-mint.js",
   "js/pasta-foundation.js",
+  "js/aleatory/rotini-aleatory.js",
   "vendor/tezos.js",
   "vendor/octez-connect.js",
   "contract/pasta-generative-collection.contract.json",

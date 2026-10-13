@@ -1212,8 +1212,24 @@ export function openJournal(filePath) {
     return { project, confirmed: Number(counts.confirmed), secured: Number(counts.secured || 0), ready: Number(counts.ready || 0), attention: Number(work.attention) };
   }
 
+  function listManualReviewWork(dropRef) {
+    const rows = db.prepare(`SELECT id, drop_ref, work_type, state, last_error, payload_json, created_at, updated_at
+      FROM work_items WHERE drop_ref=? AND state='manual_review' ORDER BY id ASC`).all(dropRef);
+    return rows.map((r) => ({
+      id: r.id,
+      dropRef: r.drop_ref,
+      workType: r.work_type,
+      state: r.state,
+      lastError: r.last_error,
+      payload: JSON.parse(r.payload_json || "{}"),
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+  }
+
   return {
     db,
+    listManualReviewWork,
     createProject,
     getProject,
     listRunnableProjects,

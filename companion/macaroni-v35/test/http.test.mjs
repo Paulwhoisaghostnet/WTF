@@ -99,3 +99,51 @@ test("HTTP service enforces exact CORS, bearer admin auth, and secret-free respo
   assert.equal(blockedLeak.status, 500);
   assert.equal(JSON.stringify(await blockedLeak.json()).includes("must-not-leak"), false);
 });
+
+test("admin API exposes stuck manual_review work items for operator inspection", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "macaroni-stuck-http-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const token = "local-admin-token-with-more-than-32-bytes";
+  await writeFile(path.join(root, "admin.token"), token, { mode: 0o600 });
+  const journal = {
+    listManualReviewWork: (dropRef) => [
+      {
+        id: 1,
+        dropRef,
+        workType: "settle_claim",
+        state: "manual_review",
+        lastError: "Simulated ambiguous precondition failure",
+        payload: { claimId: 1 },
+      },
+    ],
+  };
+
+  const server = await createCompanionHttpServer({
+    config: {
+      adminTokenFile: path.join(root, "admin.token"),
+      allowedOrigins: ["http://127.0.0.1:30770"],
+      network: "shadownet",
+    },
+    doctor: { ready: true },
+    projectService: {
+      adminProject: () => ({ ok: true }),
+      journal,
+    },
+    watcher: {},
+    runtime: { wake: async () => undefined },
+    logger: { error: () => undefined },
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const address = server.address();
+  const res = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/stuck-work`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.dropRef, "stuck-drop");
+  assert.equal(data.stuckItems.length, 1);
+  assert.equal(data.stuckItems[0].state, "manual_review");
+  assert.equal(data.stuckItems[0].lastError, "Simulated ambiguous precondition failure");
+});
