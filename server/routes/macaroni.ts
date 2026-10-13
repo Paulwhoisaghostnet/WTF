@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Router, type NextFunction, type Request, type Response } from "express";
@@ -455,8 +455,28 @@ const tokenPreviewUpload = multer({
   },
 });
 
+function getV35PrivateAssetUploadDir(): string {
+  const dataRoot = process.env.WTF_DATA_DIR?.trim() || MEDIA_STAGING_DIR;
+  return dataRoot.endsWith("macaroni-v35-private-upload")
+    ? dataRoot
+    : path.join(dataRoot, "macaroni-v35-private-upload");
+}
+
 const v35PrivateAssetUpload = multer({
-  dest: path.join(MEDIA_STAGING_DIR, "macaroni-v35-private-upload"),
+  storage: multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      const targetDir = getV35PrivateAssetUploadDir();
+      try {
+        await mkdir(targetDir, { recursive: true });
+        cb(null, targetDir);
+      } catch (error) {
+        cb(error as Error, targetDir);
+      }
+    },
+    filename: (_req, file, cb) => {
+      cb(null, `${Date.now()}-${randomBytes(16).toString("hex")}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`);
+    },
+  }),
   limits: {
     fileSize: macaroniIpfsMaxBytes(),
     files: 3,

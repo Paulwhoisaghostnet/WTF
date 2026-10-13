@@ -3333,6 +3333,7 @@ async function pinAll() {
     $("pinBar").style.width = "100%";
     $("pinStatus").textContent = "all pinned ✓";
     renderTokens();
+    renderLaunchChecklist();
     log(`pinning complete: ${state.tokens.length} tokens`);
   } catch (e) {
     $("pinStatus").textContent = "error — see log";

@@ -6,7 +6,7 @@ const source = readFileSync("server/lib/tv-boot-backfill.ts", "utf8");
 
 function rogerBackfillBlock(): string {
   const start = source.indexOf("// 6) Roger Radio live Odysee channel.");
-  const end = source.indexOf("// 7) Dial-number pins.");
+  const end = source.indexOf("// 8) Dial-number pins.");
   assert.notEqual(start, -1, "Roger Radio backfill block must exist");
   assert.notEqual(end, -1, "dial pin block must follow Roger Radio backfill");
   return source.slice(start, end);

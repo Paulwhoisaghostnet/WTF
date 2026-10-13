@@ -11368,3 +11368,14 @@
 **Why it mattered**: An admin inspection endpoint that crashes on unhandled service references leaves operators unable to diagnose manual-review items during a live drop. Similarly, interactive generator artifacts that omit standard parameter and ready-state hooks break marketplace interoperability and collector render guarantees.
 
 **Rule**: Always expose journal and datastore queries through the owning service class (`CompanionProjectService`) and test the HTTP adapter against that contract. All exported interactive generative artifacts must provide the standard `$alea` runtime context (`version: 2`, `standard: "ALEATORY-001"`, `ready()`), and generator preflight must reject blank or solid black canvas draws before on-chain commitment.
+
+
+---
+
+## 2026-10-13 — Test-environment path hygiene, browser script module loading, and test-harness modal orchestration
+
+**What happened**: Multiple Quality Gate failures occurred across unit, policy, and UI-live suites: (1) `multer({ dest })` eagerly created directory `/mnt/wtf-data/uploads-staging/...` at module evaluation time, failing with `EACCES: permission denied` in unprivileged CI containers; (2) Rotini Studio referenced an ES module without `type="module"`, throwing browser `SyntaxError: Unexpected token 'export'`; (3) Macaroni Studio introduced a modal `<dialog id="transactionReviewDialog">` before wallet transactions, which blocked Playwright UI-live automation that expected synchronous progression from `#btnDeploy` to origination; (4) Desktop package policy tests failed in fresh checkouts because gitignored Electron desktop setup assets were not prepared before the aggregate unit test pass; and (5) Assertion drift occurred in Macaroni publish (`hasMultiEditions`), IPFS gateway default domain updates (`ipfs.fileship.xyz`), and section renumbering in TV boot backfill.
+
+**Why it mattered**: Import-time side effects break test harnesses before route assertions can run. Unhandled UI review dialogs hang headless browser flows indefinitely. Unprepared transient assets cause fresh-checkout CI runs to fail despite code correctness.
+
+**Rule**: Always defer storage directory creation to request time with lazy disk storage and respect `WTF_DATA_DIR` / `WTF_DATA_ROOT`. In browser adapter test fixtures, always hook modal review confirmation dialogs (`transactionReviewDialog`) so automated tests can authorize simulated wallet submissions. Unit test runners must ensure fresh-checkout prerequisites (like desktop asset preparation) are satisfied before executing policy suites.

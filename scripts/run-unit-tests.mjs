@@ -1,6 +1,20 @@
+import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+
+if (
+  !existsSync("apps/macaroni-desktop/companion/macaroni-v35/desktop-setup.cjs") ||
+  !existsSync("apps/macaroni-desktop/macaroni/contract/macaroni-v35.contract.json")
+) {
+  execFileSync(process.execPath, ["apps/macaroni-desktop/scripts/prepare-assets.mjs"], { stdio: "inherit" });
+}
+if (
+  !existsSync("apps/pasta-suite-desktop/companion/macaroni-v35/desktop-setup.cjs") ||
+  !existsSync("apps/pasta-suite-desktop/pasta/creation-tools/macaroni/contract/macaroni-v35.contract.json")
+) {
+  execFileSync(process.execPath, ["apps/pasta-suite-desktop/scripts/prepare-assets.mjs"], { stdio: "inherit" });
+}
 
 const ROOTS = ["client", "server", "shared", "extensions", "scripts", "tests/unit", "tests/e2e/inventory"];
 const DEDICATED_LANES = ["tests/playwright", "tests/e2e/puppets", "tests/load"];
