@@ -11952,3 +11952,27 @@
 **Correction**: The existing production smoke now scrolls the asserted progress row and workspace file control into view before capturing the viewport. Capturing an oversized element directly can include unpainted areas outside the shell’s clipped viewport.
 
 **Rule**: Match visual evidence to the claim being reviewed. A shell screenshot alone does not show the content of a successful app workflow.
+
+## 2026-10-18 — Shell stories must follow the current gameshow entry points
+
+**What happened**: Both main Quality runs completed with 731 passing inventory checks and two failing Gamma stories. The host story expected the legacy contestant table on Control Board's default tab, now Run Show. The contestant story expected the old round-card surface instead of the new contestant desk. An initial test correction also guessed `/paint` rather than using Broot's registered `/tools/broot` route.
+
+**Correction and verification**: Updated the two existing stories with current stage fixtures. The host story verifies its cue and run sheet, then explicitly opens Cohort. The contestant story verifies desk/detail content, Gamma presentation, and return, rewards, and assigned-tool navigation. Both affected stories pass in focused Chromium runs; the complete inventory CI rerun remains a separate pending gate. No runtime behavior or authorization was changed. See `WTF-BB-681`.
+
+**Rule**: When changing a feature's default entry point, update the existing shell integration stories as well as focused feature tests. Preserve assertions for retained legacy controls through their actual navigation. Resolve tool destinations from the canonical registry, and distinguish focused proof from a green complete suite.
+
+## 2026-10-18 — Private subdomains must cross the actual AT edge
+
+**What happened**: The production page wizard saved and published a private page, but its URL failed at TLS. Wildcard DNS correctly targeted the AT server, whose deployed gate recognized only PDS handles and whose wildcard proxy sent every path to PDS. Main-app deployment and local HTTP/browser proofs had not exercised this separate serving tier.
+
+**Correction and verification**: Preserved wildcard DNS and every existing AT/PDS route. The edge now accepts the application's registered-host decision as a TLS fallback and sends only `/_private/*` to the application over private-network HTTPS with verified `wtfos.app` SNI and the original Host. Two Node policy tests include five Python gate cases; installed Caddy adaptation/validation and baseline comparison prove the narrow route addition. Activation preserved bind-mounted file inodes, retained a backup, and matched reviewed source hashes. Public TLS and anonymous private GET denial (401) then passed. The subsequent browser POST exposed a separate application CORS rejection tracked by `WTF-BB-682`; positive private access still awaited that correction. The public-renderer scope of `WTF-BB-266` remains open.
+
+**Rule**: Follow DNS through the actual deployed edge before claiming a hosted URL works. Preserve upstream TLS validation, host identity, and independent session authorization. Back up and update bind-mounted configuration in place, and distinguish TLS reachability, anonymous denial, authorized browser access, and public rendering as separate proofs.
+
+## 2026-10-18 — Native private-page handoffs need the real referrer and CORS stack
+
+**What happened**: After TLS was repaired, production rejected the private-page form with `Origin not allowed`. Chromium's native cross-origin POST sent literal `Origin: null` and no referrer because the source page used Helmet's `Referrer-Policy: no-referrer`. Earlier direct HTTP and browser API posts had bypassed that navigation behavior.
+
+**Correction and verification**: The application permits only the exact null-Origin `POST /_private/access` on an existing classified user-site host to reach signed-ticket authorization, without emitting CORS origin or credential response headers. It does not permit unrelated origins, paths, methods, or platform/infra/malformed hosts. The existing host/page-bound ticket, current session, and owner/admin checks remain unchanged. CORS/Macaroni tests pass 29/29; real PostgreSQL/Chromium private-page tests pass 3/3 with no skips, including native no-referrer form navigation, a valid ticket's 303 and interactive page, and invalid-ticket 401. Production deployment and final private access proof remain pending. See `WTF-BB-682`.
+
+**Rule**: Test cross-domain navigation through the actual Helmet and CORS middleware with a real native form. A ticket-authenticated navigation exception must stay exact and must not enable cross-origin JavaScript access or replace the ticket/session authority.

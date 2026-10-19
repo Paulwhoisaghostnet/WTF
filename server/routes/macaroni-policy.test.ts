@@ -696,7 +696,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   const revealAuthSource = readFileSync("server/features/macaroni/reveal-auth.ts", "utf8");
   const routeSource = readFileSync("server/routes/macaroni.ts", "utf8");
   const schemaSource = readFileSync("shared/schema-macaroni.ts", "utf8");
-  const appSource = readFileSync("server/app.ts", "utf8");
+  const corsSource = readFileSync("server/lib/cors-origins.ts", "utf8");
   const compiledTemplate = JSON.parse(
     readFileSync("public/creation-tools/macaroni/contract/macaroni-v3.template.json", "utf8")
   );
@@ -775,10 +775,10 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(revealServiceSource, /contract\.methodsObject\.reveal_tokens_v3\(batch\)\.send\(\)/);
   assert.match(revealServiceSource, /export async function requestMacaroniReveal/);
   assert.match(schemaSource, /export const macaroniRevealJobs = pgTable/);
-  assert.match(appSource, /function shouldAllowMacaroniRevealOrigin/);
-  assert.match(appSource, /path === "\/api\/macaroni\/reveal-request"/);
-  assert.match(appSource, /"127\.0\.0\.1", "localhost", "::1"/);
-  assert.match(appSource, /callback\(null, \{ origin: true, credentials: false \}\)/);
+  assert.match(corsSource, /function shouldAllowMacaroniRevealOrigin/);
+  assert.match(corsSource, /path === "\/api\/macaroni\/reveal-request"/);
+  assert.match(corsSource, /"127\.0\.0\.1", "localhost", "::1"/);
+  assert.match(corsSource, /callback\(null, \{ origin: true, credentials: false \}\)/);
 
   assert.match(compileSource, /scenarioName = "deploy_macaroni_blind_mint_v3_template"/);
   assert.equal(compiledTemplate.templateVersion, "macaroni-commitment-v3");

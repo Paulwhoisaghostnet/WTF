@@ -5,6 +5,8 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import pg from "pg";
 import express from "express";
+import cors from "cors";
+import helmet from "helmet";
 import { chromium } from "@playwright/test";
 import { servePrivateUserSite } from "./private-page-http";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -12,6 +14,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { createPrivatePageAccess, readPrivatePageTicket, signPrivatePageTicket } from "./private-pages";
 import { publicUserSitePages } from "./policy";
+import { corsOptionsFor } from "../../lib/cors-origins";
 
 test("private page tickets are signed, scoped, expire with the source session, and reject tampering", () => {
   const value = { version: 1 as const, sid: "test-session", userId: 5, host: "player.wtfos.me", slug: "work", expiresAt: 1000 };
@@ -76,7 +79,16 @@ test("private page publishing persists only privately; owner/admin reads require
     const publication = await access.read(site.host, "work", handoff.token);
     assert.equal(publication.page.privatePublishedHtml, privateHtml);
     const app = express();
+    // Production's Helmet default sends Referrer-Policy: no-referrer. Only the
+    // CSP's destination/HTTPS upgrade changes here to use the local HTTP fixture.
+    app.use(helmet({ contentSecurityPolicy: false }));
+    app.use(cors(corsOptionsFor(new Set(["https://wtfos.app"]))));
     app.use(express.urlencoded({ extended: false }));
+    app.get("/handoff-source", (_req, res) => {
+      const port = (server.address() as { port: number }).port;
+      res.setHeader("Content-Security-Policy", `default-src 'none'; form-action 'self' http://localhost:${port}`);
+      res.type("html").send(`<form method="POST" action="http://localhost:${port}/_private/access"><input type="hidden" name="token" value="${handoff.token}"><button>Open private work</button></form>`);
+    });
     app.use((req, res, next) => { void servePrivateUserSite(req, res, String(req.headers["x-forwarded-host"] || req.hostname), access).catch(next); });
     const server = app.listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -86,6 +98,9 @@ test("private page publishing persists only privately; owner/admin reads require
       const denied = await fetch(`${origin}/_private/work`, { headers: { "X-Forwarded-Host": site.host } });
       assert.equal(denied.status, 401);
       assert.doesNotMatch(await denied.text(), /saved-secret/);
+      const invalidHandoff = await fetch(`${origin}/_private/access`, { method: "POST", headers: { Origin: "null", "X-Forwarded-Host": site.host, "Content-Type": "application/x-www-form-urlencoded" }, body: "token=invalid" });
+      assert.equal(invalidHandoff.status, 401);
+      assert.doesNotMatch(await invalidHandoff.text(), /saved-secret/);
       const accepted = await fetch(`${origin}/_private/access`, { method: "POST", redirect: "manual", headers: { "X-Forwarded-Host": site.host, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: handoff.token }).toString() });
       assert.equal(accepted.status, 303);
       assert.equal(accepted.headers.get("location"), "/_private/work");
@@ -104,9 +119,17 @@ test("private page publishing persists only privately; owner/admin reads require
         const context = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-Host": site.host } });
         let externalRequests = 0;
         await context.route("https://example.invalid/**", async (route) => { externalRequests += 1; await route.abort(); });
-        await context.request.post(`${origin}/_private/access`, { form: { token: handoff.token }, maxRedirects: 0 });
         const page = await context.newPage();
-        await page.goto(`${origin}/_private/work`);
+        const sourceResponse = await page.goto(`${origin}/handoff-source`);
+        assert.equal(sourceResponse!.headers()["referrer-policy"], "no-referrer");
+        const posted = page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/_private/access");
+        await page.getByRole("button", { name: "Open private work", exact: true }).click();
+        const handoffResponse = await posted;
+        assert.equal(await handoffResponse.request().headerValue("origin"), "null");
+        assert.equal(await handoffResponse.request().headerValue("referer"), null);
+        assert.equal(handoffResponse.status(), 303);
+        assert.equal(await handoffResponse.headerValue("access-control-allow-origin"), null);
+        assert.equal(await handoffResponse.headerValue("access-control-allow-credentials"), null);
         await page.getByRole("button", { name: "Paint", exact: true }).click();
         await page.waitForFunction(() => document.body.dataset.network === "blocked");
         assert.equal(await page.locator("#result").textContent(), "Painted");

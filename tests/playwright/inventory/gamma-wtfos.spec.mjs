@@ -5024,6 +5024,29 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
         ]),
       });
     });
+    await page.route("**/api/gameshow/seasons/1/stage", async (route) => {
+      await route.fulfill({
+        json: {
+          season: { id: 1, name: "Harness Season", number: 3, status: "active", description: null, anteWtfRequired: "0" },
+          currentRoundId: 1,
+          canManage: true,
+          rounds: [{
+            id: 1, seasonId: 1, number: 1, name: "Harness Round", status: "active",
+            description: "Host console presentation fixture.", rules: "Follow the published task instructions.",
+            startDate: null, endDate: null, submissionCount: 0, pendingCount: 0,
+            challenges: [{
+              id: 42, roundId: 1, title: "Gamma containment proof", status: "active",
+              description: "Keep the host console inside Gamma.", criteria: "The current cue and run sheet are visible.",
+              rules: null, deadline: null, tools: [], tokenMonitor: null,
+              rewardXp: 0, rewardAmountWtf: 0, submissionCount: 0, pendingCount: 0,
+            }],
+          }],
+          me: { contestant: null, submissions: [], canSubmit: false, blockers: [] },
+          contestants: [{ id: 1, userId: 12, username: "gamma-builder", displayName: "Gamma Builder", status: "active" }],
+          submissions: [],
+        },
+      });
+    });
     await page.route("**/api/control-board/feed?*", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -5081,12 +5104,22 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       "/control-board",
       '[data-control-board-surface="gameshow-admin"]',
       "data-control-board-presentation-host",
-      ["season-row", "tab-body", "contestant-table"]
+      ["season-row", "tab-body"]
     );
+    await expect(page.locator('[data-gamma-application-content] [data-control-board-region="tab-body"]')).toHaveAttribute(
+      "data-control-board-active-tab",
+      "show"
+    );
+    const hostConsole = page.getByRole("region", { name: "Host show console" });
+    await expect(hostConsole.getByRole("heading", { name: "Run the show", exact: true })).toBeVisible();
+    await expect(hostConsole.getByRole("heading", { name: "Round 1: Harness Round", exact: true })).toBeVisible();
+    await expect(hostConsole.getByRole("region", { name: "Host run sheet" })).toContainText("Gamma containment proof");
+    await page.getByRole("tab", { name: "Cohort", exact: true }).click();
     await expect(page.locator('[data-gamma-application-content] [data-control-board-region="tab-body"]')).toHaveAttribute(
       "data-control-board-active-tab",
       "cohort"
     );
+    await expect(page.locator('[data-gamma-application-content] [data-control-board-region="contestant-table"]')).toContainText("Gamma Builder");
 
     await expectAdminNativeRoute(
       "/backup-manager",
@@ -6453,41 +6486,52 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       name: "Gamma Season",
       description: "A shell-contained season that still uses shared gameshow APIs.",
       status: "active",
+      anteWtfRequired: "0",
     };
     const gammaRound = {
       id: 901,
+      seasonId: 707,
       number: 3,
       name: "Gamma Round",
       description: "The Count checks whether rounds stay in the Gamma shell.",
       rules: "Preserve round logic and only adapt presentation chrome.",
       status: "active",
-      startingContestants: 12,
-      eliminatedAtEnd: 2,
-      rewardXp: 120,
-      requiredPlatforms: ["WTFOS"],
-      prizes: ["Gamma trophy"],
-      previousWinners: ["Genesis collector"],
-      leaderboard: [{ label: "the-count", score: 999 }],
-      eliminatedContestants: ["classic fallback"],
-      calendarEvent: {
-        startsAt: "2026-06-28T12:00:00.000Z",
-        endsAt: "2026-06-28T13:00:00.000Z",
-      },
+      startDate: null,
+      endDate: null,
+      submissionCount: 0,
+      pendingCount: 0,
     };
     const gammaChallenge = {
       id: 801,
       roundId: 901,
       title: "Gamma round challenge",
       description: "Inspect the round detail without leaving Gamma.",
-      criteria: "Open the challenge from the shared round detail app.",
+      criteria: "Read the task and open its assigned canvas inside Gamma.",
       rules: "No app logic forks.",
       status: "active",
-      rewardAmountWtf: 4,
-      rewardXp: 80,
+      tools: ["paint"],
+      tokenMonitor: null,
+      deadline: null,
+      rewardAmountWtf: 0,
+      rewardXp: 0,
+      submissionCount: 0,
+      pendingCount: 0,
+    };
+    const gammaStage = {
+      season: gammaSeason,
+      rounds: [{ ...gammaRound, challenges: [gammaChallenge] }],
+      currentRoundId: gammaRound.id,
+      canManage: true,
+      me: { contestant: null, submissions: [], canSubmit: false, blockers: [] },
+      contestants: [],
+      submissions: [],
     };
 
     await page.route("**/api/seasons", async (route) => {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify([gammaSeason]) });
+    });
+    await page.route("**/api/gameshow/seasons/707/stage", async (route) => {
+      await route.fulfill({ json: gammaStage });
     });
     await page.route("**/api/rounds**", async (route) => {
       const url = new URL(route.request().url());
@@ -6510,99 +6554,61 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       await route.continue();
     });
 
-    await page.goto("/gamma/rounds", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/rounds");
-    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
-
-    const roundsSurface = page.locator('[data-gamma-application-content] [data-rounds-surface="rounds"]');
-    await expect(roundsSurface).toHaveAttribute("data-rounds-presentation-host", "gamma");
-    await expect(roundsSurface.locator('[data-rounds-region="season-panel"]')).toContainText("Gamma Season");
-    await expect(roundsSurface.locator('[data-rounds-region="launch-board"]')).toContainText("Gamma Season");
-    await expect(roundsSurface.locator('[data-rounds-region="round-card"]').first()).toContainText("Gamma Round");
-    await expect(roundsSurface.locator('[data-rounds-region="info-meta"]').first()).toContainText("Competing");
-    await expect(roundsSurface.locator('[data-rounds-region="mini-list"]').first()).toContainText("Gamma trophy");
-
-    const roundsMetrics = await roundsSurface.evaluate((surface) => {
-      const read = (selector) => {
-        const node = surface.querySelector(selector);
-        if (!node) return null;
-        const style = window.getComputedStyle(node);
-        return {
-          backgroundImage: style.backgroundImage,
-          borderColor: style.borderTopColor,
-          borderWidth: Number.parseFloat(style.borderTopWidth || "0"),
-          boxShadow: style.boxShadow,
-          fontFamily: style.fontFamily,
-          radius: Number.parseFloat(style.borderTopLeftRadius || "0"),
+    async function expectContestantDesk() {
+      const desk = page.locator('[data-gamma-application-content] [data-testid="contestant-desk"]');
+      await expect(desk).toBeVisible();
+      await expect(desk).toHaveAttribute("data-gameshow-presentation-host", "gamma");
+      await expect(desk).toContainText("Season 12: Gamma Season");
+      const cue = desk.getByRole("region", { name: "Current host cue" });
+      await expect(cue.getByRole("heading", { name: "Round 3: Gamma Round", exact: true })).toBeVisible();
+      await expect(cue.getByRole("status")).toHaveText("Open for play");
+      await expect(cue).toContainText(gammaRound.rules);
+      const challenge = desk.getByTestId("contestant-challenge-801");
+      await expect(challenge.getByRole("heading", { name: gammaChallenge.title, exact: true })).toBeVisible();
+      await expect(challenge).toContainText(gammaChallenge.criteria);
+      await expect(challenge.getByRole("button", { name: "Open Broot canvas & paint", exact: true })).toBeEnabled();
+      await expect(desk.getByTestId("contestant-workspace")).toBeVisible();
+      const metrics = await desk.evaluate((surface) => {
+        const read = (node) => {
+          const style = window.getComputedStyle(node);
+          return {
+            backgroundImage: style.backgroundImage,
+            borderWidth: Number.parseFloat(style.borderTopWidth || "0"),
+            boxShadow: style.boxShadow,
+            radius: Number.parseFloat(style.borderTopLeftRadius || "0"),
+          };
         };
-      };
-      const surfaceStyle = window.getComputedStyle(surface);
-      return {
-        surfaceFontFamily: surfaceStyle.fontFamily,
-        season: read('[data-rounds-region="season-panel"]'),
-        launch: read('[data-rounds-region="launch-board"]'),
-        metric: read('[data-rounds-region="launch-metric"]'),
-        card: read('[data-rounds-region="round-card"]'),
-        infoCard: read('[data-rounds-region="info-card"]'),
-        infoMeta: read('[data-rounds-region="info-meta"]'),
-        status: read('[data-rounds-region="status-badge"]'),
-      };
-    });
-    expect(roundsMetrics.surfaceFontFamily.toLowerCase()).toContain("inter");
-    for (const metrics of Object.values(roundsMetrics).filter((entry) => typeof entry === "object")) {
-      expect(metrics?.backgroundImage).toBe("none");
-      expect(metrics?.boxShadow).toBe("none");
-      expect(metrics?.borderWidth).toBeLessThanOrEqual(1);
-      expect(metrics?.radius).toBeLessThanOrEqual(6);
+        return {
+          fontFamily: window.getComputedStyle(surface).fontFamily,
+          regions: [surface, ...surface.querySelectorAll('section[aria-label="Current host cue"], [data-testid="contestant-challenge-801"], [data-testid="contestant-workspace"], [data-gameshow-tool="paint"]')].map(read),
+        };
+      });
+      expect(metrics.fontFamily.toLowerCase()).toContain("inter");
+      for (const region of metrics.regions) {
+        expect(region.backgroundImage).toBe("none");
+        expect(region.boxShadow).toBe("none");
+        expect(region.borderWidth).toBeLessThanOrEqual(1);
+        expect(region.radius).toBeLessThanOrEqual(6);
+      }
+      return desk;
     }
-    expect(roundsMetrics.status?.borderColor).toMatch(/rgb\((198|214),\s*255,\s*(63|79)\)/);
 
-    await roundsSurface.getByRole("button", { name: "Side Quests" }).click();
-    await expect(page).toHaveURL(/\/gamma\/side-quests$/);
-    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
-
-    await page.goto("/gamma/rounds", { waitUntil: "domcontentloaded" });
-    await page.locator('[data-gamma-application-content] [data-rounds-region="round-card"]').first().click();
+    await gotoGammaRoute(page, "/rounds");
+    const roundsSurface = await expectContestantDesk();
+    await expect(roundsSurface.getByRole("region", { name: "Show run sheet" })).toContainText("Gamma Round");
+    await roundsSurface.getByRole("button", { name: "Read round 3", exact: true }).click();
     await expect(page).toHaveURL(/\/gamma\/rounds\/901$/);
-    await expect(page.locator("[data-gamma-workspace]")).toHaveAttribute("data-gamma-route", "/rounds/901");
-    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await expectGammaRouteReady(page, "/rounds/901");
+    const detailSurface = await expectContestantDesk();
+    await detailSurface.getByRole("button", { name: "Return to contestant desk", exact: true }).click();
+    await expect(page).toHaveURL(/\/gamma\/rounds\?seasonId=707$/);
+    await expectGammaRouteReady(page, "/rounds");
+    await roundsSurface.getByRole("button", { name: "Open my rewards & activity", exact: true }).click();
+    await expectGammaRouteReady(page, "/mission-control");
 
-    const detailSurface = page.locator('[data-gamma-application-content] [data-rounds-surface="round-detail"]');
-    await expect(detailSurface).toHaveAttribute("data-rounds-presentation-host", "gamma");
-    await expect(detailSurface.locator('[data-rounds-region="info-card"]')).toContainText("Gamma Round");
-    await expect(detailSurface.locator('[data-rounds-region="challenge-card"]')).toContainText("Gamma round challenge");
-
-    const detailMetrics = await detailSurface.evaluate((surface) => {
-      const read = (selector) => {
-        const node = surface.querySelector(selector);
-        if (!node) return null;
-        const style = window.getComputedStyle(node);
-        return {
-          backgroundImage: style.backgroundImage,
-          borderWidth: Number.parseFloat(style.borderTopWidth || "0"),
-          boxShadow: style.boxShadow,
-          radius: Number.parseFloat(style.borderTopLeftRadius || "0"),
-        };
-      };
-      return {
-        infoCard: read('[data-rounds-region="info-card"]'),
-        infoMeta: read('[data-rounds-region="info-meta"]'),
-        challengeCard: read('[data-rounds-region="challenge-card"]'),
-      };
-    });
-    for (const metrics of Object.values(detailMetrics)) {
-      expect(metrics?.backgroundImage).toBe("none");
-      expect(metrics?.boxShadow).toBe("none");
-      expect(metrics?.borderWidth).toBeLessThanOrEqual(1);
-      expect(metrics?.radius).toBeLessThanOrEqual(6);
-    }
-
-    await detailSurface.getByRole("button", { name: "View Challenge" }).click();
-    await expect(page).toHaveURL(/\/gamma\/challenges$/);
-    await expect(page.locator("[data-gamma-wtfos]")).toBeVisible();
-    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await gotoGammaRoute(page, "/rounds/901");
+    await (await expectContestantDesk()).getByTestId("contestant-challenge-801").getByRole("button", { name: "Open Broot canvas & paint", exact: true }).click();
+    await expectGammaRouteReady(page, "/tools/broot");
   });
 
   test("hosts remaining gameshow native routes in the Gamma presentation style", async ({ page, request }) => {

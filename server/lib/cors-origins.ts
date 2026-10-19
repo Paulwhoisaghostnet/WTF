@@ -4,6 +4,9 @@ import {
   WTFOS_PLATFORM_DOMAIN,
   WTFOS_PLATFORM_ORIGIN,
 } from "@shared/platform-branding";
+import type cors from "cors";
+import { classifyUserSiteHost } from "../features/wtf-sites/policy";
+import { getSpineConfig } from "../features/atproto-spine/config";
 
 type EnvLike = Record<string, string | undefined>;
 
@@ -78,4 +81,96 @@ export function shouldAllowNullOriginArcadeSource(
   path: string
 ): boolean {
   return origin === "null" && isArcadeSourceAssetPath(path);
+}
+
+export function isPrivatePageFormHandoff(input: {
+  origin: string | undefined;
+  method: string;
+  path: string;
+  host: string;
+  networkDomain: string;
+}): boolean {
+  return input.origin === "null" && input.method === "POST" && input.path === "/_private/access"
+    && classifyUserSiteHost(input.host, input.networkDomain).isUserSiteHost;
+}
+
+function requestPath(req: any): string {
+  const rawUrl = String(req.originalUrl || req.url || req.path || "");
+  return rawUrl.split("?", 1)[0] || rawUrl;
+}
+
+function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: string): boolean {
+  if (path === "/api/macaroni/reveal-request") return true;
+  if (!origin || ![
+    "/api/macaroni/reveal-operator",
+    "/api/macaroni/reveal-automation",
+    "/api/macaroni/reveal-automation/challenge",
+  ].includes(path)) return false;
+  try {
+    const url = new URL(origin);
+    return url.protocol === "http:" && ["127.0.0.1", "localhost", "::1"].includes(url.hostname);
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Shared by the app and HTTP tests so production middleware order is exercised. */
+export function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
+  const arcadeSourceNullOriginOptions: Parameters<typeof cors>[0] = {
+    origin: "*",
+    credentials: false,
+  };
+  const privatePageFormOptions: Parameters<typeof cors>[0] = {
+    // A native form navigation needs no CORS read permission. The signed ticket
+    // still binds the destination host/page to a live owner/admin session.
+    origin: false,
+    credentials: false,
+  };
+  const isPrivateHandoff = (req: any) => isPrivatePageFormHandoff({
+    origin: req.headers.origin,
+    method: req.method,
+    path: requestPath(req),
+    host: String(req.headers["x-forwarded-host"] || req.headers.host || req.hostname || ""),
+    networkDomain: getSpineConfig().networkDomain,
+  });
+
+  if (allowedOrigins.size === 0) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "[cors] No allowed origins resolved in production. Set PUBLIC_SITE_URL or CORS_ALLOWED_ORIGINS before boot."
+      );
+    }
+    console.warn("[cors] No allowed origins resolved; allowing all origins outside production.");
+    const permissiveOptions: Parameters<typeof cors>[0] = { origin: true, credentials: true };
+    return (req, callback) => {
+      if (isPrivateHandoff(req)) return callback(null, privatePageFormOptions);
+      if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
+        return callback(null, arcadeSourceNullOriginOptions);
+      }
+      callback(null, permissiveOptions);
+    };
+  }
+
+  const protectedOptions: Parameters<typeof cors>[0] = {
+    credentials: true,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
+  };
+
+  return (req, callback) => {
+    if (isPrivateHandoff(req)) return callback(null, privatePageFormOptions);
+    if (shouldAllowMacaroniRevealOrigin(req.headers.origin, requestPath(req))) {
+      return callback(null, { origin: true, credentials: false });
+    }
+    if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
+      return callback(null, arcadeSourceNullOriginOptions);
+    }
+    callback(null, protectedOptions);
+  };
 }

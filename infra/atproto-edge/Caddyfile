@@ -1,0 +1,124 @@
+# wtfOS AT public TLS front (Stage 2) — AT box edge. On-demand Let's Encrypt TLS
+# for every wtfos.me host + handle, gated by the ask endpoint (only infra hosts +
+# registered handles get certs). Reverse-proxies to the PRIVATE PDS/PLC ports on
+# 10.0.0.3; raw ports stay private, only Caddy is public on 80/443.
+{
+	on_demand_tls {
+		ask http://127.0.0.1:9119/allow
+	}
+}
+
+(wtfos_pds_site) {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws {args[0]}
+	reverse_proxy {args[0]} {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3000
+}
+www.wtfos.me {
+	tls {
+		on_demand
+	}
+	redir https://wtfos.me{uri} permanent
+}
+pds.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3000
+}
+social.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3001
+}
+commerce.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3002
+}
+media.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3003
+}
+arcade.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3004
+}
+tezos.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3005
+}
+ops.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3006
+}
+os.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3007
+}
+users.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3008
+}
+private.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3009
+}
+plc.wtfos.me {
+	import wtfos_pds_site 10.0.0.3:3010
+}
+# Account management UI (static SPA). MUST precede the *.wtfos.me wildcard so the
+# PDS catch-all does not swallow it. On-demand TLS (ask-gate allows account.wtfos.me).
+account.wtfos.me {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+	root * /srv/account-ui
+	try_files {path} /index.html
+	file_server
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Cache-Control "no-cache"
+	}
+}
+
+*.wtfos.me {
+	# Private pages keep session authorization in the kernel. Reach its existing
+	# HTTPS listener over the private network; retain the user's site Host while
+	# verifying the upstream certificate against the canonical app hostname.
+	handle /_private/* {
+		reverse_proxy https://10.0.0.2:443 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				tls_server_name wtfos.app
+			}
+		}
+	}
+
+	# Preserve the existing public PDS/AT route for every other path.
+	import wtfos_pds_site 10.0.0.3:3000
+}
+
+# Indigo relay firehose (Stage 5) — host-net relay on :2470. on-demand TLS (ask-gate allows relay.wtfos.me).
+relay.wtfos.me {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @ws 127.0.0.1:2470
+	reverse_proxy 127.0.0.1:2470 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

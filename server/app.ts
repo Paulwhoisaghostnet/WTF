@@ -12,7 +12,7 @@ import {
 import { createRateLimit } from "./lib/create-rate-limit";
 import {
   allowedOriginsForRuntime,
-  shouldAllowNullOriginArcadeSource,
+  corsOptionsFor,
 } from "./lib/cors-origins";
 import { csrfProtection } from "./lib/csrf";
 import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
@@ -126,71 +126,6 @@ function sessionOrIpRateLimitKey(req: Request): string {
     return `user:${Number(userId)}`;
   }
   return req.ip || String(req.headers["x-forwarded-for"] || "") || "anonymous";
-}
-
-function requestPath(req: any): string {
-  const rawUrl = String(req.originalUrl || req.url || req.path || "");
-  return rawUrl.split("?", 1)[0] || rawUrl;
-}
-
-function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: string): boolean {
-  if (path === "/api/macaroni/reveal-request") return true;
-  if (!origin || ![
-    "/api/macaroni/reveal-operator",
-    "/api/macaroni/reveal-automation",
-    "/api/macaroni/reveal-automation/challenge",
-  ].includes(path)) return false;
-  try {
-    const url = new URL(origin);
-    return url.protocol === "http:" && ["127.0.0.1", "localhost", "::1"].includes(url.hostname);
-  } catch (_) {
-    return false;
-  }
-}
-
-function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof cors>[0] {
-  const arcadeSourceNullOriginOptions: Parameters<typeof cors>[0] = {
-    origin: "*",
-    credentials: false,
-  };
-
-  if (allowedOrigins.size === 0) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "[cors] No allowed origins resolved in production. Set PUBLIC_SITE_URL or CORS_ALLOWED_ORIGINS before boot."
-      );
-    }
-    console.warn("[cors] No allowed origins resolved; allowing all origins outside production.");
-    const permissiveOptions: Parameters<typeof cors>[0] = { origin: true, credentials: true };
-    return (req, callback) => {
-      if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
-        return callback(null, arcadeSourceNullOriginOptions);
-      }
-      callback(null, permissiveOptions);
-    };
-  }
-
-  const protectedOptions: Parameters<typeof cors>[0] = {
-    credentials: true,
-    origin: (
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void
-    ) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.has(origin)) return callback(null, true);
-      return callback(new Error(`Origin not allowed by CORS: ${origin}`));
-    },
-  };
-
-  return (req, callback) => {
-    if (shouldAllowMacaroniRevealOrigin(req.headers.origin, requestPath(req))) {
-      return callback(null, { origin: true, credentials: false });
-    }
-    if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {
-      return callback(null, arcadeSourceNullOriginOptions);
-    }
-    callback(null, protectedOptions);
-  };
 }
 
 export async function createApp() {
