@@ -997,6 +997,7 @@ async function openStudio(
   server: Awaited<ReturnType<typeof startPastaUiLiveLoopbackServer>>,
   options: {
     exposeRecoveryInternals?: boolean;
+    beforeRecoveryHook?: (page: Page) => Promise<void>;
     getPins?: () => readonly FakePinRecord[];
   } = {},
 ) {
@@ -1013,14 +1014,29 @@ async function openStudio(
     await context.route("**/creation-tools/ravioli/js/studio.js", (route) => route.fulfill({
       status: 200,
       contentType: "text/javascript",
-      body: `${studioSource}\n;globalThis.__ravioliRecoveryTest = { boundedRecoveryCanonical, recoveryConfirmedIntent, canonicalJsonText, sha256Json, encryptPublicReveal, decryptPublicReveal };\n`,
+      body: `${studioSource}\n${options.beforeRecoveryHook ? "await globalThis.__ravioliRecoveryHookBarrier();\n" : ""};globalThis.__ravioliRecoveryTest = { boundedRecoveryCanonical, recoveryConfirmedIntent, canonicalJsonText, sha256Json, encryptPublicReveal, decryptPublicReveal };\n`,
     }));
   }
   const page = await context.newPage();
+  if (options.beforeRecoveryHook) {
+    await page.exposeFunction("__ravioliRecoveryHookBarrier", () => options.beforeRecoveryHook!(page));
+  }
   const monitor = monitorPastaProofPage(page);
   await page.goto(`${server.origin}/creation-tools/ravioli/index.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => Boolean((window as any).MD && (window as any).TZ?.MichelsonMap));
   await installPastaUiLiveBrowserProxy(page, server, "UI-MOCK");
+  if (options.exposeRecoveryInternals) {
+    try {
+      // MD/TZ and networkidle do not establish completion of the ES module
+      // that appends this hook. Use its actual readiness, not a sleep/retry.
+      await page.waitForFunction(() => typeof (window as any).__ravioliRecoveryTest?.boundedRecoveryCanonical === "function");
+    } catch (error) {
+      const events = monitor.list();
+      monitor.dispose();
+      await browser.close();
+      throw new Error(`Ravioli recovery test hook did not initialize; browser events=${JSON.stringify(events)}`, { cause: error });
+    }
+  }
   return { browser, context, page, monitor };
 }
 
@@ -1383,6 +1399,7 @@ async function startStrictRavioliStudioFixture(input: {
   signer?: string;
   callRole?: "creator" | "collector";
   exposeRecoveryInternals?: boolean;
+  beforeRecoveryHook?: (page: Page) => Promise<void>;
 } = {}) {
   const chain = input.chain || new FakeRavioliChain();
   const mirror = input.mirror || new RavioliUiStateMirror();
@@ -1457,11 +1474,17 @@ async function startStrictRavioliStudioFixture(input: {
     staticRoot: STATIC_ROOT,
     handleAction: createRavioliMirroredSessionHandler({ session, mirror, policy, signerAddress: signer }),
   });
-  const studio = await openStudio(server, {
-    exposeRecoveryInternals: input.exposeRecoveryInternals,
-    getPins: () => pins,
-  });
-  return { chain, mirror, pins, policy, session, server, signer, studio };
+  try {
+    const studio = await openStudio(server, {
+      exposeRecoveryInternals: input.exposeRecoveryInternals,
+      beforeRecoveryHook: input.beforeRecoveryHook,
+      getPins: () => pins,
+    });
+    return { chain, mirror, pins, policy, session, server, signer, studio };
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
 }
 
 async function closeStrictRavioliStudioFixture(
@@ -2704,6 +2727,45 @@ test("real Ravioli Studio verifies the next recipe commitment before generative 
     );
     assert.deepEqual(fixture.studio.monitor.list(), []);
   } finally {
+    await closeStrictRavioliStudioFixture(fixture);
+  }
+});
+
+test("Ravioli fixture waits for its recovery hook after Studio and wallet libraries are ready", async () => {
+  let reachHook!: (page: Page) => void;
+  const hookReached = new Promise<Page>((resolve) => { reachHook = resolve; });
+  let releaseHook!: () => void;
+  const hookBarrier = new Promise<void>((resolve) => { releaseHook = resolve; });
+  let fixtureReady = false;
+  const starting = startStrictRavioliStudioFixture({
+    exposeRecoveryInternals: true,
+    beforeRecoveryHook: async (page) => {
+      // This barrier runs after the actual instrumented studio.js has executed
+      // wire(); it postpones only the test hook, without a timer or network write.
+      reachHook(page);
+      await hookBarrier;
+    },
+  }).then((fixture) => { fixtureReady = true; return fixture; });
+  // Observe a startup rejection immediately; cleanup below still propagates it.
+  void starting.catch(() => {});
+  try {
+    const page = await Promise.race([
+      hookReached,
+      starting.then(() => { throw new Error("Studio fixture returned before reaching its recovery hook barrier"); }),
+    ]);
+    await page.waitForLoadState("networkidle");
+    await page.waitForFunction(() => Boolean((window as any).MD && (window as any).TZ?.MichelsonMap && (window as any).__pastaUiLiveBridge?.installed));
+    assert.equal(await page.locator(".m-name").count(), 1, "the real Studio wire() must finish before the barrier");
+    assert.equal(await page.evaluate(() => typeof (window as any).__ravioliRecoveryTest), "undefined");
+    assert.equal(fixtureReady, false, "library/network readiness cannot satisfy the instrumented module contract");
+    releaseHook();
+    const fixture = await starting;
+    assert.equal(await fixture.studio.page.evaluate(() => typeof (window as any).__ravioliRecoveryTest?.boundedRecoveryCanonical), "function");
+    assertNoStrictFixtureSideEffects(fixture, "delayed recovery hook");
+    assert.deepEqual(fixture.studio.monitor.list(), []);
+  } finally {
+    releaseHook();
+    const fixture = await starting;
     await closeStrictRavioliStudioFixture(fixture);
   }
 });
