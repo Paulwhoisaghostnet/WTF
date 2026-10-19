@@ -10307,7 +10307,7 @@
     },
     {
       "id": "WTF-BB-679",
-      "status": "In Progress",
+      "status": "Verified",
       "owner": "Codex gameshow production release",
       "lastTouched": "2026-10-18",
       "category": "Production readiness / backfill scheduler",
@@ -10318,7 +10318,7 @@
       "points": 10,
       "rank": 456,
       "title": "Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness",
-      "body": "- Evidence (2026-10-18 Pacific): live commit86785eb0 responds503 to /api/health/ready with jobs=false. Authenticated diagnostics identify backfill-seeder; production logs show SQLSTATE2200H, nextval reached maximum2147483647 for backfill_manifest_id_seq. Database and chain checks are healthy.\n- Correction direction: preserve every existing ID and widen the actual sequence/column through a normal additive deployment migration, align the typed schema and test crossing the former PostgreSQL int4 maximum. Do not reset or truncate data, disable the job, or weaken readiness.\n- Verification: exact exhaustion reproduction and migration idempotence in isolated local PostgreSQL, successful deployed seeder, public readiness200. P1+C2/F4/S0 uses the existing board formula; the fault blocks the requested normal production deployment and wallet backfill continuity.\n- Correction and local verification (2026-10-18): Migration 0131 widens the existing column and sequence without resetting IDs. Raw claim rows normalize exact safe bigint IDs. Real PostgreSQL regression crosses 2147483647, repeats migration, preserves rows/position, and exercises enqueue/claim/complete; focused backfill tests 5/5 pass. Awaiting production migration and healthy seeder verification."
+      "body": "- Evidence (2026-10-18 Pacific): live commit86785eb0 responds503 to /api/health/ready with jobs=false. Authenticated diagnostics identify backfill-seeder; production logs show SQLSTATE2200H, nextval reached maximum2147483647 for backfill_manifest_id_seq. Database and chain checks are healthy.\n- Correction direction: preserve every existing ID and widen the actual sequence/column through a normal additive deployment migration, align the typed schema and test crossing the former PostgreSQL int4 maximum. Do not reset or truncate data, disable the job, or weaken readiness.\n- Verification: exact exhaustion reproduction and migration idempotence in isolated local PostgreSQL, successful deployed seeder, public readiness200. P1+C2/F4/S0 uses the existing board formula; the fault blocks the requested normal production deployment and wallet backfill continuity.\n- Correction and local verification (2026-10-18): Migration 0131 widens the existing column and sequence without resetting IDs. Raw claim rows normalize exact safe bigint IDs. Real PostgreSQL regression crosses 2147483647, repeats migration, preserves rows/position, and exercises enqueue/claim/complete; focused backfill tests 5/5 pass. Awaiting production migration and healthy seeder verification.\n- Production verification (2026-10-18 Pacific): Deploy39191154783 succeeded for acfc6803. Migration0131 ledger checksum matches the release file. Column and sequence are bigint; sequence2147645787 is past the old2147483647 maximum. Seeder run2463328 succeeded in21164ms with162140 inputs and921 outputs and no error. Public readiness reports acfc6803 with db, chain, and jobs healthy and jobIssues0."
     },
     {
       "id": "WTF-BB-680",

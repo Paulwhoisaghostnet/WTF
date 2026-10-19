@@ -11943,3 +11943,12 @@
 **Correction and verification**: Route policies now assert the exact three managed Macaroni endpoints and their narrow-or-trusted permission check. All22 route-policy and2 focused role-boundary tests pass, retaining admin, CH-EASE, global-disable, and revoked-access denials.
 
 **Rule**: Assert the precise endpoint set and negative capability boundaries when adding narrowly scoped access. Do not broaden privileges or discard the narrow role merely to satisfy an obsolete broad-role assertion.
+
+
+## 2026-10-18 — Production screenshots must capture the verified work surface
+
+**What happened**: A passing production workflow saved viewport screenshots dominated by Gamma's shell header, leaving the tested contestant workspace below the fold.
+
+**Correction**: The existing production smoke now scrolls the asserted progress row and workspace file control into view before capturing the viewport. Capturing an oversized element directly can include unpainted areas outside the shell’s clipped viewport.
+
+**Rule**: Match visual evidence to the claim being reviewed. A shell screenshot alone does not show the content of a successful app workflow.

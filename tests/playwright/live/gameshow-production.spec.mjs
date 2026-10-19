@@ -113,6 +113,7 @@ test("production host composes a durable show and contestant opens its assigned 
     await sheet.getByRole("button", { name: "Export progress CSV", exact: true }).click();
     const csv = await csvEvent;
     expect(await readFile(await csv.path(), "utf8")).toContain(`"${contestantActor.username}"`);
+    await sheet.getByRole("button", { name: `Inspect ${contestantActor.username} round 1`, exact: true }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath("production-host-progress.png") });
 
     playerContext = await browser.newContext({ baseURL, storageState: await contestant.request.storageState() });
@@ -134,6 +135,7 @@ test("production host composes a durable show and contestant opens its assigned 
     expect(stage.me.canSubmit).toBe(false);
     expect(stage.me.submissions).toEqual([]);
     expect(stage.rounds.every(round => round.status === "upcoming")).toBe(true);
+    await player.getByTestId("contestant-workspace").getByRole("button", { name: "Open Project files", exact: true }).scrollIntoViewIfNeeded();
     await player.screenshot({ path: testInfo.outputPath("production-contestant-workspace.png") });
     await testInfo.attach("production-show-proof", { body: JSON.stringify({ seasonId: season.id, roundId, taskId: saved.tasks[0].id, revision: persisted.revision, rounds: stage.rounds.length, recordedEntries: 0, automaticScoring: false }), contentType: "application/json" });
   } finally {

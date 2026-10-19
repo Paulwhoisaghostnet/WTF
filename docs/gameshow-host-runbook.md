@@ -6,6 +6,10 @@ This runbook explains the host and contestant workflow inside wtfOS. The request
 
 The producer will supply the lineup later. The configurable production system uses the verification below. Rehearsal challenges are not the selected games. Production release requires the normal Hetzner deployment, matching live commit health, and the opt-in production smoke described below.
 
+Production feature commit `acfc6803` deployed successfully through Hetzner run `39191154783`. Public readiness reported that commit with database, chain, and jobs healthy. All three release migrations match their production ledger checksums; the repaired backfill seeder completed successfully. The opt-in production host/contestant browser proof passed: UI-created ten-round show, saved and reloaded plan, enrolled contestant, progress/CSV, assigned workspace, and denied contestant access to host-only data. Only its uniquely marked temporary show was removed afterward.
+
+**Outstanding production proof:** positive private-page publishing requires an eligible signed-in owner with a claimed subdomain. Existing production puppets have no claimed sites and lack required identity links. Local database/HTTP/Chromium privacy proofs pass; they are not a substitute for the remaining production owner proof. Do not report private publishing as fully production-verified until that proof is recorded.
+
 | Evidence | Current result |
 | --- | --- |
 | Round operations | PostgreSQL lifecycle/concurrency checks pass. Distinct host, contestant, and outsider accounts completed the official local ten-round actor rehearsal, including preparation, saved submissions/grades, privacy, replay denial, exact audit reconciliation, progress projection, and completed-desktop reload. |

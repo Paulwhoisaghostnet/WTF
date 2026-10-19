@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **647** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **467** · Archived: **4**
+Total: **647** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **117** · Verified: **468** · Archived: **4**
 
 ## Canonical Board
 
@@ -82,7 +82,6 @@ Total: **647** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 186 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 274 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 375 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
-| WTF-BB-679 | In Progress | Codex gameshow production release | 2026-10-18 | Production readiness / backfill scheduler | P1 | 10 | 456 | 2 | 4 | 0 | Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 375 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 456 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
 | WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
@@ -508,6 +507,7 @@ Total: **647** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 375 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 375 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 375 | 2 | 3 | 2 | X token refresh updates users table without serialization |
+| WTF-BB-679 | Verified | Codex gameshow production release | 2026-10-18 | Production readiness / backfill scheduler | P1 | 10 | 456 | 2 | 4 | 0 | Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness |
 | WTF-BB-668 | Verified | Codex quality typecheck memory repair | 2026-09-02 | CI / TypeScript release gate | P1 | 10 | 456 | 2 | 4 | 0 | Quality typecheck exhausts Node's default heap after the FAQ release |
 | WTF-BB-665 | Verified | Codex Kiln clean-checkout fixture repair | 2026-09-01 | Kiln CI / hermetic test data | P1 | 10 | 456 | 2 | 4 | 0 | Kiln main CI depends on a gitignored local reference-contract corpus |
 | WTF-BB-657 | Verified | Codex Skywire full-send deploy | - | Deploy / Hetzner checkout | P1 | 10 | 456 | 3 | 3 | 0 | Hetzner deploy checkout fails on divergent server branch |
@@ -1884,19 +1884,6 @@ Total: **647** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
   - 2026-05-22: Daily side quest automation now marks per-user current-UTC-day completions as claim-required instead of auto-disbursing, `/side-quests` renders the canonical daily quest cards with player counts and claim buttons, `/api/challenge-automation/daily-loops/:id/claim` performs idempotent reward action execution, Mission Control uses Side Quests language, and live puppet coverage now claims the messageboard check-in before asserting XP/WTF ledger side effects.
   - 2026-05-22 verification: `npm run check -- --pretty false`; `npx tsx --test client/src/pages/MissionControl.test.ts server/challenges/services/daily-loop-challenges.test.ts`; `npm run test:e2e:inventory:coverage`; `npm run test:e2e:inventory`; targeted live puppet command for `canonical side quests|gameshow launch surfaces` after fixing strict-mode duplicate text and same-UTC-day rerun idempotency in the spec.
   - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
-
-### WTF-BB-679 - Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness
-
-- Category: Production readiness / backfill scheduler
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex gameshow production release
-- Last touched: 2026-10-18
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence (2026-10-18 Pacific): live commit86785eb0 responds503 to /api/health/ready with jobs=false. Authenticated diagnostics identify backfill-seeder; production logs show SQLSTATE2200H, nextval reached maximum2147483647 for backfill_manifest_id_seq. Database and chain checks are healthy.
-- Correction direction: preserve every existing ID and widen the actual sequence/column through a normal additive deployment migration, align the typed schema and test crossing the former PostgreSQL int4 maximum. Do not reset or truncate data, disable the job, or weaken readiness.
-- Verification: exact exhaustion reproduction and migration idempotence in isolated local PostgreSQL, successful deployed seeder, public readiness200. P1+C2/F4/S0 uses the existing board formula; the fault blocks the requested normal production deployment and wallet backfill continuity.
-- Correction and local verification (2026-10-18): Migration 0131 widens the existing column and sequence without resetting IDs. Raw claim rows normalize exact safe bigint IDs. Real PostgreSQL regression crosses 2147483647, repeats migration, preserves rows/position, and exercises enqueue/claim/complete; focused backfill tests 5/5 pass. Awaiting production migration and healthy seeder verification.
 
 ### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
 
@@ -11385,6 +11372,20 @@ Copy this when adding a new issue:
 - Verification (2026-09-01):
   - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
   - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
+
+### WTF-BB-679 - Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness
+
+- Category: Production readiness / backfill scheduler
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex gameshow production release
+- Last touched: 2026-10-18
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence (2026-10-18 Pacific): live commit86785eb0 responds503 to /api/health/ready with jobs=false. Authenticated diagnostics identify backfill-seeder; production logs show SQLSTATE2200H, nextval reached maximum2147483647 for backfill_manifest_id_seq. Database and chain checks are healthy.
+- Correction direction: preserve every existing ID and widen the actual sequence/column through a normal additive deployment migration, align the typed schema and test crossing the former PostgreSQL int4 maximum. Do not reset or truncate data, disable the job, or weaken readiness.
+- Verification: exact exhaustion reproduction and migration idempotence in isolated local PostgreSQL, successful deployed seeder, public readiness200. P1+C2/F4/S0 uses the existing board formula; the fault blocks the requested normal production deployment and wallet backfill continuity.
+- Correction and local verification (2026-10-18): Migration 0131 widens the existing column and sequence without resetting IDs. Raw claim rows normalize exact safe bigint IDs. Real PostgreSQL regression crosses 2147483647, repeats migration, preserves rows/position, and exercises enqueue/claim/complete; focused backfill tests 5/5 pass. Awaiting production migration and healthy seeder verification.
+- Production verification (2026-10-18 Pacific): Deploy39191154783 succeeded for acfc6803. Migration0131 ledger checksum matches the release file. Column and sequence are bigint; sequence2147645787 is past the old2147483647 maximum. Seeder run2463328 succeeded in21164ms with162140 inputs and921 outputs and no error. Public readiness reports acfc6803 with db, chain, and jobs healthy and jobIssues0.
 
 ### WTF-BB-668 - Quality typecheck exhausts Node's default heap after the FAQ release
 
