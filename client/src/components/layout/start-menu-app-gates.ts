@@ -28,6 +28,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/tools/ch-ease": "ch-ease",
   "/tools/macaroni-packager": "ch-ease",
   "/tools/colander": "pasta-protocol",
+  "/tools/macaroni": "pasta-protocol",
   "/tools/spaghetti": "pasta-protocol",
   "/tools/gnocchi": "pasta-protocol",
   "/tools/ravioli": "pasta-protocol",

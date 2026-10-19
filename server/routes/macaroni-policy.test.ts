@@ -2,11 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("Macaroni server routes keep wtfOS pinning and publishing trusted-creator only", () => {
+test("Macaroni creator services require trusted-creator or scoped Macaroni permission", () => {
   const source = readFileSync("server/routes/macaroni.ts", "utf8");
 
-  const trustedRouteChecks = source.match(/requirePermission\("trusted_market_creator"\)/g) || [];
-  assert.ok(trustedRouteChecks.length >= 2, "pinning and publishing should both require trusted_market_creator");
+  const managedCreatorRoutes = [...source.matchAll(
+    /router\.post\(\s*"([^"]+)",\s*requirePermission\("trusted_market_creator", "use_managed_macaroni"\)/g,
+  )].map((match) => match[1]);
+  assert.deepEqual(managedCreatorRoutes, [
+    "/api/macaroni/ipfs/upload-ticket",
+    "/api/macaroni/ipfs/pin",
+    "/api/macaroni/publish",
+  ], "only the managed upload ticket, pinning, and owned-site publishing lanes accept scoped Macaroni access");
   assert.doesNotMatch(source, /requirePermission\("trusted_market_creator", "use_wtfos_pinning"\)/);
   assert.match(source, /router\.get\("\/api\/macaroni\/installers", isAuthenticated/);
   assert.match(source, /MACARONI_INSTALLER_MACOS_URL/);
@@ -269,7 +275,7 @@ test("Macaroni hosted pinning has a direct-origin ticketed upload lane", () => {
   assert.match(routeSource, /MACARONI_UPLOAD_PATH = "\/api\/macaroni\/ipfs\/upload"/);
   assert.match(routeSource, /MACARONI_DIRECT_UPLOAD_ORIGIN/);
   assert.match(routeSource, /MACARONI_UPLOAD_TICKET_SECRET/);
-  assert.match(routeSource, /router\.post\(\s*"\/api\/macaroni\/ipfs\/upload-ticket",\s*requirePermission\("trusted_market_creator"\)/s);
+  assert.match(routeSource, /router\.post\(\s*"\/api\/macaroni\/ipfs\/upload-ticket",\s*requirePermission\("trusted_market_creator", "use_managed_macaroni"\)/s);
   assert.match(routeSource, /createHmac\("sha256", macaroniUploadTicketSecret\(\)\)/);
   assert.match(routeSource, /timingSafeEqual/);
   assert.match(routeSource, /usedUploadTickets\.set\(ticket\.jti, ticket\.exp\)/);

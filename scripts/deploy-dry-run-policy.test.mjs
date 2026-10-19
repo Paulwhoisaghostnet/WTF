@@ -137,7 +137,12 @@ test("LAW.DR5/04 production app fails closed on placeholder commit metadata", ()
 test("production Node runtime satisfies bundled ATProto fetch dependencies", () => {
   assert.doesNotMatch(dockerfile, /FROM node:20-/);
   assert.equal((dockerfile.match(/FROM node:22-slim@sha256:/g) ?? []).length, 2);
-  assert.match(packageLock.packages["node_modules/undici_v8"].engines.node, />=22/);
+  const undiciV8Packages = Object.entries(packageLock.packages)
+    .filter(([path]) => path.endsWith("node_modules/undici_v8"));
+  assert.ok(undiciV8Packages.length > 0, "ATProto's undici v8 alias must be present in the lockfile");
+  for (const [path, dependency] of undiciV8Packages) {
+    assert.match(dependency.engines?.node ?? "", />=22/, `${path} must retain its Node 22 runtime contract`);
+  }
 });
 
 test("LAW.BB019 deploy preflight requires dedicated credential encryption keys", () => {

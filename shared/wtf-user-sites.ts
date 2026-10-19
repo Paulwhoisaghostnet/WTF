@@ -33,6 +33,8 @@ export interface WtfUserSitePageDto {
   slug: string;
   title: string;
   draftHtml: string;
+  visibility: "public" | "private";
+  privatePublishedAt: string | null;
   sortOrder: number;
   updatedAt: string;
 }

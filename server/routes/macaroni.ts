@@ -539,7 +539,7 @@ async function probePublicMacaroniUrl(url: string): Promise<{
 
 router.post(
   "/api/macaroni/ipfs/upload-ticket",
-  requirePermission("trusted_market_creator"),
+  requirePermission("trusted_market_creator", "use_managed_macaroni"),
   (req, res) => {
     const parsed = uploadTicketSchema.safeParse(req.body || {});
     if (!parsed.success) {
@@ -606,7 +606,7 @@ router.post(
 
 router.post(
   "/api/macaroni/ipfs/pin",
-  requirePermission("trusted_market_creator"),
+  requirePermission("trusted_market_creator", "use_managed_macaroni"),
   runPinUpload,
   async (req, res) => {
     const file = req.file;
@@ -762,7 +762,7 @@ router.post("/api/macaroni/reveal-request", async (req, res) => {
 
 router.post(
   "/api/macaroni/publish",
-  requirePermission("trusted_market_creator"),
+  requirePermission("trusted_market_creator", "use_managed_macaroni"),
   async (req, res) => {
     const parsed = publishSchema.safeParse(req.body);
     if (!parsed.success) {

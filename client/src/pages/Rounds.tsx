@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Button,
@@ -8,13 +7,15 @@ import {
   Separator,
 } from "react95";
 import styled from "styled-components";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { RoundInfoCard } from "../components/RoundInfoCard";
 import { useAuth } from "../lib/auth-context";
 import { api } from "../lib/api";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
 import { deriveRoundsLaunchState } from "./rounds-model";
+import { ContestantDesk } from "../features/gameshow/ContestantDesk";
+import { STAGE_REFRESH_INTERVAL_MS } from "@shared/gameshow";
 
 const roundRegionAttrs = (region: string): any => ({
   "data-rounds-region": region,
@@ -189,6 +190,7 @@ const LaunchButton = styled(Button)`
 export function Rounds() {
   const { isAdmin } = useAuth();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const presentation = usePresentationShell();
   const goToRoute = (route: string) =>
     setLocation(presentationRouteHref(route, presentation.host));
@@ -196,24 +198,31 @@ export function Rounds() {
   const { data: seasons, isLoading } = useQuery({
     queryKey: ["seasons"],
     queryFn: () => api.get<any[]>("/api/seasons"),
+    refetchInterval: STAGE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const linkedSeason = Number(new URLSearchParams(search).get("seasonId"));
+  const requestedSeason = Number.isSafeInteger(linkedSeason) && linkedSeason > 0 ? linkedSeason : null;
 
   const activeSeason =
     seasons?.find((s) =>
-      selectedSeason ? s.id === selectedSeason : s.status === "active"
+      requestedSeason ? s.id === requestedSeason : s.status === "active"
     ) || seasons?.[0];
 
   const { data: rounds } = useQuery({
     queryKey: ["rounds", activeSeason?.id],
     queryFn: () => api.get<any[]>(`/api/rounds?seasonId=${activeSeason.id}`),
     enabled: !!activeSeason,
+    refetchInterval: STAGE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const { data: challenges } = useQuery({
     queryKey: ["rounds", "active-challenges"],
     queryFn: () => api.get<any[]>("/api/challenges"),
+    refetchInterval: STAGE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const launchState = deriveRoundsLaunchState({
@@ -236,10 +245,12 @@ export function Rounds() {
             style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}
             data-rounds-region="season-picker"
           >
-            <label data-rounds-region="season-picker-label">Season:</label>
+            <label htmlFor="gameshow-season-picker" data-rounds-region="season-picker-label">Season:</label>
             <Select
+              id="gameshow-season-picker"
+              aria-label="Choose gameshow season"
               value={activeSeason?.id}
-              onChange={(e: any) => setSelectedSeason(e.value)}
+              onChange={(e: any) => goToRoute(`/rounds?seasonId=${e.value}`)}
               options={seasons.map((s: any) => ({
                 label: `Season ${s.number}: ${s.name}`,
                 value: s.id,
@@ -247,6 +258,10 @@ export function Rounds() {
               width={300}
             />
           </div>
+        )}
+
+        {activeSeason ? <ContestantDesk seasonId={activeSeason.id} /> : (
+          <p role="status">No show has been configured yet. The host needs to create a season and publish the round lineup before contestants can play.</p>
         )}
 
         {activeSeason && (

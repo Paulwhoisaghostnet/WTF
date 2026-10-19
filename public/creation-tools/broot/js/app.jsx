@@ -726,15 +726,18 @@ function BrootApp() {
     };
   }, []);
 
-  const captureHistory = useCallback((label) => {
-    const snapshot = canvasSnapshot(label);
+  const recordHistorySnapshot = useCallback((snapshot) => {
     if (!snapshot || historyRef.current.restoring) return;
     const undo = historyRef.current.undo;
     undo.push(snapshot);
     if (undo.length > HISTORY_LIMIT) undo.shift();
     historyRef.current.redo = [];
     updateHistoryState();
-  }, [canvasSnapshot, updateHistoryState]);
+  }, [updateHistoryState]);
+
+  const captureHistory = useCallback((label) => {
+    recordHistorySnapshot(canvasSnapshot(label));
+  }, [canvasSnapshot, recordHistorySnapshot]);
 
   const buildProjectRecord = useCallback((id) => {
     const canvas = fabricRef.current;
@@ -938,7 +941,25 @@ function BrootApp() {
       releaseObjectResources(event.target);
       refresh();
     });
-    canvas.on("object:modified", refresh);
+    // Fabric edits bypass toolbar actions. Capture before the mutation and
+    // commit only actual changes so selecting an object adds no undo entry.
+    let transformSnapshot = null;
+    let textSnapshot = null;
+    canvas.on("before:path:created", () => captureHistory("paint stroke"));
+    canvas.on("before:transform", () => { transformSnapshot = canvasSnapshot("transform layer"); });
+    canvas.on("object:modified", () => {
+      recordHistorySnapshot(transformSnapshot);
+      transformSnapshot = null;
+      refresh();
+    });
+    canvas.on("mouse:up", () => { transformSnapshot = null; });
+    canvas.on("text:editing:entered", () => { textSnapshot = canvasSnapshot("edit text"); });
+    canvas.on("text:changed", () => {
+      recordHistorySnapshot(textSnapshot);
+      textSnapshot = null;
+      refresh();
+    });
+    canvas.on("text:editing:exited", () => { textSnapshot = null; });
     canvas.on("path:created", refresh);
     canvas.on("selection:created", scheduleLayerRefresh);
     canvas.on("selection:updated", scheduleLayerRefresh);

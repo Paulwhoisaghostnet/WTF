@@ -44,6 +44,10 @@ import {
   TzktTransferRow,
 } from "../tzkt";
 import { ingestSystemEvent } from "../challenges/events/ingest";
+import { stampWalletEventProvenance } from "./wallet-event-provenance";
+
+// Same configured source as the shared TzKT client; captured with this ingestion module.
+const WALLET_INDEX_SOURCE = process.env.TZKT_API_URL || "https://api.tzkt.io/v1";
 
 export const GLOBAL_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 export const SAFETY_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -393,7 +397,7 @@ async function upsertWalletEvents(rows: WalletEventInsert[]): Promise<number> {
   const CHUNK = 200;
   let inserted = 0;
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
+    const chunk = rows.slice(i, i + CHUNK).map(row => ({ ...row, raw: stampWalletEventProvenance(row.raw, WALLET_INDEX_SOURCE) }));
     const result = await db
       .insert(walletEvents)
       .values(chunk)

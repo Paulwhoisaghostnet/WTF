@@ -5,6 +5,9 @@ import { and, eq, desc, isNull } from "drizzle-orm";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { z } from "zod";
 import { syncRoundEvent } from "../lib/calendar-sync";
+import { gameshowEditing } from "../features/gameshow";
+import { GameshowError } from "../features/gameshow/policy";
+
 
 const router = Router();
 
@@ -259,14 +262,11 @@ router.put(
         updates.mediaAssets = parsed.data.mediaAssets;
       }
 
-      const [updated] = await db
-        .update(seasons)
-        .set(updates)
-        .where(eq(seasons.id, parseInt(req.params.id as string)))
-        .returning();
+      const updated = await gameshowEditing.editSeason(parseInt(req.params.id as string), updates, { userId: (req.user as any).id, ip: req.ip });
       if (!updated) return res.status(404).json({ error: "Season not found" });
       res.json(updated);
     } catch (err) {
+      if (err instanceof GameshowError) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: "Failed to update season" });
     }
   }
@@ -418,15 +418,12 @@ router.put(
         updates.eliminatedContestants = parsed.data.eliminatedContestants;
       }
 
-      const [updated] = await db
-        .update(rounds)
-        .set(updates)
-        .where(eq(rounds.id, parseInt(req.params.id as string)))
-        .returning();
+      const updated = await gameshowEditing.editRound(parseInt(req.params.id as string), updates, { userId: (req.user as any).id, ip: req.ip });
       if (!updated) return res.status(404).json({ error: "Round not found" });
       await syncRoundEvent(updated.id);
       res.json(updated);
     } catch (err) {
+      if (err instanceof GameshowError) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: "Failed to update round" });
     }
   }

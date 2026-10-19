@@ -77,7 +77,7 @@ export const WTF_STANDARD_BROWSER_ROUTES: WtfBrowserAccessRoute[] = [
   { path: "/tools/penrose-backgrounds", title: "PenRose Backgrounds", access: "browser-session", purpose: "Aperiodic Penrose tiling background creation tool embedded from static WTF creation-tool assets." },
   { path: "/tools/ch-ease", title: "CH-EASE", access: "role-gated-session", purpose: "Creator handoff, edit, arrange, stage, and export package workflow.", appGate: "ch-ease" },
   { path: "/tools/macaroni-packager", title: "CH-EASE", access: "role-gated-session", purpose: "Legacy route alias for CH-EASE package staging.", appGate: "ch-ease" },
-  { path: "/tools/macaroni", title: "Macaroni", access: "role-gated-session", purpose: "Blind-mint Tezos drop studio and creator-owned contract deployment workflow." },
+  { path: "/tools/macaroni", title: "Macaroni", access: "role-gated-session", purpose: "Blind-mint Tezos drop studio and creator-owned contract deployment workflow.", appGate: "pasta-protocol" },
   { path: "/tools/spaghetti", title: "Spaghetti", access: "browser-session", purpose: "Pasta Protocol standard collection publisher for Tezos FA2 contracts.", appGate: "pasta-protocol" },
   { path: "/tools/gnocchi", title: "Gnocchi", access: "browser-session", purpose: "Pasta Protocol open-edition publisher for timed and supply-limited editions.", appGate: "pasta-protocol" },
   { path: "/tools/ravioli", title: "Ravioli", access: "browser-session", purpose: "Pasta Protocol bundle publisher for art packs, redeemables, and wrapped sets.", appGate: "pasta-protocol" },

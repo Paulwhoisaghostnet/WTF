@@ -96,11 +96,21 @@ private.wtfos.me  { import wtfos_pds_site wtfos-pds-private }
 (wtfos_user_site_renderer) {
 	encode gzip zstd
 
-	reverse_proxy wtfos-user-site-renderer:3009 {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
+	# Private pages are session-authorized by the kernel and never enter the PDS renderer.
+	handle /_private/* {
+		reverse_proxy app:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle {
+		reverse_proxy wtfos-user-site-renderer:3009 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
 	}
 }
 

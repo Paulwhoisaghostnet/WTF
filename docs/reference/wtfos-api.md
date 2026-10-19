@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **922 unique method/path operations**, grouped into **99 route families** and declared across **126 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **934 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 922 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 934 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -138,6 +138,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `faq` | 8 | FAQ content retrieval and management. |
 | `gallery` | 1 | Gallery feeds, tokens, collections, and curation. |
 | `game-studio` | 15 | Game Studio projects, builds, files, and publishing. |
+| `gameshow` | 7 | Operations for the gameshow domain. |
 | `gnocchi` | 1 | Operations for the gnocchi domain. |
 | `health` | 5 | Liveness, readiness, authenticated diagnostics, metrics, and disk status. |
 | `in-app-market` | 11 | In-app market catalogue, purchases, sales, pricing, and reconciliation. |
@@ -171,8 +172,8 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `reward-flags` | 2 | Operations for the reward flags domain. |
 | `rewards` | 4 | Reward catalogue, claims, balances, and ledger operations. |
 | `rotini` | 1 | Rotini installer discovery. |
-| `rounds` | 8 | Operations for the rounds domain. |
-| `seasons` | 7 | Season catalogue and active-season state. |
+| `rounds` | 10 | Operations for the rounds domain. |
+| `seasons` | 8 | Season catalogue and active-season state. |
 | `side` | 8 | Side-quest catalogue, progress, and completion. |
 | `side-quest-completions` | 1 | Operations for the side quest completions domain. |
 | `skywire` | 38 | Bluesky/Skywire accounts, feeds, posts, chat, moderation, and OAuth. |
@@ -191,12 +192,12 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `wtf-auctions` | 6 | WTF auction creation, bidding, state transitions, and settlement. |
 | `wtf-live` | 34 | WTF LIVE rooms, stages, broadcasts, messages, access, invites, and show controls. |
 | `wtf-recapture` | 2 | WTF Recapture personal state and leaderboard. |
-| `wtf-sites` | 8 | User-site claiming, pages, assets, publishing, rollback, and administration. |
+| `wtf-sites` | 10 | User-site claiming, pages, assets, publishing, rollback, and administration. |
 | `wtf-subdomains` | 8 | wtfos.me and wtf.tez subdomain claims, registrar workflows, configuration, and administration. |
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 448**, **PATCH 36**, **POST 316**, **PUT 64**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 132**, **Public/handler 216**, **Session 470**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 452**, **PATCH 36**, **POST 323**, **PUT 65**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 216**, **Session 472**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -294,9 +295,9 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | PUT | `/api/admin/w-digest-handles` | Replace or set admin w digest handles. | Admin | `server/features/w/digest/routes.ts:164` |
 | GET | `/api/admin/wallets/:address/dossier` | Read or list admin wallets address dossier. | Admin | `server/features/admin/users/dossier-routes.ts:48` |
 | POST | `/api/admin/wallets/:address/resync` | Create, submit, or run admin wallets address resync. | Admin | `server/features/admin/users/resync-routes.ts:48` |
-| GET | `/api/admin/wtf-sites` | Read or list admin wtf sites. | Admin | `server/routes/wtf-sites.ts:149` |
-| PATCH | `/api/admin/wtf-sites/:id/restore` | Partially update admin wtf sites id restore. | Admin | `server/routes/wtf-sites.ts:181` |
-| PATCH | `/api/admin/wtf-sites/:id/suspend` | Partially update admin wtf sites id suspend. | Admin | `server/routes/wtf-sites.ts:162` |
+| GET | `/api/admin/wtf-sites` | Read or list admin wtf sites. | Admin | `server/routes/wtf-sites.ts:169` |
+| PATCH | `/api/admin/wtf-sites/:id/restore` | Partially update admin wtf sites id restore. | Admin | `server/routes/wtf-sites.ts:201` |
+| PATCH | `/api/admin/wtf-sites/:id/suspend` | Partially update admin wtf sites id suspend. | Admin | `server/routes/wtf-sites.ts:182` |
 | GET | `/api/admin/wtf-subdomains` | Read or list admin wtf subdomains. | Admin | `server/routes/wtf-subdomains.ts:57` |
 | PATCH | `/api/admin/wtf-subdomains/:id/status` | Partially update admin wtf subdomains id status. | Admin | `server/routes/wtf-subdomains.ts:182` |
 | GET | `/api/admin/wtf-tv` | Read or list admin wtf tv. | Admin | `server/features/admin/wtf-tv-routes.ts:16` |
@@ -641,12 +642,12 @@ Challenge catalogue, progress, completions, and reward automation.
 | --- | --- | --- | --- | --- |
 | GET | `/api/challenge-automation/daily-loops` | Read or list challenge automation daily loops. | Session | `server/challenges/routes/public.ts:78` |
 | POST | `/api/challenge-automation/daily-loops/:id/claim` | Create, submit, or run challenge automation daily loops id claim. | Session | `server/challenges/routes/public.ts:193` |
-| GET | `/api/challenges` | Read or list challenges. | Public/handler | `server/routes/challenges.ts:126` |
-| POST | `/api/challenges` | Create, submit, or run challenges. | Permission | `server/routes/challenges.ts:193` |
-| GET | `/api/challenges/:id` | Read or list challenges id. | Public/handler | `server/routes/challenges.ts:148` |
-| PUT | `/api/challenges/:id` | Replace or set challenges id. | Permission | `server/routes/challenges.ts:235` |
-| POST | `/api/challenges/:id/submit` | Create, submit, or run challenges id submit. | Session | `server/routes/challenges.ts:307` |
-| PUT | `/api/challenges/reward-flags/:id/claim` | Replace or set challenges reward flags id claim. | Session | `server/routes/challenges.ts:631` |
+| GET | `/api/challenges` | Read or list challenges. | Public/handler | `server/routes/challenges.ts:133` |
+| POST | `/api/challenges` | Create, submit, or run challenges. | Permission | `server/routes/challenges.ts:207` |
+| GET | `/api/challenges/:id` | Read or list challenges id. | Public/handler | `server/routes/challenges.ts:155` |
+| PUT | `/api/challenges/:id` | Replace or set challenges id. | Permission | `server/routes/challenges.ts:249` |
+| POST | `/api/challenges/:id/submit` | Create, submit, or run challenges id submit. | Permission | `server/routes/challenges.ts:318` |
+| PUT | `/api/challenges/reward-flags/:id/claim` | Replace or set challenges reward flags id claim. | Session | `server/routes/challenges.ts:611` |
 
 </details>
 
@@ -797,8 +798,8 @@ Operations for the contestants domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/contestants/:id/eliminate` | Create, submit, or run contestants id eliminate. | Permission | `server/routes/control-board.ts:497` |
-| POST | `/api/contestants/:id/promote-from-reserve` | Create, submit, or run contestants id promote from reserve. | Permission | `server/routes/control-board.ts:591` |
+| POST | `/api/contestants/:id/eliminate` | Create, submit, or run contestants id eliminate. | Permission | `server/routes/control-board.ts:500` |
+| POST | `/api/contestants/:id/promote-from-reserve` | Create, submit, or run contestants id promote from reserve. | Permission | `server/routes/control-board.ts:594` |
 
 </details>
 
@@ -820,11 +821,11 @@ Control-board operational state and actions.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/control-board/feed` | Read or list control board feed. | Permission | `server/routes/control-board.ts:240` |
-| POST | `/api/control-board/season3/scaffold` | Create, submit, or run control board season3 scaffold. | Permission | `server/routes/control-board.ts:800` |
-| GET | `/api/control-board/season3/status` | Read or list control board season3 status. | Permission | `server/routes/control-board.ts:773` |
-| POST | `/api/control-board/test-gameshow/seed` | Create, submit, or run control board test gameshow seed. | Permission | `server/routes/control-board.ts:743` |
-| GET | `/api/control-board/test-gameshow/status` | Read or list control board test gameshow status. | Permission | `server/routes/control-board.ts:718` |
+| GET | `/api/control-board/feed` | Read or list control board feed. | Permission | `server/routes/control-board.ts:243` |
+| POST | `/api/control-board/season3/scaffold` | Create, submit, or run control board season3 scaffold. | Permission | `server/routes/control-board.ts:743` |
+| GET | `/api/control-board/season3/status` | Read or list control board season3 status. | Permission | `server/routes/control-board.ts:716` |
+| POST | `/api/control-board/test-gameshow/seed` | Create, submit, or run control board test gameshow seed. | Permission | `server/routes/control-board.ts:686` |
+| GET | `/api/control-board/test-gameshow/status` | Read or list control board test gameshow status. | Permission | `server/routes/control-board.ts:661` |
 
 </details>
 
@@ -1055,6 +1056,23 @@ Game Studio projects, builds, files, and publishing.
 | GET | `/api/game-studio/templates` | Read or list game studio templates. | Public/handler | `server/routes/game-studio.ts:54` |
 | GET | `/api/game-studio/templates/:id/scaffold` | Read or list game studio templates id scaffold. | Public/handler | `server/routes/game-studio.ts:92` |
 | GET | `/api/game-studio/upload-target` | Read or list game studio upload target. | Public/handler | `server/routes/game-studio.ts:208` |
+
+</details>
+
+<details>
+<summary><code>gameshow</code> — 7 operations</summary>
+
+Operations for the gameshow domain.
+
+| Method | Path | Use | Access | Source |
+| --- | --- | --- | --- | --- |
+| GET | `/api/gameshow/composer` | Read or list gameshow composer. | Permission | `server/features/gameshow/routes.ts:54` |
+| GET | `/api/gameshow/rounds/:id/plan` | Read or list gameshow rounds id plan. | Permission | `server/features/gameshow/routes.ts:64` |
+| PUT | `/api/gameshow/rounds/:id/plan` | Replace or set gameshow rounds id plan. | Permission | `server/features/gameshow/routes.ts:69` |
+| POST | `/api/gameshow/seasons` | Create, submit, or run gameshow seasons. | Permission | `server/features/gameshow/routes.ts:59` |
+| POST | `/api/gameshow/seasons/:id/contestants/:userId/provision` | Create, submit, or run gameshow seasons id contestants userId provision. | Permission | `server/features/gameshow/provisioning-routes.ts:20` |
+| GET | `/api/gameshow/seasons/:id/progress` | Read or list gameshow seasons id progress. | Permission | `server/features/gameshow/routes.ts:74` |
+| GET | `/api/gameshow/seasons/:id/stage` | Read or list gameshow seasons id stage. | Session | `server/features/gameshow/routes.ts:28` |
 
 </details>
 
@@ -1495,7 +1513,7 @@ Non-REST protocol and discovery endpoints.
 | GET | `/^\/api\/arcade\/source\/(.+)$/` | Read or list ^\ api\ arcade\ source\ (.+)$. | Public/handler | `server/routes/arcade.ts:81` |
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |
-| GET | `/internal/tls/allow` | Read or list internal tls allow. | Internal | `server/routes/wtf-sites.ts:49` |
+| GET | `/internal/tls/allow` | Read or list internal tls allow. | Internal | `server/routes/wtf-sites.ts:51` |
 | ALL | `/mcp` | Handle the supported methods for mcp. | MCP bearer | `server/routes/mcp.ts:284` |
 | GET | `/oembed` | Read or list oembed. | Public/handler | `server/routes/tv-embed.ts:185` |
 | GET | `/xrpc/app.wtfos.appview.getRecord` | Read or list xrpc app.wtfos.appview.getRecord. | Public/handler | `server/features/atproto-spine/appview/router.ts:73` |
@@ -1559,8 +1577,8 @@ Operations for the reward flags domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/reward-flags/challenges` | Read or list reward flags challenges. | Session | `server/routes/challenges.ts:599` |
-| PUT | `/api/reward-flags/challenges/:id/claim` | Replace or set reward flags challenges id claim. | Session | `server/routes/challenges.ts:631` |
+| GET | `/api/reward-flags/challenges` | Read or list reward flags challenges. | Session | `server/routes/challenges.ts:579` |
+| PUT | `/api/reward-flags/challenges/:id/claim` | Replace or set reward flags challenges id claim. | Session | `server/routes/challenges.ts:611` |
 
 </details>
 
@@ -1590,7 +1608,7 @@ Rotini installer discovery.
 </details>
 
 <details>
-<summary><code>rounds</code> — 8 operations</summary>
+<summary><code>rounds</code> — 10 operations</summary>
 
 Operations for the rounds domain.
 
@@ -1598,29 +1616,32 @@ Operations for the rounds domain.
 | --- | --- | --- | --- | --- |
 | GET | `/api/rounds` | Read or list rounds. | Public/handler | `server/routes/seasons.ts:290` |
 | POST | `/api/rounds` | Create, submit, or run rounds. | Permission | `server/routes/seasons.ts:335` |
-| DELETE | `/api/rounds/:id` | Delete, revoke, or stop rounds id. | Permission | `server/routes/seasons.ts:435` |
+| DELETE | `/api/rounds/:id` | Delete, revoke, or stop rounds id. | Permission | `server/routes/seasons.ts:432` |
 | GET | `/api/rounds/:id` | Read or list rounds id. | Public/handler | `server/routes/seasons.ts:317` |
 | PUT | `/api/rounds/:id` | Replace or set rounds id. | Permission | `server/routes/seasons.ts:375` |
-| POST | `/api/rounds/:id/advance` | Create, submit, or run rounds id advance. | Permission | `server/routes/control-board.ts:637` |
-| PUT | `/api/rounds/:id/elimination-rule` | Replace or set rounds id elimination rule. | Permission | `server/routes/control-board.ts:350` |
-| POST | `/api/rounds/:id/run-rule` | Create, submit, or run rounds id run rule. | Permission | `server/routes/control-board.ts:402` |
+| POST | `/api/rounds/:id/advance` | Create, submit, or run rounds id advance. | Permission | `server/routes/control-board.ts:640` |
+| POST | `/api/rounds/:id/close` | Create, submit, or run rounds id close. | Permission | `server/features/gameshow/routes.ts:52` |
+| PUT | `/api/rounds/:id/elimination-rule` | Replace or set rounds id elimination rule. | Permission | `server/routes/control-board.ts:353` |
+| POST | `/api/rounds/:id/run-rule` | Create, submit, or run rounds id run rule. | Permission | `server/routes/control-board.ts:405` |
+| POST | `/api/rounds/:id/start` | Create, submit, or run rounds id start. | Permission | `server/features/gameshow/routes.ts:51` |
 
 </details>
 
 <details>
-<summary><code>seasons</code> — 7 operations</summary>
+<summary><code>seasons</code> — 8 operations</summary>
 
 Season catalogue and active-season state.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/seasons` | Read or list seasons. | Public/handler | `server/routes/seasons.ts:174` |
-| POST | `/api/seasons` | Create, submit, or run seasons. | Permission | `server/routes/seasons.ts:206` |
+| GET | `/api/seasons` | Read or list seasons. | Public/handler | `server/routes/seasons.ts:177` |
+| POST | `/api/seasons` | Create, submit, or run seasons. | Permission | `server/routes/seasons.ts:209` |
 | DELETE | `/api/seasons/:id` | Delete, revoke, or stop seasons id. | Permission | `server/routes/seasons.ts:275` |
-| GET | `/api/seasons/:id` | Read or list seasons id. | Public/handler | `server/routes/seasons.ts:186` |
-| PUT | `/api/seasons/:id` | Replace or set seasons id. | Permission | `server/routes/seasons.ts:236` |
+| GET | `/api/seasons/:id` | Read or list seasons id. | Public/handler | `server/routes/seasons.ts:189` |
+| PUT | `/api/seasons/:id` | Replace or set seasons id. | Permission | `server/routes/seasons.ts:239` |
 | POST | `/api/seasons/:id/ante/attest` | Create, submit, or run seasons id ante attest. | Session | `server/routes/wtf-recapture.ts:106` |
-| GET | `/api/seasons/:id/contestants` | Read or list seasons id contestants. | Permission | `server/routes/control-board.ts:313` |
+| GET | `/api/seasons/:id/contestants` | Read or list seasons id contestants. | Permission | `server/routes/control-board.ts:316` |
+| POST | `/api/seasons/:id/contestants` | Create, submit, or run seasons id contestants. | Permission | `server/features/gameshow/routes.ts:38` |
 
 </details>
 
@@ -1788,8 +1809,8 @@ Operations for the submissions domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| PUT | `/api/submissions/:id/grade` | Replace or set submissions id grade. | Permission | `server/routes/challenges.ts:373` |
-| PUT | `/api/submissions/:id/reward` | Replace or set submissions id reward. | Permission | `server/routes/challenges.ts:539` |
+| PUT | `/api/submissions/:id/grade` | Replace or set submissions id grade. | Permission | `server/routes/challenges.ts:358` |
+| PUT | `/api/submissions/:id/reward` | Replace or set submissions id reward. | Permission | `server/routes/challenges.ts:519` |
 
 </details>
 
@@ -2075,20 +2096,22 @@ WTF Recapture personal state and leaderboard.
 </details>
 
 <details>
-<summary><code>wtf-sites</code> — 8 operations</summary>
+<summary><code>wtf-sites</code> — 10 operations</summary>
 
 User-site claiming, pages, assets, publishing, rollback, and administration.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| PUT | `/api/wtf-sites/assets` | Replace or set wtf sites assets. | Session | `server/routes/wtf-sites.ts:118` |
-| POST | `/api/wtf-sites/claim` | Create, submit, or run wtf sites claim. | Session | `server/routes/wtf-sites.ts:63` |
-| GET | `/api/wtf-sites/my` | Read or list wtf sites my. | Session | `server/routes/wtf-sites.ts:53` |
-| POST | `/api/wtf-sites/pages` | Create, submit, or run wtf sites pages. | Session | `server/routes/wtf-sites.ts:91` |
-| DELETE | `/api/wtf-sites/pages/:slug` | Delete, revoke, or stop wtf sites pages slug. | Session | `server/routes/wtf-sites.ts:109` |
-| PUT | `/api/wtf-sites/pages/:slug` | Replace or set wtf sites pages slug. | Session | `server/routes/wtf-sites.ts:72` |
-| POST | `/api/wtf-sites/publish` | Create, submit, or run wtf sites publish. | Session | `server/routes/wtf-sites.ts:129` |
-| POST | `/api/wtf-sites/rollback` | Create, submit, or run wtf sites rollback. | Session | `server/routes/wtf-sites.ts:138` |
+| PUT | `/api/wtf-sites/assets` | Replace or set wtf sites assets. | Session | `server/routes/wtf-sites.ts:122` |
+| POST | `/api/wtf-sites/claim` | Create, submit, or run wtf sites claim. | Session | `server/routes/wtf-sites.ts:65` |
+| GET | `/api/wtf-sites/my` | Read or list wtf sites my. | Session | `server/routes/wtf-sites.ts:55` |
+| POST | `/api/wtf-sites/pages` | Create, submit, or run wtf sites pages. | Session | `server/routes/wtf-sites.ts:94` |
+| DELETE | `/api/wtf-sites/pages/:slug` | Delete, revoke, or stop wtf sites pages slug. | Session | `server/routes/wtf-sites.ts:113` |
+| PUT | `/api/wtf-sites/pages/:slug` | Replace or set wtf sites pages slug. | Session | `server/routes/wtf-sites.ts:74` |
+| POST | `/api/wtf-sites/pages/:slug/publish-private` | Create, submit, or run wtf sites pages slug publish private. | Session | `server/routes/wtf-sites.ts:142` |
+| POST | `/api/wtf-sites/private-access` | Create, submit, or run wtf sites private access. | Session | `server/routes/wtf-sites.ts:150` |
+| POST | `/api/wtf-sites/publish` | Create, submit, or run wtf sites publish. | Session | `server/routes/wtf-sites.ts:133` |
+| POST | `/api/wtf-sites/rollback` | Create, submit, or run wtf sites rollback. | Session | `server/routes/wtf-sites.ts:158` |
 
 </details>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../lib/api";
+import { reportDesktopClientEvent } from "../desktop-event-delivery";
 import {
   normalizeDesktopItems,
 } from "./storage";
@@ -71,18 +72,6 @@ function sameDesktopItemPositions(a: DesktopItemState[], b: DesktopItemState[]) 
   return a.every((item, index) => {
     const other = b[index];
     return other && item.id === other.id && item.x === other.x && item.y === other.y;
-  });
-}
-
-function reportDesktopArtifactEvent(payload: {
-  eventType: string;
-  objectId: string;
-  objectKind: string;
-  action: string;
-  metadata?: Record<string, string | number | boolean | null>;
-}) {
-  void api.post<{ ok: true }>("/api/desktop/events", payload).catch(() => {
-    // Inventory-backed desktop artifacts should remain usable even if event logging fails.
   });
 }
 
@@ -216,7 +205,7 @@ export function useDesktopArtifacts({
     setItems(trimmed);
     const trimmedIds = new Set(trimmed.map((item) => item.id));
     for (const item of spawnedItems.filter((spawned) => trimmedIds.has(spawned.id))) {
-      reportDesktopArtifactEvent({
+      reportDesktopClientEvent({
         eventType: "desktop.artifact.spawned",
         objectId: item.id,
         objectKind: item.kind,

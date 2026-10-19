@@ -1,5 +1,23 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "gameshow.host-contestant-stage",
+    domain: "Gameshow Participation, Progression, and Rewards",
+    ownerSurfaceIds: ["rounds", "control-board", "challenges"],
+    ownerSpec: "tests/playwright/inventory/gameshow-stage.spec.mjs; tests/playwright/inventory/gameshow-production.spec.mjs; tests/playwright/live/gameshow-stage.spec.mjs; tests/playwright/live/gameshow-production.spec.mjs; server/features/gameshow/service.test.ts; server/features/gameshow/production.test.ts; server/features/gameshow/provisioning.test.ts",
+    verificationCommand: "npm run test:gameshow:postgres && npm run test:e2e:inventory -- --grep 'gameshow' && npm run test:e2e:live:puppets -- --grep 'ten-round operational rehearsal'",
+    userVisibleAssertion: "The host composes ordered round tasks, reviews agent drafts, provisions selected contestant tools, reads the progress sheet and wallet/token evidence, cues rounds and reviews submissions in Control Board; contestants read eligibility, instructions and accessible help, submit entries and recover private receipts after reload in the existing Rounds desktop window. Narrow layouts retain reachable controls.",
+    durableSideEffectAssertion: "The composer persists canonical rounds/challenges plus revisioned tool associations, and explicit provisioning preserves prior access without granting admin. An actor-backed operational rehearsal persists ten round start/close/review/archive cycles, private submission ownership, final completion and exact operator audit records. Concurrent/replayed actions cannot duplicate enrollment/submissions or reopen completed rounds. These rehearsal fixtures prove operations, not the producer's pending ten-game lineup or scoring.",
+  },
+  {
+    id: "gameshow.private-project-pages",
+    domain: "Wallets, Tokens, Portfolio, and On-Chain State",
+    ownerSurfaceIds: ["wtf-domains", "pasta-protocol"],
+    ownerSpec: "tests/playwright/inventory/wtf-sites-private.spec.mjs; tests/playwright/live/gameshow-production.spec.mjs; server/features/wtf-sites/private-pages.test.ts; server/features/wtf-sites/private-admin-boundary.test.ts; server/app-csp-policy.test.ts",
+    verificationCommand: "npm run test:gameshow:postgres && npx tsx --test server/app-csp-policy.test.ts && npm run test:e2e:inventory -- --grep 'private page'",
+    userVisibleAssertion: "The existing WTF Domains wizard creates a private page, saves its draft, publishes its saved version, and opens the owner/admin review page on the claimed subdomain. Public publication is a distinct action and cannot silently expose private pages.",
+    durableSideEffectAssertion: "Real PostgreSQL and HTTP tests preserve the private published version across draft changes, omit private titles and HTML from public bundles/PDS snapshots, enforce owner/current-admin access, bind host-only access tickets to the original session, and deny unrelated, anonymous, expired, or revoked access. Existing public slugs cannot be converted into misleadingly private pages.",
+  },
+  {
     id: "public.static-discovery-metadata",
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     platformOwner: "public-static-discovery",

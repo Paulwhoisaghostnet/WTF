@@ -202,6 +202,71 @@ async function installBrootWalletAndHenStubs(page) {
 }
 
 test.describe("interaction inventory - Broot", () => {
+  test("keeps pointer painting undoable, saves the stroke, and exposes narrow-screen controls", async ({ page, request }) => {
+    await setHarnessRole(request, "admin");
+    await installBrootFilePickerStub(page);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/tools/broot", { waitUntil: "domcontentloaded" });
+    const frame = page.frameLocator('iframe[title="Broot"]');
+    await expect(frame.getByLabel("Broot editor")).toBeVisible();
+    await page.getByRole("button", { name: "Maximize Broot", exact: true }).click();
+    const layers = frame.locator(".layer-row");
+    const originalCount = await layers.count();
+    await frame.getByRole("button", { name: "Brush", exact: true }).click();
+    const canvas = await frame.locator(".upper-canvas").boundingBox();
+    expect(canvas).toBeTruthy();
+    await page.mouse.move(canvas.x + 30, canvas.y + 30);
+    await page.mouse.down();
+    await page.mouse.move(canvas.x + 100, canvas.y + 90);
+    await page.mouse.up();
+    await expect(layers).toHaveCount(originalCount + 1);
+    await expect(frame.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
+    await frame.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(layers).toHaveCount(originalCount);
+    await frame.getByRole("button", { name: "Redo", exact: true }).click();
+    await expect(layers).toHaveCount(originalCount + 1);
+
+    await frame.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(frame.getByRole("status")).toContainText("Project saved");
+    const runtime = await getBrootFrame(page);
+    const project = JSON.parse(await runtime.evaluate(() => window.__brootSavedProjectText));
+    expect(project.canvas.objects).toHaveLength(originalCount + 1);
+    expect(project.canvas.objects.at(-1).type).toBe("path");
+    const block = project.canvas.objects.find((object) => object.data?.name === "Signal block");
+    await frame.getByRole("button", { name: "Select", exact: true }).click();
+    const scale = canvas.width / 1280;
+    const start = { x: canvas.x + (block.left + 60) * scale, y: canvas.y + (block.top + 60) * scale };
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 24, start.y + 18);
+    await page.mouse.up();
+    await frame.getByRole("button", { name: "Save", exact: true }).click();
+    await expect.poll(async () => JSON.parse(await runtime.evaluate(() => window.__brootSavedProjectText))
+      .canvas.objects.find((object) => object.data?.name === "Signal block").left).not.toBe(block.left);
+    await frame.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(frame.getByRole("status")).toContainText("Undid transform layer");
+    await frame.getByRole("button", { name: "Save", exact: true }).click();
+    await expect.poll(async () => JSON.parse(await runtime.evaluate(() => window.__brootSavedProjectText))
+      .canvas.objects.find((object) => object.data?.name === "Signal block").left).toBe(block.left);
+    const download = page.waitForEvent("download");
+    await frame.getByRole("button", { name: "PNG", exact: true }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.png$/);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await frame.getByRole("button", { name: "Load Draft", exact: true }).click();
+    await expect(layers).toHaveCount(originalCount + 1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(frame.getByRole("navigation", { name: "Broot mobile panels" })).toBeVisible();
+    await frame.getByRole("button", { name: "tools", exact: true }).click();
+    await expect(frame.getByLabel("Broot tools", { exact: true })).toBeVisible();
+    await frame.getByRole("button", { name: "layers", exact: true }).click();
+    await expect(frame.getByLabel("Broot layers and Tezos", { exact: true })).toBeVisible();
+    await frame.getByRole("button", { name: "canvas", exact: true }).click();
+    await expect(frame.getByLabel("Broot canvas workspace", { exact: true })).toBeVisible();
+    const narrow = await getBrootFrame(page);
+    expect(await narrow.evaluate(() => document.body.scrollWidth <= document.body.clientWidth)).toBe(true);
+  });
+
   test("loads the Tezos-native Fabric editor and exports a PNG", async ({ page, request }) => {
     await setHarnessRole(request, "admin");
     const errors = [];

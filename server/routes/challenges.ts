@@ -8,6 +8,13 @@ import {
   rewardLedger,
 } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { rounds } from "@shared/schema";
+import { gameshowService } from "../features/gameshow";
+import { gameshowEditing } from "../features/gameshow";
+
+import { GameshowError } from "../features/gameshow/policy";
+import { hasPermission } from "../lib/permissions";
+import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { isAuthenticated, requirePermission } from "../auth/passport";
 import { awardXp } from "../lib/xp";
 import { grantWtfSubdomainToUser } from "../lib/wtf-subdomain-grants";
@@ -154,6 +161,13 @@ router.get("/api/challenges/:id", async (req, res) => {
     if (!challenge)
       return res.status(404).json({ error: "Challenge not found" });
 
+    const [round] = challenge.roundId ? await db.select().from(rounds).where(eq(rounds.id, challenge.roundId)) : [];
+    const roles = req.user ? await listRolesForUserSnapshot(req.user as any) : [];
+    const reviewer = req.user ? await hasPermission(roles, "manage_challenges") || await hasPermission(roles, "manage_gameshow") : false;
+    const hideOthers = Boolean(round?.seasonId && !reviewer);
+    const visibleSubmissionFilter = hideOthers
+      ? and(eq(challengeSubmissions.challengeId, challenge.id), eq(challengeSubmissions.userId, (req.user as any)?.id ?? -1))
+      : eq(challengeSubmissions.challengeId, challenge.id);
     const subs = await db
       .select({
         id: challengeSubmissions.id,
@@ -169,7 +183,7 @@ router.get("/api/challenges/:id", async (req, res) => {
       })
       .from(challengeSubmissions)
       .leftJoin(users, eq(challengeSubmissions.userId, users.id))
-      .where(eq(challengeSubmissions.challengeId, challenge.id))
+      .where(visibleSubmissionFilter)
       .orderBy(desc(challengeSubmissions.submittedAt));
 
     const authed = req.user as { id?: number } | undefined;
@@ -288,15 +302,12 @@ router.put(
       if (parsed.data.status !== undefined) updates.status = parsed.data.status;
       if (parsed.data.deadline !== undefined) updates.deadline = parsed.data.deadline;
 
-      const [updated] = await db
-        .update(challenges)
-        .set(updates)
-        .where(eq(challenges.id, parseInt(req.params.id as string)))
-        .returning();
+      const updated = await gameshowEditing.editChallenge(parseInt(req.params.id as string), updates, { userId: (req.user as any).id, ip: req.ip });
       if (!updated)
         return res.status(404).json({ error: "Challenge not found" });
       res.json(updated);
     } catch (err) {
+      if (err instanceof GameshowError) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: "Failed to update challenge" });
     }
   }
@@ -307,44 +318,17 @@ router.put(
 router.post(
   "/api/challenges/:id/submit",
   isAuthenticated,
+  requirePermission("submit_challenges"),
   async (req, res) => {
     try {
       const user = req.user as any;
       const challengeId = parseInt(req.params.id as string);
 
-      const [challenge] = await db
-        .select()
-        .from(challenges)
-        .where(eq(challenges.id, challengeId));
-      if (!challenge)
-        return res.status(404).json({ error: "Challenge not found" });
-      if (challenge.status !== "active")
-        return res
-          .status(400)
-          .json({ error: "Challenge is not accepting submissions" });
-
-      const existing = await db
-        .select()
-        .from(challengeSubmissions)
-        .where(
-          and(
-            eq(challengeSubmissions.challengeId, challengeId),
-            eq(challengeSubmissions.userId, user.id)
-          )
-        );
-      if (existing.length > 0) {
-        return res.status(409).json({ error: "Already submitted" });
+      if ((req.body.contentText != null && typeof req.body.contentText !== "string") ||
+          (req.body.contentUrl != null && typeof req.body.contentUrl !== "string")) {
+        return res.status(400).json({ error: "Answer and proof link must be text" });
       }
-
-      const [submission] = await db
-        .insert(challengeSubmissions)
-        .values({
-          challengeId,
-          userId: user.id,
-          contentText: req.body.contentText,
-          contentUrl: req.body.contentUrl,
-        })
-        .returning();
+      const { submission, challenge } = await gameshowService.submit(challengeId, user.id, req.body);
 
       await awardXp({
         userId: user.id,
@@ -365,6 +349,7 @@ router.post(
 
       res.status(201).json(submission);
     } catch (err) {
+      if (err instanceof GameshowError) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: "Failed to submit" });
     }
   }
@@ -405,16 +390,11 @@ router.put(
         return res.status(404).json({ error: "Submission not found" });
       }
 
-      const [updated] = await db
-        .update(challengeSubmissions)
-        .set({
-          grade,
-          feedback,
-          gradedBy: user.id,
-          gradedAt: new Date(),
-        })
-        .where(eq(challengeSubmissions.id, submissionId))
-        .returning();
+      if (feedback !== undefined && feedback !== null && typeof feedback !== "string") {
+        return res.status(400).json({ error: "Feedback must be text" });
+      }
+      const graded = await gameshowService.grade(submissionId, grade, feedback, { userId: user.id, ip: req.ip });
+      const updated = graded.submission;
 
       const shouldBeClaimable = grade === "pass" || grade === "bonus";
 
@@ -435,7 +415,6 @@ router.put(
             target: challengeRewardFlags.submissionId,
             set: {
               claimable: true,
-              claimed: false,
               rewardEscrowSlug: submissionRow.rewardEscrowSlug ?? null,
               flagSlug,
             },
@@ -531,6 +510,7 @@ router.put(
 
       res.json(updated);
     } catch (err) {
+      if (err instanceof GameshowError) return res.status(err.status).json({ error: err.message });
       res.status(500).json({ error: "Failed to grade submission" });
     }
   }

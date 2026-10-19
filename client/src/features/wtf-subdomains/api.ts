@@ -76,6 +76,7 @@ export function saveWtfUserSitePage(payload: {
   slug: string;
   title: string;
   html: string;
+  visibility?: "public" | "private";
 }) {
   return api.put<UserSiteState>(
     `/api/wtf-sites/pages/${encodeURIComponent(payload.slug)}`,
@@ -87,6 +88,7 @@ export function createWtfUserSitePage(payload: {
   slug: string;
   title: string;
   html: string;
+  visibility?: "public" | "private";
 }) {
   return api.post<UserSiteState>("/api/wtf-sites/pages", payload);
 }
@@ -103,6 +105,35 @@ export function updateWtfUserSiteAssets(mediaIds: number[]) {
 
 export function publishWtfUserSite() {
   return api.post<UserSiteState>("/api/wtf-sites/publish");
+}
+
+export function publishPrivateWtfUserSitePage(slug: string) {
+  return api.post<UserSiteState>(`/api/wtf-sites/pages/${encodeURIComponent(slug)}/publish-private`);
+}
+
+/** Transfer only a host/page-scoped session ticket; the platform cookie stays on its own origin. */
+export async function openPrivateWtfUserSitePage(host: string, slug: string) {
+  const windowName = `wtfos-private-page-${Date.now()}`;
+  const preview = window.open("about:blank", windowName);
+  if (preview) preview.opener = null;
+  try {
+    const handoff = await api.post<{ url: string; token: string }>("/api/wtf-sites/private-access", { host, slug });
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = handoff.url;
+    form.target = preview ? windowName : "_self";
+    const token = document.createElement("input");
+    token.type = "hidden";
+    token.name = "token";
+    token.value = handoff.token;
+    form.append(token);
+    document.body.append(form);
+    form.submit();
+    form.remove();
+  } catch (error) {
+    preview?.close();
+    throw error;
+  }
 }
 
 export function rollbackWtfUserSite(versionId: number) {

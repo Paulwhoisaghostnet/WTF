@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import {
@@ -22,6 +23,9 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { UserLink } from "../components/UserLink";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { HostShowConsole } from "../features/gameshow/HostShowConsole";
+import { HostRoundBuilder } from "../features/gameshow/HostRoundBuilder";
+import { HostProgressSheet } from "../features/gameshow/HostProgressSheet";
 
 const Stack = styled.div`
   display: flex;
@@ -29,7 +33,13 @@ const Stack = styled.div`
   gap: var(--wtf-space-3, 12px);
   min-width: 0;
 
+  [data-control-board-region="tabs"] { flex-wrap: wrap; }
+
   &[data-control-board-presentation-host="gamma"] {
+    --wtf-app-surface: #11110f;
+    --wtf-app-border: #60605a;
+    --wtf-app-muted-text: #c6c1b5;
+    --wtf-app-info: #00d2ff;
     padding: 16px;
     color: #f2ead9;
     background: #070706;
@@ -55,7 +65,7 @@ const Stack = styled.div`
     border: 1px solid rgba(242, 234, 217, 0.18);
   }
 
-  &[data-control-board-presentation-host="gamma"] :where(input, select) {
+  &[data-control-board-presentation-host="gamma"] :where(input, select, textarea) {
     color: #f2ead9;
     background: #070706;
     border: 1px solid rgba(242, 234, 217, 0.22);
@@ -216,13 +226,16 @@ function asArray<T>(value: unknown): T[] {
 }
 
 export function ControlBoard() {
+  const search = useSearch();
+  const requestedSeasonId = Number(new URLSearchParams(search).get("seasonId"));
   const presentation = usePresentationShell();
   const { user } = useAuth();
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<
-    "cohort" | "round" | "tickets" | "audit" | "test" | "season3"
-  >("cohort");
+    "show" | "build" | "progress" | "cohort" | "round" | "tickets" | "audit" | "test" | "season3"
+  >("show");
+  const [builderOpened, setBuilderOpened] = useState(false);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null);
   const [eliminateTarget, setEliminateTarget] = useState<Contestant | null>(
@@ -237,6 +250,7 @@ export function ControlBoard() {
 
   const activeSeasonId =
     selectedSeasonId ??
+    (Number.isSafeInteger(requestedSeasonId) && requestedSeasonId > 0 ? requestedSeasonId : null) ??
     seasons.find((s) => s.status === "active")?.id ??
     seasons[0]?.id ??
     null;
@@ -359,7 +373,7 @@ export function ControlBoard() {
   const currentRound = useMemo(
     () =>
       rounds.find((r) => r.id === selectedRoundId) ??
-      rounds.find((r) => r.status === "active") ??
+      rounds.find((r) => r.status === "active" || r.status === "grading") ??
       null,
     [rounds, selectedRoundId]
   );
@@ -371,7 +385,7 @@ export function ControlBoard() {
     );
   }, [drafts, currentRound]);
 
-  const canAdvance = draftsForRound.length === 0;
+  const canAdvance = currentRound?.status === "grading" && draftsForRound.length === 0;
 
   if (seasonsQuery.isLoading) {
     return (
@@ -421,7 +435,10 @@ export function ControlBoard() {
           )}
         </Row>
 
-        <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} data-control-board-region="tabs">
+        <Tabs value={tab} onChange={(v) => { setTab(v as typeof tab); if (v === "build") setBuilderOpened(true); }} data-control-board-region="tabs">
+          <Tab value="show">Run Show</Tab>
+          <Tab value="build">Build Rounds</Tab>
+          <Tab value="progress">Progress Sheet</Tab>
           <Tab value="cohort">Cohort</Tab>
           <Tab value="round">Round</Tab>
           <Tab value="tickets">Tickets</Tab>
@@ -431,6 +448,9 @@ export function ControlBoard() {
         </Tabs>
 
         <TabBody data-control-board-region="tab-body" data-control-board-active-tab={tab}>
+          {tab === "show" ? <HostShowConsole key={activeSeasonId} seasonId={activeSeasonId} /> : null}
+          {builderOpened && <div hidden={tab !== "build"}><HostRoundBuilder key={activeSeasonId} seasonId={activeSeasonId} onCreated={id => { setSelectedSeasonId(id); qc.invalidateQueries({ queryKey: ["/api/seasons"] }); }} /></div>}
+          {tab === "progress" ? <HostProgressSheet key={activeSeasonId} seasonId={activeSeasonId} /> : null}
           {tab === "cohort" ? (
             <CohortTab
               active={activeContestants}
@@ -464,6 +484,7 @@ export function ControlBoard() {
                 if (contestant) setEliminateTarget(contestant);
               }}
               advancing={advanceRoundMutation.isPending}
+              advanceError={advanceRoundMutation.error?.message ?? null}
             />
           ) : null}
 
@@ -618,6 +639,7 @@ function RoundTab(props: {
   }) => void;
   onEliminate: (draft: DraftElimination) => void;
   advancing: boolean;
+  advanceError: string | null;
 }) {
   const [ruleKind, setRuleKind] = useState<RuleKind>("bottom_n_by_wtf");
   const [ruleN, setRuleN] = useState<string>("5");
@@ -706,8 +728,8 @@ function RoundTab(props: {
           >
             {props.draftsForRound.length === 0 ? (
               <Muted>
-                No unconfirmed drafts. "Advance round" is unlocked when this
-                list is empty.
+                No unconfirmed elimination drafts. Close entries and review
+                every submitted response in Run Show before archiving this round.
               </Muted>
             ) : (
               <Table data-control-board-region="draft-table">
@@ -746,13 +768,14 @@ function RoundTab(props: {
               disabled={!props.canAdvance || props.advancing}
               onClick={() => props.onAdvance(round.id)}
             >
-              {props.advancing ? "Advancing…" : "Advance round"}
+              {props.advancing ? "Archiving…" : "Archive reviewed round"}
             </Button>
             <Muted>
-              Unlocks only when every draft elimination above has been
-              confirmed or overridden.
+              Requires a closed round, reviewed submissions, and resolved
+              elimination drafts. The next round waits for its start cue in Run Show.
             </Muted>
           </Row>
+          {props.advanceError && <p role="alert">{props.advanceError}</p>}
         </>
       )}
     </Stack>

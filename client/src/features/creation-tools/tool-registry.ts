@@ -242,7 +242,7 @@ export const CREATION_TOOLS = [
       "/creation-tools/macaroni/contract/mydrop.contract.json",
       "/creation-tools/macaroni/contract/macaroni-v3.contract.json",
     ],
-    roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE],
+    roles: ["admin", "host", "cohost", "trusted_creator", "gameshow_creator", COBWEBSAINTS_FULL_USER_ROLE],
     provenance: {
       creatorName: "WTF OS",
     },

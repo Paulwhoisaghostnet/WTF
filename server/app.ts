@@ -18,6 +18,7 @@ import { csrfProtection } from "./lib/csrf";
 import { createAdminMutationAuditMiddleware } from "./lib/admin-mutation-audit";
 import { canonicalDomainRedirectMiddleware } from "./lib/canonical-domain";
 import { userSiteHostRouter } from "./features/wtf-sites/host-router";
+import { getSpineConfig } from "./features/atproto-spine/config";
 import { routeTimingMiddleware } from "./lib/runtime-metrics";
 import {
   authenticatePublicApi,
@@ -294,6 +295,8 @@ export async function createApp() {
   const baseCspDirectives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "base-uri": ["'self'"],
+    // A private-site handoff posts a scoped ticket, never the platform cookie.
+    "form-action": ["'self'", `https://*.${getSpineConfig().networkDomain}`],
     "object-src": ["'none'"],
     "img-src": ["'self'", "data:", "blob:", ...trustedContentSources],
     "media-src": ["'self'", "data:", "blob:", ...trustedContentSources],

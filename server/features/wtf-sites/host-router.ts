@@ -14,6 +14,8 @@ import {
   resolvePublishedAsset,
   resolvePublishedPage,
 } from "./service";
+import { PRIVATE_SITE_PREFIX } from "./private-pages";
+import { servePrivateUserSite } from "./private-page-http";
 
 const USER_SITE_WALLET_CONNECT_SOURCES = [
   "wss://*.octez.io",
@@ -123,6 +125,9 @@ export async function userSiteHostRouter(req: Request, res: Response, next: Next
   setUserSiteHeaders(res);
 
   try {
+    if (req.path.startsWith(PRIVATE_SITE_PREFIX)) {
+      return await servePrivateUserSite(req, res, host);
+    }
     if (req.path === "/.well-known/atproto-did") {
       const resolved = await resolveDidForHost(host);
       if (!resolved) return res.status(404).type("text/plain").send("DID not found");

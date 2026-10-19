@@ -66,7 +66,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tools/kandinsky-composer", auth: true, title: "Kandinsky Composer" },
   { pattern: "/tools/pixel-patterns", auth: true, title: "PixelPatterns" },
   { pattern: "/tools/penrose-backgrounds", auth: true, title: "PenRose Backgrounds" },
-  { pattern: "/tools/macaroni", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "Macaroni" },
+  { pattern: "/tools/macaroni", auth: true, roles: ["admin", "host", "cohost", "trusted_creator", "gameshow_creator", COBWEBSAINTS_FULL_USER_ROLE], title: "Macaroni" },
   { pattern: "/tools/spaghetti", auth: true, title: "Spaghetti" },
   { pattern: "/tools/gnocchi", auth: true, title: "Gnocchi" },
   { pattern: "/tools/ravioli", auth: true, title: "Ravioli" },

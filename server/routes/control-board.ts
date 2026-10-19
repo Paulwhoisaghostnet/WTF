@@ -20,8 +20,11 @@ import {
   users,
 } from "@shared/schema";
 import { z } from "zod";
+import gameshowRoutes, { respondGameshowError } from "../features/gameshow/routes";
+import { gameshowService } from "../features/gameshow";
 
 const router = Router();
+router.use(gameshowRoutes);
 
 const ruleKinds = [
   "bottom_n_by_wtf",
@@ -642,70 +645,10 @@ router.post(
     try {
       const roundId = intParam(req.params.id);
       if (!roundId) return res.status(400).json({ error: "Invalid round id" });
-      const round = await loadRound(roundId);
-      if (!round) return res.status(404).json({ error: "Round not found" });
-
-      const pending = await db.execute(sql`
-        SELECT COUNT(*)::int AS count
-        FROM round_eliminations
-        WHERE round_id = ${roundId}
-          AND decided_at IS NULL
-      `);
-      const pendingCount = Number(((pending as any).rows ?? [])[0]?.count ?? 0);
-      if (pendingCount > 0) {
-        return res.status(409).json({
-          error: "Resolve draft eliminations before advancing the round",
-        });
-      }
-
-      const [updated] = await db
-        .update(rounds)
-        .set({ status: "completed" })
-        .where(eq(rounds.id, roundId))
-        .returning();
-
-      const [nextRound] =
-        round.seasonId !== null && round.seasonId !== undefined
-          ? await db
-              .select()
-              .from(rounds)
-              .where(
-                and(
-                  eq(rounds.seasonId, round.seasonId),
-                  sql`${rounds.number} > ${round.number}`
-                )
-              )
-              .orderBy(asc(rounds.number))
-              .limit(1)
-          : [];
-
-      if (nextRound) {
-        await db
-          .update(rounds)
-          .set({ status: "active" })
-          .where(eq(rounds.id, nextRound.id));
-      } else if (round.seasonId !== null && round.seasonId !== undefined) {
-        await db
-          .update(seasons)
-          .set({ status: "completed" })
-          .where(eq(seasons.id, round.seasonId));
-      }
-
-      await logOperatorAction(req, {
-        actionKind: "round_advanced",
-        targetKind: "round",
-        targetId: roundId,
-        payloadJson: {
-          seasonId: round.seasonId,
-          nextRoundId: nextRound?.id ?? null,
-        },
-      });
-
-      res.json(updated);
-    } catch (err) {
-      console.error("[control-board] advance round failed:", err);
-      res.status(500).json({ error: "Failed to advance round" });
-    }
+      res.json(await gameshowService.transition(roundId, "advance", {
+        userId: actorUserId(req)!, ip: clientIp(req),
+      }));
+    } catch (error) { respondGameshowError(res, error); }
   }
 );
 

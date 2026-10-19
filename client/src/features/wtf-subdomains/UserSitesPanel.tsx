@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { ExternalLink, Image as ImageIcon, Plus, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Button, GroupBox, Hourglass, TextInput } from "react95";
 import styled from "styled-components";
 import type { WtfUserSitePageDto } from "@shared/wtf-user-sites";
@@ -11,10 +12,12 @@ import {
   useMyMediaLibraryForSite,
   useMyWtfUserSite,
   usePublishWtfUserSite,
+  usePublishPrivateWtfUserSitePage,
   useRollbackWtfUserSite,
   useSaveWtfUserSitePage,
   useUpdateWtfUserSiteAssets,
 } from "./hooks";
+import { openPrivateWtfUserSitePage } from "./api";
 
 const Stack = styled.div`
   display: grid;
@@ -147,6 +150,8 @@ function bytesLabel(value: number): string {
 }
 
 export function UserSitesPanel(): ReactElement {
+  const search = useSearch();
+  const requestedPrivatePage = new URLSearchParams(search);
   const queryClient = useQueryClient();
   const siteQuery = useMyWtfUserSite();
   const claimMutation = useClaimWtfUserSite();
@@ -155,10 +160,16 @@ export function UserSitesPanel(): ReactElement {
   const deleteMutation = useDeleteWtfUserSitePage();
   const assetsMutation = useUpdateWtfUserSiteAssets();
   const publishMutation = usePublishWtfUserSite();
+  const privatePublishMutation = usePublishPrivateWtfUserSitePage();
   const rollbackMutation = useRollbackWtfUserSite();
   const [selectedSlug, setSelectedSlug] = useState("home");
   const [title, setTitle] = useState("Home");
   const [html, setHtml] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [newVisibility, setNewVisibility] = useState<"public" | "private">("private");
+  const [newContent, setNewContent] = useState("");
+  const [notice, setNotice] = useState("");
+  const [privateOpenError, setPrivateOpenError] = useState<Error | null>(null);
   const [newSlug, setNewSlug] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
@@ -180,6 +191,7 @@ export function UserSitesPanel(): ReactElement {
     setSelectedSlug(selectedPage.slug);
     setTitle(selectedPage.title);
     setHtml(selectedPage.draftHtml);
+    setVisibility(selectedPage.visibility ?? "public");
   }, [selectedPage?.id, selectedPage?.updatedAt]);
 
   useEffect(() => {
@@ -191,6 +203,13 @@ export function UserSitesPanel(): ReactElement {
     queryClient.setQueryData(["wtf-user-sites", "my"], data);
   }
 
+  function openPrivatePage(host: string, slug: string) {
+    setPrivateOpenError(null);
+    void openPrivateWtfUserSitePage(host, slug).catch((error) => setPrivateOpenError(error instanceof Error ? error : new Error("Unable to open private page")));
+  }
+  const escapeHtml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  const hasUnsavedChanges = Boolean(selectedPage && (title !== selectedPage.title || html !== selectedPage.draftHtml || visibility !== (selectedPage.visibility ?? "public")));
+
   const error = mutationError(
     claimMutation.error,
     saveMutation.error,
@@ -200,12 +219,17 @@ export function UserSitesPanel(): ReactElement {
     publishMutation.error,
     rollbackMutation.error,
     siteQuery.error
+    , privatePublishMutation.error, privateOpenError
   );
 
   return (
     <GroupBox label="username.wtfos.me Sites">
+      {requestedPrivatePage.get("privateHost") && requestedPrivatePage.get("privatePage") ? <Notice>
+        This page is private. Only its owner and administrators can open it with a current sign-in session.
+        <Button onClick={() => openPrivatePage(requestedPrivatePage.get("privateHost")!, requestedPrivatePage.get("privatePage")!)}>Open requested private page</Button>
+      </Notice> : null}
       {!state ? (
-        <Hourglass size={28} />
+        error ? <Notice $tone="danger" role="alert">{error}</Notice> : <Hourglass size={28} />
       ) : (
         <Stack>
           <StatusGrid>
@@ -238,7 +262,9 @@ export function UserSitesPanel(): ReactElement {
           {site?.status === "suspended" ? (
             <Notice $tone="danger">{site.suspendedReason || "Site suspended."}</Notice>
           ) : null}
-          {error ? <Notice $tone="danger">{error}</Notice> : null}
+          <p style={{ fontSize: 12 }}>1. Claim your host using your linked wallet and identity. 2. Create a page. 3. Save its draft, then publish to your chosen audience. Private pages stay off public site snapshots and PDS records.</p>
+          {error ? <Notice $tone="danger" role="alert">{error}</Notice> : null}
+          {notice ? <Notice $tone="success" role="status">{notice}</Notice> : null}
 
           {!site ? (
             <ActionRow>
@@ -269,7 +295,7 @@ export function UserSitesPanel(): ReactElement {
                     })
                   }
                 >
-                  <Send style={iconStyle} /> Publish
+                  <Send style={iconStyle} /> Publish public pages
                 </Button>
                 <select
                   value={rollbackVersionId}
@@ -305,8 +331,19 @@ export function UserSitesPanel(): ReactElement {
                     >
                       <strong>{pageLabel(page)}</strong>
                       <div>{page.title}</div>
+                      <small>{page.visibility === "private" ? "Private · owner & admin review" : "Public"}</small>
                     </PageButton>
                   ))}
+                  <Field>
+                    Page audience
+                    <select aria-label="New page audience" value={newVisibility} onChange={(event) => setNewVisibility(event.target.value as "public" | "private")}>
+                      <option value="private">Private: me & admin review</option><option value="public">Public: anyone</option>
+                    </select>
+                  </Field>
+                  <Field>
+                    Page text
+                    <textarea aria-label="New page text" value={newContent} onChange={(event) => setNewContent(event.target.value)} rows={5} placeholder="Describe your work or add your round notes." />
+                  </Field>
                   <Field>
                     Slug
                     <TextInput
@@ -338,7 +375,8 @@ export function UserSitesPanel(): ReactElement {
                         {
                           slug: newSlug.trim(),
                           title: newTitle.trim() || newSlug.trim(),
-                          html: `<main><h1>${newTitle.trim() || newSlug.trim()}</h1></main>`,
+                          html: `<main><h1>${escapeHtml(newTitle.trim() || newSlug.trim())}</h1>${newContent.split("\n").map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</main>`,
+                          visibility: newVisibility,
                         },
                         {
                           onSuccess: (data) => {
@@ -346,12 +384,14 @@ export function UserSitesPanel(): ReactElement {
                             setSelectedSlug(newSlug.trim());
                             setNewSlug("");
                             setNewTitle("");
+                            setNewContent("");
+                            setNotice("Page draft created. Review it, then publish when ready.");
                           },
                         }
                       )
                     }
                   >
-                    <Plus style={iconStyle} /> Page
+                    <Plus style={iconStyle} /> Create page
                   </Button>
                 </PageList>
 
@@ -370,8 +410,8 @@ export function UserSitesPanel(): ReactElement {
                       disabled={!selectedPage || saveMutation.isPending || site.status === "suspended"}
                       onClick={() =>
                         saveMutation.mutate(
-                          { slug: selectedSlug, title, html },
-                          { onSuccess: applyMutationResult }
+                          { slug: selectedSlug, title, html, visibility },
+                          { onSuccess: (data) => { applyMutationResult(data); setNotice("Draft saved. Publish when ready."); } }
                         )
                       }
                     >
@@ -392,6 +432,21 @@ export function UserSitesPanel(): ReactElement {
                     </Button>
                   </ActionRow>
 
+                  <Field>Page audience
+                    <select aria-label="Selected page audience" value={visibility} onChange={(event) => setVisibility(event.target.value as "public" | "private")}>
+                      <option value="public">Public: anyone</option><option value="private">Private: me & admin review</option>
+                    </select>
+                  </Field>
+                  {visibility === "private" ? <Notice>
+                    Private pages are accessible only to you and signed-in administrators. Self-contained HTML, embedded media, and inline project scripts run in an isolated sandbox. Network requests, external embeds, platform cookies, and browser storage are unavailable; use file import/export for project data. Use a new slug for private work: public copies cannot be recalled.
+                    <ActionRow>
+                      <Button disabled={hasUnsavedChanges || selectedPage?.visibility !== "private" || privatePublishMutation.isPending || site.status === "suspended"} onClick={() => privatePublishMutation.mutate(selectedSlug, { onSuccess: (data) => { applyMutationResult(data); setNotice("Private page published for you and administrator review."); } })}>Publish private page</Button>
+                      <Button disabled={!selectedPage?.privatePublishedAt} onClick={() => openPrivatePage(site.host, selectedSlug)}>Open private page</Button>
+                    </ActionRow>
+                    {hasUnsavedChanges ? <p>Save the draft before publishing.</p> : null}
+                    <div>Private address: https://{site.host}/_private/{selectedSlug}</div>
+                  </Notice> : <Notice>Publishing public pages shares their content and attached site assets with anyone, including public PDS snapshots. Review before publishing.</Notice>}
+
                   <EditorGrid>
                     <Field>
                       HTML
@@ -407,6 +462,7 @@ export function UserSitesPanel(): ReactElement {
 
               <GroupBox label="Media Library">
                 <Stack>
+                  <Notice>Site assets are public when the public site is published. Do not attach confidential files here. Private pages do not publish their content or private library files.</Notice>
                   <ActionRow>
                     <Button onClick={() => setShowMedia((value) => !value)}>
                       <ImageIcon style={iconStyle} /> Media

@@ -1,6 +1,7 @@
 import {
   pgTable,
   serial,
+  bigserial,
   text,
   integer,
   boolean,
@@ -84,7 +85,7 @@ export const tzktResponseCache = pgTable(
 export const backfillManifest = pgTable(
   "backfill_manifest",
   {
-    id: serial("id").primaryKey(),
+    id: bigserial("id", { mode: "number" }).primaryKey(),
     /** Discriminator.  See comment above for the stable set of values. */
     taskType: varchar("task_type", { length: 32 }).notNull(),
     /**

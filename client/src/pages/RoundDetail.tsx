@@ -6,6 +6,8 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { RoundInfoCard } from "../components/RoundInfoCard";
 import { api } from "../lib/api";
 import { presentationRouteHref, usePresentationShell } from "../lib/presentation-shell";
+import { ContestantDesk } from "../features/gameshow/ContestantDesk";
+import { STAGE_REFRESH_INTERVAL_MS } from "@shared/gameshow";
 
 const roundDetailRegionAttrs = (region: string): any => ({
   "data-rounds-region": region,
@@ -83,12 +85,16 @@ export function RoundDetail({ roundId: propRoundId }: { roundId?: string }) {
     queryKey: ["round", roundId],
     queryFn: () => api.get<any>(`/api/rounds/${roundId}`),
     enabled: !!roundId,
+    refetchInterval: STAGE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const { data: challenges } = useQuery({
     queryKey: ["challenges", roundId],
     queryFn: () => api.get<any[]>(`/api/challenges?roundId=${roundId}`),
     enabled: !!roundId,
+    refetchInterval: STAGE_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   if (isLoading)
@@ -107,6 +113,7 @@ export function RoundDetail({ roundId: propRoundId }: { roundId?: string }) {
         data-rounds-surface="round-detail"
         data-rounds-region="surface"
       >
+        {round.seasonId && <ContestantDesk seasonId={round.seasonId} roundId={round.id} />}
         <RoundInfoCard round={round} />
 
         <Separator style={{ margin: "12px 0" }} />

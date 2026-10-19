@@ -17,6 +17,7 @@ import {
   WtfUserSiteError,
 } from "../features/wtf-sites/service";
 import { getPinRegistrySummaryForUser } from "../features/ipfs-pinning/service";
+import { privatePageAccess } from "../features/wtf-sites/private-pages";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ const pageSchema = z.object({
   slug: z.string().trim().min(1).max(80).optional(),
   title: z.string().trim().min(1).max(200),
   html: z.string().max(WTF_USER_SITE_MAX_PAGE_HTML_BYTES),
+  visibility: z.enum(["public", "private"]).optional(),
 });
 
 const assetsSchema = z.object({
@@ -81,6 +83,7 @@ router.put("/api/wtf-sites/pages/:slug", isAuthenticated, async (req, res) => {
         slug: parsed.data.slug ?? slug,
         title: parsed.data.title,
         html: parsed.data.html,
+        visibility: parsed.data.visibility,
       })
     );
   } catch (err) {
@@ -99,6 +102,7 @@ router.post("/api/wtf-sites/pages", isAuthenticated, async (req, res) => {
         slug: parsed.data.slug,
         title: parsed.data.title,
         html: parsed.data.html,
+        visibility: parsed.data.visibility,
       })
     );
   } catch (err) {
@@ -135,6 +139,22 @@ router.post("/api/wtf-sites/publish", isAuthenticated, async (req, res) => {
   }
 });
 
+router.post("/api/wtf-sites/pages/:slug/publish-private", isAuthenticated, async (req, res) => {
+  try {
+    const userId = (req.user as { id: number }).id;
+    await privatePageAccess.publish(userId, String(req.params.slug));
+    res.set("Cache-Control", "private, no-store").json(await getUserSiteState(userId));
+  } catch (err) { handleSiteError(res, err); }
+});
+
+router.post("/api/wtf-sites/private-access", isAuthenticated, async (req, res) => {
+  const input = z.object({ host: z.string().min(1), slug: z.string().min(1) }).safeParse(req.body);
+  if (!input.success) return res.status(400).json({ error: "Choose a private page to open" });
+  try {
+    res.set("Cache-Control", "private, no-store").json(await privatePageAccess.issue({ ...input.data, userId: (req.user as { id: number }).id, sid: req.sessionID }));
+  } catch (err) { handleSiteError(res, err); }
+});
+
 router.post("/api/wtf-sites/rollback", isAuthenticated, async (req, res) => {
   const parsed = rollbackSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid rollback payload" });
@@ -152,7 +172,7 @@ router.get(
   async (req, res) => {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 100;
-      res.json(await listAdminUserSites(limit));
+      res.json(await listAdminUserSites(limit, (req.user as { id: number }).id));
     } catch (err) {
       handleSiteError(res, err);
     }

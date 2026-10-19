@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { users } from "./schema-core";
+import type { GameshowPlanConfiguration } from "./gameshow";
 
 export const seasonStatusEnum = pgEnum("season_status", [
   "upcoming",
@@ -166,6 +167,15 @@ export const roundsRelations = relations(rounds, ({ one, many }) => ({
   }),
   challenges: many(challenges),
 }));
+
+/** Production metadata augments canonical rounds/challenges without owning their content or results. */
+export const gameshowRoundPlans = pgTable("gameshow_round_plans", {
+  roundId: integer("round_id").primaryKey().references(() => rounds.id, { onDelete: "cascade" }),
+  revision: integer("revision").default(1).notNull(),
+  configuration: jsonb("configuration").$type<GameshowPlanConfiguration>().notNull(),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const challenges = pgTable("challenges", {
   id: serial("id").primaryKey(),

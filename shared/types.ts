@@ -828,6 +828,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "trusted_market_creator", label: "Trusted Market Creator", description: "Trusted creator lane for in-app store item submissions", category: "market" },
   { key: "use_wtfos_pinning", label: "Use wtfOS Pinning", description: "Use hosted wtfOS IPFS pinning, PDS manifests, and wallet backup policies", category: "market" },
 
+  { key: "use_managed_macaroni", label: "Use Macaroni Creator Services", description: "Use Macaroni hosted pinning and owned-site publishing without general trusted-creator access", category: "market" },
+
   // ── Moderation ──
   { key: "pin_threads", label: "Pin Threads", description: "Pin or unpin message board threads", category: "moderation" },
   { key: "lock_threads", label: "Lock Threads", description: "Lock or unlock threads from new replies", category: "moderation" },
@@ -869,6 +871,7 @@ export const CATEGORY_LABELS: Record<PermissionCategory, string> = {
 };
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
+  gameshow_creator: ["use_managed_macaroni"],
   admin: [...PERMISSION_KEYS],
   host: [...PERMISSION_KEYS],
   cohost: PERMISSION_KEYS.filter(

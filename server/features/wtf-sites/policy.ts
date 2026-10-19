@@ -90,6 +90,11 @@ export interface ManifestPageSnapshot {
   html: string;
 }
 
+/** The only page projection allowed into public snapshots, bundles, or PDS records. */
+export function publicUserSitePages(pages: ReadonlyArray<{ slug: string; title: string; draftHtml: string; visibility?: string }>): ManifestPageSnapshot[] {
+  return pages.filter((page) => page.visibility !== "private").map((page) => ({ slug: page.slug, title: page.title, html: page.draftHtml }));
+}
+
 export interface UserSiteManifestInput {
   host: string;
   url: string;

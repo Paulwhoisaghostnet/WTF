@@ -12,6 +12,7 @@ import {
   fetchWtfDomainChatConfig,
   fetchWtfDomainsRegistrarStatus,
   publishWtfUserSite,
+  publishPrivateWtfUserSitePage,
   prepareWtfDomainRegistration,
   rollbackWtfUserSite,
   saveWtfUserSitePage,
@@ -98,6 +99,10 @@ export function useUpdateWtfUserSiteAssets() {
 
 export function usePublishWtfUserSite() {
   return useMutation({ mutationFn: publishWtfUserSite });
+}
+
+export function usePublishPrivateWtfUserSitePage() {
+  return useMutation({ mutationFn: publishPrivateWtfUserSitePage });
 }
 
 export function useRollbackWtfUserSite() {

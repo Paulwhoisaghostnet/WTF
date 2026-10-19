@@ -3843,6 +3843,7 @@ const betaPresentationHostSelector = `:is(
   [data-dues-presentation-host="beta"],
   [data-gallery-presentation-host="beta"],
   [data-game-studio-presentation-host="beta"],
+  [data-gameshow-presentation-host="beta"],
   [data-gamma-utility-presentation-host="beta"],
   [data-ipfs-pinning-presentation-host="beta"],
   [data-mail-presentation-host="beta"],

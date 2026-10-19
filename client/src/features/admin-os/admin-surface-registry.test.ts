@@ -137,6 +137,7 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
   assert.equal(surface?.desktopAppKey, "pasta-protocol");
   assert.deepEqual(surface?.routePatterns, [
     "/tools/colander",
+    "/tools/macaroni",
     "/tools/spaghetti",
     "/tools/gnocchi",
     "/tools/ravioli",
@@ -145,6 +146,7 @@ test("Pasta Protocol owns Colander and static publisher routes", () => {
     "/tools/lasagna",
   ]);
   assert.equal(findAdminSurfaceForPath("/tools/colander")?.id, "pasta-protocol");
+  assert.equal(findAdminSurfaceForPath("/tools/macaroni")?.id, "pasta-protocol");
   assert.equal(findAdminSurfaceForPath("/tools/spaghetti")?.id, "pasta-protocol");
   assert.equal(getAdminSurfaceDoctrineDomain(surface!), DOCTRINE_DOMAIN_GUIDES.pastaProtocol);
   assert(surface?.automationHandles.includes("chease.package_handoff_opened"));

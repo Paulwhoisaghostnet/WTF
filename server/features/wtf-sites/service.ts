@@ -36,6 +36,7 @@ import {
   digestUserSiteManifest,
   normalizeUserSiteSlug,
   pageSlugForRequestPath,
+  publicUserSitePages,
   validateUserSiteLabel,
   type DidTargetSnapshot,
   type ManifestPageSnapshot,
@@ -101,6 +102,8 @@ function toPageDto(page: PageRow): WtfUserSitePageDto {
     slug: page.slug,
     title: page.title,
     draftHtml: page.draftHtml,
+    visibility: page.visibility,
+    privatePublishedAt: iso(page.privatePublishedAt),
     sortOrder: page.sortOrder,
     updatedAt: iso(page.updatedAt) ?? new Date().toISOString(),
   };
@@ -451,7 +454,7 @@ async function refreshProofState(site: SiteRow, eligibility: WtfUserSiteEligibil
   return site;
 }
 
-async function serializeSite(site: SiteRow): Promise<WtfUserSiteDto> {
+async function serializeSite(site: SiteRow, includePrivatePages = true): Promise<WtfUserSiteDto> {
   const [pages, versions, assets] = await Promise.all([
     fetchSitePages(site.id),
     fetchSiteVersions(site.id),
@@ -470,7 +473,7 @@ async function serializeSite(site: SiteRow): Promise<WtfUserSiteDto> {
     suspendedAt: iso(site.suspendedAt),
     suspendedReason: site.suspendedReason ?? null,
     publishedAt: iso(site.publishedAt),
-    pages: pages.map(toPageDto),
+    pages: pages.filter((page) => includePrivatePages || page.visibility !== "private").map(toPageDto),
     versions: versions.map(toVersionDto),
     assets: assets.map((item) => toMediaDto(site.host, item)),
     assetBytes,
@@ -492,6 +495,7 @@ export async function saveUserSitePage(input: {
   slug: string;
   title: string;
   html: string;
+  visibility?: "public" | "private";
 }): Promise<WtfUserSiteStateDto> {
   const site = await fetchSiteForUser(input.userId);
   if (!site) throw new WtfUserSiteError(404, "Claim a wtfOS site before editing pages");
@@ -504,6 +508,20 @@ export async function saveUserSitePage(input: {
 
   const pages = await fetchSitePages(site.id);
   const existing = pages.find((page) => page.slug === slug);
+  const visibility = input.visibility ?? existing?.visibility ?? "public";
+  if (visibility === "private") {
+    // Audience changes cannot race a public publish that already read this draft.
+    // Private work starts with a fresh private slug, never a public page conversion.
+    if (existing && existing.visibility !== "private") {
+      throw new WtfUserSiteError(409, "Create a new private page with a different slug. An existing public page cannot be converted to private.");
+    }
+    // This is an all-history privacy check, independent of the paginated version list.
+    const [publicVersion] = await db.select({ id: wtfUserSiteVersions.id }).from(wtfUserSiteVersions)
+      .where(and(eq(wtfUserSiteVersions.siteId, site.id), sql`${wtfUserSiteVersions.pages} @> ${JSON.stringify([{ slug }])}::jsonb`)).limit(1);
+    if (publicVersion) {
+      throw new WtfUserSiteError(409, "This page was already published publicly. Create a new private page with a different slug; public copies cannot be made private.");
+    }
+  }
   const namedPageCount = pages.filter((page) => page.slug !== WTF_USER_SITE_HOME_SLUG).length;
   if (!existing && slug !== WTF_USER_SITE_HOME_SLUG && namedPageCount >= WTF_USER_SITE_MAX_NAMED_PAGES) {
     throw new WtfUserSiteError(400, `User sites can have at most ${WTF_USER_SITE_MAX_NAMED_PAGES} named pages`);
@@ -513,20 +531,21 @@ export async function saveUserSitePage(input: {
   if (existing) {
     await db
       .update(wtfUserSitePages)
-      .set({ title, draftHtml: html, updatedAt: now })
+      .set({ title, draftHtml: html, visibility, updatedAt: now })
       .where(and(eq(wtfUserSitePages.siteId, site.id), eq(wtfUserSitePages.slug, slug)));
-    await audit(site.id, input.userId, "page_updated", { slug });
+    await audit(site.id, input.userId, "page_updated", { slug, visibility });
   } else {
     await db.insert(wtfUserSitePages).values({
       siteId: site.id,
       slug,
       title,
       draftHtml: html,
+      visibility,
       sortOrder: pages.length,
       createdAt: now,
       updatedAt: now,
     });
-    await audit(site.id, input.userId, "page_created", { slug });
+    await audit(site.id, input.userId, "page_created", { slug, visibility });
   }
   await db.update(wtfUserSites).set({ updatedAt: now }).where(eq(wtfUserSites.id, site.id));
   return getUserSiteState(input.userId);
@@ -630,11 +649,7 @@ export async function publishUserSite(userId: number): Promise<WtfUserSiteStateD
 
   const publishedAt = new Date();
   const versionNumber = (await latestVersionNumber(site.id)) + 1;
-  const pageSnapshots: ManifestPageSnapshot[] = refreshedPages.map((page) => ({
-    slug: page.slug,
-    title: page.title,
-    html: page.draftHtml,
-  }));
+  const pageSnapshots: ManifestPageSnapshot[] = publicUserSitePages(refreshedPages);
   const manifest = buildUserSiteManifest({
     host: site.host,
     url: siteUrl(site.host),
@@ -814,6 +829,12 @@ export async function rollbackUserSite(userId: number, versionId: number): Promi
   return getUserSiteState(userId);
 }
 
+async function viewerIsStrictAdmin(viewerUserId: number | null): Promise<boolean> {
+  if (viewerUserId === null) return false;
+  const viewer = await fetchUser(viewerUserId);
+  return (await listRolesForUserSnapshot(viewer)).includes("admin");
+}
+
 export async function suspendUserSite(siteId: number, actorUserId: number | null, reason: string): Promise<WtfUserSiteDto> {
   const [site] = await db
     .update(wtfUserSites)
@@ -828,7 +849,7 @@ export async function suspendUserSite(siteId: number, actorUserId: number | null
     .returning();
   if (!site) throw new WtfUserSiteError(404, "Site not found");
   await audit(site.id, actorUserId, "suspended", { reason: site.suspendedReason });
-  return serializeSite(site);
+  return serializeSite(site, actorUserId === site.userId || await viewerIsStrictAdmin(actorUserId));
 }
 
 export async function restoreUserSite(siteId: number, actorUserId: number | null): Promise<WtfUserSiteDto> {
@@ -845,16 +866,17 @@ export async function restoreUserSite(siteId: number, actorUserId: number | null
     .returning();
   if (!site) throw new WtfUserSiteError(404, "Site not found");
   await audit(site.id, actorUserId, "restored");
-  return serializeSite(site);
+  return serializeSite(site, actorUserId === site.userId || await viewerIsStrictAdmin(actorUserId));
 }
 
-export async function listAdminUserSites(limit = 100): Promise<WtfUserSiteDto[]> {
+export async function listAdminUserSites(limit = 100, viewerUserId: number | null = null): Promise<WtfUserSiteDto[]> {
   const sites = await db
     .select()
     .from(wtfUserSites)
     .orderBy(desc(wtfUserSites.updatedAt))
     .limit(Math.max(1, Math.min(limit, 250)));
-  return Promise.all(sites.map((site) => serializeSite(site)));
+  const isAdmin = await viewerIsStrictAdmin(viewerUserId);
+  return Promise.all(sites.map((site) => serializeSite(site, isAdmin || site.userId === viewerUserId)));
 }
 
 export async function isHostRegisteredForTls(host: string): Promise<boolean> {
@@ -912,6 +934,10 @@ export async function resolvePublishedPage(input: {
   }
   const slug = pageSlugForRequestPath(input.pathname);
   if (!slug) return { kind: "not_found" };
+  // A rollback can never resurrect a current private page through the public host.
+  const [currentPage] = await db.select({ visibility: wtfUserSitePages.visibility }).from(wtfUserSitePages)
+    .where(and(eq(wtfUserSitePages.siteId, site.id), eq(wtfUserSitePages.slug, slug))).limit(1);
+  if (currentPage?.visibility === "private") return { kind: "not_found" };
   const [version] = await db
     .select()
     .from(wtfUserSiteVersions)

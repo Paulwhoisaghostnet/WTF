@@ -3672,6 +3672,29 @@ function apiMock(req, res) {
       remainingQuantity: harnessInventoryQuantity(user.id, transfer.sku),
     });
   }
+  if (pathName === "/api/gameshow/seasons/1/stage" && req.method === "GET") {
+    const user = currentAuthUser();
+    if (!user) return res.status(401).json({ error: "Not authenticated" });
+    const enrolled = state.userRole === "contestant";
+    return res.json({
+      season: { ...sampleSeason, number: 1, anteWtfRequired: "0" },
+      rounds: [{
+        ...sampleRound, number: 1, description: "Inventory harness round", rules: "Follow the published challenge criteria.",
+        startDate: null, endDate: null, submissionCount: 0, pendingCount: 0,
+        challenges: [{ ...sampleChallenge, criteria: "Complete the requested community actions.", rules: null,
+          deadline: null, submissionCount: 0, pendingCount: 0 }],
+      }],
+      currentRoundId: sampleRound.id,
+      canManage: state.userRole === "admin",
+      me: {
+        contestant: enrolled ? { id: 1, status: "active", antePaidWtf: "0", anteSatisfied: true } : null,
+        submissions: [], canSubmit: enrolled,
+        blockers: enrolled ? [] : ["Ask the host to add you to this season's roster."],
+      },
+      contestants: enrolled ? [{ id: 1, userId: user.id, username: user.username, displayName: user.displayName, status: "active" }] : [],
+      submissions: [],
+    });
+  }
   if (pathName === "/api/seasons") return res.json([sampleSeason]);
   if (pathName === "/api/rounds") return res.json([sampleRound]);
   if (pathName === "/api/rounds/1") return res.json(sampleRound);

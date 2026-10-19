@@ -21,6 +21,7 @@ import { CustomCursor } from "../../features/desktop/CustomCursor";
 import { CursedDesktopEffects } from "../../features/desktop/CursedDesktopEffects";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
 import { DesktopScreenSaver } from "../../features/desktop/DesktopScreenSaver";
+import { reportDesktopClientEvent, type DesktopClientEventPayload } from "../../features/desktop/desktop-event-delivery";
 import { ReggieAssistant } from "../../features/reggie/ReggieAssistant";
 import {
   REGGIE_SUMMON_EVENT,
@@ -98,14 +99,6 @@ type InboxUnreadCountResponse = {
   dms: number;
   mail: number;
   adminInbox: number;
-};
-
-type DesktopClientEventPayload = {
-  eventType: string;
-  objectId: string;
-  objectKind: string;
-  action: string;
-  metadata?: Record<string, string | number | boolean | null>;
 };
 
 const DISABLED_DESKTOP_APPS = Object.fromEntries(
@@ -674,9 +667,7 @@ export function Desktop({
   const reportDesktopEvent = useCallback(
     (payload: DesktopClientEventPayload) => {
       if (!user) return;
-      void api.post<{ ok: true }>("/api/desktop/events", payload).catch(() => {
-        // Desktop interaction telemetry should never block local OS controls.
-      });
+      reportDesktopClientEvent(payload);
     },
     [user]
   );

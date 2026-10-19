@@ -21,6 +21,8 @@ Every major feature appears as a route and, when appropriate, as a window-capabl
 New apps should add their route, icon/window behavior, permission metadata, and admin surface entry in the same pass.
 The creator-side standard lives in [WTFOS App Creation SDK](../wtfos-sdk.md). The paired-agent discovery and registration doctrine lives in [WTFOS MCP Doctrine](../wtfos-mcp-doctrine.md).
 
+Gameshow host and contestant surfaces remain inside this domain. See [Gameshow operations](gameshow-operations.md) for the code and authority map and [Host runbook](../gameshow-host-runbook.md) for preparation, round cues, review and rehearsal.
+
 ## Phase 4 Closeout
 
 Phase 4 is the shell, Mission Control, and user-rights layer. The canonical user-facing OS surfaces are:

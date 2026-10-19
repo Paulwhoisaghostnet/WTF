@@ -817,7 +817,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list admin wtf sites.",
     "declaredAccess": "Admin",
     "sources": [
-      "server/routes/wtf-sites.ts:149"
+      "server/routes/wtf-sites.ts:169"
     ]
   },
   {
@@ -826,7 +826,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Partially update admin wtf sites id restore.",
     "declaredAccess": "Admin",
     "sources": [
-      "server/routes/wtf-sites.ts:181"
+      "server/routes/wtf-sites.ts:201"
     ]
   },
   {
@@ -835,7 +835,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Partially update admin wtf sites id suspend.",
     "declaredAccess": "Admin",
     "sources": [
-      "server/routes/wtf-sites.ts:162"
+      "server/routes/wtf-sites.ts:182"
     ]
   },
   {
@@ -2270,7 +2270,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list challenges.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/challenges.ts:126"
+      "server/routes/challenges.ts:133"
     ]
   },
   {
@@ -2279,7 +2279,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run challenges.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/challenges.ts:193"
+      "server/routes/challenges.ts:207"
     ]
   },
   {
@@ -2288,7 +2288,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list challenges id.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/challenges.ts:148"
+      "server/routes/challenges.ts:155"
     ]
   },
   {
@@ -2297,16 +2297,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set challenges id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/challenges.ts:235"
+      "server/routes/challenges.ts:249"
     ]
   },
   {
     "method": "POST",
     "path": "/api/challenges/:id/submit",
     "purpose": "Create, submit, or run challenges id submit.",
-    "declaredAccess": "Session",
+    "declaredAccess": "Permission",
     "sources": [
-      "server/routes/challenges.ts:307"
+      "server/routes/challenges.ts:318"
     ]
   },
   {
@@ -2315,7 +2315,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set challenges reward flags id claim.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/challenges.ts:631"
+      "server/routes/challenges.ts:611"
     ]
   },
   {
@@ -2954,7 +2954,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run contestants id eliminate.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:497"
+      "server/routes/control-board.ts:500"
     ]
   },
   {
@@ -2963,7 +2963,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run contestants id promote from reserve.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:591"
+      "server/routes/control-board.ts:594"
     ]
   },
   {
@@ -2981,7 +2981,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list control board feed.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:240"
+      "server/routes/control-board.ts:243"
     ]
   },
   {
@@ -2990,7 +2990,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run control board season3 scaffold.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:800"
+      "server/routes/control-board.ts:743"
     ]
   },
   {
@@ -2999,7 +2999,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list control board season3 status.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:773"
+      "server/routes/control-board.ts:716"
     ]
   },
   {
@@ -3008,7 +3008,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run control board test gameshow seed.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:743"
+      "server/routes/control-board.ts:686"
     ]
   },
   {
@@ -3017,7 +3017,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list control board test gameshow status.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:718"
+      "server/routes/control-board.ts:661"
     ]
   },
   {
@@ -3828,6 +3828,69 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "declaredAccess": "Public/handler",
     "sources": [
       "server/routes/game-studio.ts:208"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/gameshow/composer",
+    "purpose": "Read or list gameshow composer.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:54"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/gameshow/rounds/:id/plan",
+    "purpose": "Read or list gameshow rounds id plan.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:64"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/gameshow/rounds/:id/plan",
+    "purpose": "Replace or set gameshow rounds id plan.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:69"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/gameshow/seasons",
+    "purpose": "Create, submit, or run gameshow seasons.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:59"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/gameshow/seasons/:id/contestants/:userId/provision",
+    "purpose": "Create, submit, or run gameshow seasons id contestants userId provision.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/provisioning-routes.ts:20"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/gameshow/seasons/:id/progress",
+    "purpose": "Read or list gameshow seasons id progress.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:74"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/gameshow/seasons/:id/stage",
+    "purpose": "Read or list gameshow seasons id stage.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/features/gameshow/routes.ts:28"
     ]
   },
   {
@@ -5492,7 +5555,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list reward flags challenges.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/challenges.ts:599"
+      "server/routes/challenges.ts:579"
     ]
   },
   {
@@ -5501,7 +5564,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set reward flags challenges id claim.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/challenges.ts:631"
+      "server/routes/challenges.ts:611"
     ]
   },
   {
@@ -5573,7 +5636,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop rounds id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/seasons.ts:435"
+      "server/routes/seasons.ts:432"
     ]
   },
   {
@@ -5600,7 +5663,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run rounds id advance.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:637"
+      "server/routes/control-board.ts:640"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/rounds/:id/close",
+    "purpose": "Create, submit, or run rounds id close.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:52"
     ]
   },
   {
@@ -5609,7 +5681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set rounds id elimination rule.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:350"
+      "server/routes/control-board.ts:353"
     ]
   },
   {
@@ -5618,7 +5690,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run rounds id run rule.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:402"
+      "server/routes/control-board.ts:405"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/rounds/:id/start",
+    "purpose": "Create, submit, or run rounds id start.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:51"
     ]
   },
   {
@@ -5627,7 +5708,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list seasons.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/seasons.ts:174"
+      "server/routes/seasons.ts:177"
     ]
   },
   {
@@ -5636,7 +5717,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run seasons.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/seasons.ts:206"
+      "server/routes/seasons.ts:209"
     ]
   },
   {
@@ -5654,7 +5735,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list seasons id.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/seasons.ts:186"
+      "server/routes/seasons.ts:189"
     ]
   },
   {
@@ -5663,7 +5744,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set seasons id.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/seasons.ts:236"
+      "server/routes/seasons.ts:239"
     ]
   },
   {
@@ -5681,7 +5762,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list seasons id contestants.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/control-board.ts:313"
+      "server/routes/control-board.ts:316"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/seasons/:id/contestants",
+    "purpose": "Create, submit, or run seasons id contestants.",
+    "declaredAccess": "Permission",
+    "sources": [
+      "server/features/gameshow/routes.ts:38"
     ]
   },
   {
@@ -6563,7 +6653,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set submissions id grade.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/challenges.ts:373"
+      "server/routes/challenges.ts:358"
     ]
   },
   {
@@ -6572,7 +6662,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set submissions id reward.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/challenges.ts:539"
+      "server/routes/challenges.ts:519"
     ]
   },
   {
@@ -8122,7 +8212,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set wtf sites assets.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:118"
+      "server/routes/wtf-sites.ts:122"
     ]
   },
   {
@@ -8131,7 +8221,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf sites claim.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:63"
+      "server/routes/wtf-sites.ts:65"
     ]
   },
   {
@@ -8140,7 +8230,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list wtf sites my.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:53"
+      "server/routes/wtf-sites.ts:55"
     ]
   },
   {
@@ -8149,7 +8239,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf sites pages.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:91"
+      "server/routes/wtf-sites.ts:94"
     ]
   },
   {
@@ -8158,7 +8248,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop wtf sites pages slug.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:109"
+      "server/routes/wtf-sites.ts:113"
     ]
   },
   {
@@ -8167,7 +8257,25 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Replace or set wtf sites pages slug.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:72"
+      "server/routes/wtf-sites.ts:74"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/wtf-sites/pages/:slug/publish-private",
+    "purpose": "Create, submit, or run wtf sites pages slug publish private.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/wtf-sites.ts:142"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/wtf-sites/private-access",
+    "purpose": "Create, submit, or run wtf sites private access.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/wtf-sites.ts:150"
     ]
   },
   {
@@ -8176,7 +8284,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf sites publish.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:129"
+      "server/routes/wtf-sites.ts:133"
     ]
   },
   {
@@ -8185,7 +8293,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run wtf sites rollback.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/wtf-sites.ts:138"
+      "server/routes/wtf-sites.ts:158"
     ]
   },
   {
@@ -8266,7 +8374,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list internal tls allow.",
     "declaredAccess": "Internal",
     "sources": [
-      "server/routes/wtf-sites.ts:49"
+      "server/routes/wtf-sites.ts:51"
     ]
   },
   {

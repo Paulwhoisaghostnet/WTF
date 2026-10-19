@@ -483,7 +483,7 @@ function tokenNeedsCover(t) {
 
 function hasWtfosPinningAccess(user) {
   const perms = user && (user.effectivePermissions || user.permissions || {});
-  if (perms && perms.trusted_market_creator === true) return true;
+  if (perms && (perms.trusted_market_creator === true || perms.use_managed_macaroni === true)) return true;
   const roles = Array.isArray(user?.roles)
     ? user.roles
     : user?.role

@@ -352,8 +352,11 @@ export async function stats(): Promise<ManifestStats> {
 /* ---------- Helpers ----------------------------------------------------- */
 
 function rowToBackfillRow(r: any): BackfillRow {
+  // Raw pg results return bigint columns as text; keep the public numeric ID contract exact.
+  const id = Number(r.id);
+  if (!Number.isSafeInteger(id)) throw new RangeError("Backfill manifest ID exceeds JavaScript safe integer capacity");
   return {
-    id: r.id,
+    id,
     taskType: r.task_type as BackfillTaskType,
     target: r.target,
     payload: r.payload ?? null,

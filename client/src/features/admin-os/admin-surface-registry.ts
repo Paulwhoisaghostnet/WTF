@@ -171,6 +171,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: gameshowAdminTabs,
     nativeSettings: ["round status", "calendar windows", "contestant lists", "automation triggers"],
     automationHandles: ["gameshow.round.joined", "app.interaction.tracked"],
+    behaviorAssertionIds: ["gameshow.host-contestant-stage"],
   },
   {
     id: "challenges",
@@ -182,7 +183,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Challenges", "Automation", "Rewards", "XP Log"],
     nativeSettings: ["legacy challenge records", "automation definitions", "reward actions", "completion audit"],
     automationHandles: ["gameshow.challenge.completed", "xp.awarded", "wtf.awarded"],
-    behaviorAssertionIds: [
+    behaviorAssertionIds: ["gameshow.host-contestant-stage",
       "gameshow.automation-completion-reward-proof",
       "gameshow.challenge-submit-grade-claim-leaderboard",
       "gameshow.launch-surfaces-active-challenge-ui",
@@ -1068,7 +1069,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "user-site publishing hosts",
       "Macaroni drop-page readiness",
     ],
-    automationHandles: [
+    automationHandles: ["wtf_sites.private.published", "wtf_sites.private.opened",
       "wtf_domain.grants.viewed",
       "wtf_domain.registration.prepared",
       "ipfs_pinning.subdomain_registry.linked",
@@ -1076,7 +1077,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf_site.public.viewed",
       "macaroni.drop_published",
     ],
-    behaviorAssertionIds: [
+    behaviorAssertionIds: ["gameshow.private-project-pages",
       "ipfs-pinning.pds-backed-wallet-backup",
       "settings.subdomain-setup-applet",
       "account.cobwebsaints-domain-advanced-readiness",
@@ -1220,6 +1221,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     kind: "app",
     routePatterns: [
       "/tools/colander",
+      "/tools/macaroni",
       "/tools/spaghetti",
       "/tools/gnocchi",
       "/tools/ravioli",
@@ -1237,7 +1239,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "Colander contract action handoffs",
       "Tezos Mainnet and Shadownet RPC doctrine",
     ],
-    automationHandles: [
+    automationHandles: ["wtf_sites.private.published", "wtf_sites.private.opened",
       "chease.media_pinned",
       "chease.package_handoff_opened",
       "chease.installer_manifest.viewed",
@@ -1293,7 +1295,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "wtf_site.public.viewed",
       "pasta_suite.site_uninstalled",
     ],
-    behaviorAssertionIds: [
+    behaviorAssertionIds: ["gameshow.private-project-pages",
       "macaroni.v3-commitment-reveal",
       "pasta-protocol.sandbox-safe-feedback",
       "pasta-protocol.chease-handoff",
@@ -1676,8 +1678,8 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["Control Board", "Automation"],
     adminRoutes: ["/control-board"],
     nativeSettings: ["round operations", "contestant state", "host actions"],
-    automationHandles: ["control_board.action_applied", "gameshow.round.joined"],
-    behaviorAssertionIds: ["admin.commission-operator-queue-summary"],
+    automationHandles: ["gameshow.contestant.enrolled", "gameshow.round.started", "gameshow.round.closed", "gameshow.round.advanced", "gameshow.submission.graded", "gameshow.contestant.provisioned", "gameshow.season.created", "gameshow.round.plan.saved", "control_board.action_applied", "gameshow.round.joined"],
+    behaviorAssertionIds: ["gameshow.host-contestant-stage", "admin.commission-operator-queue-summary"],
   },
   {
     id: "operator-tools",
