@@ -30,6 +30,7 @@ export type DoctrineDomainGuide = {
 export const DOCTRINE_DOMAIN_GUIDES = {
   wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
   identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
+  wtfiap: { label: "WTFIAP-v0.01", guide: "docs/domains/wtfiap.md" },
   arcadeConsoleGameStudio: {
     label: "Arcade, Console, And Game Studio",
     guide: "docs/domains/arcade-console-game-studio.md",
@@ -44,6 +45,7 @@ export const DOCTRINE_DOMAIN_GUIDES = {
 const doctrineDomainBySurfaceDomain: Record<string, DoctrineDomainGuide> = {
   Admin: DOCTRINE_DOMAIN_GUIDES.operations,
   Arcade: DOCTRINE_DOMAIN_GUIDES.arcadeConsoleGameStudio,
+  WTFIAP: DOCTRINE_DOMAIN_GUIDES.wtfiap,
   Casino: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
   "Club Dues": DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
   Commerce: DOCTRINE_DOMAIN_GUIDES.commerceAndWallets,
@@ -1461,6 +1463,19 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     nativeSettings: ["promoter toggle", "tweet approval queue", "weekly thread schedule", "opt-in policy"],
     automationHandles: ["social.auto_promote", "social.weekly_thread"],
     behaviorAssertionIds: ["skullzarmy.fafolab-integration-contracts"],
+  },
+  {
+    id: "wtfiap",
+    label: "WTFIAP-v0.01",
+    domain: "WTFIAP",
+    subdomain: "Autobattler practice and multiplayer rooms",
+    kind: "app",
+    routePatterns: ["/wtfiap"],
+    desktopAppKey: "wtfiap",
+    adminPanelTabs: ["OS Admin", "System Logs"],
+    nativeSettings: ["desktop app availability", "Party room board mode and preparation timer", "Tournament accounting preview"],
+    automationHandles: ["desktop.icon.opened", "desktop.window.opened"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery"],
   },
   {
     id: "arcade",

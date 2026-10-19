@@ -40,6 +40,7 @@ import appHostRoutes from "./routes/apphost";
 import mediaLibraryRoutes from "./routes/media-library";
 import mintManagerRoutes from "./routes/mint-manager";
 import arcadeRoutes from "./routes/arcade";
+import wtfiapRoutes from "./routes/wtfiap";
 import casinoRoutes from "./routes/casino";
 import clubDuesRoutes from "./routes/club-dues";
 import consoleRoutes from "./routes/console";
@@ -385,6 +386,7 @@ export function registerRoutes(app: Express) {
   app.use(mediaLibraryRoutes);
   app.use(mintManagerRoutes);
   app.use(arcadeRoutes);
+  app.use(wtfiapRoutes);
   app.use(casinoRoutes);
   app.use(clubDuesRoutes);
   app.use(consoleRoutes);

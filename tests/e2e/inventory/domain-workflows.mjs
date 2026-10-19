@@ -1,5 +1,13 @@
 export const DOMAIN_WORKFLOWS = [
   {
+    name: "wtfiap native game and room recovery",
+    domain: "WTFIAP Autobattler",
+    routes: ["/wtfiap"],
+    eventHandles: ["desktop.icon.opened", "desktop.window.opened", "desktop.start_menu.opened"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery"],
+    apiProbes: [{ method: "GET", path: "/api/wtfiap/party/health" }],
+  },
+  {
     name: "entry auth identity loop",
     domain: "Entry, Authentication, and Account Identity",
     routes: ["/", "/login", "/register", "/profile", "/faq", "/user/wtf-admin"],

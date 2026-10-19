@@ -97,7 +97,8 @@ RUN mkdir -p \
       /app/uploads/studio \
       /app/uploads-staging \
       /app/tmp-processing \
-      /app/backups && \
+      /app/backups \
+      /app/wtfiap-data && \
     chown -R node:node /app
 
 ENV NODE_ENV=production

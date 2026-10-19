@@ -22,6 +22,7 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
 
   assert.equal(isStartMenuItemEnabled("/casino", apps), false);
   assert.equal(isStartMenuItemEnabled("/arcade", apps), true);
+  assert.equal(isStartMenuItemEnabled("/wtfiap", { wtfiap: false }), false);
   assert.equal(isStartMenuItemEnabled("/console", apps), false);
   assert.equal(isStartMenuItemEnabled("/my-gallery", apps), false);
   assert.equal(isStartMenuItemEnabled("/agent", { agent: false }), false);
@@ -149,7 +150,7 @@ test("Start Menu model keeps Casino in Play and My Games in My Media", () => {
 
   assert.deepEqual(
     play.items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]
+    ["WTF Casino", "WTF Arcade", "WTFIAP-v0.01", "Game Console", "Game Studio", "DedRooms"]
   );
   assert.equal(play.items.find((item) => item.path === "/casino")?.disabled, true);
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
@@ -337,6 +338,6 @@ test("Start Menu search can open a whole category by group name", () => {
   assert.equal(groups[0].label, "Play");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "Game Console", "Game Studio", "DedRooms"]
+    ["WTF Casino", "WTF Arcade", "WTFIAP-v0.01", "Game Console", "Game Studio", "DedRooms"]
   );
 });

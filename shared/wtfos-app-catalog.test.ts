@@ -35,6 +35,7 @@ test("core apps and private role-gated apps keep their intended wtfOS placement"
     "wim",
     "w",
     "arcade",
+    "wtfiap",
     "game-studio",
     "studio",
     "gallery",

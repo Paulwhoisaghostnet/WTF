@@ -45,6 +45,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "i-hate-telegram": true,
   "dear-diary": true,
   arcade: true,
+  wtfiap: true,
   casino: true,
   "dues-manager": false,
   console: true,

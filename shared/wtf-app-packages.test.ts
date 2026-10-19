@@ -41,6 +41,7 @@ test("app package acceptance manifest has required acceptance fields on every en
 test("app package acceptance manifests map to active doctrine domains", () => {
   const acceptedDomains = new Map([
     ["WTF OS", "docs/domains/wtf-os.md"],
+    ["WTFIAP-v0.01", "docs/domains/wtfiap.md"],
     ["Identity And Social", "docs/domains/identity-and-social.md"],
     ["Arcade, Console, And Game Studio", "docs/domains/arcade-console-game-studio.md"],
     ["Commerce And Wallets", "docs/domains/commerce-and-wallets.md"],

@@ -591,6 +591,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "i-hate-telegram",
   "dear-diary",
   "arcade",
+  "wtfiap",
   "casino",
   "dedrooms",
   "dues-manager",

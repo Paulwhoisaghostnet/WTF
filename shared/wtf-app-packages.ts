@@ -55,6 +55,7 @@ export type WtfAppPackageAcceptance = {
 const domainGuides = {
   wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
   identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
+  wtfiap: { label: "WTFIAP-v0.01", guide: "docs/domains/wtfiap.md" },
   arcadeConsoleGameStudio: {
     label: "Arcade, Console, And Game Studio",
     guide: "docs/domains/arcade-console-game-studio.md",
@@ -75,6 +76,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "i-hate-telegram": domainGuides.identityAndSocial,
   "dear-diary": domainGuides.identityAndSocial,
   arcade: domainGuides.arcadeConsoleGameStudio,
+  wtfiap: domainGuides.wtfiap,
   casino: domainGuides.commerceAndWallets,
   "dues-manager": domainGuides.commerceAndWallets,
   console: domainGuides.arcadeConsoleGameStudio,
@@ -163,6 +165,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
   "i-hate-telegram": ["telegram_digest_items", "system_events"],
   "dear-diary": ["diary_entries", "system_events"],
   arcade: ["arcade_games", "arcade_sessions", "scores"],
+  wtfiap: ["WTFIAP room snapshots and replay records", "browser room-seat credentials", "unfunded tournament prize accounting"],
   casino: ["casino_sessions", "casino_audit_events", "membership intents"],
   "dues-manager": ["club_dues_contracts", "club_dues_memberships", "system_events"],
   console: ["console_sessions", "console_scores", "installed cartridge manifest"],

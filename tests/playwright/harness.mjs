@@ -6,6 +6,7 @@
 // scenario ("normal", "rate-limited", "cold") and then hits the page.
 
 import express from "express";
+import { mountWtfiapDomain } from "./domains/wtfiap.mjs";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -505,7 +506,8 @@ function logRequest(req) {
 }
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "1mb", verify(req, _res, buffer) { req.rawBody = buffer.toString("utf8"); } }));
+const wtfiapDomain = mountWtfiapDomain(app, { getState: () => ({ desktopApps, userRole: state.userRole }), getUser: currentAuthUser });
 
 app.get("/__test/media/harness-alpha-token.png", (_req, res) => {
   res
@@ -927,6 +929,7 @@ const desktopApps = {
   "i-hate-telegram": true,
   "dear-diary": true,
   arcade: true,
+  wtfiap: true,
   casino: true,
   "dues-manager": false,
   console: true,
@@ -6773,7 +6776,8 @@ liveWss.on("connection", (ws) => {
   });
 });
 
-const shutdown = () => {
+const shutdown = async () => {
+  await wtfiapDomain.close();
   appHostWss.close();
   liveWss.close(() => {
     server.close(() => process.exit(0));

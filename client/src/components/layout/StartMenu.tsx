@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { MenuList, MenuListItem, Separator } from "react95";
@@ -417,6 +417,26 @@ function SubMenu({
   const key = group.label;
   const isOpen = openKey === key;
   const columns = chunkMenuItems(group.items);
+  const flyoutRef = useRef<HTMLUListElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const placeFlyout = () => {
+      const flyout = flyoutRef.current;
+      if (!flyout) return;
+      flyout.style.transform = "";
+      if (window.innerWidth <= MOBILE_BP) return;
+      const bounds = flyout.getBoundingClientRect();
+      // Bottom anchoring can put a top-of-menu category above the viewport.
+      // Derive the correction from the rendered menu, including current fonts.
+      const offset = bounds.top < 0 ? -bounds.top
+        : bounds.bottom > window.innerHeight ? window.innerHeight - bounds.bottom : 0;
+      if (offset) flyout.style.transform = `translateY(${offset}px)`;
+    };
+    placeFlyout();
+    window.addEventListener("resize", placeFlyout);
+    return () => window.removeEventListener("resize", placeFlyout);
+  }, [isOpen, group.items]);
 
   return (
     <SubMenuWrap
@@ -430,7 +450,7 @@ function SubMenu({
       </ItemRow>
 
       {isOpen && (
-        <SubMenuFlyout>
+        <SubMenuFlyout ref={flyoutRef} data-start-menu-flyout={group.key}>
           <SubMenuColumns>
             {columns.map((column, columnIndex) => (
               <SubMenuColumn key={`${group.key}:column:${columnIndex}`}>

@@ -11990,3 +11990,21 @@
 **Correction and verification**: Changed only the owning test fixture to wait for its actual hook and clean up browser/server resources on startup failure. A test-only promise barrier after real Studio `wire()` postpones hook installation without a timer. Removing the readiness wait deterministically makes the fixture return too early; restoring it passes. The barrier and all four existing hook consumers pass, including map/BigNumber canonicalization, authenticated reveal, poisoned-graph/getter rejection, and read-only recovery. Production runtime is unchanged. See `WTF-BB-683`; this local proof does not change the recorded failed CI result.
 
 **Rule**: Synchronize browser test setup against the exact capability consumed by the test. Prove the waiting behavior with a controlled barrier; unrelated globals, network quiet, arbitrary sleeps, and rerunning a flaky assertion do not establish readiness.
+
+
+## 2026-10-19 - Preserve a vendored game’s Node module boundary
+
+**What happened**: Copying WTFIAP’s UMD/CommonJS engine into the ESM wtfOS repository made its .js files inherit type:module. The real room harness stopped with “Hero identity catalog is required” before any UI test.
+
+**Why it mattered**: Browser assets could build while the multiplayer authority could not boot. Source-byte equality alone did not preserve Node execution semantics.
+
+**Rule**: Package the game’s original module boundary explicitly, bind that generated package.json into the release manifest, and load both the engine and authority from the actual host package in a regression test. Preserve scoped CSP and existing auth/CSRF middleware when adapting a standalone game.
+
+
+## 2026-10-19 - Verify native game launch paths and asynchronous rendering
+
+**What happened**: WTFIAP standalone checks passed, but the real desktop story exposed three integration defects: queued pointerleave events drew before atlas decoding, a top Stuffs category’s bottom-anchored flyout extended above the viewport, and pathname-only shell context omitted invitation queries.
+
+**Why it mattered**: A reachable route and successful bundle do not prove the requested icon, menu and invitation journeys. CSS pointer suppression is not an asynchronous readiness barrier, and window keys are not complete entry URLs.
+
+**Rule**: Guard rendering at the shared readiness boundary; constrain flyouts using measured viewport bounds; capture route queries only for the owning window. Exercise the real desktop icon, normal Stuffs menu click, native invitation, purchase, deployment and reload against the actual room authority. Preserve zero-error assertions and strict asset validation.

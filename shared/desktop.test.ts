@@ -238,6 +238,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "i-hate-telegram",
     "dear-diary",
     "arcade",
+    "wtfiap",
     "casino",
     "dedrooms",
     "dues-manager",

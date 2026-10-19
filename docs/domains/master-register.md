@@ -18,6 +18,7 @@ If a new app, tool, or integration is added to WTFOS, the change is not complete
 | --- | --- | --- |
 | WTF OS | [wtf-os.md](./wtf-os.md) | [wtf-os-registry.md](./wtf-os-registry.md) |
 | Identity And Social | [identity-and-social.md](./identity-and-social.md) | [identity-and-social-registry.md](./identity-and-social-registry.md) |
+| WTFIAP-v0.01 | [wtfiap.md](./wtfiap.md) | [wtfiap-registry.md](./wtfiap-registry.md) |
 | Arcade, Console, And Game Studio | [arcade-console-game-studio.md](./arcade-console-game-studio.md) | [arcade-console-game-studio-registry.md](./arcade-console-game-studio-registry.md) |
 | Commerce And Wallets | [commerce-and-wallets.md](./commerce-and-wallets.md) | [commerce-and-wallets-registry.md](./commerce-and-wallets-registry.md) |
 | Media, TV, And Studio | [media-tv-studio.md](./media-tv-studio.md) | [media-tv-studio-registry.md](./media-tv-studio-registry.md) |

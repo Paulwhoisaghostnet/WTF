@@ -959,6 +959,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "i-hate-telegram": "/i-hate-telegram",
   "dear-diary": "/dear-diary",
   arcade: "/arcade",
+  wtfiap: "/wtfiap",
   casino: "/casino",
   "dues-manager": "/dues",
   console: "/console",
@@ -1044,7 +1045,7 @@ function stageFor(appKey: DesktopAppKey): BetaStage {
   if (["wtfiam", "gallery", "rat-race"].includes(appKey)) return "collect";
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
-  if (["arcade", "casino", "console", "dedrooms", "applications"].includes(appKey)) return "play";
+  if (["arcade", "wtfiap", "casino", "console", "dedrooms", "applications"].includes(appKey)) return "play";
   if (["ipfs-pinning", "wtf-subdomains"].includes(appKey)) return "publish";
   return "operate";
 }
@@ -1063,7 +1064,7 @@ const desktopApps = DESKTOP_APPS.map((appKey) => {
   const stage = stageFor(appKey);
   const access = appKey === "objkt-operator" || appKey === "payroll"
     ? "admin"
-    : route === "/arcade" || route === "/dues" || route === "/gallery" || route === "/skywire"
+    : route === "/arcade" || route === "/wtfiap" || route === "/dues" || route === "/gallery" || route === "/skywire"
       ? "public"
       : "session";
   const item = entry(appKey, DESKTOP_APP_LABELS[appKey], route, access, tier, stage, personasFor(appKey), `${DESKTOP_APP_LABELS[appKey]} is the canonical WTFOS ${BETA_STAGE_LABELS[stage].toLowerCase()} surface for its domain.`, ["/mission-control", "/notifications", "/profile", route]);

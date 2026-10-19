@@ -185,6 +185,18 @@ const APP_ENTRIES = [
     accent: "#8b5cf6",
   },
   {
+    key: "wtfiap",
+    route: "/wtfiap",
+    summary: "Build an army in local practice or share an eight-player Party or Tournament room.",
+    placement: "default-desktop",
+    necessity: "standard",
+    necessityRank: 2,
+    priceWtfUnits: "0",
+    priceExp: 0,
+    monogram: "IAP",
+    accent: "#b58c45",
+  },
+  {
     key: "arcade",
     route: "/arcade",
     summary: "Community arcade games, play tickets, and score loops.",

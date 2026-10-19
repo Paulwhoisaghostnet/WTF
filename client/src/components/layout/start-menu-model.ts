@@ -99,6 +99,7 @@ const ICONS: Record<string, string> = {
   "/swap": "🦴",
   "/tezos-intel": "🔎",
   "/arcade": "🕹️",
+  "/wtfiap": "⚔",
   "/console": "▶",
   "/casino": "$",
   "/game-studio": "🧩",
@@ -161,7 +162,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   create: ["/studio", "/game-studio", "/mint-portal", "/tools/ch-ease", "/tools/macaroni"],
   social: ["/admin-inbox", "/mail", "/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/digest", "/wtf-subdomains"],
   "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/tezos-intel"],
-  gaming: ["/casino", "/arcade", "/console", "/game-studio", "/dedrooms"],
+  gaming: ["/casino", "/arcade", "/wtfiap", "/console", "/game-studio", "/dedrooms"],
   "my-media": [
     "/file-manager",
     "/console",

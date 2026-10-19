@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useLayoutEffect, useRef } from "react";
 import { styled } from "styled-components";
-import { Gem } from "lucide-react";
+import { Gem, Swords } from "lucide-react";
 import {
   DESKTOP_APPS,
   EXPERIMENTAL_DESKTOP_APPS,
@@ -949,6 +949,15 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && (apps["dear-diary"] || canOpenDisabledApps),
       openPath: "/dear-diary",
+    },
+    {
+      key: "wtfiap",
+      label: "WTFIAP-v0.01",
+      icon: <ArcadeDeskIcon><Swords size={24} aria-hidden="true" /></ArcadeDeskIcon>,
+      defaultX: 252,
+      defaultY: 452,
+      enabled: canOpenApps && (apps.wtfiap || canOpenDisabledApps),
+      openPath: "/wtfiap",
     },
     {
       key: "arcade",

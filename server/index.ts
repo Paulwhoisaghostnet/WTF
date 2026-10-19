@@ -13,6 +13,7 @@ import {
   logSystemEvent,
 } from "./lib/system-log";
 import { startRuntimeMetrics } from "./lib/runtime-metrics";
+import { startWtfiapAuthority, stopWtfiapAuthority } from "./features/wtfiap/service";
 
 installSystemLogging();
 installPgPoolSystemLogBridge(pool);
@@ -48,6 +49,7 @@ async function main() {
   });
 
   const app = await createApp();
+  await startWtfiapAuthority();
   const server = createServer(app);
 
   setupWebSocket(server);
@@ -94,7 +96,8 @@ async function main() {
       metadata: { signal },
     });
     stopBackgroundJobs();
-    server.close(() => {
+    // Flush private rooms and close their SSE streams before draining HTTP.
+    void stopWtfiapAuthority().then(() => server.close(() => {
       logSystemEvent({
         source: "server",
         eventType: "shutdown_complete",
@@ -103,6 +106,9 @@ async function main() {
         metadata: { signal },
       });
       flushSystemLog().finally(() => process.exit(0));
+    })).catch((error) => {
+      logSystemEvent({ source: "server", eventType: "shutdown_failed", severity: "fatal", message: "WTFIAP persistence failed during shutdown", error });
+      flushSystemLog().finally(() => process.exit(1));
     });
     setTimeout(() => {
       logSystemEvent({

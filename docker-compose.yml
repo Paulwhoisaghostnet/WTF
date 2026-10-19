@@ -73,6 +73,7 @@ services:
       COMMIT_SHA: ${COMMIT_SHA:-dev}
       COMMIT_REF: ${COMMIT_SHA:-dev}
       WTF_DATA_ROOT: /mnt/wtf-data
+      WTFIAP_DATA_DIR: /app/wtfiap-data
       UPLOAD_STAGING_DIR: /app/uploads-staging
       MEDIA_HOT_CACHE_DIR: /app/cache/users
       GM_NFT_CACHE_DIR: /app/cache/gm-nfts
@@ -94,6 +95,7 @@ services:
       - ${TV_CACHE_DIR_HOST:-/mnt/wtf-data/tv-cache}:/app/cache
       - ${TMP_PROCESSING_DIR_HOST:-/mnt/wtf-data/tmp-processing}:/app/tmp-processing
       - ${BACKUPS_STAGING_DIR_HOST:-/mnt/wtf-data/backups-staging}:/app/backups
+      - ${WTFIAP_DATA_DIR_HOST:-/mnt/wtf-data/wtfiap}:/app/wtfiap-data
       - ${APP_LOG_DIR_HOST:-/var/log/wtf/app}:/app/logs
       - ${WTF_CONFIG_DIR_HOST:-/mnt/wtf-data/config}:/app/config:ro
     ports:

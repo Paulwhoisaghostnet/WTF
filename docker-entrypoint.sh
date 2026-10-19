@@ -12,7 +12,7 @@
 
 set -eu
 
-WRITABLE_DIRS="/app/cache /app/uploads /app/uploads-staging /app/tmp-processing /app/backups"
+WRITABLE_DIRS="/app/cache /app/uploads /app/uploads-staging /app/tmp-processing /app/backups /app/wtfiap-data"
 OWNERSHIP_MARKER=".node-owner-ok"
 
 is_placeholder_commit_ref() {

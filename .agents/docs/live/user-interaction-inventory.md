@@ -566,3 +566,10 @@ Studio/board/DM/media domain tables.
 | Public client logs and TV telemetry are intentionally bounded public writes. | Abuse monitoring should watch rates, payload shape, and source distribution even though these are not session-authenticated. | `WTF-BB-056`, TV telemetry rows |
 | WTF Casino now has app access, membership-card scaffolding, mocked WTF Button, mocked Rug Pull, and mocked Guinea Pig Raceway modules, but real wagered games remain intentionally fail-closed. | Do not mark Casino wagering live until compliance gates, wallet-backed wager settlement, house accounting, anti-replay controls, WTF Button escrow/randomness contract tests, Rug Pull contract/panic settlement tests, Raceway randomness/replay/effect tests, and game-specific behavior tests exist. | `WTF-BB-138` |
 | This inventory is Markdown, not yet a machine-readable manifest. | E2E and rewards integration will be easier if converted into JSON/YAML with domain, route, handle, access, rewardable, and cheat-signal fields. | Follow-up implementation artifact |
+
+## Concern: WTFIAP Autobattler
+
+| Domain | Access | Interactions | Primary handles |
+| --- | --- | --- | --- |
+| Native game launch | Public/session | Launch `/wtfiap` from the `wtfiap` desktop icon or Stuffs Play category; retain the exact WTFIAP-v0.01 title, ordinary app gate, native window controls, and invitation query strings; open local practice at `/games/installed/wtfiap/index.html` or Party at `/games/installed/wtfiap/party.html`. | `desktop.icon.opened`, `desktop.window.opened`, `desktop.start_menu.opened` |
+| Practice and room progression | Public/game seat | Buy and place a local hero; create or join an eight-player Party room via `/api/wtfiap/party/rooms`; share a room code or URL; recover the same seat through the room URL; choose a board mode and timer or ready mode; start with optional AI fill. Tournament preview requires eight humans, displays XTZ/WTF entry and 50/35/15 prize terms, and never collects or pays funds. Room changes and replay receipts stay in the game authority rather than awarding platform rewards. | `desktop.window.opened` |
