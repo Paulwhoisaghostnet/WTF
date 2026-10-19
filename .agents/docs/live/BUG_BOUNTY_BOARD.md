@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **650** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **119** · Verified: **469** · Archived: **4**
+Total: **650** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **117** · Verified: **471** · Archived: **4**
 
 ## Canonical Board
 
@@ -177,8 +177,6 @@ Total: **650** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
 | WTF-BB-653 | Fixed | Codex full-send release verification | - | E2E inventory / Console | P1 | 9 | 519 | 2 | 3 | 0 | Console route smoke receives impossible harness payloads |
 | WTF-BB-650 | Fixed | Codex full-send release verification | - | E2E inventory / WTF Domains | P1 | 9 | 519 | 2 | 3 | 0 | WTF Domains E2E harness shape drift crashes native route smoke |
 | WTF-BB-226 | Fixed | Codex Roger Radio full-send repair | 2026-06-10 | WTF TV / boot backfill external embed seed | P1 | 9 | 519 | 1 | 4 | 0 | Roger Radio live channel was created in production but the Odysee playlist item stayed empty because the boot backfill fed an uncast embed URL parameter into `jsonb_build_object`; fixed with explicit text casts plus a policy guard, pending production redeploy verification |
-| WTF-BB-683 | Fixed | Codex gameshow release CI recovery | 2026-10-18 | CI / Ravioli recovery test readiness | P1 | 8 | 581 | 1 | 3 | 0 | Ravioli recovery canonicalization test intermittently asserts before its browser hook is installed |
-| WTF-BB-681 | Fixed | Codex gameshow Gamma CI alignment | 2026-10-18 | CI / Gamma gameshow presentation | P1 | 8 | 581 | 1 | 3 | 0 | Gamma inventory assertions still require the replaced gameshow landing surfaces |
 | WTF-BB-063 | Fixed | Swarm A4 | 2026-04-28 | Runtime / memory hygiene | P2 | 11 | 375 | 3 | 3 | 2 | Studio user Drive caches persist by user ID with no per-process bound |
 | WTF-BB-037 | Fixed | Swarm A6 | 2026-04-28 | TV microapp / data integrity | P2 | 11 | 375 | 3 | 3 | 2 | Playlist-item replace can lose existing queue on partial failure |
 | WTF-BB-035 | Fixed | Codex TV pagination hardening pass | 2026-05-04 | TV microapp / pagination | P2 | 11 | 375 | 3 | 3 | 2 | TV channel list and detail payloads load unbounded rows |
@@ -556,7 +554,9 @@ Total: **650** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 519 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-260 | Verified | Codex Macaroni user-site CSP pass | - | Macaroni / user-site wallet CSP | P1 | 9 | 519 | 1 | 3 | 1 | Published user-site CSP blocks Macaroni wallet connect |
 | WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 519 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
+| WTF-BB-683 | Verified | Codex gameshow release CI recovery | 2026-10-18 | CI / Ravioli recovery test readiness | P1 | 8 | 581 | 1 | 3 | 0 | Ravioli recovery canonicalization test intermittently asserts before its browser hook is installed |
 | WTF-BB-682 | Verified | Codex gameshow private handoff CORS | 2026-10-18 | Private publishing / cross-origin session handoff | P1 | 8 | 581 | 1 | 3 | 0 | Production private-page signed-ticket form handoff is rejected before its authorization handler |
+| WTF-BB-681 | Verified | Codex gameshow Gamma CI alignment | 2026-10-18 | CI / Gamma gameshow presentation | P1 | 8 | 581 | 1 | 3 | 0 | Gamma inventory assertions still require the replaced gameshow landing surfaces |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 581 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 581 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 620 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
@@ -3923,39 +3923,6 @@ Total: **650** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
   - Passed `npm run check -- --pretty false`.
   - Passed `npm run test:e2e:inventory:coverage`.
   - `npm run test:e2e:inventory` was attempted after the repair; all WTF TV route/workflow/subdomain checks passed, while unrelated social/reward automation timed out and `/swap` had a transient resource-block console error. Targeted `/swap` rerun passed; the social/reward timeout is outside this TV channel repair.
-
-### WTF-BB-683 - Ravioli recovery canonicalization test intermittently asserts before its browser hook is installed
-
-- Category: CI / Ravioli recovery test readiness
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex gameshow release CI recovery
-- Last touched: 2026-10-18
-- Score: C1 + F3 + S0 + P1(4) = 8
-- Evidence (2026-10-18 Pacific): Main Quality run 39200120018 for 2c194961 reports 2602 passing, one failing, and 18 skipped aggregate tests; inventory browser verification is skipped afterward. The only failure is real Ravioli recovery canonicalization rejects poisoned graphs without traversing getters at scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts:2831, reporting that the hook is not installed. The same failure occurred in attempt 1 of run 39191768998 and passed on attempt 2.
-- Contract impact: A recurring test setup failure blocks the requested complete release verification and prevents the full inventory gate from running. No runtime Ravioli defect is established by this evidence.
-- Correction direction: Diagnose hook installation timing in the existing test harness and synchronize against the actual readiness condition. Preserve poisoned-graph/getter safety assertions; do not weaken production behavior, add arbitrary waits, or retry away the failure.
-- Verification idea: Prove the hook-readiness fix in the focused real-page test and relevant suite, then rerun the aggregate and inventory CI gates.
-- Score: P1 + C1/F3/S0 follows the board formula and the reproducibly blocked release verification contract.
-- Root cause and correction (2026-10-18): The fixture waited for networkidle and wallet/library globals, but its appended ES-module recovery hook could still be absent. Only scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts changed. The fixture now waits for the actual hook, with startup failure handling and cleanup of browser/loopback-server resources. A test-only promise barrier after real Studio wire() delays only hook installation without a timer and verifies that the exact script route was intercepted and no browser errors occurred.
-- Local verification: Removing the hook-readiness wait makes the new barrier regression fail deterministically because the helper returns prematurely; restoring the wait passes. All five focused cases pass: the new barrier plus the four existing map/BigNumber, authenticated reveal, poisoned-graph/getter rejection, and exact read-only recovery consumers. Runtime source is unchanged and git diff --check passes. The next normal Quality run supplies the aggregate/inventory verdict; this entry is Fixed on local proof, not a claim that run39200120018 became green.
-
-### WTF-BB-681 - Gamma inventory assertions still require the replaced gameshow landing surfaces
-
-- Category: CI / Gamma gameshow presentation
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex gameshow Gamma CI alignment
-- Last touched: 2026-10-18
-- Score: C1 + F3 + S0 + P1(4) = 8
-- Evidence (2026-10-18 Pacific): Main Quality runs 39191154786 and 39191768998 each report 731 passed and 2 failed inventory browser checks. The native admin route cluster expects contestant-table in the default Control Board tab, now Run Show; the rounds chrome story expects the old round cards at /gamma/rounds, now owned by ContestantDesk.
-- Contract impact: Stale assertions leave the required complete inventory gate red after the gameshow release even though the focused host/contestant workflows pass.
-- Correction direction: Assert the intentional Run Show and ContestantDesk defaults, reach preserved legacy cohort controls through their actual tab, and retain Gamma shell/chrome and navigation assertions. Do not restore obsolete runtime UI or weaken authorization to satisfy a test.
-- Verification idea: Run both affected Gamma stories against the built application, then the complete inventory gate. Local focused success and complete CI status must be reported separately.
-- Score: P1 + C1/F3/S0 follows the board formula; priority is tied to the reproducibly failing requested release verification gate.
-- Correction (2026-10-18): Updated only the two existing Gamma inventory stories. The host story supplies stage data and asserts default Run Show, current cue, and run sheet, then opens Cohort explicitly. The contestant story asserts ContestantDesk and detail content, Gamma presentation, return/rewards navigation, and the configured Broot tool at its canonical /tools/broot route. Runtime behavior and authorization are unchanged.
-- Focused verification: HARNESS_PORT=4192 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs --grep "hosts native admin route cluster|hosts Rounds and Round Detail progression chrome" --output=output/playwright/gameshow-gamma-contract proved the host story; the final contestant-only rerun passed after correcting its test-only tool target from /paint to the shared registry route. Both affected stories now pass, and git diff --check passes. The complete inventory CI rerun remains pending, so this entry is Fixed rather than claiming a green full suite.
-- Release verification status (2026-10-18 Pacific): Corrections are on deployed main commit 2c194961. Quality run 39200120018 stopped before inventory with 2602 aggregate passes, one recurring Ravioli test-hook failure, and18 skips; the inventory job was skipped. That separate harness failure is tracked by WTF-BB-683. Both focused Gamma stories remain proven, but complete inventory verification is still pending and this record remains Fixed.
 
 ### WTF-BB-063 - Studio user Drive caches persist by user ID with no per-process bound
 
@@ -12501,6 +12468,23 @@ Copy this when adding a new issue:
   - Live `https://wtfgameshow.app/api/health` returned `commitRef: "7aaa18a"` after deploy.
   - Live bundle scan found the `Rest` button copy and found no `No shoebox`, `Box {`, `Box `, or pillow+shoebox gate strings.
 
+### WTF-BB-683 - Ravioli recovery canonicalization test intermittently asserts before its browser hook is installed
+
+- Category: CI / Ravioli recovery test readiness
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex gameshow release CI recovery
+- Last touched: 2026-10-18
+- Score: C1 + F3 + S0 + P1(4) = 8
+- Evidence (2026-10-18 Pacific): Main Quality run 39200120018 for 2c194961 reports 2602 passing, one failing, and 18 skipped aggregate tests; inventory browser verification is skipped afterward. The only failure is real Ravioli recovery canonicalization rejects poisoned graphs without traversing getters at scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts:2831, reporting that the hook is not installed. The same failure occurred in attempt 1 of run 39191768998 and passed on attempt 2.
+- Contract impact: A recurring test setup failure blocks the requested complete release verification and prevents the full inventory gate from running. No runtime Ravioli defect is established by this evidence.
+- Correction direction: Diagnose hook installation timing in the existing test harness and synchronize against the actual readiness condition. Preserve poisoned-graph/getter safety assertions; do not weaken production behavior, add arbitrary waits, or retry away the failure.
+- Verification idea: Prove the hook-readiness fix in the focused real-page test and relevant suite, then rerun the aggregate and inventory CI gates.
+- Score: P1 + C1/F3/S0 follows the board formula and the reproducibly blocked release verification contract.
+- Root cause and correction (2026-10-18): The fixture waited for networkidle and wallet/library globals, but its appended ES-module recovery hook could still be absent. Only scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts changed. The fixture now waits for the actual hook, with startup failure handling and cleanup of browser/loopback-server resources. A test-only promise barrier after real Studio wire() delays only hook installation without a timer and verifies that the exact script route was intercepted and no browser errors occurred.
+- Local verification: Removing the hook-readiness wait makes the new barrier regression fail deterministically because the helper returns prematurely; restoring the wait passes. All five focused cases pass: the new barrier plus the four existing map/BigNumber, authenticated reveal, poisoned-graph/getter rejection, and exact read-only recovery consumers. Runtime source is unchanged and git diff --check passes. The next normal Quality run supplies the aggregate/inventory verdict; this entry is Fixed on local proof, not a claim that run39200120018 became green.
+- Final exact-commit verification (2026-10-18 Pacific): [Quality run 39200889860](https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39200889860) succeeded for 84e543d241eafe1556a750bd622835d6677b74de. Aggregate: 2,622 total, 2,604 passed, zero failed, 18 skipped; the Ravioli readiness barrier and poisoned-graph/getter checks pass. Complete inventory: 733 passed, zero failed in 20.1 minutes, including the corrected Gamma stories. TypeScript, build, audit/policy checks, external links, and SmartPy all pass. [Hetzner deploy 39200889955](https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39200889955) succeeded; public readiness reports 84e543d2 with database, chain, and jobs healthy, and Gamma host/rounds/domains routes return 200. WTF-BB-683 is Verified. This final receipt changes documentation only; the tested application and test sources remain unchanged.
+
 ### WTF-BB-682 - Production private-page signed-ticket form handoff is rejected before its authorization handler
 
 - Category: Private publishing / cross-origin session handoff
@@ -12517,6 +12501,24 @@ Copy this when adding a new issue:
 - Confirmed browser cause (2026-10-18 Pacific): Chromium loaded https://wtfos.app/login with Referrer-Policy: no-referrer. A native form POST to the fixture host /_private/access sent Origin: null and no referrer, and the global CORS layer returned 403 Origin not allowed. This transport reproduction used no ticket. The exception must accept only that classified user-site POST shape and still let the signed-ticket handler reject missing/invalid credentials.
 - Correction and local verification (2026-10-18): The shared application CORS delegate now recognizes only literal Origin:null with POST to exact /_private/access on a host accepted by the existing user-site classifier. It emits neither Access-Control-Allow-Origin nor Access-Control-Allow-Credentials. Existing ticket/session/owner/admin authorization is unchanged. CORS and Macaroni policy tests pass 29/29; real isolated PostgreSQL and Chromium private tests pass 3/3 with zero skips. A native form under Helmet no-referrer sends null Origin, receives 303 for a valid ticket, and renders the saved canvas page. Invalid tickets return 401. Wrong origins, methods, paths, platform/infra/malformed hosts receive no exception; existing Arcade/Macaroni CORS rules remain intact. Normal main deployment and positive production browser proof remain pending.
 - Production verification (2026-10-18 Pacific): Commit 2c194961 deployed through normal Hetzner run 39200119969; public readiness reports the exact commit with database, chain, and jobs healthy. The real Chromium private-page scenario passes 1/1 in 7.8 seconds: UI create/publish, owner popup/reload 200 with no-store and sandbox, strict-admin handoff, outsider 403, anonymous 401, no public private-content exposure, and unchanged public version IDs. The unique page was removed. Outer cleanup restored Bert user27 to e2e_bert/contestant and removed exactly AT account8, site4, claim12. Ten site-audit rows were preserved in durable operator_actions receipt17 (setup receipt16). Independent original-credential login and read-only database checks confirm no active fixture; the authorized WTF Domains pass remains quantity1 and the temporary credential copy is deleted. The explicitly authorized synthetic social prerequisite proves this private workflow, not real social verification or PDS/DID interoperability. WTF-BB-682 is Verified.
+
+### WTF-BB-681 - Gamma inventory assertions still require the replaced gameshow landing surfaces
+
+- Category: CI / Gamma gameshow presentation
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex gameshow Gamma CI alignment
+- Last touched: 2026-10-18
+- Score: C1 + F3 + S0 + P1(4) = 8
+- Evidence (2026-10-18 Pacific): Main Quality runs 39191154786 and 39191768998 each report 731 passed and 2 failed inventory browser checks. The native admin route cluster expects contestant-table in the default Control Board tab, now Run Show; the rounds chrome story expects the old round cards at /gamma/rounds, now owned by ContestantDesk.
+- Contract impact: Stale assertions leave the required complete inventory gate red after the gameshow release even though the focused host/contestant workflows pass.
+- Correction direction: Assert the intentional Run Show and ContestantDesk defaults, reach preserved legacy cohort controls through their actual tab, and retain Gamma shell/chrome and navigation assertions. Do not restore obsolete runtime UI or weaken authorization to satisfy a test.
+- Verification idea: Run both affected Gamma stories against the built application, then the complete inventory gate. Local focused success and complete CI status must be reported separately.
+- Score: P1 + C1/F3/S0 follows the board formula; priority is tied to the reproducibly failing requested release verification gate.
+- Correction (2026-10-18): Updated only the two existing Gamma inventory stories. The host story supplies stage data and asserts default Run Show, current cue, and run sheet, then opens Cohort explicitly. The contestant story asserts ContestantDesk and detail content, Gamma presentation, return/rewards navigation, and the configured Broot tool at its canonical /tools/broot route. Runtime behavior and authorization are unchanged.
+- Focused verification: HARNESS_PORT=4192 npx playwright test tests/playwright/inventory/gamma-wtfos.spec.mjs --grep "hosts native admin route cluster|hosts Rounds and Round Detail progression chrome" --output=output/playwright/gameshow-gamma-contract proved the host story; the final contestant-only rerun passed after correcting its test-only tool target from /paint to the shared registry route. Both affected stories now pass, and git diff --check passes. The complete inventory CI rerun remains pending, so this entry is Fixed rather than claiming a green full suite.
+- Release verification status (2026-10-18 Pacific): Corrections are on deployed main commit 2c194961. Quality run 39200120018 stopped before inventory with 2602 aggregate passes, one recurring Ravioli test-hook failure, and18 skips; the inventory job was skipped. That separate harness failure is tracked by WTF-BB-683. Both focused Gamma stories remain proven, but complete inventory verification is still pending and this record remains Fixed.
+- Final exact-commit verification (2026-10-18 Pacific): [Quality run 39200889860](https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39200889860) succeeded for 84e543d241eafe1556a750bd622835d6677b74de. Aggregate: 2,622 total, 2,604 passed, zero failed, 18 skipped; the Ravioli readiness barrier and poisoned-graph/getter checks pass. Complete inventory: 733 passed, zero failed in 20.1 minutes, including the corrected Gamma stories. TypeScript, build, audit/policy checks, external links, and SmartPy all pass. [Hetzner deploy 39200889955](https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39200889955) succeeded; public readiness reports 84e543d2 with database, chain, and jobs healthy, and Gamma host/rounds/domains routes return 200. WTF-BB-681 is Verified. This final receipt changes documentation only; the tested application and test sources remain unchanged.
 
 ### WTF-BB-593 - Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check
 
