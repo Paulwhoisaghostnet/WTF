@@ -114,7 +114,9 @@ entries, uploaded asset descriptors permit 40, and project file maps permit
 350 entries (the existing bundle entry maximum). CRP retains 32 identity
 sources and 12 justification links. Invalid collections return an MCP tool
 error before domain work. API query/path maps reject invalid primitive values
-without accumulating one union error per key. Opaque API bridge bodies still
+without accumulating one union error per key. Their entry count is also bounded
+by Node's HTTP request-target capacity (at least two encoded bytes per query
+entry), before asynchronous validation. Opaque API bridge bodies still
 use the selected operation's validator; the SDK-wide element ceiling is
 derived from the maximum JSON density inside the byte allowance, not a new
 per-operation quota.

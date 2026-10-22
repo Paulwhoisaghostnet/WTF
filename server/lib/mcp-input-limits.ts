@@ -1,4 +1,5 @@
 import express, { type RequestHandler } from "express";
+import { maxHeaderSize } from "node:http";
 import { z } from "zod";
 
 // Preserve the application's existing 10 MiB JSON allowance: Game Studio
@@ -11,6 +12,11 @@ export const MCP_MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024;
 // preserves opaque API bodies. Typed collections below enforce their existing
 // domain limits *before* Zod can allocate an error for every invalid member.
 export const MCP_MAX_TOOL_INPUT_ELEMENTS = Math.floor(MCP_MAX_REQUEST_BODY_BYTES / 2);
+// The API bridge sends parameters back to this Node HTTP server. The request
+// target shares Node's maxHeaderSize budget. Even an empty query key/value
+// costs '=' plus its '&' separator, so no usable forwarded map can exceed
+// this bound (real paths, names, values and headers consume more bytes).
+export const MCP_MAX_API_PARAMETERS = Math.floor((maxHeaderSize + 1) / 2);
 
 export function createMcpJsonParser(): RequestHandler {
   const parse = express.json({ limit: MCP_MAX_REQUEST_BODY_BYTES });
@@ -39,13 +45,17 @@ export function mcpBoundedArray<T extends z.ZodTypeAny>(item: T, maximum: number
 }
 
 // Fail on the first invalid primitive, rather than allowing z.record's union
-// validator to accumulate several issues per attacker-controlled key. Valid
-// query/path maps retain their existing contract; the HTTP byte limit bounds
-// their size without inventing a new per-operation parameter quota.
+// validator to accumulate several issues per attacker-controlled key. The
+// transport-derived member bound also prevents valid maps from generating an
+// unbounded number of asynchronous per-member union-validation promises.
 export const McpPrimitiveRecordSchema = z.preprocess((value, context) => {
   if (value && typeof value === "object" && !Array.isArray(value)) {
+    let count = 0;
     for (const key in value) {
       if (!Object.hasOwn(value, key)) continue;
+      if (++count > MCP_MAX_API_PARAMETERS) {
+        return rejectCollection(context, `Record exceeds the maximum of ${MCP_MAX_API_PARAMETERS} request-target parameters`);
+      }
       const entry = (value as Record<string, unknown>)[key];
       if (typeof entry !== "string" && typeof entry !== "boolean" &&
           !(typeof entry === "number" && Number.isFinite(entry))) {

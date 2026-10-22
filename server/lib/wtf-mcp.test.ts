@@ -202,6 +202,7 @@ test("MCP SDK rejects adversarial typed collections before tool execution while 
   const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
   const { createWtfMcpServer } = await import("./wtf-mcp");
   const { MAX_ZIP_ENTRIES } = await import("../features/game-studio/packaging");
+  const { MCP_MAX_API_PARAMETERS } = await import("./mcp-input-limits");
   const calls: Array<Record<string, unknown>> = [];
   const server = createWtfMcpServer({
     tokenId: 10, tokenName: "bounded-agent", tokenPrefix: "wtf_mcp_test",
@@ -237,6 +238,11 @@ test("MCP SDK rejects adversarial typed collections before tool execution while 
   } }) as any;
   assert.equal(invalidQuery.isError, true);
   assert.match(JSON.stringify(invalidQuery.content), /Record values must be/);
+  const oversizedValidQuery = await client.callTool({ name: "wtf_api_request", arguments: {
+    method: "POST", path: "/api/v1/test", query: Object.fromEntries(Array.from({ length: MCP_MAX_API_PARAMETERS + 1 }, (_, i) => [i, "value"])),
+  } }) as any;
+  assert.equal(oversizedValidQuery.isError, true);
+  assert.match(JSON.stringify(oversizedValidQuery.content), /request-target parameters/);
   assert.equal(calls.length, 0);
 
   // The API portal deliberately forwards opaque JSON to the operation's own

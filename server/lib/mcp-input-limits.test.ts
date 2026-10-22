@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { maxHeaderSize } from "node:http";
 import test from "node:test";
 import express from "express";
 import { z } from "zod";
 import { MAX_ZIP_ENTRIES } from "../features/game-studio/packaging";
 import {
-  createMcpJsonParser, MCP_MAX_REQUEST_BODY_BYTES, MCP_MAX_TOOL_INPUT_ELEMENTS,
+  createMcpJsonParser, MCP_MAX_API_PARAMETERS, MCP_MAX_REQUEST_BODY_BYTES, MCP_MAX_TOOL_INPUT_ELEMENTS,
   McpPrimitiveRecordSchema, mcpBoundedArray, mcpBoundedRecord,
 } from "./mcp-input-limits";
 
@@ -40,6 +41,13 @@ test("MCP primitive maps fail at the first invalid value and preserve valid maps
   const result = McpPrimitiveRecordSchema.safeParse(attack);
   assert.equal(result.success, false);
   if (!result.success) assert.equal(result.error.issues.length, 1);
+  const oversizedValidMap = Object.fromEntries(Array.from({ length: MCP_MAX_API_PARAMETERS + 1 }, (_, i) => [i, "value"]));
+  const oversizedResult = McpPrimitiveRecordSchema.safeParse(oversizedValidMap);
+  assert.equal(oversizedResult.success, false);
+  if (!oversizedResult.success) {
+    assert.equal(oversizedResult.error.issues.length, 1);
+    assert.match(oversizedResult.error.issues[0].message, /request-target parameters/);
+  }
 });
 
 test("MCP byte ceiling runs before a broader global parser and preserves large scalar uploads", async (t) => {
@@ -64,4 +72,9 @@ test("MCP byte ceiling runs before a broader global parser and preserves large s
   assert.match((await rejected.json() as { error: string }).error, /10 MiB/);
   assert.equal(dispatched, 1);
   assert.equal(MCP_MAX_TOOL_INPUT_ELEMENTS, MCP_MAX_REQUEST_BODY_BYTES / 2);
+  // Prove the parameter bound's authority: Node counts the URL against its
+  // configured HTTP header budget before an Express handler can run.
+  const tooLongTarget = await fetch(`${url}?${"x".repeat(maxHeaderSize + 1)}`);
+  assert.equal(tooLongTarget.status, 431);
+  assert.equal(dispatched, 1);
 });
