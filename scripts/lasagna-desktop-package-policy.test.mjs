@@ -19,9 +19,9 @@ const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs",
 
 test("Lasagna desktop package bundles the exhibition publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/lasagna-desktop");
-  assert.equal(desktopPackage.version, "1.0.1-alpha.1");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.2");
   assert.equal(desktopPackage.main, "src/main.cjs");
-  assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
+  assert.equal(desktopPackage.devDependencies.electron, "43.8.3");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
   assert.equal(desktopPackage.homepage, "https://wtfos.app/creation-tools/lasagna/index.html");
   assert.equal(desktopPackage.desktopName, "lasagna-studio");

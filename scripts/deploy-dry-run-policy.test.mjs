@@ -136,7 +136,8 @@ test("LAW.DR5/04 production app fails closed on placeholder commit metadata", ()
 
 test("production Node runtime satisfies bundled ATProto fetch dependencies", () => {
   assert.doesNotMatch(dockerfile, /FROM node:20-/);
-  assert.equal((dockerfile.match(/FROM node:22-slim@sha256:/g) ?? []).length, 2);
+  // October 21, 2026's Node security release is the reviewed Node 22 floor.
+  assert.equal((dockerfile.match(/FROM node:22\.23\.4-bookworm-slim@sha256:/g) ?? []).length, 2);
   const undiciV8Packages = Object.entries(packageLock.packages)
     .filter(([path]) => path.endsWith("node_modules/undici_v8"));
   assert.ok(undiciV8Packages.length > 0, "ATProto's undici v8 alias must be present in the lockfile");

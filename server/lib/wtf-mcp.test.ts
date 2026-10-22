@@ -197,6 +197,69 @@ test("MCP API portal discovers and calls only operations allowed by the paired r
   assert.equal(denied.structuredContent.ok, false);
 });
 
+test("MCP SDK rejects adversarial typed collections before tool execution while retaining opaque API bodies", async (t) => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+  const { createWtfMcpServer } = await import("./wtf-mcp");
+  const { MAX_ZIP_ENTRIES } = await import("../features/game-studio/packaging");
+  const { MCP_MAX_API_PARAMETERS } = await import("./mcp-input-limits");
+  const calls: Array<Record<string, unknown>> = [];
+  const server = createWtfMcpServer({
+    tokenId: 10, tokenName: "bounded-agent", tokenPrefix: "wtf_mcp_test",
+    scopes: ["api:write"], user: { id: 7, username: "reader", displayName: "Reader", role: "user" },
+  }, { apiRequest: async (input) => {
+    calls.push(input);
+    return { status: 200, contentType: "application/json", body: { ok: true } };
+  } });
+  const client = new Client({ name: "mcp-input-boundary-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+  t.after(async () => Promise.all([client.close(), server.close()]));
+
+  const cases = [
+    { name: "wtf_create_map_lab_document", arguments: { nodes: Array(81).fill({}) }, maximum: 80 },
+    { name: "wtf_set_trade_board_tokens", arguments: { action: "add", tokens: Array(101).fill({}) }, maximum: 100 },
+    { name: "wtf_build_game_studio_bundle", arguments: { selected_asset_ids: Array(101).fill({}) }, maximum: 100 },
+    { name: "wtf_create_game_studio_project", arguments: { title: "draft", local_assets: Array(41).fill({}) }, maximum: 40 },
+    { name: "wtf_create_game_studio_project", arguments: { title: "draft", files: Object.fromEntries(
+      Array.from({ length: MAX_ZIP_ENTRIES + 1 }, (_, i) => [`${i}.js`, {}]),
+    ) }, maximum: MAX_ZIP_ENTRIES },
+    { name: "wtf_submit_crp_nomination", arguments: { nominee: { tezosAddress: "tz1test", identitySources: Array(33).fill({}) }, category_id: "test" }, maximum: 32 },
+  ];
+  for (const request of cases) {
+    const result = await client.callTool(request) as any;
+    assert.equal(result.isError, true, request.name);
+    const message = result.content.map((item: any) => item.text || "").join("\n");
+    assert.match(message, new RegExp(`maximum of ${request.maximum} entries`));
+    assert.doesNotMatch(message, /Expected string|Required|scope/i);
+  }
+  const invalidQuery = await client.callTool({ name: "wtf_api_request", arguments: {
+    method: "POST", path: "/api/v1/test", query: Object.fromEntries(Array.from({ length: MAX_ZIP_ENTRIES }, (_, i) => [i, {}])),
+  } }) as any;
+  assert.equal(invalidQuery.isError, true);
+  assert.match(JSON.stringify(invalidQuery.content), /Record values must be/);
+  const oversizedValidQuery = await client.callTool({ name: "wtf_api_request", arguments: {
+    method: "POST", path: "/api/v1/test", query: Object.fromEntries(Array.from({ length: MCP_MAX_API_PARAMETERS + 1 }, (_, i) => [i, "value"])),
+  } }) as any;
+  assert.equal(oversizedValidQuery.isError, true);
+  assert.match(JSON.stringify(oversizedValidQuery.content), /request-target parameters/);
+  assert.equal(calls.length, 0);
+
+  // The API portal deliberately forwards opaque JSON to the operation's own
+  // validator. A structured body larger than the Map Lab tool must still work.
+  const body = { records: Array.from({ length: 80 * 160 }, (_, id) => ({ id })) };
+  const accepted = await client.callTool({ name: "wtf_api_request", arguments: {
+    method: "POST", path: "/api/v1/test", body, response_format: "json",
+  } }) as any;
+  assert.notEqual(accepted.isError, true);
+  assert.deepEqual(calls, [{ method: "POST", path: "/api/v1/test", query: undefined, body }]);
+
+  const listed = await client.listTools();
+  const mapSchema = listed.tools.find((tool) => tool.name === "wtf_create_map_lab_document")!.inputSchema as any;
+  assert.equal(mapSchema.properties.nodes.maxItems, 80);
+  assert.equal(mapSchema.properties.wires.maxItems, 160);
+});
+
 test("standard access manifest exposes browser, API, and MCP without cookie/bearer overlap", async () => {
   const { buildWtfAccessManifest } = await import("./wtf-access");
 

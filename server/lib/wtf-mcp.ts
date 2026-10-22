@@ -73,7 +73,7 @@ import {
   listGameStudioCodeSnippets,
   listGameStudioStockAssetDescriptors,
 } from "../features/game-studio/catalog";
-import { buildGameStudioZip, normalizeConsoleSlug } from "../features/game-studio/packaging";
+import { buildGameStudioZip, MAX_ZIP_ENTRIES, normalizeConsoleSlug } from "../features/game-studio/packaging";
 import {
   buildGameStudioProjectBundle,
   createGameStudioProject,
@@ -96,6 +96,7 @@ import {
   PET_FOOD_SKU,
 } from "./pet-food-inventory";
 import type { McpAgentAuthContext } from "./mcp-agent-auth";
+import { MCP_MAX_REQUEST_BODY_BYTES, MCP_MAX_TOOL_INPUT_ELEMENTS, McpPrimitiveRecordSchema, mcpBoundedArray, mcpBoundedRecord } from "./mcp-input-limits";
 
 const RESPONSE_FORMATS = ["markdown", "json"] as const;
 const ResponseFormatSchema = z.enum(RESPONSE_FORMATS).default("markdown");
@@ -715,7 +716,7 @@ export function createWtfMcpServer(
   const server = new McpServer({
     name: "wtf-mcp-server",
     version: "1.0.0",
-  });
+  }, { maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS });
 
   server.registerTool(
     "wtf_get_capabilities",
@@ -748,6 +749,10 @@ export function createWtfMcpServer(
         adminFeatureGates: apps,
         rateLimit: {
           requestsPerMinute: Number(process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60),
+        },
+        requestLimits: {
+          maxBodyBytes: MCP_MAX_REQUEST_BODY_BYTES,
+          maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS,
         },
         access: {
           manifestApi: "/api/access",
@@ -965,10 +970,10 @@ export function createWtfMcpServer(
         "Call an allowed wtfOS API operation by its stable OpenAPI operationId. The portal fills encoded path parameters and then uses the paired token through the same API middleware, ownership checks, account role, app gates, and handler validation as a direct /api/v1 request.",
       inputSchema: z.object({
         operation_id: z.string().trim().min(1),
-        path_parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+        path_parameters: McpPrimitiveRecordSchema
           .describe("Values for every {parameter} in the selected operation path. Values are URL-encoded by the portal.")
           .optional(),
-        query: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+        query: McpPrimitiveRecordSchema.optional(),
         body: z.unknown().optional(),
         response_format: ResponseFormatSchema,
       }).strict(),
@@ -1039,10 +1044,7 @@ export function createWtfMcpServer(
           (value) => value === "/api/v1" || value.startsWith("/api/v1/"),
           "Path must start with /api/v1",
         ),
-        query: z.record(
-          z.string(),
-          z.union([z.string(), z.number(), z.boolean()]),
-        ).optional(),
+        query: McpPrimitiveRecordSchema.optional(),
         body: z.unknown().optional(),
         response_format: ResponseFormatSchema,
       }).strict(),
@@ -1107,8 +1109,8 @@ export function createWtfMcpServer(
         "Create a sanitized WTF Map Lab document payload from explicit MCP-provided nodes and wires. This tool can create map objects but cannot read, use, or expose ingested AT repo/firehose data paths.",
       inputSchema: z.object({
         title: z.string().trim().min(1).max(120).default("MCP Map Lab draft"),
-        nodes: z.array(MapLabNodeInputSchema).min(1).max(80),
-        wires: z.array(MapLabWireInputSchema).max(160).default([]),
+        nodes: mcpBoundedArray(MapLabNodeInputSchema, 80, 1),
+        wires: mcpBoundedArray(MapLabWireInputSchema, 160).default([]),
         response_format: ResponseFormatSchema,
       }),
       annotations: {
@@ -1644,16 +1646,11 @@ export function createWtfMcpServer(
         "Add or remove the paired user's owned tokens from the WTF trade board by contract/token id. This mutates only the paired user's trade-board collection.",
       inputSchema: z.object({
         action: z.enum(["add", "remove"]),
-        tokens: z
-          .array(
-            z.object({
-              token_contract: z.string().trim().min(1).max(64),
-              token_id: z.string().trim().regex(/^[0-9]+$/),
-              quantity: z.number().int().min(1).max(100000).default(1),
-            })
-          )
-          .min(1)
-          .max(100),
+        tokens: mcpBoundedArray(z.object({
+          token_contract: z.string().trim().min(1).max(64),
+          token_id: z.string().trim().regex(/^[0-9]+$/),
+          quantity: z.number().int().min(1).max(100000).default(1),
+        }), 100, 1),
         response_format: ResponseFormatSchema,
       }),
       annotations: {
@@ -2724,7 +2721,7 @@ export function createWtfMcpServer(
       inputSchema: z.object({
         template_id: z.string().trim().max(80).default("endless-runner"),
         title: z.string().trim().max(200).default("Game Studio Draft"),
-        selected_asset_ids: z.array(z.string().trim().max(120)).default([]),
+        selected_asset_ids: mcpBoundedArray(z.string().trim().max(120), 100).default([]),
         include_file_data: z.boolean().default(false),
         response_format: ResponseFormatSchema,
       }),
@@ -2779,21 +2776,16 @@ export function createWtfMcpServer(
     }
   );
 
-  const GameStudioFilesSchema = z
-    .record(z.string(), z.string().max(1_000_000))
+  const GameStudioFilesSchema = mcpBoundedRecord(z.string().max(1_000_000), MAX_ZIP_ENTRIES)
     .optional()
     .describe("Optional project files keyed by relative path, e.g. index.html, styles.css, game.js.");
-  const GameStudioLocalAssetsSchema = z
-    .array(
-      z.object({
-        id: z.string().trim().max(180).optional(),
-        name: z.string().trim().min(1).max(160),
-        size: z.number().int().min(0).max(2_097_152),
-        type: z.string().trim().min(1).max(120),
-        dataBase64: z.string().max(3_000_000).optional(),
-      })
-    )
-    .max(40)
+  const GameStudioLocalAssetsSchema = mcpBoundedArray(z.object({
+    id: z.string().trim().max(180).optional(),
+    name: z.string().trim().min(1).max(160),
+    size: z.number().int().min(0).max(2_097_152),
+    type: z.string().trim().min(1).max(120),
+    dataBase64: z.string().max(3_000_000).optional(),
+  }), 40)
     .optional()
     .describe("Optional uploaded asset descriptors. dataBase64 may be omitted for planning-only assets.");
 
@@ -2863,7 +2855,7 @@ export function createWtfMcpServer(
         title: z.string().trim().min(1).max(200),
         description: z.string().trim().max(2000).optional(),
         template_id: z.string().trim().max(120).default("endless-runner"),
-        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).default([]),
+        selected_asset_ids: mcpBoundedArray(z.string().trim().max(120), 100).default([]),
         local_assets: GameStudioLocalAssetsSchema,
         files: GameStudioFilesSchema,
         response_format: ResponseFormatSchema,
@@ -2926,7 +2918,7 @@ export function createWtfMcpServer(
         title: z.string().trim().min(1).max(200).optional(),
         description: z.string().trim().max(2000).optional(),
         template_id: z.string().trim().max(120).optional(),
-        selected_asset_ids: z.array(z.string().trim().max(120)).max(100).optional(),
+        selected_asset_ids: mcpBoundedArray(z.string().trim().max(120), 100).optional(),
         local_assets: GameStudioLocalAssetsSchema,
         files: GameStudioFilesSchema,
         response_format: ResponseFormatSchema,

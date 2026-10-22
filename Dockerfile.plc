@@ -1,0 +1,36 @@
+# Rebuild the deployed DID PLC source with a maintained, security-patched Node runtime.
+# Keep the source revision fixed so a runtime update cannot change PLC operations or migrations.
+FROM alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce AS source
+RUN apk add --no-cache git
+WORKDIR /source
+RUN git init . && \
+    git remote add origin https://github.com/did-method-plc/did-method-plc.git && \
+    git fetch --depth 1 origin 1e301e5e29dd419c4dfc7d3100a2a614f9286ebe && \
+    git checkout --detach FETCH_HEAD && \
+    test "$(git rev-parse HEAD)" = 1e301e5e29dd419c4dfc7d3100a2a614f9286ebe
+
+FROM node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS build
+WORKDIR /app
+COPY --from=source /source/*.* ./
+COPY --from=source /source/packages/lib ./packages/lib
+COPY --from=source /source/packages/server ./packages/server
+RUN PLC_BUILD_SHALLOW=true yarn install --frozen-lockfile && \
+    yarn workspaces run build --update-main-to-dist && \
+    yarn install --production --ignore-scripts --prefer-offline --frozen-lockfile
+WORKDIR /app/packages/server/service
+RUN yarn install --frozen-lockfile
+
+FROM node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+RUN apk add --no-cache dumb-init
+ENTRYPOINT ["dumb-init", "--"]
+WORKDIR /app/packages/server/service
+COPY --from=build /app /app
+EXPOSE 3000
+ENV PORT=3000
+ENV NODE_ENV=production
+USER node
+CMD ["node", "--enable-source-maps", "index.js"]
+LABEL org.opencontainers.image.source="https://github.com/did-method-plc/did-method-plc"
+LABEL org.opencontainers.image.revision="1e301e5e29dd419c4dfc7d3100a2a614f9286ebe"
+LABEL org.opencontainers.image.description="DID PLC server with patched Node runtime"
+LABEL org.opencontainers.image.licenses="MIT"

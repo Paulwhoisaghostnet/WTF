@@ -2137,6 +2137,12 @@ test.describe("live E2E puppet orchestration", () => {
         data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
       });
       expect(unauthenticatedMcp.status()).toBe(401);
+      const invalidCollectionCall = {
+        jsonrpc: "2.0", id: 2, method: "tools/call",
+        params: { name: "wtf_build_game_studio_bundle", arguments: { selected_asset_ids: Array(101).fill({}) } },
+      };
+      const unauthenticatedCollection = await publicRequest.post("/mcp", { data: invalidCollectionCall });
+      expect(unauthenticatedCollection.status()).toBe(401);
 
       const apiDiscovery = await expectOkJson(
         await publicRequest.get("/api/v1"),
@@ -2190,6 +2196,16 @@ test.describe("live E2E puppet orchestration", () => {
       expect(toolsBody).toContain("wtf_search_api_operations");
       expect(toolsBody).toContain("wtf_get_api_operation");
       expect(toolsBody).toContain("wtf_call_api_operation");
+
+      const rejectedCollection = await publicRequest.post("/mcp", {
+        headers: { Authorization: `Bearer ${created.token}`, Accept: "application/json, text/event-stream" },
+        data: invalidCollectionCall,
+      });
+      expect(rejectedCollection.ok()).toBe(true);
+      const rejectedCollectionBody = await rejectedCollection.text();
+      expect(rejectedCollectionBody).toContain('"isError":true');
+      expect(rejectedCollectionBody).toContain("maximum of 100 entries");
+      expect(rejectedCollection.headers()["set-cookie"]).toBeFalsy();
 
       const searchApi = await publicRequest.post("/mcp", {
         headers: {

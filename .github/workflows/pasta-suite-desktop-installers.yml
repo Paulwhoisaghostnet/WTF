@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       release_tag:
-        description: "Release tag to publish, for example pasta-suite-desktop-v1.0.1-alpha.1"
+        description: "Release tag to publish, for example pasta-suite-desktop-v1.0.1-alpha.2"
         required: false
         type: string
   push:
@@ -97,7 +97,7 @@ jobs:
             "pasta-suite" \
             "apps/pasta-suite-desktop/release/Pasta-Suite-${VERSION}-linux-arm64.deb" \
             "pasta-suite" \
-            "Pasta Suite"
+            "@wtfpasta-suite-desktop"
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

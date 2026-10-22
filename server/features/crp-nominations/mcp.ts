@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { mcpBoundedArray } from "../../lib/mcp-input-limits";
 import { CRP_CATEGORIES } from "@shared/crp-categories";
 import { isTezosAddress } from "@shared/tezos-identity";
 import { getDesktopAppConfig } from "../../lib/desktop-apps";
@@ -331,13 +332,13 @@ export function registerCrpNominationMcpTools(server: McpServer, auth: McpAgentA
           displayName: z.string().trim().max(320).optional().nullable(),
           xHandle: z.string().trim().max(64).optional().nullable(),
           bskyHandle: z.string().trim().max(320).optional().nullable(),
-          identitySources: z.array(z.string().trim().max(64)).max(32).optional(),
+          identitySources: mcpBoundedArray(z.string().trim().max(64), 32).optional(),
         }),
         category_id: z.string().trim().min(1).max(64),
         justification: z
           .object({
             summary: z.string().trim().max(2000).optional().nullable(),
-            links: z.array(z.string().trim().max(2048)).max(12).optional(),
+            links: mcpBoundedArray(z.string().trim().max(2048), 12).optional(),
           })
           .optional(),
         response_format: ResponseFormatSchema,

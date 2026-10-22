@@ -73,7 +73,7 @@ function setBaseHeaders(res) {
 function safeStaticPath(urlPath) {
   const cleanPath = decodeURIComponent(urlPath.split("?")[0] || "/");
   const normalized = path.normalize(cleanPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const rel = normalized === "/" || normalized === "." ? "studio.html" : normalized.replace(/^[/\\]+/, "");
+  const rel = normalized === path.sep || normalized === "." ? "studio.html" : normalized.replace(/^[/\\]+/, "");
   const fullPath = path.join(macaroniRoot(), rel);
   const root = macaroniRoot();
   if (!fullPath.startsWith(root + path.sep) && fullPath !== root) return null;

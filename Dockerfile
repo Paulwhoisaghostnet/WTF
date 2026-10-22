@@ -1,4 +1,4 @@
-FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS builder
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS builder
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ RUN NODE_OPTIONS=--max-old-space-size=6144 npm run check -- --pretty false && \
     npm run creation-tools:build-tezos-vendors && \
     npm run build
 
-FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 # Runtime deps:
 #   • ffmpeg               — TV cache transcoding

@@ -75,7 +75,7 @@ function setBaseHeaders(res) {
 function safeStaticPath(urlPath) {
   const cleanPath = decodeURIComponent(urlPath.split("?")[0] || "/");
   const normalized = path.normalize(cleanPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const rel = normalized === "/" || normalized === "." ? "index.html" : normalized.replace(/^[/\\]+/, "");
+  const rel = normalized === path.sep || normalized === "." ? "index.html" : normalized.replace(/^[/\\]+/, "");
   const fullPath = path.join(penneRoot(), rel);
   const root = penneRoot();
   if (!fullPath.startsWith(root + path.sep) && fullPath !== root) return null;

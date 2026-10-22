@@ -1,0 +1,399 @@
+# ---------------------------------------------------------------------------
+# wtfOS AT Protocol topology (S1.3). Every AT service below is gated behind the
+# `wtfos-atproto` Docker Compose profile, which is OFF by default — the default
+# stack (postgres + app + caddy) is completely unchanged. Bring the AT network
+# up explicitly with:
+#   docker compose --profile wtfos-atproto up -d
+# Topology + rationale: docs/atproto/00-decisions.md (§3) and docs/atproto/02-dns-tls.md.
+# Caddy vhosts for these hosts are added in S1.4 (not yet wired here).
+# ---------------------------------------------------------------------------
+x-wtfos-pds-common-env: &wtfos-pds-common-env
+  PDS_DATA_DIRECTORY: /pds
+  PDS_BLOBSTORE_DISK_LOCATION: /pds/blocks
+  PDS_DID_PLC_URL: ${WTFOS_DID_PLC_URL:-https://plc.directory}
+  PDS_BSKY_APP_VIEW_URL: ${WTFOS_BSKY_APP_VIEW_URL:-https://api.bsky.app}
+  PDS_BSKY_APP_VIEW_DID: ${WTFOS_BSKY_APP_VIEW_DID:-did:web:api.bsky.app}
+  PDS_REPORT_SERVICE_URL: ${WTFOS_REPORT_SERVICE_URL:-https://mod.bsky.app}
+  PDS_REPORT_SERVICE_DID: ${WTFOS_REPORT_SERVICE_DID:-did:plc:ar7c4by46qjdydhdevvrndac}
+  PDS_CRAWLERS: ${WTFOS_PDS_CRAWLERS:-https://bsky.network}
+  PDS_INVITE_REQUIRED: ${WTFOS_PDS_INVITE_REQUIRED:-true}
+  PDS_RATE_LIMITS_ENABLED: ${WTFOS_PDS_RATE_LIMITS_ENABLED:-true}
+  LOG_ENABLED: "true"
+  NODE_ENV: production
+
+x-wtfos-pds-healthcheck: &wtfos-pds-healthcheck
+  test: ["CMD-SHELL", "wget -qO- http://localhost:3000/xrpc/_health || exit 1"]
+  interval: 15s
+  timeout: 5s
+  start_period: 30s
+  retries: 5
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wtf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: wtf
+    volumes:
+      - ${POSTGRES_DATA_DIR:-/mnt/wtf-data/postgres}:/var/lib/postgresql/data
+    # Docker's default `/dev/shm` is only 64 MB, which Postgres exhausts
+    # the moment a parallel query plans its dynamic shared memory
+    # segments.  That manifested as the gallery 500'ing for users with
+    # ~7k+ holdings (the facet queries trigger parallel workers on
+    # large LEFT JOINs over token_metadata).  1 GB is plenty for this
+    # workload; raise only if SELECT pg_shmem_allocations() ever
+    # approaches it.
+    shm_size: 1gb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wtf -d wtf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      args:
+        COMMIT_SHA: ${COMMIT_SHA:-dev}
+        VITE_MARKETPLACE_CONTRACT_ADDRESS: ${VITE_MARKETPLACE_CONTRACT_ADDRESS:-}
+        VITE_WALLETCONNECT_PROJECT_ID: ${VITE_WALLETCONNECT_PROJECT_ID:-}
+        VITE_BARTER_CONTRACT_ADDRESS: ${VITE_BARTER_CONTRACT_ADDRESS:-}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ${WTF_ENV_FILE:-.env}
+    environment:
+      DATABASE_URL: postgresql://wtf:${POSTGRES_PASSWORD}@postgres:5432/wtf
+      NODE_ENV: production
+      RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-postgres}
+      COMMIT_SHA: ${COMMIT_SHA:-dev}
+      COMMIT_REF: ${COMMIT_SHA:-dev}
+      WTF_DATA_ROOT: /mnt/wtf-data
+      WTFIAP_DATA_DIR: /app/wtfiap-data
+      UPLOAD_STAGING_DIR: /app/uploads-staging
+      MEDIA_HOT_CACHE_DIR: /app/cache/users
+      GM_NFT_CACHE_DIR: /app/cache/gm-nfts
+      TMP_PROCESSING_DIR: /app/tmp-processing
+      BACKUPS_STAGING_DIR: /app/backups
+      TV_CACHE_DIR: /app/cache/tv
+      BUMPER_UPLOADS_DIR: /app/cache/bumpers
+      W_TIMELINE_STREAM_HANDLES_FILE: ${W_TIMELINE_STREAM_HANDLES_FILE:-/app/config/w-stream-handles.txt}
+      MEDIA_UPLOAD_MAX_BYTES: ${MEDIA_UPLOAD_MAX_BYTES:-26214400}
+      MEDIA_HOT_CACHE_MAX_BYTES: ${MEDIA_HOT_CACHE_MAX_BYTES:-32212254720}
+      VOLUME_RESERVED_FREE_BYTES: ${VOLUME_RESERVED_FREE_BYTES:-16106127360}
+      OBJECT_STORAGE_LIMIT_BYTES: ${OBJECT_STORAGE_LIMIT_BYTES:-1040450734080}
+      OBJECT_STORAGE_WARN_80_BYTES: ${OBJECT_STORAGE_WARN_80_BYTES:-832360587264}
+      OBJECT_STORAGE_WARN_90_BYTES: ${OBJECT_STORAGE_WARN_90_BYTES:-936405660672}
+      OBJECT_STORAGE_PROTECT_95_BYTES: ${OBJECT_STORAGE_PROTECT_95_BYTES:-988428527616}
+    volumes:
+      - ${WTF_OPERATOR_SIGNER_RUN_DIR_HOST:-/run/wtf}:/run/wtf
+      - ${UPLOAD_STAGING_DIR_HOST:-/mnt/wtf-data/uploads-staging}:/app/uploads-staging
+      - ${TV_CACHE_DIR_HOST:-/mnt/wtf-data/tv-cache}:/app/cache
+      - ${TMP_PROCESSING_DIR_HOST:-/mnt/wtf-data/tmp-processing}:/app/tmp-processing
+      - ${BACKUPS_STAGING_DIR_HOST:-/mnt/wtf-data/backups-staging}:/app/backups
+      - ${WTFIAP_DATA_DIR_HOST:-/mnt/wtf-data/wtfiap}:/app/wtfiap-data
+      - ${APP_LOG_DIR_HOST:-/var/log/wtf/app}:/app/logs
+      - ${WTF_CONFIG_DIR_HOST:-/mnt/wtf-data/config}:/app/config:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    # Allow the app to reach native host services (e.g. kiln.service on :3001)
+    # via `host.docker.internal`. Linux does not populate this by default; the
+    # `host-gateway` alias was added in Docker 20.10+.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  wtfos-pds:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles:
+      - wtfos-pds
+      - wtfos-atproto
+    environment:
+      PDS_HOSTNAME: ${WTFOS_PDS_HOSTNAME:-pds.wtfgameshow.app}
+      PDS_JWT_SECRET: ${WTFOS_PDS_MASTER_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_MASTER_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_MASTER_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+      PDS_DATA_DIRECTORY: /pds
+      PDS_BLOBSTORE_DISK_LOCATION: /pds/blocks
+      PDS_DID_PLC_URL: ${WTFOS_PDS_DID_PLC_URL:-https://plc.directory}
+      PDS_BSKY_APP_VIEW_URL: ${WTFOS_PDS_BSKY_APP_VIEW_URL:-https://api.bsky.app}
+      PDS_BSKY_APP_VIEW_DID: ${WTFOS_PDS_BSKY_APP_VIEW_DID:-did:web:api.bsky.app}
+      PDS_REPORT_SERVICE_URL: ${WTFOS_PDS_REPORT_SERVICE_URL:-https://mod.bsky.app}
+      PDS_REPORT_SERVICE_DID: ${WTFOS_PDS_REPORT_SERVICE_DID:-did:plc:ar7c4by46qjdydhdevvrndac}
+      PDS_CRAWLERS: ${WTFOS_PDS_CRAWLERS:-https://bsky.network}
+      PDS_INVITE_REQUIRED: ${WTFOS_PDS_INVITE_REQUIRED:-true}
+      PDS_RATE_LIMITS_ENABLED: ${WTFOS_PDS_RATE_LIMITS_ENABLED:-true}
+      LOG_ENABLED: "true"
+      NODE_ENV: production
+    volumes:
+      - ${WTFOS_PDS_DATA_DIR:-/mnt/wtf-data/pds}:/pds
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/xrpc/_health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # ── Domain PDSes (one repo per subdomain; hold canonical topical records) ─
+  wtfos-pds-social:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_SOCIAL_HOSTNAME:-social.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_SOCIAL_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_SOCIAL_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_SOCIAL_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_SOCIAL_DATA_DIR:-/mnt/wtf-data/pds-social}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-commerce:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_COMMERCE_HOSTNAME:-commerce.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_COMMERCE_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_COMMERCE_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_COMMERCE_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_COMMERCE_DATA_DIR:-/mnt/wtf-data/pds-commerce}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-media:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_MEDIA_HOSTNAME:-media.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_MEDIA_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_MEDIA_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_MEDIA_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_MEDIA_DATA_DIR:-/mnt/wtf-data/pds-media}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-arcade:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_ARCADE_HOSTNAME:-arcade.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_ARCADE_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_ARCADE_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_ARCADE_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_ARCADE_DATA_DIR:-/mnt/wtf-data/pds-arcade}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-tezos:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_TEZOS_HOSTNAME:-tezos.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_TEZOS_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_TEZOS_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_TEZOS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_TEZOS_DATA_DIR:-/mnt/wtf-data/pds-tezos}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-ops:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_OPS_HOSTNAME:-ops.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_OPS_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_OPS_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_OPS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_OPS_DATA_DIR:-/mnt/wtf-data/pds-ops}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  wtfos-pds-os:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_OS_HOSTNAME:-os.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_OS_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_OS_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_OS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_OS_DATA_DIR:-/mnt/wtf-data/pds-os}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  # ── Users PDS (WTF-hosted did:plc user repos) ────────────────────────────
+  wtfos-pds-users:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_USERS_HOSTNAME:-users.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_USERS_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_USERS_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_USERS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+    volumes:
+      - ${WTFOS_PDS_USERS_DATA_DIR:-/mnt/wtf-data/pds-users}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  # ── Low-load user-site renderer for wildcard *.wtfos.me hosts ───────────
+  wtfos-user-site-renderer:
+    build:
+      context: .
+      args:
+        COMMIT_SHA: ${COMMIT_SHA:-dev}
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    depends_on:
+      wtfos-pds:
+        condition: service_healthy
+      wtfos-pds-users:
+        condition: service_healthy
+    env_file:
+      - ${WTF_ENV_FILE:-.env}
+    environment:
+      NODE_ENV: production
+      PORT: "3009"
+      WTFOS_USER_SITE_INDEX_PDS_URL: ${WTFOS_USER_SITE_INDEX_PDS_URL:-http://wtfos-pds:3000}
+      WTFOS_USER_SITE_SNAPSHOT_PDS_URL: ${WTFOS_USER_SITE_SNAPSHOT_PDS_URL:-http://wtfos-pds-users:3000}
+    command: ["npx", "tsx", "scripts/wtfos-user-site-renderer.ts"]
+
+  # ── Private PDS (encrypted DM/room records; NOT federated) ───────────────
+  wtfos-pds-private:
+    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      <<: *wtfos-pds-common-env
+      PDS_HOSTNAME: ${WTFOS_PDS_PRIVATE_HOSTNAME:-private.wtfos.me}
+      PDS_JWT_SECRET: ${WTFOS_PDS_PRIVATE_JWT_SECRET:-${WTFOS_PDS_JWT_SECRET:-}}
+      PDS_ADMIN_PASSWORD: ${WTFOS_PDS_PRIVATE_ADMIN_PASSWORD:-${WTFOS_PDS_ADMIN_PASSWORD:-}}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${WTFOS_PDS_PRIVATE_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-${WTFOS_PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:-}}
+      # No crawlers: this PDS must never be advertised to the relay/network.
+      PDS_CRAWLERS: ""
+    volumes:
+      - ${WTFOS_PDS_PRIVATE_DATA_DIR:-/mnt/wtf-data/pds-private}:/pds
+    healthcheck: *wtfos-pds-healthcheck
+
+  # ── Indigo relay (aggregated subscribeRepos firehose) ────────────────────
+  wtfos-relay-db:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: ${WTFOS_RELAY_DB_PASSWORD:-}
+      POSTGRES_DB: relay
+    volumes:
+      - ${WTFOS_RELAY_DB_DATA_DIR:-/mnt/wtf-data/relay-db}:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wtfos-atproto-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile.relay
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    # host networking: the relay binds :2470 on the host and reaches relay-db
+    # on 127.0.0.1:5434 (the published port above).
+    network_mode: host
+    depends_on:
+      wtfos-relay-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://relay:${WTFOS_RELAY_DB_PASSWORD}@127.0.0.1:5434/relay
+      RELAY_ADMIN_PASSWORD: ${WTFOS_RELAY_ADMIN_PASSWORD:-}
+      RELAY_PERSIST_DIR: /data/relay/persist
+      RELAY_REPLAY_WINDOW: ${WTFOS_RELAY_REPLAY_WINDOW:-24h}
+    volumes:
+      - ${WTFOS_RELAY_PERSIST_DIR:-/mnt/wtf-data/relay-persist}:/data/relay/persist
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:2470/xrpc/_health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ── Labeler (com.atproto.label bans/labels) ──────────────────────────────
+  # NOTE: image + full config finalized in S2.8 (labeler service). Profile-gated.
+  wtfos-labeler-db:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    environment:
+      POSTGRES_USER: labeler
+      POSTGRES_PASSWORD: ${WTFOS_LABELER_DB_PASSWORD:-}
+      POSTGRES_DB: labeler
+    volumes:
+      - ${WTFOS_LABELER_DB_DATA_DIR:-/mnt/wtf-data/labeler-db}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labeler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wtfos-labeler:
+    image: ghcr.io/bluesky-social/ozone:0.1.104@sha256:4473001d2c22edef278a84a7714c93f52b4884669144bdcfef0f270befdd21d7
+    restart: unless-stopped
+    profiles: [wtfos-atproto]
+    depends_on:
+      wtfos-labeler-db:
+        condition: service_healthy
+    environment:
+      # Minimal scaffold; S2.8 sets OZONE_* identity/appview/PLC config.
+      OZONE_DB_POSTGRES_URL: postgres://labeler:${WTFOS_LABELER_DB_PASSWORD}@wtfos-labeler-db:5432/labeler
+      OZONE_PUBLIC_URL: ${WTFOS_LABELER_PUBLIC_URL:-https://mod.wtfos.me}
+      OZONE_DID_PLC_URL: ${WTFOS_DID_PLC_URL:-https://plc.directory}
+      LOG_ENABLED: "true"
+      NODE_ENV: production
+
+  caddy:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Staged wtfOS AT vhosts (S1.4). Mounted so `import Caddyfile.wtfos-atproto`
+      # in ./Caddyfile can be enabled without recreating the container. Inactive
+      # until that import line is uncommented.
+      - ./Caddyfile.wtfos-atproto:/etc/caddy/Caddyfile.wtfos-atproto:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # Allow Caddy to reach native host services (e.g. kiln.service on :3001)
+    # via `host.docker.internal`. Linux does not populate this by default; the
+    # `host-gateway` alias was added in Docker 20.10+.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+volumes:
+  caddy_data:
+  caddy_config:
