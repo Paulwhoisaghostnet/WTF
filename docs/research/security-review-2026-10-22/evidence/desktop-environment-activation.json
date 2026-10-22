@@ -1,0 +1,27 @@
+{
+  "updatedAt": "2026-10-22T20:23:04.473066+00:00",
+  "environmentFile": "/etc/wtf/wtf.env",
+  "lock": "/tmp/wtf-app-deploy.lock",
+  "keyCount": 63,
+  "existingKeysUpdated": 56,
+  "missingKeysAdded": 7,
+  "installerVersions": {
+    "PASTA_SUITE": "1.0.1-alpha.2",
+    "CH_EASE": "1.0.1-alpha.2",
+    "MACARONI": "1.0.1-alpha.2",
+    "SPAGHETTI": "1.0.1-alpha.2",
+    "GNOCCHI": "1.0.1-alpha.2",
+    "RAVIOLI": "1.0.1-alpha.2",
+    "ROTINI": "1.0.1-alpha.2",
+    "PENNE": "1.0.1-alpha.2",
+    "LASAGNA": "1.0.1-alpha.2"
+  },
+  "unrelatedLinesPreserved": true,
+  "atomicReplacement": true,
+  "originalOwnerGroupModePreserved": true,
+  "environmentMode": "0o600",
+  "backupPath": "/etc/wtf/wtf.env.desktop-security.20261022T202304Z.bak",
+  "backupMode": "0o600",
+  "containerRecreated": false,
+  "activation": "Pending normal production deployment"
+}

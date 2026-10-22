@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-10-22T20:03:40.802Z",
+  "baseURL": "https://wtfos.app",
+  "expectedCommit": "7167ca37",
+  "checks": [
+    {
+      "name": "deployed commit",
+      "passed": true,
+      "status": 200,
+      "commitRef": "7167ca37"
+    },
+    {
+      "name": "published request limit",
+      "passed": true,
+      "maxBodyBytes": 10485760,
+      "maxToolInputElements": 5242880
+    },
+    {
+      "name": "anonymous MCP denial",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "oversized JSON rejected before authentication",
+      "passed": true,
+      "status": 413,
+      "requestBytes": 10485761
+    },
+    {
+      "name": "existing production actor login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "temporary read-only token created",
+      "passed": true,
+      "status": 201
+    }
+  ],
+  "tokenRevoked": true,
+  "failure": "listed.status is not a function",
+  "finishedAt": "2026-10-22T20:03:44.852Z"
+}

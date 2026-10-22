@@ -12023,6 +12023,29 @@
 
 **Correction and proof**: Compare the normalized root with `path.sep`; execute the actual resolver from every affected app under both Windows and POSIX path implementations, retaining nested-asset handling. Use the actual packaged suite executable in the Linux smoke check and derive release-version assertions from package metadata. The original resolver fails all eight targeted regressions and the corrected resolver passes. Installer publication remains gated on the real installed binaries on every supported platform. See WTF-BB-693.
 
+**Installer proof follow-up (2026-10-22)**: CH-EASE and Macaroni start at explicit HTML paths, so their existing root resolver did not block the requested security release. Retain their published, verified security builds and scope the root-path correction to the six applications that actually start at `/`. A workflow-text policy must accept both LF and CRLF checkouts; Windows CI reproduced an LF-only regex failure before packaging. Exercise both line endings in that policy rather than adding retries or changing packaging.
+
+
+## 2026-10-22 — Recover deployment disk headroom without weakening the safeguard
+
+**What happened**: The follow-up security deployment stopped before application replacement because free space fell below the existing 12,288 MiB floor. The already patched app remained healthy. Automatic build-cache and unused-image recovery did not reclaim enough space.
+
+**Correction and proof**: Under the existing deployment lock, identify regenerable caches and check that no active process uses them. Clearing the main user's npm download cache and two unused npx Wrangler/Vite caches reclaimed 574,100 KiB (560.6 MiB), leaving 12,345 MiB free. App, Caddy, and PostgreSQL container identities and restart counts were unchanged. No volumes, application data, release files, Docker metadata, or threshold were changed. The normal deployment must still pass and its new public health commit must be verified before closure. See WTF-BB-694.
+
+**Rule**: A disk preflight failure is a release blocker, not evidence of an app outage. Recover only measured, unused, regenerable data under the deployment lock, preserve the existing disk policy, and verify both the recovery's boundaries and the subsequent normal deployment.
+
+
+**Installer publication follow-up (2026-10-22)**: GitHub's workflow token could not create or update Macaroni's release at its already-tested commit after workflow files on main advanced. Rebuilding or moving the tag would discard the verified artifact identity. The existing authenticated CLI had the required repository/workflow scope; it created the prerelease at the original commit and uploaded the successful CI artifacts without clobbering. Every uploaded digest and size matched the original bytes. Preserve immutable tested tags and artifacts when recovering a publication permission failure; distinguish successful build/installation tests from the failed publisher job.
+
+
+## 2026-10-22 — Assign Docker file ownership when creating the layer
+
+**What happened**: Passing the existing disk preflight did not prove enough peak space for image export. The next build completed and unpacked its image, then exhausted space writing Compose metadata. Docker history measured a 1.46 GB layer created solely by the late recursive `chown -R node:node /app`. The healthy patched container had not yet been replaced.
+
+**Correction**: Preserve the same node ownership within the dependency-install layer and `COPY --chown` operations; assign ownership only to new mount directories afterward. Remove only the unused failed candidate images through Docker's API under the deployment lock, leaving active images, volumes, data and Docker metadata untouched. This reclaimed 6,373,444 KiB and restored 14,109 MiB free without lowering the existing floor. Fifteen existing deployment/supply-chain/context checks passed; the normal build, running-file ownership and public health remain the final proof.
+
+**Rule**: Measure layer and export costs when a build exhausts disk despite preflight. Metadata changes to existing files can duplicate large layers. Preserve runtime permissions at layer creation and verify the actual resulting image; do not solve measured image duplication by weakening the disk guard.
+
 ## 2026-10-19 — WTFIAP escrow recovery must outlive admission and UI rules
 
 **What happened**: Review of the unpublished escrow integration reproduced two recovery failures: finalized reads could succeed through the allowed fallback RPC, then pending-operation failure inspection retried only the unavailable primary and discarded the useful state; disabling new funding stopped reconciliation of previously settled claims. Rules updates also required completed game results to remain accessible independently of rebuilding combat under a new engine.

@@ -1,0 +1,102 @@
+{
+  "startedAt": "2026-10-22T20:04:40.795Z",
+  "baseURL": "https://wtfos.app",
+  "acceptedCommits": [
+    "7167ca37",
+    "c2dcb077"
+  ],
+  "priorPublicBoundaryProof": {
+    "timestamp": "2026-10-22T20:03:44.852Z",
+    "checks": [
+      {
+        "name": "deployed commit",
+        "passed": true,
+        "status": 200,
+        "commitRef": "7167ca37"
+      },
+      {
+        "name": "published request limit",
+        "passed": true,
+        "maxBodyBytes": 10485760,
+        "maxToolInputElements": 5242880
+      },
+      {
+        "name": "anonymous MCP denial",
+        "passed": true,
+        "status": 401
+      },
+      {
+        "name": "oversized JSON rejected before authentication",
+        "passed": true,
+        "status": 413,
+        "requestBytes": 10485761
+      }
+    ],
+    "temporaryTokenRevoked": true
+  },
+  "checks": [
+    {
+      "name": "deployed commit",
+      "passed": true,
+      "status": 200,
+      "commitRef": "7167ca37"
+    },
+    {
+      "name": "existing production actor login",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "temporary read-only token created",
+      "passed": true,
+      "status": 201
+    },
+    {
+      "name": "authenticated discovery and cookie isolation",
+      "passed": true,
+      "status": 200,
+      "toolCount": 47
+    },
+    {
+      "name": "typed collection schema preserved",
+      "passed": true
+    },
+    {
+      "name": "paired API read",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "typed collection rejected before work",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "valid oversized parameter map rejected",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "invalid parameter rejected",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "temporary token revoked",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "revoked token rejected",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "application ready after proof",
+      "passed": true,
+      "commitRef": "7167ca37"
+    }
+  ],
+  "tokenRevoked": true,
+  "finishedAt": "2026-10-22T20:04:42.066Z"
+}

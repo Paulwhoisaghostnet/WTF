@@ -1,5 +1,7 @@
 # WTF security announcement review — October 22, 2026
 
+> Historical audit of the pre-remediation deployment. See the [remediation and live verification receipt](remediation.md) for the patched runtimes, releases, tests, and remaining limits.
+
 **The highest-priority exposure is the Node runtime used by the live app's build configuration.** Its immutable image contains Node 22.23.1, and the application accepts Brotli request bodies before authentication. The October 21 Node update fixes a Brotli decoder RCE. The desktop runtime, relay compiler and MCP integration also need attention. No evidence of compromise was sought or established.
 
 **Review contract:** identify announcements from October 19–22, 2026 (America/Los_Angeles), include relevant adjacent disclosures and newly indexed older advisories with their actual dates, compare affected versions and prerequisites with WTF, and distinguish deployed-source evidence, local dependencies, conditional exposure and non-applicability. This is a report, not a remediation or penetration-test pass.

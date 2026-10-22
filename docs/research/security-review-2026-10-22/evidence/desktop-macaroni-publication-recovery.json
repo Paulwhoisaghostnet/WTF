@@ -1,0 +1,65 @@
+{
+  "product": "macaroni",
+  "version": "1.0.1-alpha.2",
+  "commit": "7167ca37e047118f11032da41798d4baad85a885",
+  "runId": "39844455534",
+  "buildAttempt": 1,
+  "buildAndInstalledRuntimeChecks": "All three platforms and four installer formats passed.",
+  "publisherWorkflowConclusion": "failure",
+  "publisherFailure": "GITHUB_TOKEN returned HTTP 403 when creating/updating the release at an earlier commit with workflow-file differences.",
+  "recovery": "Authenticated gh CLI created exact-source prerelease and uploaded unchanged CI artifacts without clobber",
+  "releaseId": 421154333,
+  "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/macaroni-desktop-v1.0.1-alpha.2",
+  "assets": [
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-mac-universal.dmg",
+      "sha256": "58325fc4aa8f1b5893997740e7f97da5bec613b33f1a2edd28b83c601e898a43",
+      "bytes": 223620059,
+      "assetId": 666965490,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-mac-universal.dmg"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-mac-universal.dmg.blockmap",
+      "sha256": "8cd61251b8fc73d2783c6807c584a7184e96f1d6ab0b857938169e2d9d73f5c6",
+      "bytes": 234194,
+      "assetId": 666965500,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-mac-universal.dmg.blockmap"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-mac-universal.zip",
+      "sha256": "5821cb05c8ac04dbbcef94aa43714a00217f3cd456d47841c10296143489df91",
+      "bytes": 223489549,
+      "assetId": 666965502,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-mac-universal.zip"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-mac-universal.zip.blockmap",
+      "sha256": "b20a373f22b21a5b2accba4d1a44c84e0ff679a3d5babb4ff3de93c6e593e735",
+      "bytes": 232832,
+      "assetId": 666965496,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-mac-universal.zip.blockmap"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-linux-arm64.deb",
+      "sha256": "528bf0354f5048edd0a26eaef561851e1ca48c3d3d1f70001ded0468d4692777",
+      "bytes": 97109760,
+      "assetId": 666965493,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-linux-arm64.deb"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-win-x64.exe",
+      "sha256": "146378f05d3e8a3ca9367b7970a953a35187550ba3df41b797b34e66a5c850b8",
+      "bytes": 105821672,
+      "assetId": 666965587,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-win-x64.exe"
+    },
+    {
+      "name": "Macaroni-Studio-1.0.1-alpha.2-win-x64.exe.blockmap",
+      "sha256": "1d0ef273ca124fa69d16ead195c81df67a37237d0fdc35362a2c5abd6747a96b",
+      "bytes": 111397,
+      "assetId": 666965596,
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.2/Macaroni-Studio-1.0.1-alpha.2-win-x64.exe.blockmap"
+    }
+  ],
+  "permissionReference": "https://docs.github.com/en/rest/releases/releases#create-a-release"
+}

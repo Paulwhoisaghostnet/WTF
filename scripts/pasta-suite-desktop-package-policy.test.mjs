@@ -267,11 +267,13 @@ test("Pasta suite installer workflow builds all target packages", () => {
   assert.match(workflowSource, /pasta-desktop-linux-installer-smoke\.sh/);
   assert.match(workflowSource, /Pasta-Suite-\$\{VERSION\}-mac-universal\.dmg/);
   assert.match(workflowSource, /Pasta-Suite-\$\{VERSION\}-linux-arm64\.deb/);
-  assert.match(
-    workflowSource,
-    /"pasta-suite" \\\n\s+"@wtfpasta-suite-desktop"/,
-    "Linux smoke must launch the executable produced from the scoped package name",
-  );
+  for (const newline of ["\n", "\r\n"]) {
+    assert.match(
+      workflowSource.replace(/\r?\n/g, newline),
+      /"pasta-suite" \\\r?\n\s+"@wtfpasta-suite-desktop"/,
+      "Linux smoke must launch the executable produced from the scoped package name on every checkout",
+    );
+  }
   assert.match(workflowSource, /Pasta-Suite-\$version-win-x64\.exe/);
   assert.match(macosArtifactSmokeSource, /npm run pasta:desktop:artifact-smoke/);
   assert.match(

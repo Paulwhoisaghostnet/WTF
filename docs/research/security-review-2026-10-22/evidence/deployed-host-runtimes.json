@@ -1,0 +1,721 @@
+{
+  "startedAt": "2026-10-22T20:14:51.121378+00:00",
+  "method": "Read-only authorized SSH wrapper; running native /proc/MainPID/exe versions, filtered Docker metadata, container Node process.versions, PDS health and Caddy build-info. No environment/configuration values read or included.",
+  "main": {
+    "hostRole": "main",
+    "capturedAt": "2026-10-22T20:14:52.379707+00:00",
+    "nativeServices": [
+      {
+        "unit": "kiln.service",
+        "MainPID": "3146753",
+        "LoadState": "loaded",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled",
+        "runningExecutable": "/usr/bin/node",
+        "versions": {
+          "node": "22.23.4",
+          "acorn": "8.16.0",
+          "ada": "2.9.2",
+          "amaro": "1.1.8",
+          "ares": "1.34.9",
+          "brotli": "1.1.0",
+          "cjs_module_lexer": "2.2.0",
+          "cldr": "48.0",
+          "icu": "78.3",
+          "llhttp": "9.4.3",
+          "modules": "127",
+          "napi": "10",
+          "nbytes": "0.1.3",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.69.0",
+          "openssl": "3.5.9",
+          "simdjson": "4.5.0",
+          "simdutf": "6.4.2",
+          "sqlite": "3.53.4",
+          "tz": "2026e",
+          "undici": "6.29.1",
+          "unicode": "17.0",
+          "uv": "1.51.0",
+          "uvwasi": "0.0.23",
+          "v8": "12.4.254.21-node.57",
+          "zlib": "1.3.1-e00f703",
+          "zstd": "1.5.7"
+        }
+      },
+      {
+        "unit": "wtf-operator-signer.service",
+        "MainPID": "3146757",
+        "LoadState": "loaded",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled",
+        "runningExecutable": "/usr/bin/node",
+        "versions": {
+          "node": "22.23.4",
+          "acorn": "8.16.0",
+          "ada": "2.9.2",
+          "amaro": "1.1.8",
+          "ares": "1.34.9",
+          "brotli": "1.1.0",
+          "cjs_module_lexer": "2.2.0",
+          "cldr": "48.0",
+          "icu": "78.3",
+          "llhttp": "9.4.3",
+          "modules": "127",
+          "napi": "10",
+          "nbytes": "0.1.3",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.69.0",
+          "openssl": "3.5.9",
+          "simdjson": "4.5.0",
+          "simdutf": "6.4.2",
+          "sqlite": "3.53.4",
+          "tz": "2026e",
+          "undici": "6.29.1",
+          "unicode": "17.0",
+          "uv": "1.51.0",
+          "uvwasi": "0.0.23",
+          "v8": "12.4.254.21-node.57",
+          "zlib": "1.3.1-e00f703",
+          "zstd": "1.5.7"
+        }
+      },
+      {
+        "unit": "wtf-aleatory-provider.service",
+        "MainPID": "3147215",
+        "LoadState": "loaded",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled",
+        "runningExecutable": "/usr/bin/node",
+        "versions": {
+          "node": "22.23.4",
+          "acorn": "8.16.0",
+          "ada": "2.9.2",
+          "amaro": "1.1.8",
+          "ares": "1.34.9",
+          "brotli": "1.1.0",
+          "cjs_module_lexer": "2.2.0",
+          "cldr": "48.0",
+          "icu": "78.3",
+          "llhttp": "9.4.3",
+          "modules": "127",
+          "napi": "10",
+          "nbytes": "0.1.3",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.69.0",
+          "openssl": "3.5.9",
+          "simdjson": "4.5.0",
+          "simdutf": "6.4.2",
+          "sqlite": "3.53.4",
+          "tz": "2026e",
+          "undici": "6.29.1",
+          "unicode": "17.0",
+          "uv": "1.51.0",
+          "uvwasi": "0.0.23",
+          "v8": "12.4.254.21-node.57",
+          "zlib": "1.3.1-e00f703",
+          "zstd": "1.5.7"
+        }
+      },
+      {
+        "unit": "wtf-gameshow-bot.service",
+        "MainPID": "0",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "disabled"
+      }
+    ]
+  },
+  "atProtocol": {
+    "hostRole": "AT Protocol",
+    "capturedAt": "2026-10-22T20:14:52.414546+00:00",
+    "pds": [
+      {
+        "name": "/wtf-app-wtfos-pds-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:53:23.302189424Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-arcade-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:50:43.281608184Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-commerce-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:51:49.538409594Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-media-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:52:03.256635866Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-ops-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:52:16.4485483Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-os-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:52:30.309051295Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-private-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:52:44.722958432Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-social-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:53:12.921309864Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-tezos-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:51:35.645942655Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      },
+      {
+        "name": "/wtf-app-wtfos-pds-users-1",
+        "imageReference": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "status": "running",
+        "running": true,
+        "restartCount": 0,
+        "startedAt": "2026-10-22T19:52:58.686955039Z",
+        "healthStatus": "healthy",
+        "runtime": {
+          "executable": "/usr/local/bin/node",
+          "versions": {
+            "node": "24.22.1",
+            "acorn": "8.18.0",
+            "ada": "4.0.0",
+            "amaro": "1.1.11",
+            "ares": "1.34.9",
+            "brotli": "1.2.0",
+            "cldr": "48.0",
+            "icu": "78.3",
+            "llhttp": "9.4.3",
+            "merve": "1.2.2",
+            "modules": "137",
+            "napi": "10",
+            "nbytes": "0.1.4",
+            "ncrypto": "0.0.1",
+            "nghttp2": "1.70.0",
+            "nghttp3": "",
+            "ngtcp2": "",
+            "openssl": "3.5.9",
+            "simdjson": "4.6.11",
+            "simdutf": "6.4.0",
+            "sqlite": "3.53.4",
+            "tz": "2026e",
+            "undici": "7.30.1",
+            "unicode": "17.0",
+            "uv": "1.52.1",
+            "uvwasi": "0.0.23",
+            "v8": "13.6.233.17-node.58",
+            "zlib": "1.3.2.1-motley-285e94b",
+            "zstd": "1.5.7"
+          }
+        },
+        "localHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        }
+      }
+    ],
+    "edgeCaddy": {
+      "name": "/wtfos-edge-caddy",
+      "imageReference": "wtfos-caddy:security-20261022",
+      "imageId": "sha256:c0d4fc9f0ea31ec05e076f666d9f268df2ccc9812b9a3a08d6f97e852b3e437b",
+      "status": "running",
+      "running": true,
+      "restartCount": 0,
+      "startedAt": "2026-10-22T19:56:12.502496976Z",
+      "healthStatus": null,
+      "buildInfo": "go\tgo1.26.10\npath\tgithub.com/caddyserver/caddy/v2/cmd/caddy\nmod\tgithub.com/caddyserver/caddy/v2\tv2.11.7\th1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=\ndep\tcel.dev/cel-go\tv0.32.0\th1:irvpFKr5EuGPyxeME03ERh0rii1TX+BDAnB9eL3IvNk=\ndep\tcel.dev/expr\tv0.25.3\th1:A2jO8jwOugrrovveCWfj0KEZOfqiLgAcwjpHPhzIGw0=\ndep\tcloud.google.com/go/auth\tv0.23.3\th1:UMK+oBtuNGMCR/6i6mmySUItqjOazpJrbmZyhGbGBWo=\ndep\tcloud.google.com/go/auth/oauth2adapt\tv0.2.8\th1:keo8NaayQZ6wimpNSmW5OPc283g65QNIiLpZnkHRbnc=\ndep\tcloud.google.com/go/compute/metadata\tv0.9.1\th1:CTE1OWBQ0vnF5uHwdFAQJvMQ0Fi/KRcqqKTo9V0F8Ik=\ndep\tdario.cat/mergo\tv1.0.2\th1:85+piFYR1tMbRrLcDwR18y4UKJ3aH1Tbzi24VRW1TK8=\ndep\tfilippo.io/bigmod\tv0.1.0\th1:UNzDk7y9ADKST+axd9skUpBQeW7fG2KrTZyOE4uGQy8=\ndep\tfilippo.io/edwards25519\tv1.2.0\th1:crnVqOiS4jqYleHd9vaKZ+HKtHfllngJIiOpNpoJsjo=\ndep\tgithub.com/AndreasBriese/bbloom\tv0.0.0-20190825152654-46b345b51c96\th1:cTp8I5+VIoKjsnZuH8vjyaysT/ses3EvZeaV/1UkF2M=\ndep\tgithub.com/BurntSushi/toml\tv1.6.0\th1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=\ndep\tgithub.com/DeRuina/timberjack\tv1.4.8\th1:V7SIoCzkyWD93WmyKECSX+tMu/hLqQQvptlhEsbBIhI=\ndep\tgithub.com/KimMachineGun/automemlimit\tv1.0.0\th1:+MqlvDE/pkJNjk1rU+O14QsH8k10nJAD0frB0lsxyvw=\ndep\tgithub.com/Masterminds/goutils\tv1.1.1\th1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=\ndep\tgithub.com/Masterminds/semver/v3\tv3.5.0\th1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=\ndep\tgithub.com/Masterminds/sprig/v3\tv3.3.0\th1:mQh0Yrg1XPo6vjYXgtf5OtijNAKJRNcTdOOGZe3tPhs=\ndep\tgithub.com/alecthomas/chroma/v2\tv2.27.0\th1:FodwmyOBgJULFYmDqibcp9pvfDLWdtPRh9v/r5BXYZs=\ndep\tgithub.com/antlr4-go/antlr/v4\tv4.13.1\th1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=\ndep\tgithub.com/aryann/difflib\tv0.0.0-20210328193216-ff5ff6dc229b\th1:uUXgbcPDK3KpW29o4iy7GtuappbWT0l5NaMo9H9pJDw=\ndep\tgithub.com/beorn7/perks\tv1.0.1\th1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=\ndep\tgithub.com/bits-and-blooms/bitset\tv1.25.0\th1:0Ro0qF4abCkM6SqWPVj29sFhAbMPAZpaDD7xhJ10beM=\ndep\tgithub.com/caddyserver/certmagic\tv0.25.6\th1:vHMtFSLKTa6kuZz6w0SnRMpQ388tSkww8ye355BgAM4=\ndep\tgithub.com/caddyserver/zerossl\tv0.1.6\th1:1yrhTx5DWi43wOJPQ+Y4mVl++EPmSqqT/4REW//lsas=\ndep\tgithub.com/ccoveille/go-safecast/v2\tv2.0.1\th1:2+mIu3gXtwmWelBia2kkxfB8eP4orTHDH7ClSlWkd6I=\ndep\tgithub.com/cenkalti/backoff/v5\tv5.0.3\th1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=\ndep\tgithub.com/cespare/xxhash\tv1.1.0\th1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=\ndep\tgithub.com/cespare/xxhash/v2\tv2.3.0\th1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=\ndep\tgithub.com/chzyer/readline\tv1.5.1\th1:upd/6fQk4src78LMRzh5vItIt361/o4uq553V8B5sGI=\ndep\tgithub.com/cloudflare/circl\tv1.6.5\th1:O64F26HEqNhznd/hrC5KZXVKYuKM2rx4deZDTc4ihQA=\ndep\tgithub.com/coreos/go-oidc/v3\tv3.21.0\th1:wZo4Q9Pum8dYEj0eMUPrqR+kvuGkeUplbLpNCkBqoWM=\ndep\tgithub.com/cpuguy83/go-md2man/v2\tv2.0.7\th1:zbFlGlXEAKlwXpmvle3d8Oe3YnkKIK4xSRTd3sHPnBo=\ndep\tgithub.com/dgraph-io/badger\tv1.6.2\th1:mNw0qs90GVgGGWylh0umH5iag1j6n/PeJtNvL6KY/x8=\ndep\tgithub.com/dgraph-io/badger/v2\tv2.2007.4\th1:TRWBQg8UrlUhaFdco01nO2uXwzKS7zd+HVdwV/GHc4o=\ndep\tgithub.com/dgraph-io/ristretto\tv0.2.0\th1:XAfl+7cmoUDWW/2Lx8TGZQjjxIQ2Ley9DSf52dru4WE=\ndep\tgithub.com/dgryski/go-farm\tv0.0.0-20240924180020-3414d57e47da\th1:aIftn67I1fkbMa512G+w+Pxci9hJPB8oMnkcP3iZF38=\ndep\tgithub.com/dlclark/regexp2/v2\tv2.8.0\th1:CekDhPLGfm+GAJmPVFIG+5dqMIQPkyHJll7BbdneDfw=\ndep\tgithub.com/dunglas/go-urlpattern\tv1.0.0\th1:AmMwIDXWJFezeE1v38rxvQRGvvzTlityFuifLLVfoQQ=\ndep\tgithub.com/dunglas/httpsfv\tv1.1.1\th1:HoSs101zIE9I23DlqlmljJ/OIi7ILwrH347pXhRZdxI=\ndep\tgithub.com/dustin/go-humanize\tv1.1.0\th1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=\ndep\tgithub.com/felixge/httpsnoop\tv1.1.0\th1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeORc=\ndep\tgithub.com/fxamacker/cbor/v2\tv2.9.4\th1:xwjVlxEMR3S605oUlgBjKLTTeGFciYPGYCtF/35LKGo=\ndep\tgithub.com/go-chi/chi/v5\tv5.3.2\th1:5YQkICvTCSZ25hoRsyJazN0scjzKGiu4VAUc7H1o1nY=\ndep\tgithub.com/go-jose/go-jose/v3\tv3.0.5\th1:BLLJWbC4nMZOfuPVxoZIxeYsn6Nl2r1fITaJ78UQlVQ=\ndep\tgithub.com/go-jose/go-jose/v4\tv4.1.5\th1:RjgjO2LOtWOJKUC5wpwY9LR3B3vwVAz6JS2YHfYU6eA=\ndep\tgithub.com/go-logr/logr\tv1.4.4\th1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=\ndep\tgithub.com/go-logr/stdr\tv1.2.2\th1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=\ndep\tgithub.com/go-sql-driver/mysql\tv1.10.1\th1:arlSnNLq6a5yxGxV7qg9lF4j0C+KwD6NbQyKr9QL6ME=\ndep\tgithub.com/golang/protobuf\tv1.5.4\th1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=\ndep\tgithub.com/golang/snappy\tv1.0.0\th1:Oy607GVXHs7RtbggtPBnr2RmDArIsAefDwvrdWvRhGs=\ndep\tgithub.com/google/certificate-transparency-go\tv1.3.3\th1:hq/rSxztSkXN2tx/3jQqF6Xc0O565UQPdHrOWvZwybo=\ndep\tgithub.com/google/go-tpm\tv0.9.8\th1:slArAR9Ft+1ybZu0lBwpSmpwhRXaa85hWtMinMyRAWo=\ndep\tgithub.com/google/go-tspi\tv0.3.0\th1:ADtq8RKfP+jrTyIWIZDIYcKOMecRqNJFOew2IT0Inus=\ndep\tgithub.com/google/s2a-go\tv0.1.10\th1:EMp+aOuXN6l8cE/gjF5Bt+vyZxsUuyCWe9chDWR/+uU=\ndep\tgithub.com/google/uuid\tv1.6.0\th1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=\ndep\tgithub.com/googleapis/enterprise-certificate-proxy\tv0.3.22\th1:NU4XpII6jD+Dxcot94fqjE+AfJoE/lQP9q3faYGzC/c=\ndep\tgithub.com/googleapis/gax-go/v2\tv2.25.0\th1:77gyzCOrTyzPKfzGZJG/V5DO4/Kuamek8W+cYJQ4U8k=\ndep\tgithub.com/grpc-ecosystem/grpc-gateway/v2\tv2.30.0\th1:/Tnpcb2E0Pz/tN9s3bfEY2Q8ePCEX9iuS+cneUwncnw=\ndep\tgithub.com/huandu/xstrings\tv1.6.1\th1:yYdKSd6Sjv3fNZt9BDjl1FDsPNfQEaYi19L5LzK2JKs=\ndep\tgithub.com/jackc/pgpassfile\tv1.0.0\th1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=\ndep\tgithub.com/jackc/pgservicefile\tv0.0.0-20240606120523-5a60cdf6a761\th1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=\ndep\tgithub.com/jackc/pgx/v5\tv5.11.0\th1:IzBBtyK9AHqf98cctWFifYSci2hgQR/cd56wB4p+ogg=\ndep\tgithub.com/jackc/puddle/v2\tv2.2.2\th1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=\ndep\tgithub.com/klauspost/compress\tv1.20.1\th1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLMPdiQ=\ndep\tgithub.com/klauspost/cpuid/v2\tv2.4.0\th1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=\ndep\tgithub.com/libdns/libdns\tv1.1.1\th1:wPrHrXILoSHKWJKGd0EiAVmiJbFShguILTg9leS/P/U=\ndep\tgithub.com/manifoldco/promptui\tv0.9.0\th1:3V4HzJk1TtXW1MTZMP7mdlwbBpIinw3HztaIlYthEiA=\ndep\tgithub.com/mattn/go-colorable\tv0.1.15\th1:+u9SLTRGnXv73cEsnsmoZBom+dMU88B2M0aDcWy0/jY=\ndep\tgithub.com/mattn/go-isatty\tv0.0.24\th1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=\ndep\tgithub.com/mgutz/ansi\tv0.0.0-20200706080929-d51e80ef957d\th1:5PJl274Y63IEHC+7izoQE9x6ikvDFZS2mDVS3drnohI=\ndep\tgithub.com/mholt/acmez/v3\tv3.1.7\th1:XTqpuUcRdRoIBuDoI+M4mCnRnPTPN4rqH3Mb723Rg4U=\ndep\tgithub.com/miekg/dns\tv1.1.73\th1:uhT8nJxmTrPJYClxVxTCX+CVn6qnzSiybRk72Z6DgrE=\ndep\tgithub.com/mitchellh/copystructure\tv1.2.0\th1:vpKXTN4ewci03Vljg/q9QvCGUDttBOGBIa15WveJJGw=\ndep\tgithub.com/mitchellh/go-ps\tv1.0.0\th1:i6ampVEEF4wQFF+bkYfwYgY+F/uYJDktmvLPf7qIgjc=\ndep\tgithub.com/mitchellh/reflectwalk\tv1.0.2\th1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zxSIeXaQ=\ndep\tgithub.com/munnerz/goautoneg\tv0.0.0-20191010083416-a7dc8b61c822\th1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=\ndep\tgithub.com/nlnwa/whatwg-url\tv0.6.2\th1:jU61lU2ig4LANydbEJmA2nPrtCGiKdtgT0rmMd2VZ/Q=\ndep\tgithub.com/pbnjay/memory\tv0.0.0-20210728143218-7b4eea64cf58\th1:onHthvaw9LFnH4t2DcNVpwGmV9E1BkGknEliJkfwQj0=\ndep\tgithub.com/pires/go-proxyproto\tv0.15.0\th1:dTshmNbFm/D+0+sbrxUuddPOZ5Y0B7c5NhtsBkm6LqI=\ndep\tgithub.com/pkg/errors\tv0.9.1\th1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=\ndep\tgithub.com/prometheus/client_golang\tv1.24.1\th1:JnJkREXzWxUdCuPFpIWZiPispT9xVV59uiuyR2bPlnU=\ndep\tgithub.com/prometheus/client_model\tv0.6.3\th1:O0jaTVAYNxTHYInEPFJt5I3+sN8zqBtVMPTB1qyxiEo=\ndep\tgithub.com/prometheus/common\tv0.71.0\th1:9KDAKb7Mj3HEVKyFCK6Dc/HIwlBzZIN2l7/lrHl3KK8=\ndep\tgithub.com/prometheus/otlptranslator\tv1.0.0\th1:s0LJW/iN9dkIH+EnhiD3BlkkP5QVIUVEoIwkU+A6qos=\ndep\tgithub.com/prometheus/procfs\tv0.22.0\th1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics=\ndep\tgithub.com/quic-go/qpack\tv0.6.0\th1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=\ndep\tgithub.com/quic-go/quic-go\tv0.63.0\th1:LIFGHI4PFUhhw2dDD1ARHdCff143ffMHwZtbnbuJ78A=\ndep\tgithub.com/rs/xid\tv1.6.0\th1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=\ndep\tgithub.com/russross/blackfriday/v2\tv2.1.0\th1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=\ndep\tgithub.com/shopspring/decimal\tv1.4.0\th1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=\ndep\tgithub.com/shurcooL/sanitized_anchor_name\tv1.0.0\th1:PdmoCO6wvbs+7yrJyMORt4/BmY5IYyJwS/kOiWx8mHo=\ndep\tgithub.com/sirupsen/logrus\tv1.10.2\th1:G2SED73/qrAu6YwbdxOD6peLkCBI3z7L+ykJFTXJBBo=\ndep\tgithub.com/slackhq/nebula\tv1.11.2\th1:eP61cSfUuoEVGViD50gZBsAbBLPUAhoNOYewPmEwPG4=\ndep\tgithub.com/smallstep/certificates\tv0.30.2\th1:1G3xBi8sJ740iA1mMPW2Svv7EIZKJ4Zf/iQtA5QlN0Y=\ndep\tgithub.com/smallstep/cli-utils\tv0.12.2\th1:lGzM9PJrH/qawbzMC/s2SvgLdJPKDWKwKzx9doCVO+k=\ndep\tgithub.com/smallstep/go-attestation\tv0.4.4-0.20260814222900-a849f4e2cd68\th1:KcK2guFXrE5sX/nvF1b+atHP6DjRB1gCv3ppyTXB2Zk=\ndep\tgithub.com/smallstep/linkedca\tv0.26.0\th1:NsxTVo3zI3KwOFFiVodeHtuGgKq0b5kOUXVLjjNTvXY=\ndep\tgithub.com/smallstep/nosql\tv0.8.0\th1:FBTCUfKPmWYbrozW+RBKu+fnvbn+zr5rVli/XB4Jp4A=\ndep\tgithub.com/smallstep/pkcs7\tv0.2.3\th1:bhoQ3TeZmdoXTatcwxCbk+FMcdsyr0gYrrW2Xq2qr+s=\ndep\tgithub.com/smallstep/scep\tv0.0.0-20260331191114-261f960a40d1\th1:lpXBkQKj1rT1oGX/2idvt8xbrOrnoQxH/+CjoeMxs9E=\ndep\tgithub.com/smallstep/truststore\tv0.13.0\th1:90if9htAOblavbMeWlqNLnO9bsjjgVv2hQeQJCi/py4=\ndep\tgithub.com/spf13/cast\tv1.10.0\th1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=\ndep\tgithub.com/spf13/cobra\tv1.10.2\th1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=\ndep\tgithub.com/spf13/pflag\tv1.0.10\th1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=\ndep\tgithub.com/tailscale/tscert\tv0.0.0-20251216020129-aea342f6d747\th1:RnBbFMmodYzhC6adOjTbtUQXyzV8dcvKYbolzs6Qch0=\ndep\tgithub.com/urfave/cli\tv1.22.17\th1:SYzXoiPfQjHBbkYxbew5prZHS1TOLT3ierW8SYLqtVQ=\ndep\tgithub.com/x448/float16\tv0.8.4\th1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=\ndep\tgithub.com/yuin/goldmark\tv1.8.6\th1:d0VcaP1sx9GkFVkoW+KtggpGi2KZ965i14b0+bDQST4=\ndep\tgithub.com/yuin/goldmark-highlighting/v2\tv2.0.0-20230729083705-37449abec8cc\th1:+IAOyRda+RLrxa1WC7umKOZRsGq4QrFFMYApOeHzQwQ=\ndep\tgithub.com/zeebo/blake3\tv0.2.4\th1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=\ndep\tgo.etcd.io/bbolt\tv1.5.0\th1:S7GAl7Fxv12yohbwFfIbQCGDWbQbtDGPET4P/bD4lxU=\ndep\tgo.opentelemetry.io/auto/sdk\tv1.2.1\th1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=\ndep\tgo.opentelemetry.io/contrib/bridges/prometheus\tv0.71.0\th1:9qgxsFLskbDMXl8WMqThoF6w8yGJgCumn9qRc67OmnI=\ndep\tgo.opentelemetry.io/contrib/exporters/autoexport\tv0.71.0\th1:VCsJbp0YLyPtx2tu5Vgv2a2/qLoaMCj8hT2uZ34+Mx0=\ndep\tgo.opentelemetry.io/contrib/instrumentation/net/http/otelhttp\tv0.71.0\th1:3g7B90UzBltIDKq1/5mrTGxTnOFDV0ICOhLoxiZ8jlg=\ndep\tgo.opentelemetry.io/contrib/propagators/autoprop\tv0.71.0\th1:uy7dcw6v3XK3LMGj2sB9CXtJtTHX8QA9pjSrLhvf86c=\ndep\tgo.opentelemetry.io/contrib/propagators/aws\tv1.46.0\th1:JslT1wq/5vb6lQsbdOqShvIEs7sDlf0IvKxNZdadfjY=\ndep\tgo.opentelemetry.io/contrib/propagators/b3\tv1.46.0\th1:OFVqWObn7xLIbOjE/koO0LS9fZJNgAyBD0msA+UQAoc=\ndep\tgo.opentelemetry.io/contrib/propagators/jaeger\tv1.46.0\th1:uxl0SGcmuBkHj/Adl9oftEAyiawQBPL5RzMAmt/Yvq4=\ndep\tgo.opentelemetry.io/contrib/propagators/ot\tv1.46.0\th1:SxC/1xmJJJdGQTNmavqW8ju85TRXiZHeFaQdnEMCWLE=\ndep\tgo.opentelemetry.io/otel\tv1.46.0\th1:FHt5/CDyVxi/8IM1CH7VE/rRgq3kLHa2mSTVMO8AWyc=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc\tv0.22.0\th1:Bu39F5tzJct+f2IZbB8989fwyTps3c8e7EsUQsz+vs8=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp\tv0.22.0\th1:lYk7RmxdLK865qLwibroNGldHa1U7SWKYYvNjlK7PIo=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc\tv1.46.0\th1:qkDYCAFiZXLcs1L4aY+tP2wguQ4kURANqHOQMA2et2s=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp\tv1.46.0\th1:AP23h/mFgb/lc7tdck1Kfn9qxsM8TAeNPCU5C3pzaps=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlptrace\tv1.46.0\th1:OFnwLJr+pF3iHrlGSzbxyuo6/6HyBlnlN1CWEJmBVcw=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc\tv1.46.0\th1:w53CDeOA/Kurp7yRsegSr6pbbr759dOvJ+yNmWM6Hxs=\ndep\tgo.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp\tv1.46.0\th1:KrC1YrQeSt46ITMWAbgQx1M1eV1/1TKzttrBzymPmss=\ndep\tgo.opentelemetry.io/otel/exporters/prometheus\tv0.68.0\th1:QOf2IftqQwITVRJpnn0M7M9ZCbgWfxz4P7i9C9yc2N4=\ndep\tgo.opentelemetry.io/otel/exporters/stdout/stdoutlog\tv0.22.0\th1:kvMAiLEudKmk+CSG+iYbU8vTUGNNDaf/V09OO5lrTwI=\ndep\tgo.opentelemetry.io/otel/exporters/stdout/stdoutmetric\tv1.46.0\th1:PR9eAf7o0dQs3hshZNZpE9aW2dXWX/KdDf6pJilVD3U=\ndep\tgo.opentelemetry.io/otel/exporters/stdout/stdouttrace\tv1.46.0\th1:KdRxPiAoMptR3vfWzvjjvutTsSiwbC2uG0496rzZNfo=\ndep\tgo.opentelemetry.io/otel/log\tv0.22.0\th1:5DBNnfvaJ6CVdkJ+Jle8Tzs50aSSv49TXGj9XRsEYw0=\ndep\tgo.opentelemetry.io/otel/metric\tv1.46.0\th1:yBnkXvgV7AXFILZc5K6IZe/CBFF3OS7BJ8ov6/lj0K8=\ndep\tgo.opentelemetry.io/otel/sdk\tv1.46.0\th1:h5CNQQjEbuQXY/JfZtgt3i7HVFV3aHPO2OAwO2eTYPI=\ndep\tgo.opentelemetry.io/otel/sdk/log\tv0.22.0\th1:PRL+s6P63XT4E/bheEflopPUpVxuvANqZwtt89yhoGk=\ndep\tgo.opentelemetry.io/otel/sdk/metric\tv1.46.0\th1:0piZ26EG4RBfebb2jhDH6ERCYHoVWduc3kLgPCwSnSE=\ndep\tgo.opentelemetry.io/otel/trace\tv1.46.0\th1:OULy7ccdJnZtJ0UDYFOIGaCmiWzJ8Vi2G/Rsu60qs1c=\ndep\tgo.opentelemetry.io/proto/otlp\tv1.11.0\th1:5rrYs0Ykyj50sdU/JU0x8etU+LubXWb+gED6TbEdMIk=\ndep\tgo.step.sm/crypto\tv0.91.0\th1:0mN0DwVOvUuh7VbyTnxABZuAkxwak/Grp8Y/b4YaZDU=\ndep\tgo.uber.org/automaxprocs\tv1.6.0\th1:O3y2/QNTOdbF+e/dpXNNW7Rx2hZ4sTIPyybbxyNqTUs=\ndep\tgo.uber.org/multierr\tv1.11.0\th1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=\ndep\tgo.uber.org/zap\tv1.28.0\th1:IZzaP1Fv73/T/pBMLk4VutPl36uNC+OSUh3JLG3FIjo=\ndep\tgo.uber.org/zap/exp\tv0.3.0\th1:6JYzdifzYkGmTdRR59oYH+Ng7k49H9qVpWwNSsGJj3U=\ndep\tgo.yaml.in/yaml/v3\tv3.0.5\th1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=\ndep\tgolang.org/x/crypto\tv0.57.0\th1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=\ndep\tgolang.org/x/crypto/x509roots/fallback\tv0.0.0-20260929172509-b39ff6d641ec\th1:6gLejUU4OPMnmDEz8DkDkWMoyDj2Ny5iUy1Ze3raJhs=\ndep\tgolang.org/x/exp\tv0.0.0-20260908205506-85c1c2202aba\th1:Ck8QetSgk912qxWLMCKxd0in+aiyBQyDSMae6e/xmpU=\ndep\tgolang.org/x/net\tv0.59.0\th1:5zfYln+w5XCxwrnMMJPufRgNoXEaGxl0wo5GqPXyues=\ndep\tgolang.org/x/oauth2\tv0.37.0\th1:JUlcxA8oAtauLfiH8FX2/FkAWHAdi0QtGCGc+hofE98=\ndep\tgolang.org/x/sync\tv0.23.0\th1:KameEIfc1IkluZyXWLn39Wd4tURc6GbCiISGiZm2bQk=\ndep\tgolang.org/x/sys\tv0.48.0\th1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=\ndep\tgolang.org/x/term\tv0.46.0\th1:3+OXuTbaKDgwk8jTi3aSLHRlmWqHEUDUtxnbFigO4YE=\ndep\tgolang.org/x/text\tv0.42.0\th1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=\ndep\tgolang.org/x/time\tv0.16.0\th1:vMb6ptszcQMkcwiRTAuNNU50gom6++Q/6gY2hDM6VDE=\ndep\tgoogle.golang.org/api\tv0.298.0\th1:YW18RkHBMZBA1ergX0m4biagzgbiPTb2uTsRsDPWNRY=\ndep\tgoogle.golang.org/genproto/googleapis/api\tv0.0.0-20260921155816-b14227669459\th1:GS9OIt/j7c8bvBjYNgnKQysVfmV7e4jM0H8ZK95G4t8=\ndep\tgoogle.golang.org/genproto/googleapis/rpc\tv0.0.0-20260921155816-b14227669459\th1:b0xCahf3FK2m2Cv0p4vTozGPWncCvLfwV86UNg8xWU8=\ndep\tgoogle.golang.org/grpc\tv1.83.2\th1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=\ndep\tgoogle.golang.org/protobuf\tv1.36.12\th1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=\ndep\tgopkg.in/yaml.v3\tv3.0.1\th1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=\nbuild\t-buildmode=exe\nbuild\t-compiler=gc\nbuild\tCGO_ENABLED=0\nbuild\tGOARCH=amd64\nbuild\tGOOS=linux\nbuild\tGOAMD64=v1"
+    },
+    "plc": {
+      "name": "/wtf-app-wtfos-plc-1",
+      "imageReference": "wtfos-plc:local",
+      "imageId": "sha256:3f9836d53aa00880ba3d251156f26af845a7f0ba34c7998c0efe8e89970a54d3",
+      "status": "running",
+      "running": true,
+      "restartCount": 0,
+      "startedAt": "2026-10-22T19:57:25.535674356Z",
+      "healthStatus": null,
+      "runtime": {
+        "executable": "/usr/local/bin/node",
+        "versions": {
+          "node": "22.23.4",
+          "acorn": "8.16.0",
+          "ada": "2.9.2",
+          "amaro": "1.1.8",
+          "ares": "1.34.9",
+          "brotli": "1.1.0",
+          "cjs_module_lexer": "2.2.0",
+          "cldr": "48.0",
+          "icu": "78.3",
+          "llhttp": "9.4.3",
+          "modules": "127",
+          "napi": "10",
+          "nbytes": "0.1.3",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.69.0",
+          "openssl": "3.5.9",
+          "simdjson": "4.5.0",
+          "simdutf": "6.4.2",
+          "sqlite": "3.53.4",
+          "tz": "2026e",
+          "undici": "6.29.1",
+          "unicode": "17.0",
+          "uv": "1.51.0",
+          "uvwasi": "0.0.23",
+          "v8": "12.4.254.21-node.57",
+          "zlib": "1.3.1-e00f703",
+          "zstd": "1.5.7"
+        }
+      }
+    },
+    "relay": {
+      "name": "/wtf-app-wtfos-atproto-relay-1",
+      "imageReference": "wtfos-relay:local",
+      "imageId": "sha256:c85010e668ee9323d4b171391d1181ad4e55ffce706b795424c68d756052ba37",
+      "status": "running",
+      "running": true,
+      "restartCount": 0,
+      "startedAt": "2026-10-22T19:58:28.14040131Z",
+      "healthStatus": "healthy"
+    },
+    "ozone": {
+      "runningContainers": []
+    }
+  },
+  "publicHealth": [
+    {
+      "url": "https://plc.wtfos.me/_health",
+      "status": 200,
+      "body": {
+        "version": "0.0.0"
+      }
+    },
+    {
+      "url": "https://relay.wtfos.me/xrpc/_health",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    }
+  ],
+  "finishedAt": "2026-10-22T20:14:56.264923+00:00"
+}

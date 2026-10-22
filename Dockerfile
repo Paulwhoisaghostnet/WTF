@@ -73,23 +73,26 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm install --no-save tsx@4.21.0 playwright@1.59.1 && \
-    npx playwright install --with-deps chromium
+    npx playwright install --with-deps chromium && \
+    chown -R node:node /app
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/contracts ./contracts
-COPY --from=builder /app/drizzle.config.ts ./
-COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/scripts ./scripts
+# Set ownership while creating each layer. A later recursive chown copies the
+# whole application into another layer and exhausted the production build disk.
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/server ./server
+COPY --from=builder --chown=node:node /app/shared ./shared
+COPY --from=builder --chown=node:node /app/contracts ./contracts
+COPY --from=builder --chown=node:node /app/drizzle.config.ts ./
+COPY --from=builder --chown=node:node /app/tsconfig.json ./
+COPY --from=builder --chown=node:node /app/scripts ./scripts
 
 RUN ln -sf /app/scripts/smartpy-cli-wrapper.sh /usr/local/bin/smartpy && \
     chmod +x /app/scripts/smartpy-cli-wrapper.sh
 
 # Pre-create writable mount points so empty named volumes inherit
 # correct ownership when Docker mounts them on first boot.
-RUN mkdir -p \
+RUN install -d -o node -g node \
       /app/cache \
       /app/cache/gm-nfts \
       /app/cache/tv \
@@ -98,8 +101,7 @@ RUN mkdir -p \
       /app/uploads-staging \
       /app/tmp-processing \
       /app/backups \
-      /app/wtfiap-data && \
-    chown -R node:node /app
+      /app/wtfiap-data
 
 ENV NODE_ENV=production
 ENV PORT=3000

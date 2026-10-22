@@ -1,0 +1,77 @@
+{
+  "startedAt": "2026-10-22T20:09:06.963Z",
+  "baseURL": "https://wtfos.app",
+  "scope": "Anonymous read-only home and login render",
+  "pages": [
+    {
+      "route": "/",
+      "pageErrors": [],
+      "sameOriginHttpFailures": [
+        {
+          "path": "/api/auth/user",
+          "status": 401
+        }
+      ],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "status": 200,
+      "finalUrl": "https://wtfos.app/",
+      "title": "wtfOS",
+      "assertions": [
+        "creator platform rendered",
+        "Log In button visible"
+      ],
+      "screenshot": "docs/research/security-review-2026-10-22/evidence/public-home-chromium.png",
+      "expectedAnonymousSessionChecks": [
+        {
+          "path": "/api/auth/user",
+          "status": 401
+        }
+      ],
+      "unexpectedSameOriginHttpFailures": [],
+      "anonymous401Authority": "server/auth/routes.ts GET /api/auth/user uses isAuthenticated; client/src/lib/auth-context.tsx treats missing session as null."
+    },
+    {
+      "route": "/login",
+      "pageErrors": [],
+      "sameOriginHttpFailures": [
+        {
+          "path": "/api/auth/user",
+          "status": 401
+        }
+      ],
+      "failedRequests": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "status": 200,
+      "finalUrl": "https://wtfos.app/login",
+      "title": "Sign in - wtfOS",
+      "assertions": [
+        "welcome rendered",
+        "username/password inputs visible",
+        "Log In button visible"
+      ],
+      "screenshot": "docs/research/security-review-2026-10-22/evidence/public-login-chromium.png",
+      "expectedAnonymousSessionChecks": [
+        {
+          "path": "/api/auth/user",
+          "status": 401
+        }
+      ],
+      "unexpectedSameOriginHttpFailures": [],
+      "anonymous401Authority": "server/auth/routes.ts GET /api/auth/user uses isAuthenticated; client/src/lib/auth-context.tsx treats missing session as null."
+    }
+  ],
+  "browser": {
+    "engine": "Chromium",
+    "version": "147.0.7727.15",
+    "headless": true
+  },
+  "commitRef": "7167ca37",
+  "finalCommitRef": "7167ca37",
+  "passed": true,
+  "finishedAt": "2026-10-22T20:09:10.346Z"
+}
