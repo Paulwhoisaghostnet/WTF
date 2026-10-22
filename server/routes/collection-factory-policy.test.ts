@@ -43,7 +43,7 @@ test("collection factory loads only app-vendored contract template paths", () =>
 
   assert.doesNotMatch(bootBackfill, /building\/shadownet kiln/);
   assert.doesNotMatch(bootBackfill, /\.\.\/\.\.\//);
-  assert.match(dockerfile, /COPY --from=builder \/app\/contracts \.\/contracts/);
+  assert.match(dockerfile, /COPY --from=builder(?: --chown=node:node)? \/app\/contracts \.\/contracts/);
   assert.match(dockerfile, /pip install --no-cache-dir smartpy-tezos/);
   assert.match(dockerfile, /ln -sf \/app\/scripts\/smartpy-cli-wrapper\.sh \/usr\/local\/bin\/smartpy/);
   assert.match(smartpyWrapper, /SMARTPY_OUTPUT_DIR="\$output"/);
