@@ -160,7 +160,7 @@ test('production wiring retains middleware order, private bind mount and shutdow
   assert.match(read('server/index.ts'), /stopWtfiapAuthority\(\)\.then\(\(\) => server\.close/);
   assert.match(read('docker-compose.yml'), /WTFIAP_DATA_DIR: \/app\/wtfiap-data/);
   assert.match(read('docker-compose.yml'), /WTFIAP_DATA_DIR_HOST:-\/mnt\/wtf-data\/wtfiap\}:\/app\/wtfiap-data/);
-  assert.match(read('Dockerfile'), /COPY --from=builder \/app\/server \.\/server/);
+  assert.match(read('Dockerfile'), /COPY --from=builder(?: --chown=node:node)? \/app\/server \.\/server/);
   assert.match(read('Dockerfile'), /\/app\/wtfiap-data/);
   assert.match(read('docker-entrypoint.sh'), /WRITABLE_DIRS="[^"\n]*\/app\/wtfiap-data/);
 });

@@ -12045,3 +12045,18 @@
 **Correction**: Preserve the same node ownership within the dependency-install layer and `COPY --chown` operations; assign ownership only to new mount directories afterward. Remove only the unused failed candidate images through Docker's API under the deployment lock, leaving active images, volumes, data and Docker metadata untouched. This reclaimed 6,373,444 KiB and restored 14,109 MiB free without lowering the existing floor. Fifteen existing deployment/supply-chain/context checks passed; the normal build, running-file ownership and public health remain the final proof.
 
 **Rule**: Measure layer and export costs when a build exhausts disk despite preflight. Metadata changes to existing files can duplicate large layers. Preserve runtime permissions at layer creation and verify the actual resulting image; do not solve measured image duplication by weakening the disk guard.
+
+
+**Docker ownership verification (2026-10-22)**: Normal deployment `39848495495` succeeded and serves `c21e4aa7`. The running Node 22.23.4 process and all inspected present app paths retain UID/GID 1000:1000. The former 1.46 GB ownership layer is now a 45.1 kB directory layer; Docker reports a 4.68 GB image instead of 6.63 GB, with 14,528,228 KiB free after deployment. The existing cache bind mount masks the image's precreated `gm-nfts` child; an absent optional child in persisted data is not a reason to create production data for a test.
+
+
+## 2026-10-22 — Establish the API contract before fixing a release verifier
+
+**What happened**: All nine alpha.2 installer manifests and public asset probes were correct, but the Macaroni verifier failed on a missing `product` identity. Git history showed the original direct response had always omitted that field; the verifier introduced the stricter expectation later without changing the API.
+
+**Correction and proof**: Preserve the legacy response. The verifier accepts an absent identity and rejects an explicitly wrong identity, while retaining version, URL, checksum and authentication checks. Executing the real validator reproduces the pre-fix failure and passes five owning tests after correction, including negative identity/version/URL/hash cases. The real authenticated Macaroni check passes, completing all nine manifest checks, nine anonymous denials and 27 asset probes.
+
+**Rule**: A test assertion is evidence to investigate, not authority to change a public API. Compare implementation, consumer needs and history; correct an overstrict verifier when the existing contract is valid. See WTF-BB-695.
+
+
+**Docker policy follow-up (2026-10-22)**: Two source-wiring assertions rejected the added `COPY --chown=node:node` option even though their required builder, source and destination paths were unchanged. Accept that exact optional flag while retaining the path assertions. The owning tests reproduce both failures before correction and pass 5/5 afterward, including real HTTP/auth/CSRF/SSE/persistence behavior. When changing Docker flags, search the owning source-wiring policies as well as deployment policies; image runtime proof and static policy compatibility are separate checks.

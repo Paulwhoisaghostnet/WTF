@@ -184,7 +184,8 @@ function validateManifest(manifest, releaseAssets) {
     fail("installer manifest did not return ok: true");
     return;
   }
-  if (manifest.product !== "macaroni") {
+  // The original direct manifest predates the catalog's product field.
+  if (manifest.product !== undefined && manifest.product !== "macaroni") {
     fail(`installer manifest product mismatch: expected macaroni, got ${manifest.product}`);
   }
   if (manifest.version !== EXPECTED_VERSION) {

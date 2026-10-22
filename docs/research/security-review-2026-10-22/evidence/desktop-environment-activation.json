@@ -23,5 +23,6 @@
   "backupPath": "/etc/wtf/wtf.env.desktop-security.20261022T202304Z.bak",
   "backupMode": "0o600",
   "containerRecreated": false,
-  "activation": "Pending normal production deployment"
+  "activation": "Loaded by normal production deployment 39848495495 at c21e4aa7; all nine authenticated manifests and 27 public asset probes verified.",
+  "activationVerifiedAt": "2026-10-22T20:30:46.286Z"
 }

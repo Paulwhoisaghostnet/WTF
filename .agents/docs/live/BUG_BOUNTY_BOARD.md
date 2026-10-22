@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **117** · Verified: **480** · Archived: **4**
+Total: **662** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **117** · Verified: **483** · Archived: **4**
 
 ## Canonical Board
 
@@ -74,7 +74,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 379 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
-| WTF-BB-689 | In Progress | Codex October security remediation | 2026-10-22 | Desktop / October 2026 Electron certificate trust | P1 | 14 | 127 | 3 | 3 | 4 | All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 127 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 127 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 188 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
@@ -83,7 +82,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 188 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 276 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 379 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
-| WTF-BB-694 | In Progress | Codex October security deployment recovery | 2026-10-22 | Deployment / production disk headroom | P1 | 8 | 589 | 1 | 3 | 0 | Production disk preflight blocks the follow-up security installer deployment |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 379 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 461 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
 | WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
@@ -298,6 +296,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 93 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-689 | Verified | Codex October security remediation | 2026-10-22 | Desktop / October 2026 Electron certificate trust | P1 | 14 | 127 | 3 | 3 | 4 | All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory |
 | WTF-BB-671 | Verified | Codex production dependency advisory response | 2026-09-02 | Dependencies / security | P1 | 14 | 127 | 2 | 4 | 4 | New fast-uri and qs advisories fail the production dependency audit |
 | WTF-BB-666 | Verified | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 127 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
 | WTF-BB-664 | Verified | Codex Kiln dependency remediation | 2026-09-01 | Kiln dependencies / production advisories | P1 | 14 | 127 | 3 | 3 | 4 | Kiln production dependency graph contains five high-severity transitive advisories |
@@ -563,6 +562,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 524 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-260 | Verified | Codex Macaroni user-site CSP pass | - | Macaroni / user-site wallet CSP | P1 | 9 | 524 | 1 | 3 | 1 | Published user-site CSP blocks Macaroni wallet connect |
 | WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 524 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
+| WTF-BB-694 | Verified | Codex October security deployment recovery | 2026-10-22 | Deployment / production disk headroom | P1 | 8 | 589 | 1 | 3 | 0 | Production disk preflight blocks the follow-up security installer deployment |
 | WTF-BB-687 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game hosting / native invitation routing | P1 | 8 | 589 | 1 | 3 | 0 | WTFIAP native window drops invitation query strings when using pathname-only shell context |
 | WTF-BB-683 | Verified | Codex gameshow release CI recovery | 2026-10-18 | CI / Ravioli recovery test readiness | P1 | 8 | 589 | 1 | 3 | 0 | Ravioli recovery canonicalization test intermittently asserts before its browser hook is installed |
 | WTF-BB-682 | Verified | Codex gameshow private handoff CORS | 2026-10-18 | Private publishing / cross-origin session handoff | P1 | 8 | 589 | 1 | 3 | 0 | Production private-page signed-ticket form handoff is rejected before its authorization handler |
@@ -679,6 +679,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 652 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 652 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 652 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 659 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 379 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 630 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 652 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
@@ -1633,22 +1634,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - `https://operator.wtfos.app/` serves valid TLS, redirects to `/objkt-operator`, and the app route returns HTTP 200. Production has the migration table and one configured-owner row: `wtf-admin`, state version 16, 25 creator records, and an empty purchase queue. This verifies durable production use without mutating shared acquisition state.
   - A separate authenticated production administrator, `e2e_thecount`, receives `{ allowed: false }` from the read-only access probe and HTTP 403 from the state route. The production allowlist includes `wtf-admin` and excludes that test administrator. WTF-BB-392 is Verified.
 
-### WTF-BB-689 - All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory
-
-- Category: Desktop / October 2026 Electron certificate trust
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security remediation
-- Last touched: 2026-10-22
-- Score: C3 + F3 + S4 + P1(4) = 14
-- Evidence (2026-10-22): all nine desktop manifests pin Electron 42.4.0. GHSA-jr5w-w6x2-84p9 explicitly affects <42.11.16 and was published October 22. Desktop publishers and companion paths make outbound TLS connections.
-- Impact: an attacker with an applicable certificate and traffic interception can impersonate remote TLS services. Installed customer binaries were not inventoried.
-- Likely correction: refresh Electron to a vendor-patched release, separately verify October Node backports, rebuild installers and publish verified artifacts.
-- Verification idea: inspect packaged process.versions and hashes, verify normal wallet/RPC/companion behavior, and bind available downloads to the tested binary. Merely updating the manifest does not patch installed apps.
-- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
-- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
-- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-679 was renumbered because production already assigned that ID.
-
 ### WTF-BB-266 - App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live
 
 - Category: Macaroni / PDS-backed user-site serving
@@ -1922,20 +1907,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Block
   - 2026-05-22: Daily side quest automation now marks per-user current-UTC-day completions as claim-required instead of auto-disbursing, `/side-quests` renders the canonical daily quest cards with player counts and claim buttons, `/api/challenge-automation/daily-loops/:id/claim` performs idempotent reward action execution, Mission Control uses Side Quests language, and live puppet coverage now claims the messageboard check-in before asserting XP/WTF ledger side effects.
   - 2026-05-22 verification: `npm run check -- --pretty false`; `npx tsx --test client/src/pages/MissionControl.test.ts server/challenges/services/daily-loop-challenges.test.ts`; `npm run test:e2e:inventory:coverage`; `npm run test:e2e:inventory`; targeted live puppet command for `canonical side quests|gameshow launch surfaces` after fixing strict-mode duplicate text and same-UTC-day rerun idempotency in the spec.
   - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
-
-### WTF-BB-694 - Production disk preflight blocks the follow-up security installer deployment
-
-- Category: Deployment / production disk headroom
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security deployment recovery
-- Last touched: 2026-10-22
-- Score: C1 + F3 + S0 + P1(4) = 8
-- Evidence: Hetzner run 39845359006 for c2dcb077 stopped before replacing the healthy app. Existing disk policy requires 12288 MiB free; after ordinary build-cache and unused-image recovery the host had 11783 MiB. The already deployed 7167ca37 runtime remains patched and healthy.
-- Correction direction: Measure disk consumers and remove only identified regenerable caches. Preserve application data, Docker volumes, database containers, runtime configuration, and the existing measured disk floor.
-- Verification idea: Record exact cache cleanup and resulting free space, rerun the normal deployment, and verify public readiness plus actual runtime after activation.
-- Score: Existing P1+C1/F3/S0 formula; scope is the reproduced release blocker, not an application outage.
-- Reproduced export failure: after cache-only cleanup restored the existing floor, run39846715345 built and unpacked the candidate image but ran out of space writing Compose metadata before replacing the healthy7167ca37 app. Docker history measured a 1.46GB duplicate layer from late recursive /app ownership changes. Correction preserves ownership during runtime dependency installation and COPY, and assigns only new mount directories at the end. Fifteen deployment/supply-chain/context checks pass. Under the same deploy lock, Docker-API removal of only the unused failed candidate app/Caddy images reclaimed6373444KiB, leaving14446780KiB (14109MiB). Active app/Caddy/PostgreSQL container identities and restart states remained unchanged. A successful normal rebuild and actual image ownership/runtime checks are still required before closure.
 
 ### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
 
@@ -6611,6 +6582,23 @@ Copy this when adding a new issue:
 - Verification (2026-08-30):
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
+
+### WTF-BB-689 - All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory
+
+- Category: Desktop / October 2026 Electron certificate trust
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security remediation
+- Last touched: 2026-10-22
+- Score: C3 + F3 + S4 + P1(4) = 14
+- Evidence (2026-10-22): all nine desktop manifests pin Electron 42.4.0. GHSA-jr5w-w6x2-84p9 explicitly affects <42.11.16 and was published October 22. Desktop publishers and companion paths make outbound TLS connections.
+- Impact: an attacker with an applicable certificate and traffic interception can impersonate remote TLS services. Installed customer binaries were not inventoried.
+- Likely correction: refresh Electron to a vendor-patched release, separately verify October Node backports, rebuild installers and publish verified artifacts.
+- Verification idea: inspect packaged process.versions and hashes, verify normal wallet/RPC/companion behavior, and bind available downloads to the tested binary. Merely updating the manifest does not patch installed apps.
+- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
+- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
+- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-679 was renumbered because production already assigned that ID.
+- Final security release verification: All nine alpha.2 releases are published at immutable tested commits. All27 platform build/install jobs and36 installed-format checks attest Electron43.8.3/Node24.22.0/Chromium150.0.7871.250 with source provenance and storage-preserving relaunch. Published CH-EASE was independently downloaded, checksum-verified and launched. Production c21e4aa7 serves alpha.2 with exact URLs and SHA256s for allnine products; all27 public asset range checks pass and allnine anonymous probes return401. The separate legacy Macaroni verifier mismatch is tracked as695. Electron fixes the certificate advisory but does not attest Node24.22.1 backports; specific affected embedded-Node APIs were not demonstrated reachable. Eight moderate build-only chain entries have no compatible patch and were not forced into a packager downgrade. See evidence/desktop-release-receipt.md and desktop JSON receipts.
 
 ### WTF-BB-671 - New fast-uri and qs advisories fail the production dependency audit
 
@@ -12624,6 +12612,22 @@ Copy this when adding a new issue:
   - Live `https://wtfgameshow.app/api/health` returned `commitRef: "7aaa18a"` after deploy.
   - Live bundle scan found the `Rest` button copy and found no `No shoebox`, `Box {`, `Box `, or pillow+shoebox gate strings.
 
+### WTF-BB-694 - Production disk preflight blocks the follow-up security installer deployment
+
+- Category: Deployment / production disk headroom
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security deployment recovery
+- Last touched: 2026-10-22
+- Score: C1 + F3 + S0 + P1(4) = 8
+- Evidence: Hetzner run 39845359006 for c2dcb077 stopped before replacing the healthy app. Existing disk policy requires 12288 MiB free; after ordinary build-cache and unused-image recovery the host had 11783 MiB. The already deployed 7167ca37 runtime remains patched and healthy.
+- Correction direction: Measure disk consumers and remove only identified regenerable caches. Preserve application data, Docker volumes, database containers, runtime configuration, and the existing measured disk floor.
+- Verification idea: Record exact cache cleanup and resulting free space, rerun the normal deployment, and verify public readiness plus actual runtime after activation.
+- Score: Existing P1+C1/F3/S0 formula; scope is the reproduced release blocker, not an application outage.
+- Reproduced export failure: after cache-only cleanup restored the existing floor, run39846715345 built and unpacked the candidate image but ran out of space writing Compose metadata before replacing the healthy7167ca37 app. Docker history measured a 1.46GB duplicate layer from late recursive /app ownership changes. Correction preserves ownership during runtime dependency installation and COPY, and assigns only new mount directories at the end. Fifteen deployment/supply-chain/context checks pass. Under the same deploy lock, Docker-API removal of only the unused failed candidate app/Caddy images reclaimed6373444KiB, leaving14446780KiB (14109MiB). Active app/Caddy/PostgreSQL container identities and restart states remained unchanged. A successful normal rebuild and actual image ownership/runtime checks are still required before closure.
+- Final verification: Normal deployment39848495495 succeeded and public/local health reports c21e4aa7. Actual running Node22.23.4 process uses UID/GID1000:1000; all present requested app/dependency/source/output/mount paths preserve1000:1000 ownership. The final mount-directory layer is45.1kB instead of1.46GB; reported image size fell from6.63GB to4.68GB. Free space after completion is14528228KiB. Existing bind mount masks the image-precreated cache/gm-nfts child; no production data was created for verification. See evidence/deploy-disk-recovery.md.
+- CI policy follow-up: c21e4aa7 aggregate run had2618passes,2failures,18skips because two source-wiring assertions required COPY syntax without an ownership flag. The two tests now accept the exact optional --chown=node:node while retaining builder/source/destination requirements. Their owning suite reproduced3pass/2fail before and passes5/5 afterward on Node22.23.4, including real WTFIAP HTTP/auth/CSRF/SSE/persistence behavior. No production source changed in this correction.
+
 ### WTF-BB-687 - WTFIAP native window drops invitation query strings when using pathname-only shell context
 
 - Category: Game hosting / native invitation routing
@@ -15095,6 +15099,20 @@ Copy this when adding a new issue:
   - Hetzner full TypeScript check remained blocked by `WTF-BB-310` missing dev dependencies (`three`, `@atproto/api`, AWS SDK, MCP SDK, `viem`); no static-discovery-specific error appeared before the known dependency failures.
   - Production deploy `6fb5351` completed successfully through GitHub Deploy to Hetzner run `27984725390`; Quality Gates run `27984725366` completed successfully; live health reported `status:"ok"` and `commitRef:"6fb5351"`.
   - Live post-fix retest passed for `https://wtfos.app/robots.txt`, `/sitemap.xml`, and `/manifest.json`: each returned HTTP 200, the intended content type (`text/plain`, `application/xml`, `application/manifest+json`), expected canonical `wtfos.app` metadata, and no SPA `<!DOCTYPE html>` shell.
+
+### WTF-BB-695 - Macaroni live verifier incorrectly requires a product field absent from the established direct manifest
+
+- Category: Desktop release verification / legacy manifest compatibility
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex October desktop security activation
+- Last touched: 2026-10-22
+- Score: C1 + F1 + S0 + P2(3) = 5
+- Evidence: Production c21e4aa7 serves correct alpha.2 installer URLs/hashes; all27 public asset probes and allnine anonymous401 checks pass. Macaroni alone fails its live verifier because product is absent. Git history establishes the direct API has omitted that optional identity since June14 commit23127881d; the June30 verifier accepted it, while August8 commit8b096897 introduced the stricter assertion without changing the API. Studio consumes existing installer fields and does not require product.
+- Correction direction: Preserve the established API. Update the verifier to accept absent product while rejecting an explicitly incorrect product; retain version, URL, checksum and authorization checks. Prove behavior with executable validator tests and the real authenticated response.
+- Initial response-change hypothesis rejected after examining history: adding a new production field is unnecessary to satisfy the established contract.
+- Score: Existing board P2(3)+C1+F1+S0 formula; a false release-verification failure, not a production security exploit.
+- Verification: The executable validator test reproduces4pass/1fail before correction and5/5 afterward. Legacy absent identity and explicit macaroni pass; wrong product, stale version, wrong URL and wrong checksum remain rejected. Real authenticated Macaroni verification now passes against unchanged production c21e4aa7; the combined nine-product receipt confirms allnine manifests, allnine anonymous401s and all27 public range downloads. The other eight passing checks were preserved rather than rerun. Inventory version wording now describes alpha.2; no route/handle/API semantics changed. See evidence/desktop-macaroni-verifier-compatibility.json and desktop-live-installer-checks.json.
 
 ### WTF-BB-511 - Numeric TzKT transaction ids were queried as operation hashes
 

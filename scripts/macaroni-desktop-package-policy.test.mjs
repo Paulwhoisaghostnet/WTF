@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 const desktopPackage = JSON.parse(readFileSync("apps/macaroni-desktop/package.json", "utf8"));
 const mainSource = readFileSync("apps/macaroni-desktop/src/main.cjs", "utf8");
@@ -93,4 +94,47 @@ test("Macaroni desktop live verifier follows the current alpha package release",
     JSON.parse(readFileSync("package.json", "utf8")).scripts["macaroni:installers:live-check"],
     "node scripts/check-macaroni-installers-live.mjs"
   );
+});
+
+test("Macaroni live manifest validation preserves legacy identity and release integrity", () => {
+  const expected = {
+    label: "macOS",
+    manifestFileName: "Macaroni-Studio.dmg",
+    url: `https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v${desktopPackage.version}/Macaroni-Studio-${desktopPackage.version}-mac-universal.dmg`,
+    sha256: "a".repeat(64),
+  };
+  const legacyManifest = {
+    ok: true,
+    version: desktopPackage.version,
+    installers: [{ key: "macos", label: expected.label, fileName: expected.manifestFileName, available: true, url: expected.url, sha256: expected.sha256 }],
+  };
+  const validatorSource = liveCheckSource.slice(
+    liveCheckSource.indexOf("function validateManifest("),
+    liveCheckSource.indexOf("async function assertUnauthenticatedManifestIsProtected("),
+  );
+  function validate(manifest) {
+    const failures = [];
+    const validator = runInNewContext(`${validatorSource}\nvalidateManifest`, {
+      EXPECTED_VERSION: desktopPackage.version,
+      URL,
+      fail: (message) => failures.push(message),
+      ok: () => {},
+    });
+    validator(manifest, { macos: expected });
+    return failures;
+  }
+  assert.deepEqual(validate(legacyManifest), []);
+  assert.deepEqual(validate({ ...legacyManifest, product: "macaroni" }), []);
+  for (const product of ["spaghetti", null, ""]) {
+    assert.match(validate({ ...legacyManifest, product })[0], /product mismatch/);
+  }
+  assert.match(validate({ ...legacyManifest, version: "stale-version" })[0], /version mismatch/);
+  for (const [field, badValue, error] of [
+    ["url", "https://example.invalid/wrong-release.dmg", /URL mismatch/],
+    ["sha256", "b".repeat(64), /SHA-256 mismatch/],
+  ]) {
+    const changed = structuredClone(legacyManifest);
+    changed.installers[0][field] = badValue;
+    assert.ok(validate(changed).some((message) => error.test(message)));
+  }
 });

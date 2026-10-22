@@ -1,0 +1,46 @@
+{
+  "bounty": "WTF-BB-695",
+  "problem": "An August 8 verifier requirement rejected the original June 14 Macaroni direct manifest, which has never contained product. The production response and downloads were correct.",
+  "history": {
+    "legacyDirectRouteIntroduced": "23127881d",
+    "productRequirementAddedToVerifier": "8b0968976"
+  },
+  "correction": "Accept an absent product; reject any supplied value other than macaroni. Preserve version, exact URL/SHA-256, asset availability and authorization checks. No server route, installer artifact or environment change.",
+  "regressionBefore": {
+    "tests": 5,
+    "passed": 4,
+    "failed": 1,
+    "failure": "installer manifest product mismatch: expected macaroni, got undefined"
+  },
+  "regressionAfter": {
+    "tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "cases": [
+      "Legacy manifest without product passes",
+      "Explicit macaroni identity passes",
+      "Wrong, null or empty product fails",
+      "Stale version fails",
+      "Changed download URL fails",
+      "Changed SHA-256 fails"
+    ]
+  },
+  "inventoryCoverage": {
+    "command": "npm run test:e2e:inventory:coverage",
+    "exitCode": 0,
+    "normalizedHandles": 995,
+    "registeredRoutes": 120,
+    "domainWorkflows": 18,
+    "note": "Inventory metadata and normalized-handle coverage passed; this does not claim complete feature behavior coverage."
+  },
+  "liveRecheck": {
+    "checkedAt": "2026-10-22T20:30:46.286Z",
+    "healthCommit": "c21e4aa7",
+    "exitCode": 0,
+    "anonymousStatus": 401,
+    "installerVersion": "1.0.1-alpha.2",
+    "publicAssetRangeProbesPassed": 3
+  },
+  "firstLiveFailureEvidence": "desktop-live-installer-checks-before.json",
+  "finalLiveEvidence": "desktop-live-installer-checks.json"
+}
