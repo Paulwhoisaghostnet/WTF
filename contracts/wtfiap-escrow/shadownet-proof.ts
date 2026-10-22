@@ -297,6 +297,18 @@ export async function runProof(config: ProofConfig, outputDir: string, execute: 
     const initialPrepared = await toolkit.prepare.transaction(transfer);
     const initialRevealFee = initialPrepared.opOb.contents.filter((c: any) => c.kind === 'reveal')
       .reduce((sum: bigint, c: any) => sum + BigInt(c.fee), 0n);
+    const equivalent = Object.values(journal.operations).reverse().find(record => record.status === 'applied'
+      && record.destination === transfer.to && record.entrypoint === transfer.parameter.entrypoint
+      && record.amountMutez === String(transfer.amount) && stable(record.parameters) === stable(transfer.parameter.value)
+      && Array.isArray(record.automaticReveal) && (record.automaticReveal as any[]).length === initialPrepared.opOb.contents.filter((c: any) => c.kind === 'reveal').length);
+    if (equivalent) {
+      const target = BigInt(equivalent.amountMutez) + BigInt(equivalent.estimate.suggestedFeeMutez)
+        + BigInt(equivalent.estimate.burnFeeMutez) + initialRevealFee;
+      if (BigInt((await toolkit.tz.getBalance(actor.address)).toFixed()) < target) {
+        await fundTo(actor, target, { kind: 'same-parameter-finalized-estimate', operation: key, priorOperation: equivalent.key,
+          priorOperationHash: equivalent.operationHash, priorEstimate: equivalent.estimate, automaticRevealFeeMutez: String(initialRevealFee) });
+      }
+    }
     const simulationBalance = BigInt(transfer.amount) + initialRevealFee + 1n;
     if (BigInt((await toolkit.tz.getBalance(actor.address)).toFixed()) < simulationBalance) {
       await fundTo(actor, simulationBalance, { kind: 'protocol-nonempty-simulation-balance', operation: key,

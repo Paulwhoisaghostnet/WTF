@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "status": "contract-deployed-host-activation-pending",
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "escrowContract": "KT1HQoH75iYeMK5xDJmuVRpBxdKxnEg9Wjko",
+  "originationOperation": "ooYK1bU6R2fNPYAJ5HLLVPyozUC6Mz7GxoxtbUF5nmgve2JmPXM",
+  "finalizedOrigination": {
+    "level": 5596696,
+    "blockHash": "BMMuE2o6WuXphNQ4nMkBfTacHzzt1tTX1cKSunsphRBw2gFadpx"
+  },
+  "artifactPath": "contracts/wtfiap-escrow/artifacts/contract.json",
+  "artifactSha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
+  "canonicalCodeSha256": "85cdf287fa2f6e15ce9dbdad82f8559021c0027d1b72256b25c9572a946ca57d",
+  "creatorAndReferee": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+  "refereeWalletId": "wtfiap-shadownet-referee",
+  "wtfToken": {
+    "contract": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+    "tokenId": "0",
+    "decimals": 8,
+    "testToken": true
+  },
+  "treasuryDomain": "wtf.tez",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "quantaAtomic": {
+    "XTZ": "10000",
+    "WTF": "1000000"
+  },
+  "prizeSplitPercent": [
+    50,
+    35,
+    15
+  ],
+  "refundPolicy": "prestart-withdrawal;technical-void-full-refund-v1",
+  "prizeRoundingPolicy": "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1",
+  "proof": "proof/shadownet-2026-10-22/host-escrow/origination.json",
+  "hostUrl": "https://wtfos.app/wtfiap",
+  "mainnetWritesAuthorized": false
+}

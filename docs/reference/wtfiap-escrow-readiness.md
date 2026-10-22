@@ -21,6 +21,7 @@ Shadownet chain ID: `NetXsqzbfFenSTS`.
 | --- | --- | --- |
 | Standard dummy WTF, token 0, eight decimals | `KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg` | `opNeGppDhooenBVYxJLFminCbwCarC7R3tTatnDtRiYr2Vmxy2m` |
 | Contract lifecycle rehearsal escrow | `KT1NHQikB69AVHaNYvfdBvyx2RSHQk3uPzR3` | `ontx2wFq3gpbWARkT7PLiJNgDh5x4qB2oEFpGpDM624azXRUzuN` |
+| Hosted wtfOS escrow | `KT1HQoH75iYeMK5xDJmuVRpBxdKxnEg9Wjko` | `ooYK1bU6R2fNPYAJ5HLLVPyozUC6Mz7GxoxtbUF5nmgve2JmPXM` |
 
 The rehearsal uses the existing local Shadownet root as its synthetic creator/referee/treasury. It is not the final hosted escrow. Exact applied receipts, initial storage, estimates and code identities are in [the Shadownet proof directory](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/). The deployed token contains no Mainnet WTF.
 
@@ -34,7 +35,7 @@ PostgreSQL stores frozen terms, intents, observations, results and void evidence
 
 The `wtfiap-escrow-reconciliation` job wakes on startup, room changes, explicit actions and chain heads. Disabling new funding blocks create/start; saved settlement, treasury and technical-void obligations retain their original configuration. Direct wallet claims/refunds remain available. A separate payment cron is unnecessary.
 
-The dedicated encrypted host wallet is `wtfiap-shadownet-referee`, address `tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe`. Its secret never leaves the host keyring. The updated signer is installed and its service/socket identity verified; the game lane still needs its final hosted escrow binding.
+The dedicated encrypted host wallet is `wtfiap-shadownet-referee`, address `tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe`. Its secret never leaves the host keyring. The updated signer is installed and its service/socket identity verified; the game lane is awaiting activation with the finalized hosted escrow above.
 
 Game configuration uses `WTFIAP_ESCROW_NETWORK`, `WTFIAP_ESCROW_RPC_URL`, `WTFIAP_ESCROW_CONTRACT`, `WTFIAP_ESCROW_SCRIPT_HASH`, `WTFIAP_REFEREE_WALLET_ID`, `WTFIAP_REFEREE_ADDRESS`, `WTFIAP_ROOM_CREATOR_ADDRESS`, `WTFIAP_TREASURY_ADDRESS`, `WTFIAP_WTF_TOKEN_CONTRACT`, `WTFIAP_WTF_TOKEN_ID` and measured `WTFIAP_CHAIN_MIN_BLOCK_DELAY_SECONDS`. Global Mainnet token/RPC settings remain unchanged.
 

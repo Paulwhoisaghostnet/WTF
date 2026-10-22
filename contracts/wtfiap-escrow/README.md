@@ -114,8 +114,9 @@ only accepts the exact standards-based test token controlled by the test creator
 Public intents are fsynced before sending; returned operation hashes are fsynced
 before confirmation. Empty e2e wallets receive only the protocol's one-mutez
 activation minimum, then their known native entry and unsigned reveal fee plus
-one remaining atomic unit needed for simulation. Further top-ups use only an
-RPC-reported shortfall or the complete measured operation estimate. These
+one remaining atomic unit needed for simulation. A finalized equivalent call may supply the initial measured funding target;
+each recipient still receives its own simulation before signing. Further top-ups
+use only an RPC-reported shortfall or the complete measured operation estimate. These
 transfers have their own prepared/hash/applied records and amount-authority
 evidence; there is no flat wallet budget or discretionary funding buffer.
 An unknown prepared send never automatically resubmits.
@@ -128,3 +129,21 @@ requires two successor blocks, not because of an invented retry timer.
 
 These are synthetic contract cases. Browser-played multiplayer, durable server
 settlement and a Mainnet preparation package require their separate evidence.
+
+## Hosted rehearsal funding handoff
+
+`execute-shadownet-plan.ts` reads an explicit public plan of approved recipients,
+measured target balances, and exact dummy-token mint amounts. It uses the same
+existing local keyring and proof-kit signer, verifies the Shadownet chain and
+exact fixture-token code/admin, and submits only with `--execute`. Its own durable
+journal binds the plan hash and records prepared, injected and applied outcomes.
+Previously funded targets and completed mint operations are not repeated.
+Funding amounts carry their public cost or entry-rule authority. The hosted
+referee's operating reserve must come from a measured full control-operation
+cycle and actual recipient allocation state, without a discretionary buffer.
+
+`verify-shadownet-indexer.ts` independently matches the completed deployment and
+lifecycle journals against the configured Shadownet TzKT API. It checks the exact
+inclusion block, status, source and destination of each operation, then records
+compact public receipts and response hashes. Mainnet is not an execution target
+of either helper.

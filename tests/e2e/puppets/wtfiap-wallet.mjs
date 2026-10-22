@@ -45,6 +45,20 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
         expected.push({ kind: "transaction", destination: call.contract, amount: call.amountMutez, parameters: transfer.parameter });
       }
       assert.deepEqual(operationDetails, expected, "The real browser must request exactly the allowed room operation/batch");
+      const transfers = expected.map(operation => ({ kind: "transaction", to: operation.destination, amount: operation.amount, mutez: true, parameter: operation.parameters }));
+      const finalizedBlockHash = await tezos.rpc.getBlockHash({ block: "head~2" });
+      const finalizedBalanceMutez = (await tezos.rpc.getBalance(actor.walletAddress, { block: finalizedBlockHash })).toFixed();
+      const estimates = await tezos.estimate.batch(transfers);
+      const costs = estimates.map(estimate => {
+        assert(Number.isSafeInteger(estimate.suggestedFeeMutez) && Number.isSafeInteger(estimate.burnFeeMutez));
+        return { suggestedFeeMutez: String(estimate.suggestedFeeMutez), storageBurnMutez: String(estimate.burnFeeMutez), gasLimit: estimate.gasLimit, storageLimit: estimate.storageLimit };
+      });
+      const transferMutez = expected.reduce((sum, operation) => sum + BigInt(operation.amount), 0n);
+      const requiredMutez = costs.reduce((sum, cost) => sum + BigInt(cost.suggestedFeeMutez) + BigInt(cost.storageBurnMutez), transferMutez);
+      const liveBalanceMutez = (await tezos.rpc.getBalance(actor.walletAddress)).toFixed();
+      attempt.fundingPreflight = { finalizedBlockHash, finalizedBalanceMutez, liveBalanceMutez, transferMutez: transferMutez.toString(), estimatedRequiredMutez: requiredMutez.toString(), costs, automaticRevealIncluded: estimates.length > expected.length, shortfallMutez: (requiredMutez > BigInt(liveBalanceMutez) ? requiredMutez - BigInt(liveBalanceMutez) : 0n).toString(), estimateAuthority: "Taquito estimate.batch for the exact queued operation, including its SDK fee/storage policy; no extra test funding buffer" };
+      await record(attempt);
+      assert(BigInt(liveBalanceMutez) >= requiredMutez, `Measured ${kind} funding shortfall for ${actor.id}: ${attempt.fundingPreflight.shortfallMutez} mutez; no wallet operation was sent`);
       Object.assign(attempt, { status: "submission-unknown", network: room.network, chainId: room.chainId, escrowContract: room.escrowContract, roomId: room.roomId, termsHash: room.termsHash, currency: room.terms.currency, from: kind === "deposit" ? actor.walletAddress : room.escrowContract, to: kind === "deposit" ? room.escrowContract : actor.walletAddress, expectedAmountAtomic: kind === "claim" ? room.self.payout.amount : room.terms.entryAtomic, operations: expected });
       await record(attempt); // Preserve the attempt before any chain write; never retry an unknown send.
       const batch = tezos.contract.batch();

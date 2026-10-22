@@ -30,6 +30,17 @@ export async function verifyIndexer(proofDirectory: string) {
     expected.push({ kind: 'transaction', key: record.key, hash: record.operationHash, source: record.actor,
       address: record.destination, amount: record.amountMutez, block: record.inclusionBlock, level: record.inclusionLevel });
   }
+  for (const name of ['host-funding/journal.json', 'host-mint/journal.json']) {
+    const bytes = await readFile(path.join(proofDirectory, name)); inputs[name] = hash(bytes);
+    const journal = JSON.parse(bytes.toString()); assert.equal(journal.status, 'passed');
+    assert.equal(journal.plan.chainId, SHADOWNET_CHAIN_ID);
+    for (const record of Object.values(journal.operations) as any[]) {
+      if (record.status === 'satisfied') continue; // No transaction was needed or claimed.
+      assert.equal(record.status, 'applied');
+      expected.push({ kind: 'transaction', key: name + ':' + record.key, hash: record.operationHash, source: record.actor,
+        address: record.destination, amount: record.amountMutez, block: record.inclusionBlock, level: record.inclusionLevel });
+    }
+  }
   const operations = [];
   for (const intent of expected) {
     const response = await fetch(api + '/operations/' + intent.hash);

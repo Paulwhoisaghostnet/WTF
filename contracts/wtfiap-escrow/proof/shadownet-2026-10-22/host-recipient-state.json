@@ -1,0 +1,17 @@
+{
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "block": "BMB2YahGBt4Zc1nJVAuq7Cg2qUqMD2X8t7KwEuRtj9UZAXs4Ntx",
+  "level": 5596661,
+  "treasury": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "allocated": true,
+  "balanceMutez": "5757583705",
+  "wtfToken": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+  "tokenId": "0",
+  "tokenLedgerExists": false,
+  "tokenBalanceAtomic": "0",
+  "costPerByte": "250",
+  "originationSize": "257",
+  "referee": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+  "refereeBalanceMutez": "0"
+}

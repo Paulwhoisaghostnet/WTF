@@ -12073,3 +12073,11 @@
 **Correction and verification**: Updated that exact assertion to include eligible full entry refunds. Its focused Chromium rerun passed; all ten WTFIAP owning stories passed across the full and corrected runs, and six policy screenshots were inspected. This fixture proof does not establish real payments; native and hosted Shadownet evidence remains separate.
 
 **Rule**: When recovery policy expands, update existing claim-recovery assertions in the same pass while retaining state, network selection and zero-wallet-call checks. Preserve the original full-suite failure and identify the focused correction rather than describing the failed run as wholly green.
+
+## 2026-10-22 — Freeze merge inputs when other worktrees share refs
+
+**What happened**: Another production pass advanced the shared remote-tracking ref and allocated the next bounty ID while the escrow branch was integrating main. The first metadata merge assumed the previously observed ID was still free; its assertion failed and a shell command sequence continued into a local merge commit.
+
+**Correction**: Reconstructed metadata from the merge's immutable parent commits, retained every production record, assigned the escrow records after the current maximum, regenerated the board and amended the unpublished merge. The corrected board has unique IDs and no conflict markers.
+
+**Rule**: Treat Git remote refs and sequential record IDs as shared state across worktrees. Freeze the actual merge parents, validate uniqueness and stop on failed checks before staging or committing generated metadata. Never promote a failed merge-resolution attempt.
