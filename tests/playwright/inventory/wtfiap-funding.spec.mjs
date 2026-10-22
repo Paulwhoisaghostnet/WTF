@@ -112,7 +112,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
     const panel = surface(page).getByRole("region", { name: "Tournament funding" });
     await expect(panel).toContainText("4 XTZ · Available to claim");
-    await expect(panel).toContainText("Existing verified prize claims remain available");
+    await expect(panel).toContainText("Existing verified prize claims and eligible full entry refunds remain available");
     await expect(panel).toContainText("Tezos mainnet selected in wtfOS");
     await expect(panel.getByRole("button", { name: "Claim prize to bound wallet" })).toBeDisabled();
     await panel.getByRole("button", { name: "Use shadownet for wallet operations" }).click();

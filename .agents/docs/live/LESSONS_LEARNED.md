@@ -12042,3 +12042,11 @@
 **What happened**: The funded-game signer initially selected the shared service RPC. The production service handles existing Mainnet applications, while this release needs real Shadownet operations. Approved treasury claims also added a string argument branch, exposing an unsafe object spread in a journal test.
 
 **Rule**: Give the typed game signer an explicit RPC and require its configured chain, wallet metadata and live RPC chain to agree. Keep other signer lanes and token globals unchanged. Provision a dedicated testnet identity inside the existing encrypted host keyring; never export its secret to a browser or proof. Narrow discriminated operation parameters before constructing changed test payloads. Verify the installed signer checksum and its socket-selected public wallet after restart.
+
+## 2026-10-22 — Keep existing recovery assertions aligned with approved refunds
+
+**What happened**: The full WTFIAP browser inventory passed 749 checks but one terminal-recovery assertion still expected the old claim-only sentence after the approved full-entry-refund policy expanded that sentence. The displayed claim state and wallet/network controls were correct.
+
+**Correction and verification**: Updated that exact assertion to include eligible full entry refunds. Its focused Chromium rerun passed; all ten WTFIAP owning stories passed across the full and corrected runs, and six policy screenshots were inspected. This fixture proof does not establish real payments; native and hosted Shadownet evidence remains separate.
+
+**Rule**: When recovery policy expands, update existing claim-recovery assertions in the same pass while retaining state, network selection and zero-wallet-call checks. Preserve the original full-suite failure and identify the focused correction rather than describing the failed run as wholly green.
