@@ -13,6 +13,7 @@ import {
 } from "../lib/mcp-agent-auth";
 import { normalizeMcpScopes } from "../lib/mcp-scope-policy";
 import { createWtfMcpServer } from "../lib/wtf-mcp";
+import { MCP_MAX_REQUEST_BODY_BYTES } from "../lib/mcp-input-limits";
 import { ingestSystemEvent } from "../challenges/events/ingest";
 import { logSystemEvent } from "../lib/system-log";
 import { mcpAgentTokens } from "@shared/schema";
@@ -369,6 +370,7 @@ router.all("/mcp", mcpAgentRateLimit, async (req: Request, res: Response) => {
     });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
+      maxRequestBodySize: MCP_MAX_REQUEST_BODY_BYTES,
     });
     let closed = false;
     const startedAt = Date.now();

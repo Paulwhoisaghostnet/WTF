@@ -107,7 +107,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   wtfos-pds:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles:
       - wtfos-pds
@@ -140,7 +140,7 @@ services:
 
   # ── Domain PDSes (one repo per subdomain; hold canonical topical records) ─
   wtfos-pds-social:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -154,7 +154,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-commerce:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -168,7 +168,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-media:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -182,7 +182,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-arcade:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -196,7 +196,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-tezos:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -210,7 +210,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-ops:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -224,7 +224,7 @@ services:
     healthcheck: *wtfos-pds-healthcheck
 
   wtfos-pds-os:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -239,7 +239,7 @@ services:
 
   # ── Users PDS (WTF-hosted did:plc user repos) ────────────────────────────
   wtfos-pds-users:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -276,7 +276,7 @@ services:
 
   # ── Private PDS (encrypted DM/room records; NOT federated) ───────────────
   wtfos-pds-private:
-    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
+    image: ghcr.io/bluesky-social/pds:0.4.5046@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -355,7 +355,7 @@ services:
       retries: 5
 
   wtfos-labeler:
-    image: ghcr.io/bluesky-social/ozone:0.1.104@sha256:4473001d2c22edef278a84a7714c93f52b4884669144bdcfef0f270befdd21d7
+    image: ghcr.io/bluesky-social/ozone:sha-bd5e478d554e677870df5ab24bd9cf0aaef14d29@sha256:7a683e86d113f3869a93e5499700a43189bca94551aacb4fd5c9724e28e561b3
     restart: unless-stopped
     profiles: [wtfos-atproto]
     depends_on:
@@ -370,7 +370,9 @@ services:
       NODE_ENV: production
 
   caddy:
-    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     restart: unless-stopped
     depends_on:
       - app

@@ -9,8 +9,15 @@ import { fileURLToPath } from "node:url";
 
 import { _electron as electron } from "playwright";
 
-const ALPHA_VERSION = "1.0.1-alpha.1";
+const ALPHA_VERSION = "1.0.1-alpha.2";
 const PROVENANCE_SCHEMA = "wtfos.pasta.desktop-build-provenance.v1";
+// Electron 43.8.3 includes GHSA-jr5w-w6x2-84p9's CA mitigation. Its
+// embedded Node is still 24.22.0: this does not attest the later Node fixes.
+const EXPECTED_RUNTIME_VERSIONS = Object.freeze({
+  electron: "43.8.3",
+  node: "24.22.0",
+  chrome: "150.0.7871.250",
+});
 const PERSISTENCE_KEY = "pasta.desktop.packaged-artifact-smoke.v1";
 const PERSISTENCE_VALUE = "stable-origin-relaunch-confirmed";
 const EXPECTED_DESKTOP_STUB_RESPONSES = Object.freeze([
@@ -270,6 +277,13 @@ export function isExpectedDesktopStubResponse(responseUrl, status, method, expec
   );
 }
 
+export function validateRuntimeVersions(versions) {
+  for (const [component, expected] of Object.entries(EXPECTED_RUNTIME_VERSIONS)) {
+    assert.equal(versions?.[component], expected, `packaged ${component} runtime must match the reviewed security release`);
+  }
+  return versions;
+}
+
 async function readBuildProvenance(electronApp) {
   return electronApp.evaluate(({ app }) => {
     const fs = process.getBuiltinModule("fs");
@@ -278,6 +292,11 @@ async function readBuildProvenance(electronApp) {
     return {
       appPath: app.getAppPath(),
       isPackaged: app.isPackaged,
+      runtimeVersions: {
+        electron: process.versions.electron,
+        node: process.versions.node,
+        chrome: process.versions.chrome,
+      },
       manifest: JSON.parse(fs.readFileSync(manifestPath, "utf8")),
     };
   });
@@ -440,6 +459,7 @@ export async function runArtifactSmoke({
     const assetResults = await assertPackagedAssets(page, product.assetPaths);
     const provenanceResult = await readBuildProvenance(electronApp);
     assert.equal(provenanceResult.isPackaged, true, "artifact smoke must launch a packaged Electron application");
+    const runtimeVersions = validateRuntimeVersions(provenanceResult.runtimeVersions);
     const provenance = validateBuildProvenance(provenanceResult.manifest, product, {
       allowDirty: allowDirtyProvenance,
       expectedTarget,
@@ -487,6 +507,7 @@ export async function runArtifactSmoke({
       stableOriginRelaunch: true,
       bundledToolsOpened: product.bundledTools?.length || 0,
       provenance,
+      runtimeVersions,
       screenshotPath: screenshotPath || null,
     };
     if (resultPath) {

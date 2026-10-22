@@ -12008,3 +12008,11 @@
 **Why it mattered**: A reachable route and successful bundle do not prove the requested icon, menu and invitation journeys. CSS pointer suppression is not an asynchronous readiness barrier, and window keys are not complete entry URLs.
 
 **Rule**: Guard rendering at the shared readiness boundary; constrain flyouts using measured viewport bounds; capture route queries only for the owning window. Exercise the real desktop icon, normal Stuffs menu click, native invitation, purchase, deployment and reload against the actual room authority. Preserve zero-error assertions and strict asset validation.
+
+## 2026-10-22 — Patch the running runtime and retain the production dependency baseline
+
+**What happened**: October security advisories affected Node/Brotli, Undici, Electron trust, Go trust, and MCP validation. The active development checkout preceded production dependency fixes. Image metadata alone understated deployment drift: the application ran Node 22.23.1, native services 22.22.2, ten PDS services 20.20.2, and PLC 18.20.8. Even Caddy's newly published 2.11.7 image embedded Go 1.26.8, below the certificate-rejection fix.
+
+**Correction**: Start from the actual production main commit, retain its dependency fixes, and inspect running container and native-process binaries. Update the native Node package and restart its consumers; pin patched application/PDS images; rebuild the same Caddy and relay source with patched Go. Keep database and per-PDS cold backups before service replacement. Refresh all aliased Undici majors from upstream advisories, including fixes absent from npm audit. Enable MCP's SDK protection and reject oversized typed collections before Zod allocates per-entry errors, deriving limits from existing domain contracts while preserving opaque API bodies. Rebuild desktop installers on a supported Electron release and attest the packaged process versions.
+
+**Verification rule**: A clean npm audit, new image tag, or successful build cannot prove deployment. Record the actual running runtime, committed source, deployment result, service health, and focused behavioral checks independently. Electron's certificate fix does not imply all upstream Node fixes are backported; evaluate the packaged application's reachable APIs and retain that distinction. See WTF-BB-688–692 and docs/research/security-review-2026-10-22/.

@@ -1257,13 +1257,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "public-data-mcp-agent-token-proof",
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     ownerSurfaceIds: ["admin-panel", "content-pages"],
-    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs",
+    ownerSpec: "tests/playwright/live/puppet-orchestration.spec.mjs; server/lib/mcp-input-limits.test.ts; server/lib/wtf-mcp.test.ts",
     verificationCommand:
-      "WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"public data APIs\"",
+      "node --import tsx --test server/lib/mcp-input-limits.test.ts server/lib/wtf-mcp.test.ts && WTF_E2E_ACTOR_FILTER=bert npx playwright test --config=playwright.live.config.mjs tests/playwright/live/puppet-orchestration.spec.mjs -g \"public data APIs\"",
     userVisibleAssertion:
       "Public data APIs and the WTFOS registered inventory remain readable while MCP automation requires an explicit paired token rather than a browser session.",
     durableSideEffectAssertion:
-      "The live harness reads public links, FAQ, access, leaderboard, and gallery state; rejects unauthenticated MCP calls; creates a scoped MCP token; proves tools/list works without setting cookies; searches, inspects, and calls an allowed OpenAPI operation through the agent portal while excluding admin operations; denies a desktop mutation missing desktop:write; revokes the token; and rejects reuse after revocation.",
+      "The live harness reads public links, FAQ, access, leaderboard, and gallery state; rejects unauthenticated MCP calls, including malformed typed collections; creates a scoped MCP token; proves tools/list works without setting cookies; rejects an oversized typed collection before domain work; searches, inspects, and calls an allowed OpenAPI operation through the agent portal while excluding admin operations; denies a desktop mutation missing desktop:write; revokes the token; and rejects reuse after revocation. Local HTTP tests prove the exact 10 MiB body boundary, while SDK tests prove early collection rejection and preserved opaque API payloads.",
   },
   {
     id: "skywire.standalone-at-login",

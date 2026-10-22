@@ -102,6 +102,23 @@ The generated route inventory and integration notes live in
 
 ## Rate Limits and CORS
 
+MCP JSON requests have a 10 MiB body ceiling, enforced by the `/mcp` parser
+before the general API parser; `JSON_BODY_LIMIT` does not widen it. This retains
+the existing allowance for Game Studio source and base64 assets. Oversized
+bodies return HTTP 413. The access manifest and MCP capabilities expose this
+ceiling as `requestLimits.maxBodyBytes`.
+
+Typed collections are checked before member validation: Map Lab permits 80
+nodes and 160 wires, trade-board updates and Game Studio selections permit 100
+entries, uploaded asset descriptors permit 40, and project file maps permit
+350 entries (the existing bundle entry maximum). CRP retains 32 identity
+sources and 12 justification links. Invalid collections return an MCP tool
+error before domain work. API query/path maps reject invalid primitive values
+without accumulating one union error per key. Opaque API bridge bodies still
+use the selected operation's validator; the SDK-wide element ceiling is
+derived from the maximum JSON density inside the byte allowance, not a new
+per-operation quota.
+
 | Surface | Default limit |
 | --- | --- |
 | Generic `/api/*` JSON routes | 200 requests per minute per key/IP, except narrow read-only playback routes. `/api/v1` keys authenticated traffic by token hash. |

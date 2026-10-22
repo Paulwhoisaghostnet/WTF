@@ -7,10 +7,19 @@ import {
   PRODUCT_KEYS,
   PRODUCTS,
   validateBuildProvenance,
+  validateRuntimeVersions,
 } from "./pasta-desktop-artifact-smoke.mjs";
 
 const rootPackage = JSON.parse(readFileSync("package.json", "utf8"));
 const artifactSmokeSource = readFileSync("scripts/pasta-desktop-artifact-smoke.mjs", "utf8");
+
+test("artifact smoke rejects stale executables despite valid source provenance", () => {
+  const versions = { electron: "43.8.3", node: "24.22.0", chrome: "150.0.7871.250" };
+  assert.deepEqual(validateRuntimeVersions(versions), versions);
+  assert.throws(() => validateRuntimeVersions({ ...versions, electron: "42.4.0" }), /packaged electron runtime/);
+  assert.throws(() => validateRuntimeVersions({ ...versions, node: "24.16.0" }), /packaged node runtime/);
+  assert.throws(() => validateRuntimeVersions({ ...versions, chrome: "148.0.7778.254" }), /packaged chrome runtime/);
+});
 
 test("artifact smoke registry covers the suite and every standalone on a unique stable origin", () => {
   assert.deepEqual(PRODUCT_KEYS, [
@@ -96,7 +105,7 @@ test("artifact smoke validates exact alpha build provenance", () => {
   const manifest = {
     schema: "wtfos.pasta.desktop-build-provenance.v1",
     app: "@wtf/ravioli-desktop",
-    version: "1.0.1-alpha.1",
+    version: "1.0.1-alpha.2",
     gitSha: "0123456789abcdef0123456789abcdef01234567",
     dirty: false,
     sourceRevision: "0123456789abcdef0123456789abcdef01234567",

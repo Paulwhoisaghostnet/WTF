@@ -26,6 +26,7 @@ import {
   rewritePublicApiVersion,
 } from "./lib/public-api";
 import { DEFAULT_IPFS_GATEWAY_ORIGINS } from "../shared/ipfs-gateways";
+import { createMcpJsonParser } from "./lib/mcp-input-limits";
 
 /**
  * Read-heavy playback routes exempted from the generic `/api/*` rate
@@ -314,6 +315,7 @@ export async function createApp() {
     );
   }
   app.use(cors(corsOptionsFor(allowedOrigins)));
+  app.use("/mcp", createMcpJsonParser());
   app.use(express.json({
     limit: jsonBodyLimit,
     verify: (req, _res, buf) => {

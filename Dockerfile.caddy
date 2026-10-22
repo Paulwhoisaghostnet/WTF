@@ -1,0 +1,7 @@
+# Caddy's published 2.11.7 image still embeds Go 1.26.8. Recompile the same
+# release with Go's eMudhra certificate-rejection fix (GO-2026-6809).
+FROM golang:1.26.10-alpine@sha256:27f2d3b83cfc5803c8078f8e730af0f7c431bf067afaec8f60a36fb763187cba AS builder
+RUN CGO_ENABLED=0 go install github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.7
+
+FROM caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+COPY --from=builder /go/bin/caddy /usr/bin/caddy

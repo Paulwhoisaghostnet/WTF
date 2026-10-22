@@ -35,9 +35,9 @@ const bundledPastaTools = ["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravio
 const individualPastaTools = ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
 
 test("Pasta suite desktop package bundles all Pasta tools in an Electron shell", () => {
-  assert.equal(desktopPackage.version, "1.0.1-alpha.1");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.2");
   assert.equal(desktopPackage.main, "src/main.cjs");
-  assert.equal(desktopPackage.devDependencies.electron, "42.4.0");
+  assert.equal(desktopPackage.devDependencies.electron, "43.8.3");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
   assert.equal(desktopPackage.homepage, "https://wtfos.app/tools/ch-ease");
   assert.equal(desktopPackage.desktopName, "pasta-suite");

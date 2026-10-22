@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "app": "spaghetti",
+  "executablePath": "/Users/joshuafarnworth/.codex/worktrees/october-security-remediation/WTF/apps/spaghetti-desktop/release/mac-arm64/spaghetti-studio.app/Contents/MacOS/spaghetti-studio",
+  "origin": "http://127.0.0.1:30772",
+  "title": "Spaghetti — Pasta Protocol",
+  "assetsVerified": 4,
+  "stableOriginRelaunch": true,
+  "bundledToolsOpened": 0,
+  "provenance": {
+    "schema": "wtfos.pasta.desktop-build-provenance.v1",
+    "app": "@wtf/spaghetti-desktop",
+    "version": "1.0.1-alpha.2",
+    "gitSha": "bf2a5bc639196dbc062efabf9709afb2ab53dfaf",
+    "dirty": true,
+    "sourceRevision": "bf2a5bc639196dbc062efabf9709afb2ab53dfaf-dirty",
+    "target": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "format": "directory"
+    }
+  },
+  "runtimeVersions": {
+    "electron": "43.8.3",
+    "node": "24.22.0",
+    "chrome": "150.0.7871.250"
+  },
+  "screenshotPath": null
+}

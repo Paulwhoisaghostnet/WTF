@@ -1,5 +1,6 @@
 import type { DesktopAppKey } from "@shared/types";
 import type { DesktopAppConfig } from "./desktop-apps";
+import { MCP_MAX_REQUEST_BODY_BYTES, MCP_MAX_TOOL_INPUT_ELEMENTS } from "./mcp-input-limits";
 
 export type AccessMode =
   | "public"
@@ -242,6 +243,10 @@ export function buildWtfAccessManifest(input: {
       tokenManagementApi: "/api/mcp/tokens",
       authentication: "Authorization: Bearer wtf_mcp_...",
       rateLimitPerMinute: Number(process.env.MCP_AGENT_RATE_LIMIT_PER_MINUTE || 60),
+      requestLimits: {
+        maxBodyBytes: MCP_MAX_REQUEST_BODY_BYTES,
+        maxToolInputElements: MCP_MAX_TOOL_INPUT_ELEMENTS,
+      },
       scopes: WTF_MCP_SCOPE_GROUPS,
     },
   };

@@ -1,0 +1,222 @@
+{
+  "observedDate": "2026-10-22",
+  "method": "Anonymous read-only OCI registry API: fetch exact source-pinned manifest/index; select linux/amd64; fetch referenced config blob; read Env and OCI labels. No layers downloaded or containers executed. Version attestation is source/registry provenance; not independently measured running binaries.",
+  "images": [
+    {
+      "registry": "registry-1.docker.io",
+      "repository": "library/node",
+      "digest": "sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3",
+      "configDigest": "sha256:bd16adabad7619222d4d0ab2d61f48391dacde03ad93f54d344683e326cbd0e2",
+      "created": "2026-07-14T01:48:37.714216191Z",
+      "versions": {
+        "NODE_VERSION": "22.23.1",
+        "YARN_VERSION": "1.22.22"
+      }
+    },
+    {
+      "registry": "registry-1.docker.io",
+      "repository": "library/caddy",
+      "digest": "sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648",
+      "configDigest": "sha256:af555904a0961945f16bb323a501457b13a4f7e9bde969b145b97da80b38ecbe",
+      "created": "2026-06-22T20:09:05.216443494Z",
+      "versions": {
+        "CADDY_VERSION": "v2.11.4"
+      }
+    },
+    {
+      "registry": "registry-1.docker.io",
+      "repository": "library/postgres",
+      "digest": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "configDigest": "sha256:de3a4eab8fdfa507ea92aac488b916b08089e515db49b055fe71dfa271ba3a28",
+      "created": "2026-07-07T17:47:20.839800572Z",
+      "versions": {
+        "PG_VERSION": "16.14"
+      }
+    },
+    {
+      "registry": "registry-1.docker.io",
+      "repository": "library/golang",
+      "digest": "sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2",
+      "configDigest": "sha256:7849a63a4b6c8ad0698b3bfc67b07165835208d8d82ec5766dfc9be5d56ceeab",
+      "created": "2026-07-07T22:12:44.245056127Z",
+      "versions": {
+        "GOLANG_VERSION": "1.26.5",
+        "GOTOOLCHAIN": "local"
+      }
+    },
+    {
+      "registry": "ghcr.io",
+      "repository": "bluesky-social/pds",
+      "digest": "sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29",
+      "configDigest": "sha256:f4fcda90d8cc84cf5021dcc26c21daca245ed0e007114eb8623b97db72e55325",
+      "created": "2026-06-25T12:50:30.759862705Z",
+      "versions": {
+        "NODE_VERSION": "24.15.0",
+        "org.opencontainers.image.version": "0.4.5009"
+      },
+      "sourceRevision": "6511fcbe0eb7e94939527a62b35414a361eb2080"
+    },
+    {
+      "registry": "ghcr.io",
+      "repository": "bluesky-social/ozone",
+      "digest": "sha256:4473001d2c22edef278a84a7714c93f52b4884669144bdcfef0f270befdd21d7",
+      "configDigest": "sha256:6d06f31c9026545040355656ddc2a145a7ec7761f7c28361468b7a283ad1dda4",
+      "created": "2026-04-15T10:57:20.274818254Z",
+      "versions": {
+        "NODE_VERSION": "20.11.1",
+        "org.opencontainers.image.version": "0.1.104"
+      },
+      "sourceRevision": "a5f4974f2bf98377cf7be6acbed42fef890b341b"
+    },
+    {
+      "registry": "ghcr.io",
+      "repository": "docker-mailserver/docker-mailserver",
+      "digest": "sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a",
+      "configDigest": "sha256:4f5093c251b61d5691f5ccfd3f90fcbf505585bfd045546430d282e5417658c8",
+      "created": "2025-08-12T22:00:57.467557307Z",
+      "versions": {
+        "DMS_RELEASE": "v15.1.0"
+      },
+      "sourceRevision": "060bf9a47443382fb7e37f30d6ab9709b4b8aeab"
+    }
+  ],
+  "publicHealth": {
+    "url": "https://wtfos.app/api/health",
+    "response": {
+      "status": "alive",
+      "ok": true,
+      "service": "wtf-gameshow-api",
+      "version": {
+        "packageVersion": "1.0.0",
+        "commitRef": "bf2a5bc6"
+      },
+      "timestamp": "2026-10-22T19:31:06.974Z"
+    }
+  },
+  "liveCommit": "bf2a5bc6",
+  "liveCommitFull": "bf2a5bc639196dbc062efabf9709afb2ab53dfaf",
+  "sourceProvenance": {
+    "Dockerfile": [
+      {
+        "line": 1,
+        "text": "FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS builder"
+      },
+      {
+        "line": 39,
+        "text": "FROM node:22-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3"
+      },
+      {
+        "line": 70,
+        "text": "    /opt/smartpy/bin/pip install --no-cache-dir smartpy-tezos"
+      },
+      {
+        "line": 75,
+        "text": "RUN npm ci --omit=dev && npm install --no-save tsx@4.21.0 playwright@1.59.1 && \\"
+      }
+    ],
+    "Dockerfile.relay": [
+      {
+        "line": 4,
+        "text": "FROM golang:1.26-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS build-env"
+      },
+      {
+        "line": 11,
+        "text": "FROM node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e AS web-builder"
+      },
+      {
+        "line": 16,
+        "text": "FROM alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce"
+      }
+    ],
+    "docker-compose.yml": [
+      {
+        "line": 33,
+        "text": "    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
+      },
+      {
+        "line": 110,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 143,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 157,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 171,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 185,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 199,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 213,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 227,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 242,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 279,
+        "text": "    image: ghcr.io/bluesky-social/pds:0.4@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29"
+      },
+      {
+        "line": 296,
+        "text": "    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
+      },
+      {
+        "line": 342,
+        "text": "    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
+      },
+      {
+        "line": 358,
+        "text": "    image: ghcr.io/bluesky-social/ozone:0.1.104@sha256:4473001d2c22edef278a84a7714c93f52b4884669144bdcfef0f270befdd21d7"
+      },
+      {
+        "line": 373,
+        "text": "    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648"
+      }
+    ],
+    "infra/wtfos-mail/docker-compose.yml": [
+      {
+        "line": 5,
+        "text": "    image: ghcr.io/docker-mailserver/docker-mailserver:15.1.0@sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a"
+      }
+    ]
+  },
+  "publicServiceHealth": [
+    {
+      "url": "https://pds.wtfos.me/xrpc/_health",
+      "status": 200,
+      "body": "{\"version\":\"0.4.219\"}"
+    },
+    {
+      "url": "https://social.wtfos.me/xrpc/_health",
+      "status": 200,
+      "body": "{\"version\":\"0.4.219\"}"
+    },
+    {
+      "url": "https://mod.wtfos.me/xrpc/_health",
+      "status": 200,
+      "body": "{\"version\":\"0.4.219\"}"
+    },
+    {
+      "url": "https://relay.wtfos.me/xrpc/_health",
+      "status": 200,
+      "body": "{\"status\":\"ok\"}\n"
+    }
+  ]
+}

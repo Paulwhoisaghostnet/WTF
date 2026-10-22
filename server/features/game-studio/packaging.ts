@@ -38,7 +38,7 @@ type ZipEntryInput = {
   data: Buffer | string;
 };
 
-const MAX_ZIP_ENTRIES = 350;
+export const MAX_ZIP_ENTRIES = 350;
 const MAX_STUDIO_FILE_BYTES = 8 * 1024 * 1024;
 export const GAME_STUDIO_MAX_LOCAL_ASSET_BYTES = 2 * 1024 * 1024;
 export const GAME_STUDIO_MAX_LOCAL_ASSET_TOTAL_BYTES = 8 * 1024 * 1024;

@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       release_tag:
-        description: "Release tag to publish, for example pasta-suite-desktop-v1.0.1-alpha.1"
+        description: "Release tag to publish, for example pasta-suite-desktop-v1.0.1-alpha.2"
         required: false
         type: string
   push:

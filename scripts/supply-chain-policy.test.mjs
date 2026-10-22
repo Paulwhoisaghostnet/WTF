@@ -5,12 +5,14 @@ import test from "node:test";
 const compose = readFileSync("docker-compose.yml", "utf8");
 const mailCompose = readFileSync("infra/wtfos-mail/docker-compose.yml", "utf8");
 const dockerfile = readFileSync("Dockerfile", "utf8");
+const plcDockerfile = readFileSync("Dockerfile.plc", "utf8");
+const caddyDockerfile = readFileSync("Dockerfile.caddy", "utf8");
 const relayDockerfile = readFileSync("Dockerfile.relay", "utf8");
 const dockerignore = readFileSync(".dockerignore", "utf8");
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 
 test("all checked-in container inputs are immutable", () => {
-  const sources = [compose, mailCompose, dockerfile, relayDockerfile];
+  const sources = [compose, mailCompose, dockerfile, relayDockerfile, caddyDockerfile, plcDockerfile];
   for (const source of sources) {
     assert.doesNotMatch(source, /:latest(?:\s|$|})/m);
   }
@@ -20,7 +22,7 @@ test("all checked-in container inputs are immutable", () => {
       assert.match(match[1], /@sha256:[0-9a-f]{64}$/, `mutable image input: ${match[1]}`);
     }
   }
-  for (const source of [dockerfile, relayDockerfile]) {
+  for (const source of [dockerfile, relayDockerfile, caddyDockerfile, plcDockerfile]) {
     for (const match of source.matchAll(/^FROM\s+([^\s]+)(?:\s+AS\s+\S+)?$/gmi)) {
       assert.match(match[1], /@sha256:[0-9a-f]{64}$/, `mutable base image: ${match[1]}`);
     }
