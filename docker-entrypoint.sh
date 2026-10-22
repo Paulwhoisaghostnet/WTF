@@ -43,6 +43,28 @@ if [ "${NODE_ENV:-}" = "production" ]; then
 fi
 
 if [ "$(id -u)" = "0" ]; then
+  # The host signer keeps its socket and parent private to its own group.
+  # Derive that mounted GID instead of assuming host/container group IDs match.
+  # gosu initializes node's groups, so Compose group_add alone is not enough.
+  signer_socket="${WTF_OPERATOR_SIGNER_SOCKET:-/run/wtf/operator-signer.sock}"
+  if [ -S "$signer_socket" ]; then
+    signer_gid="$(stat -c '%g' "$signer_socket")"
+    if [ "$signer_gid" = "0" ]; then
+      echo "[entrypoint] ERROR: signer socket must use a dedicated non-root group"
+      exit 1
+    fi
+    signer_group="$(getent group "$signer_gid" | cut -d: -f1)"
+    if [ -z "$signer_group" ]; then
+      signer_group="wtf-operator-signer-socket"
+      groupadd --gid "$signer_gid" "$signer_group"
+    fi
+    usermod --append --groups "$signer_group" node
+    if ! gosu node test -w "$signer_socket"; then
+      echo "[entrypoint] ERROR: node cannot access the configured signer socket"
+      exit 1
+    fi
+  fi
+
   for d in $WRITABLE_DIRS; do
     if [ -d "$d" ]; then
       marker="$d/$OWNERSHIP_MARKER"

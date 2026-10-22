@@ -1,0 +1,74 @@
+{
+  "status": "isolated-container-verified;normal-deployment-pending",
+  "sourceSha256": {
+    "docker-entrypoint.sh": "5955302d9cfc7cc3ac60ea400d10fc31b11bfc841ce691cd72c27bcdacb45c8f",
+    "scripts/check-signer-container-access.mjs": "f610865d8c73a70115ea1885383b61bc9d69623b2c2f53c894e9da2225e82274"
+  },
+  "fixture": {
+    "image": "sha256:87fdb002e43fc97b10c55524e1f62bfba9203905346ab67e71aff79ee65a49f9",
+    "before": "EACCES",
+    "after": {
+      "uid": 1000,
+      "groups": [
+        985,
+        1000
+      ],
+      "body": "fixture-health-ok"
+    },
+    "idempotent": {
+      "uid": 1000,
+      "groups": [
+        985,
+        1000
+      ],
+      "body": "fixture-health-ok"
+    },
+    "recreatedSocket": {
+      "uid": 1000,
+      "groups": [
+        985,
+        1000
+      ],
+      "body": "fixture-health-ok"
+    },
+    "unrelatedUser": "EACCES",
+    "directoryMode": "0770",
+    "socketMode": "0660"
+  },
+  "originalIntentRecovery": {
+    "schemaVersion": 1,
+    "network": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "roomCode": "ef003fb0-4d5b-4bb5-8e44-02dacdc83590",
+    "roomId": "4a657c235bf96261765c7ba52f11922e74be09bcb790dba41c0a545f08834d3a",
+    "intentId": "1e31719eda79f107eb86e4ffeb5e616e6b30ed238592a912b8baa053e26300af",
+    "originalCheckpointAt": "2026-10-22T20:53:03.345Z",
+    "originalOutcome": "submission-unknown; no hash or signer journal; no actor deposits",
+    "diagnostics": {
+      "exactEnvelopeParsed": true,
+      "actualAppAuthMatchesSigner": true,
+      "trimmedAppAuthMatchesSigner": true,
+      "actualSignerScopedPinsMatch": true,
+      "selectedWalletChainMatches": true,
+      "hostRpcChainMatches": true,
+      "deployedCreateMethodExists": true,
+      "originalFailureCause": "reproduced EACCES: actual application UID1000/GID1000 lacks host socket group985; prior root container probe did not represent app identity",
+      "actualUnprivilegedAppAccessBeforeFix": "EACCES"
+    },
+    "recovery": {
+      "method": "same exact typed payload and original request ID through serialized durable signer journal",
+      "newRequestId": false,
+      "databaseCheckpointReset": false,
+      "journalReset": false,
+      "journalAttemptedAt": "2026-10-22T20:58:38.643Z",
+      "operationHash": "opaPTKfNF5oPGxbwVzVHva6sNHYKGSMJR7jjYyZixpukTzLdc4j",
+      "signedBy": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+      "observedBy": "normal production reconciliation worker",
+      "finalizedBlock": "BLMYfv6DRFZMzQNuBTwNaLUUeE2xcjkKHrWZmKgQbzBdfuhD6pj",
+      "level": 5597019,
+      "fundingState": "funding",
+      "intentState": "applied",
+      "error": null
+    }
+  }
+}

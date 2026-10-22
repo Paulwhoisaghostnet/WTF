@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdir, open, readFile, rename } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { TezosToolkit } from "@taquito/taquito";
 import { require as tsxRequire } from "tsx/cjs/api";
 import { buildPuppetKeyringEnv } from "./runtime.mjs";
@@ -17,6 +20,21 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
   const keyringModule = tsxRequire("../../../extensions/wtf-operator-signer/src/keyring.ts", import.meta.url);
   const { PlatformWalletKeyring } = keyringModule.default || keyringModule;
   const keyring = new PlatformWalletKeyring(await buildPuppetKeyringEnv());
+  assert.ok(process.env.WTF_E2E_WTFIAP_ENVIRONMENT, "Private local environment path is required for durable unknown-send recovery");
+  const submissionDirectory = path.join(path.dirname(process.env.WTF_E2E_WTFIAP_ENVIRONMENT), "wallet-submissions");
+  await mkdir(submissionDirectory, { recursive: true, mode: 0o700 });
+  const submissionPath = path.join(submissionDirectory, actor.walletId + ".json");
+  async function priorSubmission() {
+    try { return JSON.parse(await readFile(submissionPath, "utf8")); }
+    catch (error) { if (error.code === "ENOENT") return null; throw error; }
+  }
+  async function persistSubmission(receipt) {
+    const temporary = submissionPath + "." + randomUUID() + ".tmp";
+    const handle = await open(temporary, "wx", 0o600);
+    try { await handle.writeFile(JSON.stringify({ schemaVersion: 1, ...receipt }, null, 2) + "\n"); await handle.sync(); }
+    finally { await handle.close(); }
+    await rename(temporary, submissionPath);
+  }
   let armed = null, inFlight = false, providerImports = 0;
   const operations = [], providerNetworks = [];
   await context.exposeBinding("__wtfiapPuppetWalletSession", async ({ page, frame }, network) => { assert.equal(frame, page.mainFrame()); assert.ok(["mainnet", "shadownet"].includes(network)); providerNetworks.push(network); });
@@ -28,6 +46,8 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
     const { roomCode, action: kind } = armed; armed = null; inFlight = true;
     const attempt = { actorId: actor.id, walletAddress: actor.walletAddress, roomCode, action: kind, status: "validating" };
     try {
+      const previous = await priorSubmission();
+      assert(!previous || previous.status === "confirmed", `Unresolved prior ${previous?.action || "wallet"} submission for ${actor.id}; reconcile its durable intent/hash before another send`);
       const response = await session.request.get(`/api/wtfiap/funding/rooms/${roomCode}`); assert.equal(response.ok(), true);
       const { room } = await response.json();
       assert.equal(room.network, configuration.network); assert.equal(room.chainId, configuration.chainId); assert.equal(room.escrowContract, configuration.escrowContract);
@@ -59,12 +79,13 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
       attempt.fundingPreflight = { finalizedBlockHash, finalizedBalanceMutez, liveBalanceMutez, transferMutez: transferMutez.toString(), estimatedRequiredMutez: requiredMutez.toString(), costs, automaticRevealIncluded: estimates.length > expected.length, shortfallMutez: (requiredMutez > BigInt(liveBalanceMutez) ? requiredMutez - BigInt(liveBalanceMutez) : 0n).toString(), estimateAuthority: "Taquito estimate.batch for the exact queued operation, including its SDK fee/storage policy; no extra test funding buffer" };
       await record(attempt);
       assert(BigInt(liveBalanceMutez) >= requiredMutez, `Measured ${kind} funding shortfall for ${actor.id}: ${attempt.fundingPreflight.shortfallMutez} mutez; no wallet operation was sent`);
-      Object.assign(attempt, { status: "submission-unknown", network: room.network, chainId: room.chainId, escrowContract: room.escrowContract, roomId: room.roomId, termsHash: room.termsHash, currency: room.terms.currency, from: kind === "deposit" ? actor.walletAddress : room.escrowContract, to: kind === "deposit" ? room.escrowContract : actor.walletAddress, expectedAmountAtomic: kind === "claim" ? room.self.payout.amount : room.terms.entryAtomic, operations: expected });
+      Object.assign(attempt, { status: "submission-unknown", preparedAt: new Date().toISOString(), counterBefore: (await tezos.rpc.getContract(actor.walletAddress)).counter, network: room.network, chainId: room.chainId, escrowContract: room.escrowContract, roomId: room.roomId, termsHash: room.termsHash, currency: room.terms.currency, from: kind === "deposit" ? actor.walletAddress : room.escrowContract, to: kind === "deposit" ? room.escrowContract : actor.walletAddress, expectedAmountAtomic: kind === "claim" ? room.self.payout.amount : room.terms.entryAtomic, operations: expected });
       await record(attempt); // Preserve the attempt before any chain write; never retry an unknown send.
+      await persistSubmission(attempt);
       const batch = tezos.contract.batch();
       for (const operation of expected) batch.withTransfer({ to: operation.destination, amount: operation.amount, mutez: true, parameter: operation.parameters });
       const sent = await batch.send();
-      Object.assign(attempt, { status: "submitted", operationHash: sent.hash }); await record(attempt);
+      Object.assign(attempt, { status: "submitted", operationHash: sent.hash }); await persistSubmission(attempt); await record(attempt);
       operations.push({ operation: sent, receipt: attempt });
       return { transactionHash: sent.hash };
     } finally { inFlight = false; }
@@ -99,7 +120,7 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
       const latest = operations.at(-1); assert.ok(latest, "A real wallet operation must have been submitted");
       await latest.operation.confirmation(3); // Inclusion plus two successors: the server's finalized-read contract.
       latest.receipt.transferEvidence = await verifyWtfiapTransfer({ configuration, operationHash: latest.receipt.operationHash, inclusionLevel: latest.operation.includedInBlock, currency: latest.receipt.currency, from: latest.receipt.from, to: latest.receipt.to, amountAtomic: latest.receipt.expectedAmountAtomic });
-      latest.receipt.status = "confirmed"; await record(latest.receipt);
+      latest.receipt.status = "confirmed"; await persistSubmission(latest.receipt); await record(latest.receipt);
       return latest.receipt.operationHash;
     },
     providerNetworks() { return [...providerNetworks]; },

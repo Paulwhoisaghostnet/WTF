@@ -12112,3 +12112,12 @@
 **Correction and proof**: Preserve Electron43.8.3, electron-builder26.15.3 and its downloader3.1.0; scope global-agent4.1.3 to that downloader. Compare both distinct lock graphs for actual vulnerable package removal and no downgrades, clean-install them, package the application, and test proxy environment handling, cache/progress, checksum rejection and untrusted TLS rejection against the exact installed dependency. Electron's Node24.22.1 bump is merged upstream but still needs a published stable binary before runtime remediation can be claimed.
 
 **Rule**: Advisory counts can change without code changes. Preserve historical evidence and prove package/version reachability separately. A scoped major transitive override requires behavioral compatibility proof; a merged runtime patch requires a published artifact and actual runtime attestation. Regenerate all derived bounty ranks when adding a record, since lower-ranked existing entries also move. See WTF-BB-698.
+
+
+## 2026-10-22 — Probe the signer as the actual application identity
+
+**What happened**: The first hosted Shadownet room stopped at its durable create checkpoint without reaching the signer journal. Health checks through plain Docker exec passed because the container starts as root, while its entrypoint drops the actual app to node UID/GID1000. The mounted socket and parent were private to host group985; a node-user probe reproduced EACCES.
+
+**Correction and proof**: Derive the mounted socket GID at startup and add only the node account to that supplementary group before gosu initializes its credentials. Keep signer authentication, 0770 parent and 0660 socket permissions. An isolated copy of the actual deployed image reproduces denial before the fix, permits node afterward, stays idempotent, permits a recreated socket and still rejects an unrelated account. Normal deployment and actual app-identity verification remain required. The already-frozen request recovered through its original ID and the serialized exclusive signer journal; no checkpoint was cleared and no new request ID was created.
+
+**Rule**: A successful root probe does not prove an unprivileged integration. Verify UID and supplementary groups at the real boundary. Do not broaden socket permissions or run the application as root to resolve group mapping. Do not infer a transaction failure from a quiet proof runner; inspect durable hashes and finalized receipts before modifying retry behavior.
