@@ -1,0 +1,250 @@
+{
+  "capturedAt": "2026-10-22T21:02:43.964911+00:00",
+  "runId": "39853171515",
+  "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39853171515",
+  "sourceCommit": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+  "sourceBranch": "codex/october-security-remediation",
+  "event": "workflow_dispatch",
+  "conclusion": "success",
+  "buildAttempt": 1,
+  "validationScope": "One representative product exercises the shared builder/get/global-agent path on all three supported platforms. Both distinct dependency graphs are separately covered by clean installation/audit evidence; unchanged products were not republished.",
+  "publication": {
+    "requested": false,
+    "releaseJobConclusion": "skipped",
+    "releaseTagsOrAssetsChangedByThisRun": false
+  },
+  "dependencyVersions": {
+    "electronBuilder": "26.15.3",
+    "electronGet": "3.1.0",
+    "globalAgent": "4.1.3"
+  },
+  "dependencyVersionEvidence": "Committed lockfile, applied by successful clean npm ci in each platform job",
+  "runtimeVersions": {
+    "electron": "43.8.3",
+    "node": "24.22.0",
+    "chrome": "150.0.7871.250"
+  },
+  "platformJobsPassed": 3,
+  "installedFormatProofsPassed": 4,
+  "jobs": [
+    {
+      "jobId": 120084423331,
+      "name": "Build Raspberry Pi arm64",
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39853171515/job/120084423331",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T20:56:52Z",
+      "completedAt": "2026-10-22T21:00:01Z",
+      "desktopInstallAuditZero": true,
+      "steps": [
+        {
+          "name": "Setup Node",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install desktop dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify desktop packaging policy",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install and smoke packaged Raspberry Pi application",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload installer artifact",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "jobId": 120084423944,
+      "name": "Build macOS universal",
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39853171515/job/120084423944",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T20:56:50Z",
+      "completedAt": "2026-10-22T21:00:41Z",
+      "desktopInstallAuditZero": true,
+      "steps": [
+        {
+          "name": "Setup Node",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install desktop dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify desktop packaging policy",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install and smoke packaged macOS artifacts",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload installer artifact",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "jobId": 120084424073,
+      "name": "Build Windows x64",
+      "url": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39853171515/job/120084424073",
+      "conclusion": "success",
+      "startedAt": "2026-10-22T20:56:50Z",
+      "completedAt": "2026-10-22T21:00:14Z",
+      "desktopInstallAuditZero": true,
+      "steps": [
+        {
+          "name": "Setup Node",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install desktop dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify desktop packaging policy",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build installer",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install and smoke packaged Windows application",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload installer artifact",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "installedRuntimeProofs": [
+    {
+      "ok": true,
+      "app": "spaghetti",
+      "origin": "http://127.0.0.1:30772",
+      "title": "Spaghetti \u2014 Pasta Protocol",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "bundledToolsOpened": 0,
+      "provenance": {
+        "schema": "wtfos.pasta.desktop-build-provenance.v1",
+        "app": "@wtf/spaghetti-desktop",
+        "version": "1.0.1-alpha.2",
+        "gitSha": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "dirty": false,
+        "sourceRevision": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "target": {
+          "platform": "linux",
+          "arch": "arm64",
+          "format": "deb"
+        }
+      },
+      "runtimeVersions": {
+        "electron": "43.8.3",
+        "node": "24.22.0",
+        "chrome": "150.0.7871.250"
+      },
+      "installedFormat": "deb"
+    },
+    {
+      "ok": true,
+      "app": "spaghetti",
+      "origin": "http://127.0.0.1:30772",
+      "title": "Spaghetti \u2014 Pasta Protocol",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "bundledToolsOpened": 0,
+      "provenance": {
+        "schema": "wtfos.pasta.desktop-build-provenance.v1",
+        "app": "@wtf/spaghetti-desktop",
+        "version": "1.0.1-alpha.2",
+        "gitSha": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "dirty": false,
+        "sourceRevision": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "target": {
+          "platform": "darwin",
+          "arch": "universal",
+          "format": "dmg+zip"
+        }
+      },
+      "runtimeVersions": {
+        "electron": "43.8.3",
+        "node": "24.22.0",
+        "chrome": "150.0.7871.250"
+      },
+      "installedFormat": "zip"
+    },
+    {
+      "ok": true,
+      "app": "spaghetti",
+      "origin": "http://127.0.0.1:30772",
+      "title": "Spaghetti \u2014 Pasta Protocol",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "bundledToolsOpened": 0,
+      "provenance": {
+        "schema": "wtfos.pasta.desktop-build-provenance.v1",
+        "app": "@wtf/spaghetti-desktop",
+        "version": "1.0.1-alpha.2",
+        "gitSha": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "dirty": false,
+        "sourceRevision": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "target": {
+          "platform": "darwin",
+          "arch": "universal",
+          "format": "dmg+zip"
+        }
+      },
+      "runtimeVersions": {
+        "electron": "43.8.3",
+        "node": "24.22.0",
+        "chrome": "150.0.7871.250"
+      },
+      "installedFormat": "dmg"
+    },
+    {
+      "ok": true,
+      "app": "spaghetti",
+      "origin": "http://127.0.0.1:30772",
+      "title": "Spaghetti \u2014 Pasta Protocol",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "bundledToolsOpened": 0,
+      "provenance": {
+        "schema": "wtfos.pasta.desktop-build-provenance.v1",
+        "app": "@wtf/spaghetti-desktop",
+        "version": "1.0.1-alpha.2",
+        "gitSha": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "dirty": false,
+        "sourceRevision": "e39ff8c833255d1e975cdc7e060afc5e4ffaba42",
+        "target": {
+          "platform": "win32",
+          "arch": "x64",
+          "format": "nsis"
+        }
+      },
+      "runtimeVersions": {
+        "electron": "43.8.3",
+        "node": "24.22.0",
+        "chrome": "150.0.7871.250"
+      },
+      "installedFormat": "nsis"
+    }
+  ]
+}

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **665** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **117** · Verified: **485** · Archived: **4**
+Total: **665** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **3** · Fixed: **117** · Verified: **486** · Archived: **4**
 
 ## Canonical Board
 
@@ -84,7 +84,6 @@ Total: **665** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 379 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 379 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 463 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
-| WTF-BB-698 | In Progress | Codex desktop build-chain security follow-up | 2026-10-22 | Desktop / build dependency security | P2 | 8 | 591 | 2 | 2 | 1 | Nine desktop build graphs retain sprintf-js through optional proxy logging dependencies |
 | WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-371 | Blocked | Repository owner / Twitter developer account | 2026-08-30 | Secrets / git history | P0 | 17 | 38 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
 | WTF-BB-313 | Blocked | Codex live user-story gap loop | 2026-06-22 | Skywire / live AT puppet coverage | P1 | 11 | 379 | 2 | 4 | 1 | Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential |
@@ -626,6 +625,7 @@ Total: **665** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 526 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 526 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 526 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
+| WTF-BB-698 | Verified | Codex desktop build-chain security follow-up | 2026-10-22 | Desktop / build dependency security | P2 | 8 | 591 | 2 | 2 | 1 | Nine desktop build graphs retain sprintf-js through optional proxy logging dependencies |
 | WTF-BB-667 | Verified | Codex production disk recovery | 2026-09-01 | Deploy / production disk capacity | P2 | 8 | 591 | 2 | 3 | 0 | Production deploy preflight cannot recover when only unused Docker images are reclaimable |
 | WTF-BB-658 | Verified | Codex PixAlerce timeout pass | 2026-08-30 | E2E reliability / PixAlerce | P2 | 8 | 591 | 2 | 3 | 0 | PixAlerce inventory journey can wait forever after disabling every test and action timeout |
 | WTF-BB-638 | Verified | Codex Gamma shell continuation | 2026-06-30 | Gamma / Swap presentation proof | P2 | 8 | 591 | 2 | 3 | 0 | Duplicate of `WTF-BB-324`; Gamma Swap proof now recognizes the seeded Octez wallet session and full Gamma passes with Swap included (`62/62` on `HARNESS_PORT=4307`) |
@@ -1953,20 +1953,6 @@ Total: **665** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Local verification: `git diff --check` passed for the changed transplant files; focused Tezos tests passed.
 - Verification idea:
   - After enabling, run a dry-run on known wallets and check `collection_items` for non-empty expected listing snapshots.
-
-### WTF-BB-698 - Nine desktop build graphs retain sprintf-js through optional proxy logging dependencies
-
-- Category: Desktop / build dependency security
-- Priority: P2
-- Status: In Progress
-- Owner/Session: Codex desktop build-chain security follow-up
-- Last touched: 2026-10-22
-- Score: C2 + F2 + S1 + P2(3) = 8
-- Evidence: All nine desktop locks retain eight moderate npm audit entries propagated from GHSA-hp3w-g68c-fv3c through sprintf-js1.1.3, roarr2.15.4, global-agent3.0.0 and @electron/get3.1.0. The packages are build-only and omitted from installed applications. The earlier audit suggested downgrading electron-builder26.15.3 to26.5.0; no downgrade was accepted.
-- Correction direction: Keep Electron43.8.3 and electron-builder26.15.3, scope an override to @electron/get3.1.0 using global-agent4.1.3, which removes the vulnerable logger chain. Do not mask or suppress the advisory.
-- Verification idea: Clean-install both distinct lock graphs, prove full audit zero and no dependency downgrades, package a real app, and verify downloader proxy environment handling, cache/progress, checksum rejection and TLS rejection using the exact installed candidate.
-- Claimed 2026-10-22 before repository dependency edits. Isolated candidates already pass both full audits and real Spaghetti packaging; independent proxy/checksum/TLS proof also passes.
-- Score follows existing P2(3)+C2/F2/S1 formula: localized shared build dependency change, packaging/proxy compatibility consequence, build-only DoS prerequisite.
 
 ### WTF-BB-568 - A tracked browser bundle contains a client-side Pinata credential
 
@@ -6616,6 +6602,7 @@ Copy this when adding a new issue:
 - No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
 - Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-679 was renumbered because production already assigned that ID.
 - Final security release verification: All nine alpha.2 releases are published at immutable tested commits. All27 platform build/install jobs and36 installed-format checks attest Electron43.8.3/Node24.22.0/Chromium150.0.7871.250 with source provenance and storage-preserving relaunch. Published CH-EASE was independently downloaded, checksum-verified and launched. Production c21e4aa7 serves alpha.2 with exact URLs and SHA256s for allnine products; all27 public asset range checks pass and allnine anonymous probes return401. The separate legacy Macaroni verifier mismatch is tracked as695. Electron fixes the certificate advisory but does not attest Node24.22.1 backports; specific affected embedded-Node APIs were not demonstrated reachable. Eight moderate build-only chain entries have no compatible patch and were not forced into a packager downgrade. See evidence/desktop-release-receipt.md and desktop JSON receipts.
+- Follow-up 2026-10-22: WTF-BB-698 removes the historical eight-entry build logger chain through a tested scoped global-agent4.1.3 override without downgrades. Stable Electron43.8.3/44.9.3/45.0.0 still embed Node24.22.0; Node24.22.1 bumps are merged into supported branches but not yet published as stable binaries. The existing CA blocklist backport is confirmed independently. Full embedded Node remediation remains blocked on vendor release publication; no runtime upgrade or replacement installer was claimed. See evidence/electron-node-release-availability.json.
 
 ### WTF-BB-671 - New fast-uri and qs advisories fail the production dependency audit
 
@@ -13959,6 +13946,21 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.
   - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.
+
+### WTF-BB-698 - Nine desktop build graphs retain sprintf-js through optional proxy logging dependencies
+
+- Category: Desktop / build dependency security
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex desktop build-chain security follow-up
+- Last touched: 2026-10-22
+- Score: C2 + F2 + S1 + P2(3) = 8
+- Evidence: All nine desktop locks retain eight moderate npm audit entries propagated from GHSA-hp3w-g68c-fv3c through sprintf-js1.1.3, roarr2.15.4, global-agent3.0.0 and @electron/get3.1.0. The packages are build-only and omitted from installed applications. The earlier audit suggested downgrading electron-builder26.15.3 to26.5.0; no downgrade was accepted.
+- Correction direction: Keep Electron43.8.3 and electron-builder26.15.3, scope an override to @electron/get3.1.0 using global-agent4.1.3, which removes the vulnerable logger chain. Do not mask or suppress the advisory.
+- Verification idea: Clean-install both distinct lock graphs, prove full audit zero and no dependency downgrades, package a real app, and verify downloader proxy environment handling, cache/progress, checksum rejection and TLS rejection using the exact installed candidate.
+- Claimed 2026-10-22 before repository dependency edits. Isolated candidates already pass both full audits and real Spaghetti packaging; independent proxy/checksum/TLS proof also passes.
+- Score follows existing P2(3)+C2/F2/S1 formula: localized shared build dependency change, packaging/proxy compatibility consequence, build-only DoS prerequisite.
+- Verification: All nine locks remove sprintf-js/roarr and five obsolete companions; exactly four packages upgrade and none downgrade. Both distinct installed graphs and nine audits pass. All62 owning policy checks pass; local real packaging/launch and nine downloader proxy/checksum/TLS cases pass. Hosted run39853171515 at e39ff8c8 passes all three platforms and four installed formats with clean source provenance, persistence/relaunch and unchanged Electron43.8.3/Node24.22.0. Publication is skipped. Current npm registry also returns zero for the unchanged vulnerable baseline; removal is proven by package inventory, not merely audit count. See desktop-followup.md and its receipts. Root production locks remain unchanged.
 
 ### WTF-BB-667 - Production deploy preflight cannot recover when only unused Docker images are reclaimable
 

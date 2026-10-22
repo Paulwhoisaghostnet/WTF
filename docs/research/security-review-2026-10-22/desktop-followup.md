@@ -27,7 +27,9 @@ Both distinct graphs passed clean installs with lifecycle scripts enabled, and a
 - [Dependency, installed graph and local packaging receipt](evidence/desktop-build-chain-followup.md), with [machine-readable hashes and results](evidence/desktop-build-chain-followup.json).
 - [Proxy/checksum/TLS receipt](evidence/desktop-build-proxy-compatibility.json) and [rerunnable local fixture](evidence/desktop-build-proxy-compatibility.mjs).
 
-Hosted validation uses the existing Spaghetti Windows x64, macOS universal and Linux arm64 installer workflow with release publication disabled. The changed downloader path is identical across all products, while the two distinct dependency graphs are separately clean-installed. Existing alpha.2 tags and assets are not replaced. Hosted and production receipts will be recorded after those jobs finish.
+Hosted validation uses the existing Spaghetti Windows x64, macOS universal and Linux arm64 installer workflow with release publication disabled. The changed downloader path is identical across all products, while the two distinct dependency graphs are separately clean-installed. Existing alpha.2 tags and assets are not replaced. [Hosted run39853171515](https://github.com/Paulwhoisaghostnet/WTF/actions/runs/39853171515) passed at `e39ff8c833255d1e975cdc7e060afc5e4ffaba42`: all three platform jobs and all four installed formats (Windows NSIS, Linux DEB, macOS DMG and ZIP) passed. Each attests clean exact-source provenance, required assets, stable local origin, persistence/relaunch and the unchanged Electron43.8.3/Node24.22.0 runtime. The publication job was skipped. [Hosted validation receipt](evidence/desktop-build-hosted-validation.json).
+
+Production promotion follows the normal main/Hetzner workflow, preserving all existing production dependency and runtime fixes. The delivery message identifies the pushed commit, completed workflow and public health verification. No interaction or API contract changed in this pass, so no interaction inventory entries were added.
 
 ## Electron runtime publication blocker
 
