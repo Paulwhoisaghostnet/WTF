@@ -87,7 +87,8 @@ export function WtfIap() {
     <AppWindow title="WTFIAP-v0.01">
       <GameSurface aria-label="WTFIAP-v0.01" data-wtfiap-surface="true">
         <ModeNavigation aria-label="WTFIAP game modes">
-          <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Local practice</a>
+          <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Lil Guys · Local practice</a>
+          <a href={`${WTFIAP_ASSET_ROOT}/cast.html`} target={frameName} onClick={resetRoom}>Cast v2</a>
           <a href={partySource} target={frameName} onClick={resetRoom}>Party &amp; Tournament</a>
           {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => setFundingOpen(open => !open)}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
         </ModeNavigation>

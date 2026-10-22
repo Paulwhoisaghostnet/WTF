@@ -27,7 +27,7 @@ if (sourceFlag !== -1) {
     assert.equal(digest(fs.readFileSync(path.join(source, entry.path))), entry.sha256, `Stale game build: ${entry.path}`);
   }
   assert.equal(digest(fs.readFileSync(path.join(source, "dist/generator.html"))), build.sha256, "Generator does not match the build manifest");
-  for (const name of ["index.html", "generator.html", "party-client.js", "tournament.js"]) {
+  for (const name of ["index.html", "generator.html", "cast.html", "party-client.js", "tournament.js"]) {
     copy(`dist/${name}`, `${assets}/${name}`);
   }
   copy("dist/party.html", `${assets}/party.html`, (html) => {
@@ -55,10 +55,10 @@ if (sourceFlag !== -1) {
     title: "WTFIAP-v0.01",
     appKey: "wtfiap",
     generatorSha256: build.sha256,
-    sourceProject: "aleatory-autobattler",
-    upstreamRun: "run-a9a459cb-607d-4c3e-87c1-b45148c5af07",
-    publicationRun: "run-df7ddb01-c3ff-48be-9993-4c55ff0654cf",
-    funding: "Tournament preview remains unfunded; native host escrow requires a verified network deployment and enforces approved room-currency prizes/refunds",
+    sourceProject: "lil-guys-autobattler",
+    sourceCast: "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
+    castHeroes: 50,
+    funding: "Native host escrow enforces verified Shadownet room-currency prizes and refunds; settled older rooms retain their original commitments",
     recipe: "npm run build in the source project; node scripts/vendor-wtfiap.mjs --source <game-workspace>; node scripts/vendor-wtfiap.mjs",
     files,
   }, null, 2) + "\n");

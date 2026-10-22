@@ -12142,3 +12142,11 @@
 **Correction and proof**: Return each caller after the serialized pass it joined, then start any coalesced follow-up as a separate promise. Shutdown preserves the active pass and prevents another one. A deterministic deferred-pass regression fails the prior implementation and passes the correction without a larger timeout; all17 owning funding/chain tests pass. The native test resumed its saved room and confirmed a deposit.
 
 **Rule**: Continuous event-driven work must not make a request wait for global quiescence. Preserve serialization and queued observations while bounding the promise by the actual unit of work, with no invented deadline or dropped event.
+
+## 2026-10-22 — Update the authoritative game and view together for a cast release
+
+**What happened**: A new local Lil Guys cast initially changed the playable view while the hosted Party/Tournament server still used the previous catalog. The user clarified that tournaments must use the new cast too. A cosmetic-looking roster file participates in the tournament rules hash, so changing it during an active funded room would break its pinned rules.
+
+**Correction and proof**: Package the same v2 catalog for the browser and server, preserve stable hero IDs and numeric behavior, and check the live funded-room table before promotion. The sole hosted funded room was settled with a final result. The deployment guard remains in force. Browser stories verify the new roster in local practice and a server-run Party room; the tournament screen still reaches native funding and its recovery path.
+
+**Rule**: Treat a named cast update as a game release when the server owns draws and combat. Update and test both surfaces against the same catalog, then let the funded-room guard decide whether replacement is safe. Never alter a room's committed result or void a healthy match to advance a cast release.

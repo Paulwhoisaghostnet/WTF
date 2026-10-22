@@ -63,14 +63,19 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(icon).toContainText("WTFIAP-v0.01");
     await icon.dblclick();
     await expect(surface(page)).toHaveAttribute("aria-label", "WTFIAP-v0.01");
+    await expect(surface(page).getByRole("link", { name: "Cast v2" })).toBeVisible();
     const practice = await hostFrame(page);
     const game = await gameFrame(practice, "#frame");
+    expect(await game.evaluate(() => window.AB.FACTIONS.map(faction => faction.name))).toContain("The Cookout");
+    expect(await game.evaluate(() => window.AB.ROSTER.length)).toBe(50);
     expect((await gameState(game)).match.players.player.gold).toBe(1);
     const unitId = await buyAndDeploy(page, game);
     const state = await gameState(game);
     expect(state.match.players.player.gold).toBe(0);
     expect(state.match.shops.player[0]).toBeNull();
     expect(state.field[0].id).toBe(unitId);
+    expect(state.projection).toBe("side");
+    expect(state.facing.find(unit => unit.id === unitId)?.mirrored).toBe(true);
     await page.screenshot({ path: test.info().outputPath("desktop-practice.png"), fullPage: true });
 
     const popupEvent = page.waitForEvent("popup");
@@ -109,6 +114,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await party.locator("#fill-ai").check();
     await party.locator("#start-room").click();
     const game = await gameFrame(party, "#arena-frame");
+    expect(await game.evaluate(() => window.AB.ROSTER.find(hero => hero.id === "ember-vanguard")?.name)).toBe("Briq");
     const unitId = await buyAndDeploy(page, game);
     await page.screenshot({ path: test.info().outputPath("party-formation.png"), fullPage: true });
 
@@ -123,6 +129,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(state.bench).toHaveLength(0);
     expect(state.match.shops.player[0]).toBeNull();
     expect(state.match.players.player.gold).toBe(0);
+    expect(state.projection).toBe("side");
+    expect(state.facing.find(unit => unit.id === unitId)?.mirrored).toBe(true);
     // Hosted room identity comes from the authenticated account, not form text.
     await expect(party.locator("#standings")).toContainText("WTF Admin · you");
     await page.screenshot({ path: test.info().outputPath("party-recovered.png"), fullPage: true });

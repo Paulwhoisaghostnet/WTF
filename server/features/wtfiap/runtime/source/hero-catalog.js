@@ -1,71 +1,78 @@
-/* Original named characters and individual signature abilities. Values, including each hero’s distinct base AP regeneration, are authored prototype tuning. */
-(function(root){
-'use strict';
-const catalog={
+(function(root){const catalog={
   "factions": {
     "ember": {
-      "lineage": "Volcanic drakekin",
-      "appearance": "Scales, horns, tails and living embers distinguish the drakekin.",
-      "strategy": "Brakka and Pik anchor Sythra and Vikka’s fast attacks; Korrun supports Avara, Vezhra and Aereth’s spell formation. Five drakekin leave room for class partners; all ten fill a level-10 board."
+      "lineage": "The Cookout",
+      "appearance": "Red or orange body/clothing against charcoal; flame-like hair, red scarves or red formal accents.",
+      "strategy": "Ten neighbors, one grill, no adult supervision. Their hospitality is warm enough to qualify as damage over time.",
+      "name": "The Cookout"
     },
     "tide": {
-      "lineage": "Reef and abyssal creatures",
-      "appearance": "Gills, fins, shells, tentacles and deep-sea lures make the reef kin unmistakable.",
-      "strategy": "Oruun and Ghorl protect Nemi, Ilyth and Salka through a steady mid-cost curve. Complete the reef for layered protection, or trade a faction slot for an outside damage partner."
+      "lineage": "Pool Rules Committee",
+      "appearance": "Blue-and-white clothes and skin, sailor caps or blue headwear; pale trim and beach footwear.",
+      "strategy": "They saved the pool by banning almost everything that happens in a pool. Their protective magic is technically a liability waiver.",
+      "name": "Pool Rules Committee"
     },
     "verdant": {
-      "lineage": "Living flora and fungi",
-      "appearance": "Bark, roots, petals, fungal caps and carnivorous leaves form living bodies.",
-      "strategy": "Tharn buys time for Morrow and Lumae to sustain Serris or Nyss. The low-to-mid-cost choir favors melee pressure and needs outside ranged damage when a packed frontline stalls."
+      "lineage": "Lawn & Disorder",
+      "appearance": "Visible leaf green on clothing, skin or hood, with brown earth tones; garden tools, flowers and unruly growth.",
+      "strategy": "A gardening club that takes invasive species personally. Their compost has started attending meetings.",
+      "name": "Lawn & Disorder"
     },
     "hollow": {
-      "lineage": "Undead and spectral beings",
-      "appearance": "Exposed bone, hollow faces, reliquaries and translucent spirit bodies mark the assembly.",
-      "strategy": "Verrik and Veyl pressure targets while Dolma controls lines and Ossick restores them. An outside defender can anchor the lower-cost four until the expensive Kharrow joins them."
+      "lineage": "The Late Fees",
+      "appearance": "Bone white and charcoal, visible skeletal or ghostly faces, with black neckwear, cloaks or formal clothes.",
+      "strategy": "Death did not cancel their membership. They collect overdue souls and occasionally lend one back.",
+      "name": "The Late Fees"
     },
     "iron": {
-      "lineage": "Forged mechanical constructs",
-      "appearance": "Gears, riveted plates, segmented limbs and luminous lenses replace flesh.",
-      "strategy": "Gromet and Tessik hold a formation for Kern and Bolgrin while Ferrix suppresses enemy carries. This mid-to-high-cost team trades cheap starters for specialized protection, repair and damage."
+      "lineage": "Void Warranty",
+      "appearance": "A conspicuous yellow garment, headband, bandana or utility belt against dark workwear; hardware, helmets and goggles.",
+      "strategy": "Five repair technicians who learned healing from a troubleshooting diagram. Their first diagnostic step is hitting the problem.",
+      "name": "Void Warranty"
     },
     "astral": {
-      "lineage": "Celestial lifeforms",
-      "appearance": "Crystalline or nebulous bodies, halos, orbiting fragments and strange eyes reveal star-born life.",
-      "strategy": "Aelune and Selkor protect Orryx and Vaelis while Zevra hunts a dangerous foe. Mixed caster teams add shared-class bonuses; the full accord trades fast melee attacks for spell power and healing."
+      "lineage": "Bedtime Is a Lie",
+      "appearance": "Violet garments or skin with pale accents and dark trim; sleepwear, witchy headwear and conspicuously tired or strange eyes.",
+      "strategy": "A sleepover became a cosmic incident. Nobody has slept, but everybody has a theory.",
+      "name": "Bedtime Is a Lie"
     },
     "dune": {
-      "lineage": "Desert beastkin",
-      "appearance": "Scarab shells, scorpion tails, jackal muzzles, fennec ears and cobra hoods identify the dune kin.",
-      "strategy": "Khepru guards Jassar as Zikra and Seshra weaken enemies; Razi connects attacks and healing. Its full cost span offers a flexible core, with outside tanks or casters competing for faction slots."
+      "lineage": "Cul-de-Sac Outlaws",
+      "appearance": "Cowboy boots and denim, with tan/brown/yellow western headwear or sheriff clothing; a shared dusty leather-and-denim pattern.",
+      "strategy": "Suburban cowboys patrolling a road with no through traffic. Their jurisdiction ends at the speed bump.",
+      "name": "Cul-de-Sac Outlaws"
     },
     "silk": {
-      "lineage": "Silken mothkin",
-      "appearance": "Feathery antennae, downy bodies and patterned wings range from long lunar tails to immense atlas canopies.",
-      "strategy": "Luneth and Orruma layer support while Thimri empowers allies and Vespera disrupts enemies. Four mothkin complete a compact support team; outside heroes supply concentrated ranged damage."
+      "lineage": "Cuddle Cartel",
+      "appearance": "Every member wears an integrated plush bear suit: round ears, oversized paws and a contrasting belly. Suit colors and exposed faces distinguish members.",
+      "strategy": "An organized comfort ring. Every hug comes with protection, and the protection is not optional.",
+      "name": "Cuddle Cartel"
     },
     "rime": {
-      "lineage": "Arctic beasts",
-      "appearance": "Dense fur, snowy feathers, curved tusks and frost-laden paws distinguish the polar kin.",
-      "strategy": "Boruun holds the line, Urvek restores allies and Soryn suppresses a priority target. This mid-cost trio links six classes but needs partners to activate those traits or add rapid damage."
+      "lineage": "Freezer Burnouts",
+      "appearance": "Frost-white heads/hair/hoods with ice-blue or cobalt clothing and footwear; no warm-colored outfit accents.",
+      "strategy": "The night shift went in for ice and formed a faction. They are keeping morale at a brisk minus twelve.",
+      "name": "Freezer Burnouts"
     },
     "gargoyle": {
-      "lineage": "Living winged stone",
-      "appearance": "Carved stone muscles, weathered seams and cathedral wings bring monumental guardians to life.",
-      "strategy": "Elyra guards allies while Kharvox breaks clustered enemies. The 3/5-cost duo completes its faction in two slots, leaving room for shared-class partners, healing and focused damage."
+      "lineage": "Curb Appeal",
+      "appearance": "Both members wear the same black tuxedo family and gold ear stud, with pale stone-like skin and sharply different hair silhouettes.",
+      "strategy": "Two decorative guardians who elected themselves the homeowners' association. Their complaints are structurally sound.",
+      "name": "Curb Appeal"
     }
   },
   "heroes": [
     {
       "id": "ember-vanguard",
       "abilityRegen": 0.91,
-      "name": "Brakka",
-      "title": "Ash Marshal",
-      "species": "Basalt drake",
+      "name": "Briq",
+      "title": "Grill Security",
+      "species": "The Cookout · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": null,
       "ability": {
         "id": "brakka-basalt-challenge",
-        "name": "Basalt Challenge",
+        "name": "Not on the Guest List",
         "description": "Draw nearby attacks, raise a stone shield and slow foes with an impact strike.",
         "actions": [
           {
@@ -100,14 +107,14 @@ const catalog={
     {
       "id": "ember-duelist",
       "abilityRegen": 1.86,
-      "name": "Sythra",
-      "title": "Flame Dancer",
-      "species": "Fire newt",
+      "name": "Flambae",
+      "title": "Aggressive Dinner Theatre",
+      "species": "The Cookout · Lil Guy",
       "primaryClass": "duelist",
       "secondaryClass": "arcanist",
       "ability": {
         "id": "sythra-molten-pirouette",
-        "name": "Molten Pirouette",
+        "name": "Dinner and a Show",
         "description": "Cut twice, then scatter burning sparks into every adjacent enemy.",
         "actions": [
           {
@@ -136,14 +143,14 @@ const catalog={
     {
       "id": "ember-artificer",
       "abilityRegen": 1.03,
-      "name": "Pik",
-      "title": "Spark Smith",
-      "species": "Furnace salamander",
+      "name": "Spare Rib",
+      "title": "Unlicensed Grill Medic",
+      "species": "The Cookout · Lil Guy",
       "primaryClass": "artificer",
       "secondaryClass": null,
       "ability": {
         "id": "pik-bellows-mend",
-        "name": "Bellows Mend",
+        "name": "A Little Heat Fixes Everything",
         "description": "Repair the most wounded ally, empower their attacks and vent a shock into a foe.",
         "actions": [
           {
@@ -172,14 +179,14 @@ const catalog={
     {
       "id": "ember-ranger",
       "abilityRegen": 0.72,
-      "name": "Avara",
-      "title": "Cinderwing",
-      "species": "Ash wyvern",
+      "name": "Hot Shot",
+      "title": "Long-Distance Seasoning",
+      "species": "The Cookout · Lil Guy",
       "primaryClass": "ranger",
       "secondaryClass": "stormcaller",
       "ability": {
         "id": "avara-ashwing-skewer",
-        "name": "Ashwing Skewer",
+        "name": "Pass the Pepper",
         "description": "Pierce the target row with a burning feather volley and slow the primary target.",
         "actions": [
           {
@@ -206,14 +213,14 @@ const catalog={
     {
       "id": "ember-stormcaller",
       "abilityRegen": 0.94,
-      "name": "Vezhra",
-      "title": "Cinder Tempest",
-      "species": "Three-headed ember hydra",
+      "name": "Trips",
+      "title": "Three Opinions at Once",
+      "species": "The Cookout · Lil Guy",
       "primaryClass": "stormcaller",
       "secondaryClass": "arcanist",
       "ability": {
         "id": "vezhra-threefold-cataclysm",
-        "name": "Threefold Cataclysm",
+        "name": "Reply All",
         "description": "Three heads erupt along the target row and column, burning and weakening those enemies.",
         "actions": [
           {
@@ -240,14 +247,14 @@ const catalog={
     {
       "id": "tide-mender",
       "abilityRegen": 1.06,
-      "name": "Nemi",
-      "title": "Foam Tender",
-      "species": "Reef axolotl",
+      "name": "Bobbi Float",
+      "title": "Emergency Buddy System",
+      "species": "Pool Rules Committee · Lil Guy",
       "primaryClass": "mender",
       "secondaryClass": null,
       "ability": {
         "id": "nemi-foam-cradle",
-        "name": "Foam Cradle",
+        "name": "Two at a Time, Please",
         "description": "Wrap two wounded allies in restorative foam and haste, then flick a bubble at a foe.",
         "actions": [
           {
@@ -276,14 +283,14 @@ const catalog={
     {
       "id": "tide-sentinel",
       "abilityRegen": 0.9,
-      "name": "Oruun",
-      "title": "Shell Aegis",
-      "species": "Reef turtle",
+      "name": "No Running",
+      "title": "Acting Assistant Lifeguard",
+      "species": "Pool Rules Committee · Lil Guy",
       "primaryClass": "sentinel",
       "secondaryClass": null,
       "ability": {
         "id": "oruun-reef-refuge",
-        "name": "Reef Refuge",
+        "name": "I Said Walk",
         "description": "Shield nearby allies, restore the most wounded ally and draw nearby enemies toward your shell.",
         "actions": [
           {
@@ -318,14 +325,14 @@ const catalog={
     {
       "id": "tide-ranger",
       "abilityRegen": 0.7,
-      "name": "Salka",
-      "title": "Brine Harrier",
-      "species": "Spined seahorse",
+      "name": "Deep End",
+      "title": "Recreational Threat",
+      "species": "Pool Rules Committee · Lil Guy",
       "primaryClass": "ranger",
       "secondaryClass": "assassin",
       "ability": {
         "id": "salka-brine-harpoon",
-        "name": "Brine Harpoon",
+        "name": "No Diving",
         "description": "Harpoon the most wounded enemy, weaken it and quicken your next attacks.",
         "actions": [
           {
@@ -353,14 +360,14 @@ const catalog={
     {
       "id": "tide-arcanist",
       "abilityRegen": 1.47,
-      "name": "Ilyth",
-      "title": "Pearl Oracle",
-      "species": "Pearl cuttlefish",
+      "name": "Pearl Clutch",
+      "title": "Deeply Concerned Member",
+      "species": "Pool Rules Committee · Lil Guy",
       "primaryClass": "arcanist",
       "secondaryClass": "mender",
       "ability": {
         "id": "ilyth-pearlescent-bloom",
-        "name": "Pearlescent Bloom",
+        "name": "An Incident at the Pool",
         "description": "Detonate a pearl around the target; its returning light heals nearby allies and empowers a wounded ally.",
         "actions": [
           {
@@ -390,14 +397,14 @@ const catalog={
     {
       "id": "tide-hexbinder",
       "abilityRegen": 0.88,
-      "name": "Ghorl",
-      "title": "Undertow Binder",
-      "species": "Abyssal anglerfish",
+      "name": "Draino",
+      "title": "Maintenance Incident",
+      "species": "Pool Rules Committee · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": "hexbinder",
       "ability": {
         "id": "ghorl-abyssal-lure",
-        "name": "Abyssal Lure",
+        "name": "Chemical Imbalance",
         "description": "Raise a shield and lure nearby foes into a weakening, burning abyssal glow.",
         "actions": [
           {
@@ -438,14 +445,14 @@ const catalog={
     {
       "id": "verdant-mender",
       "abilityRegen": 1.02,
-      "name": "Lumae",
-      "title": "Bloom Weaver",
-      "species": "Lotus sprite",
+      "name": "Daisy Chain",
+      "title": "Unpaid Plant Therapist",
+      "species": "Lawn & Disorder · Lil Guy",
       "primaryClass": "mender",
       "secondaryClass": null,
       "ability": {
         "id": "lumae-lotus-reprieve",
-        "name": "Lotus Reprieve",
+        "name": "You Are Doing So Well",
         "description": "Unfurl petals around two wounded allies to heal and shield them while a thorn strikes a foe.",
         "actions": [
           {
@@ -473,14 +480,14 @@ const catalog={
     {
       "id": "verdant-hexbinder",
       "abilityRegen": 0.75,
-      "name": "Morrow",
-      "title": "Root Hexer",
-      "species": "Mycelial mushroom",
+      "name": "Compost Malone",
+      "title": "Live Culture Enthusiast",
+      "species": "Lawn & Disorder · Lil Guy",
       "primaryClass": "hexbinder",
       "secondaryClass": "mender",
       "ability": {
         "id": "morrow-spore-exchange",
-        "name": "Spore Exchange",
+        "name": "Mostly Organic",
         "description": "Infect a clustered enemy group with weakening spores and restore the most wounded ally.",
         "actions": [
           {
@@ -510,14 +517,14 @@ const catalog={
     {
       "id": "verdant-vanguard",
       "abilityRegen": 0.93,
-      "name": "Tharn",
-      "title": "Thorn Sentinel",
-      "species": "Ancient oak ent",
+      "name": "Doug Fir",
+      "title": "Unmovable Neighbor",
+      "species": "Lawn & Disorder · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": null,
       "ability": {
         "id": "tharn-rootbound-stand",
-        "name": "Rootbound Stand",
+        "name": "Putting Down Roots",
         "description": "Root into a thick self-shield, mend your bark and draw attention while branches strike adjacent foes.",
         "actions": [
           {
@@ -551,14 +558,14 @@ const catalog={
     {
       "id": "verdant-duelist",
       "abilityRegen": 1.8,
-      "name": "Serris",
-      "title": "Petal Blade",
-      "species": "Orchid mantis",
+      "name": "Hedge Fund",
+      "title": "Aggressive Growth Strategy",
+      "species": "Lawn & Disorder · Lil Guy",
       "primaryClass": "duelist",
       "secondaryClass": null,
       "ability": {
         "id": "serris-petal-scissors",
-        "name": "Petal Scissors",
+        "name": "Cutbacks",
         "description": "Shear the target with three petal-blade cuts, then empower your own attacks.",
         "actions": [
           {
@@ -581,14 +588,14 @@ const catalog={
     {
       "id": "verdant-assassin",
       "abilityRegen": 0.68,
-      "name": "Nyss",
-      "title": "Nettle Shade",
-      "species": "Pitcher-plant stalker",
+      "name": "Snapdragon",
+      "title": "Houseplant Gone Wrong",
+      "species": "Lawn & Disorder · Lil Guy",
       "primaryClass": "assassin",
       "secondaryClass": "hexbinder",
       "ability": {
         "id": "nyss-nectar-trap",
-        "name": "Nectar Trap",
+        "name": "Do Not Feed After Anything",
         "description": "Finish a wounded enemy with a venomous strike; leave it weakened and burning while feeding your own health.",
         "actions": [
           {
@@ -620,14 +627,14 @@ const catalog={
     {
       "id": "hollow-assassin",
       "abilityRegen": 0.66,
-      "name": "Verrik",
-      "title": "Silent Knife",
-      "species": "Skeletal raven",
+      "name": "Morsel",
+      "title": "Grave Pickpocket",
+      "species": "The Late Fees · Lil Guy",
       "primaryClass": "assassin",
       "secondaryClass": null,
       "ability": {
         "id": "verrik-raven-claim",
-        "name": "Raven Claim",
+        "name": "Finders, Reapers",
         "description": "Dive into a wounded foe with a weakening strike and claim power for your own attacks.",
         "actions": [
           {
@@ -655,14 +662,14 @@ const catalog={
     {
       "id": "hollow-stormcaller",
       "abilityRegen": 0.96,
-      "name": "Dolma",
-      "title": "Dirge Tempest",
-      "species": "Bell wraith",
+      "name": "Sheety",
+      "title": "Full-Time Haunter",
+      "species": "The Late Fees · Lil Guy",
       "primaryClass": "stormcaller",
       "secondaryClass": null,
       "ability": {
         "id": "dolma-funeral-toll",
-        "name": "Funeral Toll",
+        "name": "Final Notice",
         "description": "Toll down the target column, leaving every struck enemy burning and heavily slowed.",
         "actions": [
           {
@@ -689,14 +696,14 @@ const catalog={
     {
       "id": "hollow-artificer",
       "abilityRegen": 1.01,
-      "name": "Ossick",
-      "title": "Clockwork Mourner",
-      "species": "Reliquary skeleton",
+      "name": "Dr. Rattles",
+      "title": "Out-of-Network Necromedic",
+      "species": "The Late Fees · Lil Guy",
       "primaryClass": "artificer",
       "secondaryClass": null,
       "ability": {
         "id": "ossick-borrowed-breath",
-        "name": "Borrowed Breath",
+        "name": "Borrowed Parts",
         "description": "Share stored soul-light with two wounded allies, healing and empowering them as a bone shard hits a foe.",
         "actions": [
           {
@@ -725,14 +732,14 @@ const catalog={
     {
       "id": "hollow-duelist",
       "abilityRegen": 1.74,
-      "name": "Veyl",
-      "title": "Glass Duelist",
-      "species": "Mirror specter",
+      "name": "Refund",
+      "title": "Returns Department",
+      "species": "The Late Fees · Lil Guy",
       "primaryClass": "duelist",
       "secondaryClass": "assassin",
       "ability": {
         "id": "veyl-mirror-reversal",
-        "name": "Mirror Reversal",
+        "name": "Return to Sender",
         "description": "Cut the target twice; a mirror strike also damages and slows the enemy with the highest attack.",
         "actions": [
           {
@@ -761,14 +768,14 @@ const catalog={
     {
       "id": "hollow-sentinel",
       "abilityRegen": 0.82,
-      "name": "Kharrow",
-      "title": "Crypt Paladin",
-      "species": "Ossuary bone golem",
+      "name": "Grimbo",
+      "title": "Doorman of the Dead",
+      "species": "The Late Fees · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": "sentinel",
       "ability": {
         "id": "kharrow-ossuary-oath",
-        "name": "Ossuary Oath",
+        "name": "You Are Not on the Crypt",
         "description": "Draw nearby attacks, shield your surrounding allies and heal a wounded ally while bones strike adjacent foes.",
         "actions": [
           {
@@ -804,14 +811,14 @@ const catalog={
     {
       "id": "iron-arcanist",
       "abilityRegen": 1.51,
-      "name": "Kern",
-      "title": "Runic Smith",
-      "species": "Floating forge orb",
+      "name": "Reboot",
+      "title": "Device Not Found",
+      "species": "Void Warranty · Lil Guy",
       "primaryClass": "arcanist",
       "secondaryClass": null,
       "ability": {
         "id": "kern-runic-aperture",
-        "name": "Runic Aperture",
+        "name": "Have You Tried Turning Them Off?",
         "description": "Open a runic beam across the target row, then concentrate a second pulse on the primary target.",
         "actions": [
           {
@@ -832,14 +839,14 @@ const catalog={
     {
       "id": "iron-artificer",
       "abilityRegen": 0.99,
-      "name": "Tessik",
-      "title": "Brass Architect",
-      "species": "Quadruped brass spider",
+      "name": "Allen Wrench",
+      "title": "One Part Left Over",
+      "species": "Void Warranty · Lil Guy",
       "primaryClass": "artificer",
       "secondaryClass": null,
       "ability": {
         "id": "tessik-clockwork-triage",
-        "name": "Clockwork Triage",
+        "name": "It Was Like That When I Got Here",
         "description": "Repair, shield and empower the most wounded ally while a contact arc damages a foe.",
         "actions": [
           {
@@ -874,14 +881,14 @@ const catalog={
     {
       "id": "iron-hexbinder",
       "abilityRegen": 0.79,
-      "name": "Ferrix",
-      "title": "Rust Binder",
-      "species": "Articulated iron centipede",
+      "name": "Rusty Nail",
+      "title": "Warranty Exclusion",
+      "species": "Void Warranty · Lil Guy",
       "primaryClass": "hexbinder",
       "secondaryClass": null,
       "ability": {
         "id": "ferrix-corrosion-crawl",
-        "name": "Corrosion Crawl",
+        "name": "Pre-Existing Condition",
         "description": "Coil around the highest-attack enemy, applying corrosion and deep weakness while repairing your own body.",
         "actions": [
           {
@@ -913,14 +920,14 @@ const catalog={
     {
       "id": "iron-vanguard",
       "abilityRegen": 0.86,
-      "name": "Gromet",
-      "title": "Iron Prefect",
-      "species": "Furnace automaton",
+      "name": "Hard Reset",
+      "title": "Technical Support, Physically",
+      "species": "Void Warranty · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": "artificer",
       "ability": {
         "id": "gromet-furnace-interdict",
-        "name": "Furnace Interdict",
+        "name": "Percussive Maintenance",
         "description": "Taunt nearby foes behind a self-shield; furnace exhaust strikes adjacent foes and empowers nearby allies.",
         "actions": [
           {
@@ -956,14 +963,14 @@ const catalog={
     {
       "id": "iron-ranger",
       "abilityRegen": 0.64,
-      "name": "Bolgrin",
-      "title": "Bolt Warden",
-      "species": "Cyclopean ballista walker",
+      "name": "Scopes",
+      "title": "One-Eyed Artillery",
+      "species": "Void Warranty · Lil Guy",
       "primaryClass": "ranger",
       "secondaryClass": "arcanist",
       "ability": {
         "id": "bolgrin-siege-eye",
-        "name": "Siege Eye",
+        "name": "Factory-Reset Target",
         "description": "Fire one immense bolt into the target, weakening it and blasting the enemies around it.",
         "actions": [
           {
@@ -991,14 +998,14 @@ const catalog={
     {
       "id": "astral-mender",
       "abilityRegen": 1.1,
-      "name": "Aelune",
-      "title": "Dawn Healer",
-      "species": "Star jellyfish",
+      "name": "Mel A. Tonin",
+      "title": "Unauthorized Bedtime",
+      "species": "Bedtime Is a Lie · Lil Guy",
       "primaryClass": "mender",
       "secondaryClass": null,
       "ability": {
         "id": "aelune-dawn-drift",
-        "name": "Dawn Drift",
+        "name": "Just Rest Your Eyes",
         "description": "Drift restorative starlight through nearby allies, healing and hastening them as a spark hits a foe.",
         "actions": [
           {
@@ -1027,14 +1034,14 @@ const catalog={
     {
       "id": "astral-assassin",
       "abilityRegen": 0.65,
-      "name": "Zevra",
-      "title": "Night Comet",
-      "species": "Comet mantis",
+      "name": "Zoomies",
+      "title": "The 3:04 AM Appointment",
+      "species": "Bedtime Is a Lie · Lil Guy",
       "primaryClass": "assassin",
       "secondaryClass": null,
       "ability": {
         "id": "zevra-comet-cut",
-        "name": "Comet Cut",
+        "name": "Absolutely No Reason",
         "description": "Cut into the highest-attack enemy, weaken it and accelerate your next attacks.",
         "actions": [
           {
@@ -1062,14 +1069,14 @@ const catalog={
     {
       "id": "astral-arcanist",
       "abilityRegen": 1.43,
-      "name": "Orryx",
-      "title": "Orbit Sage",
-      "species": "Ringed crystal oracle",
+      "name": "Madam Probably",
+      "title": "Licensed in Vibes",
+      "species": "Bedtime Is a Lie · Lil Guy",
       "primaryClass": "arcanist",
       "secondaryClass": null,
       "ability": {
         "id": "orryx-orbital-refraction",
-        "name": "Orbital Refraction",
+        "name": "Mercury Is in Your Personal Space",
         "description": "Split a beam along the target row and column; the intersection takes both pulses.",
         "actions": [
           {
@@ -1090,14 +1097,14 @@ const catalog={
     {
       "id": "astral-sentinel",
       "abilityRegen": 0.85,
-      "name": "Selkor",
-      "title": "Moonward Giant",
-      "species": "Crescent colossus",
+      "name": "Pillow Fort",
+      "title": "Structural Nap Engineer",
+      "species": "Bedtime Is a Lie · Lil Guy",
       "primaryClass": "sentinel",
       "secondaryClass": null,
       "ability": {
         "id": "selkor-lunar-anchorage",
-        "name": "Lunar Anchorage",
+        "name": "Everybody Under the Blanket",
         "description": "Draw nearby enemies toward your crescent frame, shield two wounded allies and restore your own health.",
         "actions": [
           {
@@ -1131,14 +1138,14 @@ const catalog={
     {
       "id": "astral-stormcaller",
       "abilityRegen": 0.98,
-      "name": "Vaelis",
-      "title": "Nebula Caller",
-      "species": "Many-eyed cloud ray",
+      "name": "Doomscroll",
+      "title": "Forecast: Still Awake",
+      "species": "Bedtime Is a Lie · Lil Guy",
       "primaryClass": "stormcaller",
       "secondaryClass": "mender",
       "ability": {
         "id": "vaelis-nebula-rain",
-        "name": "Nebula Rain",
+        "name": "One More Catastrophe",
         "description": "Rain burning stardust over every enemy, slow their attacks and restore two wounded allies.",
         "actions": [
           {
@@ -1166,14 +1173,14 @@ const catalog={
     {
       "id": "dune-stormcaller",
       "abilityRegen": 1.05,
-      "name": "Zikra",
-      "title": "Thunder Nomad",
-      "species": "Storm scorpion",
+      "name": "Pocket Sand",
+      "title": "Neighborhood Watch Hazard",
+      "species": "Cul-de-Sac Outlaws · Lil Guy",
       "primaryClass": "stormcaller",
       "secondaryClass": null,
       "ability": {
         "id": "zikra-scorpion-squall",
-        "name": "Scorpion Squall",
+        "name": "Pocket Sand, Obviously",
         "description": "Sting the target with lingering venom and slow its attacks while grit splashes into nearby enemies.",
         "actions": [
           {
@@ -1206,14 +1213,14 @@ const catalog={
     {
       "id": "dune-vanguard",
       "abilityRegen": 0.89,
-      "name": "Khepru",
-      "title": "Sand Marshal",
-      "species": "Sand scarab",
+      "name": "Permit Pete",
+      "title": "Sheriff of the Speed Bump",
+      "species": "Cul-de-Sac Outlaws · Lil Guy",
       "primaryClass": "vanguard",
       "secondaryClass": null,
       "ability": {
         "id": "khepru-dune-carapace",
-        "name": "Dune Carapace",
+        "name": "Do You Have a Permit for That?",
         "description": "Raise a heavy carapace shield and draw nearby enemies into slowing sand before striking a foe.",
         "actions": [
           {
@@ -1248,14 +1255,14 @@ const catalog={
     {
       "id": "dune-duelist",
       "abilityRegen": 1.78,
-      "name": "Razi",
-      "title": "Sirocco Blade",
-      "species": "Dune fennec",
+      "name": "Yeehawwwn",
+      "title": "Campfire Headliner",
+      "species": "Cul-de-Sac Outlaws · Lil Guy",
       "primaryClass": "duelist",
       "secondaryClass": "mender",
       "ability": {
         "id": "razi-sirocco-feint",
-        "name": "Sirocco Feint",
+        "name": "One More Song",
         "description": "Strike twice while a restorative desert wind heals and hastens a wounded ally.",
         "actions": [
           {
@@ -1286,14 +1293,14 @@ const catalog={
     {
       "id": "dune-ranger",
       "abilityRegen": 0.67,
-      "name": "Jassar",
-      "title": "Dust Hunter",
-      "species": "Jackal tracker",
+      "name": "Wyatt Earpiece",
+      "title": "Wanted Poster Model",
+      "species": "Cul-de-Sac Outlaws · Lil Guy",
       "primaryClass": "ranger",
       "secondaryClass": "assassin",
       "ability": {
         "id": "jassar-track-the-weak",
-        "name": "Track the Weak",
+        "name": "I Heard You Were Wounded",
         "description": "Mark a wounded enemy with a concentrated shot that leaves burning wounds and weakness.",
         "actions": [
           {
@@ -1320,14 +1327,14 @@ const catalog={
     {
       "id": "dune-mender",
       "abilityRegen": 0.97,
-      "name": "Seshra",
-      "title": "Oasis Keeper",
-      "species": "Hooded desert cobra",
+      "name": "Well Actually",
+      "title": "Oasis of Unsolicited Advice",
+      "species": "Cul-de-Sac Outlaws · Lil Guy",
       "primaryClass": "mender",
       "secondaryClass": "hexbinder",
       "ability": {
         "id": "seshra-oasis-covenant",
-        "name": "Oasis Covenant",
+        "name": "Stay Hydrated, Idiot",
         "description": "Restore and hasten your entire army while an enemy suffers weakening venom.",
         "actions": [
           {
@@ -1360,16 +1367,16 @@ const catalog={
     {
       "id": "ember-korrun",
       "abilityRegen": 0.92,
-      "name": "Korrun",
-      "title": "Caldera Keeper",
-      "species": "Lava tortoise",
+      "name": "Uncle Medium",
+      "title": "It Will Cook Off",
+      "species": "The Cookout · Lil Guy",
       "faction": "ember",
       "cost": 3,
       "primaryClass": "sentinel",
       "secondaryClass": "mender",
       "ability": {
         "id": "korrun-caldera-haven",
-        "name": "Caldera Haven",
+        "name": "Everybody Behind Uncle",
         "description": "Draw nearby attacks, shelter two wounded allies, restore those close to your shell and scorch the target.",
         "actions": [
           {
@@ -1402,16 +1409,16 @@ const catalog={
     {
       "id": "ember-vikka",
       "abilityRegen": 1.7,
-      "name": "Vikka",
-      "title": "Tailfire Stalker",
-      "species": "Fire skink",
+      "name": "Lil Brisket",
+      "title": "Back-Alley Caterer",
+      "species": "The Cookout · Lil Guy",
       "faction": "ember",
       "cost": 2,
       "primaryClass": "duelist",
       "secondaryClass": "assassin",
       "ability": {
         "id": "vikka-tailfire-ambush",
-        "name": "Tailfire Ambush",
+        "name": "Three Cuts, No Waiting",
         "description": "Ambush a wounded enemy with three quick cuts, gain haste and leave a burning trail down the target column.",
         "actions": [
           {
@@ -1442,16 +1449,16 @@ const catalog={
     {
       "id": "ember-aereth",
       "abilityRegen": 0.95,
-      "name": "Aereth",
-      "title": "Dawnfire Ascendant",
-      "species": "Phoenix drake",
+      "name": "Auntie Flare",
+      "title": "Aggressive Hospitality",
+      "species": "The Cookout · Lil Guy",
       "faction": "ember",
       "cost": 5,
       "primaryClass": "mender",
       "secondaryClass": "stormcaller",
       "ability": {
         "id": "aereth-dawnfire-ascension",
-        "name": "Dawnfire Ascension",
+        "name": "Have Another Helping",
         "description": "Restore every ally, shelter the most wounded with a radiant shield and rain lingering fire over every enemy.",
         "actions": [
           {
@@ -1476,16 +1483,16 @@ const catalog={
     {
       "id": "ember-drazhul",
       "abilityRegen": 0.84,
-      "name": "Drazhul",
-      "title": "Obsidian Resonator",
-      "species": "Obsidian drake",
+      "name": "Charbro",
+      "title": "Load-Bearing Grill",
+      "species": "The Cookout · Lil Guy",
       "faction": "ember",
       "cost": 4,
       "primaryClass": "vanguard",
       "secondaryClass": "arcanist",
       "ability": {
         "id": "drazhul-obsidian-reverberation",
-        "name": "Obsidian Reverberation",
+        "name": "Who Touched the Thermostat?",
         "description": "Blast surrounding enemies and the strongest foe, raise an obsidian shield and draw attacks from adjacent enemies.",
         "actions": [
           {
@@ -1517,16 +1524,16 @@ const catalog={
     {
       "id": "ember-sazrik",
       "abilityRegen": 0.77,
-      "name": "Sazrik",
-      "title": "Coalcoil Oracle",
-      "species": "Cinder serpent",
+      "name": "Sizzle",
+      "title": "Venom Sommelier",
+      "species": "The Cookout · Lil Guy",
       "faction": "ember",
       "cost": 2,
       "primaryClass": "hexbinder",
       "secondaryClass": null,
       "ability": {
         "id": "sazrik-coalcoil-venom",
-        "name": "Coalcoil Venom",
+        "name": "Notes of Regret",
         "description": "Strike a wounded enemy with burning, slowing venom while restoring the most wounded ally.",
         "actions": [
           {
@@ -1557,16 +1564,16 @@ const catalog={
     {
       "id": "silk-luneth",
       "abilityRegen": 1.04,
-      "name": "Luneth",
-      "title": "Moonthread Tender",
-      "species": "Luna moth",
+      "name": "Lil Spoon",
+      "title": "Comfort Specialist",
+      "species": "Cuddle Cartel · Lil Guy",
       "faction": "silk",
       "cost": 1,
       "primaryClass": "mender",
       "secondaryClass": null,
       "ability": {
         "id": "luneth-moonthread-cocoon",
-        "name": "Moonthread Cocoon",
+        "name": "You Look Like You Need This",
         "description": "Heal, shield and hasten a wounded ally inside a lunar cocoon while a silver thread lashes the target.",
         "actions": [
           {
@@ -1599,16 +1606,16 @@ const catalog={
     {
       "id": "silk-thimri",
       "abilityRegen": 1.82,
-      "name": "Thimri",
-      "title": "Rose Needle",
-      "species": "Rosy maple moth",
+      "name": "Seam Reaper",
+      "title": "Pastel Menace",
+      "species": "Cuddle Cartel · Lil Guy",
       "faction": "silk",
       "cost": 2,
       "primaryClass": "duelist",
       "secondaryClass": "artificer",
       "ability": {
         "id": "thimri-rose-needle-waltz",
-        "name": "Rose Needle Waltz",
+        "name": "A Stitch in Your Side",
         "description": "Make three needle cuts, empower adjacent allies and mend your own downy body.",
         "actions": [
           {
@@ -1635,16 +1642,16 @@ const catalog={
     {
       "id": "silk-vespera",
       "abilityRegen": 0.73,
-      "name": "Vespera",
-      "title": "Deathmask Seer",
-      "species": "Death’s-head moth",
+      "name": "Dust Bunny",
+      "title": "Aggressive Soft Furnishing",
+      "species": "Cuddle Cartel · Lil Guy",
       "faction": "silk",
       "cost": 3,
       "primaryClass": "hexbinder",
       "secondaryClass": "assassin",
       "ability": {
         "id": "vespera-deathmask-dust",
-        "name": "Deathmask Dust",
+        "name": "Do Not Shake Indoors",
         "description": "Dust a clustered enemy group with burning weakness, then sting the most wounded foe.",
         "actions": [
           {
@@ -1671,16 +1678,16 @@ const catalog={
     {
       "id": "silk-orruma",
       "abilityRegen": 0.83,
-      "name": "Orruma",
-      "title": "Atlas Mantle",
-      "species": "Atlas moth",
+      "name": "Big Hug Energy",
+      "title": "Personal Space Enforcer",
+      "species": "Cuddle Cartel · Lil Guy",
       "faction": "silk",
       "cost": 4,
       "primaryClass": "sentinel",
       "secondaryClass": "mender",
       "ability": {
         "id": "orruma-atlas-canopy",
-        "name": "Atlas Canopy",
+        "name": "Group Hug Is Mandatory",
         "description": "Draw nearby attacks beneath your wings, shield the whole army and heal two wounded allies while striking a foe.",
         "actions": [
           {
@@ -1712,16 +1719,16 @@ const catalog={
     {
       "id": "rime-soryn",
       "abilityRegen": 0.69,
-      "name": "Soryn",
-      "title": "Whiteout Watcher",
-      "species": "Snowy owl",
+      "name": "Hoodini",
+      "title": "Cold Case Specialist",
+      "species": "Freezer Burnouts · Lil Guy",
       "faction": "rime",
       "cost": 3,
       "primaryClass": "ranger",
       "secondaryClass": "stormcaller",
       "ability": {
         "id": "soryn-whiteout-quills",
-        "name": "Whiteout Quills",
+        "name": "Freeze Frame",
         "description": "Drive a quill into the highest-attack enemy while an icy volley strikes and slows the target column.",
         "actions": [
           {
@@ -1745,17 +1752,17 @@ const catalog={
     },
     {
       "id": "rime-urvek",
-      "abilityRegen": 1.0,
-      "name": "Urvek",
-      "title": "Winter Hearth",
-      "species": "Polar bear",
+      "abilityRegen": 1,
+      "name": "Brrnard",
+      "title": "Certified Warm Hugger",
+      "species": "Freezer Burnouts · Lil Guy",
       "faction": "rime",
       "cost": 3,
       "primaryClass": "mender",
       "secondaryClass": "hexbinder",
       "ability": {
         "id": "urvek-hearth-of-winter",
-        "name": "Hearth of Winter",
+        "name": "Warm Thoughts, Cold Hands",
         "description": "Restore nearby allies, raise a frost shield around yourself and weaken enemies within claw reach.",
         "actions": [
           {
@@ -1782,16 +1789,16 @@ const catalog={
     {
       "id": "rime-boruun",
       "abilityRegen": 0.87,
-      "name": "Boruun",
-      "title": "Tundra Rampart",
-      "species": "Woolly mammoth",
+      "name": "Frosty Reception",
+      "title": "Doorman at Absolute Zero",
+      "species": "Freezer Burnouts · Lil Guy",
       "faction": "rime",
       "cost": 4,
       "primaryClass": "vanguard",
       "secondaryClass": "sentinel",
       "ability": {
         "id": "boruun-tundra-rampart",
-        "name": "Tundra Rampart",
+        "name": "You Are Letting the Cold Out",
         "description": "Sweep adjacent foes with your tusks, taunt nearby enemies, slow the target row and shield two wounded allies.",
         "actions": [
           {
@@ -1825,16 +1832,16 @@ const catalog={
     {
       "id": "gargoyle-kharvox",
       "abilityRegen": 1.39,
-      "name": "Kharvox",
-      "title": "Cathedral Rupture",
-      "species": "Bat-winged granite gargoyle",
+      "name": "Chip",
+      "title": "Historical Nuisance",
+      "species": "Curb Appeal · Lil Guy",
       "faction": "gargoyle",
       "cost": 3,
       "primaryClass": "arcanist",
       "secondaryClass": null,
       "ability": {
         "id": "kharvox-cathedral-rupture",
-        "name": "Cathedral Rupture",
+        "name": "Property Damage Assessment",
         "description": "Shatter stone around the target and down its column, seal yourself in a shield and weaken the strongest enemy.",
         "actions": [
           {
@@ -1866,16 +1873,16 @@ const catalog={
     {
       "id": "gargoyle-elyra",
       "abilityRegen": 0.81,
-      "name": "Elyra",
-      "title": "Pinnacle Guardian",
-      "species": "Living limestone griffin",
+      "name": "Gracie",
+      "title": "Load-Bearing Angel",
+      "species": "Curb Appeal · Lil Guy",
       "faction": "gargoyle",
       "cost": 5,
       "primaryClass": "sentinel",
       "secondaryClass": "ranger",
       "ability": {
         "id": "elyra-pinnacle-vow",
-        "name": "Pinnacle Vow",
+        "name": "Bless Your Load-Bearing Heart",
         "description": "Draw nearby attacks, shield surrounding allies, restore a wounded ally and hurl a stone feather into the strongest foe.",
         "actions": [
           {
@@ -1908,16 +1915,13 @@ const catalog={
     {
       "id": "mime",
       "abilityRegen": 1.12,
-      "name": "The Mime",
-      "title": "The Mime",
-      "species": "Independent performer",
+      "name": "Mimothy",
+      "title": "Unpaid Understudy",
+      "species": "Independent Lil Guy",
       "primaryClass": null,
       "secondaryClass": null,
       "faction": null,
       "cost": 5
     }
   ]
-};
-if(typeof module!=='undefined'&&module.exports)module.exports=catalog;
-root.ABHeroCatalog=catalog;
-})(typeof globalThis!=='undefined'?globalThis:this);
+};if(typeof module!=='undefined'&&module.exports)module.exports=catalog;root.ABHeroCatalog=catalog;})(globalThis);
