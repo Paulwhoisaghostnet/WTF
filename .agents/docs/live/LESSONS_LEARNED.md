@@ -12096,3 +12096,11 @@
 **Correction**: Reconstructed metadata from the merge's immutable parent commits, retained every production record, assigned the escrow records after the current maximum, regenerated the board and amended the unpublished merge. The corrected board has unique IDs and no conflict markers.
 
 **Rule**: Treat Git remote refs and sequential record IDs as shared state across worktrees. Freeze the actual merge parents, validate uniqueness and stop on failed checks before staging or committing generated metadata. Never promote a failed merge-resolution attempt.
+
+## 2026-10-22 — Generate release inventories from publishable inputs
+
+**What happened**: The environment inventory passed in the working tree but failed in clean CI because it scans both tracked and untracked source-shaped files. Completed Shadownet funding journals were counted locally while intentionally omitted from an earlier code commit.
+
+**Correction and verification**: Register the completed public journals and finalized balances, regenerate the inventory, and assert every scanned path is present in the Git index. No generator policy or runtime configuration changed. The preceding full quality run39845984698 passed; run39850290858 stopped specifically at this inventory mismatch and remains a recorded failure.
+
+**Rule**: A generated inventory and the commit must describe the same file set. Before committing metadata during active proof generation, assert all counted inputs will be published; do not mistake a local freshness check for clean-checkout parity.

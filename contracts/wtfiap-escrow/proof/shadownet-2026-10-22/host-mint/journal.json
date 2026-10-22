@@ -1,0 +1,535 @@
+{
+  "schemaVersion": 1,
+  "network": "shadownet",
+  "planHash": "2b1c575ad540a34e85521dcf139d16b6b9017dbdbb0e149ffeec407a85c1637d",
+  "plan": {
+    "schemaVersion": 1,
+    "network": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "rpcUrl": "https://tezos-shadownet.octez.io/",
+    "planId": "host-eight-one-wtf-entry-2026-10-22",
+    "source": {
+      "walletId": "wtf-os-root",
+      "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+    },
+    "approvedRecipients": [
+      "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7"
+    ],
+    "dummyToken": {
+      "address": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+      "tokenId": "0",
+      "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/dummy-wtf-contract.json",
+      "artifactSha256": "9799193d2751dadd5330028ed0dc64842a70d446cf83855bb3140e8802aecdde"
+    },
+    "actions": [
+      {
+        "key": "host-eight-one-wtf-entry",
+        "kind": "dummy-mint",
+        "recipients": [
+          {
+            "address": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+            "amountAtomic": "1000000"
+          },
+          {
+            "address": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+            "amountAtomic": "1000000"
+          }
+        ],
+        "authority": {
+          "purpose": "One owner-authorized hosted Shadownet WTF tournament; withdrawal/redeposit reuses returned entry.",
+          "entryWTF": "0.01",
+          "decimals": 8,
+          "entryAtomic": "1000000",
+          "recipientSource": "output/wtfiap-escrow/host-admission-preflight.json",
+          "recipientSourceSha256": "4a22d6dece27a32295104040b696ba424effe73a3ce10b7550f3d9d07fc306d5",
+          "recipientIds": [
+            "e2e-bert",
+            "e2e-ernie",
+            "e2e-elmo",
+            "e2e-bigbird",
+            "e2e-thecount",
+            "e2e-snuffaluffagus",
+            "e2e-grover",
+            "e2e-cookiemonster"
+          ]
+        }
+      }
+    ]
+  },
+  "status": "passed",
+  "operations": {
+    "host-eight-one-wtf-entry": {
+      "key": "host-eight-one-wtf-entry",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+      "entrypoint": "mint",
+      "amountMutez": "0",
+      "parameters": [
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7"
+            },
+            {
+              "int": "1000000"
+            }
+          ]
+        }
+      ],
+      "authority": {
+        "purpose": "One owner-authorized hosted Shadownet WTF tournament; withdrawal/redeposit reuses returned entry.",
+        "entryWTF": "0.01",
+        "decimals": 8,
+        "entryAtomic": "1000000",
+        "recipientSource": "output/wtfiap-escrow/host-admission-preflight.json",
+        "recipientSourceSha256": "4a22d6dece27a32295104040b696ba424effe73a3ce10b7550f3d9d07fc306d5",
+        "recipientIds": [
+          "e2e-bert",
+          "e2e-ernie",
+          "e2e-elmo",
+          "e2e-bigbird",
+          "e2e-thecount",
+          "e2e-snuffaluffagus",
+          "e2e-grover",
+          "e2e-cookiemonster"
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5596774,
+      "estimate": {
+        "suggestedFeeMutez": "1275",
+        "burnFeeMutez": "142000",
+        "gasLimit": "6105",
+        "storageLimit": "568",
+        "requiredMutez": "143275"
+      },
+      "operationHash": "oofBaKcaNQCZ8SoHYp9uZukTxxp2R3UKFnCJSWxuu591GSfxKEv",
+      "inclusionLevel": 5596775,
+      "inclusionBlock": "BLcUh6L7Tz2TrHvZFvNDBPf1N13Y31RYDkEkJWUmDgmCMyRKLEC",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "1275",
+            "counter": "23831828",
+            "gas_limit": "6105",
+            "storage_limit": "568",
+            "amount": "0",
+            "destination": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+            "parameters": {
+              "entrypoint": "mint",
+              "value": [
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7"
+                    },
+                    {
+                      "int": "1000000"
+                    }
+                  ]
+                }
+              ]
+            },
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-1275",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "1275",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "storage": [
+                  {
+                    "bytes": "000031c80e439a3754d5887e523db8b580730a997271"
+                  },
+                  {
+                    "int": "43739"
+                  },
+                  {
+                    "int": "43740"
+                  },
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "43741"
+                  },
+                  {
+                    "int": "24000000"
+                  },
+                  {
+                    "int": "43742"
+                  }
+                ],
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-137000",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "137000",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "6004361",
+                "storage_size": "7511",
+                "paid_storage_size_diff": "548",
+                "lazy_storage_diff": [
+                  {
+                    "kind": "big_map",
+                    "id": "43742",
+                    "diff": {
+                      "action": "update",
+                      "updates": []
+                    }
+                  },
+                  {
+                    "kind": "big_map",
+                    "id": "43741",
+                    "diff": {
+                      "action": "update",
+                      "updates": []
+                    }
+                  },
+                  {
+                    "kind": "big_map",
+                    "id": "43740",
+                    "diff": {
+                      "action": "update",
+                      "updates": []
+                    }
+                  },
+                  {
+                    "kind": "big_map",
+                    "id": "43739",
+                    "diff": {
+                      "action": "update",
+                      "updates": [
+                        {
+                          "key_hash": "exprvDWqT6RALCVEULdHYiKRa745e5DzoTdK6VrhFkBxUZkT72sHEA",
+                          "key": {
+                            "bytes": "00004aa97421849b22821aedcdb621d0eb10f41cf2dd"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "exprv4UrWc4wTos9LGjRx3aFEhsUt8n31EmR2oryFHZUP1MXoUZdvD",
+                          "key": {
+                            "bytes": "00002af70ea1c8546319f9738efbffe65aec7a8a0514"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "exprv1JL3SkiBi7r7xL2sMSufSmeNMSWwnHa2fnRgye8EsLB3uhgWe",
+                          "key": {
+                            "bytes": "000018362b0ab9c15b7a452df9c3da8b4dd60b149a3e"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "expruYamKNtQPkNAeWRE4GoNKtsPdXFZJxqJ8qgt9aXTt5FxXXcxEN",
+                          "key": {
+                            "bytes": "00001a1e92624afb9877f3598eaae351554ba867ef34"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "expruGLpqcSqPEaQKQxEhdnYneDF6zw3TjymEQeQZ3PcycVVLSW2aM",
+                          "key": {
+                            "bytes": "00007935f611f09e8e2af9ed2efb035cea87e9cef375"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "expruFeKd61ZFaLrhQK6n4XCz9vm4UuBuDWrn3bLqK5YzD3qSbRrrr",
+                          "key": {
+                            "bytes": "0000927a0c38b8deb75aabe60b33e3401fb0d8a38013"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "expru5BDciG69SgCdZ7CWWZViBrFXsRzdk5jZyXiLBdT98Ly76G8Pd",
+                          "key": {
+                            "bytes": "0000dba0a7e5589fe0f77080756f5bfde1182c7e2103"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        },
+                        {
+                          "key_hash": "exprtuhhdRraCbNRxnkgqiRijgf3DzsVQDQSDgW3X9VMwjGinx23Zk",
+                          "key": {
+                            "bytes": "00000d76fb3ac5cc2bcf2bee5c71a8d0e02b4acc2086"
+                          },
+                          "value": {
+                            "int": "1000000"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "sourceVersions": [
+    "01788665b531624a8277f0411923f09701d32b84b4c3d683269cf28cd128cc0a"
+  ],
+  "publicBalances": [
+    {
+      "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "mutez": "4362381"
+    },
+    {
+      "address": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "mutez": "89693"
+    },
+    {
+      "address": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "mutez": "49363"
+    },
+    {
+      "address": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "mutez": "48865"
+    },
+    {
+      "address": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "mutez": "48867"
+    },
+    {
+      "address": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "mutez": "48869"
+    },
+    {
+      "address": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "mutez": "48870"
+    },
+    {
+      "address": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "mutez": "48872"
+    },
+    {
+      "address": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+      "mutez": "48873"
+    }
+  ]
+}

@@ -1,0 +1,1930 @@
+{
+  "schemaVersion": 1,
+  "network": "shadownet",
+  "planHash": "ce9f9b4111f567a21a0e96add03715f1f66f772b6f1f3dd25219d99cf7372089",
+  "plan": {
+    "schemaVersion": 1,
+    "network": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "rpcUrl": "https://tezos-shadownet.octez.io/",
+    "source": {
+      "walletId": "wtf-os-root",
+      "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+    },
+    "dummyToken": {
+      "address": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+      "tokenId": "0",
+      "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/dummy-wtf-contract.json",
+      "artifactSha256": "9799193d2751dadd5330028ed0dc64842a70d446cf83855bb3140e8802aecdde"
+    },
+    "planId": "host-eight-and-referee-measured-funding-2026-10-22",
+    "approvedRecipients": [
+      "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+      "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7"
+    ],
+    "actions": [
+      {
+        "key": "host-referee-two-cases-and-operating-cycle",
+        "kind": "native-topup",
+        "recipient": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+        "targetBalanceMutez": "950169",
+        "authority": {
+          "purpose": "Two approved hosted currency cases plus one measured larger control-cycle reserve for continued room operation. Reconcile reserve against actual hosted receipts after the tests.",
+          "measuredCyclesMutez": {
+            "xtz-unique": "316808",
+            "wtf-third-tie": "316219"
+          },
+          "remainingOperatingCycleMutez": "316808",
+          "observedRevealFeeMutez": "334",
+          "operations": [
+            {
+              "key": "xtz-unique/create",
+              "operationHash": "opEGg1JJtQ6D6hTA8GccaVWSW33nWfp28LSmu8m9N8J92fG1sUF",
+              "estimate": {
+                "suggestedFeeMutez": "1329",
+                "burnFeeMutez": "131250",
+                "gasLimit": "4962",
+                "storageLimit": "525"
+              }
+            },
+            {
+              "key": "xtz-unique/start",
+              "operationHash": "ooiytrYCTcjA4xHHVdn9VnYJF4G3dqC8CJQxX4ywu4QuxNGVwr1",
+              "estimate": {
+                "suggestedFeeMutez": "578",
+                "burnFeeMutez": "14250",
+                "gasLimit": "1732",
+                "storageLimit": "57"
+              }
+            },
+            {
+              "key": "xtz-unique/settle",
+              "operationHash": "opGBqGDLVFKvdsK5EitBNf86vc9bsbNqG652oaqnghFKGkwvXBD",
+              "estimate": {
+                "suggestedFeeMutez": "1186",
+                "burnFeeMutez": "167500",
+                "gasLimit": "3726",
+                "storageLimit": "670"
+              }
+            },
+            {
+              "key": "xtz-unique/treasury",
+              "operationHash": "opB3nULo23NNF8VQti3nQTTj5XMH6nSJB47m2eJJnMb7K4FPPwm",
+              "estimate": {
+                "suggestedFeeMutez": "715",
+                "burnFeeMutez": "0",
+                "gasLimit": "3848",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/create",
+              "operationHash": "oo1CwDmgf4VLBhAYD1gqh7RRFBvDr6V4sx7Z1xbdkUbLHRDEewz",
+              "estimate": {
+                "suggestedFeeMutez": "957",
+                "burnFeeMutez": "130750",
+                "gasLimit": "1248",
+                "storageLimit": "523"
+              }
+            },
+            {
+              "key": "wtf-third-tie/start",
+              "operationHash": "onk8MbHyoSfam7kuUs7idtEvfFtRwEs8bH6kxjykmrJrJUuBmxD",
+              "estimate": {
+                "suggestedFeeMutez": "578",
+                "burnFeeMutez": "14250",
+                "gasLimit": "1732",
+                "storageLimit": "57"
+              }
+            },
+            {
+              "key": "wtf-third-tie/settle",
+              "operationHash": "onpwAMaKjqs5ttWCfcgNhMpmvWCXLHpr5tE9Zp7JakfoptZHcHQ",
+              "estimate": {
+                "suggestedFeeMutez": "1187",
+                "burnFeeMutez": "167750",
+                "gasLimit": "3731",
+                "storageLimit": "671"
+              }
+            },
+            {
+              "key": "wtf-third-tie/treasury",
+              "operationHash": "oou3nLmsWKyERy3p9zXtos6GtwbYvvBPNo4x1CxPYbTMAjdYK4U",
+              "estimate": {
+                "suggestedFeeMutez": "747",
+                "burnFeeMutez": "0",
+                "gasLimit": "4161",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "treasuryState": {
+            "file": "host-recipient-state.json",
+            "block": "BMB2YahGBt4Zc1nJVAuq7Cg2qUqMD2X8t7KwEuRtj9UZAXs4Ntx",
+            "nativeAllocated": true,
+            "tokenLedgerExists": false
+          },
+          "tokenStorageCaveat": "Actual fixture storage high-water credit can change after minting; check actual host treasury estimate before signing, and reconcile the final operating reserve from host receipts.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-bert-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+        "targetBalanceMutez": "89693",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-bert/join",
+              "operationHash": "ooSg6o8waQfcn3WZAQHhJiAgP3NmoZNmkw9wdp5wMd38X4oPfAa",
+              "estimate": {
+                "suggestedFeeMutez": "532",
+                "burnFeeMutez": "12750",
+                "gasLimit": "1663",
+                "storageLimit": "51"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bert/operator-add",
+              "operationHash": "oniojgfQ1nh6HukcHz34YthwnDyKUP2WNx9F7jF9W6wkrGDKLZv",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "21750",
+                "gasLimit": "735",
+                "storageLimit": "87"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bert/join",
+              "operationHash": "ooRH2HYRjPPDEhD7CrLGEy2XkGQ1XZhjX8CUYprsGktSsFvfGZT",
+              "estimate": {
+                "suggestedFeeMutez": "795",
+                "burnFeeMutez": "29750",
+                "gasLimit": "4309",
+                "storageLimit": "119"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bert/operator-remove",
+              "operationHash": "opBStrs5gm4zQtXP9BZh6K6ZtfVmp9xZwfRpJzVYV1Lpb95kKAB",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-ernie-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+        "targetBalanceMutez": "49363",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-ernie/join",
+              "operationHash": "ooSCBqXynnqA8HaFHf2wNvjixTZt6oQ5TRHNWzERuBJmqgAvhom",
+              "estimate": {
+                "suggestedFeeMutez": "428",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1600",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-ernie/operator-add",
+              "operationHash": "ooR1LWZAG88SFGHi75vTvjFn6Bs1k5b93mRf6Ni7Wx3srgZ45YL",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-ernie/join",
+              "operationHash": "op3FVMUXJH5EGvnV5hkZckWhe9J31Qw1CSmm93pHmPhPfWkiLQL",
+              "estimate": {
+                "suggestedFeeMutez": "819",
+                "burnFeeMutez": "12250",
+                "gasLimit": "4548",
+                "storageLimit": "49"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-ernie/operator-remove",
+              "operationHash": "oocfAYduuxmNX3wHAfCAoPhy8QpAVDkN43neztiouC8i7MJ8gPH",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-elmo-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+        "targetBalanceMutez": "48865",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-elmo/join",
+              "operationHash": "opGwPcSiBPkNSE8EHhjWnnhRbDLJGsxUD5HatRJdeKe5jPTWKfr",
+              "estimate": {
+                "suggestedFeeMutez": "429",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1608",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-elmo/operator-add",
+              "operationHash": "oogH3Chw5kAqwAsFEvSJF9qbk3KawAbFPGkZ3TJ4Ph1Z2KFvVGU",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-elmo/join",
+              "operationHash": "ooFHYaampQusKugQaaMcQtMf3xE3D6nT9fCRJ7EXRi89mMz6Jvs",
+              "estimate": {
+                "suggestedFeeMutez": "820",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4556",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-elmo/operator-remove",
+              "operationHash": "ongkc8Jt2SquhAH5gMuGhKYfs4c5RWv3yae7gXvTVarXXeVY5Ja",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-bigbird-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+        "targetBalanceMutez": "48867",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-bigbird/join",
+              "operationHash": "ooM2opFSEt6ECg6eUq1CCtGkJYRTxKptjHHyw7ka1QrSxXGTn6E",
+              "estimate": {
+                "suggestedFeeMutez": "430",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1615",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bigbird/operator-add",
+              "operationHash": "oowgaJdpUhQmCiUi8PzGz6mFQa3erybVz7Q6oJepciq1J7ptaZx",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bigbird/join",
+              "operationHash": "onf4HDnx7wRVnNzFAuL6F8PzGAxacMCPJ9QWKvovfzE7TGEbGHV",
+              "estimate": {
+                "suggestedFeeMutez": "821",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4565",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-bigbird/operator-remove",
+              "operationHash": "ooRPruMPg7gD2F2d7XxB286T6QrKqLHccb3fjZpbPrh51wiMh4X",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-thecount-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+        "targetBalanceMutez": "48869",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-thecount/join",
+              "operationHash": "ooaSYGBUg5GwfxKkaPpKjNA2mq1TfgTD3draSfQ17JPmo66WeSn",
+              "estimate": {
+                "suggestedFeeMutez": "431",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1624",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-thecount/operator-add",
+              "operationHash": "oobD1bCkmQRVxCDqQtgfGvauyvSw1MKQi9vToiP9gevFnbnrdFB",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-thecount/join",
+              "operationHash": "oob3SMPHrDujthpzM3WjUNxpciZcivq5NQkEJWu81deZX7FNdeZ",
+              "estimate": {
+                "suggestedFeeMutez": "822",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4572",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-thecount/operator-remove",
+              "operationHash": "ooQnDuMW657jeBQs6ua2YpARbU6C2ks5G1EACsS8Uyip8XypCQn",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-snuffaluffagus-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+        "targetBalanceMutez": "48870",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-snuffaluffagus/join",
+              "operationHash": "ooNNc9dejwxP3UFxVLaA2vEJyvSii3RGmJXWFA8tvVAqTdKHRfs",
+              "estimate": {
+                "suggestedFeeMutez": "432",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1631",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-snuffaluffagus/operator-add",
+              "operationHash": "ookbt5f32bLY9qzpE6b9t3iSaMjcFozGRrdBysvA3Gpsh17ecYD",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-snuffaluffagus/join",
+              "operationHash": "ooPpfWHXjpysJsoKY5cCVjW8DAYuwUAppYAyCD6EvYBW1z5j9UU",
+              "estimate": {
+                "suggestedFeeMutez": "822",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4579",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-snuffaluffagus/operator-remove",
+              "operationHash": "ooqfHHvsqhmrgbg4e6aXqHYgv6n11ari1ApzsFR5zxDMbSDZJck",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-grover-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+        "targetBalanceMutez": "48872",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-grover/join",
+              "operationHash": "opGwU4rL5oxTHWeLNv9Qi8LbbmpfuzA6311T8dJuVfCNJ4Gyeu8",
+              "estimate": {
+                "suggestedFeeMutez": "433",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1641",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-grover/operator-add",
+              "operationHash": "ookxL78ENRrciAr54zsEu3EXGerkMTHrQvPkHhfuVGmxnmec3xg",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-grover/join",
+              "operationHash": "oowWiDVQQmUecqQDLBBDBtZ6RigcuyqgmwLshroWF7AvyAoRw3R",
+              "estimate": {
+                "suggestedFeeMutez": "823",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4589",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-grover/operator-remove",
+              "operationHash": "opTWLZK2npYXK9TUHnYigRsrnDX8eZjAjZGPeXoLaT8VPmrSKpc",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      },
+      {
+        "key": "host-e2e-cookiemonster-two-currency-actions",
+        "kind": "native-topup",
+        "recipient": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+        "targetBalanceMutez": "48873",
+        "authority": {
+          "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+          "nativeEntryMutez": "10000",
+          "observedRevealFeeMutez": "334",
+          "depositOperations": [
+            {
+              "key": "xtz-unique/e2e-cookiemonster/join",
+              "operationHash": "ooxtJ8JwRywhyuyegHNU5VF73b5Sdw3joA1rcAptCWFBiAoynv5",
+              "estimate": {
+                "suggestedFeeMutez": "433",
+                "burnFeeMutez": "11750",
+                "gasLimit": "1648",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-cookiemonster/operator-add",
+              "operationHash": "oo365smjePaHZTWEoDCoPpeHuMo53WeFDZ3Yfjbeh5cNwvYJzgi",
+              "estimate": {
+                "suggestedFeeMutez": "464",
+                "burnFeeMutez": "0",
+                "gasLimit": "735",
+                "storageLimit": "0"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-cookiemonster/join",
+              "operationHash": "opJV9gSru1usqLUd1iWrRqdchBNFoL4ZEumwoN5FaU5By3ZyWHA",
+              "estimate": {
+                "suggestedFeeMutez": "824",
+                "burnFeeMutez": "11750",
+                "gasLimit": "4596",
+                "storageLimit": "47"
+              }
+            },
+            {
+              "key": "wtf-third-tie/e2e-cookiemonster/operator-remove",
+              "operationHash": "op5LvMraRjHnq2m6yJzXCYPJr8ud56sb3Aw5hF1bdvxehfgwnsi",
+              "estimate": {
+                "suggestedFeeMutez": "461",
+                "burnFeeMutez": "0",
+                "gasLimit": "705",
+                "storageLimit": "0"
+              }
+            }
+          ],
+          "potentialClaimEstimatesMutez": {
+            "xtz-unique": "6276",
+            "wtf-third-tie": "6581"
+          },
+          "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+          "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+        }
+      }
+    ]
+  },
+  "status": "passed",
+  "operations": {
+    "host-referee-two-cases-and-operating-cycle": {
+      "key": "host-referee-two-cases-and-operating-cycle",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+      "entrypoint": "__native-funding",
+      "amountMutez": "950169",
+      "parameters": null,
+      "authority": {
+        "purpose": "Two approved hosted currency cases plus one measured larger control-cycle reserve for continued room operation. Reconcile reserve against actual hosted receipts after the tests.",
+        "measuredCyclesMutez": {
+          "xtz-unique": "316808",
+          "wtf-third-tie": "316219"
+        },
+        "remainingOperatingCycleMutez": "316808",
+        "observedRevealFeeMutez": "334",
+        "operations": [
+          {
+            "key": "xtz-unique/create",
+            "operationHash": "opEGg1JJtQ6D6hTA8GccaVWSW33nWfp28LSmu8m9N8J92fG1sUF",
+            "estimate": {
+              "suggestedFeeMutez": "1329",
+              "burnFeeMutez": "131250",
+              "gasLimit": "4962",
+              "storageLimit": "525"
+            }
+          },
+          {
+            "key": "xtz-unique/start",
+            "operationHash": "ooiytrYCTcjA4xHHVdn9VnYJF4G3dqC8CJQxX4ywu4QuxNGVwr1",
+            "estimate": {
+              "suggestedFeeMutez": "578",
+              "burnFeeMutez": "14250",
+              "gasLimit": "1732",
+              "storageLimit": "57"
+            }
+          },
+          {
+            "key": "xtz-unique/settle",
+            "operationHash": "opGBqGDLVFKvdsK5EitBNf86vc9bsbNqG652oaqnghFKGkwvXBD",
+            "estimate": {
+              "suggestedFeeMutez": "1186",
+              "burnFeeMutez": "167500",
+              "gasLimit": "3726",
+              "storageLimit": "670"
+            }
+          },
+          {
+            "key": "xtz-unique/treasury",
+            "operationHash": "opB3nULo23NNF8VQti3nQTTj5XMH6nSJB47m2eJJnMb7K4FPPwm",
+            "estimate": {
+              "suggestedFeeMutez": "715",
+              "burnFeeMutez": "0",
+              "gasLimit": "3848",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/create",
+            "operationHash": "oo1CwDmgf4VLBhAYD1gqh7RRFBvDr6V4sx7Z1xbdkUbLHRDEewz",
+            "estimate": {
+              "suggestedFeeMutez": "957",
+              "burnFeeMutez": "130750",
+              "gasLimit": "1248",
+              "storageLimit": "523"
+            }
+          },
+          {
+            "key": "wtf-third-tie/start",
+            "operationHash": "onk8MbHyoSfam7kuUs7idtEvfFtRwEs8bH6kxjykmrJrJUuBmxD",
+            "estimate": {
+              "suggestedFeeMutez": "578",
+              "burnFeeMutez": "14250",
+              "gasLimit": "1732",
+              "storageLimit": "57"
+            }
+          },
+          {
+            "key": "wtf-third-tie/settle",
+            "operationHash": "onpwAMaKjqs5ttWCfcgNhMpmvWCXLHpr5tE9Zp7JakfoptZHcHQ",
+            "estimate": {
+              "suggestedFeeMutez": "1187",
+              "burnFeeMutez": "167750",
+              "gasLimit": "3731",
+              "storageLimit": "671"
+            }
+          },
+          {
+            "key": "wtf-third-tie/treasury",
+            "operationHash": "oou3nLmsWKyERy3p9zXtos6GtwbYvvBPNo4x1CxPYbTMAjdYK4U",
+            "estimate": {
+              "suggestedFeeMutez": "747",
+              "burnFeeMutez": "0",
+              "gasLimit": "4161",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "treasuryState": {
+          "file": "host-recipient-state.json",
+          "block": "BMB2YahGBt4Zc1nJVAuq7Cg2qUqMD2X8t7KwEuRtj9UZAXs4Ntx",
+          "nativeAllocated": true,
+          "tokenLedgerExists": false
+        },
+        "tokenStorageCaveat": "Actual fixture storage high-water credit can change after minting; check actual host treasury estimate before signing, and reconcile the final operating reserve from host receipts.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596720,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "1019911"
+      },
+      "operationHash": "oofdq4VTfQz2ckdGHaDKayLXx3x9ukWqNoNxoDdf83ofVAsAbvX",
+      "inclusionLevel": 5596722,
+      "inclusionBlock": "BMQ3cK9Kg2tBBU7HBtRLvtGwhgEr6aFYeHg9CUYmdsR6DJhZCzv",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831819",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "950169",
+            "destination": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-950169",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+                    "change": "950169",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "950169"
+    },
+    "host-e2e-bert-two-currency-actions": {
+      "key": "host-e2e-bert-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "entrypoint": "__native-funding",
+      "amountMutez": "89693",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-bert/join",
+            "operationHash": "ooSg6o8waQfcn3WZAQHhJiAgP3NmoZNmkw9wdp5wMd38X4oPfAa",
+            "estimate": {
+              "suggestedFeeMutez": "532",
+              "burnFeeMutez": "12750",
+              "gasLimit": "1663",
+              "storageLimit": "51"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bert/operator-add",
+            "operationHash": "oniojgfQ1nh6HukcHz34YthwnDyKUP2WNx9F7jF9W6wkrGDKLZv",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "21750",
+              "gasLimit": "735",
+              "storageLimit": "87"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bert/join",
+            "operationHash": "ooRH2HYRjPPDEhD7CrLGEy2XkGQ1XZhjX8CUYprsGktSsFvfGZT",
+            "estimate": {
+              "suggestedFeeMutez": "795",
+              "burnFeeMutez": "29750",
+              "gasLimit": "4309",
+              "storageLimit": "119"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bert/operator-remove",
+            "operationHash": "opBStrs5gm4zQtXP9BZh6K6ZtfVmp9xZwfRpJzVYV1Lpb95kKAB",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596724,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "159435"
+      },
+      "operationHash": "ooU98DBtPQDuBi5n4xp54ndi5Z6YuvyZEErooS2tAShFnVcwnRE",
+      "inclusionLevel": 5596726,
+      "inclusionBlock": "BMUtMyUxW4RYL5oAGkmHSvwTEkHhihdj5RZe1MVFw9ZtiJdbfXz",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831820",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "89693",
+            "destination": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-89693",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+                    "change": "89693",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "89693"
+    },
+    "host-e2e-ernie-two-currency-actions": {
+      "key": "host-e2e-ernie-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "entrypoint": "__native-funding",
+      "amountMutez": "49363",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-ernie/join",
+            "operationHash": "ooSCBqXynnqA8HaFHf2wNvjixTZt6oQ5TRHNWzERuBJmqgAvhom",
+            "estimate": {
+              "suggestedFeeMutez": "428",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1600",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-ernie/operator-add",
+            "operationHash": "ooR1LWZAG88SFGHi75vTvjFn6Bs1k5b93mRf6Ni7Wx3srgZ45YL",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-ernie/join",
+            "operationHash": "op3FVMUXJH5EGvnV5hkZckWhe9J31Qw1CSmm93pHmPhPfWkiLQL",
+            "estimate": {
+              "suggestedFeeMutez": "819",
+              "burnFeeMutez": "12250",
+              "gasLimit": "4548",
+              "storageLimit": "49"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-ernie/operator-remove",
+            "operationHash": "oocfAYduuxmNX3wHAfCAoPhy8QpAVDkN43neztiouC8i7MJ8gPH",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596729,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "119105"
+      },
+      "operationHash": "opKNQSFMCpPtEVgyED5y6f2ETGfbwjsVD47RsCJZCPQu9fb7Ljp",
+      "inclusionLevel": 5596730,
+      "inclusionBlock": "BMGccaYfvHGKzgM3wdNgiZDZvJ5rwXyVdE5DyQZsPUcgsFWGjDM",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831821",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "49363",
+            "destination": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-49363",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+                    "change": "49363",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "49363"
+    },
+    "host-e2e-elmo-two-currency-actions": {
+      "key": "host-e2e-elmo-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48865",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-elmo/join",
+            "operationHash": "opGwPcSiBPkNSE8EHhjWnnhRbDLJGsxUD5HatRJdeKe5jPTWKfr",
+            "estimate": {
+              "suggestedFeeMutez": "429",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1608",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-elmo/operator-add",
+            "operationHash": "oogH3Chw5kAqwAsFEvSJF9qbk3KawAbFPGkZ3TJ4Ph1Z2KFvVGU",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-elmo/join",
+            "operationHash": "ooFHYaampQusKugQaaMcQtMf3xE3D6nT9fCRJ7EXRi89mMz6Jvs",
+            "estimate": {
+              "suggestedFeeMutez": "820",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4556",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-elmo/operator-remove",
+            "operationHash": "ongkc8Jt2SquhAH5gMuGhKYfs4c5RWv3yae7gXvTVarXXeVY5Ja",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596732,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118607"
+      },
+      "operationHash": "opaGHKKWsP6jdgyfHDvAcEAqt6mbbTqToBsou734m9bSwjhctBc",
+      "inclusionLevel": 5596734,
+      "inclusionBlock": "BMUET6kuT4D2emZ1z9V3RPWjJ622zQurJhQ1sH896zXdKYNhp5c",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831822",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48865",
+            "destination": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48865",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+                    "change": "48865",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48865"
+    },
+    "host-e2e-bigbird-two-currency-actions": {
+      "key": "host-e2e-bigbird-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48867",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-bigbird/join",
+            "operationHash": "ooM2opFSEt6ECg6eUq1CCtGkJYRTxKptjHHyw7ka1QrSxXGTn6E",
+            "estimate": {
+              "suggestedFeeMutez": "430",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1615",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bigbird/operator-add",
+            "operationHash": "oowgaJdpUhQmCiUi8PzGz6mFQa3erybVz7Q6oJepciq1J7ptaZx",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bigbird/join",
+            "operationHash": "onf4HDnx7wRVnNzFAuL6F8PzGAxacMCPJ9QWKvovfzE7TGEbGHV",
+            "estimate": {
+              "suggestedFeeMutez": "821",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4565",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-bigbird/operator-remove",
+            "operationHash": "ooRPruMPg7gD2F2d7XxB286T6QrKqLHccb3fjZpbPrh51wiMh4X",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596736,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118609"
+      },
+      "operationHash": "oowQsq5UH9zZ1sxMG14AtzrY5VJMqE4aeEeuC9uHm1Ddc9LCDTt",
+      "inclusionLevel": 5596738,
+      "inclusionBlock": "BMZwsvhD8GbcmGrgV2rfAmZkjua4mcTr1HQk662bAichoY91B62",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831823",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48867",
+            "destination": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48867",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+                    "change": "48867",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48867"
+    },
+    "host-e2e-thecount-two-currency-actions": {
+      "key": "host-e2e-thecount-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48869",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-thecount/join",
+            "operationHash": "ooaSYGBUg5GwfxKkaPpKjNA2mq1TfgTD3draSfQ17JPmo66WeSn",
+            "estimate": {
+              "suggestedFeeMutez": "431",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1624",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-thecount/operator-add",
+            "operationHash": "oobD1bCkmQRVxCDqQtgfGvauyvSw1MKQi9vToiP9gevFnbnrdFB",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-thecount/join",
+            "operationHash": "oob3SMPHrDujthpzM3WjUNxpciZcivq5NQkEJWu81deZX7FNdeZ",
+            "estimate": {
+              "suggestedFeeMutez": "822",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4572",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-thecount/operator-remove",
+            "operationHash": "ooQnDuMW657jeBQs6ua2YpARbU6C2ks5G1EACsS8Uyip8XypCQn",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596740,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118611"
+      },
+      "operationHash": "ooErULAmpnAcFH7k7j2Nii4E55exMLGjBGhY5RAQeUwEmapbrfK",
+      "inclusionLevel": 5596742,
+      "inclusionBlock": "BL8mUUUeumJ7g6nwWpMPvMzXGgVSodz85ujUq1c9WpzV94gtSd1",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831824",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48869",
+            "destination": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48869",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+                    "change": "48869",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48869"
+    },
+    "host-e2e-snuffaluffagus-two-currency-actions": {
+      "key": "host-e2e-snuffaluffagus-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48870",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-snuffaluffagus/join",
+            "operationHash": "ooNNc9dejwxP3UFxVLaA2vEJyvSii3RGmJXWFA8tvVAqTdKHRfs",
+            "estimate": {
+              "suggestedFeeMutez": "432",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1631",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-snuffaluffagus/operator-add",
+            "operationHash": "ookbt5f32bLY9qzpE6b9t3iSaMjcFozGRrdBysvA3Gpsh17ecYD",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-snuffaluffagus/join",
+            "operationHash": "ooPpfWHXjpysJsoKY5cCVjW8DAYuwUAppYAyCD6EvYBW1z5j9UU",
+            "estimate": {
+              "suggestedFeeMutez": "822",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4579",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-snuffaluffagus/operator-remove",
+            "operationHash": "ooqfHHvsqhmrgbg4e6aXqHYgv6n11ari1ApzsFR5zxDMbSDZJck",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596745,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118612"
+      },
+      "operationHash": "onjLtyEN7v6Jirf9pYRU5Xsn5229g31tpxK9s1pKtt2bv77HFvB",
+      "inclusionLevel": 5596746,
+      "inclusionBlock": "BKqvkq1amSz2NzcFNHUjsyHXNnXz5jAXCDaiHG2Qxc5xAuURUP1",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831825",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48870",
+            "destination": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48870",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+                    "change": "48870",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48870"
+    },
+    "host-e2e-grover-two-currency-actions": {
+      "key": "host-e2e-grover-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48872",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-grover/join",
+            "operationHash": "opGwU4rL5oxTHWeLNv9Qi8LbbmpfuzA6311T8dJuVfCNJ4Gyeu8",
+            "estimate": {
+              "suggestedFeeMutez": "433",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1641",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-grover/operator-add",
+            "operationHash": "ookxL78ENRrciAr54zsEu3EXGerkMTHrQvPkHhfuVGmxnmec3xg",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-grover/join",
+            "operationHash": "oowWiDVQQmUecqQDLBBDBtZ6RigcuyqgmwLshroWF7AvyAoRw3R",
+            "estimate": {
+              "suggestedFeeMutez": "823",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4589",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-grover/operator-remove",
+            "operationHash": "opTWLZK2npYXK9TUHnYigRsrnDX8eZjAjZGPeXoLaT8VPmrSKpc",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596748,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118614"
+      },
+      "operationHash": "ooufTpLqKeoGN2HXWdG5aUhX2tPYhz7wuWCWdCNT7ff11ENwXUy",
+      "inclusionLevel": 5596750,
+      "inclusionBlock": "BMJgvhkUmwyMCPVeFVUhYQmj564DjVBdCZDdvAa53HR8FVuLYy1",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831826",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48872",
+            "destination": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48872",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+                    "change": "48872",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48872"
+    },
+    "host-e2e-cookiemonster-two-currency-actions": {
+      "key": "host-e2e-cookiemonster-two-currency-actions",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "walletId": "wtf-os-root",
+      "destination": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+      "entrypoint": "__native-funding",
+      "amountMutez": "48873",
+      "parameters": null,
+      "authority": {
+        "purpose": "Native entry and corresponding measured native/FA2 deposit operations for the two approved hosted cases; each entrant may need one claim in each currency, so include the largest observed first-claim estimate before ranks are known.",
+        "nativeEntryMutez": "10000",
+        "observedRevealFeeMutez": "334",
+        "depositOperations": [
+          {
+            "key": "xtz-unique/e2e-cookiemonster/join",
+            "operationHash": "ooxtJ8JwRywhyuyegHNU5VF73b5Sdw3joA1rcAptCWFBiAoynv5",
+            "estimate": {
+              "suggestedFeeMutez": "433",
+              "burnFeeMutez": "11750",
+              "gasLimit": "1648",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-cookiemonster/operator-add",
+            "operationHash": "oo365smjePaHZTWEoDCoPpeHuMo53WeFDZ3Yfjbeh5cNwvYJzgi",
+            "estimate": {
+              "suggestedFeeMutez": "464",
+              "burnFeeMutez": "0",
+              "gasLimit": "735",
+              "storageLimit": "0"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-cookiemonster/join",
+            "operationHash": "opJV9gSru1usqLUd1iWrRqdchBNFoL4ZEumwoN5FaU5By3ZyWHA",
+            "estimate": {
+              "suggestedFeeMutez": "824",
+              "burnFeeMutez": "11750",
+              "gasLimit": "4596",
+              "storageLimit": "47"
+            }
+          },
+          {
+            "key": "wtf-third-tie/e2e-cookiemonster/operator-remove",
+            "operationHash": "op5LvMraRjHnq2m6yJzXCYPJr8ud56sb3Aw5hF1bdvxehfgwnsi",
+            "estimate": {
+              "suggestedFeeMutez": "461",
+              "burnFeeMutez": "0",
+              "gasLimit": "705",
+              "storageLimit": "0"
+            }
+          }
+        ],
+        "potentialClaimEstimatesMutez": {
+          "xtz-unique": "6276",
+          "wtf-third-tie": "6581"
+        },
+        "unmeasuredWithdrawalReentry": "Use each actual next-action estimate and top up only a measured shortfall if the browser withdrawal/reentry path needs it.",
+        "sourceJournalSha256": "82a14e07b7ff04e023616866314c498c45cd940e0d643f859915cfe1b89dffe4"
+      },
+      "status": "applied",
+      "preparedLevel": 5596752,
+      "estimate": {
+        "suggestedFeeMutez": "492",
+        "burnFeeMutez": "69250",
+        "gasLimit": "2169",
+        "storageLimit": "277",
+        "requiredMutez": "118615"
+      },
+      "operationHash": "oohaoVKdushvDnUUbYAQN3vreyFHA2XWFmZggq9MS3SPbpdb4sB",
+      "inclusionLevel": 5596754,
+      "inclusionBlock": "BLVWv8MFeZiLXVY189B2XNhv3NA6K79biQ9Dum281Ff3M8mRNjH",
+      "receipt": {
+        "contents": [
+          {
+            "kind": "transaction",
+            "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+            "fee": "492",
+            "counter": "23831827",
+            "gas_limit": "2169",
+            "storage_limit": "277",
+            "amount": "48873",
+            "destination": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                  "change": "-492",
+                  "origin": "block"
+                },
+                {
+                  "kind": "accumulator",
+                  "category": "block fees",
+                  "change": "492",
+                  "origin": "block"
+                }
+              ],
+              "operation_result": {
+                "status": "applied",
+                "balance_updates": [
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-48873",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+                    "change": "48873",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "contract",
+                    "contract": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+                    "change": "-64250",
+                    "origin": "block"
+                  },
+                  {
+                    "kind": "burned",
+                    "category": "storage fees",
+                    "change": "64250",
+                    "origin": "block"
+                  }
+                ],
+                "consumed_milligas": "2168821",
+                "allocated_destination_contract": true
+              }
+            }
+          }
+        ]
+      },
+      "recipientBalanceAtInclusion": "48873"
+    }
+  },
+  "sourceVersions": [
+    "01788665b531624a8277f0411923f09701d32b84b4c3d683269cf28cd128cc0a"
+  ],
+  "publicBalances": [
+    {
+      "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "mutez": "6327500"
+    },
+    {
+      "address": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "mutez": "0"
+    },
+    {
+      "address": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+      "mutez": "0"
+    }
+  ]
+}

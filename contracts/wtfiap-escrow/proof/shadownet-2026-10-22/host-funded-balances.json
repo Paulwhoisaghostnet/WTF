@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "mode": "read-only",
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "block": "BLWTQ4ddWzB4xrWBRGCfRyRwg786rcEoGMrgRDh5UDFFX7zKoh3",
+  "referee": {
+    "address": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+    "mutez": "950169"
+  },
+  "dummyToken": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+  "tokenId": "0",
+  "players": [
+    {
+      "address": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+      "mutez": "89693",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+      "mutez": "49363",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1Mr3oPdPbZpCG83rjF45MBvjcDFcJBrjgs",
+      "mutez": "48865",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1PZD31RtKFfKoC2e47J186Wmq6WxvnMoNa",
+      "mutez": "48867",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1YzXZ9mx6jjopT7C988DFKGhySLNqqeZmf",
+      "mutez": "48869",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1SSohADXgDjRiooPoRJCmX36weRDtw5buB",
+      "mutez": "48870",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1LsE1an8HvWtdb94YtYJaJd1apXyboPVPJ",
+      "mutez": "48872",
+      "dummyWtfAtomic": "1000000"
+    },
+    {
+      "address": "tz1N28tGpTKfj2Nj9hbFkbnqNJ34WakfLEH7",
+      "mutez": "48873",
+      "dummyWtfAtomic": "1000000"
+    }
+  ],
+  "sourceJournalHashes": {
+    "funding": "ce3d06c3e484c9bab196a7aed6b35968f97def57ca56b77299007d891416fb8e",
+    "mint": "3a1c1afebad00f2a7250f163caf679c3184991fd0ed0c5c1a937cf433d94b4d2"
+  },
+  "nonceHandoff": "Production actors and referee may now sign; local root and original eight actors remain reserved for local void/refund proof."
+}
