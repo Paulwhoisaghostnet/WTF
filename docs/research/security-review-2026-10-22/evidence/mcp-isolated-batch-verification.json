@@ -1,0 +1,31 @@
+{
+  "scope": "Isolated local HTTP test of the final WTF MCP implementation; no production stress traffic",
+  "sourceCommit": "7167ca37",
+  "runtime": {
+    "node": "22.23.4",
+    "mcpSdk": "1.32.0",
+    "heapSizeLimitBytes": 4345298944
+  },
+  "heapAuthority": "Matched read-only v8.getHeapStatistics().heap_size_limit measurement from the production app container before deployment (Node22.23.1); local Node22.23.4 default was identical.",
+  "input": {
+    "jsonBodyBytes": 10485760,
+    "sdkBatchSize": 100,
+    "queryEntriesPerCall": 8192,
+    "queryValueType": "boolean",
+    "authority": "Existing10MiB application body ceiling, SDKMAX_BATCH_SIZE=100, NodeHTTP maxHeaderSize=16384-derived parameter ceiling"
+  },
+  "execution": {
+    "transport": "Actual StreamableHTTPServerTransport and createWtfMcpServer through Express MCP JSON parser",
+    "apiHandler": "Injected local stub; no outgoing API request or domain mutation",
+    "httpStatus": 200,
+    "handlerCalls": 100,
+    "responses": 100,
+    "errors": 0,
+    "elapsedMilliseconds": 495,
+    "rssAtPreparationBytes": 285540352,
+    "rssAfterBytes": 299941888,
+    "heapUsedAfterBytes": 100293072,
+    "maxRssKiB": 330144
+  },
+  "conclusion": "The proposed batch allocation failure did not reproduce at the configured request, batch, and parameter ceilings; no additional change was justified."
+}

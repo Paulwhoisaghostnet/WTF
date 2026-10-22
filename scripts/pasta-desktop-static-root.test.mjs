@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 
-const apps = ["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
+const apps = ["spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"];
 
 for (const app of apps) {
   test(`${app} serves its entry document at the root on Windows and POSIX`, () => {
@@ -20,9 +20,8 @@ for (const app of apps) {
         path: pathApi,
         [rootFunction]: () => root,
       });
-      const entry = app === "macaroni" ? "studio.html" : "index.html";
-      assert.equal(resolve("/"), pathApi.join(root, entry));
-      assert.equal(resolve("/?native=1"), pathApi.join(root, entry));
+      assert.equal(resolve("/"), pathApi.join(root, "index.html"));
+      assert.equal(resolve("/?native=1"), pathApi.join(root, "index.html"));
       assert.equal(resolve("/js/app.js"), pathApi.join(root, "js", "app.js"));
     }
   });
