@@ -69,6 +69,7 @@ export const operatorSignerIntentSchema = z.enum([
   "pause_buyback",
   "unpause_buyback",
   "originate_contract",
+  "wtfiap_escrow",
   "custom",
 ]);
 
@@ -105,6 +106,38 @@ export const operatorSignerOriginationPayloadSchema = z.object({
   balanceMutez: z.coerce.number().int().min(0).default(0),
   label: z.string().trim().min(1).max(160).optional(),
 });
+
+// Widths and collection length come from SHA-256 and the eight-human room contract.
+const wtfiapHash = z.string().regex(/^[a-f0-9]{64}$/);
+const wtfiapNat = z.string().regex(/^(0|[1-9][0-9]*)$/);
+const wtfiapAddress = z.string().regex(/^(tz[1-4]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/);
+const wtfiapTarget = {
+  contract: tezosContractAddressSchema,
+  chainId: z.enum(["NetXdQprcVkpaWU", "NetXsqzbfFenSTS"]),
+  mutez: z.literal(0).default(0),
+};
+export const operatorSignerWtfIapPayloadSchema = z.discriminatedUnion("entrypoint", [
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("create_room"), args: z.object({
+    room_id: wtfiapHash, terms_hash: wtfiapHash, rules_hash: wtfiapHash,
+    seed_commitment: wtfiapHash, referee: wtfiapAddress,
+    currency: z.enum(["0", "1"]), entry_amount: wtfiapNat,
+    entrants: z.array(wtfiapAddress).length(8).refine((xs) => new Set(xs).size === 8),
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("start_room"), args: z.object({
+    room_id: wtfiapHash, expected_terms_hash: wtfiapHash, match_id: wtfiapHash,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("finalize_room"), args: z.object({
+    room_id: wtfiapHash, match_id: wtfiapHash, transcript_hash: wtfiapHash,
+    result_hash: wtfiapHash, ranks: z.array(z.object({
+      player: wtfiapAddress, rank: z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]),
+    }).strict()).length(8).refine((xs) => new Set(xs.map((x) => x.player)).size === 8),
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("void_room"), args: z.object({
+    room_id: wtfiapHash, reason_hash: wtfiapHash, evidence_hash: wtfiapHash,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_treasury"), args: wtfiapHash }).strict(),
+]);
+export type OperatorSignerWtfIapPayload = z.infer<typeof operatorSignerWtfIapPayloadSchema>;
 
 const operatorSignerEnvelopeBaseSchema = z.object({
   version: z.literal(OPERATOR_SIGNER_PROTOCOL_VERSION),
@@ -185,6 +218,12 @@ export const operatorSignerCustomEnvelopeSchema =
     payload: operatorSignerContractCallPayloadSchema,
   });
 
+export const operatorSignerWtfIapEnvelopeSchema = operatorSignerEnvelopeBaseSchema.extend({
+  intent: z.literal("wtfiap_escrow"),
+  walletId: platformWalletIdSchema,
+  payload: operatorSignerWtfIapPayloadSchema,
+});
+
 export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerHealthEnvelopeSchema,
   operatorSignerListPlatformWalletsEnvelopeSchema,
@@ -196,6 +235,7 @@ export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerPauseBuybackEnvelopeSchema,
   operatorSignerUnpauseBuybackEnvelopeSchema,
   operatorSignerOriginationEnvelopeSchema,
+  operatorSignerWtfIapEnvelopeSchema,
   operatorSignerCustomEnvelopeSchema,
 ]);
 

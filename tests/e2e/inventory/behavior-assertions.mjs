@@ -1,5 +1,14 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "wtfiap.escrow-admission-and-recovery",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "tests/playwright/inventory/wtfiap-funding.spec.mjs; tests/playwright/live/wtfiap-admission.spec.mjs; tests/playwright/live/wtfiap-shadownet.spec.mjs; client/src/features/wtfiap/funding.test.ts; server/features/wtfiap/funding.test.ts; server/features/wtfiap/funding-store.test.ts; extensions/wtf-operator-signer/src/wtfiap-journal.test.ts",
+    verificationCommand: "npm run test:e2e:inventory -- --grep 'WTFIAP' && npx tsx --test client/src/features/wtfiap/funding.test.ts server/features/wtfiap/funding.test.ts server/features/wtfiap/funding-store.test.ts && npm run operator-signer:test",
+    userVisibleAssertion: "The native room panel shows funding readiness and immutable room terms, exact wallet/network requirements, deposit progress, finalized prizes and recoverable pending operations. It receives only a room identity from the same-origin game frame. Free Party and unfunded Tournament preview remain available. An explicit shared-wallet network switch resolves room/network mismatches without signing. Approved .01 currency increments are enforced; pre-start withdrawals, redeposits and technical-void refunds remain recoverable. Funded results use rounded on-chain prizes and show the fixed treasury remainder. Deposits require a verified deployment.",
+    durableSideEffectAssertion: "Domain tests prove eight distinct account-wallet admissions, frozen roster and game commitments, durable SQL intents, finalized chain verification, signer replay suppression, restart reconciliation and pinned terminal claims/refunds, fixed treasury remainder and failure-bound technical voids. Inventory stories use explicit chain DTO fixtures and prove no money movement. The separately gated local actor story uses eight real accounts and denies outsiders; Shadownet contract lifecycle receipts are required separately before claiming live settlement.",
+  },
+  {
     id: "wtfiap.launch-practice-and-room-recovery",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

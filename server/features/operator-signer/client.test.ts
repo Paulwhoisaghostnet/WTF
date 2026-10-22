@@ -115,3 +115,30 @@ test("operator signer wraps manager-wallet contract originations", () => {
   assert.equal(payload.label, "club-dues:test");
   assert.deepEqual(payload.init, { prim: "Unit" });
 });
+
+test("WTFIAP escrow requires a stable intent ID and never attaches platform tez", () => {
+  const request = {
+    intent: "wtfiap_escrow" as const, requestId: "wtfiap:room:start", walletId: "wtfiap-referee",
+    counterpartyContract: "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD", chainId: "NetXdQprcVkpaWU" as const,
+    entrypoint: "start_room" as const, params: { room_id: "a".repeat(64), expected_terms_hash: "b".repeat(64), match_id: "c".repeat(64) },
+  };
+  const first = createSignerEnvelope(request, { authToken: "test-auth" });
+  const second = createSignerEnvelope(request, { authToken: "test-auth" });
+  assert.equal(first.requestId, request.requestId);
+  assert.deepEqual(first, second);
+  assert.equal(first.intent, "wtfiap_escrow");
+  if (first.intent === "wtfiap_escrow") {
+    assert.equal(first.payload.mutez, 0);
+    assert.equal(first.payload.chainId, "NetXdQprcVkpaWU");
+  }
+});
+
+test("WTFIAP treasury automation passes only the immutable room identifier", () => {
+  const envelope = createSignerEnvelope({ intent: "wtfiap_escrow", requestId: "treasury:room", walletId: "wtfiap-referee",
+    counterpartyContract: CONTRACT, chainId: "NetXdQprcVkpaWU", entrypoint: "claim_treasury", params: "a".repeat(64) }, { authToken: AUTH });
+  assert.equal(envelope.intent, "wtfiap_escrow");
+  if (envelope.intent === "wtfiap_escrow") {
+    assert.equal(envelope.payload.args, "a".repeat(64));
+    assert.equal(envelope.payload.mutez, 0);
+  }
+});

@@ -13,6 +13,7 @@ import type {
 import { appendAuditLine } from "./audit";
 import { loadEnv, type SignerEnv } from "./env";
 import { PlatformWalletKeyring } from "./keyring";
+import { journalWtfIapSend, WtfIapSigningQueue } from "./wtfiap-journal";
 import {
   enforceEnvelopePolicy,
   okResponse,
@@ -21,6 +22,7 @@ import {
 } from "./policy";
 
 const logger = pino({ name: "wtf-operator-signer" });
+const wtfiapQueue = new WtfIapSigningQueue();
 
 type ContractMethodCall = {
   send: (opts?: unknown) => Promise<{ hash: string }>;
@@ -168,6 +170,43 @@ async function handleOriginateContract(
   );
 }
 
+async function handleWtfIap(
+  env: SignerEnv, keyring: PlatformWalletKeyring,
+  envelope: Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" }>,
+): Promise<string> {
+  return wtfiapQueue.run(envelope.walletId, async () => {
+    const { wallet, signer } = await keyring.getSigner(envelope.walletId);
+    const tz = new TezosToolkit(env.WTF_OPERATOR_SIGNER_WTFIAP_RPC);
+    tz.setProvider({ signer });
+    const chainId = await tz.rpc.getChainId();
+    if (chainId !== envelope.payload.chainId || wallet.chainId !== chainId) {
+      return JSON.stringify(refuse("WTFIAP wallet/RPC chain mismatch", "WTFIAP_CHAIN", envelope.requestId));
+    }
+    if (envelope.payload.entrypoint === "create_room" && envelope.payload.args.referee !== wallet.address) {
+      return JSON.stringify(refuse("WTFIAP room must pin the configured referee", "WTFIAP_REFEREE", envelope.requestId));
+    }
+    const contract = await tz.contract.at(envelope.payload.contract);
+    const method = contract.methodsObject[envelope.payload.entrypoint];
+    if (typeof method !== "function") return JSON.stringify(refuse("WTFIAP contract entrypoint missing", "BAD_EP", envelope.requestId));
+    let confirmation: (() => Promise<unknown>) | undefined;
+    const response = await journalWtfIapSend(env.WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH, envelope, async () => {
+      const op = await method(envelope.payload.args).send({ amount: 0, mutez: true });
+      confirmation = () => op.confirmation(1);
+      return okResponse({ requestId: envelope.requestId, intent: envelope.intent, signedBy: wallet.address, opHash: op.hash });
+    });
+    // Journal the hash before waiting. A dropped client can recover it using the
+    // same request ID. Waiting here keeps this lane's manager counters serial.
+    if (confirmation) await confirmation().catch((error) => {
+      logger.warn({ requestId: envelope.requestId, error: error instanceof Error ? error.message : String(error) }, "WTFIAP inclusion unresolved; durable hash retained");
+    });
+    if (response.ok) await appendAuditLine(env, logger, {
+      requestId: envelope.requestId, runId: envelope.runId, intent: envelope.intent,
+      opHash: response.opHash, contract: envelope.payload.contract, entrypoint: envelope.payload.entrypoint,
+    });
+    return JSON.stringify(response);
+  });
+}
+
 async function dispatch(
   env: SignerEnv,
   keyring: PlatformWalletKeyring,
@@ -235,6 +274,8 @@ async function dispatch(
         return await handleContractCall(env, keyring, parsed.envelope);
       case "originate_contract":
         return await handleOriginateContract(env, keyring, parsed.envelope);
+      case "wtfiap_escrow":
+        return await handleWtfIap(env, keyring, parsed.envelope);
     }
   } catch (err) {
     logger.error({ err }, "sign/broadcast failed");

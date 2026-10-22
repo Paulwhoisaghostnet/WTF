@@ -12008,3 +12008,24 @@
 **Why it mattered**: A reachable route and successful bundle do not prove the requested icon, menu and invitation journeys. CSS pointer suppression is not an asynchronous readiness barrier, and window keys are not complete entry URLs.
 
 **Rule**: Guard rendering at the shared readiness boundary; constrain flyouts using measured viewport bounds; capture route queries only for the owning window. Exercise the real desktop icon, normal Stuffs menu click, native invitation, purchase, deployment and reload against the actual room authority. Preserve zero-error assertions and strict asset validation.
+
+
+## 2026-10-19 — WTFIAP escrow recovery must outlive admission and UI rules
+
+**What happened**: Review of the unpublished escrow integration reproduced two recovery failures: finalized reads could succeed through the allowed fallback RPC, then pending-operation failure inspection retried only the unavailable primary and discarded the useful state; disabling new funding stopped reconciliation of previously settled claims. Rules updates also required completed game results to remain accessible independently of rebuilding combat under a new engine.
+
+**Why**: Admission enablement, transaction submission, chain observation and terminal presentation were initially treated as one lifecycle. They have different authority and availability requirements. A read-only claim refresh needs its original pinned chain and result even when no new deposit may be created.
+
+**Rule**: Keep immutable room terms/rules/results and original network configuration durable. Check chain observations at the same finalized block through the configured network's approved RPCs; skip failed-operation lookup when finalized state already proves success. Disable new writes separately from existing claim reads, retain saved-network head monitors, preserve unknown-send errors until the chain resolves them, and provide a native claim-recovery URL independent of the battlefield. Never clear a submission journal to force a retry. Guard incompatible deployments with the same database gate used by admission. These corrections have focused regressions and real local PostgreSQL/HTTP restart proof; browser fixtures and local tests do not establish live custody.
+
+## 2026-10-19 — WTFIAP SmartPy and inventory verification boundaries
+
+**What happened**: A generic imported SmartPy module name collided with the FA2 test module, and Taquito Schema.Typecheck was initially considered for encoded Micheline storage. Inventory registration also initially placed HTTP paths in the normalized-event column and omitted reciprocal admin ownership.
+
+**Rule**: Use distinct SmartPy module identities and verify recipient rejection as well as standard FA2 rollback. Taquito Schema.Typecheck applies to decoded JavaScript storage; use target RPC typecheck_data for encoded deployment storage. Keep complete RPC response evidence hash-bound without retaining multi-megabyte successful type maps. Put API paths in interaction descriptions/probes, preserve real canonical event handles, and register behavior ownership on both sides. Use the repository's existing TypeScript heap budget when the default Node heap is exhausted. No test success permits assigning an address or policy to an unapproved, undeployed escrow artifact.
+
+## 2026-10-22 — Isolate a testnet game inside a Mainnet host
+
+**What happened**: The funded-game signer initially selected the shared service RPC. The production service handles existing Mainnet applications, while this release needs real Shadownet operations. Approved treasury claims also added a string argument branch, exposing an unsafe object spread in a journal test.
+
+**Rule**: Give the typed game signer an explicit RPC and require its configured chain, wallet metadata and live RPC chain to agree. Keep other signer lanes and token globals unchanged. Provision a dedicated testnet identity inside the existing encrypted host keyring; never export its secret to a browser or proof. Narrow discriminated operation parameters before constructing changed test payloads. Verify the installed signer checksum and its socket-selected public wallet after restart.

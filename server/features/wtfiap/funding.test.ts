@@ -1,0 +1,230 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { commitment, createFundingService, clone, type FundingConfig, type FundingRecord, type ChainRoom, type GameRoom, type FundingGame } from "./funding";
+import type { FundingStore } from "./funding-store";
+
+const addresses = Array.from({ length: 8 }, (_, i) => "tz1" + String(i + 1).repeat(33));
+const opHash = "o" + "1".repeat(50);
+const config: FundingConfig = { enabled: true, network: "shadownet", chainId: "NetXsqzbfFenSTS", rpcUrl: "https://tezos-shadownet.octez.io/",
+  escrowContract: "KT1" + "1".repeat(33), scriptHash: "a".repeat(64), creatorAddress: addresses[0], refereeAddress: addresses[0], walletId: "test-referee",
+  wtfToken: { contract: "KT1" + "2".repeat(33), tokenId: "0", decimals: 8 }, rulesHash: "b".repeat(64),
+  currencyQuantaAtomic: { XTZ:"10000", WTF:"1000000" }, treasuryAddress: addresses[0], prizeRoundingPolicy:"floor-each-prize-to-quantum;remainder-to-wtf.tez-v1", feeQuantumAtomic: "10000", refundPolicy: "explicit-test-policy" };
+function fixture() {
+  const rows = new Map<string, FundingRecord>(); let queue = Promise.resolve(), workerLocked = false, failCommit = false, gameUnavailable = false;
+  const extraLinks = new Set<string>(); let auditFails=false;
+  const store: FundingStore = {
+    async read(code) { return clone(rows.get(code) || null); }, async list() { return clone([...rows.values()]); },
+    async mutate(code, fn) {
+      const previous = queue; let release!: () => void;
+      queue = new Promise<void>(resolve => { release = resolve; }); await previous;
+      try { const result = await fn(clone(rows.get(code) || null)); if (failCommit) { failCommit = false; throw new Error("simulated DB commit failure"); } rows.set(code, clone(result.record)); return result.value; }
+      finally { release(); }
+    },
+    async exclusive(fn) { if (workerLocked) return false; workerLocked = true; try { await fn(); return true; } finally { workerLocked = false; } },
+  };
+  const room: GameRoom = { roomCode: "test-room", hostPlayerId: "p0", phase: "lobby", lock: null,
+    config: { roomType: "tournament", tournament: { currency: "XTZ", entryAtomic: "1000000", entryFee: "1", prizePercentages: ["50", "35", "15"] } },
+    players: addresses.map((_, i) => ({ playerId: "p" + i, name: "Human " + i, isAI: false, accountId: String(i + 1) })) };
+  let result: any = null, starts = 0, observed: ChainRoom | null = null, lostResponse = false;
+  const submissions: any[] = [];
+  const game: FundingGame = {
+    inspect(code) { if (gameUnavailable) throw new Error("old engine unavailable"); assert.equal(code, room.roomCode); return clone(room); }, list() { return room.lock ? [room.roomCode] : []; },
+    lock(code, binding) { assert.equal(code, room.roomCode); room.lock ||= { ...binding, seedCommitment: "c".repeat(64) }; return clone(room); },
+    start(_code, binding) { assert.equal(binding.matchId, room.lock.matchId); if (room.phase === "lobby") { starts++; room.phase = "preparation"; } return clone(room); },
+    audit() { return {ok:!auditFails,code:auditFails?"authoritative-game-failure":"healthy",evidence:{snapshotHash:"e".repeat(64),failure:auditFails?"fixture transition failure":null}}; },
+    markVoided(){room.phase="voided";},
+    update() { if (gameUnavailable) throw new Error("old engine unavailable"); }, result() { if (gameUnavailable) throw new Error("old engine unavailable"); return clone(result); },
+  };
+  const chain = {
+    async read() { return clone(observed); },
+    async submit(record: FundingRecord, intent: any) {
+      assert.equal(rows.get(record.roomCode)!.intents.find(i => i.id === intent.id)!.status, "submission-unknown", "durable checkpoint must precede signer");
+      submissions.push(clone(intent)); if (lostResponse) throw new Error("response lost after injection");
+      return { operationHash: opHash };
+    },
+  };
+  const service = () => createFundingService({ config, store, game, chain,
+    linkedWallet: async (id, address) => addresses[Number(id) - 1] === address || extraLinks.has(id + ":" + address),
+    onWake: () => {} }); // Explicit test driver advances the event-triggered worker.
+  function observe(paid = 0, status: ChainRoom["status"] = "funding") {
+    const record = rows.get(room.roomCode)!;
+    observed = { blockHash: "Bfinal", level: 10, termsHash: record.termsHash!, rulesHash: config.rulesHash,
+      seedCommitment: room.lock.seedCommitment, referee: config.refereeAddress, currency: "0", entryAtomic: "1000000",
+      entrants: addresses, paid: addresses.slice(0, paid), held: String(paid * 1000000), paidOut: "0", status,
+      deposited:String(paid*1000000),refunded:"0",quantum:"10000",treasuryAmount:"0",treasuryClaimed:false,voidReasonHash:null,voidEvidenceHash:null,
+      matchId: status === "funding" ? null : room.lock.matchId, resultHash: null, transcriptHash: null, claims: {} };
+  }
+  return { store, rows, room, service, submissions, observe, failAudit(){auditFails=true;}, failCommit() { failCommit = true; },
+    allowWallet(id: string, address: string) { extraLinks.add(id + ":" + address); }, loseGameAccess() { gameUnavailable = true; }, get observed() { return observed!; },
+    setResult(v: any) { result = v; room.phase = "finished"; }, loseResponse() { lostResponse = true; }, get starts() { return starts; } };
+}
+async function open(f: ReturnType<typeof fixture>) {
+  const s = f.service();
+  for (let i = 0; i < 8; i++) await s.bind("test-room", String(i + 1), addresses[i]);
+  await s.open("test-room", "1"); return s;
+}
+
+test("funded rooms bind exact linked humans, freeze terms and do not mistake submitted hashes for deposits", async () => {
+  const f = fixture(), s = f.service();
+  await assert.rejects(s.bind("test-room", "1", addresses[1]), /Link and verify/);
+  await assert.rejects(s.bind("test-room", "99", addresses[0]), /does not own/);
+  await s.bind("test-room", "1", addresses[0]);
+  await assert.rejects(s.open("test-room", "2"), /Only the room host/);
+  await assert.rejects(s.open("test-room", "1"), /Eight linked/);
+  for (let i = 1; i < 8; i++) await s.bind("test-room", String(i + 1), addresses[i]);
+  await s.open("test-room", "1"); await s.drain();
+  assert.equal(f.submissions.length, 1);
+  assert.equal(f.rows.get("test-room")!.intents[0].status, "submitted");
+  await s.observe("test-room", "1", { action: "deposit", operationHash: opHash });
+  assert.equal((await s.view("test-room", "1")).depositedCount, 0);
+  await assert.rejects(s.start("test-room", "1"), /Eight finalized deposits/);
+  f.observe(7); await s.drain();
+  assert.equal((await s.view("test-room", "1")).depositedCount, 7);
+  await assert.rejects(s.start("test-room", "1"), /Eight finalized deposits/);
+  f.observe(8); await s.drain(); await s.start("test-room", "1"); await s.drain();
+  assert.equal(f.submissions.length, 2); assert.equal(f.starts, 0, "submitted start is not an applied start");
+  await s.drain(); assert.equal(f.submissions.length, 2, "do not repeat submitted start");
+  f.observe(8, "active"); await s.drain(); assert.equal(f.starts, 1);
+  await s.drain(); assert.equal(f.starts, 1, "reconciliation cannot restart a running match");
+  const publicView = await s.view("test-room", null);
+  assert(!JSON.stringify(publicView).includes("userId")); assert(!JSON.stringify(publicView).includes("walletId"));
+  await s.close();
+});
+
+test("lost signer response survives restart as reconciliation-only; no fresh request ID can double-submit", async () => {
+  const f = fixture(), s = await open(f); f.loseResponse(); await s.drain(); await s.close();
+  assert.equal(f.rows.get("test-room")!.intents[0].status, "submission-unknown");
+  const recovered = f.service(); await recovered.drain(); await recovered.drain();
+  assert.equal(f.submissions.length, 1);
+  f.observe(1); await recovered.drain();
+  assert.equal(f.rows.get("test-room")!.intents[0].status, "applied");
+  assert.equal(f.submissions.length, 1); await recovered.close();
+});
+
+test("settlement is derived from the frozen authoritative result and exact tie ranks; mismatch cannot settle", async () => {
+  const f = fixture(), s = await open(f); await s.drain(); f.observe(8); await s.drain();
+  await s.start("test-room", "1"); await s.drain(); f.observe(8, "active"); await s.drain();
+  f.setResult({ matchId: "party:test-room", receiptsHash: "d".repeat(64), groups: [
+    { placeFrom: 1, playerIds: ["p0"] }, { placeFrom: 2, playerIds: ["p1", "p2"] },
+    ...Array.from({ length: 5 }, (_, i) => ({ placeFrom: i + 4, playerIds: ["p" + (i + 3)] })) ] });
+  await s.drain();
+  const planned = f.submissions.at(-1);
+  assert.equal(planned.kind, "finalize_room");
+  assert.deepEqual(planned.params.ranks.map((r: any) => r.rank), ["1", "2", "2", "4", "5", "6", "7", "8"]);
+  assert.equal(planned.params.transcript_hash, "d".repeat(64));
+  assert.equal(planned.payloadHash, commitment(planned.params));
+  f.observe(8, "settled"); f.observed.resultHash = "f".repeat(64); f.observed.transcriptHash = "d".repeat(64);
+  await s.drain(); assert(s.health.error); assert.notEqual(f.rows.get("test-room")!.status, "settled");
+  f.observed.resultHash = planned.params.result_hash;
+  f.observed.claims[addresses[0]] = { amount: "4000000", claimed: false };
+  await s.drain();
+  const v = await s.view("test-room", "1"); assert.equal(v.status, "settled");
+  assert.equal(v.self.actions.claim.entrypoint, "claim"); assert.equal(v.self.payout?.amount, "4000000");
+  const n = f.submissions.length; await s.drain(); assert.equal(f.submissions.length, n);
+  await s.close();
+});
+
+test("wrong escrow terms, incomplete policy and altered persisted intents fail closed", async () => {
+  const f = fixture(), s = await open(f); await s.drain(); f.observe(8); f.observed.termsHash = "0".repeat(64);
+  await s.drain(); assert(s.health.error); assert.equal(f.rows.get("test-room")!.chain, null);
+  f.rows.get("test-room")!.intents[0].params.entry_amount = "2";
+  await s.drain(); assert.equal(f.submissions.length, 1);
+  await s.close();
+  const g = fixture(); config.refundPolicy = null;
+  try { await assert.rejects(open(g), /refund policy/); } finally { config.refundPolicy = "explicit-test-policy"; }
+});
+
+
+test("orphan game funding lock after database commit failure freezes bindings and recovers exactly", async () => {
+  const f = fixture(), s = f.service();
+  for (let i = 0; i < 8; i++) await s.bind("test-room", String(i + 1), addresses[i]);
+  f.failCommit(); await assert.rejects(s.open("test-room", "1"), /DB commit failure/);
+  assert(f.room.lock); assert.equal(f.rows.get("test-room")!.lock, null);
+  const frozen = clone(f.room.lock), otherWallet = "tz1" + "9".repeat(33);
+  f.allowWallet("1", otherWallet);
+  await assert.rejects(s.bind("test-room", "1", otherWallet), /bindings are frozen/);
+  await s.open("test-room", "1");
+  assert.deepEqual(f.rows.get("test-room")!.lock, frozen);
+  await s.drain(); assert.equal(f.submissions.length, 1); await s.close();
+});
+
+test("terminal claims recover from immutable final result without the old game engine", async () => {
+  const f = fixture(), s = await open(f); await s.drain(); f.observe(8); await s.drain();
+  await s.start("test-room", "1"); await s.drain(); f.observe(8, "active"); await s.drain();
+  f.setResult({ matchId: "party:test-room", receiptsHash: "d".repeat(64), groups: addresses.map((_, i) => ({ placeFrom: i + 1, playerIds: ["p" + i] })) });
+  await s.drain(); const params = f.submissions.at(-1).params;
+  f.observe(8, "settled"); f.observed.resultHash = params.result_hash; f.observed.transcriptHash = params.transcript_hash;
+  f.observed.claims[addresses[0]] = { amount: "4000000", claimed: false }; await s.drain(); await s.close();
+  f.loseGameAccess(); const old = config.rulesHash; config.rulesHash = "f".repeat(64); config.enabled = false;
+  f.rows.get("test-room")!.error = "Prior RPC outage";
+  try {
+    const recovered = f.service(); await recovered.drain(); assert.equal(recovered.health.error, null);
+    assert.equal((await recovered.view("test-room", "1")).self.payout?.amount, "4000000");
+    await recovered.observe("test-room", "1", { action: "claim", operationHash: opHash });
+    f.observed.claims[addresses[0]].claimed = true;
+    f.observed.held = "4000000"; f.observed.paidOut = "4000000";
+    await recovered.drain();
+    const view = await recovered.view("test-room", "1");
+    assert.equal(view.self.pendingOperations[0].status, "applied"); assert.equal(view.self.payout!.claimed, true);
+    assert.equal(view.error, null); assert.equal(f.submissions.filter(i => i.kind === "finalize_room").length, 1); await recovered.close();
+  } finally { config.rulesHash = old; config.enabled = true; }
+});
+
+test("disabled admissions reconcile frozen deposits without submitting planned create or start", async () => {
+  const f = fixture(), s = await open(f); await s.close(); config.enabled = false;
+  try {
+    const recovered = f.service(); await recovered.drain(); assert.equal(f.submissions.length, 0);
+    await assert.rejects(recovered.open("test-room", "1"), /not configured/);
+    f.observe(8); await recovered.drain();
+    assert.equal((await recovered.view("test-room", "1")).depositedCount, 8);
+    await assert.rejects(recovered.start("test-room", "1"), /not configured/);
+    f.rows.get("test-room")!.startRequested = true; await recovered.drain();
+    assert.equal(f.submissions.length, 0); assert.equal(f.starts, 0); await recovered.close();
+  } finally { config.enabled = true; }
+});
+
+test("pre-start withdrawal returns full entry, permits rejoin and conserves cumulative transfers", async () => {
+  const f=fixture(),s=await open(f);await s.drain();f.observe(1);await s.drain();
+  let v=await s.view("test-room","1");assert.equal(v.self.actions.refund.entrypoint,"refund");assert.equal(v.self.actions.refund.params,f.rows.get("test-room")!.roomId);
+  await s.observe("test-room","1",{action:"refund",operationHash:opHash});
+  f.observed.paid=[];f.observed.held="0";f.observed.refunded="1000000";await s.drain();
+  v=await s.view("test-room","1");assert.equal(v.self.pendingOperations[0].status,"applied");assert.equal(v.self.actions.refund,undefined);assert(v.self.actions.deposit);
+  f.observed.paid=[addresses[0]];f.observed.held="1000000";f.observed.deposited="2000000";await s.drain();
+  assert.equal((await s.view("test-room","1")).depositedCount,1);assert.equal(s.health.error,null);
+  f.observed.refunded="0";await s.drain();assert(s.health.error);await s.close();
+});
+
+test("technical void requires reproduced game failure, binds evidence and preserves full refunds after restart",async()=>{
+  const f=fixture(),s=await open(f);await s.drain();f.observe(8);await s.drain();await s.start("test-room","1");await s.drain();f.observe(8,"active");await s.drain();
+  await assert.rejects(s.requestTechnicalVoid("test-room","operator-test"),/did not reproduce/);
+  assert.equal((await s.view("test-room","1")).self.actions.refund,undefined);
+  f.failAudit();await s.requestTechnicalVoid("test-room","operator-test");await s.drain();
+  const planned=f.submissions.at(-1);assert.equal(planned.kind,"void_room");assert.equal(planned.params.evidence_hash,f.rows.get("test-room")!.technicalVoid!.evidenceHash);
+  assert.equal((await s.view("test-room","1")).self.actions.refund,undefined,"submission is not a finalized void");
+  f.observed.status="voided";f.observed.voidReasonHash=planned.params.reason_hash;f.observed.voidEvidenceHash=planned.params.evidence_hash;await s.drain();
+  assert.equal(f.room.phase,"voided");assert.equal((await s.view("test-room","1")).self.actions.refund.entrypoint,"refund");await s.close();
+  f.loseGameAccess();const old=config.rulesHash;config.rulesHash="f".repeat(64);config.enabled=false;
+  try{const recovered=f.service();await recovered.observe("test-room","1",{action:"refund",operationHash:opHash});
+    f.observed.paid=addresses.slice(1);f.observed.held="7000000";f.observed.refunded="1000000";await recovered.drain();
+    const v=await recovered.view("test-room","1");assert.equal(v.status,"voided");assert.equal(v.self.pendingOperations[0].status,"applied");assert.equal(recovered.health.error,null);
+    assert.equal(f.submissions.filter(i=>i.kind==="void_room").length,1);await recovered.close();
+  }finally{config.rulesHash=old;config.enabled=true;}
+});
+
+test("finalized floored prizes expose exact liability and automate only the fixed treasury remainder",async()=>{
+  const f=fixture(),s=await open(f);await s.drain();f.observe(8);await s.drain();await s.start("test-room","1");await s.drain();f.observe(8,"active");await s.drain();
+  f.setResult({matchId:"party:test-room",receiptsHash:"d".repeat(64),groups:[{placeFrom:1,playerIds:["p0"]},{placeFrom:2,playerIds:addresses.slice(1).map((_,i)=>"p"+(i+1))}]});await s.drain();
+  const params=f.submissions.at(-1).params;await assert.rejects(s.requestTechnicalVoid("test-room","operator-test"),/completed game/);
+  f.observe(8,"settled");Object.assign(f.observed,{resultHash:params.result_hash,transcriptHash:params.transcript_hash,treasuryAmount:"10000",claims:Object.fromEntries(addresses.map((a,i)=>[a,{amount:i?"570000":"4000000",claimed:false}]))});
+  await s.drain();const v=await s.view("test-room","2");assert.equal(v.self.payout!.amount,"570000");assert.deepEqual(v.prizeSummary,{quantumAtomic:"10000",allocatedPlayerPrizesAtomic:"7990000",treasuryRemainderAtomic:"10000",treasuryClaimed:false});
+  const treasury=f.submissions.at(-1);assert.equal(treasury.kind,"claim_treasury");assert.equal(treasury.params,f.rows.get("test-room")!.roomId);
+  f.observed.treasuryClaimed=true;f.observed.held="7990000";f.observed.paidOut="10000";await s.drain();await s.drain();
+  assert.equal(f.submissions.filter(i=>i.kind==="claim_treasury").length,1);assert.equal((await s.view("test-room","1")).prizeSummary!.treasuryClaimed,true);await s.close();
+});
+
+test("WTF rooms pin their own approved entry quantum before and after wallet binding",async()=>{
+  const f=fixture();f.room.config.tournament={...f.room.config.tournament,currency:"WTF",entryFee:"0.01",entryAtomic:"1000000"};const s=f.service();
+  assert.equal((await s.view("test-room","1")).feeQuantumAtomic,"1000000");
+  for(let i=0;i<8;i++)await s.bind("test-room",String(i+1),addresses[i]);await s.open("test-room","1");
+  assert.equal(f.rows.get("test-room")!.config.feeQuantumAtomic,"1000000");await s.drain();assert.equal(f.submissions[0].params.currency,"1");await s.close();
+});

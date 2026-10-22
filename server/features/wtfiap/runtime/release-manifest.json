@@ -6,7 +6,7 @@
   "sourceProject": "aleatory-autobattler",
   "upstreamRun": "run-a9a459cb-607d-4c3e-87c1-b45148c5af07",
   "publicationRun": "run-df7ddb01-c3ff-48be-9993-4c55ff0654cf",
-  "funding": "Unfunded prize accounting preview; no deposits or transfers",
+  "funding": "Tournament preview remains unfunded; native host escrow requires a verified network deployment and enforces approved room-currency prizes/refunds",
   "recipe": "npm run build in the source project; node scripts/vendor-wtfiap.mjs --source <game-workspace>; node scripts/vendor-wtfiap.mjs",
   "files": [
     {
@@ -26,9 +26,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "c53e0a6ef1ad15cf5f582d0d946f7e37eb7a2b65040318e541d8c42bda9bb677",
-      "sha256": "c53e0a6ef1ad15cf5f582d0d946f7e37eb7a2b65040318e541d8c42bda9bb677",
-      "bytes": 37285
+      "sourceSha256": "f9f8e75c2dc26d37262200c18e7ad821caa7f4607a2eca646cb9ebf97b45993b",
+      "sha256": "f9f8e75c2dc26d37262200c18e7ad821caa7f4607a2eca646cb9ebf97b45993b",
+      "bytes": 41636
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -53,9 +53,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
       "sourcePath": "game/server/party-server.cjs",
-      "sourceSha256": "d894d6f44a80db7811cd1556f547b42c8c4db86e290fbee453a88b032032e517",
-      "sha256": "d894d6f44a80db7811cd1556f547b42c8c4db86e290fbee453a88b032032e517",
-      "bytes": 28464
+      "sourceSha256": "18a678a3263411a5bed25a130127b349bc77317ec800d824694d8c56f3893a03",
+      "sha256": "18a678a3263411a5bed25a130127b349bc77317ec800d824694d8c56f3893a03",
+      "bytes": 39340
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",

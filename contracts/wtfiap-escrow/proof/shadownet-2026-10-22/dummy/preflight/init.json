@@ -1,0 +1,107 @@
+{
+  "prim": "Pair",
+  "args": [
+    {
+      "string": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+    },
+    {
+      "prim": "Pair",
+      "args": [
+        [],
+        {
+          "prim": "Pair",
+          "args": [
+            [
+              {
+                "prim": "Elt",
+                "args": [
+                  {
+                    "string": ""
+                  },
+                  {
+                    "bytes": ""
+                  }
+                ]
+              }
+            ],
+            {
+              "prim": "Pair",
+              "args": [
+                {
+                  "int": "0"
+                },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    [],
+                    {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "int": "0"
+                        },
+                        [
+                          {
+                            "prim": "Elt",
+                            "args": [
+                              {
+                                "int": "0"
+                              },
+                              {
+                                "prim": "Pair",
+                                "args": [
+                                  {
+                                    "int": "0"
+                                  },
+                                  [
+                                    {
+                                      "prim": "Elt",
+                                      "args": [
+                                        {
+                                          "string": "decimals"
+                                        },
+                                        {
+                                          "bytes": "38"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "prim": "Elt",
+                                      "args": [
+                                        {
+                                          "string": "name"
+                                        },
+                                        {
+                                          "bytes": "44756d6d7920575446"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "prim": "Elt",
+                                      "args": [
+                                        {
+                                          "string": "symbol"
+                                        },
+                                        {
+                                          "bytes": "575446"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

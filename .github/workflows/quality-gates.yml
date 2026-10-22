@@ -126,6 +126,14 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --ignore-scripts
 
+      - name: Verify WTFIAP escrow with its pinned compiler
+        run: |
+          python3 -m venv /tmp/wtfiap-smartpy
+          /tmp/wtfiap-smartpy/bin/pip install -r contracts/wtfiap-escrow/requirements.txt
+          PATH="/tmp/wtfiap-smartpy/bin:$PATH" npm run contract:test:wtfiap
+          npx tsx --test contracts/wtfiap-escrow/*.test.ts
+          git diff --exit-code -- contracts/wtfiap-escrow/artifacts
+
       - name: Run contract tests + compile (V1.2)
         run: |
           bash scripts/test-marketplace-contract.sh

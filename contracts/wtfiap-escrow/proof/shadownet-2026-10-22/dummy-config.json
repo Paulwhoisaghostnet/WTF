@@ -1,0 +1,13 @@
+{
+  "kind": "dummy-fa2",
+  "network": "shadownet",
+  "expectedChainId": "NetXsqzbfFenSTS",
+  "rpcUrl": "https://tezos-shadownet.octez.io/",
+  "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/dummy-wtf-contract.json",
+  "artifactSha256": "9799193d2751dadd5330028ed0dc64842a70d446cf83855bb3140e8802aecdde",
+  "storageTemplatePath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/dummy-wtf-storage.json",
+  "creator": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "sourcePublicKey": "edpkudtjDAPYANPBX2MJswFPtJs1kq8SeQru8v9jp2JcyvnYEynoAL",
+  "walletId": "wtf-os-root"
+}

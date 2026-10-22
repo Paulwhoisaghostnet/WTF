@@ -35,6 +35,21 @@ export function enforceEnvelopePolicy(
 
   if (envelope.intent === "health") return null;
 
+  if (envelope.intent === "wtfiap_escrow") {
+    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS?.includes(envelope.payload.contract)) {
+      return refuse("WTFIAP escrow is not allowlisted", "WTFIAP_CONTRACT", envelope.requestId);
+    }
+    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID || envelope.walletId !== env.WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID) {
+      return refuse("WTFIAP referee wallet mismatch", "WTFIAP_WALLET", envelope.requestId);
+    }
+    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_RPC) {
+      return refuse("WTFIAP requires its own explicit RPC", "WTFIAP_RPC", envelope.requestId);
+    }
+    if (envelope.payload.chainId !== env.WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID) {
+      return refuse("WTFIAP chain mismatch", "WTFIAP_CHAIN", envelope.requestId);
+    }
+  }
+
   if (
     envelope.intent === "disburse_wtf" &&
     envelope.payload.transfers.length > env.WTF_OPERATOR_SIGNER_MAX_RECIPIENTS
@@ -55,6 +70,9 @@ export function enforceEnvelopePolicy(
 
   if (isOperatorSignerContractCallIntent(envelope.intent)) {
     const payload = envelope.payload as OperatorSignerContractCallPayload;
+    if (env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS?.includes(payload.contract)) {
+      return refuse("WTFIAP escrow requires its durable typed intent", "WTFIAP_INTENT_REQUIRED", envelope.requestId);
+    }
     if (payload.mutez > env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ) {
       return refuse(
         "exceeds per-op xtz cap",

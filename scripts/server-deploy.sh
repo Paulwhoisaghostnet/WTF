@@ -192,6 +192,8 @@ done
 echo "[server-deploy] applying production migrations"
 bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
 
+node scripts/wtfiap/deploy-guard.mjs -- bash -s <<'WTFIAP_REPLACE'
+set -euo pipefail
 echo "[server-deploy] migrations passed; replacing app"
 docker compose stop app >/dev/null 2>&1 || true
 docker compose rm -f app >/dev/null 2>&1 || true
@@ -210,6 +212,7 @@ if ! compose_up_output="$(docker compose up -d --remove-orphans --force-recreate
 else
   echo "$compose_up_output"
 fi
+WTFIAP_REPLACE
 
 echo "[server-deploy] waiting for readiness"
 health_ok=0

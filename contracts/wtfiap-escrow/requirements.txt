@@ -1,0 +1,2 @@
+# Current repository-compatible compiler, pinned for reproducible local tests.
+smartpy-tezos==0.24.1

@@ -58,7 +58,7 @@ if (sourceFlag !== -1) {
     sourceProject: "aleatory-autobattler",
     upstreamRun: "run-a9a459cb-607d-4c3e-87c1-b45148c5af07",
     publicationRun: "run-df7ddb01-c3ff-48be-9993-4c55ff0654cf",
-    funding: "Unfunded prize accounting preview; no deposits or transfers",
+    funding: "Tournament preview remains unfunded; native host escrow requires a verified network deployment and enforces approved room-currency prizes/refunds",
     recipe: "npm run build in the source project; node scripts/vendor-wtfiap.mjs --source <game-workspace>; node scripts/vendor-wtfiap.mjs",
     files,
   }, null, 2) + "\n");

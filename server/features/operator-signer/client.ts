@@ -6,6 +6,7 @@ import {
   operatorSignerEnvelopeSchema,
   operatorSignerResponseSchema,
   type OperatorSignerEnvelope,
+  type OperatorSignerWtfIapPayload,
   type PlatformWalletNetwork,
   type PlatformWalletPublic,
   type PlatformWalletRole,
@@ -47,6 +48,16 @@ type SignerWalletTarget = {
 };
 
 export type SignerRequest =
+  | {
+      intent: "wtfiap_escrow";
+      requestId: string;
+      walletId: string;
+      counterpartyContract: string;
+      chainId: OperatorSignerWtfIapPayload["chainId"];
+      entrypoint: OperatorSignerWtfIapPayload["entrypoint"];
+      params: Record<string, unknown> | string;
+      runId?: number | string;
+    }
   | {
       intent: "list_platform_wallets";
     }
@@ -139,12 +150,19 @@ export function createSignerEnvelope(
   const base = {
     version: OPERATOR_SIGNER_PROTOCOL_VERSION,
     auth,
-    requestId: opts.requestId ?? randomUUID(),
+    requestId: opts.requestId ?? (request.intent === "wtfiap_escrow" ? request.requestId : randomUUID()),
     runId: "runId" in request && request.runId == null ? undefined : "runId" in request ? String(request.runId) : undefined,
     walletId: "walletId" in request ? request.walletId : undefined,
   };
 
   switch (request.intent) {
+    case "wtfiap_escrow":
+      return operatorSignerEnvelopeSchema.parse({
+        ...base, intent: request.intent, payload: {
+          contract: request.counterpartyContract, chainId: request.chainId,
+          entrypoint: request.entrypoint, args: request.params, mutez: 0,
+        },
+      });
     case "list_platform_wallets":
       return operatorSignerEnvelopeSchema.parse({
         ...base,

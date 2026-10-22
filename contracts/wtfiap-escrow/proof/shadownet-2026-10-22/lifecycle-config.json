@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 2,
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "rpcUrl": "https://tezos-shadownet.octez.io/",
+  "proofId": "wtfiap-approved-policy-2026-10-22",
+  "escrowAddress": "KT1NHQikB69AVHaNYvfdBvyx2RSHQk3uPzR3",
+  "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/contract.json",
+  "artifactSha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
+  "buildManifestPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/build-manifest.json",
+  "creator": {
+    "walletId": "wtf-os-root",
+    "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+  },
+  "referee": {
+    "walletId": "wtf-os-root",
+    "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+  },
+  "entrants": [
+    {
+      "walletId": "e2e-bert",
+      "address": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ"
+    },
+    {
+      "walletId": "e2e-ernie",
+      "address": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ"
+    },
+    {
+      "walletId": "e2e-elmo",
+      "address": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk"
+    },
+    {
+      "walletId": "e2e-bigbird",
+      "address": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL"
+    },
+    {
+      "walletId": "e2e-thecount",
+      "address": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV"
+    },
+    {
+      "walletId": "e2e-snuffaluffagus",
+      "address": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT"
+    },
+    {
+      "walletId": "e2e-grover",
+      "address": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh"
+    },
+    {
+      "walletId": "e2e-cookiemonster",
+      "address": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf"
+    }
+  ],
+  "entryAtomic": {
+    "XTZ": "10000",
+    "WTF": "1000000"
+  },
+  "wtfTokenAddress": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+  "wtfTokenId": "0",
+  "dummyToken": {
+    "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/dummy-wtf-contract.json",
+    "artifactSha256": "9799193d2751dadd5330028ed0dc64842a70d446cf83855bb3140e8802aecdde"
+  },
+  "rulesHash": "6e751a52533f878eef5d3bf3c92e3a183ced3081d87aaf013beb62fcf5dc890a",
+  "seedCommitment": "c8660ff85eddd74dc1b203b658c51606b0fb92415fdabb23a4b91abfb3d9bd95",
+  "treasuryAddress": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+}

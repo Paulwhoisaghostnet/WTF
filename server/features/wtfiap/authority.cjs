@@ -8,11 +8,11 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
   resolveActor = request => {
     const user = request.user;
     return user ? { id: String(user.id), name: String(user.displayName || user.username || `Commander ${user.id}`) } : null;
-  }, clock, runtimePath = path.join(__dirname, 'runtime/game/server/party-server.cjs') } = {}) {
+  }, clock, onRoomChanged, runtimePath = path.join(__dirname, 'runtime/game/server/party-server.cjs') } = {}) {
   if (typeof isEnabled !== 'function') throw new Error('WTFIAP requires the host desktop-app gate.');
   const { createServer } = require(runtimePath);
   const authority = createServer({ dataDir, listen: false, apiPrefix: API_PREFIX,
-    sharePath: '/wtfiap', staticFiles: false, resolveActor, ...(clock ? { clock } : {}) });
+    sharePath: '/wtfiap', staticFiles: false, resolveActor, onRoomChanged, ...(clock ? { clock } : {}) });
   let closing = false;
   const handler = async (request, response, next) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
@@ -29,7 +29,7 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
       else response.end();
     }
   };
-  return { handler, ready: authority.ready, pump: authority.pump, dataDir: authority.dataDir,
+  return { handler, ready: authority.ready, pump: authority.pump, dataDir: authority.dataDir, funding: authority.funding,
     close: async () => { closing = true; await authority.close(); } };
 }
 module.exports = { createWtfiapAuthority, API_PREFIX };

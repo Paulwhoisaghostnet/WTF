@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "title": "WTFIAP-v0.01",
+  "policyStatus": "owner-approved",
+  "compiler": "smartpy-tezos==0.24.1",
+  "targetProtocolVerification": "recorded separately in deployment proof",
+  "storageWarning": "Fixture addresses only. Encode the approved deployment values against storageType before origination.",
+  "sourceHashes": {
+    "WtfIapEscrow.py": "737d723923f1383d09550f94a126702247a8a991b3be08836145a5eb8e75a189",
+    "test_escrow.py": "a3bb1cc393cc0d6c9027b8ea4253fbdf4c24b2998562ee0fe9d96b89a374f6b5",
+    "test_arithmetic.py": "343e24e08b412bc2c4da72808b47fbfa1d4abd13c2197641df5891602c92784c",
+    "requirements.txt": "8fdf84ef8ffbdcb925fd73530d21b60c806193a16a8fa8b2ee034e08d917b4e5",
+    "check_artifacts.mjs": "1b0ce416b0fe2c1933ad871f7e2ae685b12ff947b4279f2a96c5fc6d8604797a"
+  },
+  "artifacts": {
+    "contract.json": {
+      "sha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
+      "bytes": 147458
+    },
+    "contract.tz": {
+      "sha256": "044ae9308fea2fe8b160d0cec0a437361a7a26828725f71100c727143604f5ef",
+      "bytes": 1249679
+    },
+    "storage.json": {
+      "sha256": "16e1717c4464cc421e8ac40417af6f9e1724c1e0602e0fe5b4a966cee64c133e",
+      "bytes": 760
+    },
+    "storage.tz": {
+      "sha256": "da31bd585a09d9a6395c29db35668184cb1b149066dd53dfed4ffcb3588a56c1",
+      "bytes": 187
+    },
+    "interface.json": {
+      "sha256": "090e19a50bcd6643fe132186081b821b2b66a243adbf2ee0881293533ec45b9a",
+      "bytes": 55739
+    },
+    "dummy-wtf-contract.json": {
+      "sha256": "9799193d2751dadd5330028ed0dc64842a70d446cf83855bb3140e8802aecdde",
+      "bytes": 173359
+    },
+    "dummy-wtf-contract.tz": {
+      "sha256": "a05f443df30701be0aac8d3f0f80465db0539fc2ca4cddd6541201df4ef87766",
+      "bytes": 1544152
+    },
+    "dummy-wtf-storage.json": {
+      "sha256": "a722e1526bc446e19a9340cb305ced023fe3291188500a402e39a06c7b089046",
+      "bytes": 1699
+    },
+    "dummy-wtf-storage.tz": {
+      "sha256": "9bb054ff0c001ff39734822a8caa035e75feff9b9ac8f51a3730c7c9324dcbc3",
+      "bytes": 197
+    }
+  },
+  "checks": {
+    "compiledParameterAndStorage": true,
+    "entrypointAndViewParity": true,
+    "smartpyScenarios": "passed by invoking test script before this exporter",
+    "independentArithmetic": "all64 tie partitions, both approved quanta, all420 rounding residue classes and above-JS-safe integer entry"
+  }
+}

@@ -67,6 +67,13 @@ const schema = z.object({
   WTF_OPERATOR_SIGNER_AUDIT_LOG: z
     .string()
     .default("/var/log/wtf/operator-signer.log"),
+  // Empty configuration disables the funded-room lane independently of custom calls.
+  WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS: z.string().default("").transform((s) =>
+    s.split(",").map((x) => x.trim()).filter(Boolean)),
+  WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID: z.string().default(""),
+  WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID: z.string().default(""),
+  WTF_OPERATOR_SIGNER_WTFIAP_RPC: z.union([z.literal(""), z.string().url()]).default(""),
+  WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH: z.string().default("/var/lib/wtf/wtfiap-signer-journal"),
 });
 
 export type SignerEnv = z.infer<typeof schema>;

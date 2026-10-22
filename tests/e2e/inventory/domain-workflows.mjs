@@ -4,8 +4,12 @@ export const DOMAIN_WORKFLOWS = [
     domain: "WTFIAP Autobattler",
     routes: ["/wtfiap"],
     eventHandles: ["desktop.icon.opened", "desktop.window.opened", "desktop.start_menu.opened"],
-    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery"],
-    apiProbes: [{ method: "GET", path: "/api/wtfiap/party/health" }],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.escrow-admission-and-recovery"],
+    apiProbes: [
+      { method: "GET", path: "/api/wtfiap/party/health" },
+      { method: "GET", path: "/api/wtfiap/funding/config" },
+      { method: "GET", path: "/api/wtfiap/funding/health" },
+    ],
   },
   {
     name: "entry auth identity loop",

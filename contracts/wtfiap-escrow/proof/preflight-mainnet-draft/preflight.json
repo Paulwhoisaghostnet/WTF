@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "mode": "read-only",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "block": "BMS5zh5NK9JLEypcygKDSxyMZkDV1GmXBeVDnJuBga1gmh74zXb",
+  "level": 15444113,
+  "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY",
+  "artifactSha256": "6133aa561ad6867198ac9a6aa80594248384954024adcd16e4c8db9c8cd50354",
+  "canonicalCodeSha256": "4b6fc73af51e6e4317548350b08dc3dab3e073a87f7b48452b1b3f40ba8eed41",
+  "initSha256": "ad241fcdef15c28783ce9d795c67692924d9cb0b66670956f2c5a7c52b41030d",
+  "source": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "sourceBalanceMutez": "745372",
+  "constants": {
+    "costPerByte": "250",
+    "originationSize": 257,
+    "hardGasLimitPerOperation": "1040000"
+  },
+  "codeCheck": {
+    "typechecked": true,
+    "remainingGas": "1038954180",
+    "responseSha256": "e9858d10bbe29aab4558ad6b075b70fcd6f63febf9b1419b70e008c2f0fb338b"
+  },
+  "dataCheck": {
+    "typechecked": true,
+    "remainingGas": "1039988780",
+    "responseSha256": "41feb447f2be9cf51e11564fe9d5045fe01916cd7410d5cae5f80bed7edddeb5"
+  },
+  "scriptSize": {
+    "script_size": 245016
+  },
+  "estimate": null,
+  "estimateUnavailable": {
+    "name": "TezosOperationError",
+    "message": "(temporary) proto.025-PsUshuai.tez.subtraction_underflow",
+    "rpcErrors": [
+      {
+        "kind": "temporary",
+        "id": "proto.025-PsUshuai.contract.cannot_pay_storage_fee"
+      },
+      {
+        "kind": "temporary",
+        "id": "proto.025-PsUshuai.contract.balance_too_low",
+        "contract": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+        "balance": "745372",
+        "amount": "1713250"
+      },
+      {
+        "kind": "temporary",
+        "id": "proto.025-PsUshuai.tez.subtraction_underflow",
+        "amounts": [
+          "745372",
+          "1713250"
+        ]
+      }
+    ]
+  }
+}

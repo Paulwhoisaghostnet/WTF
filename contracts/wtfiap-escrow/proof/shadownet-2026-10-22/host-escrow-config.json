@@ -1,0 +1,15 @@
+{
+  "kind": "escrow",
+  "network": "shadownet",
+  "expectedChainId": "NetXsqzbfFenSTS",
+  "rpcUrl": "https://tezos-shadownet.octez.io/",
+  "artifactPath": "/Users/joshuafarnworth/Desktop/cursor-projects/Sandbox/WTF combo/wtfos-wtfiap-v001/contracts/wtfiap-escrow/artifacts/contract.json",
+  "artifactSha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
+  "creator": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+  "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "sourcePublicKey": "edpkudtjDAPYANPBX2MJswFPtJs1kq8SeQru8v9jp2JcyvnYEynoAL",
+  "walletId": "wtf-os-root",
+  "wtfTokenAddress": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+  "wtfTokenId": "0",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+}

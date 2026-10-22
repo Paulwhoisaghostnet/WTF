@@ -97,8 +97,26 @@ async function bodyJSON(request) {
   return value;
 }
 
+function auditFundingRoom(room, atMs) {
+  const evidence = { roomCode: room.roomCode, roomId: room.fundingLock.roomId, checkedAtMs: atMs,
+    snapshotHash: fingerprint({ match: room.match, tournamentAccounting: room.tournamentAccounting || null }) };
+  if (room.terminalArchive || room.voidArchive || room.match?.phase === 'finished') return { ok: true, code: 'terminal-room', evidence };
+  try {
+    if (room.match) {
+      const copy = Party.restore(Party.serialize(room.match));
+      Accounting.validate(room.tournamentAccounting, room.match);
+      const result = Party.advance(copy, atMs);
+      requireThat(result.ok, result.reason || 'Authoritative transition failed.');
+      Party.validate(copy);
+    }
+    return { ok: true, code: 'healthy', evidence };
+  } catch (error) {
+    return { ok: false, code: 'authoritative-game-failure', evidence: { ...evidence, failure: String(error.message || error) } };
+  }
+}
+
 function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now, listen = true,
-  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor } = {}) {
+  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged } = {}) {
   requireThat(typeof apiPrefix === 'string' && /^\/[A-Za-z0-9_/-]+$/.test(apiPrefix) && !apiPrefix.endsWith('/') && !apiPrefix.includes('//'), 'Use an absolute API path without a trailing slash.');
   requireThat(typeof sharePath === 'string' && sharePath.startsWith('/') && !sharePath.startsWith('//') && !/[?#\\]/.test(sharePath), 'Use a same-origin invitation path without a query or fragment.');
   requireThat(resolveActor === undefined || typeof resolveActor === 'function', 'The host actor resolver must be a function.');
@@ -112,8 +130,24 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   let closing = false;
   const now = () => { const value = clock(); requireThat(Number.isSafeInteger(value) && value >= 0, 'The server clock must produce epoch milliseconds.'); return value; };
   const filename = room => path.join(directory, room.roomCode + '.json');
-  const diskState = room => ({ ...room, match: room.match ? Party.serialize(room.match) : null });
-  function persist(room) { atomicJSON(filename(room), diskState(room)); }
+  const diskState = room => ({ ...room, match: room.match ? (room._terminalSerialized || Party.serialize(room.match)) : null });
+  function persist(room) {
+    if (!room.voidArchive && room.fundingLock && room.match?.phase === 'finished' && !room.terminalArchive) {
+      // Cache completed human views only after replay-derived accounting has
+      // been validated under this room's pinned rules. Historical claims must
+      // not replay an old match through a later game's hero definitions.
+      Accounting.validate(room.tournamentAccounting, room.match);
+      requireThat(room.tournamentAccounting.status === 'complete', 'A funded terminal archive requires complete verified accounting.');
+      const views = {};
+      for (const session of Object.values(room.sessions)) views[session.playerId] = snapshot(room, session);
+      room.terminalArchive = { version: 1, views, viewsHash: fingerprint(views), accountingHash: fingerprint(room.tournamentAccounting) };
+      Object.defineProperty(room, '_terminalSerialized', { value: Party.serialize(room.match), writable: true, configurable: true });
+    }
+    atomicJSON(filename(room), diskState(room));
+    // A host notification is only a wake-up hint. The durable room is the
+    // recovery source; a missed notification must never lose a result.
+    if (onRoomChanged) queueMicrotask(() => onRoomChanged(room.roomCode));
+  }
   const isTournament = room => room.config.roomType === 'tournament';
   function reconcileTournament(room, restoring = false) {
     if (!isTournament(room)) {
@@ -143,7 +177,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   }
   function tournamentView(room) {
     if (!isTournament(room)) return {};
-    return { tournament: { mode: 'accounting-only', fundingStatus: 'unfunded', collectedAtomic: '0',
+    return { tournament: { mode: room.fundingLock ? 'escrow' : 'accounting-only',
+      fundingStatus: room.fundingLock?.summary?.status || (room.fundingLock ? 'opening' : 'unfunded'),
+      collectedAtomic: room.fundingLock?.summary?.collectedAtomic || '0',
+      ...(room.fundingLock ? { funding: { roomId: room.fundingLock.roomId, network: room.fundingLock.network,
+        escrowContract: room.fundingLock.escrowContract, ...clone(room.fundingLock.summary || {}) } } : {}),
       terms: clone(room.config.tournament), fullRoomQuote: Tournament.quote(room.config.tournament, ROOM_SIZE),
       joinedEntryQuote: Tournament.quote(room.config.tournament, room.players.length),
       accounting: room.tournamentAccounting ? clone(room.tournamentAccounting) : null } };
@@ -156,18 +194,43 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       currency: room.config.tournament.currency, entryFee: room.config.tournament.entryFee,
       prizePercentages: room.config.tournament.prizePercentages } } : {}) });
     requireThat(fingerprint(restoredConfig) === fingerprint(room.config), 'Persisted room configuration is not canonical.');
-    if (room.match) room.match = Party.restore(room.match);
-    if (reconcileTournament(room, true)) persist(room);
+    if (room.fundingLock) {
+      requireThat(isTournament(room) && room.players.length === ROOM_SIZE && hash(room.fundingLock.seed) === room.fundingLock.seedCommitment,
+        'Persisted funded room seed or roster is invalid.');
+    }
+    if (room.fundingFaultArchive) {
+      const archive = room.fundingFaultArchive;
+      requireThat(room.fundingLock && archive.version === 1 && !room.match &&
+        archive.snapshotHash === fingerprint(archive.snapshot) &&
+        /^[a-f0-9]{64}$/.test(archive.reasonHash) && /^[a-f0-9]{64}$/.test(archive.evidenceHash) &&
+        archive.snapshot.roomCode === room.roomCode &&
+        ['roomId', 'termsHash', 'rulesHash', 'matchId', 'seedCommitment'].every(key => archive.snapshot.fundingLock?.[key] === room.fundingLock[key]),
+      'Paused funded room archive is invalid.');
+    } else if (room.voidArchive) {
+      requireThat(room.fundingLock && room.voidArchive.version === 1 && room.voidArchive.snapshotHash === fingerprint(room.voidArchive.snapshot) && !room.match,
+        'Voided funded room archive is invalid.');
+    } else if (room.terminalArchive) {
+      requireThat(room.fundingLock && room.terminalArchive.version === 1 && room.terminalArchive.viewsHash === fingerprint(room.terminalArchive.views) &&
+        room.terminalArchive.accountingHash === fingerprint(room.tournamentAccounting) && room.tournamentAccounting.status === 'complete',
+      'Completed funded room archive is invalid.');
+      Object.defineProperty(room, '_terminalSerialized', { value: room.match, writable: true, configurable: true });
+      room.match = JSON.parse(room.match);
+      requireThat(room.match.phase === 'finished' && room.tournamentAccounting.completion.matchId === room.match.matchId,
+        'Completed funded archive belongs to a different match.');
+    } else {
+      if (room.match) room.match = Party.restore(room.match);
+      if (reconcileTournament(room, true)) persist(room);
+    }
     rooms.set(room.roomCode, room);
   }
   function lobby(room) {
-    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, phase: room.match ? room.match.phase : 'lobby',
+    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, phase: room.voidArchive ? 'voided' : room.match ? room.match.phase : 'lobby',
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       config: clone(room.config), capacity: ROOM_SIZE, sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function snapshot(room, session, atMs = now()) {
-    const base = room.match ? Party.view(room.match, session.playerId) : lobby(room);
-    if (isTournament(room) && room.match) {
+    const base = room.terminalArchive ? clone(room.terminalArchive.views[session.playerId]) : room.match ? Party.view(room.match, session.playerId) : lobby(room);
+    if (isTournament(room) && room.match && !room.terminalArchive) {
       const eliminated = new Map(Standings.finalOutcomes(room.match).filter(outcome => outcome.eliminatedRound !== null)
         .map(outcome => [outcome.playerId, outcome]));
       for (const player of [...base.players, base.self]) if (eliminated.has(player.playerId)) {
@@ -211,6 +274,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     timer.unref(); timers.set(room.roomCode, timer);
   }
   function advance(room) {
+    if (room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
     if (room.match) {
       const result = Party.advance(room.match, now());
       requireThat(result.ok, result.reason || 'Party clock transition failed.', 500);
@@ -323,6 +387,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         requireThat(session.playerId === room.hostPlayerId, 'Only the room host can start the party.', 403);
         if (isTournament(room)) requireThat(input.fillAI === false, 'Tournament rooms require eight human entrants; AI fill is unavailable.');
         if (room.match) { writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return; }
+        requireThat(!room.fundingLock, 'Use the funded-room controls; an applied escrow start is required.', 409);
         requireThat(typeof input.fillAI === 'boolean', 'Choose explicitly whether to fill vacant seats with AI.');
         requireThat(input.fillAI || room.players.length === ROOM_SIZE, isTournament(room)
           ? 'Eight human entrants are required to start the tournament accounting preview.'
@@ -339,6 +404,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'commands') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(!room.voidArchive && !room.fundingFaultArchive, 'This funded tournament is paused for technical-void reconciliation.', 409);
         requireThat(room.match, 'Start the party before issuing game commands.', 409);
         requireThat(validText(input.commandId), 'Every command needs a persistent commandId.');
         requireThat(Number.isSafeInteger(input.sequence) && input.sequence > 0, 'Every command needs a positive integer sequence.');
@@ -390,7 +456,82 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       resolve({ host, port: server.address().port, url: 'http://' + (host.includes(':') ? '[' + host + ']' : host) + ':' + server.address().port });
     });
   });
-  return { server, handler, ready, dataDir: directory,
+  // This host-only interface is never routed to HTTP. It contains account-seat
+  // bindings, but never returns bearer credentials or the committed private seed.
+  const funding = {
+    inspect(roomCode) {
+      const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
+      const accounts = new Map(Object.values(room.sessions).map(session => [session.playerId, session.accountId ?? null]));
+      return { roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
+        phase: room.voidArchive ? 'voided' : room.match?.phase || 'lobby', players: room.players.map(player => ({ ...clone(player), accountId: accounts.get(player.playerId) })),
+        lock: room.fundingLock ? (({ seed, ...publicLock }) => clone(publicLock))(room.fundingLock) : null };
+    },
+    list() { return [...rooms.values()].filter(room => room.fundingLock).map(room => room.roomCode); },
+    lock(roomCode, binding) {
+      const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
+      requireThat(isTournament(room) && !room.match, 'Only an unstarted tournament can open escrow.', 409);
+      requireThat(room.players.length === ROOM_SIZE && room.players.every(player => !player.isAI) &&
+        room.players.every(player => Object.values(room.sessions).some(session => session.playerId === player.playerId && validText(session.accountId))),
+      'Funded tournaments require eight account-bound human entrants.', 409);
+      for (const key of ['roomId', 'termsHash', 'rulesHash', 'matchId']) requireThat(typeof binding[key] === 'string' && /^[a-f0-9]{64}$/.test(binding[key]), 'Invalid funding commitment.');
+      requireThat(['mainnet', 'shadownet'].includes(binding.network) && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(binding.escrowContract), 'Invalid escrow binding.');
+      const expected = { roomId: binding.roomId, termsHash: binding.termsHash, rulesHash: binding.rulesHash,
+        matchId: binding.matchId, network: binding.network, escrowContract: binding.escrowContract };
+      if (room.fundingLock) requireThat(Object.entries(expected).every(([key, value]) => room.fundingLock[key] === value), 'Escrow commitments cannot change.', 409);
+      else {
+        const seed = crypto.randomUUID();
+        room.fundingLock = { ...expected, seed, seedCommitment: hash(seed), summary: { status: 'opening', collectedAtomic: '0' } };
+        room.revision++; persist(room); publish(room);
+      }
+      return funding.inspect(roomCode);
+    },
+    update(roomCode, summary) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock, 'Room has no escrow binding.', 409);
+      requireThat(summary && typeof summary.status === 'string' && /^[0-9]+$/.test(summary.collectedAtomic), 'Invalid public funding summary.');
+      const next = clone({ status: summary.status, collectedAtomic: summary.collectedAtomic,
+        ...Object.fromEntries(['feeQuantumAtomic', 'treasuryAddress', 'refundPolicy', 'prizeRoundingPolicy', 'prizeSummary', 'payouts']
+          .filter(key => summary[key] !== undefined).map(key => [key, summary[key]])) });
+      if (fingerprint(next) !== fingerprint(room.fundingLock.summary)) { room.fundingLock.summary = next; room.revision++; persist(room); publish(room); }
+    },
+    start(roomCode, binding) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock, 'Room has no escrow binding.', 409);
+      requireThat(['roomId', 'termsHash', 'matchId'].every(key => binding[key] === room.fundingLock[key]), 'Applied start must match the frozen room.', 409);
+      requireThat(!room.voidArchive && !room.fundingFaultArchive, 'A paused or voided funded room cannot start.', 409);
+      if (room.match) return funding.inspect(roomCode);
+      room.match = Party.createMatch({ matchId: 'party:' + room.roomCode, seed: room.fundingLock.seed,
+        ...room.config, players: clone(room.players), openedAtMs: now() });
+      room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
+        terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
+      room.revision++; persist(room); publish(room); schedule(room);
+      return funding.inspect(roomCode);
+    },
+    audit(roomCode) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock, 'Room has no escrow binding.', 409);
+      return auditFundingRoom(room, now());
+    },
+    markVoided(roomCode, binding) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock, 'Room has no escrow binding.', 409);
+      requireThat(['roomId', 'termsHash', 'matchId'].every(key => binding[key] === room.fundingLock[key]), 'Applied void must match the frozen room.', 409);
+      if (room.voidArchive) return;
+      requireThat(!room.terminalArchive, 'A completed funded room cannot be voided.', 409);
+      // Preserve diagnostic state without replaying an invalid/obsolete game on
+      // restart. Escrow refunds use the host's frozen verified chain record.
+      const snapshot = room.fundingFaultArchive ? clone(room.fundingFaultArchive) : clone({ match: room.match, tournamentAccounting: room.tournamentAccounting || null, serverError: room.serverError || null });
+      room.voidArchive = { version: 1, snapshot, snapshotHash: fingerprint(snapshot) };
+      room.match = null; room.revision++; delete room.serverError; delete room.fundingFaultArchive;
+      if (timers.has(roomCode)) clearTimeout(timers.get(roomCode)); timers.delete(roomCode);
+      persist(room); publish(room);
+    },
+    result(roomCode) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock, 'Room has no escrow binding.', 409);
+      if (room.match?.phase !== 'finished') return null;
+      if (room.terminalArchive) return clone(room.tournamentAccounting.completion);
+      // Re-derive from validated authoritative combat receipts; never accept a
+      // submitted winner, prize amount or standings document from a client.
+      return clone(Accounting.settle(room.tournamentAccounting, room.match).completion);
+    },
+  };
+  return { server, handler, ready, dataDir: directory, funding,
     pump: () => { for (const room of rooms.values()) advance(room); },
     close: async () => {
       if (closing) return;

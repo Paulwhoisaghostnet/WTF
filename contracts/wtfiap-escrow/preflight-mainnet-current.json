@@ -1,0 +1,14 @@
+{
+  "kind": "escrow",
+  "network": "mainnet",
+  "expectedChainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tcinfra.net/rpc/tezos/mainnet",
+  "artifactPath": "contracts/wtfiap-escrow/artifacts/contract.json",
+  "artifactSha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "source": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "wtfTokenAddress": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD",
+  "wtfTokenId": "0",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "sourcePublicKey": "edpkufa2DgM8dELoozjdYevXoZ8rWt8sKbX7LNqybvsFB3BjwVSqE8"
+}
