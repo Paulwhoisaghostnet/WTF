@@ -1,0 +1,169 @@
+{
+  "checkedAt": "2026-10-22T20:55:53.389Z",
+  "candidate": {
+    "electronBuilder": "26.15.3",
+    "electronGet": "3.1.0",
+    "globalAgent": "4.1.3",
+    "node": "22.23.4"
+  },
+  "testScope": "Local isolated fixtures, no production network or configuration",
+  "results": [
+    {
+      "mode": "direct",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": true,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 2,
+        "originHttps": 0,
+        "proxyHttp": 0,
+        "proxyConnect": 0
+      }
+    },
+    {
+      "mode": "http_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 1,
+        "originHttps": 0,
+        "proxyHttp": 1,
+        "proxyConnect": 0
+      }
+    },
+    {
+      "mode": "standard_http_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 1,
+        "originHttps": 0,
+        "proxyHttp": 1,
+        "proxyConnect": 0
+      }
+    },
+    {
+      "mode": "https_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 0,
+        "originHttps": 1,
+        "proxyHttp": 0,
+        "proxyConnect": 1
+      }
+    },
+    {
+      "mode": "https_fallback_http_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 0,
+        "originHttps": 1,
+        "proxyHttp": 0,
+        "proxyConnect": 1
+      }
+    },
+    {
+      "mode": "no_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "progressCallbackObserved": true,
+      "actualBuilderDownloadPath": false,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 1,
+        "originHttps": 0,
+        "proxyHttp": 0,
+        "proxyConnect": 0
+      }
+    },
+    {
+      "mode": "builder_http_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "actualBuilderDownloadPath": true,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 1,
+        "originHttps": 0,
+        "proxyHttp": 1,
+        "proxyConnect": 0
+      }
+    },
+    {
+      "mode": "builder_https_proxy",
+      "passed": true,
+      "checksumVerified": true,
+      "actualBuilderDownloadPath": true,
+      "cacheReadAndChecksumRejection": false,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 0,
+        "originHttps": 1,
+        "proxyHttp": 0,
+        "proxyConnect": 1
+      }
+    },
+    {
+      "mode": "untrusted_tls",
+      "passed": true,
+      "tlsValidationRejectedUntrustedCertificate": true,
+      "electronBuilder": "26.15.3",
+      "electronGet": "3.1.0",
+      "globalAgent": "4.1.3",
+      "node": "22.23.4",
+      "observed": {
+        "originHttp": 0,
+        "originHttps": 0,
+        "proxyHttp": 0,
+        "proxyConnect": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,358 @@
+{
+  "checkedAt": "2026-10-22T20:56:20.157792+00:00",
+  "bounty": "WTF-BB-698",
+  "sourceBaseline": "9e5d137b8bf2acf5bd57d8b0bdc017ce5927c547",
+  "scope": "All nine desktop build dependency graphs; no runtime, product version, installer publication or production configuration change.",
+  "override": {
+    "@electron/get@3.1.0": {
+      "global-agent": "4.1.3"
+    }
+  },
+  "preserved": {
+    "electron-builder": "26.15.3",
+    "app-builder-lib": "26.15.3",
+    "builderGet": "3.1.0",
+    "electron": "43.8.3",
+    "productVersion": "1.0.1-alpha.2"
+  },
+  "advisory": {
+    "id": "GHSA-hp3w-g68c-fv3c",
+    "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+    "affectedPackage": "sprintf-js",
+    "affectedVersion": "1.1.3",
+    "patchedVersion": null,
+    "historicalFindingCountPerGraph": 8,
+    "historicalReceipt": "desktop-build-audit-residuals.json",
+    "freshBaselineAuditTotal": 0,
+    "freshDirectRegistryBulkQuery": {
+      "request": {
+        "sprintf-js": [
+          "1.1.3"
+        ]
+      },
+      "status": 200,
+      "response": {}
+    },
+    "interpretation": "Current npm advisory responses also return zero for the unchanged vulnerable baseline. Clearance rests on physical removal of sprintf-js/roarr from every lock and installed representative graph, not on a claimed current eight-to-zero audit transition."
+  },
+  "dependencyChange": {
+    "changed": [
+      {
+        "path": "node_modules/global-agent",
+        "from": "3.0.0",
+        "to": "4.1.3",
+        "engines": {
+          "node": ">=10.0"
+        }
+      },
+      {
+        "path": "node_modules/matcher",
+        "from": "3.0.0",
+        "to": "4.0.0",
+        "engines": {
+          "node": ">=10"
+        }
+      },
+      {
+        "path": "node_modules/serialize-error",
+        "from": "7.0.1",
+        "to": "8.1.0",
+        "engines": {
+          "node": ">=10"
+        }
+      },
+      {
+        "path": "node_modules/type-fest",
+        "from": "0.13.1",
+        "to": "0.20.2",
+        "engines": {
+          "node": ">=10"
+        }
+      }
+    ],
+    "removed": [
+      "node_modules/boolean",
+      "node_modules/detect-node",
+      "node_modules/es6-error",
+      "node_modules/json-stringify-safe",
+      "node_modules/roarr",
+      "node_modules/semver-compare",
+      "node_modules/sprintf-js"
+    ]
+  },
+  "noPackageDowngrades": true,
+  "remainingPackagePathsUnchanged": true,
+  "packagesBefore": 284,
+  "packagesAfter": 277,
+  "allNineGraphs": [
+    {
+      "app": "ch-ease-desktop",
+      "packageLockSha256": "16b7c473d16f50d139bfae5e9946e414f46877cca902f0ef3ae27f202066bb68",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "gnocchi-desktop",
+      "packageLockSha256": "169f8091a38cbd2facb5907386935398328c24f39a7aac4d873e32bc88788a9e",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "lasagna-desktop",
+      "packageLockSha256": "c5cf8e7ce11198a3b51f400d9c6cd80def0b2cc641480a3c6d7e8bca413f1a07",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "macaroni-desktop",
+      "packageLockSha256": "048a5b8f7bdef1cadddf2c6dc196def8cd5d56b226eef2890e233264a5815d1a",
+      "graphSha256": "1ba1bcbafeb898d8f080f0bdbf0ac665634b081b25a0244331459a48507373f9",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "pasta-suite-desktop",
+      "packageLockSha256": "ea100e8a3e9e4e9f50e7b9d9208c7d6ed4cff52a6bb8efd10c8dd7381169979e",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "penne-desktop",
+      "packageLockSha256": "3f5381a0668bd5a0351b83831391e4ac7fddc2432c129c10b34657b77280d509",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "ravioli-desktop",
+      "packageLockSha256": "e1161a8951b6454b8a813f3987eae092eb79cdffddef915f0b34c793287642ba",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "rotini-desktop",
+      "packageLockSha256": "fda0ce096c9e85a089facbabf42b41ee35ec1d53571fe92c6d04673c9a21ce18",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    },
+    {
+      "app": "spaghetti-desktop",
+      "packageLockSha256": "71727d75c56de2bc1aad01b9100396128126d2554a44e4cbb559414bdc18b06e",
+      "graphSha256": "8b70c9eee1cfa26ef1d072a7191e85185f9b67cf4fd84803f1eafc39d94c7bd1",
+      "packages": 277,
+      "equalsCleanInstalledCandidate": true,
+      "audit": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 1,
+          "dev": 277,
+          "optional": 16,
+          "peer": 13,
+          "peerOptional": 0,
+          "total": 277
+        }
+      }
+    }
+  ],
+  "compatibility": {
+    "nodeUsedForBuild": "22.23.4",
+    "cleanInstallRepresentatives": [
+      "spaghetti-desktop",
+      "macaroni-desktop"
+    ],
+    "cleanInstallCommand": "npm ci",
+    "cleanInstallLifecycleScriptsEnabled": true,
+    "localPackCommand": "electron-builder --dir --mac --arm64 --publish never",
+    "localPackResult": "passed",
+    "packagePolicies": {
+      "command": "node --test scripts/{ch-ease,gnocchi,lasagna,macaroni,pasta-suite,penne,ravioli,rotini,spaghetti}-desktop-package-policy.test.mjs scripts/pasta-desktop-build-provenance.test.mjs scripts/supply-chain-policy.test.mjs",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0
+    },
+    "proxyFixture": "desktop-build-proxy-compatibility.mjs",
+    "proxyReceipt": "desktop-build-proxy-compatibility.json",
+    "asar": {
+      "entries": 60,
+      "containsNodeModules": false
+    },
+    "packagedSmoke": {
+      "passed": true,
+      "app": "spaghetti",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "runtimeVersions": {
+        "electron": "43.8.3",
+        "node": "24.22.0",
+        "chrome": "150.0.7871.250"
+      },
+      "provenanceScope": "Isolated packaging experiment copied existing Spaghetti assets and dirty preflight provenance. This is behavior proof, not a newly published or clean release attestation."
+    }
+  },
+  "upstreamSources": [
+    "https://registry.npmjs.org/global-agent/4.1.3",
+    "https://registry.npmjs.org/@electron%2fget/3.1.0",
+    "https://github.com/gajus/global-agent/releases/tag/v4.0.0",
+    "https://github.com/gajus/global-agent/releases/tag/v4.1.3",
+    "https://github.com/gajus/global-agent/blob/v4.1.3/src/routines/bootstrap.ts",
+    "https://github.com/gajus/global-agent/blob/v4.1.3/src/Logger.ts"
+  ],
+  "discardedExperiment": "An initial npm --prefix /tmp attempt on macOS generated external /private/tmp lock paths. Its results were discarded. Both verified candidates were installed from canonical /private/tmp working directories with pristine baseline locks and no --prefix."
+}

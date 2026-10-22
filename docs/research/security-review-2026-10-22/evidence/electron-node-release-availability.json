@@ -1,0 +1,96 @@
+{
+  "checkedAt": "2026-10-22T20:55:45.940215Z",
+  "checkMethod": "Fresh official GitHub releases API, tagged DEPS and patch manifests, and pull-request metadata read immediately before writing this receipt. No Electron executable was newly downloaded or tested.",
+  "supportPolicy": {
+    "supportedStableMajorCount": 3,
+    "url": "https://www.electronjs.org/docs/latest/tutorial/electron-timelines#version-support-policy"
+  },
+  "latestSupportedStableReleases": [
+    {
+      "stableVersion": "45.0.0",
+      "declaredEmbeddedNode": "24.22.0",
+      "releasedAt": "2026-10-21T05:22:39Z",
+      "releaseUrl": "https://github.com/electron/electron/releases/tag/v45.0.0",
+      "depsUrl": "https://github.com/electron/electron/blob/v45.0.0/DEPS",
+      "nodeUpdate": {
+        "number": 55163,
+        "url": "https://github.com/electron/electron/pull/55163",
+        "title": "chore: bump node to v24.22.1 (45-x-y)",
+        "merged": true,
+        "mergedAt": "2026-10-22T04:00:54Z",
+        "mergeCommit": "0141b6c6ac6d2b8d88e3d4aed92716d463513844"
+      },
+      "caPatchUrls": [
+        "https://github.com/electron/electron/blob/v45.0.0/patches/node/tls_reject_chains_containing_blocked_public_keys.patch"
+      ],
+      "releaseAssetsPublished": true
+    },
+    {
+      "stableVersion": "44.9.3",
+      "declaredEmbeddedNode": "24.22.0",
+      "releasedAt": "2026-10-21T03:27:21Z",
+      "releaseUrl": "https://github.com/electron/electron/releases/tag/v44.9.3",
+      "depsUrl": "https://github.com/electron/electron/blob/v44.9.3/DEPS",
+      "nodeUpdate": {
+        "number": 55162,
+        "url": "https://github.com/electron/electron/pull/55162",
+        "title": "chore: bump node to v24.22.1 (44-x-y)",
+        "merged": true,
+        "mergedAt": "2026-10-22T04:01:13Z",
+        "mergeCommit": "7b338a67ff07a12a60fe40059d2e67a39dbb4b3a"
+      },
+      "caPatchUrls": [
+        "https://github.com/electron/electron/blob/v44.9.3/patches/node/tls_reject_chains_containing_blocked_public_keys.patch"
+      ],
+      "releaseAssetsPublished": true
+    },
+    {
+      "stableVersion": "43.8.3",
+      "declaredEmbeddedNode": "24.22.0",
+      "releasedAt": "2026-10-21T03:05:05Z",
+      "releaseUrl": "https://github.com/electron/electron/releases/tag/v43.8.3",
+      "depsUrl": "https://github.com/electron/electron/blob/v43.8.3/DEPS",
+      "nodeUpdate": {
+        "number": 55161,
+        "url": "https://github.com/electron/electron/pull/55161",
+        "title": "chore: bump node to v24.22.1 (43-x-y)",
+        "merged": true,
+        "mergedAt": "2026-10-22T04:00:51Z",
+        "mergeCommit": "1b5cb16d2ad1ee4ae231b69a3cd94f742c28f0f6"
+      },
+      "caPatchUrls": [
+        "https://github.com/electron/electron/blob/v43.8.3/patches/node/tls_reject_chains_containing_blocked_public_keys.patch"
+      ],
+      "releaseAssetsPublished": true
+    }
+  ],
+  "mainNodeUpdate": {
+    "number": 55164,
+    "url": "https://github.com/electron/electron/pull/55164",
+    "title": "chore: bump node to v24.22.1 (main)",
+    "merged": true,
+    "mergedAt": "2026-10-22T04:52:04Z",
+    "mergeCommit": "db7158679728c94e03bc3ec12cb0ac70c8dda083"
+  },
+  "completeNode24221Update": {
+    "publishedSupportedStableCandidateFound": false,
+    "candidateVersions": [],
+    "binaryVerified": false,
+    "status": "Pending upstream stable publication: Node 24.22.1 is merged into supported branches, but the latest published stable tags still declare Node 24.22.0.",
+    "scope": "This is release/source evidence, not proof that every Node advisory is exploitable through each Electron application."
+  },
+  "certificateBackport": {
+    "alreadyPresent": true,
+    "distinction": "Electron separately backported the compromised eMudhra intermediate-certificate SPKI blocklist before changing its embedded Node version. The Node 24.22.1 adaptation patch states that upstream now contains the blocklist Electron previously carried. A displayed Node 24.22.0 therefore does not establish that this particular mitigation is missing.",
+    "advisory": "https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9",
+    "originalPullRequest": "https://github.com/electron/electron/pull/55126",
+    "upstreamAdaptationSource": "https://github.com/electron/electron/blob/45-x-y/patches/node/tls_adapt_the_upstream_spki_blocklist_for_electron.patch"
+  },
+  "productionDisposition": "Do not represent a system-Node replacement, alpha/nightly release, custom Electron build, or merged source branch as a verified supported stable runtime upgrade.",
+  "primarySources": [
+    "https://api.github.com/repos/electron/electron/releases",
+    "https://github.com/electron/electron/releases",
+    "https://github.com/nodejs/node/releases/tag/v24.22.1",
+    "https://nodejs.org/en/blog/vulnerability/october-2026-security-releases"
+  ]
+}

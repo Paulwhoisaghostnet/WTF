@@ -12104,3 +12104,11 @@
 **Correction and verification**: Register the completed public journals and finalized balances, regenerate the inventory, and assert every scanned path is present in the Git index. No generator policy or runtime configuration changed. The preceding full quality run39845984698 passed; run39850290858 stopped specifically at this inventory mismatch and remains a recorded failure.
 
 **Rule**: A generated inventory and the commit must describe the same file set. Before committing metadata during active proof generation, assert all counted inputs will be published; do not mistake a local freshness check for clean-checkout parity.
+
+## 2026-10-22 — Prove vulnerable package removal independently of advisory feeds
+
+**What happened**: The earlier desktop audit reported eight moderate entries from one sprintf-js dependency chain and recommended downgrading electron-builder. On rechecking, npm's registry returned zero even for the unchanged vulnerable lockfile, while the primary advisory still listed sprintf-js1.1.3 as affected. The ordinary audit resolver had also missed a compatible removal of the optional proxy logger chain.
+
+**Correction and proof**: Preserve Electron43.8.3, electron-builder26.15.3 and its downloader3.1.0; scope global-agent4.1.3 to that downloader. Compare both distinct lock graphs for actual vulnerable package removal and no downgrades, clean-install them, package the application, and test proxy environment handling, cache/progress, checksum rejection and untrusted TLS rejection against the exact installed dependency. Electron's Node24.22.1 bump is merged upstream but still needs a published stable binary before runtime remediation can be claimed.
+
+**Rule**: Advisory counts can change without code changes. Preserve historical evidence and prove package/version reachability separately. A scoped major transitive override requires behavioral compatibility proof; a merged runtime patch requires a published artifact and actual runtime attestation. Regenerate all derived bounty ranks when adding a record, since lower-ranked existing entries also move. See WTF-BB-698.
