@@ -17,11 +17,14 @@ test("standalone installer release audit is wired as package commands", () => {
 });
 
 test("standalone installer release audit covers every Pasta standalone desktop app", () => {
+  const auditVersion = source.match(/const ALPHA_VERSION = "([^"]+)";/)?.[1];
+  assert.ok(auditVersion, "the audit must declare its release version");
   for (const app of ["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
     assert.match(source, new RegExp(`key: "${app}"`));
     assert.match(source, new RegExp(`/api/\\$\\{app\\.key\\}/installers`));
+    const desktopPackage = JSON.parse(readFileSync(`apps/${app}-desktop/package.json`, "utf8"));
+    assert.equal(auditVersion, desktopPackage.version, `${app} release audit version must match its package`);
   }
-  assert.match(source, /const ALPHA_VERSION = "1\.0\.1-alpha\.1"/);
   assert.match(source, /releaseTag: `\$\{app\.key\}-desktop-v\$\{ALPHA_VERSION\}`/);
   assert.match(source, /version: ALPHA_VERSION/);
   assert.match(source, /\$\{app\.key\}:desktop:check/);
