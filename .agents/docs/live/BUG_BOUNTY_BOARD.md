@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Blocked: **3** · Fixed: **117** · Verified: **475** · Archived: **4**
+Total: **661** · Open: **2** · Claimed: **41** · In Progress: **14** · Blocked: **3** · Fixed: **117** · Verified: **480** · Archived: **4**
 
 ## Canonical Board
 
@@ -73,7 +73,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 379 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 379 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
-| WTF-BB-688 | In Progress | Codex October security remediation | 2026-10-22 | Runtime / October 2026 Node and Undici security advisories | P1 | 15 | 93 | 3 | 4 | 4 | Live-source Node image and AT service runtimes predate October security fixes |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-689 | In Progress | Codex October security remediation | 2026-10-22 | Desktop / October 2026 Electron certificate trust | P1 | 14 | 127 | 3 | 3 | 4 | All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 127 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
@@ -82,12 +81,8 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 188 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 188 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 188 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
-| WTF-BB-692 | In Progress | Codex October security remediation | 2026-10-22 | Release / stale dependency lock regression | P1 | 12 | 276 | 2 | 3 | 3 | Dirty root lock would restore security-sensitive dependency versions older than live |
-| WTF-BB-690 | In Progress | Codex October security remediation | 2026-10-22 | Relay / Go certificate verification | P1 | 12 | 276 | 2 | 3 | 3 | Relay builder uses Go 1.26.5 before compromised-intermediate distrust fix |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 276 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
-| WTF-BB-691 | In Progress | Codex October security remediation | 2026-10-22 | MCP / authenticated input-validation availability | P1 | 11 | 379 | 2 | 3 | 2 | Live MCP SDK lacks explicit protection against tool-input validation memory exhaustion |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 379 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
-| WTF-BB-693 | In Progress | Codex October desktop security release | 2026-10-22 | Desktop installers / Windows static paths and Linux smoke | P1 | 9 | 524 | 2 | 3 | 0 | Installer verification blocks security release on Windows root asset paths and the suite Linux executable name |
 | WTF-BB-694 | In Progress | Codex October security deployment recovery | 2026-10-22 | Deployment / production disk headroom | P1 | 8 | 589 | 1 | 3 | 0 | Production disk preflight blocks the follow-up security installer deployment |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 379 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 461 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
@@ -299,6 +294,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-261 | Verified | Codex Macaroni live snapshot pass | - | Macaroni / user-site runtime compatibility | P0 | 9 | 524 | 1 | 2 | 1 | Published Macaroni snapshots keep stale inline runtime |
 | WTF-BB-259 | Verified | Codex Macaroni owned-mints/share pass | - | Macaroni / generated mint page UX | P0 | 9 | 524 | 1 | 2 | 1 | Macaroni owned-mints copy and social sharing feel mechanical |
 | WTF-BB-258 | Verified | Codex Macaroni stage copy pass | - | Macaroni / generated mint page UX | P0 | 9 | 524 | 1 | 2 | 1 | Single-stage Macaroni drops imply extra sale stages |
+| WTF-BB-688 | Verified | Codex October security remediation | 2026-10-22 | Runtime / October 2026 Node and Undici security advisories | P1 | 15 | 93 | 3 | 4 | 4 | Live-source Node image and AT service runtimes predate October security fixes |
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 93 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
@@ -398,6 +394,8 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-053 | Verified | Codex canonical TV broken-clip recovery | 2026-09-02 | TV microapp / reliability | P1 | 13 | 188 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 188 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 188 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
+| WTF-BB-692 | Verified | Codex October security remediation | 2026-10-22 | Release / stale dependency lock regression | P1 | 12 | 276 | 2 | 3 | 3 | Dirty root lock would restore security-sensitive dependency versions older than live |
+| WTF-BB-690 | Verified | Codex October security remediation | 2026-10-22 | Relay / Go certificate verification | P1 | 12 | 276 | 2 | 3 | 3 | Relay builder uses Go 1.26.5 before compromised-intermediate distrust fix |
 | WTF-BB-673 | Verified | Codex FileShip recovery integration pass | 2026-09-05 | Media / IPFS preview and artifact recovery | P1 | 12 | 276 | 3 | 4 | 1 | Live previews and downloadable artifacts bypass shared FileShip recovery |
 | WTF-BB-670 | Verified | Codex credential-independent Hetzner deploy transport | 2026-09-02 | Deploy / Hetzner source transport | P1 | 12 | 276 | 2 | 5 | 1 | Production deploy intermittently depends on an unavailable GitHub credential stored on the server |
 | WTF-BB-644 | Verified | Codex full-send cleanup pass | - | Build / dirty worktree isolation | P1 | 12 | 276 | 3 | 4 | 1 | Untracked Mastodon/Subdomains work can block unrelated W verification |
@@ -466,6 +464,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-030 | Verified | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 276 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 276 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 276 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
+| WTF-BB-691 | Verified | Codex October security remediation | 2026-10-22 | MCP / authenticated input-validation availability | P1 | 11 | 379 | 2 | 3 | 2 | Live MCP SDK lacks explicit protection against tool-input validation memory exhaustion |
 | WTF-BB-676 | Verified | Codex contestant workspace | 2026-10-18 | Desktop / event delivery and app launch | P1 | 11 | 379 | 2 | 4 | 1 | Inventory restoration event bursts starve contestant app downloads |
 | WTF-BB-631 | Verified | Codex commission fulfillment | - | Release engineering / evidence harness | P1 | 11 | 379 | 3 | 4 | 0 | Commission release commands referenced files that never existed |
 | WTF-BB-627 | Verified | Codex commission fulfillment | 2026-08-29 | Calendar / durable participation and reminders | P1 | 11 | 379 | 3 | 4 | 0 | Calendar supports browsing and event submissions but has no persistent RSVP/My plans loop, while tray reminders target every visible event instead of a user's chosen events |
@@ -548,6 +547,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 | WTF-BB-176 | Verified | Codex pending batch live puppet cleanup | 2026-06-03 | Live E2E / local environment drift | P1 | 10 | 461 | 2 | 4 | 0 | Live puppet harness has stale local DB/storage prerequisites |
 | WTF-BB-069 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | Kiln integration / network metadata | P1 | 10 | 461 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-006 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | DB migrations | P1 | 10 | 461 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
+| WTF-BB-693 | Verified | Codex October desktop security release | 2026-10-22 | Desktop installers / Windows static paths and Linux smoke | P1 | 9 | 524 | 2 | 3 | 0 | Installer verification blocks security release on Windows root asset paths and the suite Linux executable name |
 | WTF-BB-686 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Desktop OS / Stuffs flyout visibility | P1 | 9 | 524 | 2 | 3 | 0 | Top Stuffs categories can place their first game launchers above the viewport |
 | WTF-BB-684 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game hosting / vendored module boundaries | P1 | 9 | 524 | 1 | 4 | 0 | Vendored WTFIAP engine inherits ESM host semantics and prevents room authority startup |
 | WTF-BB-677 | Verified | Codex contestant canvas | 2026-10-18 | Creation tools / Broot drawing history | P1 | 9 | 524 | 2 | 3 | 0 | Native Broot canvas strokes do not enter undo history |
@@ -1615,25 +1615,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
   - 2026-05-09: Added an entertainment-only Raceway tote layer: Win/Place/Show/Exacta/Trifecta ticket normalization, separate pool summaries, takeout, breakage, unhit-pool carryover, refund settlement, official-result status, ticket result ledger, and settlement audit hash. Focused verification passed with `npx tsx --test server/features/casino/games/guinea-pig-raceway/tote.test.ts server/features/casino/games/guinea-pig-raceway/rules.test.ts server/features/casino/games/guinea-pig-raceway/service.test.ts`, `npm run test:e2e:inventory:coverage`, `npm run check -- --pretty false`, `npm run build`, `npx playwright test tests/playwright/casino-raceway-scene.spec.mjs`, and a targeted rerun of the only full-inventory flake: `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Rounds / /rounds/:id"`.
   - 2026-05-09: Added a shared Casino audit journal for mocked table services. WTF Button, Rug Pull, and Guinea Pig Raceway now expose bounded tamper-evident audit summaries with hashed actors, stable payload hashes, chained event hashes, and action/rejection/settlement events while still keeping live wager movement disabled.
 
-### WTF-BB-688 - Live-source Node image and AT service runtimes predate October security fixes
-
-- Category: Runtime / October 2026 Node and Undici security advisories
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security remediation
-- Last touched: 2026-10-22
-- Score: C3 + F4 + S4 + P1(4) = 15
-- Evidence (2026-10-22):
-  - Public health reports bf2a5bc6; its Dockerfile pins an OCI image with NODE_VERSION=22.23.1. Live server/app.ts:317,323 enables Brotli-capable parsers before auth at :406. CVE-2026-111497 was fixed in Node 22.23.4 on October 21.
-  - PDS image metadata has Node 24.15.0; Ozone has unsupported Node 20.11.1. Running binary versions were not independently measured.
-  - Live ATProto Undici aliases 6.28.1/7.29.1/8.10.2 also predate upstream October 15 CVE-2026-109869/87018 fixes 6.29.1/7.30.1/8.12.2; npm audit did not return those advisories.
-- Impact: untrusted compressed input reaches a vulnerable native decoder in deployed source; outbound client and federation runtimes have additional version matches. No exploit or compromise demonstrated.
-- Likely correction: rebuild app and service images with supported patched runtimes and refresh separately bundled npm clients. Preserve immutable pins.
-- Verification idea: attest running image IDs and process.versions, exercise ordinary compressed requests/outbound integrations on patched artifacts, and confirm deploy commit/health. Do not execute exploit payloads against production.
-- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
-- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
-- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-678 was renumbered because production already assigned that ID.
-
 ### WTF-BB-392 - Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries
 
 - Category: Commerce / private Objkt operator availability
@@ -1890,39 +1871,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 - Local verification: `node --import tsx/esm --test server/lib/portfolio-costing.test.ts server/lib/tzkt-ops.test.ts` passed.
 - Verification idea: Duplicate-count query returns zero before index creation; index creation succeeds on production-like data.
 
-### WTF-BB-692 - Dirty root lock would restore security-sensitive dependency versions older than live
-
-- Category: Release / stale dependency lock regression
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security remediation
-- Last touched: 2026-10-22
-- Score: C2 + F3 + S3 + P1(4) = 12
-- Evidence (2026-10-22): exact live bf2a5bc6 production audit reports 3 package entries (1 high,2 moderate); local working lock reports 10 (1 critical,4 high,5 moderate).
-  - Local versus live: Multer 2.2.0/2.4.0, MCP 1.30.0/1.31.0, proxy-addr 2.0.7/2.0.8, fast-uri 3.1.5/3.1.8, and older Undici aliases. Multipart upload features actually use Multer.
-- Impact: promoting this stale lock can regress fixes already present in production. Audit counts are not exploit counts; the local proxy-addr critical requires a subnet trust configuration absent from WTF.
-- Likely correction: reconcile the intended application changes onto the live dependency baseline, then apply current advisories without forced audit downgrades.
-- Verification idea: compare exact release locks with live, re-audit and verify relevant upload/auth/client workflows; preserve unrelated working changes.
-- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
-- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
-- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-682 was renumbered because production already assigned that ID.
-
-### WTF-BB-690 - Relay builder uses Go 1.26.5 before compromised-intermediate distrust fix
-
-- Category: Relay / Go certificate verification
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security remediation
-- Last touched: 2026-10-22
-- Score: C2 + F3 + S3 + P1(4) = 12
-- Evidence (2026-10-22): Dockerfile.relay:4 pins an OCI builder whose GOLANG_VERSION is 1.26.5. CVE-2026-111943 requires Go 1.26.10 or 1.27.3. Public relay health responds, but running binary build metadata was not inspected.
-- Impact: configured relay build lacks the current crypto/x509 rejection of compromised certificate intermediates; attacker traffic interception and an applicable chain are prerequisites.
-- Likely correction: rebuild relay with a patched Go toolchain and inspect related Go-based proxy binaries before assigning their precise exposure.
-- Verification idea: verify go version -m on the actual deployed executable, image identity, ordinary outbound TLS/federation behavior and health.
-- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
-- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
-- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-680 was renumbered because production already assigned that ID.
-
 ### WTF-BB-023 - Add host-level heartbeat and native repo doctor backfill worker
 
 - Category: Operations / workers
@@ -1946,23 +1894,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
   - Create and persist the install plan in `WTF/REPO_DOCTOR_HEARTBEAT_PLAN.md`.
   - Validate `systemctl` starts, stops, and auto-restarts independent of the app container.
   - Confirm no overlapping worker runs via advisory lock and dedupe logging in run records.
-
-### WTF-BB-691 - Live MCP SDK lacks explicit protection against tool-input validation memory exhaustion
-
-- Category: MCP / authenticated input-validation availability
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October security remediation
-- Last touched: 2026-10-22
-- Score: C2 + F3 + S2 + P1(4) = 11
-- Evidence (2026-10-22): live bf2a5bc6 locks MCP SDK 1.31.0. server/lib/wtf-mcp.ts:715 constructs McpServer without maxToolInputElements; record and array tool inputs occur at :971,:1042,:2727. server/routes/mcp.ts:294 authenticates before SDK invocation at :445.
-  - CVE-2026-111768 / GHSA-46jr-4wx8-v453 was upstream-published October 15 and database-published October 20. SDK 1.32.0 adds an option that remains off unless configured.
-- Impact: a malicious or compromised paired agent can reach affected validation; source establishes authenticated exposure, not an unauthenticated endpoint or reproduced OOM.
-- Likely correction: upgrade and set an element limit derived from legitimate tool input requirements; constrain the Express parser supplying already-parsed bodies. Do not copy an illustrative advisory limit as a product requirement.
-- Verification idea: legitimate largest inputs succeed; excess element inputs are rejected before validation growth; invalid paired tokens remain rejected. Verify the running SDK/configuration, not npm audit alone.
-- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
-- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
-- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-681 was renumbered because production already assigned that ID.
 
 ### WTF-BB-127 - Side-quest auto-verification schema includes unimplemented reward handles
 
@@ -1992,19 +1923,6 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
   - 2026-05-22 verification: `npm run check -- --pretty false`; `npx tsx --test client/src/pages/MissionControl.test.ts server/challenges/services/daily-loop-challenges.test.ts`; `npm run test:e2e:inventory:coverage`; `npm run test:e2e:inventory`; targeted live puppet command for `canonical side quests|gameshow launch surfaces` after fixing strict-mode duplicate text and same-UTC-day rerun idempotency in the spec.
   - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
 
-### WTF-BB-693 - Installer verification blocks security release on Windows root asset paths and the suite Linux executable name
-
-- Category: Desktop installers / Windows static paths and Linux smoke
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex October desktop security release
-- Last touched: 2026-10-22
-- Score: C2 + F3 + S0 + P1(4) = 9
-- Evidence: Security release runs 39844459350 and 39844462877 install Windows Spaghetti/Gnocchi but fail title assertions. All eight standalone safeStaticPath implementations normalize slash to a backslash on Windows and then compare only with slash, returning the asset directory/404 for the root page. Suite Linux run 39844447426 expects /opt/Pasta Suite/Pasta Suite while the package emits /opt/Pasta Suite/@wtfpasta-suite-desktop. No failing workflow published a release.
-- Correction direction: Recognize the platform root separator in the existing static path functions; assert behavior under both Windows and POSIX path implementations. Match the Linux smoke command to the actual existing executable identity. Preserve path traversal denial and installer behavior.
-- Verification idea: Run focused executable path tests and the actual Windows/macOS/Linux installer smoke jobs before publishing the patched runtime.
-- Scope: Required to complete the explicitly requested security full send (WTF-BB-689); no unrelated desktop features. Score follows existing P1+C2/F3/S0 formula.
-
 ### WTF-BB-694 - Production disk preflight blocks the follow-up security installer deployment
 
 - Category: Deployment / production disk headroom
@@ -2017,6 +1935,7 @@ Total: **661** · Open: **2** · Claimed: **41** · In Progress: **19** · Block
 - Correction direction: Measure disk consumers and remove only identified regenerable caches. Preserve application data, Docker volumes, database containers, runtime configuration, and the existing measured disk floor.
 - Verification idea: Record exact cache cleanup and resulting free space, rerun the normal deployment, and verify public readiness plus actual runtime after activation.
 - Score: Existing P1+C1/F3/S0 formula; scope is the reproduced release blocker, not an application outage.
+- Reproduced export failure: after cache-only cleanup restored the existing floor, run39846715345 built and unpacked the candidate image but ran out of space writing Compose metadata before replacing the healthy7167ca37 app. Docker history measured a 1.46GB duplicate layer from late recursive /app ownership changes. Correction preserves ownership during runtime dependency installation and COPY, and assigns only new mount directories at the end. Fifteen deployment/supply-chain/context checks pass. Under the same deploy lock, Docker-API removal of only the unused failed candidate app/Caddy images reclaimed6373444KiB, leaving14446780KiB (14109MiB). Active app/Caddy/PostgreSQL container identities and restart states remained unchanged. A successful normal rebuild and actual image ownership/runtime checks are still required before closure.
 
 ### WTF-BB-303 - Main app and user-site CSP policies remain broad for script/connect sources
 
@@ -6621,6 +6540,26 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
 
+### WTF-BB-688 - Live-source Node image and AT service runtimes predate October security fixes
+
+- Category: Runtime / October 2026 Node and Undici security advisories
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security remediation
+- Last touched: 2026-10-22
+- Score: C3 + F4 + S4 + P1(4) = 15
+- Evidence (2026-10-22):
+  - Public health reports bf2a5bc6; its Dockerfile pins an OCI image with NODE_VERSION=22.23.1. Live server/app.ts:317,323 enables Brotli-capable parsers before auth at :406. CVE-2026-111497 was fixed in Node 22.23.4 on October 21.
+  - PDS image metadata has Node 24.15.0; Ozone has unsupported Node 20.11.1. Running binary versions were not independently measured.
+  - Live ATProto Undici aliases 6.28.1/7.29.1/8.10.2 also predate upstream October 15 CVE-2026-109869/87018 fixes 6.29.1/7.30.1/8.12.2; npm audit did not return those advisories.
+- Impact: untrusted compressed input reaches a vulnerable native decoder in deployed source; outbound client and federation runtimes have additional version matches. No exploit or compromise demonstrated.
+- Likely correction: rebuild app and service images with supported patched runtimes and refresh separately bundled npm clients. Preserve immutable pins.
+- Verification idea: attest running image IDs and process.versions, exercise ordinary compressed requests/outbound integrations on patched artifacts, and confirm deploy commit/health. Do not execute exploit payloads against production.
+- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
+- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
+- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-678 was renumbered because production already assigned that ID.
+- Remediation verification (2026-10-22): Normal Hetzner run 39844356047 deployed 7167ca37. The running app reports Node22.23.4/OpenSSL3.5.9/built-in Undici6.29.1; native kiln, operator-signer and Aleatory provider processes report22.23.4 after restart. All ten running PDS services were actually Node20.20.2, then individually backed up/replaced and verified Node24.22.1/PDS0.4.5046. PLC now runs22.23.4 from unchanged application source. Root npm Undici aliases6.29.1/7.30.1/8.12.2 and bot Undici6.29.1/ws8.21.0 are fixed; both production audits are zero. Bot and Ozone are dormant and were not enabled. Real HTTP/SSRF/Discord REST/WebSocket, PDS health/listRepos, PLC signed-DID persistence and public health checks passed. See remediation.md and evidence/remediation-at-runtime.md; final host receipts retain the distinction between configured and running services.
+
 ### WTF-BB-645 - Any authenticated user can force-run registered cockpit jobs
 
 - Category: Authorization / background jobs
@@ -8946,6 +8885,41 @@ Copy this when adding a new issue:
   - Six focused crypto tests pass: both domains reject session-only production configuration, allow the documented development fallback, and prove dedicated-key precedence. Fourteen focused deploy-policy checks require the dedicated secrets before replacement.
   - The correction is an ancestor of deployed `47319133`; self-deploy run 33630052693 passed the production secret preflight, build, migrations, replacement, and exact-commit readiness. Public health reported `47319133`. A successful deploy could not have crossed this fail-closed boundary without the dedicated production values. WTF-BB-019 is Verified.
 
+### WTF-BB-692 - Dirty root lock would restore security-sensitive dependency versions older than live
+
+- Category: Release / stale dependency lock regression
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security remediation
+- Last touched: 2026-10-22
+- Score: C2 + F3 + S3 + P1(4) = 12
+- Evidence (2026-10-22): exact live bf2a5bc6 production audit reports 3 package entries (1 high,2 moderate); local working lock reports 10 (1 critical,4 high,5 moderate).
+  - Local versus live: Multer 2.2.0/2.4.0, MCP 1.30.0/1.31.0, proxy-addr 2.0.7/2.0.8, fast-uri 3.1.5/3.1.8, and older Undici aliases. Multipart upload features actually use Multer.
+- Impact: promoting this stale lock can regress fixes already present in production. Audit counts are not exploit counts; the local proxy-addr critical requires a subnet trust configuration absent from WTF.
+- Likely correction: reconcile the intended application changes onto the live dependency baseline, then apply current advisories without forced audit downgrades.
+- Verification idea: compare exact release locks with live, re-audit and verify relevant upload/auth/client workflows; preserve unrelated working changes.
+- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
+- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
+- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-682 was renumbered because production already assigned that ID.
+- Remediation verification (2026-10-22): All changes started from actual production baseline bf2a5bc6 in an isolated managed worktree. Multer2.4.0, proxy-addr2.0.8, fast-uri3.1.8 and qs6.16.0 were retained; MCP/Hono/Undici/ip-address received minimal patched updates. Clean npm ci and production audits for root and bot passed, and deployed package-version evidence confirms the retained versions. The original dirty Macaroni/Gameshow workspace was preserved and was not promoted. See evidence/deployed-app-runtime.json and remediation.md.
+
+### WTF-BB-690 - Relay builder uses Go 1.26.5 before compromised-intermediate distrust fix
+
+- Category: Relay / Go certificate verification
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security remediation
+- Last touched: 2026-10-22
+- Score: C2 + F3 + S3 + P1(4) = 12
+- Evidence (2026-10-22): Dockerfile.relay:4 pins an OCI builder whose GOLANG_VERSION is 1.26.5. CVE-2026-111943 requires Go 1.26.10 or 1.27.3. Public relay health responds, but running binary build metadata was not inspected.
+- Impact: configured relay build lacks the current crypto/x509 rejection of compromised certificate intermediates; attacker traffic interception and an applicable chain are prerequisites.
+- Likely correction: rebuild relay with a patched Go toolchain and inspect related Go-based proxy binaries before assigning their precise exposure.
+- Verification idea: verify go version -m on the actual deployed executable, image identity, ordinary outbound TLS/federation behavior and health.
+- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
+- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
+- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-680 was renumbered because production already assigned that ID.
+- Remediation verification (2026-10-22): Rebuilt the exact deployed relay revision with Go1.26.10; go version -m on the running production binary confirms toolchain, source revision and vcs.modified=false. Rebuilt Caddy2.11.7 with Go1.26.10 on both application and AT edge hosts because the official new image still embedded Go1.26.8. Actual caddy build-info confirms the patched compiler. Real config validation, public TLS/health, relay isolated migrations/restart/UI and reconnection of all nine prior upstreams passed. Database and relay persistence backups were verified before promotion; existing containers/mounts for databases were preserved. See remediation.md and evidence/remediation-at-runtime.md.
+
 ### WTF-BB-673 - Live previews and downloadable artifacts bypass shared FileShip recovery
 
 - Category: Media / IPFS preview and artifact recovery
@@ -10493,6 +10467,24 @@ Copy this when adding a new issue:
 - Local fix note: Added `scripts/server-deploy.sh` so production deploy now builds first, ensures Postgres is healthy, stops the app, applies migrations, and only then starts the new app container. The GitHub Hetzner workflow now calls that script instead of starting the app before schema work.
 - Verification: live Hetzner deploy via `bash scripts/server-deploy.sh`; production app restarted only after migration step completed, then returned healthy `/api/health`.
 - Verification idea: Deploy logs show migration completion before first production app boot and background-job start.
+
+### WTF-BB-691 - Live MCP SDK lacks explicit protection against tool-input validation memory exhaustion
+
+- Category: MCP / authenticated input-validation availability
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October security remediation
+- Last touched: 2026-10-22
+- Score: C2 + F3 + S2 + P1(4) = 11
+- Evidence (2026-10-22): live bf2a5bc6 locks MCP SDK 1.31.0. server/lib/wtf-mcp.ts:715 constructs McpServer without maxToolInputElements; record and array tool inputs occur at :971,:1042,:2727. server/routes/mcp.ts:294 authenticates before SDK invocation at :445.
+  - CVE-2026-111768 / GHSA-46jr-4wx8-v453 was upstream-published October 15 and database-published October 20. SDK 1.32.0 adds an option that remains off unless configured.
+- Impact: a malicious or compromised paired agent can reach affected validation; source establishes authenticated exposure, not an unauthenticated endpoint or reproduced OOM.
+- Likely correction: upgrade and set an element limit derived from legitimate tool input requirements; constrain the Express parser supplying already-parsed bodies. Do not copy an illustrative advisory limit as a product requirement.
+- Verification idea: legitimate largest inputs succeed; excess element inputs are rejected before validation growth; invalid paired tokens remain rejected. Verify the running SDK/configuration, not npm audit alone.
+- Review and primary sources: `docs/research/security-review-2026-10-22/report.md`.
+- No remediation performed in this report-only pass. Scores use the existing board formula C + F + S + P1(4); C/F/S reflect localized versus multi-runtime changes, service disruption and security consequence.
+- Remediation claimed 2026-10-22: implementing from origin/main bf2a5bc6 to preserve the newer production fixes; actual host/container runtime attestation and normal full-send deployment are required. Original audit ID WTF-BB-681 was renumbered because production already assigned that ID.
+- Remediation verification (2026-10-22): SDK1.32.0 now explicitly enables structural input protection. The dedicated MCP parser enforces the existing10MiB request contract even when global JSON_BODY_LIMIT changes; typed collections and query/path records are rejected before expensive Zod validation using existing domain and Node HTTP limits. Fifteen focused tests, actual SDK schema/calls, largest legitimate input and exact-limit boundary checks passed. Real local and production paired-token lifecycle checks proved authorization, tools/list and real API reads, oversized input rejection and revoked-token denial. Both temporary production tokens were revoked. The suspected batch amplification failure did not reproduce in isolated real HTTP:100 successful calls,0errors,495ms,322MiB peakRSS. Home/login Chromium smoke passed without unexpected errors. See evidence/mcp-verification-summary.md and its receipts.
 
 ### WTF-BB-676 - Inventory restoration event bursts starve contestant app downloads
 
@@ -12275,6 +12267,20 @@ Copy this when adding a new issue:
   - Commit `c70b85d52` guarded all three enum types in migration 0031—`buyback_window_status`, `wtf_auction_status`, and `side_quest_entry_fee_status`—with `pg_type` existence checks before creation.
 - Verification (2026-09-02):
   - The production migration policy suite now asserts all three guards and passes 9/9. Current source inspection and blame both confirm the replay-safe correction is already present, so the original report was stale rather than an outstanding defect.
+
+### WTF-BB-693 - Installer verification blocks security release on Windows root asset paths and the suite Linux executable name
+
+- Category: Desktop installers / Windows static paths and Linux smoke
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October desktop security release
+- Last touched: 2026-10-22
+- Score: C2 + F3 + S0 + P1(4) = 9
+- Evidence: Security release runs 39844459350 and 39844462877 install Windows Spaghetti/Gnocchi but fail title assertions. All eight standalone safeStaticPath implementations normalize slash to a backslash on Windows and then compare only with slash, returning the asset directory/404 for the root page. Suite Linux run 39844447426 expects /opt/Pasta Suite/Pasta Suite while the package emits /opt/Pasta Suite/@wtfpasta-suite-desktop. No failing workflow published a release.
+- Correction direction: Recognize the platform root separator in the existing static path functions; assert behavior under both Windows and POSIX path implementations. Match the Linux smoke command to the actual existing executable identity. Preserve path traversal denial and installer behavior.
+- Verification idea: Run focused executable path tests and the actual Windows/macOS/Linux installer smoke jobs before publishing the patched runtime.
+- Scope: Required to complete the explicitly requested security full send (WTF-BB-689); no unrelated desktop features. Score follows existing P1+C2/F3/S0 formula.
+- Verification (2026-10-22): Scoped root-path fixes to the six applications that actually start at slash; CH-EASE and Macaroni use explicit HTML entries and retain their successfully tested immutable builds. The suite Linux smoke now uses its real emitted executable, and workflow policy accepts both LF and CRLF. All 27 platform build/install jobs and all 36 installed-format smoke checks (Windows, Linux arm64, macOS DMG and ZIP for nine products) passed. Releases are published at their actual tested commits: CH-EASE/Macaroni7167ca37, six root-entry apps c2dcb077, suite e266b0da. Installer runtime attestations confirm Electron43.8.3/Node24.22.0/Chromium150.0.7871.250. Macaroni publisher-only GitHub permission failure was recovered using existing authorized CLI scope; original CI artifact bytes, digests and tag were preserved. See the desktop release/runtime receipts in docs/research/security-review-2026-10-22/evidence/.
 
 ### WTF-BB-686 - Top Stuffs categories can place their first game launchers above the viewport
 

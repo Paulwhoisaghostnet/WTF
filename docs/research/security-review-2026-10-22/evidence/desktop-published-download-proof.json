@@ -1,0 +1,36 @@
+{
+  "product": "ch-ease",
+  "release": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/ch-ease-desktop-v1.0.1-alpha.2",
+  "tag": "ch-ease-desktop-v1.0.1-alpha.2",
+  "assetId": 666933135,
+  "name": "CH-EASE-Studio-1.0.1-alpha.2-mac-universal.zip",
+  "sha256": "944cdc108ae7001b8bfa841399052c4aab726328987e22c04e3808b999da63c3",
+  "bytes": 230923033,
+  "runtimeProof": {
+    "ok": true,
+    "app": "ch-ease",
+    "origin": "http://127.0.0.1:30778",
+    "title": "CH-EASE \u2014 Pasta Protocol preparation studio",
+    "assetsVerified": 34,
+    "stableOriginRelaunch": true,
+    "bundledToolsOpened": 0,
+    "provenance": {
+      "schema": "wtfos.pasta.desktop-build-provenance.v1",
+      "app": "@wtf/ch-ease-desktop",
+      "version": "1.0.1-alpha.2",
+      "gitSha": "7167ca37e047118f11032da41798d4baad85a885",
+      "dirty": false,
+      "sourceRevision": "7167ca37e047118f11032da41798d4baad85a885",
+      "target": {
+        "platform": "darwin",
+        "arch": "universal",
+        "format": "dmg+zip"
+      }
+    },
+    "runtimeVersions": {
+      "electron": "43.8.3",
+      "node": "24.22.0",
+      "chrome": "150.0.7871.250"
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "scope": "Build-only dependencies, omitted from packaged application files",
+  "electronBuilder": "26.15.3",
+  "finding": "No compatible patched resolution available in the audited packaging graph; npm audit proposes electron-builder 26.5.0, a downgrade rejected to preserve the working packager. No forced audit downgrade applied.",
+  "advisory": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+  "graphs": [
+    {
+      "representative": "spaghetti",
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 8,
+        "high": 0,
+        "critical": 0,
+        "total": 8
+      },
+      "vulnerabilities": [
+        {
+          "name": "@electron/get",
+          "severity": "moderate",
+          "range": "1.6.0 - 4.0.3",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "app-builder-lib",
+          "severity": "moderate",
+          "range": "25.1.1 || 26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "dmg-builder",
+          "severity": "moderate",
+          "range": "26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "electron-builder",
+          "severity": "moderate",
+          "range": "19.25.0 || 26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "electron-builder-squirrel-windows",
+          "severity": "moderate",
+          "range": "26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "global-agent",
+          "severity": "moderate",
+          "range": "<=3.0.0",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "roarr",
+          "severity": "moderate",
+          "range": "<=2.15.4",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "sprintf-js",
+          "severity": "moderate",
+          "range": "*",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        }
+      ]
+    },
+    {
+      "representative": "macaroni",
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 8,
+        "high": 0,
+        "critical": 0,
+        "total": 8
+      },
+      "vulnerabilities": [
+        {
+          "name": "@electron/get",
+          "severity": "moderate",
+          "range": "1.6.0 - 4.0.3",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "app-builder-lib",
+          "severity": "moderate",
+          "range": "25.1.1 || 26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "dmg-builder",
+          "severity": "moderate",
+          "range": "26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "electron-builder",
+          "severity": "moderate",
+          "range": "19.25.0 || 26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "electron-builder-squirrel-windows",
+          "severity": "moderate",
+          "range": "26.6.0 - 27.0.0-alpha.2",
+          "fixAvailable": true
+        },
+        {
+          "name": "global-agent",
+          "severity": "moderate",
+          "range": "<=3.0.0",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "roarr",
+          "severity": "moderate",
+          "range": "<=2.15.4",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "sprintf-js",
+          "severity": "moderate",
+          "range": "*",
+          "fixAvailable": {
+            "name": "electron-builder",
+            "version": "26.5.0",
+            "isSemVerMajor": true
+          }
+        }
+      ]
+    }
+  ]
+}
