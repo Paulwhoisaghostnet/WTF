@@ -1,0 +1,20 @@
+{
+  "observedAt": "2026-10-22T21:26:29.857Z",
+  "scope": "Reconciliation callers complete the pass they join while queued follow-up work remains serialized; shutdown waits for active pass without starting queued work",
+  "before": {
+    "source": "HEAD:server/features/wtfiap/funding.ts",
+    "test": "reconcile callers finish their pass while later wakes continue, and close waits without queuing another pass",
+    "result": "failed",
+    "assertion": "false !== true; completed-pass waiter remained unresolved while next pass was deliberately held"
+  },
+  "after": {
+    "command": "npx tsx --test server/features/wtfiap/funding.test.ts server/features/wtfiap/funding-contract.test.ts",
+    "passed": 17,
+    "failed": 0,
+    "wallClockTimeoutsUsedInRegression": false
+  },
+  "sourceHashes": {
+    "server/features/wtfiap/funding.ts": "17192f2e77cf64f6dea1cc618f6799400b49ebc07ecbb491a877abe6018f7b46",
+    "server/features/wtfiap/funding.test.ts": "e7b39408fa239dd0b66bbc43d8a4c5253f56ef0d4bd7665bae6ab82733b8dc93"
+  }
+}

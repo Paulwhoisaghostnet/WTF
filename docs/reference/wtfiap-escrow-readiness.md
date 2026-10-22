@@ -1,6 +1,6 @@
 # WTFIAP-v0.01 escrow readiness
 
-This release targets **Tezos Shadownet**. Mainnet work is preparation only: no Mainnet operation has been signed or injected. Testnet contracts are deployed; end-to-end game and hosted release verification are still in progress.
+This release targets **Tezos Shadownet**. Mainnet work is preparation only: no Mainnet operation has been signed or injected. Testnet contracts and the hosted Shadownet lane are deployed; complete native and hosted game verification is still in progress.
 
 ## Approved economics and recovery
 
@@ -25,7 +25,9 @@ Shadownet chain ID: `NetXsqzbfFenSTS`.
 
 The rehearsal uses the existing local Shadownet root as its synthetic creator/referee/treasury. It is not the final hosted escrow. Exact applied receipts, initial storage, estimates and code identities are in [the Shadownet proof directory](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/). The deployed token contains no Mainnet WTF.
 
-Local contract verification covers seven escrow scenarios, both currency paths, refund/rejoin/void, recipient/treasury rejection isolation, unauthorized calls and malformed/replayed results. Independent arithmetic covers all 64 eliminated-player tie partitions, both quanta, all 420 rounding residue classes and amounts above JavaScript's safe-integer range. These are local proofs; real lifecycle receipts are recorded separately.
+Local contract verification covers seven escrow scenarios, both currency paths, refund/rejoin/void, recipient/treasury rejection isolation, unauthorized calls and malformed/replayed results. Independent arithmetic covers all 64 eliminated-player tie partitions, both quanta, all 420 rounding residue classes and amounts above JavaScript's safe-integer range.
+
+Four real Shadownet lifecycle cases now pass with **144 applied operations**: XTZ ranked payouts, WTF tied-place payouts, and withdrawal → re-entry → start → technical void → all eight refunds in each currency. Every room ends with zero held funds. The withdrawal/re-entry cases conserve cumulative deposits of 90,000 mutez and 9,000,000 WTF atoms respectively, including the initial withdrawn entry. Native fees and storage burns are accounted separately from escrow principal. See the [durable lifecycle journal](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/lifecycle/journal.json), [measured operation costs](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/final-operation-costs.json), and [finalized wallet handoff](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/local-wallet-handoff.json). These contract exercises do not substitute for the native and hosted complete-game proofs below.
 
 ## Host integration and automation
 
@@ -35,7 +37,7 @@ PostgreSQL stores frozen terms, intents, observations, results and void evidence
 
 The `wtfiap-escrow-reconciliation` job wakes on startup, room changes, explicit actions and chain heads. Disabling new funding blocks create/start; saved settlement, treasury and technical-void obligations retain their original configuration. Direct wallet claims/refunds remain available. A separate payment cron is unnecessary.
 
-The dedicated encrypted host wallet is `wtfiap-shadownet-referee`, address `tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe`. Its secret never leaves the host keyring. The updated signer is installed and its service/socket identity verified; the game lane is awaiting activation with the finalized hosted escrow above.
+The dedicated encrypted host wallet is `wtfiap-shadownet-referee`, address `tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe`. Its secret never leaves the host keyring. The game lane is configured for the finalized hosted escrow above. The first room exposed a container identity mismatch: root health checks passed, but the actual node process lacked the host socket group. The entrypoint now derives that mounted group and grants only the node account membership before dropping privileges, preserving private socket modes. An isolated production-image test covers denial before correction, successful unprivileged communication, repeated startup, socket recreation and continued denial for an unrelated account. Normal deployment39854380320 serves220600ef; the actual app process has the required supplementary group and its unprivileged signer probe succeeds. Four finalized deposits survived replacement, and the live chain-head reconciliation worker is healthy. [Socket proof and original-ID request recovery](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-22/host-signer-access.json).
 
 Game configuration uses `WTFIAP_ESCROW_NETWORK`, `WTFIAP_ESCROW_RPC_URL`, `WTFIAP_ESCROW_CONTRACT`, `WTFIAP_ESCROW_SCRIPT_HASH`, `WTFIAP_REFEREE_WALLET_ID`, `WTFIAP_REFEREE_ADDRESS`, `WTFIAP_ROOM_CREATOR_ADDRESS`, `WTFIAP_TREASURY_ADDRESS`, `WTFIAP_WTF_TOKEN_CONTRACT`, `WTFIAP_WTF_TOKEN_ID` and measured `WTFIAP_CHAIN_MIN_BLOCK_DELAY_SECONDS`. Global Mainnet token/RPC settings remain unchanged.
 

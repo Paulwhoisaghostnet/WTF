@@ -6,6 +6,7 @@ import { TezosToolkit } from "@taquito/taquito";
 import { require as tsxRequire } from "tsx/cjs/api";
 import { buildPuppetKeyringEnv } from "./runtime.mjs";
 import { verifyWtfiapTransfer } from "./wtfiap-chain-evidence.mjs";
+import { estimateFundedBatch } from "./wtfiap-funding.mjs";
 import { fundingCalls } from "../../../client/src/features/wtfiap/funding-wallet.ts";
 
 // Test-only wallet boundary. The native app's Octez adapter, Taquito encoding,
@@ -68,7 +69,7 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
       const transfers = expected.map(operation => ({ kind: "transaction", to: operation.destination, amount: operation.amount, mutez: true, parameter: operation.parameters }));
       const finalizedBlockHash = await tezos.rpc.getBlockHash({ block: "head~2" });
       const finalizedBalanceMutez = (await tezos.rpc.getBalance(actor.walletAddress, { block: finalizedBlockHash })).toFixed();
-      const estimates = await tezos.estimate.batch(transfers);
+      const estimates = await estimateFundedBatch({ tezos, transfers, actor, configuration, keyring, directory: submissionDirectory, record });
       const costs = estimates.map(estimate => {
         assert(Number.isSafeInteger(estimate.suggestedFeeMutez) && Number.isSafeInteger(estimate.burnFeeMutez));
         return { suggestedFeeMutez: String(estimate.suggestedFeeMutez), storageBurnMutez: String(estimate.burnFeeMutez), gasLimit: estimate.gasLimit, storageLimit: estimate.storageLimit };
@@ -109,10 +110,11 @@ export async function installWtfiapPuppetWallet({ context, actor, session, baseU
     providerImports++;
     await route.fulfill({ response, body: source.replace(imports[0][0], `import(${JSON.stringify(sdkPath)})`) });
   });
-  await context.addInitScript(({ walletAddress, connected }) => {
+  await context.addInitScript(({ walletAddress, connected, origin }) => {
+    if (location.origin !== origin) return;
     if (!localStorage.getItem("wtf:network")) localStorage.setItem("wtf:network", "mainnet");
     if (connected) localStorage.setItem("wtf:wallet-session", JSON.stringify({ address: walletAddress, providerName: "octez.connect" }));
-  }, { walletAddress: actor.walletAddress, connected });
+  }, { walletAddress: actor.walletAddress, connected, origin: new URL(baseURL).origin });
   return {
     arm(roomCode, action) { assert.equal(armed, null); assert.equal(inFlight, false); armed = { roomCode, action }; },
     assertUsed() { assert.ok(providerImports > 0, "The original native wallet adapter must load through the scoped provider boundary"); assert.ok(operations.length > 0); },

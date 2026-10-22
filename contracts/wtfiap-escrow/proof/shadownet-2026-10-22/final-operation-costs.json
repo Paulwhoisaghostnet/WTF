@@ -1,0 +1,2457 @@
+{
+  "status": "passed",
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "sourceJournalSha256": "efc9fd1dc34c73e828bc22eb7e20bcf5142851f9c93d7755d537240c5db1c33c",
+  "derivation": "Actual fees sum applied manager-content fee fields; actual storage burns sum burned/storage fees balance updates from manager and internal results. Estimates are recorded separately and may include SDK storage allowance.",
+  "rows": [
+    {
+      "key": "dummy-mint",
+      "operationHash": "opTzQ8GDJd6uNkAox4Siy2qoPqbz2g8WgGMm2KLyHtNvRkwqnfb",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "mint",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "1684",
+        "storageBurnMutez": "140750"
+      },
+      "estimated": {
+        "managerFeeMutez": "1684",
+        "storageBurnMutez": "145750",
+        "storageLimit": "583"
+      },
+      "inclusionBlock": "BLJjZTVWCGD4K5tCHbjNvPSSXUxYA6ecdxVSdM7nwhULeGrSS5y"
+    },
+    {
+      "key": "xtz-unique/create",
+      "operationHash": "opEGg1JJtQ6D6hTA8GccaVWSW33nWfp28LSmu8m9N8J92fG1sUF",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "create_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "1329",
+        "storageBurnMutez": "126250"
+      },
+      "estimated": {
+        "managerFeeMutez": "1329",
+        "storageBurnMutez": "131250",
+        "storageLimit": "525"
+      },
+      "inclusionBlock": "BMH7iB2eWKhUXvKY8S6eUeqhFx4evro3nfGDUaam8HU7ewCs1MP"
+    },
+    {
+      "key": "xtz-unique/e2e-bert/join",
+      "operationHash": "ooSg6o8waQfcn3WZAQHhJiAgP3NmoZNmkw9wdp5wMd38X4oPfAa",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "532",
+        "storageBurnMutez": "7750"
+      },
+      "estimated": {
+        "managerFeeMutez": "532",
+        "storageBurnMutez": "12750",
+        "storageLimit": "51"
+      },
+      "inclusionBlock": "BMQ4D8gDNwaBsJoBkDyVqhuABiRE4ddCuzWWVXEJVywqRNezrBF"
+    },
+    {
+      "key": "funding/e2e-ernie/0",
+      "operationHash": "op1RcZx8FMuB4An223wzAGXMPDLxDy4TBd9feCxhrjN8htDjTeK",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BMGPD7VbYfjnta1d31ZzxAdrcGEiTyWsof7GgJ9AoUfegSaVUNh"
+    },
+    {
+      "key": "funding/e2e-ernie/1",
+      "operationHash": "op6f61WcxSR1W2JkZbGNBRbajDkpXWEcsLteQKuReRHzMd4FsDu",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "333",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMKsYy9AacgMd1x89DCrhTDiLH3d7UV9qE7TddRDZ851fa5QWQz"
+    },
+    {
+      "key": "funding/e2e-ernie/2",
+      "operationHash": "oohpYxNp99JNL12GFG5P9ukL9PQ3RtowYkqo9zyXKUtzHHAiNaS",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "10001",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLoyHJmzmUbbfufRpbzJvVNUeASo1Mr6eNE6UP6fLxjXRF67ez1"
+    },
+    {
+      "key": "funding/e2e-ernie/3",
+      "operationHash": "opEUbZ25kCU4kbzx9Vkra8juRdSFwDshf8RoCQgXcmbqrzW3aUs",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "6750",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMDBNsiN3ntz6ziE5ZtLK3VUnWLfQPFrgidKz8NMdzSL5zsPLcT"
+    },
+    {
+      "key": "funding/e2e-ernie/4",
+      "operationHash": "oo6evoDNaUYxAcaBTRZBS7guhmvvR4YWpFwpYHhgjnMMe5LxM2N",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "5427",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMao7fXK87zs587zbGw5yXXcXGEobMHAUbBpP523i7J3fX3miQm"
+    },
+    {
+      "key": "xtz-unique/e2e-ernie/join",
+      "operationHash": "ooSCBqXynnqA8HaFHf2wNvjixTZt6oQ5TRHNWzERuBJmqgAvhom",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "762",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "428",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLsBncKR7SdPcaSFVqaURJPT5bu94mQXxHgeVYdFw6zUxab9cNc"
+    },
+    {
+      "key": "funding/e2e-elmo/5",
+      "operationHash": "opRZcM7neX4zzXBJHATrSBRVHauR5Y9gBnF4q4ZnH1pfsxJTGWm",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BLE71S4uA48P6BUjhMNcnzfw4kmXLrn63CdPZw2gtgqCDomm3wT"
+    },
+    {
+      "key": "funding/e2e-elmo/6",
+      "operationHash": "oo4avVgTi6QcUy7nftftprHztbaqYrRsuu4zvqaHkZ9qANz6K1b",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "10334",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL9ijHQRy2STb7trSQyNnBXAoXoynpzFjxUWuhaDayGZFGy2ZFQ"
+    },
+    {
+      "key": "funding/e2e-elmo/7",
+      "operationHash": "oorMVqTXXot2sjhmFhqrZ36g9HnSpaFpwjnWYpQach9mF17Si5u",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "6750",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLWi9kFutNRfyGgMtBu8z4k97bci9Hz5MpGjxLqHv8E1mQF8ux7"
+    },
+    {
+      "key": "funding/e2e-elmo/8",
+      "operationHash": "ooZsUH3ZC52XKCFucwZTAFh6dtu51t4HgTgL5D5PEPyMd31j8EZ",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "5428",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMcdYJuDLH9pB7ELXycvfH9smTA6PNkphxPcGfcEuo2qWLB1cDK"
+    },
+    {
+      "key": "xtz-unique/e2e-elmo/join",
+      "operationHash": "opGwPcSiBPkNSE8EHhjWnnhRbDLJGsxUD5HatRJdeKe5jPTWKfr",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "763",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "429",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMRV65wTeZihRBxfx2qmpGaHvmgoyN7qqy1E3pTR2VpiW3ZFJ5Z"
+    },
+    {
+      "key": "funding/e2e-bigbird/9",
+      "operationHash": "op88DUWDxJM8JM89r4Qk3eqh8R6eZn6zZ46jLHoPjxsQ899sCRv",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "22513",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BLzeZdzZjF1R6XFwPZEv1PL1sNbb2ci6viUQogpXUUgLQtrjv75"
+    },
+    {
+      "key": "funding/e2e-bigbird/10",
+      "operationHash": "opU5CDvxjXEF3DD3Yvk7FnHMstLsb89BdQZ5FNGYD9BAA1bLGY1",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMah96ViPhFcy2bfK9NMdtTQCbVhJR2WyUGo5h3N6pkAxK535pP"
+    },
+    {
+      "key": "xtz-unique/e2e-bigbird/join",
+      "operationHash": "ooM2opFSEt6ECg6eUq1CCtGkJYRTxKptjHHyw7ka1QrSxXGTn6E",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "764",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "430",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BM2bQi88tkCZiTHGVEBt4p8YDa3hTQpeicD39WKgno5iKMvNRe1"
+    },
+    {
+      "key": "funding/e2e-thecount/11",
+      "operationHash": "ooogQoSu669P4DL4AjXXKWKm3Gi7jgPNPuqBYNgrHAPoEKzzC6H",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "22514",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BL1PzVjp46uSqNx6w57fSjEX3PhcQEhtuEb7VJDPDXdHcd9VbSR"
+    },
+    {
+      "key": "funding/e2e-thecount/12",
+      "operationHash": "onpEc6ScbB65m1G2np9ENphbXtTyhNqVZmCS14eDajAJ7upjSes",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKyCg1twKVPXi7aVqba1VwjFpmadxq73y32EcMrcE4ENh3t9bCx"
+    },
+    {
+      "key": "xtz-unique/e2e-thecount/join",
+      "operationHash": "ooaSYGBUg5GwfxKkaPpKjNA2mq1TfgTD3draSfQ17JPmo66WeSn",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "765",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "431",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLuxp3KXoLhsn6e2FPW9VBGqEd9AEE1tDNkX3GeyEgGmh1Lsmu2"
+    },
+    {
+      "key": "funding/e2e-snuffaluffagus/13",
+      "operationHash": "onn1gTCCr4mre7yWAANJQM2KRGY7yWTv6DBdVniZN6wRZ6tynpD",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "22515",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BLKYR9HrgWYhs2z8vu29xzrEbRNUWY7me86KLzkNSsK4mXsF9Hb"
+    },
+    {
+      "key": "funding/e2e-snuffaluffagus/14",
+      "operationHash": "ooo6jP78duvf1h5x7w7BHjhwTk2y9B1HnqCyqPhWWnfRNUV1FG2",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL4QJ6ziZJAmAEWJvuTfMpVkxTxfsoTPvtFXzKJXSd7Kbowxn38"
+    },
+    {
+      "key": "xtz-unique/e2e-snuffaluffagus/join",
+      "operationHash": "ooNNc9dejwxP3UFxVLaA2vEJyvSii3RGmJXWFA8tvVAqTdKHRfs",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "766",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "432",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLo7yr2WCYXjPmE5gUEUyEmTrvEzmVGDt3Xa8He4Nfrujn4Hf3j"
+    },
+    {
+      "key": "funding/e2e-grover/15",
+      "operationHash": "oohgdBDpt9Zy87w94LJJzUmZ2TYZVTwhv8DpoGbdtqZNaEiD7jz",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "22516",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BMM9CRZJRiSiyuhgmXSJuaU2irbu8B6XZH5mJ97V6qbct54R68t"
+    },
+    {
+      "key": "funding/e2e-grover/16",
+      "operationHash": "onnSnHUaM9FU7ShmyAUyt1rkZs8KTRWZFEKid1PPjxCDyJchphK",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMNbgMLHhsakhyTwxogcwCro1xUSNbTQrzebuGZJ4ogpquTtUcg"
+    },
+    {
+      "key": "xtz-unique/e2e-grover/join",
+      "operationHash": "opGwU4rL5oxTHWeLNv9Qi8LbbmpfuzA6311T8dJuVfCNJ4Gyeu8",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "767",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "433",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMLDvbUaPrHNfACSZNo1s623M7WDDufRbn2jDEYCHFQVhN18L3h"
+    },
+    {
+      "key": "funding/e2e-cookiemonster/17",
+      "operationHash": "ooHfgVtPZYZJKaAiTFHrK4E7XxWRhbY7s27i7PLsZNLkAJVWeKB",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "22517",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "64250"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "69250",
+        "storageLimit": "277"
+      },
+      "inclusionBlock": "BLXkeK8XPUutxwackUuqEQyyE936qfhAN8TBBBMEVSWgwpXRyU5"
+    },
+    {
+      "key": "xtz-unique/e2e-cookiemonster/join",
+      "operationHash": "ooxtJ8JwRywhyuyegHNU5VF73b5Sdw3joA1rcAptCWFBiAoynv5",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "767",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "433",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMVkj8CD4UaYUkex4A3vWAVbmzWfJjvpioXqnBfQKvjniRLMMBV"
+    },
+    {
+      "key": "xtz-unique/start",
+      "operationHash": "ooiytrYCTcjA4xHHVdn9VnYJF4G3dqC8CJQxX4ywu4QuxNGVwr1",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "start_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "9250"
+      },
+      "estimated": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "14250",
+        "storageLimit": "57"
+      },
+      "inclusionBlock": "BLg2EMwZV5487KeohL9EvkoeCGdq8wtPSPwoi1R7Wux5mEFNJc6"
+    },
+    {
+      "key": "xtz-unique/settle",
+      "operationHash": "opGBqGDLVFKvdsK5EitBNf86vc9bsbNqG652oaqnghFKGkwvXBD",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "finalize_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "1186",
+        "storageBurnMutez": "162500"
+      },
+      "estimated": {
+        "managerFeeMutez": "1186",
+        "storageBurnMutez": "167500",
+        "storageLimit": "670"
+      },
+      "inclusionBlock": "BL8Zf2LGR1GTNRdZDztbz1qZ5zR5d9u6UX3RCgcsu5HqsPhLkaz"
+    },
+    {
+      "key": "xtz-unique/e2e-bert/claim",
+      "operationHash": "oowfvk7hnukUP2jowkZo29xXNNr7QmTbQ54zHBg7nba8rmPWp5x",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "claim",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "500"
+      },
+      "estimated": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "5500",
+        "storageLimit": "22"
+      },
+      "inclusionBlock": "BMYinuaLdycXyB8PGWkX8Q4eEoJZRJNHj9VcZxuz3EoL5pE5u3e"
+    },
+    {
+      "key": "xtz-unique/e2e-ernie/claim",
+      "operationHash": "onsuNLadt6CeMnKkPFyKqJujjmDrMhxLUbouaZs8v46pCnavW1G",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "claim",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLMNDYPwf4GQnksEuqMfjB86fJW4rLrr2bJUvviLeXaAz7N4A8g"
+    },
+    {
+      "key": "xtz-unique/e2e-elmo/claim",
+      "operationHash": "op175uNUeQY7AhiDVkhoyWLxtjqnDp58Eod4BCHSdjfGPjD6Fcn",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "claim",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "776",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLfr3qZeBcjtmJtVxB7Ke1zUM8TNCFGthGpGDCEUehLUz3QabAy"
+    },
+    {
+      "key": "xtz-unique/treasury",
+      "operationHash": "opB3nULo23NNF8VQti3nQTTj5XMH6nSJB47m2eJJnMb7K4FPPwm",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "claim_treasury",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "715",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "715",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKpsSo1tSSaCGpXtRc1pjkUa1P7bAsNj6Af2Vr1ncK3aMGFoubp"
+    },
+    {
+      "key": "wtf-third-tie/create",
+      "operationHash": "oo1CwDmgf4VLBhAYD1gqh7RRFBvDr6V4sx7Z1xbdkUbLHRDEewz",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "create_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "125750"
+      },
+      "estimated": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "130750",
+        "storageLimit": "523"
+      },
+      "inclusionBlock": "BLRw9S4VnK7Jz37bhsDPz6SsVSjXP9B75xVmjy81ZrMKnXSCtFM"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bert/operator-add",
+      "operationHash": "oniojgfQ1nh6HukcHz34YthwnDyKUP2WNx9F7jF9W6wkrGDKLZv",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "16750"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "21750",
+        "storageLimit": "87"
+      },
+      "inclusionBlock": "BLyGxuL5hdKwejdmzvM5BTvi3uxSosLRXJLE22uqZGQdKkLmWvG"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bert/join",
+      "operationHash": "ooRH2HYRjPPDEhD7CrLGEy2XkGQ1XZhjX8CUYprsGktSsFvfGZT",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "795",
+        "storageBurnMutez": "24750"
+      },
+      "estimated": {
+        "managerFeeMutez": "795",
+        "storageBurnMutez": "29750",
+        "storageLimit": "119"
+      },
+      "inclusionBlock": "BMH2Fk36cAFX65NjStw8ktBTiGa3MCEJTvpktr2j8tbpfg5ZQpj"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bert/operator-remove",
+      "operationHash": "opBStrs5gm4zQtXP9BZh6K6ZtfVmp9xZwfRpJzVYV1Lpb95kKAB",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLdLyZDxfi4eKrvh6xmdDJXqzSoAvuMTStpkryXZq1f9L2xrDF5"
+    },
+    {
+      "key": "wtf-third-tie/e2e-ernie/operator-add",
+      "operationHash": "ooR1LWZAG88SFGHi75vTvjFn6Bs1k5b93mRf6Ni7Wx3srgZ45YL",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLKu4TPjDJo5dJkeqdmK5qjRQq8TfeMD3RAFXsbF7ndzLpcTEmR"
+    },
+    {
+      "key": "wtf-third-tie/e2e-ernie/join",
+      "operationHash": "op3FVMUXJH5EGvnV5hkZckWhe9J31Qw1CSmm93pHmPhPfWkiLQL",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "819",
+        "storageBurnMutez": "7250"
+      },
+      "estimated": {
+        "managerFeeMutez": "819",
+        "storageBurnMutez": "12250",
+        "storageLimit": "49"
+      },
+      "inclusionBlock": "BLTmibAWKEPxTbeCv2Ek3auAttHdGBZRXjcde12sFwVeDR4gsGF"
+    },
+    {
+      "key": "wtf-third-tie/e2e-ernie/operator-remove",
+      "operationHash": "oocfAYduuxmNX3wHAfCAoPhy8QpAVDkN43neztiouC8i7MJ8gPH",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMYyq1rKjMqZyBr9WW1KRZK16wFb8dxwkYdwNtCbopsL5L91QGM"
+    },
+    {
+      "key": "wtf-third-tie/e2e-elmo/operator-add",
+      "operationHash": "oogH3Chw5kAqwAsFEvSJF9qbk3KawAbFPGkZ3TJ4Ph1Z2KFvVGU",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL4fhEfZzSBCuQu1wDF4ptSQPCBVRTRmD2gTkcYi5ycdFqC6e17"
+    },
+    {
+      "key": "wtf-third-tie/e2e-elmo/join",
+      "operationHash": "ooFHYaampQusKugQaaMcQtMf3xE3D6nT9fCRJ7EXRi89mMz6Jvs",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "820",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "820",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLEUy2tk1Ndk2XumFcKLV1HyBaJLDBRwsS3vQgH2PVe9kEp8kiU"
+    },
+    {
+      "key": "wtf-third-tie/e2e-elmo/operator-remove",
+      "operationHash": "ongkc8Jt2SquhAH5gMuGhKYfs4c5RWv3yae7gXvTVarXXeVY5Ja",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMBbpVqw5BACA3xrUakyXXkJoCMHhxjjVxmumeRpmPxe9XbADch"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bigbird/operator-add",
+      "operationHash": "oowgaJdpUhQmCiUi8PzGz6mFQa3erybVz7Q6oJepciq1J7ptaZx",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMDMqe21X6oTx8pAPZqcFZNTme2RiEzbrL85P3j8shRjwsqJoEF"
+    },
+    {
+      "key": "funding/e2e-bigbird/18",
+      "operationHash": "op7wVWV63nZWmSMmRxghC92S2GxoKyg2PCFARDBmKK3X6R6pxGg",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "2215",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMFnJYurKpUwqTgxvtRdnjDTjNV7L8h2qbkjw71WEhd4Y2smaoD"
+    },
+    {
+      "key": "funding/e2e-bigbird/19",
+      "operationHash": "ooPJehs6SCfhmj86bXQEYg9rjNf6zJFndGFqZifE4JX726KUYaq",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "5820",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMMpHahCPY1ivVxu2hQhXxZedPjiYGZCrH6VLmxsiypsm6sDn6j"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bigbird/join",
+      "operationHash": "onf4HDnx7wRVnNzFAuL6F8PzGAxacMCPJ9QWKvovfzE7TGEbGHV",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "821",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "821",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BKz6HsjnBm9ytKdXXytJAP3HrF1d5q4HFJbbJcz8oBRNb1rMhps"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bigbird/operator-remove",
+      "operationHash": "ooRPruMPg7gD2F2d7XxB286T6QrKqLHccb3fjZpbPrh51wiMh4X",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLty8DsCrz4YPDtqqBPRnTwFj7QyN1YhNrTrCHjVNgc6kTdTyX5"
+    },
+    {
+      "key": "wtf-third-tie/e2e-thecount/operator-add",
+      "operationHash": "oobD1bCkmQRVxCDqQtgfGvauyvSw1MKQi9vToiP9gevFnbnrdFB",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLtCLq1G14cHRPFAhd681tmSjg9EntDt1gjp7Zfnk4zfhd111wE"
+    },
+    {
+      "key": "funding/e2e-thecount/20",
+      "operationHash": "opZbUeKaWyQcXrDhuuCYifpZQfDYvnpGiUWxXL32UwLW2rfgvXi",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "8035",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMekZNKEvzBCGiRuQAiUF7QK9sqKDAUXEMEmMuCAGMRSxR3A72W"
+    },
+    {
+      "key": "funding/e2e-thecount/21",
+      "operationHash": "oowLgzD1bjAAKZ3gGSbvUZiNtw31AYdzsBfLoGsYRMAUFjpAk83",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKtULANbXvjGZUr1qX4WNykX7jK6z5VgAktAVXY3DKwexLd2xVy"
+    },
+    {
+      "key": "wtf-third-tie/e2e-thecount/join",
+      "operationHash": "oob3SMPHrDujthpzM3WjUNxpciZcivq5NQkEJWu81deZX7FNdeZ",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BKuFAscQYas15c18gZqfhqdaBDXmKfPGeKwdHyCrxKJ2y9vfEzZ"
+    },
+    {
+      "key": "wtf-third-tie/e2e-thecount/operator-remove",
+      "operationHash": "ooQnDuMW657jeBQs6ua2YpARbU6C2ks5G1EACsS8Uyip8XypCQn",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLQLungKe1vCKdmDi8CjLkvrAkuQAvG2bc2DUtyjkaLvefSGeJs"
+    },
+    {
+      "key": "wtf-third-tie/e2e-snuffaluffagus/operator-add",
+      "operationHash": "ookbt5f32bLY9qzpE6b9t3iSaMjcFozGRrdBysvA3Gpsh17ecYD",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMFdychWKx47ghirJWXaZ1oo5ahgavvhqGXi8A2q2qyT8H21PVX"
+    },
+    {
+      "key": "funding/e2e-snuffaluffagus/22",
+      "operationHash": "opTFgyKGnsVLsAYZXQsEYBZA3xRNUZcqvjhoafMv8G2QYz7jFXQ",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "8036",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLtzrjjiFtTUW3W59kEiJQCfQkRADdLfPApbuPgzzK7QrxMLe1T"
+    },
+    {
+      "key": "wtf-third-tie/e2e-snuffaluffagus/join",
+      "operationHash": "ooPpfWHXjpysJsoKY5cCVjW8DAYuwUAppYAyCD6EvYBW1z5j9UU",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMcDYC88x65o4nfju7xMMgqkkc1fDtCdekUo8GNRumQP5v6pGn3"
+    },
+    {
+      "key": "wtf-third-tie/e2e-snuffaluffagus/operator-remove",
+      "operationHash": "ooqfHHvsqhmrgbg4e6aXqHYgv6n11ari1ApzsFR5zxDMbSDZJck",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMd33Q7MX2t3GwdXUpdgWYpdTdPTqoovAqtBkCZMQ1VzQdRpS81"
+    },
+    {
+      "key": "wtf-third-tie/e2e-grover/operator-add",
+      "operationHash": "ookxL78ENRrciAr54zsEu3EXGerkMTHrQvPkHhfuVGmxnmec3xg",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLSAJ9bC3fmiLdtwY63TTqGV8UN5sz4RiGv8Z1WDtk9K9Ev79G6"
+    },
+    {
+      "key": "funding/e2e-grover/23",
+      "operationHash": "op9bjC1a9njXbFJFSi9jSRPN9b9nzX85FsjEmRLpeKuPKY19PCY",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "8036",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKpx2tPpmQPPGJ5BKgpXuzT3QggLvrx6ewv82mayHsg9GJKqcy9"
+    },
+    {
+      "key": "funding/e2e-grover/24",
+      "operationHash": "op7b25tvW1GsHfMGDjRy4WNxZ4w8jes61jcKN6bQUdQ2eHo55n4",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMHvPFGvfy4PoCnWB7axwgdV83VM7ARmTsG7jHcqUhJn6gKLXkB"
+    },
+    {
+      "key": "wtf-third-tie/e2e-grover/join",
+      "operationHash": "oowWiDVQQmUecqQDLBBDBtZ6RigcuyqgmwLshroWF7AvyAoRw3R",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "823",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "823",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMJat4zkK85EnXpTfY4xPpTUMtw4X46pnegihNvwEhBvKkaxnGq"
+    },
+    {
+      "key": "wtf-third-tie/e2e-grover/operator-remove",
+      "operationHash": "opTWLZK2npYXK9TUHnYigRsrnDX8eZjAjZGPeXoLaT8VPmrSKpc",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLkGwUDGyggpNNPgKtW7afGMR1C9QWYJSyhXA1CJ8q8XcArj35t"
+    },
+    {
+      "key": "wtf-third-tie/e2e-cookiemonster/operator-add",
+      "operationHash": "oo365smjePaHZTWEoDCoPpeHuMo53WeFDZ3Yfjbeh5cNwvYJzgi",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL5vdvHG65Y9gVLwu4zA9zXSqMvNrBddobuaUmf5btxjGrVqmaQ"
+    },
+    {
+      "key": "funding/e2e-cookiemonster/25",
+      "operationHash": "oosBVsxeJEWk1Sad8jQPbM2WuyYNrxWitnCACethVFQoxmGHd1t",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "8037",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMQjXbj5CbyYZbsrsYsmErt42TyRA4imoX56PozvVAKoy1LCgtR"
+    },
+    {
+      "key": "funding/e2e-cookiemonster/26",
+      "operationHash": "op5RRPBYEMk1gqaEAughT1z4cyZuYmFEv6XPwiYiJuGc6hAyKb2",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMFWp7DKiFKtAnUtQqKKp5RmPc8u2ufeGUbbvfrztoxDBgSUYGv"
+    },
+    {
+      "key": "wtf-third-tie/e2e-cookiemonster/join",
+      "operationHash": "opJV9gSru1usqLUd1iWrRqdchBNFoL4ZEumwoN5FaU5By3ZyWHA",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMFEi5bfZagDgu5obYVyQFDqnK3jSTm2oZCHJA7HkHwayyLGzQh"
+    },
+    {
+      "key": "wtf-third-tie/e2e-cookiemonster/operator-remove",
+      "operationHash": "op5LvMraRjHnq2m6yJzXCYPJr8ud56sb3Aw5hF1bdvxehfgwnsi",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLT7ZgFBQE3e4sVdFiNyMf14qdsGzGt24LTufBCQn4YqD1tMcaP"
+    },
+    {
+      "key": "wtf-third-tie/start",
+      "operationHash": "onk8MbHyoSfam7kuUs7idtEvfFtRwEs8bH6kxjykmrJrJUuBmxD",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "start_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "9250"
+      },
+      "estimated": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "14250",
+        "storageLimit": "57"
+      },
+      "inclusionBlock": "BMe1m6aFfmjnfbVuoBnrbE4jBMhrG9EWaF7wTkq7suw8pxkQ9Eh"
+    },
+    {
+      "key": "wtf-third-tie/settle",
+      "operationHash": "onpwAMaKjqs5ttWCfcgNhMpmvWCXLHpr5tE9Zp7JakfoptZHcHQ",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "finalize_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "1187",
+        "storageBurnMutez": "162750"
+      },
+      "estimated": {
+        "managerFeeMutez": "1187",
+        "storageBurnMutez": "167750",
+        "storageLimit": "671"
+      },
+      "inclusionBlock": "BMXU3z3Srtgtby7QwokVqVFXPWSr6DNVV4GZqNVN9Qvyc4nTDbS"
+    },
+    {
+      "key": "wtf-third-tie/e2e-bert/claim",
+      "operationHash": "onsbTks9oUb5RQBUYRaieSDdoS1XU6MqojgbDLdyoh7tBxRP6Cp",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "claim",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "831",
+        "storageBurnMutez": "750"
+      },
+      "estimated": {
+        "managerFeeMutez": "831",
+        "storageBurnMutez": "5750",
+        "storageLimit": "23"
+      },
+      "inclusionBlock": "BKruqdQkJQq6DAec6Wzs92iGDLf5Y2L3eutbQVt7rCeYHSvK5ZN"
+    },
+    {
+      "key": "wtf-third-tie/e2e-ernie/claim",
+      "operationHash": "op4QhX84SfrccqV87HHT969DzBG9i8cPhSM2Qa9kqKSPsG5hMUM",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "claim",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "831",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "831",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMEZKFHEawE7ynMAWcsN7rHnc59sEgNtFzHZnPCqN1zutGxwTqn"
+    },
+    {
+      "key": "wtf-third-tie/treasury",
+      "operationHash": "oou3nLmsWKyERy3p9zXtos6GtwbYvvBPNo4x1CxPYbTMAjdYK4U",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "claim_treasury",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "747",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "747",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMaW8D6eJK3MkHZghcxKgrpK55gaqJiW7bQ57sv9LyBj3UKz3uR"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/create",
+      "operationHash": "op8MYSuYZsqMGhNJfF3RJx4fqN8sz9ytcb8oHXuWoeCCaxwaZFc",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "create_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "125500"
+      },
+      "estimated": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "130500",
+        "storageLimit": "522"
+      },
+      "inclusionBlock": "BM9L3QBWCWhXdGm7w3jQzk3MQEf1QY2F8FWLg868ErBUQCxttSG"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-bert/join",
+      "operationHash": "opQSsP7W5nX1xTw6H4b68tfsR5WmYGRcRZ6NcDD5k8yucpvP3db",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "532",
+        "storageBurnMutez": "7750"
+      },
+      "estimated": {
+        "managerFeeMutez": "532",
+        "storageBurnMutez": "12750",
+        "storageLimit": "51"
+      },
+      "inclusionBlock": "BLxGerzdJZ17m2u4BJCovgzJjk3mWkvjQZseVxozzzmLGsopETj"
+    },
+    {
+      "key": "funding/e2e-ernie/27",
+      "operationHash": "ooBNUWaK7mgeQMK7rzLwqavSsKpkn45hnF37BBW6Hk2K3TTVAew",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "8883",
+      "actual": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "491",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKsPzHmexyCvWXq9zgDAihLp3jvFZyz44iKtL8H2LTkmJUuyMCY"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-ernie/join",
+      "operationHash": "opXz6U8koZ2ArnqALzQgDpADtiV8TreGyZ6zsQvKWSyxh56eCKE",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "533",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "533",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLXXM2HVE2KsaRkfvNMrMTG9PW4Ac3RfDBgRo4XaYFs3ENQogMr"
+    },
+    {
+      "key": "funding/e2e-elmo/28",
+      "operationHash": "ooPYTD7MfoUzF1zpYU8uuf4qUXpzAAbJGdGxjkFVUnPdsNY3jq6",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "16554",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKotbjo3ykXDMuzCEWCTSKCvyLMy8cATqD1aMQ5X2csdx5h4nGx"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-elmo/join",
+      "operationHash": "oo2WiMGwVNz535NMfrXyV1FtTpvmmqeh5twPaRqgFPmfoin35Pk",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "533",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "533",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BM3BCHcJJ2WRLfTNLMbDdeNKtEhF3B4CZUS6pQKL96HjkHntvJL"
+    },
+    {
+      "key": "funding/e2e-bigbird/29",
+      "operationHash": "oo314NbmcJus6r8WChYc8eCgcqYQyLB1SbB8P8KhVt6qiaX3nXF",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "17744",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLPNjsxSS9gXRZJakE3K1muJAYegumiQRHTM2qyFx1955LtET3p"
+    },
+    {
+      "key": "funding/e2e-bigbird/30",
+      "operationHash": "oofzzYySUS19fiRZFu7bCHRdSdTx8w4wp7nT65HpvVem54ztd9J",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL6YRFze6EyaobfjSvx8rnxJQNyxHfzRe3oegSc76GTnppdi8k6"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-bigbird/join",
+      "operationHash": "oooRacxMiPvS7R6Tw1cSM4ojMxZ5Cp1KXcJi91PwhN65SD24iev",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "534",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "534",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLkpJebANJj9pi3CupBfLYPgB5AB6sNcnNjLdDA5gsZ1VscBYLJ"
+    },
+    {
+      "key": "funding/e2e-thecount/31",
+      "operationHash": "oowsmTccmLNkuN83kxQiarPWmDa2bX8EsVABuSqexyq2yZqgZCH",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "17745",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLuWYq64S8gmcrW9LnR17py5G3B1PuxJ73GohWCxzJvCeHtwPQ6"
+    },
+    {
+      "key": "funding/e2e-thecount/32",
+      "operationHash": "oneaABjRnuFm8tGeN6aqSfGkR2mexzdWwW9YR9kofSAgjqAUKCV",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLygaqstXRp7JSKLCqeAa2YWzi2RWSkH4bcpqXfGkEXRsDLmv63"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-thecount/join",
+      "operationHash": "ooCeKw9ad2g9gdtKp47GtNFHmcdbVXZ3TWprdtjpHgNqexEay11",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "535",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "535",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMQuQnmRrdjYKe3beKjZNrgfFzUoV2nixAE2gpSDgBJrzJWN2is"
+    },
+    {
+      "key": "funding/e2e-snuffaluffagus/33",
+      "operationHash": "opYvxYmswGkoCN9ahhiQhXwVzXLZ1gCfiGY4icT9WNtrsVU7Z2T",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "17746",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMVQgMxviVbssLBRUUsMyk3dGWuEKiQyUUAX6tcPc3SYMF4JPhX"
+    },
+    {
+      "key": "funding/e2e-snuffaluffagus/34",
+      "operationHash": "onomZBjJ7hQTUy3TuvSksDMwjMPAg1zsyJwKBr9pAatETYTVeyV",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL4CTXmb6aedws6BKVbFGcKk32pkZPZAX3SXa2roqSHNsqUF8Y1"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-snuffaluffagus/join",
+      "operationHash": "ooJAVxxqbYCpnzwKpYcKXVPdDkt6j8tfBxTjoQrqYc4qZNR4h8L",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "536",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "536",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BL6rVs4WDnpw7Pf4XrKMD8z7wc6pFx8upeS7ALjkyQvDah7HNim"
+    },
+    {
+      "key": "funding/e2e-grover/35",
+      "operationHash": "onjga6hZfm9gxkzBEjcMdMQde9y2FajW6rxuC6BQVC5GPDeHHBr",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "17747",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL7ySX3qyn96XTiLEzt3bb6TGFKG3tD5nC2fzoSVgnkFFdn2eFZ"
+    },
+    {
+      "key": "funding/e2e-grover/36",
+      "operationHash": "opPXbBFpcRvVrBy1tvfWErWyZ98fsDncgytsYu4VXUp496yH4M8",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "1",
+      "actual": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "490",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMYnwEopWaQZoMZZnFazsPPjSVCqQaMPnV3JTUYb8YYRuqiG6r3"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-grover/join",
+      "operationHash": "oozzRFfzRc5XnTfsYCRKSqA4EFGDqqmhk6QVoKXEKzrh3LsvP1D",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLByRSeGFnyjXhcuxfBfKwa43AWnJ8P1MBQaKW3dobBsGJdKdjh"
+    },
+    {
+      "key": "funding/e2e-cookiemonster/37",
+      "operationHash": "ooA8qWcr84bFudgQPZJqiacPxQ4e4MagKuMviRkKwTUaPHUMstp",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "__native-funding",
+      "amountMutez": "17748",
+      "actual": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "492",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL3wifJKTSoatFyAMkg1zp3KZatEaiWa2gWe2cCCRvKSSZ3zPy9"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-cookiemonster/join",
+      "operationHash": "onhbVKiPm3s2M6hc6RvQfR1Aipz85E24bGHkbQKZ2QE1zczFt69",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLYLywyRiSRw5ieNb5XKzDHab7kNn94nZb1DYeSavxgfg73oKS4"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/prestart-refund",
+      "operationHash": "ooPFh3ByLPJPw614WrMDXdH9Wdn7atHKKznK9KbtqaVFZGQbKBJ",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "704",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "704",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLc4YaoydmE6y7vo9rRt3fRQijcQi2qYCjzEymhBWQWch31Dgh3"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-bert/rejoin/join",
+      "operationHash": "oo3nxp2mpwBCFrEuCtRqzv6HEi7vXKPzcgighcQC56vMhrSxyWM",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "10000",
+      "actual": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "500"
+      },
+      "estimated": {
+        "managerFeeMutez": "537",
+        "storageBurnMutez": "5500",
+        "storageLimit": "22"
+      },
+      "inclusionBlock": "BMNCUrjX1rzJYHBxgbZRnoQndFf43bYUbsjZxaudNuMTv8Rhfci"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/start",
+      "operationHash": "onfGWDwqCAn64FJCmS633P8zon1Wfyyx4gpWJxMQZsPEuZbAsmc",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "start_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "9250"
+      },
+      "estimated": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "14250",
+        "storageLimit": "57"
+      },
+      "inclusionBlock": "BLyaPKkVax92hzo9Les4Ff4c1wa6gsfFRko2yWuPb3LLdsharYP"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/void",
+      "operationHash": "ooJqUY8oSyeGrFtrQL9x18Hb2Q5eQ2j6Cs3PuKjk4Ph9Ci8tiQL",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "void_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "579",
+        "storageBurnMutez": "18500"
+      },
+      "estimated": {
+        "managerFeeMutez": "579",
+        "storageBurnMutez": "23500",
+        "storageLimit": "94"
+      },
+      "inclusionBlock": "BLRaasAxFRiDwu6JBovTx1rpAwShWHPXYmwnmTc8kWYWSWpjkin"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-bert/void-refund",
+      "operationHash": "onrLz5ob5BBcFePbEMeikFrdjwyaKwFj8VgYty3DeDGTEqs4Ttr",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "707",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "707",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL47663tWxqnHNeSmq6JuTNG7dDk5nWXhvaJRFeX886zjZwi88m"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-ernie/void-refund",
+      "operationHash": "ooQuwsXHWFKdKRRShYfKXYyGe9zhQXzbvGJvMYdQdhneMbxN6pS",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "706",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "706",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BM2wAL7o4BvcBuHcY6uVKGpFChMfMaDfYYt7rDby6A3N9g4cRv5"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-elmo/void-refund",
+      "operationHash": "opR1AgoowHmPcFTMcDpdXo7H95AQ5ti9TBN7yuXZWHekb2UBxUU",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "705",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "705",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL9krJk7k4x1xmiXgeCEFbaDrXg7pPh7LoeMm3JXCFZTL8fJPeG"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-bigbird/void-refund",
+      "operationHash": "ooWjLyooLCgUGFGwiNV6YsxQBe3WC1ejVeTTTzgyZMrucxqCZjw",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "704",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "704",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMGx12Ukgzn5pCU2idbtgK75a6CnD5eSJBA24PYj3g4xA6Ue1Ga"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-thecount/void-refund",
+      "operationHash": "oodngJSNR6xDLg4nRVnqu7SntLPFmDHkaNBxh8wgmPxqvt7qyE1",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "703",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "703",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLnGXADif37HMS9kNnJDs6A6fehA4CScGwbWQJwrnF7HskPcekq"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-snuffaluffagus/void-refund",
+      "operationHash": "op4awLqCuzE5C4q4CzrhrrqiCQjEeV5kejVz7caifuVHySmRagm",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "703",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "703",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLjYWq2oAPZZJ7nJTpR2A62PW5dbEQV3373gPopFDyE1KF1kHg7"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-grover/void-refund",
+      "operationHash": "onesMSGQbkxzdL9kW12GLCYBEFbyZcfMYk73hvNadmWKK7XVGcj",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "702",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "702",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLEFrzD3MWK3PyVsJVsdVRLrW778GPE5wTwBSvsHfzqZnQmaf6w"
+    },
+    {
+      "key": "xtz-refund-rejoin-void/e2e-cookiemonster/void-refund",
+      "operationHash": "opCEkLyhkAjFRJszjU1gAMjjZqb1aVvQARq7fygmRfhMtGpjA1N",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "701",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "701",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKpTHU7huzG1eBcuF7vRwwHbWcYgss6uU6LzfHTgCishr66Pkjo"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/create",
+      "operationHash": "onmg9XzjkWoLgPTiRqdTcEgUFSpQn511A3zxqktS6Din2FZMRNy",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "create_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "71750"
+      },
+      "estimated": {
+        "managerFeeMutez": "957",
+        "storageBurnMutez": "76750",
+        "storageLimit": "307"
+      },
+      "inclusionBlock": "BLLrU8No9N5ArwEwvjEnNJfz8nkZTaDubKmXa6mF4uRDBoLxyH9"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/operator-add",
+      "operationHash": "ooXU2kafTUpM1kpY6xEUW8VXJJGZQjP7FewFLy2AGd9QfZuAHDX",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "16750"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "21750",
+        "storageLimit": "87"
+      },
+      "inclusionBlock": "BLaPjDEFzJeic2c6zVQruS1oUyJZ8EnxnzPDaDwyMYv4KihKhs3"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/join",
+      "operationHash": "ono9VuhZm89wsye94yx2w5FXQxByhK3ZZK66gmivkd5WM2xmtmP",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "818",
+        "storageBurnMutez": "8250"
+      },
+      "estimated": {
+        "managerFeeMutez": "818",
+        "storageBurnMutez": "13250",
+        "storageLimit": "53"
+      },
+      "inclusionBlock": "BLZzahD7uCTyZDLLZVUYKUbrPpupaaFbjKmf9G437ei5jFHugmF"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/operator-remove",
+      "operationHash": "op5vqBLP4qR3DBG3NMgn7raM8ePzdganE2Dqr3xqLG83JpqZ6eS",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL7wNsAy2fS2mhXdCQwU3XD4UDDu1uxMiieWTcUhcLu3QG5ibbd"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-ernie/operator-add",
+      "operationHash": "ookXGFU7neWXSo6Zpq7VR8MWHpnHKv4QGyLV5BGWkZX5QLv29mi",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMQtYvis1ib7DcAciVKD3spk8rYYCu21CSZSx4vXBdY1Fpmy3Ef"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-ernie/join",
+      "operationHash": "oooNTX4y7568xBepBrUG3VYSqnsgA2einQHhzyeJujjgiexeSGa",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "819",
+        "storageBurnMutez": "7500"
+      },
+      "estimated": {
+        "managerFeeMutez": "819",
+        "storageBurnMutez": "12500",
+        "storageLimit": "50"
+      },
+      "inclusionBlock": "BLi1QnuJCQwG4SFje1Kdigwd93pifJTiD68dB24C3FjBc3ZmEQ6"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-ernie/operator-remove",
+      "operationHash": "ooiS9Mst1nB6UGiLZq1Y6GbYi6Fbo9kBv3qkv8gqPnqSfG73mjY",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLeBqmy8KLPgWTjBsQceWCoa9BXuVVfkXvHhyvWuG4ZipLaCsV9"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-elmo/operator-add",
+      "operationHash": "opWV5rFaPSaYegjLNAGwQ5E81AstfEs1F6kirWEYDSQP4sY4PVu",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLvztJdBtXbtCgg62BLeCSmdokyVMvr78NsQqVAWZuMDFs9GNXn"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-elmo/join",
+      "operationHash": "ooYjtXHDSg2bDYnTg4gi9oTWk3RoXvDP49ELMDPmQt79DanT4JE",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "820",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "820",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BMboGDNtYHJpRgAyADa8xSrTDZhkdtBH9rASVb7Wg2LdbvmdfbF"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-elmo/operator-remove",
+      "operationHash": "ooMM1bCp5LUE5e3os9MHHWXccF3fMMS8ivCfGCA9ot9ZPbCxgtU",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLmMHyrJ2cTGMKi1mZksLxwUdLNcM4dtDcjHiHxAJyB3usJW5wu"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bigbird/operator-add",
+      "operationHash": "opMNstktK4QqqMkvYJMCtiA8oXYtHuQV1VU8gFEQubV9bWL3eVa",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLiMmWLDSDwNvE562wYcCgQtqn5a94MWxsJt1Egf92VBCfwgNtx"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bigbird/join",
+      "operationHash": "onrGbdmBaofyWVqin88PuU7LAPVFTwyrtBDsunbEHzngkg8yQjS",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "821",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "821",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLJXwQYBUoPvqGkpNtY4RGpR63AYEGXrRTrCw9RWjgZwBhU8wC6"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bigbird/operator-remove",
+      "operationHash": "opX8mpJPnDfJXPsQcAHD6GZxW2VZ1gBZ2ocBJKoFt2mhG4T598m",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLujzc5yBXMmJayGv17StwJWJpx4jJ2qhta6Fzb3hscNn2ZgbnJ"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-thecount/operator-add",
+      "operationHash": "opLN7atHQgx9ZJu4apFEFaoz4eeSG4PqCVts3NattFBAJPwPi5r",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL1D25X1DnqEXuJR1VsnZbcVmaWWLTqVpoWn3sHX4CHcNjn3Ahg"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-thecount/join",
+      "operationHash": "ooWSgS8PFzv964c4FXrJXGEQn4CVc9KwidzbjEAKhAxvoANSK9G",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BKoe6VJXoC9ttosHvEoWmod7gFw6LmTntAyxhf88XdiGWuaoLXS"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-thecount/operator-remove",
+      "operationHash": "oofcvSSTDgX5dqtEqADciLkrN3i9NeswXND5KUFkqDo7Lx8GVL9",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMaVq1k5Ko9UP32xUTSieCnnMqoyHjeGa9ZPCMRkL9jkWVVS8Ye"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-snuffaluffagus/operator-add",
+      "operationHash": "op3H2hu9Zfp2ZLSstVmr9kcFaZcLRphyJyPP5YaqvQdopJhz3ma",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLFbH5MEb8W5nqxUJSUpS3H4TqqDj88UHRDrhMeYfsSckGZeM43"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-snuffaluffagus/join",
+      "operationHash": "oo8919PYAZSttUCHMpH7WKBgXkJZq1WBSWegVCnMUinJ71Jd2BD",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "822",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLDmQn6NxQ9jJmr6xbBsPdyWgYegaSDWuHyK5tpgREj81svSpo9"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-snuffaluffagus/operator-remove",
+      "operationHash": "onroPZRxoXznNokHvkKeR8FhHMm5Bm5assDALmS92GBMSk8HFPf",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKzfLcwwp82225Dinkmf6KmKGthtxtRWeq5McmZVDNNY9sG8xoH"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-grover/operator-add",
+      "operationHash": "opPvkQyYSZit8UbrnJvetuNa5DKfhbwuMmBVUXkAiNLXddK7zS1",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLRmGBuSbT9Qe9y6ptwhk3SFbDbyoRrgvwxQgiRrPH8qqEEL4Px"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-grover/join",
+      "operationHash": "oout2cof81beRgMLcSHdLSU2ZwLcSGa9iu1Z6qXeboZVjmKgSZs",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "823",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "823",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLACw5jQxA67DfNJG7zNnZipMUUzdq8z43H2sVR69yGySD9CBsr"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-grover/operator-remove",
+      "operationHash": "opYYzxAXaiiWWctqNApAsz4mVJKN1rTp5JpC1RLSKzxDdQCKDap",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMXPTxthUuRzwEuBi3hsjkudYYWxQzMv9u1pnJpmAHo2LyB1YYU"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-cookiemonster/operator-add",
+      "operationHash": "op1wrgsLVNj2pBWfSrUAhHXW4QJYrB18T39p2V8G2kzpgf2oiYD",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLvWumLtwqEbVDQM5MNkq85b5DbifeT5yKNSqAtYQYgxPKxQjbz"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-cookiemonster/join",
+      "operationHash": "opAeRMDNBkecYJ1zXyAfAWksm32wzj9JtFhggT5cC33oK5JTp43",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "6750"
+      },
+      "estimated": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "11750",
+        "storageLimit": "47"
+      },
+      "inclusionBlock": "BLSipRFwo7PB5hKtQwMmRGPJAGnWwpWFTxQJfpzXgFK1pZezFdB"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-cookiemonster/operator-remove",
+      "operationHash": "oowzqXR4iprT5zmGzQCG7H1SGWVzQxzJ7kvMRSx8VG4W8KgfxTZ",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLyCsruZ5WyciaqNbSJ9fogKnQ23THc4BWM5b1EQiyJZxZZYKZa"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/prestart-refund",
+      "operationHash": "ooHdsXKmFVi2ygpjDVgZu7uFqNhBej4P7sPcgae7tXXxfU8F46N",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "758",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "758",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMKXdvwYd8jopmfascv65m4XSBE5zwZEnMtARrDsSd1TatcSPnv"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/rejoin/operator-add",
+      "operationHash": "opFadtuxuwwB9PzFUk3uopzuFCjeGmt2ntzjB4R7VxEtjeuz1h7",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "464",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMc7farjyUKiearDcF9nMVyPjXktstzJbJTwGtqp4uTzLye5R6J"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/rejoin/join",
+      "operationHash": "oouehEdRfrbCqGbpAAityZJnbzB8Uv9GTrydNYwrVR8reHqNSTw",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "join_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "500"
+      },
+      "estimated": {
+        "managerFeeMutez": "824",
+        "storageBurnMutez": "5500",
+        "storageLimit": "22"
+      },
+      "inclusionBlock": "BMEjgsisLYqxhgAGHr2KNfqHM7bAK5hpgei7XqCWQ9tdZdTNbox"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/rejoin/operator-remove",
+      "operationHash": "ooUuCRQttpgpKqcqq8832F2PHQUri8RvXkwcFpnJPCKaDxyh92F",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "update_operators",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "461",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMdhqsUeLxCVtcFWvak2XxEzjs6QgvgfmA3VbSMm9tc62sNXui8"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/start",
+      "operationHash": "ooYuhyKLUeG6Ry7Ref5ahnsqseJex5uATjy4RDYWQLZcaFTz4zT",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "start_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "9250"
+      },
+      "estimated": {
+        "managerFeeMutez": "578",
+        "storageBurnMutez": "14250",
+        "storageLimit": "57"
+      },
+      "inclusionBlock": "BLRMgXBCqDeV9GGjaZGENgvHJjUMfuNqcWanrJkpgMiE3i7Bdsq"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/void",
+      "operationHash": "opBDazNxw1wzJ5CeQQairA9ocEk5RXev9K5vg5fPw7x75YDFohk",
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "void_room",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "579",
+        "storageBurnMutez": "18500"
+      },
+      "estimated": {
+        "managerFeeMutez": "579",
+        "storageBurnMutez": "23500",
+        "storageLimit": "94"
+      },
+      "inclusionBlock": "BMF8Ydw1Bi3MaWEQTbbUyoqmUaSWmMsDhikLMbGKuAMaXTJwC2K"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bert/void-refund",
+      "operationHash": "onqtEeeo9xmXnb8LCfNBxppwdw6poUrVg7FWXv9Z8wCz5J9Ush7",
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "761",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "761",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLG69tVY2jsDeqaus3qtEkWJfMudjzAciPgRSB8Q3rtsBHRxhVo"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-ernie/void-refund",
+      "operationHash": "ongqybnmojGqfdf5Dv7GbfDU96Yq6CdGVBQgdrF8FM31SUPHNjE",
+      "actor": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "760",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "760",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKy7L1oA18ZjTKGXDwjzY2w9eJ1G6kmCj98XWEMSaQA8YzGEo55"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-elmo/void-refund",
+      "operationHash": "ooPVgkEpHCwBiRpmiBususAtuwrrmAWUgnJuLKqBQgVnGXiyCDZ",
+      "actor": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "759",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "759",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKo5nenZGHYA29Bienco2P94Zr59TTFxYCSb4yXCjfiLgmiuZCT"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-bigbird/void-refund",
+      "operationHash": "oo4AS2usbvtqqaYCcCMsFEML4cgTKZDe3E7UfDMyf4qFHa426f4",
+      "actor": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "759",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "759",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BL7EX3jQcgdorUsUP3pUSoD8TiJTpVkvwS7eyPmM63ULBjG3o1B"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-thecount/void-refund",
+      "operationHash": "oowNd6RKik6gqa8CJyi1kPukvJSAfouGAPwbEbCkwBq42UzxZyy",
+      "actor": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "758",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "758",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BKyVhnzyejVyxFDphUr63EvfCgGkGoG8huF1VPoxjZ27hBw3qzW"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-snuffaluffagus/void-refund",
+      "operationHash": "ono4TDLmDLBrV9t3ZCwf1NBzXzM6WgYmbfua3Suxf2rUmhPHszV",
+      "actor": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "757",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "757",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMB6SYvj119SmMYAJ77x35croYG8RyfkRtNzJoJiVFm3f4iye3G"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-grover/void-refund",
+      "operationHash": "onvvUT8eWnq148VisftFPj7ifrWKVZHykLPtDrMDuj8Bpq5kLzu",
+      "actor": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "756",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "756",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BLVJgUapkuthfhjUNECmq4rPzbRrfz8ddxy7NMt3aLPSPzq4Cnr"
+    },
+    {
+      "key": "wtf-refund-rejoin-void/e2e-cookiemonster/void-refund",
+      "operationHash": "ooH68qNNvmo9J7nCNnMZ449obAc6pbf3hnUuvXHooGseJA9dySy",
+      "actor": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "entrypoint": "refund",
+      "amountMutez": "0",
+      "actual": {
+        "managerFeeMutez": "755",
+        "storageBurnMutez": "0"
+      },
+      "estimated": {
+        "managerFeeMutez": "755",
+        "storageBurnMutez": "0",
+        "storageLimit": "0"
+      },
+      "inclusionBlock": "BMTq2UNfSwuWbrhis3psGChe8kbajU2X3aQzwciowRJcePBqVBG"
+    }
+  ]
+}

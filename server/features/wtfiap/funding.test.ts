@@ -64,6 +64,42 @@ async function open(f: ReturnType<typeof fixture>) {
   await s.open("test-room", "1"); return s;
 }
 
+test("reconcile callers finish their pass while later wakes continue, and close waits without queuing another pass", async () => {
+  const f = fixture(), s = f.service();
+  const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; };
+  const firstStarted = deferred(), secondStarted = deferred(), firstRelease = deferred(), secondRelease = deferred();
+  let passes = 0, active = 0;
+  f.store.exclusive = async fn => {
+    assert.equal(active++, 0, "queued passes must not overlap");
+    const pass = ++passes;
+    try {
+      (pass === 1 ? firstStarted : secondStarted).resolve();
+      await (pass === 1 ? firstRelease : secondRelease).promise;
+      await fn(); return true;
+    } finally { active--; }
+  };
+  let firstFinished = false, joinedFinished = false;
+  const first = s.drain().then(() => { firstFinished = true; });
+  await firstStarted.promise;
+  const joined = s.drain().then(() => { joinedFinished = true; });
+  firstRelease.resolve();
+  await secondStarted.promise;
+  // An event-loop turn lets completed-pass waiters settle while the next RPC
+  // pass remains deliberately unresolved; no wall-clock timeout is involved.
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(firstFinished, true);
+  assert.equal(joinedFinished, true);
+  const laterWake = s.drain();
+  let closed = false;
+  const closing = s.close().then(() => { closed = true; });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(closed, false, "shutdown must preserve the active pass");
+  secondRelease.resolve();
+  await Promise.all([first, joined, laterWake, closing]);
+  assert.equal(passes, 2, "shutdown suppresses the queued follow-up");
+  assert.equal(active, 0);
+});
+
 test("funded rooms bind exact linked humans, freeze terms and do not mistake submitted hashes for deposits", async () => {
   const f = fixture(), s = f.service();
   await assert.rejects(s.bind("test-room", "1", addresses[1]), /Link and verify/);

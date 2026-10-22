@@ -1,5 +1,5 @@
 {
-  "status": "isolated-container-verified;normal-deployment-pending",
+  "status": "verified-in-normal-production-deployment",
   "sourceSha256": {
     "docker-entrypoint.sh": "5955302d9cfc7cc3ac60ea400d10fc31b11bfc841ce691cd72c27bcdacb45c8f",
     "scripts/check-signer-container-access.mjs": "f610865d8c73a70115ea1885383b61bc9d69623b2c2f53c894e9da2225e82274"
@@ -69,6 +69,109 @@
       "fundingState": "funding",
       "intentState": "applied",
       "error": null
+    }
+  },
+  "hostVerification": {
+    "observedAt": "2026-10-22T21:16:12.434Z",
+    "deploymentRun": 39854380320,
+    "health": {
+      "status": "alive",
+      "ok": true,
+      "service": "wtf-gameshow-api",
+      "version": {
+        "packageVersion": "1.0.0",
+        "commitRef": "220600ef"
+      },
+      "timestamp": "2026-10-22T21:16:12.267Z"
+    },
+    "ready": {
+      "status": "ready",
+      "ok": true,
+      "service": "wtf-gameshow-api",
+      "version": {
+        "packageVersion": "1.0.0",
+        "commitRef": "220600ef",
+        "nodeEnv": "production"
+      },
+      "checks": {
+        "db": true,
+        "chain": true,
+        "jobs": true,
+        "jobIssues": 0
+      },
+      "timestamp": "2026-10-22T21:16:12.344Z"
+    },
+    "configuration": {
+      "ok": true,
+      "config": {
+        "enabled": true,
+        "network": "shadownet",
+        "chainId": "NetXsqzbfFenSTS",
+        "rpcUrl": "https://tezos-shadownet.octez.io/",
+        "escrowContract": "KT1HQoH75iYeMK5xDJmuVRpBxdKxnEg9Wjko",
+        "wtfToken": {
+          "contract": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+          "tokenId": "0",
+          "decimals": 8
+        },
+        "currencyDecimals": {
+          "XTZ": 6,
+          "WTF": 8
+        },
+        "feeQuantumAtomic": "10000",
+        "refundPolicy": "prestart-withdrawal;technical-void-full-refund-v1",
+        "currencyQuantaAtomic": {
+          "XTZ": "10000",
+          "WTF": "1000000"
+        },
+        "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+        "prizeRoundingPolicy": "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1"
+      }
+    },
+    "worker": {
+      "ok": true,
+      "enabled": true,
+      "health": {
+        "lastAttemptAt": "2026-10-22T21:16:09.316Z",
+        "lastSuccessAt": "2026-10-22T21:16:07.897Z",
+        "error": null,
+        "headStreamConnected": true
+      }
+    },
+    "signerProbe": {
+      "executedAs": "docker compose exec --user node",
+      "uid": 1000,
+      "gid": 1000,
+      "groups": [
+        985,
+        1000
+      ],
+      "ok": true,
+      "signedBy": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+      "chainId": "NetXsqzbfFenSTS"
+    },
+    "actualAppProcess": {
+      "pid": 47,
+      "name": "node",
+      "uid": 1000,
+      "gid": 1000,
+      "supplementaryGroups": [
+        985
+      ]
+    },
+    "socket": {
+      "mode": "0660",
+      "gid": 985
+    },
+    "preservedRoom": {
+      "roomCode": "ef003fb0-4d5b-4bb5-8e44-02dacdc83590",
+      "status": "funding",
+      "depositedCount": 4,
+      "error": null,
+      "finalizedBlock": {
+        "hash": "BMPf6e9mAsACtcdL9LmXuGPxNjj7XbBwjzPcakzrSqjrTCuktEq",
+        "level": 5597189
+      }
     }
   }
 }

@@ -338,23 +338,26 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     if (closed) return;
     if (running) { rerun = true; return running; }
     running = (async () => {
-      do {
-        rerun = false; health.lastAttemptAt = clock().toISOString(); health.error = null;
-        try {
-          await store.exclusive(async () => {
-            for (const record of await store.list()) {
-              if (!record.lock) continue;
-              try { await reconcileRecord(record.roomCode); }
-              catch {
-                health.error = "A funded room could not be reconciled. No unverified payment or result was accepted.";
-                await store.mutate(record.roomCode, old => { demand(old, "Funding room missing."); old.error = health.error; return { record: old, value: undefined }; });
-              }
+      rerun = false; health.lastAttemptAt = clock().toISOString(); health.error = null;
+      try {
+        await store.exclusive(async () => {
+          for (const record of await store.list()) {
+            if (!record.lock) continue;
+            try { await reconcileRecord(record.roomCode); }
+            catch {
+              health.error = "A funded room could not be reconciled. No unverified payment or result was accepted.";
+              await store.mutate(record.roomCode, old => { demand(old, "Funding room missing."); old.error = health.error; return { record: old, value: undefined }; });
             }
-          });
-          if (!health.error) health.lastSuccessAt = clock().toISOString();
-        } catch { health.error = "Funding storage or chain reconciliation is unavailable."; }
-      } while (rerun && !closed);
-    })().finally(() => { running = null; });
+          }
+        });
+        if (!health.error) health.lastSuccessAt = clock().toISOString();
+      } catch { health.error = "Funding storage or chain reconciliation is unavailable."; }
+    })().finally(() => {
+      running = null;
+      // A caller waits for the pass it joined. New heads/actions still queue a
+      // coalesced follow-up, without extending that caller's promise forever.
+      if (rerun && !closed) void drain();
+    });
     return running;
   }
   function kick() { if (!closed) { if (onWake) onWake(); else void drain(); } }

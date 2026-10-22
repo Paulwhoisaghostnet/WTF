@@ -12121,3 +12121,24 @@
 **Correction and proof**: Derive the mounted socket GID at startup and add only the node account to that supplementary group before gosu initializes its credentials. Keep signer authentication, 0770 parent and 0660 socket permissions. An isolated copy of the actual deployed image reproduces denial before the fix, permits node afterward, stays idempotent, permits a recreated socket and still rejects an unrelated account. Normal deployment and actual app-identity verification remain required. The already-frozen request recovered through its original ID and the serialized exclusive signer journal; no checkpoint was cleared and no new request ID was created.
 
 **Rule**: A successful root probe does not prove an unprivileged integration. Verify UID and supplementary groups at the real boundary. Do not broaden socket permissions or run the application as root to resolve group mapping. Do not infer a transaction failure from a quiet proof runner; inspect durable hashes and finalized receipts before modifying retry behavior.
+
+
+**Hosted socket verification (2026-10-22)**: Normal deployment39854380320 serves220600ef. The actual app Node process has UID/GID1000 and supplementary group985, and a node-user health call reaches the dedicated Shadownet referee. Socket permissions remain0660. Four finalized room deposits survived app replacement, and the reconciliation worker reports no error. This closes the identity-boundary defect; full funded-game proof continues separately.
+
+
+## 2026-10-22 — Checkpoint live test seats and wait for authoritative reconciliation
+
+**What happened**: The native Shadownet browser test completed a real deposit, lost-response reload recovery and full withdrawal, then asserted the UI immediately after chain finality. A coalesced reconcile request still showed the prior worker read. Test cleanup closed ephemeral browser contexts without saving their bearer-only game seats, so that match could not be resumed by the harness.
+
+**Correction and proof**: Preserve the original room as the completed recovery case: finalized state has zero held funds, no paid seats and applied deposit/refund observations. Wait for actual finalized server observation through chain-head events before asserting the funding UI. Save private0600 seat checkpoints before irreversible live-test work. Continue full-match testing in a separate room without repeating the already-proven withdrawal sequence.
+
+**Rule**: Chain inclusion, server reconciliation and UI presentation are distinct observable steps. Do not infer a failed transfer from a stale view or resend it. Recovery tests need durable private participant sessions as well as operation hashes; do not create production token-recovery APIs or void healthy games to repair a test harness.
+
+
+## 2026-10-22 — Separate one reconciliation pass from continuous background work
+
+**What happened**: Two locked native Shadownet rooms made a reconciliation pass take about9seconds while chain heads arrived every6seconds. The worker completed individual reads but its do/while loop kept extending the same promise, so HTTP Recheck and shutdown waited indefinitely for an idle point.
+
+**Correction and proof**: Return each caller after the serialized pass it joined, then start any coalesced follow-up as a separate promise. Shutdown preserves the active pass and prevents another one. A deterministic deferred-pass regression fails the prior implementation and passes the correction without a larger timeout; all17 owning funding/chain tests pass. The native test resumed its saved room and confirmed a deposit.
+
+**Rule**: Continuous event-driven work must not make a request wait for global quiescence. Preserve serialization and queued observations while bounding the promise by the actual unit of work, with no invented deadline or dropped event.

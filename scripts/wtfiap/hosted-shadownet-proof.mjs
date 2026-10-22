@@ -21,6 +21,8 @@ function rateAware(context){
   return {get:send('get'),post:send('post'),storageState:()=>context.storageState(),dispose:()=>context.dispose()};
 }
 async function main(){
+  const selectedCurrency=process.argv[2];
+  assert(!selectedCurrency||['XTZ','WTF'].includes(selectedCurrency),'Optional argument must select XTZ or WTF');
   assert.equal(process.env.WTF_E2E_WTFIAP_HOST_WRITES,'1','Root must explicitly hand off hosted Shadownet writes');
   assert.equal(process.env.WTF_E2E_LIVE_BASE_URL,baseURL);assert(/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(process.env.WTF_E2E_WTFIAP_ESCROW||''));
   const directory=path.resolve('.tmp/wtfiap-host-20261022.local'),statePath=path.join(directory,'proof-state.json');
@@ -38,7 +40,7 @@ async function main(){
       const {csrfToken}=await json(await api.get('/api/auth/csrf-token'));entrants.push({actor,request:api,write:async(route,data={})=>json(await api.post(route,{headers:{'X-CSRF-Token':csrfToken},data}))});}
     const configuration=(await json(await entrants[0].request.get('/api/wtfiap/funding/config'))).config;
     assert.equal(configuration.enabled,true);assert.equal(configuration.network,'shadownet');assert.equal(configuration.chainId,'NetXsqzbfFenSTS');assert.equal(configuration.escrowContract,state.escrowContract);
-    for(const currency of ['XTZ','WTF']){
+    for(const currency of selectedCurrency?[selectedCurrency]:['XTZ','WTF']){
       let checkpoint=state.rooms[currency];
       if(!checkpoint){checkpoint=state.rooms[currency]={status:'creating-room',players:{},operations:{}};await save();
         const host=await entrants[0].write('/api/wtfiap/party/rooms',{name:`Hosted Shadownet ${currency} proof`,boardMode:'standard',preparationSeconds:null,roomType:'tournament',tournament:{currency,entryFee:'0.01'}});

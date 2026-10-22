@@ -1,0 +1,139 @@
+{
+  "status": "passed",
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "block": "BL5srZzs4BSvXSyu9KMz3jong5SukMGw3fvJmaSu67KzF25DKxz",
+  "sourceJournalSha256": "efc9fd1dc34c73e828bc22eb7e20bcf5142851f9c93d7755d537240c5db1c33c",
+  "noPendingOperations": true,
+  "operationCount": 144,
+  "nonceOwnership": "Released local root and original eight to tournament_ui for the coordinated native full-game proof; settlement agent performs only read-only verification after this handoff.",
+  "wallets": [
+    {
+      "walletId": "wtf-os-root",
+      "address": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "balanceMutez": "3847554"
+    },
+    {
+      "walletId": "e2e-bert",
+      "address": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "balanceMutez": "13590054"
+    },
+    {
+      "walletId": "e2e-ernie",
+      "address": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+      "balanceMutez": "5289"
+    },
+    {
+      "walletId": "e2e-elmo",
+      "address": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+      "balanceMutez": "5041"
+    },
+    {
+      "walletId": "e2e-bigbird",
+      "address": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+      "balanceMutez": "5041"
+    },
+    {
+      "walletId": "e2e-thecount",
+      "address": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+      "balanceMutez": "5042"
+    },
+    {
+      "walletId": "e2e-snuffaluffagus",
+      "address": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+      "balanceMutez": "5043"
+    },
+    {
+      "walletId": "e2e-grover",
+      "address": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+      "balanceMutez": "5044"
+    },
+    {
+      "walletId": "e2e-cookiemonster",
+      "address": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+      "balanceMutez": "5045"
+    }
+  ],
+  "dummyWtfBalances": {
+    "block": "BMTq2UNfSwuWbrhis3psGChe8kbajU2X3aQzwciowRJcePBqVBG",
+    "escrow": "0",
+    "treasury": "2000000",
+    "players": [
+      {
+        "address": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+        "balance": "5000000"
+      },
+      {
+        "address": "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ",
+        "balance": "3000000"
+      },
+      {
+        "address": "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk",
+        "balance": "1000000"
+      },
+      {
+        "address": "tz1UHGz7X3zxuTZDSDZA1gxsscdUZakSYkyL",
+        "balance": "1000000"
+      },
+      {
+        "address": "tz1X2f9ef19ty5WiQPQU7DDsMwY4f8Dbi3VV",
+        "balance": "1000000"
+      },
+      {
+        "address": "tz1T5wqwh1oH2zH54A34JcnNH3gSMNAzVgDT",
+        "balance": "1000000"
+      },
+      {
+        "address": "tz1XcyoWxxArxigCpyEoCN9cLVkSerV6tCQh",
+        "balance": "1000000"
+      },
+      {
+        "address": "tz1cqeT8RUQafohYNcQxNTVsW6X9K5FCRLLf",
+        "balance": "1000000"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "xtz-unique",
+      "status": "2",
+      "held": "0",
+      "deposited": "80000",
+      "refunded": "0",
+      "paid_out": "80000",
+      "treasury_amount": "10000",
+      "treasury_claimed": true
+    },
+    {
+      "name": "wtf-third-tie",
+      "status": "2",
+      "held": "0",
+      "deposited": "8000000",
+      "refunded": "0",
+      "paid_out": "8000000",
+      "treasury_amount": "2000000",
+      "treasury_claimed": true
+    },
+    {
+      "name": "xtz-refund-rejoin-void",
+      "status": "3",
+      "held": "0",
+      "deposited": "90000",
+      "refunded": "90000",
+      "paid_out": "0",
+      "treasury_amount": "0",
+      "treasury_claimed": false
+    },
+    {
+      "name": "wtf-refund-rejoin-void",
+      "status": "3",
+      "held": "0",
+      "deposited": "9000000",
+      "refunded": "9000000",
+      "paid_out": "0",
+      "treasury_amount": "0",
+      "treasury_claimed": false
+    }
+  ],
+  "costReport": "final-operation-costs.json"
+}
