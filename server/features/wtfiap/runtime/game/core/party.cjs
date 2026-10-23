@@ -1,4 +1,4 @@
-/* Authoritative eight-player room coordinator. Persistent armies own canonical
+/* Authoritative two- or eight-player room coordinator. Persistent armies own canonical
  * lots; battles only clone formations. All old offers and eliminated armies
  * return together before the next draw. Clients receive projections, never the
  * seed, rival shop reservations, raw ledgers or future random draws.
@@ -12,7 +12,7 @@
     root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABPartySchedule, root.ABZonePolicy);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Match, Progression, Income, Health, Treasure, ChestHealth, ShopPool, Schedule, ZonePolicy) {
   'use strict';
-  const RULES = Object.freeze({ playerCount: 8, startingGold: 1, startingHP: 100, shopSize: 4, benchCapacity: 10, rerollCost: 2 });
+  const RULES = Object.freeze({ playerCount: 8, duelPlayerCount: 2, startingGold: 1, startingHP: 100, shopSize: 4, benchCapacity: 10, rerollCost: 2 });
   const clone = value => JSON.parse(JSON.stringify(value));
   const demand = (value, reason) => { if (!value) throw new Error(reason); };
   const required = result => { demand(result.ok, result.reason || result.error?.message || 'Action rejected.'); return result; };
@@ -103,8 +103,8 @@
   }
   function createMatch(options) {
     demand(options && identity(options.matchId) && identity(options.seed), 'Match ID and seed are required.');
-    demand(Array.isArray(options.players) && options.players.length === RULES.playerCount, 'Party mode requires exactly eight players.');
-    demand(new Set(options.players.map(player => player.playerId)).size === RULES.playerCount, 'Party players must have distinct IDs.');
+    demand(Array.isArray(options.players) && [RULES.duelPlayerCount, RULES.playerCount].includes(options.players.length), 'A duel needs two players; a party needs eight.');
+    demand(new Set(options.players.map(player => player.playerId)).size === options.players.length, 'Room players must have distinct IDs.');
     const earlyStart = options.preparationSeconds === null;
     demand(options.earlyStart === undefined || options.earlyStart === earlyStart, 'Only untimed rooms start when everyone is ready.');
     demand(options.oddPlayerPolicy === 'round-ai', 'An unmatched commander faces the round AI.');
@@ -112,7 +112,7 @@
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
-      shopPool: ShopPool.create(Engine.ROSTER, RULES.playerCount), players: options.players.map(input => {
+      shopPool: ShopPool.create(Engine.ROSTER, options.players.length), players: options.players.map(input => {
         demand(identity(input.playerId) && identity(input.name) && typeof input.isAI === 'boolean', 'Every player needs an ID, display name and explicit AI flag.');
         return { playerId: input.playerId, name: input.name, isAI: input.isAI, hp: RULES.startingHP, gold: RULES.startingGold,
           progression: Progression.createProgression({ matchId: options.matchId, playerId: input.playerId, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
@@ -382,8 +382,8 @@
   }
   function validate(state) {
     demand(state && state.schemaVersion === 1 && identity(state.matchId) && identity(state.seed), 'Invalid party identity.');
-    demand(state.players.length === RULES.playerCount && new Set(state.players.map(player => player.playerId)).size === RULES.playerCount, 'A party retains its original eight players.');
-    demand(state.shopPool.playerCount === RULES.playerCount, 'Party requires the eight-player supply.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
+    demand([RULES.duelPlayerCount, RULES.playerCount].includes(state.players.length) && new Set(state.players.map(player => player.playerId)).size === state.players.length, 'A room retains its original players.');
+    demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');
     demand(state.earlyStart === (state.preparationSeconds === null) && state.oddPlayerPolicy === 'round-ai', 'Invalid party policies.');
     Schedule.validateClock(state.clock);

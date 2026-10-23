@@ -91,7 +91,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     const { roomCode } = await createPreview(page);
     const button = surface(page).getByRole("button", { name: "Room funding", exact: true });
     await expect(button).toBeVisible();
-    await surface(page).getByRole("link", { name: "Local practice" }).click();
+    await surface(page).getByRole("link", { name: "Practice" }).click();
     await expect(button).toHaveCount(0);
     await page.evaluate(code => window.postMessage({ type: "wtfiap:room", roomCode: code, roomType: "tournament" }, location.origin), roomCode);
     await expect(button).toHaveCount(0);

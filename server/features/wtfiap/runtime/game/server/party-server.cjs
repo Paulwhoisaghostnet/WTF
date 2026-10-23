@@ -59,7 +59,7 @@ function configuration(input) {
   requireThat(input.earlyStart === undefined || input.earlyStart === earlyStart, 'Timed rooms wait for their deadline; untimed rooms wait for everyone ready.');
   requireThat(input.oddPlayerPolicy === undefined || input.oddPlayerPolicy === 'round-ai', 'An odd survivor faces the round-scaled AI opponent.');
   const roomType = Object.hasOwn(input, 'roomType') ? input.roomType : 'party';
-  requireThat(roomType === 'party' || roomType === 'tournament', 'Choose a Party or Tournament room.');
+  requireThat(['duel', 'party', 'tournament'].includes(roomType), 'Choose a Duel, Party or Tournament room.');
   requireThat(!['config', 'currency', 'entryFee', 'entryAtomic', 'prizePercentages', 'shares', 'tournamentAccounting'].some(key => Object.hasOwn(input, key)),
     'Tournament money terms belong in the tournament configuration.');
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
@@ -68,7 +68,10 @@ function configuration(input) {
     try { config.tournament = Tournament.normalizeTerms(input.tournament); }
     catch (error) { requireThat(false, error.message); }
     config.roomType = roomType;
-  } else requireThat(!Object.hasOwn(input, 'tournament'), 'Entry fees are only available in Tournament rooms.');
+  } else {
+    requireThat(!Object.hasOwn(input, 'tournament'), 'Entry fees are only available in Tournament rooms.');
+    if (roomType === 'duel') config.roomType = roomType;
+  }
   return config;
 }
 function immutableTerms(input) {
@@ -149,6 +152,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     if (onRoomChanged) queueMicrotask(() => onRoomChanged(room.roomCode));
   }
   const isTournament = room => room.config.roomType === 'tournament';
+  const isDuel = room => room.config.roomType === 'duel';
+  const roomCapacity = room => isDuel(room) ? 2 : ROOM_SIZE;
   function reconcileTournament(room, restoring = false) {
     if (!isTournament(room)) {
       requireThat(room.tournamentAccounting === undefined, 'Party rooms cannot carry tournament accounting.'); return false;
@@ -226,7 +231,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function lobby(room) {
     return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, phase: room.voidArchive ? 'voided' : room.match ? room.match.phase : 'lobby',
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
-      config: clone(room.config), capacity: ROOM_SIZE, sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
+      config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function snapshot(room, session, atMs = now()) {
     const base = room.terminalArchive ? clone(room.terminalArchive.views[session.playerId]) : room.match ? Party.view(room.match, session.playerId) : lobby(room);
@@ -239,7 +244,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
     }
     return { ...base, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
-      authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: session.nextSequence,
+      authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: session.nextSequence, capacity: roomCapacity(room),
       sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function publish(room) {
@@ -363,7 +368,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         const input = await bodyJSON(request);
         immutableTerms(input);
         requireThat(!room.match, 'This party has already started.', 409);
-        requireThat(room.players.length < ROOM_SIZE, 'All eight party seats are occupied.', 409);
+        requireThat(room.players.length < roomCapacity(room), 'All room seats are occupied.', 409);
         const identity = addHuman(room, input.name, request); room.revision++; persist(room); publish(room);
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
@@ -385,14 +390,15 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         const input = await bodyJSON(request);
         immutableTerms(input);
         requireThat(session.playerId === room.hostPlayerId, 'Only the room host can start the party.', 403);
-        if (isTournament(room)) requireThat(input.fillAI === false, 'Tournament rooms require eight human entrants; AI fill is unavailable.');
+        if (isTournament(room) || isDuel(room)) requireThat(input.fillAI === false, 'This room requires human entrants; AI fill is unavailable.');
         if (room.match) { writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return; }
         requireThat(!room.fundingLock, 'Use the funded-room controls; an applied escrow start is required.', 409);
         requireThat(typeof input.fillAI === 'boolean', 'Choose explicitly whether to fill vacant seats with AI.');
-        requireThat(input.fillAI || room.players.length === ROOM_SIZE, isTournament(room)
+        requireThat(input.fillAI || room.players.length === roomCapacity(room), isTournament(room)
           ? 'Eight human entrants are required to start the tournament accounting preview.'
+          : isDuel(room) ? 'Two human entrants are required to start a duel.'
           : 'Eight occupied seats are required; invite more players or explicitly fill with AI.', 409);
-        while (room.players.length < ROOM_SIZE) room.players.push({ playerId: crypto.randomUUID(), name: 'AI Commander ' + (room.players.length + 1), isAI: true });
+        while (room.players.length < roomCapacity(room)) room.players.push({ playerId: crypto.randomUUID(), name: 'AI Commander ' + (room.players.length + 1), isAI: true });
         room.match = Party.createMatch({ matchId: 'party:' + room.roomCode, seed: crypto.randomUUID(),
           ...room.config, players: clone(room.players), openedAtMs: now() });
         if (isTournament(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,

@@ -12150,3 +12150,17 @@
 **Correction and proof**: Package the same v2 catalog for the browser and server, preserve stable hero IDs and numeric behavior, and check the live funded-room table before promotion. The sole hosted funded room was settled with a final result. The deployment guard remains in force. Browser stories verify the new roster in local practice and a server-run Party room; the tournament screen still reaches native funding and its recovery path.
 
 **Rule**: Treat a named cast update as a game release when the server owns draws and combat. Update and test both surfaces against the same catalog, then let the funded-room guard decide whether replacement is safe. Never alter a room's committed result or void a healthy match to advance a cast release.
+## 2026-10-22 - Game mode links must select their own room type
+
+**What happened**: A direct Party link inherited the Duel default from the shared room page, so players entering Party could see a two-seat room and disabled AI controls.
+
+**Rule**: Give each game mode an explicit URL mode and test the room type through the actual wtfOS navigation before release. Keep a free Duel separate from funded tournament admission.
+
+---
+
+
+## 2026-10-23 — Mobile action bars must not cover game targets
+
+**What happened**: The Party browser flow bought a hero but could not field it. A fixed quick-action bar covered the reserve bench in the narrow embedded game frame, so a pointer click meant for the reserve reopened the shop. An earlier assertion also read an old built copy because the host bundle had not been rebuilt after vendoring.
+
+**Rule**: Keep mobile turn actions in normal flow above the canvas, where they stay visible without intercepting bench or board hits. After changing the source game, vendor it, rebuild the host, and exercise a real pointer purchase-and-placement flow in the embedded Party frame before production promotion.

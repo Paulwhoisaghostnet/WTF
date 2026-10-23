@@ -42,6 +42,7 @@ async function hit(page, frame, id) {
 async function buyAndDeploy(page, frame) {
   await hit(page, frame, "shop-buy-0");
   await frame.waitForFunction(() => window.AB_GAME().bench.length === 1);
+  if ((await gameState(frame)).shop.visible) await hit(page, frame, "shop-toggle");
   const unitId = await frame.evaluate(() => window.AB_GAME().bench[0].id);
   if ((await gameState(frame)).selected !== unitId) await hit(page, frame, `bench-${unitId}`);
   const tile = await frame.evaluate(() => window.AB_UI.grid().tiles.find((tile) => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
@@ -63,12 +64,17 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(icon).toContainText("WTFIAP-v0.01");
     await icon.dblclick();
     await expect(surface(page)).toHaveAttribute("aria-label", "WTFIAP-v0.01");
-    await expect(surface(page).getByRole("link", { name: "Cast v2" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: "Meet the heroes" })).toBeVisible();
     const practice = await hostFrame(page);
     const game = await gameFrame(practice, "#frame");
     expect(await game.evaluate(() => window.AB.FACTIONS.map(faction => faction.name))).toContain("The Cookout");
     expect(await game.evaluate(() => window.AB.ROSTER.length)).toBe(50);
     expect((await gameState(game)).match.players.player.gold).toBe(1);
+    expect((await gameState(game)).shop.visible).toBe(true);
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("tile-")))).toBe(false);
+    await hit(page, game, "shop-preview-1");
+    expect((await gameState(game)).shop.previewIndex).toBe(1);
+    await hit(page, game, "shop-preview-0");
     const unitId = await buyAndDeploy(page, game);
     const state = await gameState(game);
     expect(state.match.players.player.gold).toBe(0);
@@ -76,6 +82,14 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(state.field[0].id).toBe(unitId);
     expect(state.projection).toBe("side");
     expect(state.facing.find(unit => unit.id === unitId)?.mirrored).toBe(true);
+    expect(state.shop.visible).toBe(false);
+    expect(state.panels).toMatchObject({ traitsOpen: false, detailsOpen: false, unreadTraits: true });
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().filter(hit => hit.id.startsWith("synergy-")).length)).toBe(0);
+    await game.locator("#traits-icon").click();
+    expect((await gameState(game)).panels.unreadTraits).toBe(false);
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().filter(hit => hit.id.startsWith("synergy-")).length)).toBe(
+      state.synergies.factions.filter(trait => trait.count > 0).length + state.synergies.classes.filter(trait => trait.count > 0).length,
+    );
     await page.screenshot({ path: test.info().outputPath("desktop-practice.png"), fullPage: true });
 
     const popupEvent = page.waitForEvent("popup");
@@ -85,6 +99,43 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(popup).toHaveURL(/\/games\/installed\/wtfiap\/generator\.html\?/);
     await popup.close();
     expect(errors).toEqual([]);
+  });
+
+  test("preparation hints wait 30 seconds and can be disabled across reloads", async ({ page }) => {
+    await page.clock.install();
+    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    const host = await hostFrame(page);
+    let game = await gameFrame(host, "#frame");
+    expect((await gameState(game)).help.visible).toBe(false);
+    await page.clock.fastForward(30_001);
+    expect((await gameState(game)).help.visible).toBe(true);
+    await hit(page, game, "help-tip");
+    expect((await gameState(game)).help.visible).toBe(false);
+    await hit(page, game, "tips-toggle");
+    expect((await gameState(game)).help.automaticTipsEnabled).toBe(false);
+    await page.clock.fastForward(30_001);
+    expect((await gameState(game)).help.visible).toBe(false);
+    await game.evaluate(() => location.reload());
+    game = await gameFrame(host, "#frame");
+    expect((await gameState(game)).help.automaticTipsEnabled).toBe(false);
+  });
+
+  test("touch phones prompt for landscape and reveal changed information through icons", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+    const page = await context.newPage();
+    await page.goto("/games/installed/wtfiap/generator.html?mode=match&seed=mobile-landscape-check", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+    await expect(page.locator("#orientation-prompt")).toBeVisible();
+    expect(await page.locator("main").evaluate(element => element.inert)).toBe(true);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(page.locator("#orientation-prompt")).toBeHidden();
+    expect(await page.locator("main").evaluate(element => element.inert)).toBe(false);
+    await page.locator("#quick-actions button").filter({ hasText: "Recruit preview" }).click();
+    await expect(page.locator("#details-icon")).toHaveClass(/unread/);
+    expect(await page.locator("#details-icon").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+    await page.locator("#details-icon").click();
+    await expect(page.locator("#details-panel")).toBeVisible();
+    await context.close();
   });
 
   test("Stuffs Play opens Party, creates a real room and reloads its purchased formation", async ({ page }) => {
@@ -102,7 +153,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     }).toBe(true);
     await page.screenshot({ path: test.info().outputPath("stuffs-play.png"), fullPage: true });
     await menuEntry.click();
-    await surface(page).getByRole("link", { name: "Party & Tournament" }).click();
+    await surface(page).getByRole("link", { name: "Party", exact: true }).click();
     let party = await hostFrame(page);
     await expect(party.locator("#create-name")).toBeVisible();
     await party.locator("#create-name").fill("WTFIAP Browser Host");
@@ -166,5 +217,36 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(await invitation.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await mobile.screenshot({ path: test.info().outputPath("mobile-tournament-invitation.png"), fullPage: true });
     await guest.close();
+  });
+
+  test("two people can create and start a free Lil Guys duel", async ({ page, browser }) => {
+    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    await surface(page).getByRole("link", { name: "Duel" }).click();
+    const host = await hostFrame(page);
+    await expect(host.locator("#room-type")).toHaveValue("duel");
+    await host.locator("#create-name").fill("Duel host");
+    await host.locator("#prep-time").selectOption("ready");
+    await host.locator("#create-room").click();
+    await expect(host.locator("#invite-code")).not.toHaveValue("");
+    const code = await host.locator("#invite-code").inputValue();
+    await expect(host.locator("#alive-count")).toContainText("1 / 2 seats");
+
+    const guestContext = await browser.newContext();
+    const guestPage = await guestContext.newPage();
+    try {
+      expect((await guestPage.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guestPage.goto(new URL(`/wtfiap?room=${code}`, page.url()).href, { waitUntil: "domcontentloaded" });
+      const guest = await hostFrame(guestPage);
+      await guest.locator("#join-name").fill("Duel guest");
+      await guest.locator("#join-room").click();
+      await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
+      await expect(host.locator("#alive-count")).toContainText("2 / 2 seats");
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await host.locator("#start-room").click();
+      const arena = await gameFrame(host, "#arena-frame");
+      expect(await arena.evaluate(() => window.AB.ROSTER.find(hero => hero.id === "ember-vanguard")?.name)).toBe("Briq");
+      expect((await gameState(arena)).projection).toBe("side");
+      await expect(host.locator("#alive-count")).toContainText("2 alive");
+    } finally { await guestContext.close(); }
   });
 });

@@ -23,6 +23,10 @@ const ModeNavigation = styled.nav`
   padding: 8px;
   background: var(--wtf-window-color, #c0c0c0);
 
+  .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .group + .group { border-left: 1px solid currentColor; padding-left: 8px; }
+  .group-label { color: var(--wtf-text-color, #111); font-weight: 700; margin-right: 2px; }
+
   a, button {
     display: inline-flex;
     align-items: center;
@@ -63,7 +67,6 @@ export function WtfIap() {
     }
   }, [windowPath, activePath, search]);
   const frameSource = wtfIapFrameSource(entryPath);
-  const partySource = wtfIapFrameSource(entryPath, "party");
   const fundingRoom = room?.roomType === "tournament" ? room.roomCode : recoveryRoom;
   useEffect(() => {
     const code = wtfIapFundingRecoveryRoom(entryPath);
@@ -76,7 +79,7 @@ export function WtfIap() {
       const message = readWtfIapRoomMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
       if (!message) return;
       setRoom(message);
-      if (message.roomType === "party" || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
+      if (message.roomType === "party" || message.roomType === "duel" || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
       if (message.roomCode) receivedRoom.current = true;
     };
     window.addEventListener("message", receive);
@@ -87,9 +90,15 @@ export function WtfIap() {
     <AppWindow title="WTFIAP-v0.01">
       <GameSurface aria-label="WTFIAP-v0.01" data-wtfiap-surface="true">
         <ModeNavigation aria-label="WTFIAP game modes">
-          <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Lil Guys · Local practice</a>
-          <a href={`${WTFIAP_ASSET_ROOT}/cast.html`} target={frameName} onClick={resetRoom}>Cast v2</a>
-          <a href={partySource} target={frameName} onClick={resetRoom}>Party &amp; Tournament</a>
+          <div className="group"><span className="group-label">Play</span>
+            <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Practice</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=duel`} target={frameName} onClick={resetRoom}>Duel</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=party`} target={frameName} onClick={resetRoom}>Party</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=tournament`} target={frameName} onClick={resetRoom}>Tournament</a>
+          </div>
+          <div className="group"><span className="group-label">Explore</span>
+            <a href={`${WTFIAP_ASSET_ROOT}/cast.html`} target={frameName} onClick={resetRoom}>Meet the heroes</a>
+          </div>
           {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => setFundingOpen(open => !open)}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
         </ModeNavigation>
         {fundingOpen && fundingRoom && <FundingPanel key={fundingRoom} roomCode={fundingRoom} onReturn={() => setFundingOpen(false)} />}
@@ -99,8 +108,8 @@ export function WtfIap() {
           name={frameName}
           title="WTFIAP-v0.01"
           src={frameSource}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
-          allow="fullscreen; clipboard-write"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
+          allow="fullscreen; orientation-lock; clipboard-write"
         />
       </GameSurface>
     </AppWindow>

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "WTFIAP-v0.01",
   "appKey": "wtfiap",
-  "generatorSha256": "aed42de0b01222a3984cd9233a569877407132fb283838b549c8284c906dabb5",
+  "generatorSha256": "02e9ba7f39ea27dafba1bd8b825673c3ca69d7466107c37d99dc8f93cb500d0c",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -12,16 +12,16 @@
     {
       "path": "public/games/installed/wtfiap/index.html",
       "sourcePath": "dist/index.html",
-      "sourceSha256": "2f3e22636b0685080cfa0812f0b37b475d88de9e7f8bb8dae7d64eeb16ce980b",
-      "sha256": "2f3e22636b0685080cfa0812f0b37b475d88de9e7f8bb8dae7d64eeb16ce980b",
-      "bytes": 2522
+      "sourceSha256": "27eb02e2853951876f252607b1b3c768be3eca0efa62c25f44132aca459944f4",
+      "sha256": "27eb02e2853951876f252607b1b3c768be3eca0efa62c25f44132aca459944f4",
+      "bytes": 2540
     },
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "aed42de0b01222a3984cd9233a569877407132fb283838b549c8284c906dabb5",
-      "sha256": "aed42de0b01222a3984cd9233a569877407132fb283838b549c8284c906dabb5",
-      "bytes": 12629281
+      "sourceSha256": "02e9ba7f39ea27dafba1bd8b825673c3ca69d7466107c37d99dc8f93cb500d0c",
+      "sha256": "02e9ba7f39ea27dafba1bd8b825673c3ca69d7466107c37d99dc8f93cb500d0c",
+      "bytes": 12651067
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
@@ -33,9 +33,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "f9f8e75c2dc26d37262200c18e7ad821caa7f4607a2eca646cb9ebf97b45993b",
-      "sha256": "f9f8e75c2dc26d37262200c18e7ad821caa7f4607a2eca646cb9ebf97b45993b",
-      "bytes": 41636
+      "sourceSha256": "34a42bfc75b0182fe385010400c6d80051383b93fe557450b9741aea489e8f1f",
+      "sha256": "34a42bfc75b0182fe385010400c6d80051383b93fe557450b9741aea489e8f1f",
+      "bytes": 42792
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -47,9 +47,9 @@
     {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "c648d3cd7c7c249be9ccf2f99e3109a87eb9746dc573bf152e303aecfea5b899",
-      "sha256": "2942cb3e9fb9ee1e1f34260fa3df88c83655db21aa9181163ca19665a7697854",
-      "bytes": 13695
+      "sourceSha256": "4d703c3f0cceb614f22fccbff45250171f85a9b726ce30ee5c5329ea462ae8cd",
+      "sha256": "3b88d500db2f59543456300f0dfcc48f9a5281ee2db251cd65275fd7579ca440",
+      "bytes": 13701
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",
@@ -60,9 +60,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
       "sourcePath": "game/server/party-server.cjs",
-      "sourceSha256": "18a678a3263411a5bed25a130127b349bc77317ec800d824694d8c56f3893a03",
-      "sha256": "18a678a3263411a5bed25a130127b349bc77317ec800d824694d8c56f3893a03",
-      "bytes": 39340
+      "sourceSha256": "7fe3cb280468b9ce98247e2b58f73aa3eccd386a0991fbfcf34e993c6bdc07f1",
+      "sha256": "7fe3cb280468b9ce98247e2b58f73aa3eccd386a0991fbfcf34e993c6bdc07f1",
+      "bytes": 39674
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",
@@ -123,9 +123,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/core/party.cjs",
       "sourcePath": "game/core/party.cjs",
-      "sourceSha256": "f73d7a3828afdd0794cdc5f454134018016aa4b1563111a86b2312c202313c54",
-      "sha256": "f73d7a3828afdd0794cdc5f454134018016aa4b1563111a86b2312c202313c54",
-      "bytes": 40571
+      "sourceSha256": "78d31a3562b2317e8600ce9fb029174068c1cd6271c494809969e1cc4b9ff376",
+      "sha256": "78d31a3562b2317e8600ce9fb029174068c1cd6271c494809969e1cc4b9ff376",
+      "bytes": 40683
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/preparation.cjs",
