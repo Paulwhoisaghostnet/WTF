@@ -12164,3 +12164,9 @@
 **What happened**: The Party browser flow bought a hero but could not field it. A fixed quick-action bar covered the reserve bench in the narrow embedded game frame, so a pointer click meant for the reserve reopened the shop. An earlier assertion also read an old built copy because the host bundle had not been rebuilt after vendoring.
 
 **Rule**: Keep mobile turn actions in normal flow above the canvas, where they stay visible without intercepting bench or board hits. After changing the source game, vendor it, rebuild the host, and exercise a real pointer purchase-and-placement flow in the embedded Party frame before production promotion.
+
+## 2026-10-23 — Shared room pages need mode-neutral introductions
+
+**What happened**: The live Duel link selected a two-player room, but the shared landing page still introduced itself as an eight-commander Party and labeled its header Party & Tournament. The room controls worked; the surrounding text gave players the wrong expectation.
+
+**Rule**: When several modes share a page, check its introductory copy through every production navigation link. Keep shared copy accurate for all modes, and reserve player counts and prize terms for the selected room's controls.
