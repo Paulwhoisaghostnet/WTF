@@ -12314,3 +12314,11 @@
 **Correction and proof**: New room creation enables item rules, while canonical validation preserves an old room's missing version field. A comparison against the previous packaged runtime produced identical serialized state, receipts and both player views through ten legacy combats. AI preparation now buys or passes its item offer, equips held items, and then shops for heroes; an item-enabled AI test reaches round five and completes preparation. Hosted item, authority and funding tests pass.
 
 **Rule**: Optional game rules must be fixed at room creation and absent from old room state on restore. AI preparation must resolve every blocking shop phase introduced for human players.
+
+## 2026-10-24 — Upgrade rank should not alter character silhouettes
+
+**What happened**: The hero atlas renderer grafted faction-specific SVG-like ornaments around 2-star and 3-star sprites. Those shapes obscured the supplied Lil Guys silhouettes and made rank hard to read at board and bench scale.
+
+**Correction and proof**: The renderer now keeps the original atlas pixels intact and places a standardized silver or gold canvas aura behind the sprite. Separate star marks sit above fielded and benched heroes. A browser screenshot compared one, two and three stars for the same hero; the game smoke test and hosted rank assertion pass. The authoritative rules hash is unchanged.
+
+**Rule**: Use a rank indicator outside character artwork unless a separately approved evolved sprite exists. Verify it at actual board and bench sizes, including combat layout.

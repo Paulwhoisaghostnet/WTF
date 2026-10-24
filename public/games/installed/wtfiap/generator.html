@@ -5803,22 +5803,15 @@ window.AB_SPRITE_DATA={"atlases":[{"id":"ember-vanguard","path":"source/assets/l
     if (fill) { ctx.fillStyle = fill; ctx.fill(); }
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.stroke(); }
   }
-  const ascensions = {
-    ember: { name: 'Living cinder mantle', colors: ['#622b26','#e48047','#ffe3a1'], description: 'Molten shoulder spines awaken, then unfold into a crown of living flame.' },
-    tide: { name: 'Abyssal fin regalia', colors: ['#174f65','#50b5b6','#c8ffdf'], description: 'Translucent reef fins grow into a luminous, pearl-studded abyssal fan.' },
-    verdant: { name: 'Ancient bloom', colors: ['#294b34','#8cae69','#ebefb9'], description: 'Fresh leaves unfurl into an ancient flowering canopy.' },
-    hollow: { name: 'Spectral reliquary', colors: ['#3c3658','#a08fb9','#f0e4cf'], description: 'Spirit ribbons rise around a bone reliquary, crowned by ghostly lights.' },
-    iron: { name: 'Auric overdrive', colors: ['#34444c','#b89362','#fff2c7'], description: 'Articulated brass vanes open around a brighter, overcharged core.' },
-    astral: { name: 'Celestial apotheosis', colors: ['#453c78','#b2a0ec','#fff3d3'], description: 'Star crystals assemble into a radiant orbital crown.' },
-    dune: { name: 'Sun-carved regalia', colors: ['#6e4928','#d8aa58','#fff0b3'], description: 'Amber shell ornaments unfold into a scarab-like solar mantle.' },
-    silk: { name: 'Moonwing metamorphosis', colors: ['#635878','#d0b4cd','#fff1d6'], description: 'New silken wing layers unfurl with luminous eye markings.' },
-    rime: { name: 'Winter sovereign', colors: ['#38566d','#9acddd','#f1ffff'], description: 'Frost crystals gather into a sharp, snow-bright glacial crest.' },
-    gargoyle: { name: 'Cathedral awakening', colors: ['#474850','#a1a3a8','#eee6ce'], description: 'Stone buttresses awaken, then rise into illuminated cathedral arches.' },
-    independent: { name: 'Grand pantomime', colors: ['#353638','#ded7cd','#fff3db'], description: 'A theatrical ruff and floating harlequin diamonds frame the silent performer.' }
+  // Star ranks use one visual language across the whole cast. The original
+  // transparent sprite is never painted over with costume or faction shapes.
+  const rankStyle = {
+    2: { name: 'Silver aura', color: '#dbeaf3', edge: '#8fc0d4', glow: 'rgba(192,225,243,.34)' },
+    3: { name: 'Gold aura', color: '#ffe4a0', edge: '#f2b94e', glow: 'rgba(255,195,87,.40)' }
   };
   function evolutionProfile(unit, hero) {
-    const level = unit.level || 1, theme = hero.faction || 'independent', appearance = ascensions[theme];
-    return { level, scale: root.AB.bodyProfile(unit).scale, theme, name: level === 1 ? 'Original form' : appearance.name, description: level === 1 ? 'The hero’s original appearance.' : appearance.description };
+    const level = unit.level || 1;
+    return { level, scale: root.AB.bodyProfile(unit).scale, theme: hero.faction || 'independent', name: rankStyle[level]?.name || 'Original form', description: level === 1 ? 'The hero’s original appearance.' : `The original hero sprite is surrounded by a ${level === 2 ? 'silver' : 'gold'} aura, with ${level} stars above the head.` };
   }
   function measureUnit(size, unit, hero, options = {}) {
     const sprite = heroes.get(hero?.id || unit?.heroId);
@@ -5826,76 +5819,41 @@ window.AB_SPRITE_DATA={"atlases":[{"id":"ember-vanguard","path":"source/assets/l
     const [, , sw, sh] = sprite.bounds, evolution = evolutionProfile(unit, hero);
     const baseScale = Math.min(size / sh, (options.maxWidth ?? size * 144 / 128) / sw);
     const width = sw * baseScale * evolution.scale, height = sh * baseScale * evolution.scale;
-    // Geometry reaches .49 on each side and 1.07 above the foot; include the
-    // .006 half-stroke. The same painted bounds drive UI hit areas and bars.
-    return { width, height, visualWidth: evolution.level > 1 ? Math.max(width, height * .992) : width, visualHeight: height * (evolution.level > 1 ? 1.076 : 1), ...evolution };
+    return { width, height, visualWidth: width, visualHeight: height, ...evolution };
   }
-  function ornament(ctx, points, colors, alpha = 1) {
-    ctx.save(); ctx.globalAlpha *= alpha;
-    ctx.beginPath(); points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.closePath();
-    const fill=ctx.createLinearGradient(-.35,-.25,.32,-1.08);
-    fill.addColorStop(0,colors[0]);fill.addColorStop(.55,colors[1]);fill.addColorStop(1,colors[2]);
-    ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=colors[0];ctx.lineWidth=.012;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(...points[0]);ctx.lineTo(...points[1]);ctx.lineTo(...points[2]);ctx.strokeStyle=colors[2];ctx.lineWidth=.004;ctx.stroke();ctx.restore();
+  function drawAura(ctx, width, height, level) {
+    const style = rankStyle[level];
+    if (!style) return;
+    const radius = Math.max(width * .83, height * .56);
+    ctx.save();
+    const bloom = ctx.createRadialGradient(0, -height * .51, height * .08, 0, -height * .51, radius);
+    bloom.addColorStop(0, style.glow);
+    bloom.addColorStop(.52, level === 3 ? 'rgba(255,195,87,.24)' : 'rgba(192,225,243,.19)');
+    bloom.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = bloom;
+    ctx.fillRect(-radius, -height * .51 - radius, radius * 2, radius * 2);
+    ctx.shadowColor = style.edge;
+    ctx.shadowBlur = height * (level === 3 ? .18 : .14);
+    ellipse(ctx, 0, -height * .50, Math.max(width * .60, height * .37), height * .48, null, style.edge, Math.max(1, height * .027));
+    ctx.shadowBlur = height * .10;
+    ellipse(ctx, 0, -height * .50, Math.max(width * .72, height * .46), height * .58, null, style.glow, Math.max(1, height * .04));
+    ctx.restore();
   }
-  function drawEvolution(ctx, height, evolution, foreground) {
-    if (evolution.level < 2) return;
-    const { theme, level } = evolution, palette = ascensions[theme].colors, exalted = level === 3;
-    ctx.save();ctx.scale(height,height);
-    if (foreground) {
-      // Small, fixed accents preserve the painted face and weapons beneath.
-      if (exalted) for (const sign of [-1,1]) {
-        const x=sign*.32,y=-.86;
-        ellipse(ctx,x,y,.016,.016,palette[2],palette[1],.006);
-        ctx.strokeStyle=palette[2];ctx.lineWidth=.004;ctx.beginPath();ctx.moveTo(x-.035,y);ctx.lineTo(x+.035,y);ctx.moveTo(x,y-.035);ctx.lineTo(x,y+.035);ctx.stroke();
-      }
-      ctx.restore();return;
-    }
-    const glow=ctx.createRadialGradient(0,-.55,.08,0,-.55,.48);
-    glow.addColorStop(0,palette[1]+'24');glow.addColorStop(1,palette[1]+'00');ctx.fillStyle=glow;ctx.fillRect(-.49,-1.03,.98,1.03);
-    for (const sign of [-1,1]) {
-      ctx.save();ctx.scale(sign,1);
-      if(theme==='ember') {
-        ornament(ctx,[[.12,-.48],[.27,-.96],[.30,-.79],[.40,-.94],[.36,-.62],[.48,-.71],[.36,-.37]],palette);
-        if(exalted) ornament(ctx,[[.10,-.89],[.15,-1.07],[.20,-.96],[.26,-1.02],[.23,-.80]],palette);
-      } else if(theme==='tide') {
-        ornament(ctx,[[.11,-.35],[.30,-.88],[.34,-.72],[.45,-.77],[.42,-.53],[.49,-.48],[.30,-.26]],palette,.82);
-        for(const [x,y]of [[.30,-.74],[.38,-.57],[.34,-.42]]){ctx.strokeStyle=palette[2];ctx.lineWidth=.005;ctx.beginPath();ctx.moveTo(.12,-.36);ctx.lineTo(x,y);ctx.stroke();}
-        if(exalted){ellipse(ctx,.21,-.99,.037,.037,palette[2],palette[1],.01);ornament(ctx,[[.09,-.76],[.10,-1.07],[.20,-.99],[.24,-.80]],palette,.8);}
-      } else if(theme==='verdant') {
-        for(const [x,y,a]of [[.29,-.76,-.5],[.37,-.57,-.9],[.31,-.35,-1.1]]){ctx.save();ctx.translate(x,y);ctx.rotate(a);ornament(ctx,[[0,.12],[-.09,-.01],[0,-.22],[.08,-.01]],palette);ctx.restore();}
-        if(exalted){ornament(ctx,[[.07,-.88],[.06,-1.06],[.20,-.99],[.27,-1.02],[.22,-.84]],palette);ellipse(ctx,.24,-.91,.035,.04,'#f0ccb9',palette[2],.005);}
-      } else if(theme==='hollow') {
-        ornament(ctx,[[.13,-.26],[.27,-.68],[.24,-.97],[.35,-.83],[.39,-.55],[.31,-.38],[.42,-.30],[.28,-.19]],palette,.75);
-        ctx.strokeStyle=palette[2];ctx.lineWidth=.012;ctx.beginPath();ctx.moveTo(.18,-.30);ctx.bezierCurveTo(.47,-.51,.23,-.76,.29,-.92);ctx.stroke();
-        if(exalted){ellipse(ctx,.19,-1.01,.027,.04,palette[2],palette[1],.008);ornament(ctx,[[.11,-.76],[.12,-.99],[.16,-1.07],[.20,-.97],[.24,-.77]],palette,.75);}
-      } else if(theme==='iron') {
-        for(const [x,y]of [[.27,-.75],[.34,-.55],[.31,-.35]]){ornament(ctx,[[x-.10,y+.10],[x-.02,y-.18],[x+.08,y-.15],[x+.07,y+.02]],palette);ellipse(ctx,x,y,.021,.021,palette[0],palette[2],.007);}
-        if(exalted)ornament(ctx,[[.10,-.81],[.10,-1.04],[.17,-1.07],[.23,-1.00],[.20,-.78]],palette);
-      } else if(theme==='astral') {
-        ctx.save();ctx.translate(0,-.60);ctx.rotate(sign*.5);ellipse(ctx,0,0,.43,.18,null,palette[1],.007);ctx.restore();
-        for(const [x,y,s]of [[.29,-.82,.11],[.39,-.55,.07],[.29,-.29,.055]])ornament(ctx,[[x,y+s],[x-s*.45,y],[x,y-s],[x+s*.45,y]],palette);
-        if(exalted)ornament(ctx,[[.12,-.87],[.07,-.98],[.12,-1.07],[.18,-.98]],palette);
-      } else if(theme==='dune') {
-        ornament(ctx,[[.12,-.32],[.19,-.86],[.28,-.94],[.38,-.78],[.43,-.55],[.36,-.29]],palette);
-        for(const y of [-.70,-.58,-.46]){ctx.strokeStyle=palette[0];ctx.lineWidth=.012;ctx.beginPath();ctx.moveTo(.20,y+.04);ctx.lineTo(.39,y);ctx.stroke();}
-        if(exalted){ornament(ctx,[[.08,-.78],[.07,-.98],[.14,-1.07],[.22,-.94],[.22,-.76]],palette);ellipse(ctx,.18,-.91,.021,.026,palette[2],palette[0],.006);}
-      } else if(theme==='silk') {
-        ornament(ctx,[[.08,-.32],[.23,-.94],[.43,-.89],[.49,-.70],[.38,-.54],[.46,-.32],[.29,-.22]],palette,.82);
-        ellipse(ctx,.34,-.69,.065,.09,palette[0],palette[2],.009);ellipse(ctx,.34,-.69,.026,.04,palette[2]);
-        if(exalted)ornament(ctx,[[.12,-.76],[.17,-1.07],[.27,-1.01],[.31,-.87]],palette,.9);
-      } else if(theme==='rime') {
-        for(const [x,y,s]of [[.27,-.79,.19],[.38,-.60,.15],[.35,-.38,.1]])ornament(ctx,[[x-.05,y+s*.6],[x-.06,y-s*.7],[x+.01,y-s],[x+.08,y-s*.25],[x+.04,y+s]],palette,.9);
-        if(exalted)ornament(ctx,[[.08,-.80],[.09,-1.02],[.14,-1.07],[.20,-.96],[.21,-.78]],palette);
-      } else if(theme==='gargoyle') {
-        ornament(ctx,[[.14,-.30],[.19,-.88],[.25,-1.00],[.31,-.83],[.44,-.65],[.42,-.30],[.33,-.48],[.28,-.78],[.24,-.67],[.23,-.26]],palette);
-        if(exalted){ornament(ctx,[[.08,-.81],[.08,-1.00],[.14,-1.07],[.20,-.97],[.20,-.79]],palette);ctx.strokeStyle=palette[2];ctx.lineWidth=.006;ctx.beginPath();ctx.moveTo(.26,-.86);ctx.lineTo(.33,-.69);ctx.lineTo(.38,-.37);ctx.stroke();}
-      } else {
-        for(const [x,y]of [[.23,-.76],[.32,-.63],[.36,-.46]])ornament(ctx,[[x-.08,y+.10],[x-.07,y-.08],[x,y-.13],[x+.07,y]],palette);
-        if(exalted){ornament(ctx,[[.12,-.90],[.07,-1.00],[.12,-1.07],[.18,-1.00]],['#663832','#ce7466','#fff2dd']);ornament(ctx,[[.31,-.30],[.25,-.39],[.31,-.48],[.37,-.39]],palette);}
-      }
-      ctx.restore();
-    }
+  function drawStars(ctx, x, y, level, size = 13) {
+    const count = Math.max(1, Math.min(3, level || 1));
+    const style = rankStyle[count];
+    ctx.save();
+    ctx.font = `bold ${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, size * .20);
+    ctx.strokeStyle = 'rgba(6,20,23,.94)';
+    ctx.shadowColor = style?.edge || '#e9e5d3';
+    ctx.shadowBlur = style ? size * .7 : 0;
+    ctx.strokeText('★'.repeat(count), x, y);
+    ctx.fillStyle = style?.color || '#e9e5d3';
+    ctx.fillText('★'.repeat(count), x, y);
     ctx.restore();
   }
   function drawUnit(ctx, x, y, size, unit, hero, options = {}) {
@@ -5916,16 +5874,14 @@ window.AB_SPRITE_DATA={"atlases":[{"id":"ember-vanguard","path":"source/assets/l
     if (options.flip) ctx.scale(-1, 1);
     if (options.pose === 'hurt') { ctx.translate(-size * 3/105, 0); ctx.rotate(-.08); }
     if (options.pose === 'attack') { ctx.translate(size * 3/105, 0); ctx.rotate(.06); }
-    drawEvolution(ctx,height,metrics,false);
+    drawAura(ctx,width,height,metrics.level);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    if(metrics.level>1)ctx.filter=metrics.level===3?'saturate(1.14) brightness(1.06)':'saturate(1.07) brightness(1.025)';
     ctx.drawImage(sprite.image, sx, sy, sw, sh, -width/2, -height, width, height);
-    ctx.filter='none';drawEvolution(ctx,height,metrics,true);
     ctx.restore();
     return metrics;
   }
   const ready = load().catch(reason => { phase = 'error'; error = reason.message; throw reason; });
-  root.ABArtSprites = Object.freeze({ ready, status, drawUnit, measureUnit, evolutionProfile, version: '2.0.0' });
+  root.ABArtSprites = Object.freeze({ ready, status, drawUnit, drawStars, measureUnit, evolutionProfile, version: '2.1.0' });
 })(globalThis);
 
 /* Fourteen original collectible miniatures. Authored Canvas geometry and materials.
@@ -7433,10 +7389,9 @@ if(match){const mode=boardInfo();text(mode.name.toUpperCase()+' · '+b.columns+'
 const units=game.phase==='planning'?[...game.opponents.map(u=>({...u,side:'enemy'})),...game.field.map(u=>({...u,side:'player'}))]:(game.battle?.units||[]);
 const reactions=new Map();if(game.battle&&!reducedCombatMotion.matches)for(const event of game.battle.events){if(!['hit','spell-hit','heal','shield'].includes(event.type)||game.battle.elapsed-event.at>.25)continue;reactions.set(event.targetId,{event,age:game.battle.elapsed-event.at});}
 for(const u of [...units].sort((a,b)=>g.at(a.col,a.row).y-g.at(b.col,b.row).y)){if(u.alive===false)continue;const p=g.at(u.col,u.row),h=hero(u),sz=Math.min(100,th*1.65),metrics=ABArtSprites.measureUnit(sz,u,h);const action=u.lastAction,age=game.battle?game.battle.elapsed-(action?.at||0):1,move=u.lastMove,moveAge=game.battle?game.battle.elapsed+(game.battle.accumulator||0)-(move?.at||0):1;if(move&&moveAge<move.duration){const from=g.at(move.from.col,move.from.row),t=Math.min(1,Math.max(0,moveAge/move.duration));p.x=from.x+(p.x-from.x)*t;p.y=from.y+(p.y-from.y)*t;}const ev=action&&age<.3&&action.type!=='move';const reaction=reactions.get(u.id),source=reaction&&units.find(other=>other.id===reaction.event.unitId),recoil=reaction&&['hit','spell-hit'].includes(reaction.event.type)?Math.sin(Math.PI*reaction.age/.25)*7:0,castLift=ev&&action.type==='ability'&&!reducedCombatMotion.matches?5*(1-age/.3):0;ABArt.drawUnit(ctx,p.x+(source&&source.col<=u.col?recoil:-recoil),p.y+th*.15-castLift,sz,u,h,{enemy:u.side==='enemy',flip:unitFacing(u)==='right',selected:u.id===selected,pose:ev?'attack':'idle'});const visualTop=p.y+th*.15-metrics.visualHeight,hitWidth=Math.max(tw*.7,metrics.visualWidth);
-traitBadges(h,p.x,visualTop-31,Math.min(21,th*.43),3);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),p.x,visualTop-47,13,'#f1d694','sans-serif','center');
+traitBadges(h,p.x,visualTop-31,Math.min(21,th*.43),3);ABArtSprites.drawStars(ctx,p.x,visualTop-15,u.level,Math.min(13,th*.28));if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),p.x,visualTop-47,13,'#f1d694','sans-serif','center');
 if(pointerAt&&pointerAt.x>=p.x-hitWidth/2&&pointerAt.x<=p.x+hitWidth/2&&pointerAt.y>=visualTop&&pointerAt.y<=visualTop+metrics.visualHeight+th*.2)hoveredFieldUnit={u,h,p};
 if(game.phase!=='planning'){if(u.temporary){ctx.save();ctx.strokeStyle='#c7b5ef';ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(p.x,p.y,sz*.33,sz*.14,0,0,Math.PI*2);ctx.stroke();ctx.restore();}let ratio=Math.max(0,u.hp/u.maxHp);rect(p.x-24,visualTop-9,48,5,'#091616');rect(p.x-24,visualTop-9,48*ratio,5,u.side==='enemy'?C.red:C.teal);rect(p.x-24,visualTop-3,48*Math.min(1,abilityPoints(u)/maxAbilityPoints(u,h)),2,'#b5a0db');hit('combat-unit-'+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,()=>select(u.id),`Inspect ${h.name} combat status. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}. ${statusLabels(u).join('; ')}`);}
-else{text('★'.repeat(u.level),p.x,visualTop-9,13,u.side==='enemy'?C.red:C.gold,'sans-serif','center');}
 if(game.phase==='planning')hit((u.side==='enemy'?'enemy-':'field-')+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,event=>u.side==='enemy'?select(u.id):actDeploy(u.col,u.row,event),`${u.side==='enemy'?'Inspect':'Select'} ${h.name}. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}. ${statusDetails(preview.get(u.id)||u,{preparation:true}).map(entry=>entry.label).join('; ')}${u.side==='player'?' · click again to deselect; Shift-click to swap':''}`);
 drawStatusRow(u,preview?.get(u.id)||u,p,visualTop,g,h,hitWidth);
 }
@@ -7495,7 +7450,7 @@ const labels=statusLabels(live);if(labels.length)text(fitText(labels.join(' · '
 if(game.phase==='planning'&&game.field.some(v=>v.id===u.id))button('recall','Return to bench',1172,708,match?105:220,27,recall,false,true,match?10:12);
 if(match?.phase==='preparation'&&[...game.field,...game.bench].some(v=>v.id===u.id))button('sell-hero','Sell · '+ABMatch.saleValue(u)+'g',1287,708,105,27,sellHero,false,true,12);
 }
-function bench(){text('THE RESERVES',48,770,12,C.muted);text('◇ Faction   ○ Class',192,770,10,C.muted);text(`${game.bench.length} / 10`,1392,770,12,C.muted,'sans-serif','right');for(let i=0;i<10;i++){const x=48+i*135,w=128,u=game.bench[i];rect(x,793,w,190,u?'#172b2d':'#102124',u?.id===selected?C.gold:'#2a4142');if(!u){text(String(i+1).padStart(2,'0'),x+w/2,874,16,'#3d5653','Georgia','center');continue;}const h=hero(u),f=faction(h.faction);rect(x,793,w,3,f.color||C.teal);text('★'.repeat(u.level),x+10,816,12,C.gold);text(h.cost+'g',x+w-10,816,12,tierColor(h.cost),'sans-serif','right');ABArt.drawUnit(ctx,x+64,897,60,u,h,{selected:false});traitBadges(h,x+64,831,20,4);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),x+64,853,12,C.gold,'sans-serif','center');text(fitText(h.name,w-16,13),x+8,910,13,C.cream);text(h.id==='mime'?'Independent':klass(h.class).name,x+8,930,11,C.muted);ratingBars(u.heroId,u.level,x+8,941,6,1);hit('bench-'+u.id,x,793,w,190,()=>select(u.id),`Select ${h.name}, ${u.level} stars. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}}
+function bench(){text('THE RESERVES',48,770,12,C.muted);text('◇ Faction   ○ Class',192,770,10,C.muted);text(`${game.bench.length} / 10`,1392,770,12,C.muted,'sans-serif','right');for(let i=0;i<10;i++){const x=48+i*135,w=128,u=game.bench[i];rect(x,793,w,190,u?'#172b2d':'#102124',u?.id===selected?C.gold:'#2a4142');if(!u){text(String(i+1).padStart(2,'0'),x+w/2,874,16,'#3d5653','Georgia','center');continue;}const h=hero(u),f=faction(h.faction);rect(x,793,w,3,f.color||C.teal);text(h.cost+'g',x+w-10,816,12,tierColor(h.cost),'sans-serif','right');ABArt.drawUnit(ctx,x+64,903,60,u,h,{selected:false});traitBadges(h,x+64,812,20,4);ABArtSprites.drawStars(ctx,x+64,833,u.level,12);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),x+64,853,12,C.gold,'sans-serif','center');text(fitText(h.name,w-16,13),x+8,910,13,C.cream);text(h.id==='mime'?'Independent':klass(h.class).name,x+8,930,11,C.muted);ratingBars(u.heroId,u.level,x+8,941,6,1);hit('bench-'+u.id,x,793,w,190,()=>select(u.id),`Select ${h.name}, ${u.level} stars. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}}
 function commandBar(){if(match){matchCommandBar();return;}line(300,653,1138,653);const phase=game.phase==='planning'?'PREPARATION':game.phase==='battle'?(paused?'PAUSED':'IN COMBAT'):(game.result==='victory'?'VICTORY':game.result==='defeat'?'DEFEAT':'DRAW');text(phase,311,682,11,game.result==='victory'?C.gold:C.teal);wrap(message,311,707,420,13,C.muted,18);if(game.phase==='planning'){button('battle','Begin battle  →',948,678,190,52,begin,true,game.field.length>0);const groups=AB.mergeGroups(game);const chosen=selectedUnit();const group=groups.find(g=>g.heroId===chosen?.heroId&&g.level===chosen?.level)||groups[0];if(group)button('combine','Combine ×3  ↑',758,678,176,52,()=>combine(group),false,true);else text(`${game.field.length} / ${game.playerLevel} fielded`,920,708,15,C.cream,'sans-serif','right');if(selected)button('deselect','Deselect · Esc',948,737,190,26,deselect,false,true,12);}else{button('replan','Replan formation',948,678,190,52,reset,true);if(game.phase==='battle')button('pause',paused?'Resume':'Pause',788,678,146,52,()=>{paused=!paused;lastTick=0;persistMatch();draw();schedule();});else text('Same token. New tactics.',927,708,13,C.muted,'sans-serif','right');}}
 function matchCommandBar(){if(partyMode){partyCommandBar();return;}line(300,661,1138,661);const phase=match.phase==='preparation'?'PREPARATION':match.phase==='combat'?(paused?'PAUSED':'IN COMBAT'):match.phase==='finished'?'MATCH COMPLETE':game.result==='victory'?'ROUND WON':game.result==='defeat'?'ROUND LOST':'ROUND DRAWN';text(`ROUND ${match.roundNumber} · ${phase}`,311,683,11,C.teal);wrap(message,311,706,425,12,C.muted,17);
 if(match.phase==='preparation'){const terms=chestTerms(),canStart=game.field.length>0&&(!terms.enabled||!!match.chests.player);button('battle','Begin round  →',948,678,190,52,begin,true,canStart);button('buy-xp','Buy 4 XP · 4g',758,678,176,32,buyXP,false,match.players.player.gold>=4&&game.playerLevel<10,13);if(terms.enabled)button('place-chest',chestSelected?'Treasure selected':match.chests.player?'Move treasure':'Place treasure',758,718,176,32,selectChest,chestSelected,true,13);else text('Treasure begins round 5',846,742,11,C.muted,'sans-serif','center');const chosen=selectedUnit(),groups=AB.mergeGroups(game),group=groups.find(g=>g.heroId===chosen?.heroId&&g.level===chosen?.level)||groups[0];if(group)button('combine','Combine ×3  ↑',948,737,190,26,()=>combine(group),false,true,12);else if(selected||chestSelected)button('deselect','Deselect · Esc',948,737,190,26,deselect,false,true,12);}
@@ -7731,7 +7686,9 @@ for(const stale of old.values())stale.remove();if(focused&&document.activeElemen
 function updateQuickActions(){const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),ids=match&&shopVisible&&match.phase==='preparation'?['shop-toggle',`shop-buy-${shopPreviewIndex}`,'shop-reroll','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){if(compact&&id==='shop-toggle')continue;const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}}
 function miniUnit(h,level,width,height){
   const picture=document.createElement('canvas');picture.width=width;picture.height=height;picture.setAttribute('aria-hidden','true');
-  ABArt.drawUnit(picture.getContext('2d'),width/2,height-3,Math.min(width*.7,height*.78),{heroId:h.id,level},h,{maxWidth:width-8});
+  const miniCtx=picture.getContext('2d');
+  ABArt.drawUnit(miniCtx,width/2,height-3,Math.min(width*.7,height*.68),{heroId:h.id,level},h,{maxWidth:width-8});
+  ABArtSprites.drawStars(miniCtx,width/2,7,level,10);
   return picture;
 }
 function renderMobilePanels(){
@@ -7764,7 +7721,7 @@ function renderMobilePanels(){
   document.querySelector('.mobile-shop-preview').textContent=preview?`${preview.ability.name}: ${preview.ability.description}`:'Choose a hero to preview.';
   for(let index=0;index<10;index++){
     const u=game.bench[index],slot=document.createElement('button');slot.type='button';slot.className='mobile-bench-slot'+(u?.id===selected?' selected':'')+(u?'':' empty');
-    if(u){const h=hero(u),title=document.createElement('strong');title.textContent=`${h.name} · ${'★'.repeat(u.level)}`;slot.append(title,miniUnit(h,u.level,78,49));const stats=document.createElement('span'),score=ratings(h.id,u.level);stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;slot.append(stats);slot.setAttribute('aria-label',`Select ${h.name}, ${u.level} stars, from bench. ${ratingDescription(score)}`);slot.onclick=()=>{markPlayerAction();if(selected!==u.id)select(u.id);setMobileView('board');draw();};}
+    if(u){const h=hero(u),title=document.createElement('strong');title.textContent=h.name;slot.append(title,miniUnit(h,u.level,78,49));const stats=document.createElement('span'),score=ratings(h.id,u.level);stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;slot.append(stats);slot.setAttribute('aria-label',`Select ${h.name}, ${u.level} stars, from bench. ${ratingDescription(score)}`);slot.onclick=()=>{markPlayerAction();if(selected!==u.id)select(u.id);setMobileView('board');draw();};}
     else{slot.textContent=`Empty ${index+1}`;slot.disabled=true;}
     benchRoot.append(slot);
   }

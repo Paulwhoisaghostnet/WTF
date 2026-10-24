@@ -11,15 +11,15 @@ test('active funded rooms and orphan game locks prevent incompatible replacement
   assert.doesNotThrow(() => assertFundingCompatibility([active], [{ roomCode: 'funded', rulesHash: 'old' }], 'old'));
   assert.doesNotThrow(() => assertFundingCompatibility([{ ...active, status: 'settled', hasFinalResult: true }], [{ roomCode: 'funded', rulesHash: 'old' }], 'new'));
 });
-test('the duel release preserves the immediately prior funded-room rules only', () => {
+test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
-  const duelRelease = '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd';
-  assert.equal(rules.getRuntimeRulesHash(), duelRelease);
-  assert.equal(rules.supportsPinnedRules(duelRelease, oldRules), true);
+  const currentRelease = '4415776d4b0db7a07f3346bdf0c4014c68808060d32e974bbf7703ba47ac8d73';
+  assert.equal(rules.getRuntimeRulesHash(), currentRelease);
+  assert.equal(rules.supportsPinnedRules(currentRelease, oldRules), true);
   assert.equal(rules.supportsPinnedRules('future-rules', oldRules), false);
   const record = { ...active, rulesHash: oldRules };
   const lock = { roomCode: record.roomCode, rulesHash: oldRules };
-  assert.doesNotThrow(() => assertFundingCompatibility([record], [lock], duelRelease));
+  assert.doesNotThrow(() => assertFundingCompatibility([record], [lock], currentRelease));
   assert.throws(() => assertFundingCompatibility([record], [lock], 'future-rules'), /pinned rules/);
 });
 test('replacement is under the admission lease and failure releases the lease without replacing', async () => {

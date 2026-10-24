@@ -223,6 +223,17 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       return { invalid, unchanged };
     });
     expect(ratingCheck).toEqual({ invalid: [], unchanged: [] });
+    const rankVisuals = await game.evaluate(() => {
+      const hero = window.AB.ROSTER[0];
+      const ranks = [1, 2, 3].map(level => ({
+        name: window.ABArtSprites.evolutionProfile({ heroId: hero.id, level }, hero).name,
+        height: window.ABArtSprites.measureUnit(70, { heroId: hero.id, level }, hero).height,
+      }));
+      return ranks;
+    });
+    expect(rankVisuals.map(rank => rank.name)).toEqual(["Original form", "Silver aura", "Gold aura"]);
+    expect(rankVisuals[0].height).toBeLessThan(rankVisuals[1].height);
+    expect(rankVisuals[1].height).toBeLessThan(rankVisuals[2].height);
     const firstOfferRating = (await gameState(game)).shop.offerRatings[0];
     expect(firstOfferRating).toMatchObject({ defense: expect.any(Number), speed: expect.any(Number) });
     expect(firstOfferRating.attack ?? firstOfferRating.magic).toEqual(expect.any(Number));
