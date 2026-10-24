@@ -7067,6 +7067,30 @@ window.AB_SPRITE_DATA={"atlases":[{"id":"ember-vanguard","path":"source/assets/l
   root.ABArt = Object.freeze({drawUnit, drawEmblem, factionPalette, designProfile, identityDescription:id=>designProfile(id)?.description||'', version:'5.0.0'});
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
+(function(root){
+'use strict';
+// Visual identity is derived from authored abilities, never from combat RNG.
+// The full ability name remains visible on cast so similar motifs still have
+// an unambiguous identity in a crowded fight.
+function hash(value){let n=2166136261;for(const char of String(value)){n^=char.charCodeAt(0);n=Math.imul(n,16777619);}return n>>>0;}
+function describe(ability,factionColor){
+  const actions=ability?.actions||[];
+  const types=new Set(actions.map(action=>action.type));
+  const area=actions.some(action=>['all-enemies','all-allies','enemy-row','enemy-column','enemy-cross','nearby-enemies','nearby-allies','target-neighbors'].includes(action.target));
+  const taunt=actions.some(action=>action.status==='taunt');
+  const multi=actions.some(action=>(action.repeat||1)>1);
+  const targets=actions.map(action=>action.target);
+  const reach=['enemy-cross','enemy-row','enemy-column','all-enemies','all-allies','target-neighbors','nearby-enemies','nearby-allies'].find(target=>targets.includes(target))||'point';
+  const motif=taunt&&types.has('shield')?'bastion':types.has('heal')&&types.has('shield')?'sanctuary':types.has('heal')?'bloom':types.has('burn')?'cinder':multi?'flurry':area?'constellation':types.has('status')?'hex':types.has('shield')?'bastion':'strike';
+  const identity=ability?.id||ability?.name||'mimic';
+  const variation=hash(identity);
+  return {identity,name:ability?.name||'Mimic',motif,color:factionColor||'#e9d6a0',spokes:5+variation%5,phase:(variation%360)*Math.PI/180,area,reach,variation};
+}
+const api={describe};
+if(typeof module!=='undefined'&&module.exports)module.exports=api;
+root.ABCombatFX=api;
+})(globalThis);
+
 (function(){
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),alea=window.$alea;
@@ -7278,6 +7302,84 @@ function chestInspector(){const preview=chestTerms(),chest=preview.chests.find(c
 function grid(){const b=game.board,dx=1080/b.rows,dy=(shopVisible&&match?.phase==='preparation'?300:390)/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:(shopVisible&&match?.phase==='preparation'?328:417)+(c-(b.columns-1)/2)*dy})};}
 function unitFacing(u){const target=(game.battle?.units||[]).find(t=>t.id===u.targetId&&t.alive!==false);if(target&&Math.abs(target.row-u.row)>1e-6)return target.row<u.row?'right':'left';const move=u.lastMove;if(move&&Math.abs(u.row-move.from.row)>1e-6)return u.row<move.from.row?'right':'left';return u.side==='enemy'?'left':'right';}
 
+const reducedCombatMotion=matchMedia('(prefers-reduced-motion: reduce)');
+function combatEffectProfile(actor){
+  const cast=actor?.mimickedHeroId?AB.heroById(actor.mimickedHeroId):actor?.heroId?AB.heroById(actor.heroId):null;
+  const ability={id:actor?.abilityId||cast?.ability?.id,name:actor?.abilityName||cast?.ability?.name,actions:actor?.abilityActions||cast?.ability?.actions||[]};
+  return ABCombatFX.describe(ability,faction(actor?.combatFaction||cast?.faction).color);
+}
+function effectPolygon(x,y,r,n,phase,color,filled=false){ctx.beginPath();for(let i=0;i<n;i++){const a=phase+i*Math.PI*2/n;const px=x+Math.cos(a)*r,py=y+Math.sin(a)*r*.53;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=2;if(filled){ctx.fillStyle=color+'33';ctx.fill();}ctx.stroke();}
+function effectRing(x,y,r,color,width=2){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.ellipse(x,y,r,r*.45,0,0,Math.PI*2);ctx.stroke();}
+function drawCombatEffects(g){
+  const battle=game.battle;if(!battle)return;
+  const now=battle.elapsed,units=new Map([...battle.units,...(battle.objectives||[])].map(unit=>[unit.id,unit]));
+  const events=battle.events.filter(event=>now-event.at>=0&&now-event.at<=.72&&event.type!=='mana');
+  for(const ev of events){
+    const actor=units.get(ev.unitId),target=units.get(ev.targetId||ev.unitId),age=now-ev.at;
+    if(!target)continue;
+    const p=g.at(target.col,target.row),from=actor?g.at(actor.col,actor.row):p;
+    const start={x:from.x,y:from.y-33},end={x:p.x,y:p.y-33};
+    const ability=combatEffectProfile(actor),motion=reducedCombatMotion.matches?0.5:null;
+    ctx.save();ctx.globalAlpha=Math.max(0,1-age/.72);
+    if(ev.type==='attack'){
+      const t=motion??Math.min(1,age/.3),style=ev.attackStyle||actor?.normalAttack||'melee';
+      const color=style==='spellburst'?'#bb9beb':actor?.side==='enemy'?'#f0a390':'#e9dfb1';
+      if(style==='melee'){
+        ctx.strokeStyle=color;ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.arc(end.x,end.y,16,-.9+t*.8,1.7+t*.8);ctx.stroke();
+        line(start.x,start.y,end.x,end.y,color+'99',2);
+      }else{
+        const cx=(start.x+end.x)/2,cy=Math.min(start.y,end.y)-24;
+        const path=t=>({x:(1-t)*(1-t)*start.x+2*(1-t)*t*cx+t*t*end.x,y:(1-t)*(1-t)*start.y+2*(1-t)*t*cy+t*t*end.y});
+        const pos=path(t),tail=path(Math.max(0,t-.16));line(tail.x,tail.y,pos.x,pos.y,color,style==='spellburst'?7:5);
+        ctx.fillStyle=color;ctx.beginPath();ctx.arc(pos.x,pos.y,style==='spellburst'?10:7,0,Math.PI*2);ctx.fill();
+        if(style==='spellburst')effectRing(pos.x,pos.y,13,color,2);
+      }
+    }else if(ev.type==='ability'){
+      const t=motion??Math.min(1,age/.7),r=19+t*30,color=ability.color;
+      ctx.shadowColor=color;ctx.shadowBlur=reducedCombatMotion.matches?0:13;
+      effectRing(start.x,start.y+25,19+t*13,color,2);
+      effectPolygon(start.x,start.y+25,12+t*6,ability.spokes,ability.phase+t,color);
+      if(ability.motif==='bloom'||ability.motif==='sanctuary'){
+        for(let i=0;i<ability.spokes;i++){const a=ability.phase+i*Math.PI*2/ability.spokes;effectRing(end.x+Math.cos(a)*r*.6,end.y+Math.sin(a)*r*.34,ability.motif==='sanctuary'?7:10,color,1.7);}
+      }else if(ability.motif==='bastion'){
+        effectPolygon(end.x,end.y,r,6,Math.PI/6,color,true);effectPolygon(end.x,end.y,r*.63,6,Math.PI/6,color);
+      }else if(ability.motif==='cinder'){
+        effectPolygon(end.x,end.y,r,ability.spokes*2,ability.phase+t,color,true);
+        for(let i=0;i<ability.spokes;i++){const a=ability.phase+i*Math.PI*2/ability.spokes;line(end.x+Math.cos(a)*r*.35,end.y+Math.sin(a)*r*.2,end.x+Math.cos(a)*r,end.y+Math.sin(a)*r*.53,color,2);}
+      }else if(ability.motif==='flurry'){
+        for(let i=0;i<3;i++){const offset=(i-1)*12;line(end.x-r*.7,end.y-r*.4+offset,end.x+r*.7,end.y+r*.4+offset,color,3);}
+      }else if(ability.motif==='constellation'){
+        effectRing(end.x,end.y,r,color);for(let i=0;i<ability.spokes;i++){const a=ability.phase+i*Math.PI*2/ability.spokes;const x=end.x+Math.cos(a)*r,y=end.y+Math.sin(a)*r*.45;line(end.x,end.y,x,y,color+'aa',1);ctx.fillStyle=color;ctx.fillRect(x-2,y-2,4,4);}
+      }else if(ability.motif==='hex'){
+        effectPolygon(end.x,end.y,r,ability.spokes,ability.phase+t,color,true);line(end.x-r*.35,end.y,end.x+r*.35,end.y,color,2);line(end.x,end.y-r*.35,end.x,end.y+r*.35,color,2);
+      }else{
+        line(start.x,start.y,end.x,end.y,color,4);effectPolygon(end.x,end.y,r,ability.spokes,ability.phase,color);
+      }
+      if(ability.reach==='enemy-cross'||ability.reach==='enemy-row')line(end.x,end.y-r*.8,end.x,end.y+r*.8,color,2);
+      if(ability.reach==='enemy-cross'||ability.reach==='enemy-column')line(end.x-r*1.4,end.y,end.x+r*1.4,end.y,color,2);
+      if(ability.reach==='all-enemies'||ability.reach==='all-allies')effectRing(end.x,end.y,r*1.35,color,1);
+      ctx.shadowBlur=0;
+      const name=fitText(ability.name,178,12),labelY=from.y+55;
+      rect(from.x-96,labelY-17,192,24,'#0b1c20e8',color);
+      text(name,from.x,labelY,12,color,'sans-serif','center');
+    }else if(['hit','spell-hit','reflect-hit','shatter-hit','dot-hit'].includes(ev.type)){
+      const t=motion??Math.min(1,age/.42),color=ev.type==='spell-hit'?ability.color:ev.type==='dot-hit'?'#e8a06e':ev.type==='reflect-hit'?'#a7ddea':'#f2d4b3';
+      effectRing(end.x,end.y,7+t*17,color,ev.type==='spell-hit'?3:2);
+      if(ev.type==='spell-hit')effectPolygon(end.x,end.y,12+t*13,ability.spokes,ability.phase,color);
+      text(Math.round(ev.amount||0),end.x+(target.side==='enemy'?43:-43),end.y-25-(reducedCombatMotion.matches?0:t*22),ev.type==='spell-hit'?18:14,color,'sans-serif','center');
+    }else if(['heal','zone-heal','shield','buff','status','taunt'].includes(ev.type)){
+      const t=motion??Math.min(1,age/.55),color=['heal','zone-heal','buff'].includes(ev.type)?'#a8e7b4':ev.type==='shield'?'#86dbe8':'#c7a3ed';
+      if(actor&&actor.id!==target.id&&['heal','shield'].includes(ev.type))line(start.x,start.y,end.x,end.y,color+'88',2);
+      if(ev.type==='shield')effectPolygon(end.x,end.y,15+t*21,6,Math.PI/6,color,true);
+      else if(['heal','zone-heal'].includes(ev.type)){effectRing(end.x,end.y,14+t*18,color);line(end.x-8,end.y,end.x+8,end.y,color,3);line(end.x,end.y-8,end.x,end.y+8,color,3);}
+      else effectPolygon(end.x,end.y,13+t*18,5,t,color);
+      const label=['status','taunt','buff'].includes(ev.type)?(statusNames[ev.status]||ev.status||'Taunt'):(ev.type==='shield'?'Shield ':'+')+Math.round(ev.amount||0);
+      text(label,end.x+(target.side==='enemy'?48:-48),end.y-24-(reducedCombatMotion.matches?0:t*19),12,color,'sans-serif','center');
+    }else if(ev.type==='zone-gold')text('Gold +'+Math.round(ev.amount||0),end.x,end.y-60,12,C.gold,'sans-serif','center');
+    ctx.restore();
+  }
+}
+
 function zoneSnapshot(){return game.battle?.zoneDefense||game.zoneDefense;}
 function zoneName(z){const r=z.rect;return ((r.top+r.bottom)/2<(game.board.rows-1)/2?'Far':'Home')+' '+((r.left+r.right)/2<(game.board.columns-1)/2?'left':'right');}
 function zoneBenefit(z){const b=z.benefit;return b.stat==='hp-regen'?Math.round(b.magnitude*100)+'% HP / s':b.stat==='damage'?'+'+Math.round(b.magnitude*100)+'% damage':b.stat==='speed'?'+'+Math.round(b.magnitude*100)+'% speed':b.stat==='ability-regen'?'+'+Math.round(b.magnitude*100)+'% base AP':b.stat==='gold'?b.magnitude+' gold at '+b.threshold+'s':'1★ clone · '+b.duration+'s';}
@@ -7298,10 +7400,11 @@ drawZones(g);drawTerrain(g);
 text(partyMode?fitText(partyData.opponentLabel||'OPPOSING COMPANY',300,11):'OPPOSING COMPANY',180,138,11,C.red);text(`${game.opponents.length} champions · level ${match?match.players.enemy.progression.level:game.playerLevel}`,180,155,12,C.muted);
 if(match){const mode=boardInfo();text(mode.name.toUpperCase()+' · '+b.columns+'×'+b.rows,1260,163,11,C.gold,'sans-serif','right');}
 const units=game.phase==='planning'?[...game.opponents.map(u=>({...u,side:'enemy'})),...game.field.map(u=>({...u,side:'player'}))]:(game.battle?.units||[]);
-for(const u of [...units].sort((a,b)=>g.at(a.col,a.row).y-g.at(b.col,b.row).y)){if(u.alive===false)continue;const p=g.at(u.col,u.row),h=hero(u),sz=Math.min(100,th*1.65),metrics=ABArtSprites.measureUnit(sz,u,h);const action=u.lastAction,age=game.battle?game.battle.elapsed-(action?.at||0):1,move=u.lastMove,moveAge=game.battle?game.battle.elapsed+(game.battle.accumulator||0)-(move?.at||0):1;if(move&&moveAge<move.duration){const from=g.at(move.from.col,move.from.row),t=Math.min(1,Math.max(0,moveAge/move.duration));p.x=from.x+(p.x-from.x)*t;p.y=from.y+(p.y-from.y)*t;}const ev=action&&age<.3&&action.type!=='move';ABArt.drawUnit(ctx,p.x,p.y+th*.15,sz,u,h,{enemy:u.side==='enemy',flip:unitFacing(u)==='right',selected:u.id===selected,pose:ev?'attack':'idle'});const visualTop=p.y+th*.15-metrics.visualHeight,hitWidth=Math.max(tw*.7,metrics.visualWidth);
+const reactions=new Map();if(game.battle&&!reducedCombatMotion.matches)for(const event of game.battle.events){if(!['hit','spell-hit','heal','shield'].includes(event.type)||game.battle.elapsed-event.at>.25)continue;reactions.set(event.targetId,{event,age:game.battle.elapsed-event.at});}
+for(const u of [...units].sort((a,b)=>g.at(a.col,a.row).y-g.at(b.col,b.row).y)){if(u.alive===false)continue;const p=g.at(u.col,u.row),h=hero(u),sz=Math.min(100,th*1.65),metrics=ABArtSprites.measureUnit(sz,u,h);const action=u.lastAction,age=game.battle?game.battle.elapsed-(action?.at||0):1,move=u.lastMove,moveAge=game.battle?game.battle.elapsed+(game.battle.accumulator||0)-(move?.at||0):1;if(move&&moveAge<move.duration){const from=g.at(move.from.col,move.from.row),t=Math.min(1,Math.max(0,moveAge/move.duration));p.x=from.x+(p.x-from.x)*t;p.y=from.y+(p.y-from.y)*t;}const ev=action&&age<.3&&action.type!=='move';const reaction=reactions.get(u.id),source=reaction&&units.find(other=>other.id===reaction.event.unitId),recoil=reaction&&['hit','spell-hit'].includes(reaction.event.type)?Math.sin(Math.PI*reaction.age/.25)*7:0,castLift=ev&&action.type==='ability'&&!reducedCombatMotion.matches?5*(1-age/.3):0;ABArt.drawUnit(ctx,p.x+(source&&source.col<=u.col?recoil:-recoil),p.y+th*.15-castLift,sz,u,h,{enemy:u.side==='enemy',flip:unitFacing(u)==='right',selected:u.id===selected,pose:ev?'attack':'idle'});const visualTop=p.y+th*.15-metrics.visualHeight,hitWidth=Math.max(tw*.7,metrics.visualWidth);
 traitBadges(h,p.x,visualTop-31,Math.min(21,th*.43),3);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),p.x,visualTop-47,13,'#f1d694','sans-serif','center');
 if(pointerAt&&pointerAt.x>=p.x-hitWidth/2&&pointerAt.x<=p.x+hitWidth/2&&pointerAt.y>=visualTop&&pointerAt.y<=visualTop+metrics.visualHeight+th*.2)hoveredFieldUnit={u,h,p};
-if(game.phase!=='planning'){if(u.temporary){ctx.save();ctx.strokeStyle='#c7b5ef';ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(p.x,p.y,sz*.33,sz*.14,0,0,Math.PI*2);ctx.stroke();ctx.restore();}let ratio=Math.max(0,u.hp/u.maxHp);rect(p.x-24,visualTop-9,48,5,'#091616');rect(p.x-24,visualTop-9,48*ratio,5,u.side==='enemy'?C.red:C.teal);rect(p.x-24,visualTop-3,48*Math.min(1,abilityPoints(u)/maxAbilityPoints(u,h)),2,'#b5a0db');const labels=statusLabels(u);if(labels.length)text(labels.join(' · '),p.x,visualTop-16,9,C.gold,'sans-serif','center');hit('combat-unit-'+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,()=>select(u.id),`Inspect ${h.name} combat status. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}
+if(game.phase!=='planning'){if(u.temporary){ctx.save();ctx.strokeStyle='#c7b5ef';ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(p.x,p.y,sz*.33,sz*.14,0,0,Math.PI*2);ctx.stroke();ctx.restore();}let ratio=Math.max(0,u.hp/u.maxHp);rect(p.x-24,visualTop-9,48,5,'#091616');rect(p.x-24,visualTop-9,48*ratio,5,u.side==='enemy'?C.red:C.teal);rect(p.x-24,visualTop-3,48*Math.min(1,abilityPoints(u)/maxAbilityPoints(u,h)),2,'#b5a0db');const labels=statusLabels(u);if(labels.length)text(fitText(labels.join(' · '),120,9),p.x+36,visualTop-13,9,C.gold);hit('combat-unit-'+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,()=>select(u.id),`Inspect ${h.name} combat status. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}
 else{text('★'.repeat(u.level),p.x,visualTop-9,13,u.side==='enemy'?C.red:C.gold,'sans-serif','center');}
 if(game.phase==='planning')hit((u.side==='enemy'?'enemy-':'field-')+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,event=>u.side==='enemy'?select(u.id):actDeploy(u.col,u.row,event),`${u.side==='enemy'?'Inspect':'Select'} ${h.name}. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}${u.side==='player'?' · click again to deselect; Shift-click to swap':''}`);
 }
@@ -7312,7 +7415,7 @@ for(let r=0;r<b.rows;r++){const p=g.at(b.columns-.25,r);text(b.rows-r,p.x+5,p.y+
 // Treasure markers are an overlay so shared-tile heroes cannot hide them.
 drawChests(g);
 if(!game.field.length&&game.phase==='planning'){text(partyData?.spectating?'FOLLOWED TEAM':'YOUR FORMATION',720,559,11,C.teal,'sans-serif','center');text(partyData?.spectating?'Waiting for the commander to field a hero.':'Select a reserve. Choose a tile.',720,583,16,C.cream,'Georgia','center');}
-if(game.battle){for(const ev of game.battle.events){const age=game.battle.elapsed-ev.at;if(age>.48||(ev.type==='mana'&&ev.source==='passive')||!['hit','spell-hit','heal','shield','dot-hit','taunt','buff','status','mana','reflect-hit','shatter-hit','zone-heal','zone-gold'].includes(ev.type))continue;const target=[...game.battle.units,...(game.battle.objectives||[])].find(u=>u.id===(ev.targetId||ev.unitId)),actor=game.battle.units.find(u=>u.id===ev.unitId);if(!target)continue;const p=g.at(target.col,target.row),from=actor?g.at(actor.col,actor.row):p,t=age/.48,color=['heal','zone-heal','zone-gold','buff'].includes(ev.type)?'#b4db8d':ev.type==='spell-hit'?'#eedaa0':['shield','mana'].includes(ev.type)?'#86d3dc':ev.type==='dot-hit'||ev.type==='status'?'#c4a3de':'#e4a48b';ctx.save();ctx.globalAlpha=1-t;if(ev.type==='spell-hit'){line(from.x,from.y-36,p.x,p.y-36,color,3);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y-4,18+t*34,9+t*17,0,0,Math.PI*2);ctx.stroke();}text(['taunt','buff','status'].includes(ev.type)?(statusNames[ev.status]||ev.status||'Taunt'):(['heal','zone-heal'].includes(ev.type)?'+':ev.type==='zone-gold'?'Gold +':ev.type==='mana'?'AP +':ev.type==='reflect-hit'?'Reflect ':ev.type==='shatter-hit'?'Shatter ':'')+(ev.type==='mana'?number(ev.amount):Math.round(ev.amount||0)),p.x,p.y-80-t*30,ev.type==='spell-hit'?19:14,color,'sans-serif','center');ctx.restore();}}
+drawCombatEffects(g);
 if(game.phase!=='planning')text(`BATTLE TIME  ${Math.floor(game.battle?.elapsed||0)}s`,734,629,12,C.muted,'sans-serif','center');
 if(match&&match.roundNumber>=5){const terms=ABTreasure.calculateRoundTerms(match.roundNumber),remaining=Math.max(0,terms.treasureWindowSeconds-(game.battle?.elapsed||0));text(`${terms.goldPerChest}g PER CHEST · TREASURE ${number(remaining)}s${game.phase==='planning'?' · PLACE IN YOUR TERRITORY':''}`,734,game.phase==='planning'?629:649,11,C.gold,'sans-serif','center');}
 }
