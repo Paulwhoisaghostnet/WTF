@@ -44,6 +44,8 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/tv", auth: true, title: "WTF TV" },
   { pattern: "/dicksword", auth: true, title: "Dicksword" },
   { pattern: "/i-hate-telegram", auth: true, title: "I Hate Telegram" },
+  { pattern: "/colilseum", auth: false, title: "coLILseum" },
+  { pattern: "/colilseum/:roomCode", auth: false, title: "coLILseum room" },
   { pattern: "/wtfiap", auth: false, title: "coLILseum" },
   { pattern: "/arcade", auth: false, title: "WTF Arcade" },
   { pattern: "/casino", auth: true, title: "WTF Casino" },

@@ -349,7 +349,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       ...(!room.match && !room.fundingLock ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
-      config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
+      config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath === '/colilseum' ? sharePath + '/' + room.roomCode : sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function snapshot(room, session, atMs = now(), requestedWatchPlayerId = null) {
     const spectator = !!session.watcherId;
@@ -381,7 +381,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       messages: room.messages.filter(message => message.channel === 'room' || message.senderId === viewerId || message.recipientId === viewerId).map(clone),
       capacity: roomCapacity(room),
-      sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
+      sharePath: sharePath === '/colilseum' ? sharePath + '/' + room.roomCode : sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function publish(room) {
     const subscribers = streams.get(room.roomCode); if (!subscribers) return;

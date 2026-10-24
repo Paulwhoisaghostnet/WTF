@@ -40,7 +40,7 @@ if (sourceFlag !== -1) {
     assert.equal(html.split(marker).length, 2, "Party host bootstrap marker must occur exactly once");
     return html.replace('<html lang="en">', '<html lang="en" data-wtfiap-hosted>').replace(marker, '<script src="host-config.js"></script>');
   });
-  const hostConfig = `window.WTFIAP_HOST_CONFIG=Object.freeze(${JSON.stringify({ apiBase: "/api/wtfiap/party", csrfTokenPath: "/api/auth/csrf-token", invitePath: "/wtfiap" })});\n`;
+  const hostConfig = `window.WTFIAP_HOST_CONFIG=Object.freeze(${JSON.stringify({ apiBase: "/api/wtfiap/party", csrfTokenPath: "/api/auth/csrf-token", invitePath: "/colilseum" })});\n`;
   fs.writeFileSync(path.join(root, assets, "host-config.js"), hostConfig);
   files.push({ path: `${assets}/host-config.js`, generatedBy: "scripts/vendor-wtfiap.mjs", sha256: digest(hostConfig), bytes: Buffer.byteLength(hostConfig) });
   // The hosted release omits the unfinished sponsored-prize room prototype.

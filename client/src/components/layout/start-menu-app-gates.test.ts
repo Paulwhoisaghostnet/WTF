@@ -22,7 +22,7 @@ test("Start Menu app gates hide disabled WTF OS launchers", () => {
 
   assert.equal(isStartMenuItemEnabled("/casino", apps), false);
   assert.equal(isStartMenuItemEnabled("/arcade", apps), true);
-  assert.equal(isStartMenuItemEnabled("/wtfiap", { wtfiap: false }), false);
+  assert.equal(isStartMenuItemEnabled("/colilseum", { wtfiap: false }), false);
   assert.equal(isStartMenuItemEnabled("/console", apps), false);
   assert.equal(isStartMenuItemEnabled("/my-gallery", apps), false);
   assert.equal(isStartMenuItemEnabled("/agent", { agent: false }), false);

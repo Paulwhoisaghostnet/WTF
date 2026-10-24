@@ -1470,7 +1470,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "WTFIAP",
     subdomain: "Autobattler practice and multiplayer rooms",
     kind: "app",
-    routePatterns: ["/wtfiap"],
+    routePatterns: ["/colilseum", "/colilseum/:roomCode", "/wtfiap"],
     desktopAppKey: "wtfiap",
     adminPanelTabs: ["OS Admin", "System Logs"],
     nativeSettings: ["desktop app availability", "Party room board mode and preparation timer", "Tournament accounting preview"],

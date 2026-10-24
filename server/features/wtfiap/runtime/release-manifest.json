@@ -61,9 +61,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "8fbe39a1b6ec8418b6218880fb14793ff1a4cef9034be62a70d2f6ac2cbe8565",
-      "sha256": "8fbe39a1b6ec8418b6218880fb14793ff1a4cef9034be62a70d2f6ac2cbe8565",
-      "bytes": 67204
+      "sourceSha256": "55e420eb5a3d946ce6ddcd032b592e6931bf9b043a246fb6f65ac9d704db9ebb",
+      "sha256": "55e420eb5a3d946ce6ddcd032b592e6931bf9b043a246fb6f65ac9d704db9ebb",
+      "bytes": 67432
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -432,15 +432,15 @@
     {
       "path": "public/games/installed/wtfiap/host-config.js",
       "generatedBy": "scripts/vendor-wtfiap.mjs",
-      "sha256": "e37bbf3e74dadc8ccae6a7602dea304328abf50df8dff2a3e094428df91b55fe",
-      "bytes": 136
+      "sha256": "56720c898d8e5f0d4dbf9666830b76e51309090108f2e291101c79a9c933f80d",
+      "bytes": 139
     },
     {
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
       "sourcePath": "game/server/party-server.wtfos.cjs",
-      "sourceSha256": "80dc2500c320fb29e0c4f0db882727977500cbd1abfd6851b69519f07e96a582",
-      "sha256": "80dc2500c320fb29e0c4f0db882727977500cbd1abfd6851b69519f07e96a582",
-      "bytes": 56836
+      "sourceSha256": "224a1ae0d8a45ea290f44fc5fdd1de8218ff46a419aba41e55f74419d5d08c89",
+      "sha256": "224a1ae0d8a45ea290f44fc5fdd1de8218ff46a419aba41e55f74419d5d08c89",
+      "bytes": 56962
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",

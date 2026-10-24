@@ -29,7 +29,7 @@ test("eight account-owned tournament seats expose the native funding bridge and 
     browsers.push(hostContext);
     const page = await hostContext.newPage(), errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.goto("/wtfiap?mode=party");
+    await page.goto("/colilseum?mode=party");
     const surface = page.locator('[data-wtfiap-surface="true"]:visible');
     const party = await (await surface.locator('iframe[title="coLILseum"]').elementHandle()).contentFrame();
     await party.locator("#room-type").selectOption("tournament");

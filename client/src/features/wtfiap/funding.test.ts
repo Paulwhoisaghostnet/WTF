@@ -179,6 +179,8 @@ test("native room bridge accepts only its same-origin iframe and public room/res
   assert.equal(readWtfIapOpenFundingMessage({ source, origin, data: { ...open, roomCode: "https://evil.example" } }, source, origin), null);
   assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { type: "wtfiap:room", roomCode: null, roomType: null } }, source, origin), { type: "wtfiap:room", roomCode: null, roomType: null, wagered: false });
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}&funding=1`), data.roomCode);
+  assert.equal(wtfIapFundingRecoveryRoom(`/colilseum/${data.roomCode}?funding=1`), data.roomCode);
+  assert.equal(wtfIapFundingRecoveryRoom(`/colilseum/${data.roomCode}`), null);
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}`), null);
   assert.equal(wtfIapFundingRecoveryRoom("/wtfiap?room=malformed&funding=1"), null);
   assert.equal(wtfIapFundingRecoveryRoom(`/another-app?room=${data.roomCode}&funding=1`), null);

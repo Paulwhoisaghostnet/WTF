@@ -957,7 +957,7 @@ export function buildDesktopIconDefs(
       defaultX: 252,
       defaultY: 452,
       enabled: canOpenApps && (apps.wtfiap || canOpenDisabledApps),
-      openPath: "/wtfiap",
+      openPath: "/colilseum",
     },
     {
       key: "arcade",

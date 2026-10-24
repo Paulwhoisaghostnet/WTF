@@ -19,7 +19,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/i-hate-telegram": "i-hate-telegram",
   "/dear-diary": "dear-diary",
   "/arcade": "arcade",
-  "/wtfiap": "wtfiap",
+  "/colilseum": "wtfiap",
   "/casino": "casino",
   "/dues": "dues-manager",
   "/console": "console",

@@ -13,7 +13,7 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
   if (typeof isEnabled !== 'function') throw new Error('WTFIAP requires the host desktop-app gate.');
   const { createServer } = require(runtimePath);
   const authority = createServer({ dataDir, listen: false, apiPrefix: API_PREFIX,
-    sharePath: '/wtfiap', staticFiles: false, resolveActor, onRoomChanged, ...(clock ? { clock } : {}) });
+    sharePath: '/colilseum', staticFiles: false, resolveActor, onRoomChanged, ...(clock ? { clock } : {}) });
   let closing = false;
   const handler = async (request, response, next) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;

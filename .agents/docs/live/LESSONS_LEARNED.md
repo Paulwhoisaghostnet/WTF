@@ -12449,3 +12449,13 @@
 **Why it mattered**: Players should carry the same actions from Learn into Practice and rooms. The tutorial now listens for actual arena actions, and Team Builder stores lineup intent separately from match state.
 
 **Rule**: Put guided steps around the shared renderer and advance them from real control actions. Keep planning data in one browser key that both roster planning and the live shop read, with an in-shop plan picker so players do not leave a match.
+
+---
+
+## 2026-10-24 - Room path migration must preserve the native window identity
+
+**What happened**: Moving coLILseum invitations from `/wtfiap?room=CODE` to `/colilseum/CODE` initially opened a second native game window when a player followed a room link from an already open lobby. The desktop shell keyed windows by their full route.
+
+**Why it mattered**: The room recovered correctly, but duplicate canvases and taskbar entries made a simple invite navigation look like a separate game. Updating only the URL parser and invite builder would have left the user experience broken.
+
+**Rule**: For a windowed app with path-based detail links, rekey its existing window when the detail route is opened. Verify the invite text, direct path reload, room recovery, and one visible app surface together. Keep old invitation routes as compatibility aliases while canonical launchers use the new route.

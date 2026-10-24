@@ -25,6 +25,7 @@ import {
 export interface WindowManagerContextValue {
   openPages: string[];
   openPage: (path: string) => void;
+  replacePage: (from: string, to: string) => void;
 
   getWindow: (path: string) => WindowState;
   focus: (path: string) => void;
@@ -197,6 +198,23 @@ export function WindowManagerProvider({
     [focus, nav]
   );
 
+  const replacePage = useCallback((from: string, to: string) => {
+    if (from === to || !pagesRef.current.includes(from)) return;
+    setPages((prev) => [...new Set(prev.map((path) => path === from ? to : path))]);
+    setStates((prev) => {
+      const next = { ...prev, [to]: prev[from] ?? prev[to] ?? FALLBACK_WINDOW_STATE };
+      delete next[from];
+      return next;
+    });
+    setTitlesState((prev) => {
+      const next = { ...prev };
+      if (from in next) next[to] = next[from];
+      delete next[from];
+      return next;
+    });
+    setFocusedPath((prev) => prev === from ? to : prev);
+  }, []);
+
   const close = useCallback(
     (path: string) => {
       setPages((prev) => prev.filter((p) => p !== path));
@@ -349,6 +367,7 @@ export function WindowManagerProvider({
       value={{
         openPages: pages,
         openPage,
+        replacePage,
         getWindow,
         focus,
         minimize,

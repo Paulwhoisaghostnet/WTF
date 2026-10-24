@@ -3,7 +3,7 @@ import { styled } from "styled-components";
 import { useLocation, useSearch } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WindowPathContext } from "../lib/window-context";
-import { WTFIAP_ASSET_ROOT, wtfIapEntryPath, wtfIapFrameSource } from "../features/wtfiap/frame-source";
+import { COLILSEUM_ROUTE, WTFIAP_ASSET_ROOT, wtfIapEntryPath, wtfIapFrameSource } from "../features/wtfiap/frame-source";
 import { readWtfIapOpenFundingMessage, readWtfIapRoomMessage, wtfIapFundingRecoveryRoom, type WtfIapRoomMessage } from "../features/wtfiap/room-bridge";
 import { FundingPanel } from "../features/wtfiap/FundingPanel";
 
@@ -63,7 +63,7 @@ export function WtfIap() {
   const search = useSearch();
   const [entryPath, setEntryPath] = useState(() => wtfIapEntryPath(windowPath, activePath, search));
   useEffect(() => {
-    if (windowPath.includes("?") || activePath === (windowPath || "/wtfiap")) {
+    if (windowPath.includes("?") || activePath === (windowPath || COLILSEUM_ROUTE)) {
       setEntryPath(wtfIapEntryPath(windowPath, activePath, search));
     }
   }, [windowPath, activePath, search]);

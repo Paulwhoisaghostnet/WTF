@@ -8,7 +8,7 @@ Companion to [WTFIAP-v0.01](./wtfiap.md), under the [master register](./master-r
 | --- | --- |
 | Display name | WTFIAP-v0.01 |
 | Desktop app key / persisted icon key | `wtfiap` |
-| Native route | `/wtfiap` |
+| Native route | `/colilseum` and `/colilseum/:roomCode`; legacy `/wtfiap` |
 | Menu | Stuffs → Play |
 | Placement and price | Default desktop; free |
 | Native owner | `client/src/pages/WtfIap.tsx` |
@@ -20,7 +20,7 @@ The PageDef and shared browser route both expose the public game route. The ordi
 
 ## Command palette and MCP registry
 
-The standard route/desktop registries make `/wtfiap` discoverable through the existing shell launch mechanisms and `open /wtfiap`. There are no dedicated game MCP tools or automatic wagering commands. Any future tool needs its own authorized contract.
+The standard route/desktop registries make `/colilseum` discoverable through the existing shell launch mechanisms and `open /colilseum`. Room invitations use `/colilseum/:roomCode`; `/wtfiap` remains a legacy alias. There are no dedicated game MCP tools or automatic wagering commands. Any future tool needs its own authorized contract.
 
 ## Events and interactions
 

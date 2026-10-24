@@ -1,6 +1,6 @@
 # coLILseum
 
-coLILseum is the original autobattler hosted in a native wtfOS window at `/wtfiap`. Launch it from its desktop icon or **Stuffs → Play → coLILseum**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
+coLILseum is the original autobattler hosted in a native wtfOS window at `/colilseum`. Launch it from its desktop icon or **Stuffs → Play → coLILseum**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
 
 ## Play
 
@@ -15,7 +15,7 @@ Tournament rooms require eight human entrants. The host selects XTZ or WTF and a
 ## Runtime and recovery
 
 - The native window embeds `/games/installed/wtfiap/index.html` and `/games/installed/wtfiap/party.html` from the same origin.
-- `/wtfiap?room=CODE` opens the Party invitation within the native window. Query parameters belong to that window, not whichever desktop window most recently changed the address bar.
+- `/colilseum/CODE` opens a Duel, Party, or Tournament invitation within the native window. The old `/wtfiap?room=CODE` link remains a compatibility alias for existing invitations. Parameters belong to that window, not whichever desktop window most recently changed the address bar.
 - The hosted Party authority is `/api/wtfiap/party`. Room credentials remain private; invitation links contain room identifiers only.
 - Runtime sources live in `server/features/wtfiap/runtime/`; packaged browser assets live in `public/games/installed/wtfiap/`. These are maintained game artifacts, not remote third-party iframe destinations.
 - Preserve the server's room store during a deploy or rollback. Reloading a room URL in the same browser recovers its saved seat.

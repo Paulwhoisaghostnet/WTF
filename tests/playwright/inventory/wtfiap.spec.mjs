@@ -454,7 +454,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   test("shared arena drags, swaps and sells heroes with star-aware shop and bench ratings", async ({ page }) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.goto("/wtfiap?mode=practice", { waitUntil: "domcontentloaded" });
+    await page.goto("/colilseum?mode=practice", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     const game = await gameFrame(host, "#frame");
     const ratingCheck = await game.evaluate(() => {
@@ -542,7 +542,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
 
   test("preparation hints wait 30 seconds and can be disabled across reloads", async ({ page }) => {
     await page.clock.install();
-    await page.goto("/wtfiap?mode=practice", { waitUntil: "domcontentloaded" });
+    await page.goto("/colilseum?mode=practice", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     let game = await gameFrame(host, "#frame");
     expect((await gameState(game)).help.visible).toBe(false);
@@ -621,7 +621,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await party.locator("#create-room").click();
     await expect(party.locator("#invite-code")).not.toHaveValue("");
     const code = await party.locator("#invite-code").inputValue();
-    await expect(party.locator("#invite-url")).toHaveValue(new RegExp(`/wtfiap\\?room=${code}`));
+    await expect(party.locator("#invite-url")).toHaveValue(new RegExp(`/colilseum/${code}`));
     await party.locator("#fill-ai").check();
     await party.locator("#start-room").click();
     const game = await gameFrame(party, "#arena-frame");
@@ -630,7 +630,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.screenshot({ path: test.info().outputPath("party-formation.png"), fullPage: true });
 
     // Reload the native invitation URL, not an intercepted/mock room response.
-    await page.goto(`/wtfiap?room=${encodeURIComponent(code)}`, { waitUntil: "domcontentloaded" });
+    await page.goto(`/colilseum/${encodeURIComponent(code)}`, { waitUntil: "domcontentloaded" });
     party = await hostFrame(page);
     await expect(party.locator("#invite-code")).toHaveValue(code);
     const recovered = await gameFrame(party, "#arena-frame");
@@ -649,7 +649,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("native tournament invitations show unfunded terms before joining on mobile", async ({ page, browser }) => {
-    await page.goto("/wtfiap?mode=party", { waitUntil: "domcontentloaded" });
+    await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
     const party = await hostFrame(page);
     await party.locator("#room-type").selectOption("tournament");
     await party.locator("#create-name").fill("WTFIAP Tournament Host");
@@ -667,7 +667,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
 
     const guest = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const mobile = await guest.newPage();
-    await mobile.goto(new URL(`/wtfiap?room=${encodeURIComponent(code)}`, page.url()).href, { waitUntil: "domcontentloaded" });
+    await mobile.goto(new URL(`/colilseum/${encodeURIComponent(code)}`, page.url()).href, { waitUntil: "domcontentloaded" });
     const invitation = await hostFrame(mobile);
     await expect(invitation.locator("#join-tournament-preview")).toBeVisible();
     await invitation.locator("#join-tournament-preview").scrollIntoViewIfNeeded();
@@ -680,7 +680,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("two people can create and start a free coLILseum duel", async ({ page, browser }) => {
-    await page.goto("/wtfiap?mode=party", { waitUntil: "domcontentloaded" });
+    await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     await host.locator("#room-type").selectOption("duel");
     await host.locator("#create-name").fill("Duel host");
@@ -694,7 +694,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     const guestPage = await guestContext.newPage();
     try {
       expect((await guestPage.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
-      await guestPage.goto(new URL(`/wtfiap?room=${code}`, page.url()).href, { waitUntil: "domcontentloaded" });
+      await guestPage.goto(new URL(`/colilseum/${code}`, page.url()).href, { waitUntil: "domcontentloaded" });
       const guest = await hostFrame(guestPage);
       await guest.locator("#join-name").fill("Duel guest");
       await guest.locator("#join-room").click();
@@ -872,7 +872,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
-    await page.goto("/wtfiap?mode=party", { waitUntil: "domcontentloaded" });
+    await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     await host.locator("#room-type").selectOption("duel");
     await host.locator("#duel-wager").check();

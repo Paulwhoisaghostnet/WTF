@@ -1,3 +1,5 @@
+import { colilseumRoomFromPath } from "./frame-source";
+
 export interface WtfIapRoomMessage {
   type: "wtfiap:room";
   roomCode: string | null;
@@ -20,8 +22,8 @@ export function readWtfIapOpenFundingMessage(
 
 export function wtfIapFundingRecoveryRoom(path: string): string | null {
   const url = new URL(path, "https://wtfiap.invalid");
-  const room = url.searchParams.get("room");
-  return url.pathname === "/wtfiap" && url.searchParams.get("funding") === "1" && room && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room) ? room.toLowerCase() : null;
+  const room = colilseumRoomFromPath(path) ?? (url.pathname === "/wtfiap" || url.pathname === "/colilseum" ? url.searchParams.get("room") : null);
+  return url.searchParams.get("funding") === "1" && room && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room) ? room.toLowerCase() : null;
 }
 
 export function readWtfIapRoomMessage(

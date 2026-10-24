@@ -959,7 +959,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "i-hate-telegram": "/i-hate-telegram",
   "dear-diary": "/dear-diary",
   arcade: "/arcade",
-  wtfiap: "/wtfiap",
+  wtfiap: "/colilseum",
   casino: "/casino",
   "dues-manager": "/dues",
   console: "/console",
@@ -1064,7 +1064,7 @@ const desktopApps = DESKTOP_APPS.map((appKey) => {
   const stage = stageFor(appKey);
   const access = appKey === "objkt-operator" || appKey === "payroll"
     ? "admin"
-    : route === "/arcade" || route === "/wtfiap" || route === "/dues" || route === "/gallery" || route === "/skywire"
+    : route === "/arcade" || route === "/colilseum" || route === "/dues" || route === "/gallery" || route === "/skywire"
       ? "public"
       : "session";
   const item = entry(appKey, DESKTOP_APP_LABELS[appKey], route, access, tier, stage, personasFor(appKey), `${DESKTOP_APP_LABELS[appKey]} is the canonical WTFOS ${BETA_STAGE_LABELS[stage].toLowerCase()} surface for its domain.`, ["/mission-control", "/notifications", "/profile", route]);

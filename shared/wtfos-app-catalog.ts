@@ -186,7 +186,7 @@ const APP_ENTRIES = [
   },
   {
     key: "wtfiap",
-    route: "/wtfiap",
+    route: "/colilseum",
     summary: "Build an army in local practice or share an eight-player Party or Tournament room.",
     placement: "default-desktop",
     necessity: "standard",

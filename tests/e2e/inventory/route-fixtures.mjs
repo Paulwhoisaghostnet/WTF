@@ -49,6 +49,8 @@ export const ROUTE_FIXTURES = [
   { pattern: "/tv", path: "/tv", title: "WTF TV", domain: "tv", subdomain: "TV viewer", auth: true },
   { pattern: "/dicksword", path: "/dicksword", title: "Dicksword", domain: "social", subdomain: "Dicksword/Discord", auth: true },
   { pattern: "/i-hate-telegram", path: "/i-hate-telegram", title: "I Hate Telegram", domain: "social", subdomain: "Telegram digest", auth: true },
+  { pattern: "/colilseum", path: "/colilseum", title: "coLILseum", domain: "wtfiap", subdomain: "Autobattler practice and rooms", auth: false },
+  { pattern: "/colilseum/:roomCode", path: "/colilseum/550e8400-e29b-41d4-a716-446655440000", title: "coLILseum room", domain: "wtfiap", subdomain: "Autobattler practice and rooms", auth: false },
   { pattern: "/wtfiap", path: "/wtfiap", title: "coLILseum", domain: "wtfiap", subdomain: "Autobattler practice and rooms", auth: false },
   { pattern: "/arcade", path: "/arcade", title: "WTF Arcade", domain: "arcade-console", subdomain: "WTF Arcade catalog", auth: false },
   { pattern: "/casino", path: "/casino", title: "WTF Casino", domain: "casino", subdomain: "WTF Casino access", auth: true },

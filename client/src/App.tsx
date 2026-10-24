@@ -38,6 +38,7 @@ import { Register } from "./pages/Register";
 import { WtfOsCliShell } from "./features/wtfos-cli/WtfOsCliShell";
 import { getInterfaceMode } from "./features/wtfos-cli/interface-mode";
 import { readPresentationHostFromSession } from "./lib/presentation-shell";
+import { colilseumRoomFromPath } from "./features/wtfiap/frame-source";
 import {
   getPageAccessState,
   type DesktopAppAvailability,
@@ -439,6 +440,15 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
     if (!accessState.allowed && accessState.reason !== "app-disabled") {
       setLocation("/", { replace: true });
       return;
+    }
+
+    if (!wm.openPages.includes(location) && colilseumRoomFromPath(location)) {
+      const existingGamePath = wm.openPages.find((path) => path === "/colilseum" || path === "/wtfiap");
+      if (existingGamePath) {
+        wm.replacePage(existingGamePath, location);
+        initialised.current = true;
+        return;
+      }
     }
 
     if (!wm.openPages.includes(location)) {
