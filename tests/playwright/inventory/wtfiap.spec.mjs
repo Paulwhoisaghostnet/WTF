@@ -586,6 +586,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await arena.locator("#items-toggle").click();
       await expect(arena.locator("#items-panel")).toContainText("No items held yet");
       await expect(host.locator("#alive-count")).toContainText("2 alive");
+      const directory = await (await page.request.get("/api/wtfiap/party/rooms")).json();
+      expect(directory.rooms.find(room => room.roomCode === code)?.phase).toBe("preparation");
     } finally { await guestContext.close(); }
   });
 

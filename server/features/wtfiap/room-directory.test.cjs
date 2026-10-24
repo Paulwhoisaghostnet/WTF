@@ -41,6 +41,12 @@ test('directory includes joinable and live rooms but excludes full waiting, clos
     match: { phase: 'preparation' } }).phase, 'preparation');
   assert.equal(roomSummary({ ...base, closedAtMs: 100, closedByPlayerId: 'p1' }), null);
   assert.equal(roomSummary({ ...base, match: { phase: 'finished' } }), null);
+  assert.equal(roomSummary({ ...base, match: JSON.stringify({ phase: 'finished', receipts: [] }) }), null);
+  const serializedLive = roomSummary({ ...base, players: [...base.players, { playerId: 'p2', name: 'Guest' }],
+    match: JSON.stringify({ phase: 'preparation', receipts: [{ results: [{ awards: [{ playerId: 'p1', outcome: 'win' }] }] }] }) });
+  assert.equal(serializedLive.phase, 'preparation');
+  assert.equal(serializedLive.players[0].wins, 1);
+  assert.equal(roomSummary({ ...base, match: '{corrupt saved match' }), null);
   assert.equal(roomSummary({ ...base, voidArchive: {} }), null);
   assert.equal(roomSummary({ ...base, fundingFaultArchive: {} }), null);
 });

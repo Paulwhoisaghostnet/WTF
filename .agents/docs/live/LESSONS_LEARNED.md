@@ -12419,3 +12419,13 @@
 **Why it mattered**: Persistence is appropriate for escrow and replay, but a directory that equates a saved record with an available table becomes unusable even though match state remains intact.
 
 **Rule**: Derive discovery from joinability or a live match. Give hosts a durable close action for unstarted, unfunded rooms, preserve closed records for audit, and refuse room closure after escrow binds or combat begins. Do not guess an expiration timeout for abandoned rooms.
+
+---
+
+## 2026-10-24 - Directory projections must decode the saved match format
+
+**What happened**: The coLILseum room authority saves a match as a serialized JSON string. The public directory accessed `room.match.phase` and `room.match.receipts` as though that value were an object, so completed matches looked like waiting tables and an active full match could disappear when joinability filtering was added.
+
+**Why it mattered**: A correct directory filter still fails if its phase and player records are read from the wrong persistence representation. This was visible only by inspecting real saved room files, not object-only fixtures.
+
+**Rule**: Parse the exact durable representation before deriving public summaries. Test both serialized finished matches and serialized live matches, including a real browser flow that starts a room and checks its directory phase.

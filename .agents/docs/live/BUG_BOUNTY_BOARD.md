@@ -14054,9 +14054,9 @@ Copy this when adding a new issue:
 - Owner/Session: Codex coLILseum room lifecycle
 - Last touched: 2026-10-24
 - Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence (2026-10-24): The live room directory showed 12 waiting tables, including full unfundable or otherwise unjoinable historical test rooms. Finished and voided matches were already filtered, but unstarted rooms had no closure action.
-- Correction: Hide full waiting, closed, paused, finished, and voided rooms from public discovery while retaining their durable records and direct invitations. Give the host an authenticated close action for an unstarted room; refuse closure after match start or escrow binding.
-- Verification: 38/38 source tests, 11/11 host tests, 18/18 coLILseum browser journeys, and inventory coverage passed. A previous funded-room snapshot and a started-match snapshot remain byte-equivalent to the prior authority after excluding the volatile authority epoch.
+- Evidence (2026-10-24): The live room directory showed 12 waiting tables, including full unfundable or otherwise unjoinable historical test rooms. Saved match state is a JSON string; the directory read `room.match.phase` without parsing it, so completed games were misclassified as waiting rooms. Unstarted rooms also had no closure action.
+- Correction: Decode the saved match before deriving phase and win/loss records. Hide full waiting, closed, paused, finished, and voided rooms from public discovery while retaining their durable records and direct invitations. Give the host an authenticated close action for an unstarted room; refuse closure after match start or escrow binding.
+- Verification: 38/38 source tests, 11/11 host tests, 18/18 coLILseum browser journeys, focused serialized-match browser proof, and inventory coverage passed. A read-only run against 12 live saved files distinguishes one active match, six finished matches, and the open release-smoke rooms. A previous funded-room snapshot and a started-match snapshot remain byte-equivalent to the prior authority after excluding the volatile authority epoch.
 
 ### WTF-BB-698 - Nine desktop build graphs retain sprintf-js through optional proxy logging dependencies
 
