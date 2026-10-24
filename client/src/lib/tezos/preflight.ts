@@ -24,7 +24,7 @@
  * contract write path.
  */
 
-import { ensureWalletProviderForSend, getTezos } from "./wallet";
+import { ensureWalletProviderForSend, getTezos, withTezosRpcFallback } from "./wallet";
 import { getNetwork } from "./loaders";
 
 const CHAIN_ID_TO_NETWORK: Record<string, string> = {
@@ -61,18 +61,18 @@ export class WalletNetworkMismatchError extends Error {
  * RPC is unreachable) we deliberately throw rather than silently
  * assuming the right network.
  */
-async function fetchChainId(): Promise<string> {
-  const tezos = await getTezos();
-  if (tezos?.rpc?.getChainId) {
-    return await tezos.rpc.getChainId();
-  }
-  throw new Error("Unable to read chain id from Tezos RPC");
+async function fetchChainId(options: { network?: string; rpcUrl?: string; useFallback?: boolean } = {}): Promise<string> {
+  const read = async (tezos: Awaited<ReturnType<typeof getTezos>>) => {
+    if (!tezos?.rpc?.getChainId) throw new Error("Unable to read chain id from Tezos RPC");
+    return tezos.rpc.getChainId();
+  };
+  return options.useFallback && !options.rpcUrl ? withTezosRpcFallback(read, options) : read(await getTezos(options));
 }
 
-export async function assertNetworkReadyForSend(expectedAddress?: string): Promise<void> {
-  await ensureWalletProviderForSend(expectedAddress);
+export async function assertNetworkReadyForSend(expectedAddress?: string, options: { network?: string; rpcUrl?: string; useFallback?: boolean } = {}): Promise<void> {
+  await ensureWalletProviderForSend(expectedAddress, options);
 
-  const expected = getNetwork();
+  const expected = options.network || getNetwork();
   const expectedChainId = NETWORK_TO_CHAIN_ID[expected];
   if (!expectedChainId) {
     // Unconfigured network alias — skip the check rather than throw;
@@ -82,7 +82,7 @@ export async function assertNetworkReadyForSend(expectedAddress?: string): Promi
 
   let actualChainId: string;
   try {
-    actualChainId = await fetchChainId();
+    actualChainId = await fetchChainId(options);
   } catch (err) {
     throw new Error(
       `Could not verify wallet network: ${(err as Error).message}`

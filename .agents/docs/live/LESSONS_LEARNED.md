@@ -12501,3 +12501,11 @@
 **Why it mattered**: The safety check correctly prevented an unproved replacement, but left an active wagered game on the old client. The two storage protocols need the same deploy gate.
 
 **Rule**: Snapshot both escrow tables under the existing advisory lock. For a version-3 game lock, require the open-duel record and compare room, terms, rules, match, network, and contract commitments before replacement. Never treat a missing record as permission to deploy.
+
+## 2026-10-24 - Prize claims need RPC failover before the wallet submission
+
+**What happened**: A settled Mainnet XTZ Duel exposed an unclaimed 10 XTZ prize, but Claim prize failed when the browser fetched the escrow entrypoints from the primary Octez RPC. The primary intermittently returned 503 while the configured Mainnet fallback served the same contract and claim state.
+
+**Why it mattered**: Settlement and prize custody were sound, yet a browser read failure blocked the winner from requesting their own wallet transaction.
+
+**Rule**: For wallet claims, retry only preflight and contract preparation reads across the configured same-network RPC endpoints. Verify the expected account and chain ID on the selected endpoint immediately before signing. Keep the actual wallet submission outside the failover loop so a network error cannot cause a duplicate payout request.

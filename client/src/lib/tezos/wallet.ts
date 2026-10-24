@@ -659,8 +659,8 @@ async function activateAdapterForSend(
 
   assertExpectedWalletAddress(expectedAddress, address);
 
-  await getTezos(config);
-  await adapter.setAsTaquitoProvider(tezosToolkit);
+  const toolkit = await getTezos(config);
+  await adapter.setAsTaquitoProvider(toolkit);
   persistWalletSession({ address, providerName: adapter.name });
 
   return { address, providerName: adapter.name };
@@ -668,9 +668,10 @@ async function activateAdapterForSend(
 
 export async function ensureWalletProviderForSend(
   expectedAddress?: string,
+  options: { network?: string; rpcUrl?: string } = {},
 ): Promise<WalletConnectionResult> {
-  const config = resolveWalletConfig();
-  const adapter = await ensureAdapter(config);
+  const adapter = await ensureAdapter(resolveWalletConfig());
+  const config = resolveWalletConfig(options);
 
   try {
     return await activateAdapterForSend(adapter, config, expectedAddress);
