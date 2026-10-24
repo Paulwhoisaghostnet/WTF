@@ -2917,8 +2917,8 @@ Total: **677** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
 - Last touched: 2026-10-24
 - Score: C3 + F3 + S3 + P1(4) = 13
 - Evidence: GitHub Quality Gates stopped at `npm audit --omit=dev --audit-level=high` before typecheck/build, flagging body-parser 2.3.0, multer 2.4.0, and transitive Zod 3.25.76 in the ATProto tree. The project direct Zod was also below the patched 4.6.6 range.
-- Correction: Refresh compatible runtime leaves and pin the root and nested Zod resolution to the patched 4.6.7 version; preserve the current ATProto package API instead of npm audit's suggested breaking downgrade. Refresh the fast-uri override to its fixed 3.1.9 release.
-- Verification: `npm audit --omit=dev --audit-level=high` returns zero findings, clean dependency install succeeds, and ATProto runtime imports, 23 focused identity/OAuth/claim tests, and full TypeScript check pass against the exact clean-installed candidate graph. A broader 143-test ATProto sweep passed 141; two database-backed files could not start without local DATABASE_URL. Production Quality Gates and deployment remain pending.
+- Correction: Refresh compatible runtime leaves and pin the root and nested Zod resolution to the patched 4.6.7 version; preserve the current ATProto package API instead of npm audit's suggested breaking downgrade. Refresh the fast-uri override to its fixed 3.1.9 release. Pin Vite to the repository's working 8.0.8 because the newer lockfile resolution introduced an unresolved optional devtools import in the server bundle.
+- Verification: `npm audit --omit=dev --audit-level=high` returns zero findings, clean dependency install succeeds, and ATProto runtime imports, 23 focused identity/OAuth/claim tests, and full TypeScript check pass against the exact clean-installed candidate graph. A broader 143-test ATProto sweep passed 141; two database-backed files could not start without local DATABASE_URL. The exact clean-installed candidate also passes the full build. Production Quality Gates and deployment remain pending.
 
 ### WTF-BB-641 - Rat Race hot-edition feed is backed by an empty local market index
 
