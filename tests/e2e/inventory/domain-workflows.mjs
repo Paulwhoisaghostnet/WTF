@@ -7,6 +7,7 @@ export const DOMAIN_WORKFLOWS = [
     behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery"],
     apiProbes: [
       { method: "GET", path: "/api/wtfiap/party/health" },
+      { method: "GET", path: "/api/wtfiap/party/rooms" },
       { method: "GET", path: "/api/wtfiap/funding/config" },
       { method: "GET", path: "/api/wtfiap/funding/health" },
     ],

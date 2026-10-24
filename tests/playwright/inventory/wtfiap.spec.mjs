@@ -400,6 +400,31 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await guestContext.close(); }
   });
 
+  test("room directory exposes seats, player records and join or watch actions", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#create-name").fill("Directory host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toHaveValue("");
+    const code = await page.locator("#invite-code").inputValue();
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
+      await guest.locator("#refresh-rooms").click();
+      const card = guest.locator(".table-card").filter({ has: guest.locator(`[aria-label="Join duel room ${code}"]`) });
+      await expect(card).toContainText("WTF Admin");
+      await expect(card).toContainText("0 W · 0 L");
+      await expect(card.locator(".seat-dot.taken")).toHaveCount(1);
+      await expect(card.locator(".seat-dot:not(.taken):not(.ai)")).toHaveCount(1);
+      await guest.screenshot({ path: test.info().outputPath("room-directory.png"), fullPage: true });
+      await guest.locator("#join-name").fill("Directory guest");
+      await card.getByRole("button", { name: `Join duel room ${code}` }).click();
+      await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
+    } finally { await guestContext.close(); }
+  });
+
   test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
     await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
     await surface(page).getByRole("link", { name: "Duel" }).click();

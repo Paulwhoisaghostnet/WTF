@@ -20,7 +20,9 @@ export function fundingCalls(config: FundingConfig, room: FundingRoom, kind: Fun
     const entryError = fundingEntryError(room);
     if (entryError) throw new Error(entryError);
     if (action.entrypoint !== "join_room" || !sameRecord(action.params, { room_id: room.roomId, expected_terms_hash: room.termsHash })) throw new Error("The deposit does not match this room’s frozen terms.");
-    if (action.amountMutez !== (room.terms.currency === "XTZ" ? room.terms.entryAtomic : "0")) throw new Error("The deposit amount does not match the entry fee.");
+    const creatorFee = room.self.playerId && room.self.playerId === room.hostPlayerId ? BigInt(room.houseFeeAtomic || "0") : 0n;
+    const expectedAmount = room.terms.currency === "XTZ" ? (BigInt(room.terms.entryAtomic) + creatorFee).toString() : "0";
+    if (action.amountMutez !== expectedAmount) throw new Error("The deposit amount does not match this seat’s entry and creator fee.");
   } else {
     if (action.entrypoint !== (kind === "claim" ? "claim" : "refund") || action.params !== room.roomId || action.amountMutez !== "0" || action.fa2Operator) throw new Error("The withdrawal does not match this room.");
   }

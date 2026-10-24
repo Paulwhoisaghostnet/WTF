@@ -31,6 +31,7 @@ export interface FundingWalletAction {
 
 export interface FundingRoom {
   roomCode: string;
+  hostPlayerId?: string;
   roomType: "duel" | "tournament";
   aiFill: boolean;
   battlefieldSeats: number;
@@ -59,6 +60,7 @@ export interface FundingRoom {
   self: {
     playerId: string | null;
     walletAddress: string | null;
+    stakeRequested?: boolean;
     canBind: boolean;
     canOpen: boolean;
     canStart: boolean;

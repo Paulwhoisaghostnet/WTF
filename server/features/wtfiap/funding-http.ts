@@ -24,7 +24,7 @@ return async (req, res, next) => {
         XTZ: { enabled: lanes.XTZ.enabled, network: lanes.XTZ.network },
         WTF: { enabled: lanes.WTF.enabled, network: lanes.WTF.network } }, health: service.health });
     }
-    const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(bind-wallet|open|start|observe|reconcile))?$/);
+    const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(bind-wallet|stake-intent|open|start|observe|reconcile))?$/);
     demand(route, "Unknown funded-room endpoint.", 404);
     const code = route[1], action = route[2], userId = req.user ? String((req.user as any).id) : null;
     if (req.method === "GET" && !action) return res.json({ ok: true, room: await service.view(code, userId) });
@@ -35,6 +35,7 @@ return async (req, res, next) => {
     demand(body && typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === keys.length && keys.every(key => Object.hasOwn(body, key)), "Unexpected funding request fields.", 400);
     let room;
     if (action === "bind-wallet") room = await service.bind(code, userId, body.walletAddress);
+    else if (action === "stake-intent") room = await service.stakeIntent(code, userId);
     else if (action === "open") room = await service.open(code, userId);
     else if (action === "start") room = await service.start(code, userId);
     else if (action === "observe") room = await service.observe(code, userId, body);

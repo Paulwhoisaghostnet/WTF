@@ -12298,3 +12298,11 @@
 **Correction and proof**: This release changes only optional duel network terms in the authoritative game modules. Previous rooms lack that field and keep their existing currency, entry, roster, lock, formation and combat rules. The gate and funding service accept the previous hash only under this exact incoming release hash; an unrelated future hash still fails closed. Guard, funding-recovery, hosted-authority and typecheck tests pass. The failed deployment left the old app running.
 
 **Rule**: A compatibility exception must be bound to both the pinned old rules and one proven incoming release. Do not relax the gate for arbitrary future rules or alter old room commitments.
+
+## 2026-10-24 — A displayed Mainnet creator fee must be accepted by the wallet boundary
+
+**What happened**: A Mainnet XTZ duel action correctly quoted the room creator's entry plus the 0.5 XTZ house fee, but the browser signing guard still required the action amount to equal the entry alone. The creator could see the fee but could not submit the wallet transaction.
+
+**Correction and proof**: The wallet guard now checks entry plus the pinned house fee for the exact host seat and entry only for the guest. A duel Stake wager action binds the linked wallet, records each player's intent, opens escrow after both intents, and waits for the finalized chain room before offering the wallet deposit. Focused service and wallet tests pass. The live room directory reads only public, sanitized summaries from durable room state, with win/loss counts derived from combat receipts; it does not expose private sessions, shops, whispers or wallet bindings.
+
+**Rule**: Fee disclosure and the exact wallet operation validator must share the same seat-aware amount. A room directory is a read-only public projection, not a serialized game state or escrow record.

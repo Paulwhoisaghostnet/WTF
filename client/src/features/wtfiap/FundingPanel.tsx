@@ -45,6 +45,7 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [stakeWaiting, setStakeWaiting] = useState(false);
   const [currentNetwork, setCurrentNetwork] = useState(getNetwork);
   const latch = useMemo(() => createFundingActionLatch(`wtfiap-account:${accountId}`), [accountId]);
   const generation = useRef(0);
@@ -63,7 +64,7 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
 
   useEffect(() => {
     const turn = ++generation.current;
-    setConfig(null); setRoom(null); setCheckpoint(null); setError(""); setMessage("");
+    setConfig(null); setRoom(null); setCheckpoint(null); setError(""); setMessage(""); setStakeWaiting(false);
     if (!accountId) return;
     try { setCheckpoint(loadFundingCheckpoint(localStorage, accountId, roomCode)); } catch (reason) { setError((reason as Error).message); }
     setBusy(true);
@@ -115,6 +116,45 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
     setMessage("Wallet bound to your seat. The host can open escrow after every paying entrant binds a wallet.");
   }
 
+  async function stakeWager() {
+    if (!room || !config || !accountId) return;
+    if (getNetwork() !== room.network) {
+      localStorage.setItem("wtf:network", room.network);
+      window.dispatchEvent(new Event("wtf:network-selected"));
+      setCurrentNetwork(getNetwork());
+    }
+    if (!room.self.actions.deposit && !room.self.walletAddress) {
+      const address = wallet.address || (await wallet.connect()).address;
+      await assertWalletLinkedToCurrentUser(address);
+      await mutate("bind-wallet", { walletAddress: address });
+    }
+    if (!room.self.actions.deposit && !room.self.stakeRequested) await mutate("stake-intent");
+    setStakeWaiting(true);
+    setMessage("Your seat is ready to stake. When both players are ready and escrow is confirmed, your wallet will ask you to sign the deposit.");
+  }
+
+  useEffect(() => {
+    if (!stakeWaiting || !accountId) return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void api.get<RoomResponse>(endpoint(roomCode)).then(response => {
+        if (active) setRoom(response.room);
+      }).catch(reason => { if (active) setError((reason as Error).message); });
+    }, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [stakeWaiting, accountId, roomCode]);
+
+  useEffect(() => {
+    if (!stakeWaiting || !room || busy || checkpoint) return;
+    if (room.roster.some(player => player.playerId === room.self.playerId && player.deposited)) {
+      setStakeWaiting(false);
+      setMessage("Your wager deposit is verified on-chain.");
+    } else if (room.self.actions.deposit && !room.self.pendingOperations.some(item => item.action === "deposit" && item.status !== "failed")) {
+      setStakeWaiting(false);
+      void run(() => send("deposit"));
+    }
+  }, [stakeWaiting, room, busy, checkpoint]);
+
   async function send(kind: FundingActionKind) {
     if (!room || !config || !accountId) return;
     if (getNetwork() !== room.network) throw new Error(`Select Tezos ${room.network} for wallet operations before continuing. This room’s network cannot change.`);
@@ -157,12 +197,14 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
       })}>Use {room.network} for wallet operations</button></div>}
       {(room.self.canOpen || room.self.actions.deposit) && entryError && <p role="alert" className="error">{entryError}</p>}
       <section className="payment-step" aria-label="Wager actions">
-        <h3>{room.self.actions.deposit ? "Deposit your entry" : "Wager setup and claims"}</h3>
-        <p>{room.self.actions.deposit ? "Choose Deposit, then approve the transaction in your Tezos wallet. The room updates after the deposit is verified on-chain." : "Complete the available wallet step below to advance this room."}</p>
+        <h3>{room.roomType === "duel" ? "Stake your wager" : room.self.actions.deposit ? "Deposit your entry" : "Wager setup and claims"}</h3>
+        <p>{room.roomType === "duel" ? "Press Stake wager once. Connect your linked wallet if asked, then approve its deposit when both players are ready and escrow opens." : room.self.actions.deposit ? "Choose Deposit, then approve the transaction in your Tezos wallet. The room updates after the deposit is verified on-chain." : "Complete the available wallet step below to advance this room."}</p>
       <div className="actions">
-        {room.self.canBind && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
-        {room.self.canOpen && <button disabled={actionsDisabled || !config?.enabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze {room.payingEntrants} wallets &amp; open escrow</button>}
-        {room.self.actions.deposit && <button disabled={actionsDisabled || !config?.enabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.currency === "XTZ" ? room.self.actions.deposit.amountMutez : room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}{room.houseFeeAtomic ? " total (entry + house fee)" : ""}</button>}
+        {room.roomType === "duel" && !room.roster.some(player => player.playerId === room.self.playerId && player.deposited) && <button disabled={actionsDisabled || stakeWaiting || !config?.enabled || !!entryError || (!room.self.canBind && !room.self.walletAddress && !room.self.actions.deposit)} onClick={() => void run(stakeWager)}>Stake wager · {formatFundingAmount(room.terms.currency === "XTZ" ? (BigInt(room.terms.entryAtomic) + (room.self.playerId === room.hostPlayerId ? BigInt(room.houseFeeAtomic || "0") : 0n)).toString() : room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}</button>}
+        {room.roomType === "duel" && stakeWaiting && <span role="status">Waiting for both players and escrow confirmation…</span>}
+        {room.roomType !== "duel" && room.self.canBind && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
+        {room.roomType !== "duel" && room.self.canOpen && <button disabled={actionsDisabled || !config?.enabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze {room.payingEntrants} wallets &amp; open escrow</button>}
+        {room.roomType !== "duel" && room.self.actions.deposit && <button disabled={actionsDisabled || !config?.enabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.currency === "XTZ" ? room.self.actions.deposit.amountMutez : room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}{room.houseFeeAtomic ? " total (entry + house fee)" : ""}</button>}
         {room.self.canStart && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded {room.roomType}</button>}
         {room.self.actions.claim && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("claim"))}>Claim prize to bound wallet</button>}
         {room.self.actions.refund && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("refund"))}>{refundLabel}</button>}

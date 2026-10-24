@@ -1,5 +1,6 @@
 'use strict';
 const path = require('node:path');
+const { listRooms } = require('./room-directory.cjs');
 const API_PREFIX = '/api/wtfiap/party';
 
 // Loaded as a runtime module by both the host and its real-domain browser harness.
@@ -22,6 +23,10 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
       if (!await isEnabled(request)) return response.status(403).json({ ok: false, reason: 'WTFIAP is disabled by the host.' });
       if (!await canAccess(request)) return response.status(403).json({ ok: false, reason: 'This account cannot open apps.' });
       await authority.ready;
+      if (request.method === 'GET' && pathname === API_PREFIX + '/rooms') {
+        response.setHeader('Cache-Control', 'no-store');
+        return response.json({ ok: true, rooms: listRooms(authority.dataDir) });
+      }
       return authority.handler(request, response);
     } catch (error) {
       if (next) return next(error);

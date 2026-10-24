@@ -203,6 +203,22 @@ test("settlement is derived from the frozen authoritative result and exact tie r
   await s.close();
 });
 
+test("duel escrow opens only after both seated players request staking", async () => {
+  const f = fixture({ humans: 2, roomType: "duel" }), s = f.service();
+  await s.bind("test-room", "1", addresses[0]);
+  await s.stakeIntent("test-room", "1");
+  assert.equal(f.rows.get("test-room")?.lock, null);
+  await s.bind("test-room", "2", addresses[1]);
+  assert.equal(f.rows.get("test-room")?.lock, null);
+  const guest = await s.stakeIntent("test-room", "2");
+  assert.equal(guest.self.stakeRequested, true);
+  assert.ok(f.rows.get("test-room")?.lock);
+  assert.equal(f.rows.get("test-room")?.intents.filter(intent => intent.kind === "create_room").length, 1);
+  await s.stakeIntent("test-room", "2");
+  assert.equal(f.rows.get("test-room")?.intents.filter(intent => intent.kind === "create_room").length, 1);
+  await s.close();
+});
+
 test("a paid duel freezes two wallets and settles the winner-takes-pot rank", async () => {
   const f = fixture({ humans: 2, roomType: "duel" }), s = f.service();
   await s.bind("test-room", "1", addresses[0]); await s.bind("test-room", "2", addresses[1]);

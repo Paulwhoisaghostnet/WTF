@@ -40,6 +40,7 @@ export type ChainRoom = {
 };
 export type FundingRecord = {
   schemaVersion: 1; roomCode: string; config: FundingConfig; terms: any; payoutMode?: "duel" | "tournament"; bindings: Binding[];
+  stakeIntents?: string[];
   roomId: string; termsHash: string | null; lock: any | null; startRequested: boolean;
   status: "binding" | "opening" | "funding" | "starting" | "active" | "settling" | "settled" | "voiding" | "voided";
   chain: ChainRoom | null; intents: Intent[];
@@ -117,7 +118,7 @@ export function createFundingService({ config, configs, store, game, chain, link
     demand(room.phase === "lobby", "This wager room has already started.");
     const lane = selected(room);
     return { schemaVersion: 1, roomCode: room.roomCode, config: { ...clone(lane), feeQuantumAtomic: lane.currencyQuantaAtomic[termsOf(room).currency as "XTZ" | "WTF"] },
-      terms: clone(termsOf(room)), payoutMode: modeOf(room), bindings: [],
+      terms: clone(termsOf(room)), payoutMode: modeOf(room), bindings: [], stakeIntents: [],
       roomId: commitment({ version: "wtfiap-room-v1", network: lane.network, contract: lane.escrowContract, roomCode: room.roomCode }),
       termsHash: null, lock: null, startRequested: false, status: "binding", chain: null, intents: [], observations: [], lastReconciledAt: null, error: null,
       roomSnapshot: clone(room), finalResult: null, technicalVoid: null };
@@ -131,6 +132,8 @@ export function createFundingService({ config, configs, store, game, chain, link
     if (record.finalResult) demand(record.finalResult.hash === commitment({ completion: record.finalResult.completion, params: record.finalResult.params }), "Frozen terminal result was altered.");
     demand(new Set(record.bindings.map(b => b.playerId)).size === record.bindings.length &&
       new Set(record.bindings.map(b => b.walletAddress)).size === record.bindings.length, "Duplicate funded entrant.");
+    demand(!record.stakeIntents || (new Set(record.stakeIntents).size === record.stakeIntents.length &&
+      record.stakeIntents.every(id => record.bindings.some(b => b.playerId === id))), "Invalid stake intent roster.");
     for (const binding of record.bindings) demand(room.players.some(p => !p.isAI && p.playerId === binding.playerId && p.accountId === binding.userId), "Funded seat identity changed.");
     if (record.lock) {
       demand(record.bindings.length === payingPlayers(room).length && room.players.length === (modeOf(room) === "duel" ? 2 : 8) && room.lock,
@@ -165,6 +168,25 @@ export function createFundingService({ config, configs, store, game, chain, link
       record.bindings.sort((a, b) => room.players.findIndex(p => p.playerId === a.playerId) - room.players.findIndex(p => p.playerId === b.playerId));
       return { record, value: undefined };
     });
+    return view(code, userId);
+  }
+  async function stakeIntent(code: string, userId: string) {
+    const { room, player } = await seat(code, userId);
+    demand(modeOf(room) === "duel", "One-button staking is currently available for duels.", 400);
+    enabled(selected(room, await store.read(code)));
+    await store.mutate(code, old => {
+      demand(old, "Bind your wallet before staking."); verifyLocal(old, room);
+      demand(old.bindings.some(binding => binding.playerId === player.playerId), "Bind your wallet before staking.");
+      if (!old.stakeIntents?.includes(player.playerId)) old.stakeIntents = [...(old.stakeIntents || []), player.playerId];
+      return { record: old, value: undefined };
+    });
+    const record = await store.read(code);
+    if (record && !record.lock && room.players.length === 2 && record.bindings.length === 2 &&
+      record.stakeIntents?.length === 2) {
+      const host = record.bindings.find(binding => binding.playerId === room.hostPlayerId);
+      demand(host, "The room host must bind a wallet.");
+      await open(code, host.userId);
+    }
     return view(code, userId);
   }
   async function open(code: string, userId: string) {
@@ -452,7 +474,8 @@ export function createFundingService({ config, configs, store, game, chain, link
     }
     const c = record?.config || { ...lane, feeQuantumAtomic: lane.currencyQuantaAtomic[termsOf(room).currency as "XTZ" | "WTF"] };
     const humanCount = payingPlayers(room).length;
-    return { roomCode: code, roomType: modeOf(room), aiFill: room.config.allowAI === true, battlefieldSeats: modeOf(room) === "duel" ? 2 : 8,
+    return { roomCode: code, roomType: modeOf(room), hostPlayerId: room.hostPlayerId,
+      aiFill: room.config.allowAI === true, battlefieldSeats: modeOf(room) === "duel" ? 2 : 8,
       payingEntrants: humanCount, status: record?.status || "binding", terms: record?.terms || termsOf(room),
       roomId: record?.roomId || null, termsHash: record?.termsHash || null,
       network: c.network, chainId: c.chainId, escrowContract: c.escrowContract, wtfToken: c.wtfToken,
@@ -467,6 +490,7 @@ export function createFundingService({ config, configs, store, game, chain, link
       finalizedBlock: record?.chain ? { hash: record.chain.blockHash, level: record.chain.level } : null,
       operations: (record?.intents || []).map(i => ({ kind: i.kind, status: i.status, operationHash: i.operationHash || null })),
       self: { playerId: player?.playerId || null, walletAddress: binding?.walletAddress || null,
+        stakeRequested: Boolean(player && record?.stakeIntents?.includes(player.playerId)),
         canBind: Boolean(player && lane.enabled && room.phase === "lobby" && !record?.lock && !room.lock),
         canOpen: Boolean(lane.enabled && player?.playerId === room.hostPlayerId && record?.bindings.length === humanCount &&
           (modeOf(room) === "duel" ? humanCount === 2 : room.config.allowAI === true ? humanCount >= 2 : humanCount === 8) && !record.lock),
@@ -481,7 +505,7 @@ export function createFundingService({ config, configs, store, game, chain, link
       wtfToken: c.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: c.feeQuantumAtomic,
       houseFeeAtomic: c.houseFeeAtomic || null, refundPolicy: c.refundPolicy,
       currencyQuantaAtomic: c.currencyQuantaAtomic, treasuryAddress: c.treasuryAddress, prizeRoundingPolicy: c.prizeRoundingPolicy });
-  return { bind, open, start, observe, view, drain, kick, health, requestTechnicalVoid,
+  return { bind, stakeIntent, open, start, observe, view, drain, kick, health, requestTechnicalVoid,
     inspectSeat: seat, publicConfig: () => ({ enabled: config.enabled, ...(config.reason ? { reason: config.reason } : {}),
       network: config.network, chainId: config.chainId, rpcUrl: config.rpcUrl, escrowContract: config.escrowContract,
       wtfToken: config.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: config.feeQuantumAtomic,

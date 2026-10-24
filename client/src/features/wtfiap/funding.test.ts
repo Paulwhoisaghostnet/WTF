@@ -61,6 +61,22 @@ test("WTF deposits use one scoped permission/deposit/removal batch and reject as
   for (const operator of [{ ...action.fa2Operator!, owner: "tz1Other" }, { ...action.fa2Operator!, tokenId: "1" }, { ...action.fa2Operator!, operator: "KT1Other" }]) assert.throws(() => fundingCalls(config, room, "deposit", { ...action, fa2Operator: operator }, "tz1Bound"));
 });
 
+test("Mainnet XTZ creator signs entry plus house fee while guest signs entry only", () => {
+  const room = roomFixture();
+  room.roomType = "duel";
+  room.hostPlayerId = "p-host";
+  room.self.playerId = "p-host";
+  room.houseFeeAtomic = "500000";
+  const action = room.self.actions.deposit!;
+  action.amountMutez = "1500000";
+  assert.equal(fundingCalls(config, room, "deposit", action, "tz1Bound")[0].amountMutez, "1500000");
+  room.self.playerId = "p-guest";
+  action.amountMutez = "1000000";
+  assert.equal(fundingCalls(config, room, "deposit", action, "tz1Bound")[0].amountMutez, "1000000");
+  action.amountMutez = "1500000";
+  assert.throws(() => fundingCalls(config, room, "deposit", action, "tz1Bound"), /creator fee/);
+});
+
 test("Mainnet WTF deposit pins the real asset and sends zero attached XTZ from the entrant wallet", async () => {
   const mainnet: FundingConfig = { ...config, network: "mainnet", chainId: "NetXdQprcVkpaWU",
     rpcUrl: "https://tezos-mainnet.octez.io/", escrowContract: "KT1MainnetEscrow",

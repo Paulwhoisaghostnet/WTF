@@ -48,7 +48,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await frame.locator("#create-room").click();
     await expect(frame.locator("#tournament-terms")).toContainText("Duel entry: 0.01 WTF");
     await expect(frame.locator("#start-room")).toBeDisabled();
-    await expect(frame.getByRole("button", { name: "Deposit or manage wager" })).toBeVisible();
+    await expect(frame.getByRole("button", { name: "Stake wager" })).toBeVisible();
     await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toBeVisible();
     await page.goto("/wtfiap?mode=tournament", { waitUntil: "domcontentloaded" });
     frame = await partyFrame(page);
@@ -85,6 +85,23 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     })).toBe(true);
     await expect(panel).toContainText("approve the transaction in your Tezos wallet");
     await page.screenshot({ path: test.info().outputPath("room-deposit-action-fixture.png"), fullPage: true });
+  });
+
+  test("duel funding presents one Stake wager action with creator fee", async ({ page }) => {
+    const roomCode = "55555555-5555-4555-8555-555555555555", room = fixtureRoom(roomCode);
+    room.roomType = "duel"; room.hostPlayerId = "fixture-seat"; room.battlefieldSeats = 2; room.payingEntrants = 2;
+    room.network = "mainnet"; room.chainId = "NetXdQprcVkpaWU"; room.houseFeeAtomic = "500000";
+    room.self.pendingOperations = []; room.self.actions.deposit = {
+      entrypoint: "join_room", params: { room_id: room.roomId, expected_terms_hash: room.termsHash },
+      amountMutez: "1500000", expectedWallet: room.self.walletAddress, contract: room.escrowContract,
+      network: room.network, chainId: room.chainId,
+    };
+    await page.route("**/api/wtfiap/funding/**", route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ?
+      { ok: true, config: { ...fixtureConfig, network: "mainnet", chainId: room.chainId } } : { ok: true, room } }));
+    await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
+    await expect(panel.getByRole("button", { name: "Stake wager · 1.5 XTZ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: /^Deposit/ })).toHaveCount(0);
   });
 
   test("native funding panel recovers a submitted fixture without opening a wallet and resets on leaving", async ({ page }) => {
