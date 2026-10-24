@@ -12509,3 +12509,11 @@
 **Why it mattered**: Settlement and prize custody were sound, yet a browser read failure blocked the winner from requesting their own wallet transaction.
 
 **Rule**: For wallet claims, retry only preflight and contract preparation reads across the configured same-network RPC endpoints. Verify the expected account and chain ID on the selected endpoint immediately before signing. Keep the actual wallet submission outside the failover loop so a network error cannot cause a duplicate payout request.
+
+## 2026-10-24 - Fresh advisories can block an unrelated emergency release
+
+**What happened**: The coLILseum claim repair passed focused tests, but GitHub Quality Gates stopped at the production dependency audit before reaching typecheck or build. Newly flagged body-parser, multer, and transitive ATProto Zod versions were already in the application lockfile.
+
+**Why it mattered**: The emergency claim fix could not use the normal production deployment while the security gate failed. Forcing npm audit's suggested ATProto downgrade would have changed the social API instead of addressing the vulnerable parser versions.
+
+**Rule**: Inspect the exact locked package graph and advisory fix ranges, update compatible leaves, and run clean-install audit plus affected runtime and typecheck proofs. Keep a security-gated deployment on the normal path; do not bypass the audit for an unrelated urgent fix.
