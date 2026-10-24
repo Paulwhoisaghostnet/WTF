@@ -136,6 +136,40 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("field status symbols show real preparation and combat effects", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/generator.html?seed=status-icon-inventory");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+    await page.evaluate(() => {
+      const game = AB_GAME(), home = game.board.rows - 1;
+      game.playerLevel = 3;
+      game.field = [{ id: "pool-guard", heroId: "tide-sentinel", level: 1, col: 0, row: home },
+        { id: "pool-healer", heroId: "tide-mender", level: 1, col: 2, row: home },
+        { id: "fire-ranger", heroId: "ember-ranger", level: 1, col: 4, row: home }];
+      game.opponents = [{ id: "ice-guard", heroId: "rime-boruun", level: 1, col: 2, row: 0 }];
+      AB_UI.draw();
+    });
+    expect((await gameState(page)).visibleStatusIcons.find(unit => unit.unitId === "pool-guard")?.icons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "shield", symbol: "⬡", label: expect.stringContaining("Starts shielded") })]),
+    );
+    await expect(page.locator('[data-action-id="status-pool-guard-shield"]')).toHaveCount(1);
+    await hoverHit(page, page, "status-pool-guard-shield");
+    await page.locator("#game").screenshot({ path: test.info().outputPath("status-icons-preparation.png") });
+    await page.evaluate(() => {
+      const game = AB_GAME(), start = AB.startBattle(game);
+      if (!start.ok) throw new Error(start.reason);
+      for (const unit of game.battle.units) unit.hp = unit.maxHp = 100000;
+      while (game.phase === "battle" && !game.battle.units.some(unit => unit.statuses.some(status => status.type === "burn")))
+        AB.step(game, AB.FIXED_STEP);
+      AB_UI.draw();
+    });
+    expect((await gameState(page)).visibleStatusIcons.some(unit => unit.icons.some(icon => icon.key === "burn" && icon.symbol === "♨"))).toBe(true);
+    expect(await page.evaluate(() => AB_UI.hitRegions().some(region => region.id.endsWith("-burn") && region.label.includes("Burning")))).toBe(true);
+    await page.locator("#game").screenshot({ path: test.info().outputPath("status-icons-combat.png") });
+    expect(errors).toEqual([]);
+  });
+
   test("landscape phone keeps shop and bench readable while the shared board remains playable", async ({ browser }) => {
     const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
     const phone = await context.newPage(),errors=[];
