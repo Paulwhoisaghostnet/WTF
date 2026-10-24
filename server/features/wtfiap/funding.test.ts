@@ -48,7 +48,7 @@ function fixture(variant: { humans?: number; roomType?: "duel" | "tournament"; a
       return { operationHash: opHash };
     },
   };
-  const service = (configs?: Partial<Record<"XTZ" | "WTF" | "XTZ_MAINNET", FundingConfig>>) => createFundingService({ config, configs, store, game, chain,
+  const service = (configs?: Partial<Record<"XTZ" | "WTF" | "XTZ_MAINNET", FundingConfig>>, baseConfig = config) => createFundingService({ config: baseConfig, configs, store, game, chain,
     linkedWallet: async (id, address) => addresses[Number(id) - 1] === address || extraLinks.has(id + ":" + address),
     onWake: () => {} }); // Explicit test driver advances the event-triggered worker.
   function observe(paid = 0, status: ChainRoom["status"] = "funding") {
@@ -243,6 +243,28 @@ test("Mainnet XTZ duel charges the room creator one house fee outside the two-en
   assert.match(s.health.error || "", /could not be reconciled/);
   assert.equal(f.submissions.length, 1, "a mismatched on-chain host cannot advance escrow");
   await s.close();
+});
+
+test("the duel release resumes a frozen previous-release room without changing its terms or formation", async () => {
+  const oldRules = "49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669";
+  const currentRules = "81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd";
+  const f = fixture({ humans: 2, roomType: "duel" });
+  const old = f.service(undefined, { ...config, rulesHash: oldRules });
+  await old.bind("test-room", "1", addresses[0]);
+  await old.bind("test-room", "2", addresses[1]);
+  await old.open("test-room", "1");
+  const before = clone(f.room);
+  const pinned = clone(f.rows.get("test-room"));
+  await old.close();
+  const resumed = f.service(undefined, { ...config, rulesHash: currentRules });
+  const view = await resumed.open("test-room", "1");
+  assert.equal(view.roomId, pinned!.roomId);
+  assert.deepEqual(f.room, before);
+  assert.deepEqual(f.rows.get("test-room")?.terms, pinned!.terms);
+  await resumed.close();
+  const future = f.service(undefined, { ...config, rulesHash: "c".repeat(64) });
+  await assert.rejects(future.open("test-room", "1"), /pinned game rules/);
+  await future.close();
 });
 
 test("pinned eight-human rooms keep their original rank DTO and result commitment", async () => {

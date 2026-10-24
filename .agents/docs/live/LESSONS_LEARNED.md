@@ -12290,3 +12290,11 @@
 **Correction and proof**: The duel funding adapter pins the host wallet and shows the creator's entry plus 0.5 XTZ while the guest sees only the entry. Its focused test rejects a chain room with a different host. The sponsor prize plan and draft contract pin `minimumHumans` from the chosen prize count through eight; local room tests reject a roster below it and preserve the choice after restart. SmartPy tests and both read-only Mainnet preflights pass. The duel deployment has a finalized origination receipt; sponsored payment remains disabled pending its separate contract and integration.
 
 **Rule**: Derive Mainnet fees from finalized contract state and keep undeployed payment controls closed. A sponsor's minimum human turnout belongs in immutable room terms and the escrow admission check, not just explanatory UI text.
+
+## 2026-10-24 — Preserve pinned funded rooms across the optional duel-network release
+
+**What happened**: Production held two nonterminal funded lobbies on rules hash `49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669`. The first Mainnet XTZ duel deployment contained rules hash `81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd`; the deployment gate correctly stopped replacement before touching the running app.
+
+**Correction and proof**: This release changes only optional duel network terms in the authoritative game modules. Previous rooms lack that field and keep their existing currency, entry, roster, lock, formation and combat rules. The gate and funding service accept the previous hash only under this exact incoming release hash; an unrelated future hash still fails closed. Guard, funding-recovery, hosted-authority and typecheck tests pass. The failed deployment left the old app running.
+
+**Rule**: A compatibility exception must be bound to both the pinned old rules and one proven incoming release. Do not relax the gate for arbitrary future rules or alter old room commitments.

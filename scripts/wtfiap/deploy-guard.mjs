@@ -24,7 +24,7 @@ export function assertFundingCompatibility(records, locks, incomingRules) {
   }
   for (const record of records.filter(record => record.hasLock)) {
     const terminal = record.status === 'settled' && record.hasFinalResult || hasVerifiedTechnicalVoid(record);
-    if (record.rulesHash !== incomingRules && !terminal) {
+    if (!rules.supportsPinnedRules(incomingRules, record.rulesHash) && !terminal) {
       throw new Error(`Funded game ${record.roomCode} still needs its pinned rules; finish or explicitly resolve it before this incompatible deployment.`);
     }
   }

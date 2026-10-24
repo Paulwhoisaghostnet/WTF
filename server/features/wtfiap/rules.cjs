@@ -5,6 +5,18 @@ const crypto = require('node:crypto');
 const stable = value => Array.isArray(value) ? '[' + value.map(stable).join(',') + ']'
   : value !== null && typeof value === 'object' ? '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + stable(value[key])).join(',') + '}' : JSON.stringify(value);
 const hashValue = value => crypto.createHash('sha256').update(stable(value)).digest('hex');
+// The October 24 duel release adds an optional network to new duel terms.
+// Rooms created by the preceding release have no network field; their
+// canonical terms and game transitions are unchanged. This one exact release
+// can continue those frozen rooms. Any later rules hash must prove its own
+// compatibility before inheriting them.
+const compatiblePinnedRules = Object.freeze({
+  '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd': Object.freeze([
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
+});
+const supportsPinnedRules = (incoming, pinned) => incoming === pinned ||
+  compatiblePinnedRules[incoming]?.includes(pinned) === true;
 const authoritative = entry => /^game\/(core|server)\/.*\.cjs$/.test(entry.sourcePath) ||
   /^source\/(engine|hero-catalog|terrain|zones|zone-policy)\.js$/.test(entry.sourcePath);
 function rulesHashFromManifest(manifest) {
@@ -20,4 +32,4 @@ function getRuntimeRulesHash(root = process.cwd()) {
   }
   return rulesHashFromManifest(manifest);
 }
-module.exports = { stable, hashValue, rulesHashFromManifest, getRuntimeRulesHash };
+module.exports = { stable, hashValue, rulesHashFromManifest, getRuntimeRulesHash, supportsPinnedRules };

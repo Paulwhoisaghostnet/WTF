@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
+import path from "node:path";
 import type { FundingStore } from "./funding-store";
+
+const supportsPinnedRules: (incoming: string, pinned: string) => boolean =
+  createRequire(path.resolve("package.json"))(path.resolve("server/features/wtfiap/rules.cjs")).supportsPinnedRules;
 
 export const stable = (value: any): string => Array.isArray(value) ? `[${value.map(stable).join(",")}]`
   : value !== null && typeof value === "object" ? `{${Object.keys(value).sort().map(k => JSON.stringify(k) + ":" + stable(value[k])).join(",")}}` : JSON.stringify(value);
@@ -120,7 +125,7 @@ export function createFundingService({ config, configs, store, game, chain, link
   function verifyLocal(record: FundingRecord, room: GameRoom) {
     demand(record.schemaVersion === 1 && record.roomCode === room.roomCode, "Invalid durable funding identity.");
     demand(stable(record.terms) === stable(termsOf(room)) && (record.payoutMode || "tournament") === modeOf(room), "Wager terms changed.");
-    demand(record.finalResult || record.chain?.status === "voided" || record.config.rulesHash === config.rulesHash, "This tournament requires its pinned game rules.");
+    demand(record.finalResult || record.chain?.status === "voided" || supportsPinnedRules(config.rulesHash, record.config.rulesHash), "This tournament requires its pinned game rules.");
     if (record.technicalVoid) demand(record.technicalVoid.reasonHash === commitment(record.technicalVoid.reason) &&
       record.technicalVoid.evidenceHash === commitment(record.technicalVoid.evidence), "Technical-void evidence was altered.");
     if (record.finalResult) demand(record.finalResult.hash === commitment({ completion: record.finalResult.completion, params: record.finalResult.params }), "Frozen terminal result was altered.");
@@ -324,8 +329,8 @@ export function createFundingService({ config, configs, store, game, chain, link
     });
     record = (await store.read(code))!;
     if (record.chain?.status === "active" && !record.finalResult && !record.technicalVoid) game.start(code, record.lock);
-    if (record.chain?.status === "voided" && record.config.rulesHash === config.rulesHash) game.markVoided(code, record.lock);
-    if (record.config.rulesHash === config.rulesHash) game.update(code, { status: record.status, collectedAtomic: record.chain?.deposited || "0",
+    if (record.chain?.status === "voided" && supportsPinnedRules(config.rulesHash, record.config.rulesHash)) game.markVoided(code, record.lock);
+    if (supportsPinnedRules(config.rulesHash, record.config.rulesHash)) game.update(code, { status: record.status, collectedAtomic: record.chain?.deposited || "0",
       feeQuantumAtomic: record.config.feeQuantumAtomic, treasuryAddress: record.config.treasuryAddress,
       refundPolicy: record.config.refundPolicy, prizeRoundingPolicy: record.config.prizeRoundingPolicy,
       prizeSummary: prizeSummary(record), payouts: record.chain?.status === "settled" ? record.bindings.flatMap(b => {
@@ -378,7 +383,7 @@ export function createFundingService({ config, configs, store, game, chain, link
       if (old.technicalVoid) return { record: old, value: undefined };
       const observed = await chain.read(old); demand(observed && ["funding", "active"].includes(observed.status), "Only an unsettled escrow can be technically voided.");
       verifyChain(old, observed);
-      demand(old.config.rulesHash === config.rulesHash, "Run the audit with the room's pinned game rules.");
+      demand(supportsPinnedRules(config.rulesHash, old.config.rulesHash), "Run the audit with the room's pinned game rules.");
       const audit = game.audit(code); demand(audit.ok === false && audit.code === "authoritative-game-failure", "The authoritative game audit did not reproduce a technical failure.");
       const reason = "authoritative-game-failure";
       const evidence = { version: "wtfiap-technical-void-v1", roomId: old.roomId, termsHash: old.termsHash,
