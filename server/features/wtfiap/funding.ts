@@ -13,6 +13,7 @@ export type FundingConfig = {
   escrowContract: string; scriptHash: string; refereeAddress: string; creatorAddress: string; walletId: string;
   wtfToken: { contract: string; tokenId: string; decimals: 8 }; rulesHash: string;
   feeQuantumAtomic: string | null; refundPolicy: string | null;
+  houseFeeAtomic?: string | null;
   currencyQuantaAtomic: { XTZ: string; WTF: string }; treasuryAddress: string; prizeRoundingPolicy: string;
   minimalBlockDelaySeconds?: number | null;
   indexerUrl?: string;
@@ -26,6 +27,7 @@ export type Intent = {
 export type ChainRoom = {
   blockHash: string; level: number; termsHash: string; rulesHash: string; seedCommitment: string;
   referee: string; currency: string; entryAtomic: string; payoutMode?: string; entrants: string[]; paid: string[];
+  host?: string;
   held: string; paidOut: string; deposited: string; refunded: string; quantum: string;
   treasuryAmount: string; treasuryClaimed: boolean; voidReasonHash: string | null; voidEvidenceHash: string | null; status: "funding" | "active" | "settled" | "voided";
   matchId: string | null; resultHash: string | null; transcriptHash: string | null;
@@ -67,7 +69,7 @@ export type WalletAction = { entrypoint: string; params: unknown; amountMutez: s
   fa2Operator?: { contract: string; tokenId: string; owner: string; operator: string } };
 
 export function createFundingService({ config, configs, store, game, chain, linkedWallet, clock = () => new Date(), onWake }: {
-  config: FundingConfig; configs?: Partial<Record<"XTZ" | "WTF", FundingConfig>>; store: FundingStore; game: FundingGame; chain: FundingChain;
+  config: FundingConfig; configs?: Partial<Record<"XTZ" | "WTF" | "XTZ_MAINNET", FundingConfig>>; store: FundingStore; game: FundingGame; chain: FundingChain;
   linkedWallet: (userId: string, address: string) => Promise<boolean>; clock?: () => Date; onWake?: () => void;
 }) {
   let running: Promise<void> | null = null, rerun = false, closed = false;
@@ -78,7 +80,11 @@ export function createFundingService({ config, configs, store, game, chain, link
   const payingPlayers = (room: GameRoom) => room.players.filter(player => !player.isAI);
   const modeOf = (room: GameRoom): "duel" | "tournament" => room.config.roomType === "duel" ? "duel" : "tournament";
   function selected(room: GameRoom, record?: FundingRecord | null) {
-    const lane = configs?.[termsOf(room).currency as "XTZ" | "WTF"] || config;
+    const terms = termsOf(room);
+    const laneKey = terms.currency === "XTZ" && terms.network === "mainnet" && modeOf(room) === "duel"
+      ? "XTZ_MAINNET" : terms.currency as "XTZ" | "WTF";
+    const lane = configs?.[laneKey] || (laneKey === "XTZ_MAINNET" ? { ...config, enabled: false,
+      reason: "Mainnet XTZ duel escrow is not configured; no payment can be collected." } : config);
     if (!record) return lane;
     // Older funded rooms retain their deployment, but changing any pinned
     // signer or asset identity cannot reactivate admissions on an old room.
@@ -86,6 +92,7 @@ export function createFundingService({ config, configs, store, game, chain, link
       current.escrowContract === record.config.escrowContract && current.scriptHash === record.config.scriptHash &&
       current.creatorAddress === record.config.creatorAddress && current.refereeAddress === record.config.refereeAddress &&
       current.walletId === record.config.walletId && current.treasuryAddress === record.config.treasuryAddress &&
+      current.houseFeeAtomic === record.config.houseFeeAtomic &&
       current.wtfToken.contract === record.config.wtfToken.contract && current.wtfToken.tokenId === record.config.wtfToken.tokenId;
     if (matches(lane)) return lane;
     if (matches(config)) return config;
@@ -173,7 +180,8 @@ export function createFundingService({ config, configs, store, game, chain, link
       if (!record.lock) demand(await chain.read(record) === null, "This escrow room identity already exists on-chain.");
       const termsHash = commitment({ version: "wtfiap-terms-v1", roomId: record.roomId, terms: record.terms,
         entrants: record.bindings.map(b => ({ playerId: b.playerId, wallet: b.walletAddress })),
-        refundPolicy: record.config.refundPolicy, feeQuantumAtomic: record.config.feeQuantumAtomic, treasuryAddress: record.config.treasuryAddress, prizeRoundingPolicy: record.config.prizeRoundingPolicy });
+        refundPolicy: record.config.refundPolicy, feeQuantumAtomic: record.config.feeQuantumAtomic, treasuryAddress: record.config.treasuryAddress,
+        houseFeeAtomic: record.config.houseFeeAtomic || null, prizeRoundingPolicy: record.config.prizeRoundingPolicy });
       record.termsHash = termsHash;
       record.lock = game.lock(code, { roomId: record.roomId, termsHash, rulesHash: record.config.rulesHash,
         matchId: commitment({ version: "wtfiap-match-v1", roomId: record.roomId, gameMatchId: "party:" + code }),
@@ -183,7 +191,8 @@ export function createFundingService({ config, configs, store, game, chain, link
         seed_commitment: record.lock.seedCommitment, referee: record.config.refereeAddress,
         currency: record.terms.currency === "XTZ" ? "0" : "1", entry_amount: record.terms.entryAtomic,
         payout_mode: record.payoutMode === "duel" ? "0" : "1",
-        entrants: record.bindings.map(b => b.walletAddress) });
+        entrants: record.bindings.map(b => b.walletAddress),
+        ...(record.config.houseFeeAtomic ? { host: record.bindings.find(b => b.playerId === room.hostPlayerId)!.walletAddress } : {}) });
       if (record.status === "binding") record.status = "opening";
       return { record, value: undefined };
     });
@@ -221,6 +230,8 @@ export function createFundingService({ config, configs, store, game, chain, link
     if (observed.payoutMode !== undefined) demand(observed.payoutMode === (record.payoutMode === "duel" ? "0" : "1"), "Escrow payout mode differs from the room.");
     demand(new Set(observed.paid).size === observed.paid.length && observed.paid.every(p => observed.entrants.includes(p)), "Invalid finalized deposit roster.");
     demand(observed.quantum === record.config.feeQuantumAtomic, "Escrow precision differs from the agreed currency terms.");
+    if (record.config.houseFeeAtomic) demand(observed.host === record.bindings.find(b => b.playerId === record.roomSnapshot.hostPlayerId)?.walletAddress,
+      "Mainnet XTZ room creator wallet differs from the committed escrow host.");
     demand(BigInt(observed.held) + BigInt(observed.paidOut) + BigInt(observed.refunded) === BigInt(observed.deposited) &&
       BigInt(observed.deposited) - BigInt(observed.refunded) === BigInt(record.terms.entryAtomic) * BigInt(observed.paid.length),
       "Escrow accounting does not conserve cumulative deposits, refunds and prizes.");
@@ -424,7 +435,8 @@ export function createFundingService({ config, configs, store, game, chain, link
         network: record.config.network, chainId: record.config.chainId };
       if (lane.enabled && !record.technicalVoid && record.chain.status === "funding" && !record.chain.paid.includes(binding.walletAddress)) actions.deposit = {
         ...base, entrypoint: "join_room", params: { room_id: record.roomId, expected_terms_hash: record.termsHash },
-        amountMutez: record.terms.currency === "XTZ" ? record.terms.entryAtomic : "0",
+        amountMutez: record.terms.currency === "XTZ"
+          ? (BigInt(record.terms.entryAtomic) + (binding.playerId === room.hostPlayerId ? BigInt(record.config.houseFeeAtomic || "0") : 0n)).toString() : "0",
         ...(record.terms.currency === "WTF" ? { fa2Operator: { contract: record.config.wtfToken.contract,
           tokenId: record.config.wtfToken.tokenId, owner: binding.walletAddress, operator: record.config.escrowContract } } : {}) };
       if (["funding", "voided"].includes(record.chain.status) && record.chain.paid.includes(binding.walletAddress))
@@ -439,7 +451,8 @@ export function createFundingService({ config, configs, store, game, chain, link
       payingEntrants: humanCount, status: record?.status || "binding", terms: record?.terms || termsOf(room),
       roomId: record?.roomId || null, termsHash: record?.termsHash || null,
       network: c.network, chainId: c.chainId, escrowContract: c.escrowContract, wtfToken: c.wtfToken,
-      refundPolicy: c.refundPolicy, feeQuantumAtomic: c.feeQuantumAtomic, treasuryAddress: c.treasuryAddress,
+      refundPolicy: c.refundPolicy, feeQuantumAtomic: c.feeQuantumAtomic, houseFeeAtomic: c.houseFeeAtomic || null,
+      treasuryAddress: c.treasuryAddress,
       prizeRoundingPolicy: c.prizeRoundingPolicy, prizeSummary: prizeSummary(record),
       roster: payingPlayers(room).map(p => { const b = record?.bindings.find(b => b.playerId === p.playerId);
         return { playerId: p.playerId, name: p.name, walletAddress: b?.walletAddress || null, deposited: Boolean(b && record?.chain?.paid.includes(b.walletAddress)) }; }),
@@ -460,14 +473,17 @@ export function createFundingService({ config, configs, store, game, chain, link
   }
   const publicConfig = (c: FundingConfig) => ({ enabled: c.enabled, ...(c.reason ? { reason: c.reason } : {}),
       network: c.network, chainId: c.chainId, rpcUrl: c.rpcUrl, escrowContract: c.escrowContract,
-      wtfToken: c.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: c.feeQuantumAtomic, refundPolicy: c.refundPolicy,
+      wtfToken: c.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: c.feeQuantumAtomic,
+      houseFeeAtomic: c.houseFeeAtomic || null, refundPolicy: c.refundPolicy,
       currencyQuantaAtomic: c.currencyQuantaAtomic, treasuryAddress: c.treasuryAddress, prizeRoundingPolicy: c.prizeRoundingPolicy });
   return { bind, open, start, observe, view, drain, kick, health, requestTechnicalVoid,
     inspectSeat: seat, publicConfig: () => ({ enabled: config.enabled, ...(config.reason ? { reason: config.reason } : {}),
       network: config.network, chainId: config.chainId, rpcUrl: config.rpcUrl, escrowContract: config.escrowContract,
-      wtfToken: config.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: config.feeQuantumAtomic, refundPolicy: config.refundPolicy,
+      wtfToken: config.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: config.feeQuantumAtomic,
+      houseFeeAtomic: config.houseFeeAtomic || null, refundPolicy: config.refundPolicy,
       currencyQuantaAtomic: config.currencyQuantaAtomic, treasuryAddress: config.treasuryAddress, prizeRoundingPolicy: config.prizeRoundingPolicy }),
-    publicConfigs: () => ({ XTZ: publicConfig(configs?.XTZ || config), WTF: publicConfig(configs?.WTF || config) }),
+    publicConfigs: () => ({ XTZ: publicConfig(configs?.XTZ || config), WTF: publicConfig(configs?.WTF || config),
+      XTZ_MAINNET: publicConfig(configs?.XTZ_MAINNET || { ...config, enabled: false, reason: "Mainnet XTZ duel escrow is not configured." }) }),
     publicConfigForRoom: async (code: string) => {
       const record = await store.read(code);
       const room = (record?.finalResult || record?.technicalVoid) ? record.roomSnapshot : game.inspect(code);

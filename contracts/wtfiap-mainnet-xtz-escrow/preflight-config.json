@@ -1,0 +1,14 @@
+{
+  "kind": "escrow",
+  "network": "mainnet",
+  "expectedChainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tcinfra.net/rpc/tezos/mainnet",
+  "artifactPath": "contracts/wtfiap-mainnet-xtz-escrow/artifacts/contract.json",
+  "artifactSha256": "d05076fecf8c3c013fc2b212fe357230ee3871756de2d7946fa8d2f5d882bd72",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "walletId": "reward-disburser",
+  "wtfTokenAddress": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD",
+  "wtfTokenId": "0",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+}

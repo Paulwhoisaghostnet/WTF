@@ -48,7 +48,7 @@ function fixture(variant: { humans?: number; roomType?: "duel" | "tournament"; a
       return { operationHash: opHash };
     },
   };
-  const service = (configs?: Partial<Record<"XTZ" | "WTF", FundingConfig>>) => createFundingService({ config, configs, store, game, chain,
+  const service = (configs?: Partial<Record<"XTZ" | "WTF" | "XTZ_MAINNET", FundingConfig>>) => createFundingService({ config, configs, store, game, chain,
     linkedWallet: async (id, address) => addresses[Number(id) - 1] === address || extraLinks.has(id + ":" + address),
     onWake: () => {} }); // Explicit test driver advances the event-triggered worker.
   function observe(paid = 0, status: ChainRoom["status"] = "funding") {
@@ -216,6 +216,32 @@ test("a paid duel freezes two wallets and settles the winner-takes-pot rank", as
   await s.drain();
   assert.deepEqual(f.submissions.at(-1).params.ranks, [
     { player: addresses[0], rank: "1", group_size: "1" }, { player: addresses[1], rank: "2", group_size: "1" }]);
+  await s.close();
+});
+
+test("Mainnet XTZ duel charges the room creator one house fee outside the two-entry pot", async () => {
+  const mainnet: FundingConfig = { ...config, network: "mainnet", chainId: "NetXdQprcVkpaWU",
+    escrowContract: "KT1" + "3".repeat(33), houseFeeAtomic: "500000" };
+  const f = fixture({ humans: 2, roomType: "duel" });
+  f.room.config.duelWager.network = "mainnet";
+  const s = f.service({ XTZ: config, XTZ_MAINNET: mainnet });
+  await s.bind("test-room", "1", addresses[0]);
+  await s.bind("test-room", "2", addresses[1]);
+  await s.open("test-room", "1");
+  await s.drain();
+  assert.equal(f.submissions[0].params.host, addresses[0]);
+  f.observe(0);
+  f.observed.host = addresses[0];
+  await s.drain();
+  const creator = await s.view("test-room", "1");
+  const guest = await s.view("test-room", "2");
+  assert.equal(creator.network, "mainnet");
+  assert.equal(creator.self.actions.deposit.amountMutez, "1500000");
+  assert.equal(guest.self.actions.deposit.amountMutez, "1000000");
+  f.observed.host = addresses[1];
+  await s.drain();
+  assert.match(s.health.error || "", /could not be reconciled/);
+  assert.equal(f.submissions.length, 1, "a mismatched on-chain host cannot advance escrow");
   await s.close();
 });
 

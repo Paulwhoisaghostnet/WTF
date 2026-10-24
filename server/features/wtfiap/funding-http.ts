@@ -17,7 +17,10 @@ return async (req, res, next) => {
     }
     if (req.method === "GET" && endpoint === "/health") {
       const lanes = service.publicConfigs();
-      return res.json({ ok: true, enabled: lanes.XTZ.enabled || lanes.WTF.enabled, lanes: {
+      return res.json({ ok: true, enabled: lanes.XTZ.enabled || lanes.WTF.enabled || lanes.XTZ_MAINNET.enabled, lanes: {
+        XTZ_SHADOWNET: { enabled: lanes.XTZ.enabled, network: lanes.XTZ.network },
+        XTZ_MAINNET: { enabled: lanes.XTZ_MAINNET.enabled, network: lanes.XTZ_MAINNET.network },
+        WTF_MAINNET: { enabled: lanes.WTF.enabled, network: lanes.WTF.network },
         XTZ: { enabled: lanes.XTZ.enabled, network: lanes.XTZ.network },
         WTF: { enabled: lanes.WTF.enabled, network: lanes.WTF.network } }, health: service.health });
     }

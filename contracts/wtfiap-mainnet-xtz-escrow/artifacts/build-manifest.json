@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "title": "coLILseum Mainnet XTZ duel escrow",
+  "policyStatus": "owner-approved",
+  "compiler": "smartpy-tezos==0.24.1",
+  "sourceHashes": {
+    "WtfIapMainnetXtzEscrow.py": "e6ea7ea322728f6b7d0e416757910f8aac0c7a34055dae68a96ca8ce4d708931",
+    "test_mainnet_xtz.py": "404b68784c7567c6b89463354257ea5b01b574e6e857875b1705e1965cbf7971"
+  },
+  "artifacts": {
+    "contract.json": {
+      "sha256": "d05076fecf8c3c013fc2b212fe357230ee3871756de2d7946fa8d2f5d882bd72",
+      "bytes": 189953
+    }
+  },
+  "checks": {
+    "smartpyScenarios": "passed",
+    "readOnlyMainnetPreflight": "contracts/wtfiap-mainnet-xtz-escrow/preflight/preflight.json",
+    "houseFeeMutez": "500000",
+    "prizePot": "two full entrant deposits"
+  }
+}

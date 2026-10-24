@@ -12282,3 +12282,11 @@
 **Correction and proof**: Each canvas offer now has a Buy button with its own hit region, while the full card still selects a preview and the preview retains Recruit. Landscape mobile cards expose separate Preview and Buy buttons, avoiding nested interactive elements. Both controls call the existing authoritative buy path. Focused desktop and mobile browser stories pass; inspected screenshots show distinct controls and a readable landscape shop.
 
 **Rule**: A hero card may open details without making its purchase action remote. Keep the purchase control on the card and retain a separate path for deliberate preview-first decisions.
+
+## 2026-10-24 — Mainnet room fees and sponsor thresholds must be pinned before admission
+
+**What happened**: A Mainnet XTZ duel needs one room-creator fee outside the prize pot, while a sponsored tournament may have fewer than eight human entrants and a sponsor-selected minimum above its prize-place count. The authorized reward-disburser wallet initially held 1.700023 XTZ, below the read-only origination estimates. After the owner funded it, finalized Mainnet balance was 21.700023 XTZ and the fee-aware duel escrow was originated at KT1JbZkVfAaGdXnPxLGowteHrQGutPsXPN3p. Its finalized typed script hash is 3dee9c74e354b682674cb9342df7c848c3929b098767f926603e96506efeb55c.
+
+**Correction and proof**: The duel funding adapter pins the host wallet and shows the creator's entry plus 0.5 XTZ while the guest sees only the entry. Its focused test rejects a chain room with a different host. The sponsor prize plan and draft contract pin `minimumHumans` from the chosen prize count through eight; local room tests reject a roster below it and preserve the choice after restart. SmartPy tests and both read-only Mainnet preflights pass. The duel deployment has a finalized origination receipt; sponsored payment remains disabled pending its separate contract and integration.
+
+**Rule**: Derive Mainnet fees from finalized contract state and keep undeployed payment controls closed. A sponsor's minimum human turnout belongs in immutable room terms and the escrow admission check, not just explanatory UI text.

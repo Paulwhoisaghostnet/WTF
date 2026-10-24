@@ -250,7 +250,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       currency: room.config.tournament.currency, entryFee: room.config.tournament.entryFee,
       prizePercentages: room.config.tournament.prizePercentages } } : {}),
       ...(room.config.duelWager ? { duelWager: {
-        currency: room.config.duelWager.currency, entryFee: room.config.duelWager.entryFee } } : {}) });
+        currency: room.config.duelWager.currency, entryFee: room.config.duelWager.entryFee,
+        ...(room.config.duelWager.network ? { network: room.config.duelWager.network } : {}) } } : {}) });
     requireThat(fingerprint(restoredConfig) === fingerprint(room.config), 'Persisted room configuration is not canonical.');
     if (room.fundingLock) {
       requireThat(hasWagerTerms(room) && room.players.length === roomCapacity(room) &&

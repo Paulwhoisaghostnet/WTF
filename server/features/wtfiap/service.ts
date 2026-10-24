@@ -10,7 +10,7 @@ import { db, pool } from "../../db";
 import { register, runJob } from "../../lib/scheduler";
 import { createFundingService, type FundingGame } from "./funding";
 import { postgresFundingStore } from "./funding-store";
-import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
+import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, mainnetXtzFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
 
 export type WtfiapAuthority = {
   handler: RequestHandler;
@@ -47,8 +47,9 @@ export function getWtfiapFunding() {
   if (!funding) {
     const config = shadownetXtzFundingConfig();
     const mainnetWtf = mainnetWtfFundingConfig();
+    const mainnetXtz = mainnetXtzFundingConfig();
     const store = postgresFundingStore(pool);
-    funding = createFundingService({ config, configs: { XTZ: config, WTF: mainnetWtf }, store, game: getWtfiapAuthority().funding,
+    funding = createFundingService({ config, configs: { XTZ: config, WTF: mainnetWtf, XTZ_MAINNET: mainnetXtz }, store, game: getWtfiapAuthority().funding,
       chain: tezosFundingChain(), onWake: () => { void runJob(JOB_NAME); },
       linkedWallet: async (userId, address) => {
         const rows = await db.select({ id: userWallets.id }).from(userWallets)
@@ -62,7 +63,7 @@ export function getWtfiapFunding() {
     } });
     monitorStartup = store.list().then(records => {
       const states: Array<{ connected: boolean; error: string | null }> = [];
-      monitors = fundingMonitorConfigs([config, mainnetWtf], records).map(pinned => {
+      monitors = fundingMonitorConfigs([config, mainnetWtf, mainnetXtz], records).map(pinned => {
         const state = { connected: false, error: null as string | null }; states.push(state);
         const laneHealth = {
           get headStreamConnected() { return state.connected; },

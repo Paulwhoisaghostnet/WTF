@@ -102,6 +102,7 @@ export async function originate(config: PreflightConfig & { walletId: string }, 
     assert.equal(storage.room_creator,config.creator); assert.equal(storage.treasury_address,config.treasuryAddress);
     assert.equal(storage.wtf_token_address,config.wtfTokenAddress); assert.equal(storage.wtf_token_id,config.wtfTokenId);
     assert.equal(storage.xtz_quantum,'10000'); assert.equal(storage.wtf_quantum,'1000000');
+    if ('house_fee_mutez' in storage) assert.equal(storage.house_fee_mutez,'500000');
   } else assert.equal(storage.administrator,config.creator);
   journal.status='applied'; journal.contractAddress=addresses[0]; journal.canonicalCodeSha256=canonicalCodeSha256;
   journal.inclusion={level:found.level,blockHash:found.blockHash}; journal.finalized={level:header.level,blockHash:finalized};

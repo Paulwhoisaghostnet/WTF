@@ -400,6 +400,23 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await guestContext.close(); }
   });
 
+  test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
+    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    await surface(page).getByRole("link", { name: "Duel" }).click();
+    const host = await hostFrame(page);
+    await host.locator("#duel-wager").check();
+    await host.locator("#entry-currency").selectOption("XTZ");
+    await expect(host.locator("#entry-network-choice")).toBeVisible();
+    await host.locator("#entry-network").selectOption("mainnet");
+    await host.locator("#entry-fee").fill("1.00");
+    await expect(host.locator("#entry-help")).toContainText("0.5 XTZ house fee");
+    await host.locator("#create-name").fill("Mainnet duel host");
+    await host.locator("#prep-time").selectOption("ready");
+    await host.locator("#create-room").click();
+    await expect(host.locator("#invite-code")).not.toHaveValue("");
+    await expect(host.locator("#tournament-terms")).toContainText("Tezos mainnet");
+  });
+
   test("watchers follow the shared arena and room chat keeps whispers private", async ({ page, browser }) => {
     await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
     await page.locator("#create-name").fill("Host");

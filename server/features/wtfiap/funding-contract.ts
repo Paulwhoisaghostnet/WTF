@@ -69,6 +69,27 @@ export function mainnetWtfFundingConfig(env: NodeJS.ProcessEnv = process.env): F
   config.feeQuantumAtomic = config.currencyQuantaAtomic.WTF;
   return config;
 }
+// This lane is intentionally disabled until its separate fee-aware Mainnet
+// contract is deployed and all deployment fingerprints are supplied.
+export function mainnetXtzFundingConfig(env: NodeJS.ProcessEnv = process.env): FundingConfig {
+  const config = fundingConfig({
+    WTFIAP_ESCROW_NETWORK: "mainnet",
+    WTFIAP_FUNDED_ENABLED: env.WTFIAP_MAINNET_XTZ_FUNDED_ENABLED,
+    WTFIAP_ESCROW_RPC_URL: env.WTFIAP_MAINNET_XTZ_ESCROW_RPC_URL,
+    WTFIAP_ESCROW_CONTRACT: env.WTFIAP_MAINNET_XTZ_ESCROW_CONTRACT,
+    WTFIAP_ESCROW_SCRIPT_HASH: env.WTFIAP_MAINNET_XTZ_ESCROW_SCRIPT_HASH,
+    WTFIAP_REFEREE_ADDRESS: env.WTFIAP_MAINNET_REFEREE_ADDRESS,
+    WTFIAP_ROOM_CREATOR_ADDRESS: env.WTFIAP_MAINNET_ROOM_CREATOR_ADDRESS,
+    WTFIAP_REFEREE_WALLET_ID: env.WTFIAP_MAINNET_REFEREE_WALLET_ID,
+    WTFIAP_WTF_TOKEN_CONTRACT: env.WTFIAP_MAINNET_WTF_TOKEN_CONTRACT,
+    WTFIAP_WTF_TOKEN_ID: env.WTFIAP_MAINNET_WTF_TOKEN_ID,
+    WTFIAP_TREASURY_ADDRESS: env.WTFIAP_MAINNET_TREASURY_ADDRESS,
+    WTFIAP_CHAIN_MIN_BLOCK_DELAY_SECONDS: env.WTFIAP_MAINNET_CHAIN_MIN_BLOCK_DELAY_SECONDS,
+  });
+  config.feeQuantumAtomic = config.currencyQuantaAtomic.XTZ;
+  config.houseFeeAtomic = "500000"; // Owner-requested 0.5 XTZ, six atomic decimals.
+  return config;
+}
 export const rpcEndpoints = (config: FundingConfig) => config.rpcUrl.replace(/\/$/, "") === NETWORKS[config.network].rpc.replace(/\/$/, "")
   ? [config.rpcUrl, NETWORKS[config.network].fallback] : [config.rpcUrl];
 const nat = (v: any) => String(v?.toFixed ? v.toFixed() : v);
@@ -94,6 +115,8 @@ export function tezosFundingChain(toolkit = (rpc: string): any => new TezosToolk
         nat(storage.wtf_token_id) === config.wtfToken.tokenId && String(storage.treasury_address) === config.treasuryAddress &&
         nat(storage.xtz_quantum) === config.currencyQuantaAtomic.XTZ && nat(storage.wtf_quantum) === config.currencyQuantaAtomic.WTF,
         "Escrow creator, token, treasury or precision differs from configuration.");
+      if (config.houseFeeAtomic) demand(storage.house_fee_mutez !== undefined && nat(storage.house_fee_mutez) === config.houseFeeAtomic,
+        "Mainnet XTZ house fee differs from the approved 0.5 XTZ escrow script.");
       const room: any = await storage.rooms.get(record.roomId, blockHash);
       if (!room) return null;
       const status = ["funding", "active", "settled", "voided"][Number(nat(room.status))] as ChainRoom["status"];
@@ -105,6 +128,7 @@ export function tezosFundingChain(toolkit = (rpc: string): any => new TezosToolk
       }
       return { blockHash, level: header.level, termsHash: String(room.terms_hash), rulesHash: String(room.rules_hash),
         seedCommitment: String(room.seed_commitment), referee: String(room.referee), currency: nat(room.currency), entryAtomic: nat(room.entry_amount),
+        ...(room.host !== undefined ? { host: String(room.host) } : {}),
         ...(room.payout_mode !== undefined ? { payoutMode: nat(room.payout_mode) } : {}),
         entrants: [...room.entrants].map(String), paid: [...room.paid].map(String), held: nat(room.held), paidOut: nat(room.paid_out), status,
         deposited: nat(room.deposited), refunded: nat(room.refunded), quantum: nat(room.quantum),
@@ -142,7 +166,9 @@ export function tezosFundingChain(toolkit = (rpc: string): any => new TezosToolk
         const entrypoint = observation.action === "deposit" ? "join_room" : observation.action === "claim" ? "claim" : observation.action === "refund" ? "refund" : null;
         if (!entrypoint || !entrypoints.entrypoints[entrypoint]) continue;
         const params = observation.action === "deposit" ? { room_id: record.roomId, expected_terms_hash: record.termsHash } : record.roomId;
-        const amount = observation.action === "deposit" && record.terms.currency === "XTZ" ? record.terms.entryAtomic : "0";
+        const amount = observation.action === "deposit" && record.terms.currency === "XTZ"
+          ? (BigInt(record.terms.entryAtomic) + (record.config.houseFeeAtomic && observation.playerId === record.roomSnapshot?.hostPlayerId
+            ? BigInt(record.config.houseFeeAtomic) : 0n)).toString() : "0";
         const encoded = new ParameterSchema(entrypoints.entrypoints[entrypoint]).EncodeObject(params);
         // TzKT locates a possible inclusion only. It cannot establish failure:
         // the finalized RPC branch and exact manager contents decide that.

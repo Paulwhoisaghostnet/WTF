@@ -1,0 +1,63 @@
+{
+  "prim": "Pair",
+  "args": [
+    [],
+    {
+      "prim": "Pair",
+      "args": [
+        {
+          "int": "500000"
+        },
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "string": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo"
+            },
+            {
+              "prim": "Pair",
+              "args": [
+                [],
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+                    },
+                    {
+                      "prim": "Pair",
+                      "args": [
+                        {
+                          "int": "1000000"
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "string": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD"
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "0"
+                                },
+                                {
+                                  "int": "10000"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

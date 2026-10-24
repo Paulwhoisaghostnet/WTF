@@ -11,6 +11,7 @@ export interface FundingConfig {
   wtfToken: { contract: string; tokenId: string | number; decimals: 8 };
   currencyDecimals: { XTZ: 6; WTF: 8 };
   feeQuantumAtomic?: string | null;
+  houseFeeAtomic?: string | null;
   refundPolicy?: string | null;
   currencyQuantaAtomic: { XTZ: string; WTF: string };
   treasuryAddress: string;
@@ -43,6 +44,7 @@ export interface FundingRoom {
   escrowContract: string;
   wtfToken: FundingConfig["wtfToken"];
   feeQuantumAtomic?: string | null;
+  houseFeeAtomic?: string | null;
   refundPolicy?: string | null;
   treasuryAddress: string;
   prizeRoundingPolicy: string;

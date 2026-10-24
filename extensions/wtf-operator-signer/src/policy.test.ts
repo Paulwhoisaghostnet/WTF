@@ -119,6 +119,12 @@ test("WTFIAP signer validates two-human AI rooms and full-field ranks while pres
   assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse(target));
   assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
     args: { ...target.payload.args, payout_mode: "0" } } }));
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    chainId: "NetXdQprcVkpaWU", args: { ...target.payload.args, payout_mode: "0", host: entrants[0] } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    chainId: "NetXdQprcVkpaWU", args: { ...target.payload.args, payout_mode: "0", host: "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk" } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    chainId: "NetXdQprcVkpaWU", args: { ...target.payload.args, currency: "1", payout_mode: "0", host: entrants[0] } } }));
   assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
     args: { ...target.payload.args, entrants: [entrants[0]] } } }));
   assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,

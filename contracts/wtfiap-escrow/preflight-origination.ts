@@ -24,6 +24,10 @@ export function typedInit(config: PreflightConfig, storageType: any, template?: 
     value = { claims: new MichelsonMap(), room_creator: config.creator, rooms: new MichelsonMap(),
       wtf_token_address: config.wtfTokenAddress, wtf_token_id: config.wtfTokenId,
       treasury_address: config.treasuryAddress, xtz_quantum: "10000", wtf_quantum: "1000000" };
+    const fields = schema.generateSchema().schema;
+    if ('house_fee_mutez' in fields) value.house_fee_mutez = '500000';
+    if ('lots' in fields) value.lots = new MichelsonMap();
+    if ('claimed_lots' in fields) value.claimed_lots = new MichelsonMap();
   } else {
     assert(config.kind === 'dummy-fa2' && config.network === 'shadownet', 'Dummy token rehearsal is Shadownet only.');
     assert(template, 'Use exact standards-based DummyWtfFA2 initial storage.');

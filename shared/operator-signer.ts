@@ -131,6 +131,9 @@ export const operatorSignerWtfIapPayloadSchema = z.discriminatedUnion("entrypoin
   z.object({ ...wtfiapTarget, entrypoint: z.literal("create_room"), args: z.object({
     ...wtfiapCreateBase, payout_mode: z.enum(["0", "1"]), entrants: wtfiapNewEntrants,
   }).strict().refine(args => args.payout_mode !== "0" || args.entrants.length === 2)
+    .or(z.object({ ...wtfiapCreateBase, currency: z.literal("0"), payout_mode: z.literal("0"),
+      entrants: z.array(wtfiapAddress).length(2).refine(distinctAddresses), host: wtfiapAddress,
+    }).strict().refine(args => args.entrants.includes(args.host)))
     .or(z.object({ ...wtfiapCreateBase, entrants: wtfiapOldEntrants }).strict()) }).strict(),
   z.object({ ...wtfiapTarget, entrypoint: z.literal("start_room"), args: z.object({
     room_id: wtfiapHash, expected_terms_hash: wtfiapHash, match_id: wtfiapHash,
