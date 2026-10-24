@@ -208,6 +208,23 @@ test("a paid duel freezes two wallets and settles the winner-takes-pot rank", as
   await s.close();
 });
 
+test("pinned eight-human rooms keep their original rank DTO and result commitment", async () => {
+  const f = fixture(), s = await open(f); await s.drain();
+  const saved = f.rows.get("test-room")!; delete saved.payoutMode;
+  f.observe(8); delete f.observed.payoutMode; await s.drain();
+  await s.start("test-room", "1"); await s.drain();
+  f.observe(8, "active"); delete f.observed.payoutMode; await s.drain();
+  f.setResult({ matchId: "party:test-room", receiptsHash: "d".repeat(64), groups:
+    addresses.map((_, i) => ({ placeFrom: i + 1, playerIds: ["p" + i] })) });
+  await s.drain();
+  const planned = f.submissions.at(-1);
+  assert.equal(planned.kind, "finalize_room");
+  assert.deepEqual(planned.params.ranks, addresses.map((player, i) => ({ player, rank: String(i + 1) })));
+  assert.equal(planned.params.result_hash, commitment({ version: "wtfiap-result-v1", roomId: saved.roomId,
+    matchId: saved.lock!.matchId, termsHash: saved.termsHash, transcriptHash: "d".repeat(64), ranks: planned.params.ranks }));
+  await s.close();
+});
+
 test("AI-filled tournament pays only two human entrants while preserving all eight finish places", async () => {
   const f = fixture({ humans: 2, aiFill: true }), s = f.service();
   await s.bind("test-room", "1", addresses[0]); await s.bind("test-room", "2", addresses[1]);

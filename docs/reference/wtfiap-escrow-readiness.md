@@ -1,19 +1,19 @@
 # WTFIAP-v0.01 escrow readiness
 
-New XTZ tournament rooms target **Tezos Shadownet**. New WTF tournament rooms target a separately configured **Tezos Mainnet** lane. Mainnet work is preparation only until its escrow is originated and verified: no Mainnet WTFIAP operation has been signed or injected. Existing funded rooms retain their pinned network and contract.
+New XTZ wager rooms target **Tezos Shadownet**. New WTF wager rooms target a separately configured **Tezos Mainnet** lane. The revised escrow has been originated and verified on both networks. Existing funded rooms retain their pinned network, contract and payout format. Mainnet player deposits and settlement still require a live wallet proof.
 
 ## Approved economics and recovery
 
-- Eight distinct human account/wallet entrants; no AI fill in funded tournaments.
+- Paid duels require two distinct human account/wallet entrants and pay the winner the full two-entry pot. Paid tournaments have eight battlefield seats and two through eight paying humans; remaining seats are AI.
 - Entry and prizes remain in the room currency: XTZ or WTF. Entry increments are **0.01 XTZ** (10,000 mutez) and **0.01 WTF** (1,000,000 atoms at eight decimals).
-- The combined pot pays places 1–3 at **50/35/15**. Same-round eliminations compare final unclamped commander HP, gold, then last-fielded total maximum HP. Remaining ties share the combined occupied prizes.
+- The tournament pot pays places 1–3 at **50/35/15**. An AI prize-place share belongs to `wtf.tez`. Same-round eliminations compare final unclamped commander HP, gold, then last-fielded total maximum HP. Remaining ties share the combined occupied prizes.
 - Each player's share is rounded **down** to the room's 0.01 quantum. The aggregate remainder belongs to the immutable `wtf.tez` treasury. There is no separate house fee. Treasury collection is isolated from player claims.
 - Entrants may withdraw their full entry before start and rejoin while funding remains open. An auditable technical void refunds every paid entry in full. No arbitrary cancellation deadline, forfeit, automatic winner or claim expiry is added.
 - The server is the trusted referee. It validates commands and derives results from saved authoritative combat/replay records; clients cannot submit winners or payout amounts.
 
 ## Contracts and current proof
 
-The approved artifact is `contracts/wtfiap-escrow/artifacts/contract.json`, SHA-256 `d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c`. Its constructor pins the room creator, WTF token and treasury; rooms pin the referee, entrants, terms, rules and seed commitment.
+The current artifact is `contracts/wtfiap-escrow/artifacts/contract.json`, SHA-256 `50944a178b52a411498f747f346af03553067702b5eddccaf82d035c0ec67926`. Its constructor pins the room creator, WTF token and treasury; rooms pin the referee, entrants, terms, rules and seed commitment. Previously funded rooms retain the earlier artifact and rank encoding.
 
 Shadownet chain ID: `NetXsqzbfFenSTS`.
 
@@ -49,7 +49,7 @@ Technical voids are private operator maintenance: stop the app, obtain the deplo
 
 ## Mainnet preparation
 
-Mainnet remains disabled. The production asset will be WTF `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`, token 0, eight decimals, on `NetXdQprcVkpaWU`.
+Mainnet admission is enabled on WTFOS with its separate verified contract and signer lane. The production asset is WTF `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`, token 0, eight decimals, on `NetXdQprcVkpaWU`. No Mainnet WTF player deposit or prize claim has been observed yet; that remains the live payment proof boundary.
 
 The game now selects the funding lane by room currency and exposes exact room-specific settings at `GET /api/wtfiap/funding/config?room=<code>`. The operator signer has independent Mainnet contract, wallet, RPC and durable-journal allowlists. The Mainnet lane cannot inherit the Shadownet escrow or signer settings; blank Mainnet fields keep new WTF deposits disabled. Player WTF approval, deposit and permission removal remain one wallet batch with zero XTZ attached; the initiating wallet pays Tezos gas and storage fees in XTZ. Claims and refunds for older rooms remain pinned to their original deployment.
 
@@ -66,6 +66,8 @@ The 2026-10-23 revision adds two-human duels and eight-seat tournaments with two
 The owner authorized `reward-disburser` (`tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u`) to pay Mainnet origination. A read-only preflight using that exact source measured **2,654,056 mutez** total at the pinned block, against **4,349,079 mutez** held. The same revised code and constructor typechecked on Mainnet. The Mainnet primary RPC returned 503; the configured fallback completed the check. Finalized `wtf.tez` resolution still points to `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`. [Payer estimate](../../contracts/wtfiap-escrow/proof/mainnet-2026-10-23-ai/preflight.json), [treasury resolution](../../contracts/wtfiap-escrow/proof/mainnet-2026-10-23-ai/treasury.json).
 
 Mainnet escrow `KT19LxQyVRCJCrWM9ViPuprvSHbHd2nSy4GM` originated in applied operation `opLxc8WFKxWGysKxRBZ5gfEZydqiXajyMhHg73GcRd5vmYTmVXx`. The finalized script matches the revised Michelson identity and storage pins contract-admin as room creator, the real Mainnet WTF token, `wtf.tez` treasury and both approved quanta. The reward-disburser paid origination. [Finalized deployment receipt](../../contracts/wtfiap-escrow/proof/mainnet-2026-10-23-ai/deployment.json). Hosted signer configuration and actual funded room proofs are separate checks; origination alone does not enable player wagering.
+
+The hosted Shadownet AI tournament at room `cc95a1ad-d786-4374-912b-b22840c1bc3b` completed on the deployed game with two paid human entrants, six AI seats, 37 rounds and 75 ordinary player commands. Finalized human deposit operations `ooHfA6BwwLjY83xg1KV2wLureX2achMMq5CtLS1XNpFA97bhuef` and `ooiRkqCnXQn4C75NnGrreDjFtsn3qDSEzFxSAHwAjJK6Zv3sutz` each credited 10,000 mutez. AI occupied all three prize places; the on-chain result assigned zero to human claims and all 20,000 mutez to the pinned treasury, which was claimed. [Hosted match receipt](../../contracts/wtfiap-escrow/proof/shadownet-2026-10-23-ai/hosted-ai-match.json). The app now reports both Shadownet XTZ and Mainnet WTF admission enabled. A prior rejected no-chain test room remains in conservative `submission-unknown` state and appears in the funding health diagnostic; it had no deposits and is excluded from this successful match proof.
 
 ## Verification commands and boundaries
 

@@ -56,22 +56,33 @@ async function main(){
       async function walletAction(entrant,kind,label){
         let room=await read(entrant);const prior=checkpoint.operations[label];
         if(prior?.status==='verified')return prior.evidence;
-        assert(!prior,'An incomplete wallet submission is reconcile-only; never submit again under a fresh identifier');
-        const action=room.self.actions[kind];assert(action,'The finalized server must offer the exact wallet action');
-        const calls=fundingCalls({...configuration,wtfToken:room.wtfToken},room,kind,action,entrant.actor.walletAddress);
-        const {wallet,signer}=await keyring.getSigner(entrant.actor.walletId);assert.equal(wallet.address,entrant.actor.walletAddress);assert.equal(wallet.chainId,'NetXsqzbfFenSTS');assert.equal(await signer.publicKeyHash(),wallet.address);
-        const tezos=new TezosToolkit(configuration.rpcUrl);tezos.setProvider({signer});assert.equal(await tezos.rpc.getChainId(),configuration.chainId);
-        const batch=tezos.contract.batch();for(const call of calls){const contract=await tezos.contract.at(call.contract);batch.withTransfer(contract.methodsObject[call.entrypoint](call.params).toTransferParams({amount:call.amountMutez,mutez:true}));}
-        const amountAtomic=kind==='claim'?room.self.payout.amount:room.terms.entryAtomic;
-        checkpoint.operations[label]={status:'submission-unknown',kind,actorId:entrant.actor.id,amountAtomic};await save();
-        const operation=await batch.send();checkpoint.operations[label].operationHash=operation.hash;checkpoint.operations[label].status='submitted';await save();
-        await entrant.write(route+'/observe',{action:kind,operationHash:operation.hash});await operation.confirmation(3);
-        const evidence=await verifyWtfiapTransfer({configuration,operationHash:operation.hash,inclusionLevel:operation.includedInBlock,currency,
-          from:kind==='deposit'?wallet.address:configuration.escrowContract,to:kind==='deposit'?configuration.escrowContract:wallet.address,amountAtomic});
-        await entrant.write(route+'/reconcile');room=await read(entrant);
-        if(kind==='deposit')assert(room.roster.find(p=>p.playerId===entrant.playerId).deposited);
-        else if(kind==='claim')assert(room.self.payout.claimed);
-        else assert(!room.roster.find(p=>p.playerId===entrant.playerId).deposited);
+        assert(!prior||prior.status==='submitted'&&prior.operationHash,
+          'An incomplete wallet submission is reconcile-only; never submit again under a fresh identifier');
+        let operationHash,inclusionLevel,amountAtomic;
+        if(prior){
+          operationHash=prior.operationHash;amountAtomic=prior.amountAtomic;
+          const indexed=await (await fetch(`https://api.shadownet.tzkt.io/v1/operations/transactions/${operationHash}`)).json();
+          const found=indexed.find(op=>op.hash===operationHash&&op.status==='applied');
+          assert(found,'The submitted operation must be located before resuming');inclusionLevel=found.level;
+        }else{
+          const action=room.self.actions[kind];assert(action,'The finalized server must offer the exact wallet action');
+          const calls=fundingCalls({...configuration,wtfToken:room.wtfToken},room,kind,action,entrant.actor.walletAddress);
+          const {wallet,signer}=await keyring.getSigner(entrant.actor.walletId);assert.equal(wallet.address,entrant.actor.walletAddress);assert.equal(wallet.chainId,'NetXsqzbfFenSTS');assert.equal(await signer.publicKeyHash(),wallet.address);
+          const tezos=new TezosToolkit(configuration.rpcUrl);tezos.setProvider({signer});assert.equal(await tezos.rpc.getChainId(),configuration.chainId);
+          const batch=tezos.contract.batch();for(const call of calls){const contract=await tezos.contract.at(call.contract);batch.withTransfer(contract.methodsObject[call.entrypoint](call.params).toTransferParams({amount:call.amountMutez,mutez:true}));}
+          amountAtomic=kind==='claim'?room.self.payout.amount:room.terms.entryAtomic;
+          checkpoint.operations[label]={status:'submission-unknown',kind,actorId:entrant.actor.id,amountAtomic};await save();
+          const operation=await batch.send();operationHash=operation.hash;checkpoint.operations[label].operationHash=operationHash;checkpoint.operations[label].status='submitted';await save();
+          await entrant.write(route+'/observe',{action:kind,operationHash});await operation.confirmation(3);inclusionLevel=operation.includedInBlock;
+        }
+        const evidence=await verifyWtfiapTransfer({configuration,operationHash,inclusionLevel,currency,
+          from:kind==='deposit'?entrant.actor.walletAddress:configuration.escrowContract,to:kind==='deposit'?configuration.escrowContract:entrant.actor.walletAddress,amountAtomic});
+        for(;;){
+          await entrant.write(route+'/reconcile');room=await read(entrant);
+          if(kind==='deposit'?room.roster.find(p=>p.playerId===entrant.playerId).deposited:
+            kind==='claim'?room.self.payout.claimed:!room.roster.find(p=>p.playerId===entrant.playerId).deposited)break;
+          await new Promise(resolve=>setTimeout(resolve,1000));
+        }
         Object.assign(checkpoint.operations[label],{status:'verified',evidence});await save();return evidence;
       }
       if(!checkpoint.opened){for(const entrant of entrants)await entrant.write(route+'/bind-wallet',{walletAddress:entrant.actor.walletAddress});await entrants[0].write(route+'/open');checkpoint.opened=true;await save();}

@@ -1724,13 +1724,13 @@ Total: **668** · Open: **2** · Claimed: **41** · In Progress: **13** · Block
 - Priority: P1
 - Status: In Progress
 - Owner/Session: Codex coLILseum dual-network wagering
-- Last touched: 2026-10-23
+- Last touched: 2026-10-24
 - Score: C3 + F4 + S2 + P1(4) = 13
 - Evidence: Hosted funding was pinned globally to Shadownet; the operator signer allowed one WTFIAP chain, RPC, wallet and journal. The approved Mainnet escrow was not originated. The planned contract-admin wallet held 745,372 mutez while a fresh RPC preflight reported 2,327,500 mutez of storage cost before transaction fees.
 - Correction direction: Select the funding lane from room currency, preserve pinned legacy records, add a separate exact Mainnet signer allowlist and journal, then originate and verify the approved Mainnet escrow using an explicitly authorized funded payer. Enable Mainnet admissions only after finalized script/storage and signer configuration match.
-- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and read-only Mainnet origination wrapper are implemented. Focused funding, signer, contract and browser tests pass.
+- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and Mainnet origination are implemented. Paid duels and two-through-eight-human tournaments with AI fill use the revised escrow. Focused funding, signer, contract and browser tests pass.
 - Owner authorization on 2026-10-23: Use the reward-disburser wallet for Mainnet origination, and extend paid wagering to both two-player duels and eight-player tournaments. The escrow source and application must support both formats before activation.
-- Pending proof: Compile and test the revised escrow, originate fresh Shadownet and Mainnet deployments, verify code/storage, configure both signer lanes, and complete live deposits, settlement, withdrawals and claims.
+- Live proof: The revised contracts were originated and code/storage verified on both networks. Both signer lanes and both WTFOS admission lanes are configured. A hosted two-human/six-AI Shadownet tournament completed 37 rounds; two finalized 0.01 XTZ deposits formed a 0.02 XTZ pot, all AI prize places routed to the pinned treasury, and the treasury claimed it. Mainnet WTF admission is enabled with the verified contract; a real Mainnet WTF deposit and settlement remain unobserved. A prior no-chain rejected test room still appears in the funding health diagnostic and must be reconciled separately.
 
 ### WTF-BB-622 - Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry
 

@@ -1,0 +1,86 @@
+{
+  "kind": "hosted-authoritative-Shadownet-match",
+  "aiFill": true,
+  "payingHumans": 2,
+  "baseURL": "https://wtfos.app",
+  "currency": "XTZ",
+  "escrowContract": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+  "roomCode": "cc95a1ad-d786-4374-912b-b22840c1bc3b",
+  "match": {
+    "roomCode": "cc95a1ad-d786-4374-912b-b22840c1bc3b",
+    "winnerId": "3bc8abeb-9aa0-43db-ace6-933aa4f96bd3",
+    "commandCount": 75,
+    "replaySha256": "27fc80b5dc71ba3a17a4c8c3e86aa13d64a315179bd176f2e3b13880a758d8e0",
+    "roundCount": 37
+  },
+  "prizeSummary": {
+    "quantumAtomic": "10000",
+    "allocatedPlayerPrizesAtomic": "0",
+    "treasuryRemainderAtomic": "20000",
+    "treasuryClaimed": true
+  },
+  "operations": [
+    {
+      "status": "verified",
+      "kind": "deposit",
+      "actorId": "bert",
+      "amountAtomic": "10000",
+      "operationHash": "ooHfA6BwwLjY83xg1KV2wLureX2achMMq5CtLS1XNpFA97bhuef",
+      "evidence": {
+        "network": "shadownet",
+        "chainId": "NetXsqzbfFenSTS",
+        "operationHash": "ooHfA6BwwLjY83xg1KV2wLureX2achMMq5CtLS1XNpFA97bhuef",
+        "blockHash": "BLnDxKSAZvFPpwBMUcFAUHWogNSjxZbwrskifguu64CUtgUY7vP",
+        "inclusionLevel": 5615709,
+        "finalizedBlockHash": "BLnDxKSAZvFPpwBMUcFAUHWogNSjxZbwrskifguu64CUtgUY7vP",
+        "finalizedLevel": 5615709,
+        "currency": "XTZ",
+        "amountAtomic": "10000",
+        "from": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+        "to": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+        "transfers": [
+          {
+            "from": "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+            "to": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+            "amountAtomic": "10000",
+            "kind": "external"
+          }
+        ],
+        "managerFeesMutez": "527",
+        "chainWrites": 0
+      }
+    },
+    {
+      "status": "verified",
+      "kind": "deposit",
+      "actorId": "ernie",
+      "amountAtomic": "10000",
+      "operationHash": "ooiRkqCnXQn4C75NnGrreDjFtsn3qDSEzFxSAHwAjJK6Zv3sutz",
+      "evidence": {
+        "network": "shadownet",
+        "chainId": "NetXsqzbfFenSTS",
+        "operationHash": "ooiRkqCnXQn4C75NnGrreDjFtsn3qDSEzFxSAHwAjJK6Zv3sutz",
+        "blockHash": "BL3B19y8cHZfwZxFowNvKfaVX68QjRv4E3L8h7K7LKZVEapcJaP",
+        "inclusionLevel": 5615714,
+        "finalizedBlockHash": "BKpdLPtiCtcd8nZxi2oim9eisWefpmE7Ux8WTKngiySa2mL1Wmj",
+        "finalizedLevel": 5615725,
+        "currency": "XTZ",
+        "amountAtomic": "10000",
+        "from": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+        "to": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+        "transfers": [
+          {
+            "from": "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN",
+            "to": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+            "amountAtomic": "10000",
+            "kind": "external"
+          }
+        ],
+        "managerFeesMutez": "528",
+        "chainWrites": 0
+      }
+    }
+  ],
+  "noGameplayStateInjection": true,
+  "noAccountOrWalletLinkChanges": true
+}

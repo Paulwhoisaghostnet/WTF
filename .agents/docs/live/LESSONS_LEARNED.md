@@ -12250,3 +12250,11 @@
 **Correction and proof**: The signer schema now validates the new two-through-eight paying-human roster, duel/tournament mode and full-field tie sizes. It still accepts the previous eight-human DTO so pinned old rooms remain recoverable. Added focused schema regression tests; signer type check/build, host type check/build and all focused tests pass. New admissions were disabled during rollout so no other room could enter the same unresolved state.
 
 **Rule**: When an escrow entrypoint changes, exercise the complete game → funding adapter → shared signer DTO → signer policy → contract path with the smallest live room before enabling new admissions. Unit tests at each separate layer do not prove the handoff.
+
+## 2026-10-24 — Hosted wager proof must use the matching production test keyring and reconcile finalized deposits
+
+**What happened**: The hosted test accounts were linked to wallets in the production puppet keyring, while the proof runner defaulted to a separate local test keyring with the same wallet IDs. Its first retry also stopped after a finalized deposit because the room view had not yet caught up with the chain operation.
+
+**Correction and proof**: Run the proof with the production puppet keyring and its matching master key, assert each signer address against the linked wallet, and journal every submitted operation before observing it. On restart, locate the submitted hash and verify the exact finalized transfer through RPC rather than sending a second transaction. Reconcile until the room reflects that transfer. Two human deposits then funded a live six-AI tournament; the authoritative match finished and the full AI prize pot was claimed by the pinned treasury.
+
+**Rule**: A wallet ID is not a wallet identity across keyring files. Hosted payment proofs must pin the credentials, keyring and master key as one set, and use finalized operation hashes for safe resumption through delayed server reconciliation.

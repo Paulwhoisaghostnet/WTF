@@ -234,6 +234,19 @@ export function createFundingService({ config, configs, store, game, chain, link
     if (record.finalResult) return clone(record.finalResult.params);
     const result = game.result(record.roomCode); if (!result) return null;
     demand(result.matchId === "party:" + record.roomCode, "Match result belongs to another room.");
+    if (!record.payoutMode) {
+      // Rooms created before the duel/AI revision retain their original
+      // contract, result commitment and eight-human rank DTO through payout.
+      const ranks = result.groups.flatMap((group: any) => group.playerIds.map((id: string) => {
+        const binding = record.bindings.find(b => b.playerId === id); demand(binding, "Result contains an unknown entrant.");
+        return { player: binding.walletAddress, rank: String(group.placeFrom) };
+      }));
+      demand(ranks.length === 8 && new Set(ranks.map((r: any) => r.player)).size === 8,
+        "Results require all eight original funded entrants.");
+      return { room_id: record.roomId, match_id: record.lock.matchId, transcript_hash: result.receiptsHash,
+        result_hash: commitment({ version: "wtfiap-result-v1", roomId: record.roomId, matchId: record.lock.matchId,
+          termsHash: record.termsHash, transcriptHash: result.receiptsHash, ranks }), ranks };
+    }
     demand(record.payoutMode !== "duel" || record.bindings.length === 2, "A paid duel requires its two original wallets.");
     const battlefieldIds = result.groups.flatMap((group: any) => group.playerIds);
     demand(battlefieldIds.length === (record.payoutMode === "duel" ? 2 : 8) && new Set(battlefieldIds).size === battlefieldIds.length,
