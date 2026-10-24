@@ -12322,3 +12322,11 @@
 **Correction and proof**: The renderer now keeps the original atlas pixels intact and places a standardized silver or gold canvas aura behind the sprite. Separate star marks sit above fielded and benched heroes. A browser screenshot compared one, two and three stars for the same hero; the game smoke test and hosted rank assertion pass. The authoritative rules hash is unchanged.
 
 **Rule**: Use a rank indicator outside character artwork unless a separately approved evolved sprite exists. Verify it at actual board and bench sizes, including combat layout.
+
+## 2026-10-24 — Version Cherub objectives without changing active rooms
+
+**What happened**: The Cherub reward adds a new battlefield objective and component receipt, while production still holds rooms created under earlier rules. The source game also contains unrelated sponsored-tournament staging, so copying the whole local server into the host would have mixed unfinished payment work into this release.
+
+**Correction and proof**: The host package changes only Cherub game modules and a narrow room-config adaptation. New rooms pin `cherubRulesVersion: 1`; restored rooms without it retain their prior objective set and receipts. Serialized first-round item-free and item-enabled legacy transcripts match the previous runtime byte for byte. The package checksum, hosted authority and funding tests, browser Cherub story, inventory coverage and type check pass.
+
+**Rule**: Add optional combat objectives behind room creation versions, preserve absent fields during restoration, and compare frozen-room transcripts before accepting a new rules hash as compatible. Vendor only the finished source subset when adjacent work is staged.

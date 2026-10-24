@@ -11,9 +11,9 @@
   'use strict';
   if (typeof module !== 'undefined' && module.exports) module.exports = factory(
     require('../../source/engine.js'), require('./progression.cjs'), require('./income.cjs'),
-    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('../../source/zone-policy.js'));
-  else root.ABMatch = factory(root.AB, root.ABProgression, root.ABIncome, root.ABCommanderHealth, root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABZonePolicy);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Progression, Income, Health, Treasure, ChestHealth, ShopPool, ZonePolicy) {
+    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'));
+  else root.ABMatch = factory(root.AB, root.ABProgression, root.ABIncome, root.ABCommanderHealth, root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABZonePolicy, root.ABItems);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Progression, Income, Health, Treasure, ChestHealth, ShopPool, ZonePolicy, Items) {
   'use strict';
   if (![Engine, Progression, Income, Health, Treasure, ChestHealth].every(Boolean)) throw new Error('Load the engine and shared match-rule modules before ABMatch.');
   const SIDES = ['player', 'enemy'];
@@ -180,14 +180,15 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
       treasure: Treasure.createLedger({ matchId, playerIds: SIDES }), receipts: [], lastReceipt: null, lastIncome: null, winnerSide: null };
     if (options.boardMode !== undefined) { match.boardMode = options.boardMode; match.game.board = boardForLevel(options.boardMode, 1); }
+    match.game.itemRulesVersion = 1;
     match.game.bench = []; match.game.opponents = [];
-    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP,
+    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [],
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
       income: Income.createLedger({ matchId, playerId: side }) };
     synchronize(match); for (const side of SIDES) refreshShop(match, side); prepareAI(match); validate(match); return match;
@@ -258,18 +259,19 @@
     // Stage the recruit and its complete upgrade chain before checking capacity.
     // Nothing is spent, removed or evolved if the final inventory cannot fit.
     const unit = { id: offer.id + ':unit', heroId: offer.heroId, level: 1, ...(offer.lotIds ? { lotIds: [...offer.lotIds] } : {}) };
-    const upgrades = [];
+    const upgrades = [], overflowItems = [];
     let result = unit;
     if (side === 'player') {
       const game = { ...match.game, field: clone(match.game.field), bench: clone(match.game.bench) };
       game.bench.push(unit);
       let group;
       while ((group = Engine.mergeGroups(game).find(value => value.heroId === offer.heroId))) {
-        result = required(Engine.combine(game, group.heroId, group.level)).unit;
+        const combined = required(Engine.combine(game, group.heroId, group.level));
+        result = combined.unit; overflowItems.push(...(combined.overflowItemIds || []));
         upgrades.push({ heroId: result.heroId, level: result.level, unitId: result.id });
       }
       demand(game.bench.length <= 10, 'Make room on the ten-slot bench before buying.');
-      return { unit: result, upgrades, game };
+      return { unit: result, upgrades, overflowItems, game };
     }
     let pool = clone(match.enemyPool), serial = match.enemyMergeSerial;
     pool.push(unit);
@@ -307,6 +309,7 @@
       commander.gold -= offer.cost; match.shops[side][index] = null;
       if (side === 'player') {
         match.game.field = next.game.field; match.game.bench = next.game.bench; match.game.mergeSerial = next.game.mergeSerial;
+        if (match.cherubRulesVersion === 1) commander.items.push(...next.overflowItems);
       } else { match.enemyPool = next.pool; match.enemyMergeSerial = next.serial; fieldAI(match); }
       match.shopReceipts.push({ kind: 'purchase', side, roundNumber: match.roundNumber, offer: clone(offer), goldBefore: before, goldSpent: offer.cost, goldAfter: commander.gold });
       return { ok: true, unit: next.unit, upgrades: next.upgrades };
@@ -327,6 +330,7 @@
       if (side === 'player') {
         match.game.field = match.game.field.filter(value => value.id !== unitId);
         match.game.bench = match.game.bench.filter(value => value.id !== unitId);
+        if (match.cherubRulesVersion === 1) commander.items.push(...(unit.itemIds || []));
       } else { match.enemyPool = match.enemyPool.filter(value => value.id !== unitId); fieldAI(match); }
       commander.gold += goldReceived;
       const receipt = { kind: 'sale', side, roundNumber: match.roundNumber, unit: clone(unit), goldBefore: before,
@@ -391,6 +395,7 @@
       demand(preview.chests.every(chest => chest.col !== null && chest.row !== null), 'Place your treasure chest before starting this round.');
       demand(preview.chests.every(chest => chest.maxHp !== null), 'Field a hero to determine treasure health.');
       required(Engine.startBattle(match.game, { roundNumber: match.roundNumber,
+        ...(match.cherubRulesVersion === 1 ? { cherubRulesVersion: 1, cherubs: Engine.cherubObjectives(match.game, combatId(match)) } : {}),
         chests: preview.chests.map(({ id, side, col, row, maxHp }) => ({ id, side, col, row, maxHp })) }));
       match.phase = 'combat'; if (match.game.phase === 'finished') settleCombat(match);
       return { ok: true };
@@ -409,7 +414,7 @@
     const health = required(Health.applyCombatResult(match.health, { ...common, expectedRevision: match.health.revision, winnerId: winnerSide, survivingHeroes }));
     const treasure = required(Treasure.settleRound(match.treasure, { ...common, expectedRevision: match.treasure.revision,
       roundNumber: match.roundNumber, combatEndedAtSeconds: game.battle.elapsed,
-      chests: (game.battle.objectives || []).map(chest => ({ chestId: chest.id, ownerId: chest.side })),
+      chests: (game.battle.objectives || []).filter(chest => chest.rewardKind !== 'cherub').map(chest => ({ chestId: chest.id, ownerId: chest.side })),
       verifiedDefeats: game.battle.events.filter(event => event.type === 'treasure-defeated').map(event =>
         ({ chestId: event.chestId, captorPlayerId: event.captorSide, defeatedAtSeconds: event.defeatedAtSeconds })) }));
     const xp = {}, balances = {};
@@ -422,11 +427,18 @@
       balances[side] = match.players[side].gold + treasure.receipt.payouts.find(payout => payout.playerId === side).gold + zoneGold[side];
       demand(safeGold(balances[side]), 'Gold balance exceeds exact numeric representation.');
     }
+    const cherubRewards = match.cherubRulesVersion === 1 ? game.battle.events.filter(event => event.type === 'cherub-defeated').map(event => {
+      const random = Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':cherub:' + match.roundNumber + ':' + event.cherubId + ':' + event.captorSide);
+      return { cherubId: event.cherubId, side: event.captorSide,
+        itemId: Items.componentIds[Math.floor(random() * Items.componentIds.length)] };
+    }) : [];
     // All pure module transitions have succeeded. Commit their effects together.
     match.health = health.state; match.treasure = treasure.state;
     for (const side of SIDES) { match.players[side].progression = xp[side].state; match.players[side].gold = balances[side]; }
+    for (const reward of cherubRewards) match.players[reward.side].items.push(reward.itemId);
     const receipt = { roundNumber: match.roundNumber, roundId: common.roundId, combatId: common.combatId, result, winnerSide,
       combatEndedAtSeconds: game.battle.elapsed, health: health.receipt, treasure: treasure.receipt,
+      ...(match.cherubRulesVersion === 1 ? { cherubRewards } : {}),
       ...(match.boardMode === 'zone-defense' ? { zoneGold, zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       xp: { player: xp.player.receipt, enemy: xp.enemy.receipt } };
     match.receipts.push(receipt); match.lastReceipt = receipt;
@@ -489,16 +501,49 @@
   }
   function deploy(match, unitId, col, row) { return preparation(match) ? Engine.deploy(match.game, unitId, col, row) : fail('Move heroes during round preparation.'); }
   function recall(match, unitId) { return preparation(match) ? Engine.recall(match.game, unitId) : fail('Recall heroes during round preparation.'); }
-  function combine(match, heroId, stars) { return preparation(match) ? Engine.combine(match.game, heroId, stars) : fail('Combine heroes during round preparation.'); }
+  function combine(match, heroId, stars) {
+    if (!preparation(match)) return fail('Combine heroes during round preparation.');
+    const result = Engine.combine(match.game, heroId, stars);
+    if (result.ok && match.cherubRulesVersion === 1) match.players.player.items.push(...(result.overflowItemIds || []));
+    return result;
+  }
+  function equipItem(match, unitId, itemId) {
+    return guarded(() => {
+      demand(preparation(match) && match.cherubRulesVersion === 1, 'Equip items during preparation in a Cherub match.');
+      const unit = [...match.game.field, ...match.game.bench].find(entry => entry.id === unitId), items = match.players.player.items;
+      demand(unit && Items.isItem(itemId) && items.includes(itemId), 'Choose an owned hero and an item in your inventory.');
+      unit.itemIds ||= [];
+      demand(!unit.itemIds.includes('lucky-grips+lucky-grips'), 'Trickster Mitts occupy all slots.');
+      const componentIndex = Items.isComponent(itemId) ? unit.itemIds.findIndex(Items.isComponent) : -1;
+      if (componentIndex >= 0) unit.itemIds[componentIndex] = Items.recipe(unit.itemIds[componentIndex], itemId).id;
+      else { demand(unit.itemIds.length < 3, 'A hero can carry three completed item slots.'); unit.itemIds.push(itemId); }
+      items.splice(items.indexOf(itemId), 1);
+      if (itemId === 'lucky-grips+lucky-grips') { items.push(...unit.itemIds.filter(id => id !== itemId)); unit.itemIds = [itemId]; }
+      return { ok: true };
+    });
+  }
+  function unequipItem(match, unitId, itemId) {
+    return guarded(() => {
+      demand(preparation(match) && match.cherubRulesVersion === 1, 'Remove items during preparation.');
+      const unit = [...match.game.field, ...match.game.bench].find(entry => entry.id === unitId);
+      demand(unit?.itemIds?.includes(itemId), 'That item is not on this hero.');
+      unit.itemIds.splice(unit.itemIds.indexOf(itemId), 1); match.players.player.items.push(itemId);
+      return { ok: true };
+    });
+  }
   function validate(match) {
     demand(match && [1, 2].includes(match.schemaVersion) && typeof match.matchId === 'string' && match.matchId.trim(), 'Invalid practice-match schema or identity.');
     demand(match.startingGold === RULES.startingGold && Number.isSafeInteger(match.roundNumber) && match.roundNumber >= 1, 'Invalid starting gold or round number.');
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
+    demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
     Health.validate(match.health); Treasure.validate(match.treasure);
     demand(match.health.matchId === match.matchId && match.treasure.matchId === match.matchId && match.health.startingHP === 100, 'Health and treasure ledgers must belong to this match.');
     demand(match.health.players.map(player => player.playerId).join(',') === SIDES.join(','), 'Commander identities must match their board sides.');
     for (const side of SIDES) {
       const commander = match.players[side]; Progression.validate(commander.progression); Income.validate(commander.income);
+      if (match.cherubRulesVersion === 1) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
+      if (match.cherubRulesVersion === 1 && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
+        demand(!unit.itemIds || Array.isArray(unit.itemIds) && unit.itemIds.length <= 3 && unit.itemIds.every(Items.isItem), 'Invalid equipped item.');
       demand(safeGold(commander.gold) && commander.hp === match.health.players.find(player => player.playerId === side).hp, 'Commander gold or carried HP is invalid.');
       for (const ledger of [commander.progression, commander.income]) demand(ledger.matchId === match.matchId && ledger.playerId === side, 'Commander ledgers belong to another match or side.');
       demand(JSON.stringify(commander.progression.xpCosts) === JSON.stringify(Progression.COMMANDER_LEVEL_COSTS), 'Use the approved XP curve.');
@@ -587,5 +632,5 @@
     });
   }
   return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, moveChest, chestPreview,
-    deploy, recall, combine, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
+    deploy, recall, combine, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
 });

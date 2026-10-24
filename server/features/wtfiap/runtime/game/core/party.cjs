@@ -21,6 +21,7 @@
   const identity = value => typeof value === 'string' && value.trim().length > 0;
   const roundId = state => state.matchId + ':round:' + state.roundNumber;
   const itemsOn = state => state.itemRulesVersion === 1;
+  const cherubsOn = state => state.cherubRulesVersion === 1;
   const itemRandom = (state, label) => Engine.makeRandom(state.seed + ':items:' + label);
   const alive = state => state.players.filter(player => player.hp > 0);
   const playerFor = (state, id) => { const player = state.players.find(player => player.playerId === id); demand(player, 'Unknown party player.'); return player; };
@@ -123,8 +124,10 @@
     demand(options.earlyStart === undefined || options.earlyStart === earlyStart, 'Only untimed rooms start when everyone is ready.');
     demand(options.oddPlayerPolicy === 'round-ai', 'An unmatched commander faces the round AI.');
     demand(options.itemRulesVersion === undefined || options.itemRulesVersion === 1, 'Unknown item rules version.');
+    demand(options.cherubRulesVersion === undefined || options.cherubRulesVersion === 1 && options.itemRulesVersion === 1, 'Cherub rewards require item rules.');
     const state = { schemaVersion: 1, matchId: options.matchId, seed: options.seed, boardMode: options.boardMode,
       ...(options.itemRulesVersion === 1 ? { itemRulesVersion: 1, itemReceipts: [] } : {}),
+      ...(options.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
@@ -356,7 +359,8 @@
     return npc;
   }
   function chestConfig(state, pair, game, npc) {
-    if (state.roundNumber < 5) return { roundNumber: state.roundNumber, chests: [] };
+    const cherubTerms = cherubsOn(state) ? { cherubRulesVersion: 1, cherubs: Engine.cherubObjectives(game, pair.id) } : {};
+    if (state.roundNumber < 5) return { roundNumber: state.roundNumber, chests: [], ...cherubTerms };
     const chests = ['player', 'enemy'].map(side => {
       const player = side === 'enemy' && npc ? npc : playerFor(state, side === 'player' ? pair.playerId : pair.enemyId), units = side === 'player' ? game.field : game.opponents;
       const health = units.length ? ChestHealth.calculateChestHealth(reference, units.map(unit => unit.heroId)) : null;
@@ -372,7 +376,7 @@
         row: side === 'player' ? chest.row : state.board.rows - 1 - chest.row,
         maxHp: chests.find(entry => entry.side === side).maxHp });
     }
-    return { roundNumber: state.roundNumber, ...(itemsOn(state) ? { itemRulesVersion: 1 } : {}), chests };
+    return { roundNumber: state.roundNumber, ...(itemsOn(state) ? { itemRulesVersion: 1 } : {}), ...cherubTerms, chests };
   }
   function makeCombat(state, pair) {
     const npc = pair.isRoundAI ? createRoundAI(state, pair) : null;
@@ -416,6 +420,9 @@
       combat.config.chests.some(chest => chest.id === event.chestId && chest.kind === 'item') &&
       event.defeatedAtSeconds < state.roundNumber * 15 && event.defeatedAtSeconds <= game.battle.elapsed)
       .map(event => ({ chestId: event.chestId, captorPlayerId: sideId(event.captorSide) })) : [];
+    const cherubCaptures = cherubsOn(state) ? game.battle.events.filter(event => event.type === 'cherub-defeated' &&
+      combat.config.cherubs.some(cherub => cherub.id === event.cherubId && cherub.side === event.ownerSide))
+      .map(event => ({ cherubId: event.cherubId, captorPlayerId: sideId(event.captorSide) })) : [];
     const zoneGoldEvents = game.battle.events.filter(event => event.type === 'zone-gold');
     demand(state.boardMode === 'zone-defense' || !zoneGoldEvents.length, 'Zone gold belongs only to Zone Defense.');
     const zoneGold = state.boardMode === 'zone-defense' ? ZonePolicy.goldPayouts(game.zoneDefense, zoneGoldEvents) : { player: 0, enemy: 0 };
@@ -430,6 +437,7 @@
     });
     return { pair: clone(pair), combatId, result: game.result, elapsedSeconds: game.battle.elapsed, survivors, treasure, awards,
       ...(itemsOn(state) ? { itemChestCaptures } : {}),
+      ...(cherubsOn(state) ? { cherubCaptures } : {}),
       ...(state.boardMode === 'zone-defense' ? { zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       replay: { initial: clone(combat.initial), config: clone(combat.config), instant: combat.instant, ticks: game.battle.tick, result: game.result } };
   }
@@ -459,6 +467,17 @@
       captor.pendingComponentChoices++;
       state.itemReceipts.push({ kind: 'item-chest-capture', playerId: captor.playerId, roundNumber: state.roundNumber,
         chestId: capture.chestId, goldSpent: 0, goldReceived: 0 });
+    }
+    if (cherubsOn(state)) for (const result of results) for (const capture of result.cherubCaptures) {
+      const captor = state.players.find(player => player.playerId === capture.captorPlayerId);
+      if (!captor) continue; // AI encounters cannot own a competitive inventory.
+      const random = itemRandom(state, 'cherub:' + state.roundNumber + ':' + capture.cherubId + ':' + captor.playerId);
+      const itemId = Items.componentIds[Math.floor(random() * Items.componentIds.length)];
+      captor.items.push(itemId);
+      const award = result.awards.find(entry => entry.playerId === captor.playerId);
+      if (award) (award.cherubItems ||= []).push(itemId);
+      state.itemReceipts.push({ kind: 'cherub-capture', playerId: captor.playerId, roundNumber: state.roundNumber,
+        cherubId: capture.cherubId, itemId, goldSpent: 0, goldReceived: 0 });
     }
     const receipt = { roundNumber: state.roundNumber, pairings: clone(state.pairings), startedAtMs: state.combatStartedAtMs,
       settledAtMs: atMs, results: results.map(result => ({ ...result, awards: result.awards.map(award => ({ ...award, xp: award.xp.receipt })) })) };
@@ -516,7 +535,7 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds },
@@ -527,12 +546,13 @@
       lastRound: last ? { roundNumber: last.roundNumber, pairings: last.pairings, results: last.results.map(result => ({ pair: result.pair,
         result: result.result, elapsedSeconds: result.elapsedSeconds, awards: result.awards.map(award => ({ playerId: award.playerId,
           outcome: award.outcome, damage: award.damage, hpAfter: award.hpAfter, treasureGold: award.treasureGold,
-          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), ...(itemsOn(state) ? { itemDrop: award.itemDrop || null } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
+          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), ...(itemsOn(state) ? { itemDrop: award.itemDrop || null } : {}), ...(cherubsOn(state) ? { cherubItems: award.cherubItems || [] } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
   }
   function validate(state) {
     demand(state && state.schemaVersion === 1 && identity(state.matchId) && identity(state.seed), 'Invalid party identity.');
     demand([RULES.duelPlayerCount, RULES.playerCount].includes(state.players.length) && new Set(state.players.map(player => player.playerId)).size === state.players.length, 'A room retains its original players.');
     demand(state.itemRulesVersion === undefined || state.itemRulesVersion === 1, 'Invalid item rules version.');
+    demand(state.cherubRulesVersion === undefined || state.cherubRulesVersion === 1 && itemsOn(state), 'Invalid Cherub rules version.');
     if (itemsOn(state)) demand(Array.isArray(state.itemReceipts), 'Item receipts are required.');
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');

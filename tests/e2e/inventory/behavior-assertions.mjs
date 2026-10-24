@@ -27,6 +27,15 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     durableSideEffectAssertion: "Authoritative match tests advance through round five, reject hero purchases until the item shop resolves, record the one item purchase, equip it, and restore the same item-enabled state and view from replay. The same tests prove 36 component pairings and the independent win/loss streak probability formulas. Existing rooms keep their original item-free version.",
   },
   {
+    id: "wtfiap.cherub-component-encounter",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "tests/playwright/inventory/wtfiap.spec.mjs; server/features/wtfiap/cherub.test.cjs",
+    verificationCommand: "node --test server/features/wtfiap/cherub.test.cjs && npm run test:e2e:inventory -- --grep 'Cherub'",
+    userVisibleAssertion: "A Lil Guy Studio Cherub is visible for each side from round one. It cannot attack; defeating the opposing Cherub awards a named component, which appears in the Items panel and equips onto a hero in the next preparation.",
+    durableSideEffectAssertion: "The authoritative room records a seeded Cherub capture and inventory receipt. Prior item-free and item-enabled room transcripts remain byte-identical under the new versioned runtime, so existing funded rooms continue without Cherub.",
+  },
+  {
     id: "wtfiap.spectator-and-private-chat",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

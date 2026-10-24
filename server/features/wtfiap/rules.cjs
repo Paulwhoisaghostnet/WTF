@@ -11,6 +11,14 @@ const hashValue = value => crypto.createHash('sha256').update(stable(value)).dig
 // can continue those frozen rooms. Any later rules hash must prove its own
 // compatibility before inheriting them.
 const compatiblePinnedRules = Object.freeze({
+  // Cherub is enabled only in newly created rooms. Prior room configs omit
+  // cherubRulesVersion, and both item-free and item-enabled first-round
+  // transcripts remained byte-identical under the new runtime.
+  'f6808dd4d3cc63e38b1ab9691826b14e2acc0bc837188aa784f96ff710b107de': Object.freeze([
+    '4415776d4b0db7a07f3346bdf0c4014c68808060d32e974bbf7703ba47ac8d73',
+    '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd',
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
   // The item release opts in only new rooms. The older room config omits
   // itemRulesVersion; its serialized state and public views match the prior
   // runtime through complete combats, and configuration preserves that omission.

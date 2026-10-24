@@ -136,6 +136,32 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("Lil Guy Studio Cherub yields an equipable component in practice", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/generator.html?seed=cherub-practice&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+    const ready = await gameState(page);
+    expect(ready.cherubs).toHaveLength(2);
+    expect(ready.cherubs.every(cherub => cherub.hp === cherub.maxHp)).toBe(true);
+    await page.locator("#game").screenshot({ path: test.info().outputPath("cherub-preparation.png") });
+    const unitId = await buyAndDeploy(page, page);
+    await hit(page, page, "battle");
+    await page.evaluate(() => window.advanceTime(30000));
+    const settled = await gameState(page);
+    expect(settled.match.phase).toBe("round-result");
+    const reward = settled.match.lastReceipt.cherubRewards.find(item => item.side === "player");
+    expect(reward?.itemId).toBeTruthy();
+    expect(settled.match.players.player.items).toContain(reward.itemId);
+    expect(settled.message).toContain("Cherub:");
+    await hit(page, page, "next-round");
+    await page.locator("#items-toggle").click();
+    await expect(page.locator("#items-panel")).toContainText("Equip selected item");
+    await page.locator("#items-panel button").filter({ hasText: "Equip selected item" }).click();
+    expect((await gameState(page)).field.find(unit => unit.id === unitId)?.itemIds).toContain(reward.itemId);
+    expect(errors).toEqual([]);
+  });
+
   test("field status symbols show real preparation and combat effects", async ({ page }) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
