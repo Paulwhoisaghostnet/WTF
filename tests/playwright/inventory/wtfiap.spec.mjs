@@ -249,7 +249,17 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(phone.locator("main")).toHaveClass(/compact-stage/);
       await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "shop");
       await expect(phone.locator(".mobile-offer")).toHaveCount(4);
+      await expect(phone.locator('#mobile-stage-nav #items-toggle')).toBeVisible();
+      await expect(phone.locator('#mobile-stage-nav #accessible-controls')).toBeVisible();
+      expect(await phone.evaluate(() => {
+        const buy = [...document.querySelectorAll('.mobile-offer-buy')].at(-1).getBoundingClientRect();
+        const controls = document.querySelector('.access summary').getBoundingClientRect();
+        return buy.left < controls.right && buy.right > controls.left && buy.top < controls.bottom && buy.bottom > controls.top;
+      })).toBe(false);
       expect(await phone.locator('.mobile-offer canvas').first().evaluate(canvas => [...canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data].some((value, index) => index % 4 === 3 && value > 0))).toBe(true);
+      await phone.locator('.access summary').click();
+      await expect(phone.locator('#accessible-controls')).toHaveAttribute('open', '');
+      await phone.locator('.access summary').click();
       await phone.locator("#mobile-shop").screenshot({ path: test.info().outputPath("shop-card-buy-landscape.png") });
       await phone.locator(".mobile-offer").nth(1).getByRole("button", { name: /^Preview/ }).click();
       expect((await gameState(phone)).shop.previewIndex).toBe(1);
@@ -420,6 +430,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await surface(page).getByRole("link", { name: "Party", exact: true }).click();
     let party = await hostFrame(page);
     await expect(party.locator("#create-name")).toBeVisible();
+    await expect(party.locator('.welcome-hero h1')).toHaveText('Choose your room.');
+    expect(await party.locator('.cast-stage img').evaluateAll(images => images.length === 3 && images.every(image => image.complete && image.naturalWidth > 0))).toBe(true);
     await party.locator("#create-name").fill("WTFIAP Browser Host");
     await party.locator("#prep-time").selectOption("ready");
     await party.locator("#create-room").click();

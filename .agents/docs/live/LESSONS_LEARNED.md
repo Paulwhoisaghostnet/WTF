@@ -12346,3 +12346,11 @@
 **Correction and proof**: The open shop now exposes Place treasure, which closes the overlay and selects the chest for placement. The contextual next-step hint points to that action when the shop is open. The harness serves `dist/public`, so the host bundle was rebuilt after changing the packaged game before rerunning the browser flow.
 
 **Rule**: If an overlay hides a required prerequisite control, surface that prerequisite in the overlay and make the next-step hint identify the visible control. Rebuild the host bundle before interpreting harness UI results.
+
+## 2026-10-24 — Place utility controls in the phone view bar
+
+**What happened**: The desktop Controls pill and Items icon were fixed over the game surface on landscape phones. In the shop view, the Controls pill covered the last offer's Buy action and the Items icon obscured card content. The mobile quick-action list also cached the previous view because its accessibility key omitted the selected view.
+
+**Correction and proof**: The compact layout now moves both utilities into the Board/Shop/Bench bar, while desktop keeps their existing positions. Changing views invalidates the action list. Browser checks found no overlap with the last Buy button, recruited a hero, switched views, opened Controls, and exercised board placement; the focused hosted game suite passed.
+
+**Rule**: Check fixed utilities against every actionable card at the real phone viewport. A view switch must update any control list derived from that view, even when match state does not change.
