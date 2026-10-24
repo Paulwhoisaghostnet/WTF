@@ -12537,3 +12537,9 @@
 **Why it mattered**: The game already knew the authoritative winner and paid for a referee settlement, but the room still appeared to require another player action before the prize moved.
 
 **Rule**: For new direct-payout rooms, settle the prize and house fee in the same atomic `finalize_room` operation, then show the paid receipt without a Claim button. Pin each room's contract, script identity, payout mode, and terms so older claim-based rooms remain usable after the active deployment rotates. Prove actual internal XTZ transfers on Shadownet and do not infer Mainnet player-payment success from contract origination alone.
+
+## 2026-10-24 - Landscape play should keep the action surfaces in one arena
+
+**What happened**: The touch layout used exclusive Board, Shop, and Bench views even though the shared canvas already supported buying while the formation stayed visible. A first combined-layout pass put the phase badge over top-row combat status, overlapped portrait shop cards, and briefly hid the touch utility icons with the retired view bar.
+
+**Rule**: Keep the same battlefield renderer for desktop, practice, and hosted rooms; dock the four shop offers and reserve strip beside it where the viewport permits. Put the phase cue in the touch utility rail and preserve Items, Controls, Traits, and Details there. After vendoring a changed game generator, rebuild the host before running the browser fixture so tests exercise the packaged bytes, not an older `dist/public` copy.
