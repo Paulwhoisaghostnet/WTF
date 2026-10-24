@@ -6,16 +6,16 @@
   else root.ABPartySchedule = factory(root.AB);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine) {
   'use strict';
-  const PREPARATION_SECONDS = Object.freeze([120, 300, 600]);
+  const PREPARATION_SECONDS = Object.freeze([60, 120, 300, 600, 900, 3600, 21600, 86400]);
   const fail = (ok, message) => { if (!ok) throw new Error(message); };
   const integer = value => Number.isSafeInteger(value) && value >= 0;
   const id = value => typeof value === 'string' && value.trim().length > 0;
   const ids = values => Array.isArray(values) && values.length > 0 && values.length <= 8 && values.every(id) && new Set(values).size === values.length;
   function validateClock(clock) {
     fail(clock && integer(clock.roundNumber) && clock.roundNumber > 0, 'A valid round number is required.');
-    fail(clock.preparationSeconds === null || PREPARATION_SECONDS.includes(clock.preparationSeconds), 'Choose 2, 5 or 10 minutes, or ready-only mode.');
+    fail(clock.preparationSeconds === null || PREPARATION_SECONDS.includes(clock.preparationSeconds), 'Choose an approved preparation time or ready-only mode.');
     fail(integer(clock.openedAtMs) && (clock.preparationSeconds === null ? clock.deadlineAtMs === null : Number.isSafeInteger(clock.deadlineAtMs) && clock.deadlineAtMs === clock.openedAtMs + clock.preparationSeconds * 1000), 'Invalid preparation deadline.');
-    fail(clock.earlyStart === (clock.preparationSeconds === null) && ids(clock.playerIds), 'Timed rounds wait for the deadline; ready-only rounds wait for everyone.');
+    fail(typeof clock.earlyStart === 'boolean' && (clock.preparationSeconds !== null || clock.earlyStart) && ids(clock.playerIds), 'Ready-only rounds require everyone ready.');
     fail(Array.isArray(clock.readyPlayerIds) && new Set(clock.readyPlayerIds).size === clock.readyPlayerIds.length && clock.readyPlayerIds.every(value => clock.playerIds.includes(value)), 'Ready players must belong to this round.');
     return true;
   }
@@ -26,7 +26,7 @@
   }
   function shouldStart(clock, atMs) {
     validateClock(clock); fail(integer(atMs) && atMs >= clock.openedAtMs, 'Use an authoritative time at or after preparation opened.');
-    return clock.deadlineAtMs === null ? clock.readyPlayerIds.length === clock.playerIds.length : atMs >= clock.deadlineAtMs;
+    return (clock.earlyStart && clock.readyPlayerIds.length === clock.playerIds.length) || (clock.deadlineAtMs !== null && atMs >= clock.deadlineAtMs);
   }
   function setReady(clock, playerId, value, atMs) {
     validateClock(clock); fail(integer(atMs) && atMs >= clock.openedAtMs && (clock.deadlineAtMs === null || atMs < clock.deadlineAtMs), 'Preparation has closed.');

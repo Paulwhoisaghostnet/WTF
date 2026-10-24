@@ -12479,3 +12479,9 @@
 **Why it mattered**: Players navigate by the menu labels they can see. Internal group keys and successful direct links do not prove that the named player-facing section exists.
 
 **Rule**: Check the rendered category label and the app entry together. Keep navigation help, inventory wording, and browser assertions aligned with the visible menu name.
+
+## 2026-10-24 — An open wager needs a separate funded-offer state before seat admission
+
+**What happened**: The prior Duel escrow path froze two human wallets before contract creation, so a room creator could not stake until a challenger had already joined. A UI-only Stake button could not resolve that protocol ordering. During the new Shadownet origination proof, finalized big maps decoded to numeric IDs, not empty arrays; an overstrict postcondition stopped the proof after an applied transaction.
+
+**Correction and rule**: Give new XTZ Duel rooms an explicit versioned open-offer protocol: the creator funds entry plus fee first, the referee authorizes account-linked challenger wallets, and the first finalized matching deposit claims the seat. Preserve prior funded rooms on their pinned contract path. Bind each start signer intent to the guest and cumulative deposit counter so withdrawal and redeposit can be retried without replaying an old failed operation. For contract originations, prove empty big-map contents from the applied init and compare finalized big-map IDs as IDs; never resend an injected operation because a post-verification assertion failed. The same origination journal recovered the applied Shadownet contract without a second send.

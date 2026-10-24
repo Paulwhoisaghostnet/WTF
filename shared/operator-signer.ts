@@ -128,6 +128,9 @@ const wtfiapTarget = {
   mutez: z.literal(0).default(0),
 };
 export const operatorSignerWtfIapPayloadSchema = z.discriminatedUnion("entrypoint", [
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("authorize_guest"), args: z.object({
+    room_id: wtfiapHash, guest: wtfiapAddress,
+  }).strict() }).strict(),
   z.object({ ...wtfiapTarget, entrypoint: z.literal("create_room"), args: z.object({
     ...wtfiapCreateBase, payout_mode: z.enum(["0", "1"]), entrants: wtfiapNewEntrants,
   }).strict().refine(args => args.payout_mode !== "0" || args.entrants.length === 2)

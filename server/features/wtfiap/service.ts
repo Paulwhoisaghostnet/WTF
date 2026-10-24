@@ -11,6 +11,7 @@ import { register, runJob } from "../../lib/scheduler";
 import { createFundingService, type FundingGame } from "./funding";
 import { postgresFundingStore } from "./funding-store";
 import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, mainnetXtzFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
+import { createOpenDuelService, openDuelConfigs } from "./open-duel";
 
 export type WtfiapAuthority = {
   handler: RequestHandler;
@@ -20,9 +21,11 @@ export type WtfiapAuthority = {
 };
 let authority: WtfiapAuthority | undefined;
 let funding: ReturnType<typeof createFundingService> | undefined;
+let openDuel: ReturnType<typeof createOpenDuelService> | undefined;
 let monitors: ReturnType<typeof monitorFundingHeads>[] = [];
 let monitorStartup: Promise<void> | undefined;
 const JOB_NAME = "wtfiap-escrow-reconciliation";
+const OPEN_JOB_NAME = "wtfiap-open-duel-reconciliation";
 export async function canAccessWtfiap(request: Request) {
   return (await getDesktopAppConfig()).wtfiap === true && canOpenAppsForRole(
     request.user ? await listRolesForUserSnapshot(request.user) : null);
@@ -38,7 +41,8 @@ export function getWtfiapAuthority(): WtfiapAuthority {
       isEnabled: async () => (await getDesktopAppConfig()).wtfiap === true,
       canAccess: async (request: Request) => canOpenAppsForRole(
         request.user ? await listRolesForUserSnapshot(request.user) : null),
-      onRoomChanged: () => funding?.kick(),
+      onRoomChanged: () => { funding?.kick(); if (openDuel) void runJob(OPEN_JOB_NAME); },
+      openDuelNetworks: Object.values(openDuelConfigs()).filter(lane => lane.enabled).map(lane => lane.network),
     });
   }
   return authority!;
@@ -83,9 +87,38 @@ export function getWtfiapFunding() {
   }
   return funding;
 }
+export function getWtfiapOpenDuel() {
+  if (!openDuel) {
+    openDuel = createOpenDuelService({ pool, game: getWtfiapAuthority().funding as any,
+      linkedWallet: async (userId, address) => {
+        const rows = await db.select({ id: userWallets.id }).from(userWallets)
+          .where(and(eq(userWallets.userId, Number(userId)), eq(userWallets.walletAddress, address)));
+        return rows.length > 0;
+      } });
+    register({ name: OPEN_JOB_NAME, intervalMs: 0, scope: "wtfiap-open-duel", fn: async () => {
+      await openDuel!.reconcileAll();
+      return { cursorAfter: { lastReconciledAt: new Date().toISOString() } };
+    } });
+    for (const lane of Object.values(openDuel.configs).filter(config => config.enabled)) {
+      void (async () => {
+        const rpc = lane.rpc.replace(/\/$/, "");
+        const response = await fetch(rpc + "/chains/main/blocks/head/context/constants");
+        if (!response.ok) return;
+        const constants: any = await response.json();
+        const minimalBlockDelaySeconds = Number(constants.minimal_block_delay);
+        if (!Number.isSafeInteger(minimalBlockDelaySeconds) || minimalBlockDelaySeconds <= 0) return;
+        monitors.push(monitorFundingHeads({ network: lane.network, rpcUrl: lane.rpc, minimalBlockDelaySeconds } as any,
+          () => { void runJob(OPEN_JOB_NAME); }, { headStreamConnected: false, error: null }));
+      })().catch(() => undefined);
+    }
+  }
+  return openDuel;
+}
 export async function startWtfiapAuthority(): Promise<void> {
   await getWtfiapAuthority().ready;
   getWtfiapFunding().kick();
+  getWtfiapOpenDuel();
+  void runJob(OPEN_JOB_NAME);
 }
 export async function stopWtfiapAuthority(): Promise<void> {
   await monitorStartup;

@@ -17,7 +17,8 @@ const ROOT = path.resolve(__dirname, '../..');
 const DIST = path.join(ROOT, 'dist');
 const REVIEW = path.join(ROOT, 'review');
 const ROOM_SIZE = 8; // Owner-approved party population and corresponding pool.
-const PREPARATION_SECONDS = [120, 300, 600, null]; // Owner's 2m/5m/10m or everyone-ready party choices.
+const PREPARATION_SECONDS = [120, 300, 600, null]; // Party: owner's 2m/5m/10m or everyone-ready choices.
+const DUEL_PREPARATION_SECONDS = [60, 300, 900, 3600, 21600, 86400, null]; // Owner's correspondence-duel choices.
 const MAX_TIMER_MS = 2147483647; // Node setTimeout's signed 32-bit contract.
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -84,11 +85,15 @@ function configuration(input, preserveItemVersion = false) {
       ...(versions.fortuneRulesVersion ? { fortuneKinds: { blessings: features.blessings, curses: features.curses } } : {}) };
   }
   requireThat(input && Match.hasBoardMode(input.boardMode), 'Select a supported board mode.');
-  requireThat(PREPARATION_SECONDS.includes(input.preparationSeconds), 'Choose a preparation timer of 2m, 5m, 10m or everyone ready.');
-  const earlyStart = input.preparationSeconds === null;
-  requireThat(input.earlyStart === undefined || input.earlyStart === earlyStart, 'Timed rooms wait for their deadline; untimed rooms wait for everyone ready.');
-  requireThat(input.oddPlayerPolicy === undefined || input.oddPlayerPolicy === 'round-ai', 'An odd survivor faces the round-scaled AI opponent.');
   const roomType = Object.hasOwn(input, 'roomType') ? input.roomType : 'party';
+  requireThat((roomType === 'duel' ? DUEL_PREPARATION_SECONDS : PREPARATION_SECONDS).includes(input.preparationSeconds) ||
+    preserveItemVersion && PREPARATION_SECONDS.includes(input.preparationSeconds),
+    'Choose an approved preparation timer for this room type.');
+  const earlyStart = preserveItemVersion && typeof input.earlyStart === 'boolean' ? input.earlyStart : input.preparationSeconds === null || roomType === 'duel';
+  requireThat(input.earlyStart === undefined || input.earlyStart === earlyStart, 'Duel players may start early when both are ready.');
+  requireThat(input.oddPlayerPolicy === undefined || input.oddPlayerPolicy === 'round-ai', 'An odd survivor faces the round-scaled AI opponent.');
+  requireThat(input.openSeatEscrowVersion === undefined || input.openSeatEscrowVersion === 1 && roomType === 'duel' &&
+    input.duelWager?.currency === 'XTZ', 'Open-seat escrow belongs only to XTZ duels.');
   requireThat(['duel', 'party', 'tournament'].includes(roomType), 'Choose a Duel, Party or Tournament room.');
   requireThat(!['config', 'currency', 'entryFee', 'entryAtomic', 'prizePercentages', 'shares', 'tournamentAccounting'].some(key => Object.hasOwn(input, key)),
     'Tournament money terms belong in the tournament configuration.');
@@ -104,6 +109,7 @@ function configuration(input, preserveItemVersion = false) {
     'Unknown fortune pricing version.');
   const versionOn = key => features ? input[key] === 1 : !preserveItemVersion || input[key] === 1;
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
+    ...(input.openSeatEscrowVersion === 1 ? { openSeatEscrowVersion: 1 } : {}),
     earlyStart, oddPlayerPolicy: 'round-ai', ...(versionOn('itemRulesVersion') ? { itemRulesVersion: 1 } : {}),
     ...(versionOn('cherubRulesVersion') ? { cherubRulesVersion: 1 } : {}),
     ...(versionOn('balanceVersion') ? { balanceVersion: 1 } : {}),
@@ -181,10 +187,13 @@ function auditFundingRoom(room, atMs) {
 }
 
 function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now, listen = true,
-  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged } = {}) {
+  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged,
+  openDuelNetworks = [] } = {}) {
   requireThat(typeof apiPrefix === 'string' && /^\/[A-Za-z0-9_/-]+$/.test(apiPrefix) && !apiPrefix.endsWith('/') && !apiPrefix.includes('//'), 'Use an absolute API path without a trailing slash.');
   requireThat(typeof sharePath === 'string' && sharePath.startsWith('/') && !sharePath.startsWith('//') && !/[?#\\]/.test(sharePath), 'Use a same-origin invitation path without a query or fragment.');
   requireThat(resolveActor === undefined || typeof resolveActor === 'function', 'The host actor resolver must be a function.');
+  requireThat(Array.isArray(openDuelNetworks) && openDuelNetworks.every(network => ['mainnet', 'shadownet'].includes(network)),
+    'Only explicit Tezos networks can open a wager offer.');
   requireThat(validText(dataDir), 'An explicit private dataDir is required.');
   requireThat(Number.isInteger(port) && port >= 0 && port <= 65535, 'Port must be an unsigned 16-bit TCP port; zero requests an OS-selected port.');
   const directory = path.resolve(dataDir); fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -267,11 +276,13 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.tournamentAccounting = next; return true;
   }
   function tournamentView(room) {
-    if (isWageredDuel(room)) return { wager: { mode: room.fundingLock ? 'escrow' : 'accounting-only',
-      fundingStatus: room.fundingLock?.summary?.status || (room.fundingLock ? 'opening' : 'unfunded'),
-      collectedAtomic: room.fundingLock?.summary?.collectedAtomic || '0',
-      ...(room.fundingLock ? { funding: { roomId: room.fundingLock.roomId, network: room.fundingLock.network,
-        escrowContract: room.fundingLock.escrowContract, ...clone(room.fundingLock.summary || {}) } } : {}),
+    if (isWageredDuel(room)) return { wager: { mode: room.fundingLock || room.fundingOffer ? 'escrow' : 'accounting-only',
+      fundingStatus: room.fundingLock?.summary?.status || room.fundingOffer?.summary?.status || (room.fundingLock ? 'opening' : 'unfunded'),
+      collectedAtomic: room.fundingLock?.summary?.collectedAtomic || room.fundingOffer?.summary?.collectedAtomic || '0',
+      ...(room.fundingLock || room.fundingOffer ? { funding: { roomId: (room.fundingLock || room.fundingOffer).roomId,
+        network: (room.fundingLock || room.fundingOffer).network,
+        escrowContract: (room.fundingLock || room.fundingOffer).escrowContract,
+        ...clone((room.fundingLock || room.fundingOffer).summary || {}) } } : {}),
       terms: clone(room.config.duelWager), fullRoomQuote: DuelWager.quote(room.config.duelWager, 2),
       joinedEntryQuote: DuelWager.quote(room.config.duelWager, room.players.filter(player => !player.isAI).length) } };
     if (!isTournament(room)) return {};
@@ -298,8 +309,13 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.watcherSessions ||= {};
     room.messages ||= [];
     if (room.closedAtMs !== undefined) requireThat(Number.isSafeInteger(room.closedAtMs) && room.closedAtMs >= room.createdAtMs &&
-      room.closedByPlayerId === room.hostPlayerId && !room.match && !room.fundingLock,
+      room.closedByPlayerId === room.hostPlayerId && !room.match && !room.fundingLock && !room.fundingOffer,
     'Closed room archive must be an unfunded, unstarted host action.');
+    if (room.fundingOffer) requireThat(isWageredDuel(room) && room.config.duelWager.currency === 'XTZ' &&
+      !room.closedAtMs && hash(room.fundingOffer.seed) === room.fundingOffer.seedCommitment &&
+      ['roomId', 'termsHash', 'rulesHash', 'matchId'].every(key => /^[a-f0-9]{64}$/.test(room.fundingOffer[key])) &&
+      room.fundingOffer.network === room.config.duelWager.network,
+    'Persisted open-seat offer is invalid.');
     const restoredConfig = configuration({ ...room.config, ...(room.config.tournament ? { tournament: {
       currency: room.config.tournament.currency, entryFee: room.config.tournament.entryFee,
       prizePercentages: room.config.tournament.prizePercentages } } : {}),
@@ -309,7 +325,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     requireThat(fingerprint(restoredConfig) === fingerprint(room.config), 'Persisted room configuration is not canonical.');
     if (room.fundingLock) {
       requireThat(hasWagerTerms(room) && room.players.length === roomCapacity(room) &&
-        (room.fundingLock.version === 2
+        (room.fundingLock.version === 3
+          ? room.fundingOffer && hash(room.fundingLock.seed) === room.fundingLock.seedCommitment
+          : room.fundingLock.version === 2
           ? fingerprint({ seed: room.fundingLock.seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) })
             === room.fundingLock.seedCommitment
           : isTournament(room) && hash(room.fundingLock.seed) === room.fundingLock.seedCommitment),
@@ -346,7 +364,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function lobby(room) {
     return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId,
       phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match ? room.match.phase : 'lobby',
-      ...(!room.match && !room.fundingLock ? { canClose: room.closedAtMs === undefined } : {}),
+      ...(!room.match && !room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
@@ -498,7 +516,13 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         writeJSON(response, 200, { ok: true, serverNowMs: now() }); return;
       }
       if (endpoint === '/rooms' && request.method === 'POST') {
-        const input = await bodyJSON(request), config = configuration(input);
+        const input = await bodyJSON(request);
+        // Only host policy may select the new escrow protocol. Room creators
+        // cannot spoof this marker to bypass the legacy admission path.
+        delete input.openSeatEscrowVersion;
+        if (input?.roomType === 'duel' && input.duelWager?.currency === 'XTZ' &&
+          openDuelNetworks.includes(input.duelWager.network || 'shadownet')) input.openSeatEscrowVersion = 1;
+        const config = configuration(input);
         const room = { version: 1, roomCode: crypto.randomUUID(), revision: 0, config, players: [], sessions: {},
           watchers: [], watcherSessions: {}, messages: [], match: null, createdAtMs: now() };
         const identity = addHuman(room, input.name, request); room.hostPlayerId = identity.playerId;
@@ -514,7 +538,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'join') {
         const input = await bodyJSON(request);
         immutableTerms(input);
-        requireThat(room.closedAtMs === undefined && !room.match && !room.fundingLock,
+        requireThat(room.closedAtMs === undefined && !room.match && !room.fundingLock && !room.fundingOffer &&
+          room.config.openSeatEscrowVersion !== 1,
           'This room is closed, already started, or has frozen funded entrants.', 409);
         requireThat(room.players.length < roomCapacity(room), 'All room seats are occupied.', 409);
         const identity = addHuman(room, input.name, request); room.revision++; persist(room); publish(room);
@@ -538,7 +563,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         requireThat(Object.keys(input).length === 0, 'Closing a room needs no extra terms.');
         requireThat(!session.watcherId && session.playerId === room.hostPlayerId,
           'Only the room host can close it.', 403);
-        requireThat(!room.match && !room.fundingLock, 'Started or escrow-bound rooms cannot be closed.', 409);
+        requireThat(!room.match && !room.fundingLock && !room.fundingOffer, 'Started or escrow-bound rooms cannot be closed.', 409);
         if (room.closedAtMs === undefined) {
           room.closedAtMs = now(); room.closedByPlayerId = session.playerId;
           room.revision++; persist(room, false); publish(room);
@@ -672,9 +697,72 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       return { roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
         phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match?.phase || 'lobby',
         players: room.players.map(player => ({ ...clone(player), accountId: accounts.get(player.playerId) })),
-        lock: room.fundingLock ? (({ seed, ...publicLock }) => clone(publicLock))(room.fundingLock) : null };
+        lock: room.fundingLock ? (({ seed, ...publicLock }) => clone(publicLock))(room.fundingLock) : null,
+        offer: room.fundingOffer ? (({ seed, ...publicOffer }) => clone(publicOffer))(room.fundingOffer) : null };
     },
     list() { return [...rooms.values()].filter(room => room.fundingLock).map(room => room.roomCode); },
+    offer(roomCode, binding) {
+      const room = rooms.get(roomCode); requireThat(room && isWageredDuel(room) && room.config.duelWager.currency === 'XTZ' &&
+        room.config.openSeatEscrowVersion === 1 &&
+        !room.match && !room.fundingLock && room.closedAtMs === undefined && room.players.length === 1,
+      'Only a one-human XTZ duel can open an unmatched offer.', 409);
+      requireThat(Object.values(room.sessions).some(session => session.playerId === room.hostPlayerId && validText(session.accountId)),
+        'The creator must own an authenticated commander.', 403);
+      for (const key of ['roomId', 'termsHash', 'rulesHash', 'matchId']) requireThat(/^[a-f0-9]{64}$/.test(binding[key]), 'Invalid offer commitment.');
+      requireThat(binding.network === room.config.duelWager.network && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(binding.escrowContract),
+        'Offer chain and contract must match the room.');
+      const expected = { roomId: binding.roomId, termsHash: binding.termsHash, rulesHash: binding.rulesHash,
+        matchId: binding.matchId, network: binding.network, escrowContract: binding.escrowContract };
+      if (room.fundingOffer) requireThat(Object.entries(expected).every(([key, value]) => room.fundingOffer[key] === value),
+        'An existing offer cannot change terms.');
+      else {
+        const seed = crypto.randomUUID();
+        room.fundingOffer = { ...expected, seed, seedCommitment: hash(seed), summary: { status: 'prepared', collectedAtomic: '0' } };
+        room.revision++; persist(room); publish(room);
+      }
+      return funding.inspect(roomCode);
+    },
+    updateOffer(roomCode, summary) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingOffer && !room.fundingLock, 'Open offer not found.', 409);
+      requireThat(summary && typeof summary.status === 'string' && /^[0-9]+$/.test(summary.collectedAtomic), 'Invalid offer summary.');
+      if (fingerprint(room.fundingOffer.summary) !== fingerprint(summary)) {
+        room.fundingOffer.summary = clone(summary); room.revision++; persist(room); publish(room);
+      }
+    },
+    admitGuest(roomCode, accountId, name) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingOffer && !room.fundingLock && !room.match && room.players.length <= 2,
+        'Open funded seat is unavailable.', 409);
+      const existing = Object.values(room.sessions).find(session => session.accountId === accountId && session.playerId !== room.hostPlayerId);
+      if (existing) { requireThat(room.players.length === 2 && room.players[1].playerId === existing.playerId,
+        'Funded challenger identity differs.'); return { playerId: existing.playerId }; }
+      requireThat(room.players.length === 1 && validText(accountId) && validText(name) && !Object.values(room.sessions).some(session => session.accountId === accountId),
+        'A distinct authenticated challenger is required.', 403);
+      const playerId = crypto.randomUUID(), sessionToken = crypto.randomUUID();
+      room.players.push({ playerId, name: name.trim(), isAI: false });
+      room.sessions[hash(sessionToken)] = { playerId, accountId, nextSequence: 1, commands: {} };
+      room.revision++; persist(room); publish(room);
+      return { playerId, sessionToken };
+    },
+    closeOffer(roomCode) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingOffer && !room.fundingLock && !room.match && room.players.length === 1,
+        'Only an unmatched, unstarted offer can close.', 409);
+      delete room.fundingOffer;
+      room.closedAtMs = now(); room.closedByPlayerId = room.hostPlayerId;
+      room.revision++; persist(room); publish(room);
+    },
+    claimGuestSeat(roomCode, accountId) {
+      const room = rooms.get(roomCode); requireThat(room?.fundingLock?.version === 3 && room.players.length === 2,
+        'The funded challenger seat is not active.', 409);
+      const session = Object.values(room.sessions).find(value => value.accountId === accountId && value.playerId !== room.hostPlayerId);
+      requireThat(session, 'This account does not own the funded challenger seat.', 403);
+      const sessionToken = crypto.randomUUID();
+      for (const [tokenHash, old] of Object.entries(room.sessions)) {
+        if (old.accountId === accountId && old.playerId === session.playerId) delete room.sessions[tokenHash];
+      }
+      room.sessions[hash(sessionToken)] = { playerId: session.playerId, accountId, nextSequence: session.nextSequence, commands: clone(session.commands) };
+      persist(room);
+      return { roomCode, playerId: session.playerId, sessionToken };
+    },
     lock(roomCode, binding) {
       const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
       requireThat(hasWagerTerms(room) && !room.match && room.closedAtMs === undefined,
@@ -683,6 +771,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       requireThat(['mainnet', 'shadownet'].includes(binding.network) && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(binding.escrowContract), 'Invalid escrow binding.');
       const expected = { roomId: binding.roomId, termsHash: binding.termsHash, rulesHash: binding.rulesHash,
         matchId: binding.matchId, network: binding.network, escrowContract: binding.escrowContract };
+      if (room.fundingOffer) requireThat(Object.entries(expected).every(([key, value]) => room.fundingOffer[key] === value),
+        'The funded match must use its original open-offer commitments.');
       if (room.fundingLock) requireThat(Object.entries(expected).every(([key, value]) => room.fundingLock[key] === value), 'Escrow commitments cannot change.', 409);
       else {
         requireThat((isTournament(room) && room.config.allowAI === true || room.players.length === roomCapacity(room)) &&
@@ -690,12 +780,12 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
           room.players.every(player => !player.isAI) &&
           room.players.every(player => Object.values(room.sessions).some(session => session.playerId === player.playerId && validText(session.accountId))),
         'Funded rooms require at least two account-bound human entrants and every paying wallet.', 409);
-        const seed = crypto.randomUUID();
+        const seed = room.fundingOffer ? room.fundingOffer.seed : crypto.randomUUID();
         if (isTournament(room) && room.config.allowAI === true)
           while (room.players.length < ROOM_SIZE) room.players.push({ playerId: crypto.randomUUID(), name: 'AI Commander ' + (room.players.length + 1), isAI: true });
         const modern = isWageredDuel(room) || room.config.allowAI === true;
-        room.fundingLock = { ...expected, ...(modern ? { version: 2 } : {}), seed,
-          seedCommitment: modern ? fingerprint({ seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) }) : hash(seed),
+        room.fundingLock = { ...expected, ...(room.fundingOffer ? { version: 3 } : modern ? { version: 2 } : {}), seed,
+          seedCommitment: room.fundingOffer ? hash(seed) : modern ? fingerprint({ seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) }) : hash(seed),
           summary: { status: 'opening', collectedAtomic: '0' } };
         room.revision++; persist(room); publish(room);
       }

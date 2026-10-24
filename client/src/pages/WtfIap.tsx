@@ -4,7 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WindowPathContext } from "../lib/window-context";
 import { COLILSEUM_ROUTE, WTFIAP_ASSET_ROOT, wtfIapEntryPath, wtfIapFrameSource } from "../features/wtfiap/frame-source";
-import { readWtfIapOpenFundingMessage, readWtfIapRoomMessage, wtfIapFundingRecoveryRoom, type WtfIapRoomMessage } from "../features/wtfiap/room-bridge";
+import { readWtfIapCloseFundingMessage, readWtfIapOpenFundingMessage, readWtfIapRoomMessage, wtfIapFundingRecoveryRoom, type WtfIapRoomMessage } from "../features/wtfiap/room-bridge";
 import { FundingPanel } from "../features/wtfiap/FundingPanel";
 
 const GameSurface = styled.section`
@@ -57,6 +57,8 @@ export function WtfIap() {
   const roomRef = useRef<WtfIapRoomMessage | null>(null);
   const [fundingOpen, setFundingOpen] = useState(false);
   const [recoveryRoom, setRecoveryRoom] = useState<string | null>(null);
+  const recoveryRoomRef = useRef<string | null>(null);
+  const urlRecoveryRef = useRef(false);
   const receivedRoom = useRef(false);
   const windowPath = useContext(WindowPathContext);
   const [activePath] = useLocation();
@@ -71,28 +73,42 @@ export function WtfIap() {
   const fundingRoom = room?.wagered ? room.roomCode : recoveryRoom;
   useEffect(() => {
     const code = wtfIapFundingRecoveryRoom(entryPath);
-    setRecoveryRoom(code);
+    urlRecoveryRef.current = Boolean(code);
+    recoveryRoomRef.current = code; setRecoveryRoom(code);
     receivedRoom.current = false;
     if (code) setFundingOpen(true);
   }, [entryPath]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
+      if (readWtfIapCloseFundingMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin)) {
+        recoveryRoomRef.current = null; setRecoveryRoom(null); setFundingOpen(false);
+        return;
+      }
       const fundingRequest = readWtfIapOpenFundingMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
-      if (fundingRequest && roomRef.current?.wagered && roomRef.current.roomCode?.toLowerCase() === fundingRequest) {
+      if (fundingRequest) {
+        recoveryRoomRef.current = fundingRequest;
+        setRecoveryRoom(fundingRequest);
         setFundingOpen(true);
         return;
       }
       const message = readWtfIapRoomMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
       if (!message) return;
+      if (!message.roomCode && !urlRecoveryRef.current) {
+        recoveryRoomRef.current = null;
+        setRecoveryRoom(null);
+        setFundingOpen(false);
+      }
       roomRef.current = message;
       setRoom(message);
-      if (!message.wagered || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
+      if ((!message.wagered || (!message.roomCode && receivedRoom.current)) && !recoveryRoomRef.current) {
+        setFundingOpen(false); setRecoveryRoom(null);
+      }
       if (message.roomCode) receivedRoom.current = true;
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, []);
-  function resetRoom() { roomRef.current = null; setRoom(null); setRecoveryRoom(null); setFundingOpen(false); receivedRoom.current = false; }
+  function resetRoom() { roomRef.current = null; setRoom(null); recoveryRoomRef.current = null; setRecoveryRoom(null); setFundingOpen(false); receivedRoom.current = false; }
   return (
     <AppWindow title="coLILseum">
       <GameSurface aria-label="coLILseum" data-wtfiap-surface="true">
@@ -106,7 +122,11 @@ export function WtfIap() {
           </div>
           {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => setFundingOpen(open => !open)}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
         </ModeNavigation>
-        {fundingOpen && fundingRoom && <FundingPanel key={fundingRoom} roomCode={fundingRoom} onReturn={() => setFundingOpen(false)} />}
+        {fundingOpen && fundingRoom && <FundingPanel key={fundingRoom} roomCode={fundingRoom}
+          onReturn={() => setFundingOpen(false)} onEnterRoom={() => {
+            setEntryPath(`/colilseum/${encodeURIComponent(fundingRoom)}`);
+            setFundingOpen(false);
+          }} />}
         <GameFrame
           ref={frameRef}
           style={fundingOpen ? { display: "none" } : undefined}

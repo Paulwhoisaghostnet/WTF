@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { styled } from "styled-components";
-import { api } from "../../lib/api";
+import { api, isApiRequestError } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useWallet } from "../../lib/wallet-context";
 import { assertWalletLinkedToCurrentUser } from "../../lib/tezos/wallet-ownership";
@@ -9,6 +9,7 @@ import { acknowledgeFundingCheckpoint, fundingActionCompleted, submitFundingActi
 import { formatFundingAmount, fundingEntryError, type FundingActionKind, type FundingConfig, type FundingRoom } from "./funding-types";
 import { fundingWalletGateway } from "./funding-wallet-adapter";
 import { getNetwork } from "../../lib/tezos/loaders";
+import { OpenDuelFundingPanel } from "./OpenDuelFundingPanel";
 
 const Panel = styled.section`
   flex: 1; min-height: 0; overflow: auto; padding: 16px;
@@ -35,7 +36,27 @@ type RoomResponse = { ok: true; room: FundingRoom };
 const endpoint = (roomCode: string) => `/api/wtfiap/funding/rooms/${encodeURIComponent(roomCode)}`;
 const configEndpoint = (roomCode: string) => `/api/wtfiap/funding/config?room=${encodeURIComponent(roomCode)}`;
 
-export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn(): void }) {
+export function FundingPanel({ roomCode, onReturn, onEnterRoom }: { roomCode: string; onReturn(): void; onEnterRoom(): void }) {
+  const [mode, setMode] = useState<'open' | 'legacy' | 'error' | null>(null);
+  const [probeError, setProbeError] = useState('');
+  useEffect(() => {
+    let active = true; setMode(null);
+    void api.get(`/api/wtfiap/open-duel/rooms/${encodeURIComponent(roomCode)}`)
+      .then(() => { if (active) setMode('open'); })
+      .catch((reason: unknown) => { if (!active) return;
+        if (isApiRequestError(reason) && reason.status === 400) setMode('legacy');
+        else { setProbeError(reason instanceof Error ? reason.message : 'Escrow verification is unavailable.'); setMode('error'); }
+      });
+    return () => { active = false; };
+  }, [roomCode]);
+  if (mode === 'open') return <OpenDuelFundingPanel roomCode={roomCode} onReturn={onReturn} onEnterRoom={onEnterRoom} />;
+  if (mode === 'legacy') return <LegacyFundingPanel roomCode={roomCode} onReturn={onReturn} />;
+  if (mode === 'error') return <Panel role="alert"><h2>Room funding unavailable</h2><p>{probeError}</p>
+    <p>Keep this room link and check again before sending any payment.</p><button onClick={onReturn}>Return to game</button></Panel>;
+  return <Panel aria-label="Room funding" aria-busy="true"><h2>Room funding</h2><p>Loading the room’s escrow rules…</p></Panel>;
+}
+
+function LegacyFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn(): void }) {
   const { user } = useAuth();
   const wallet = useWallet();
   const accountId = user ? String(user.id) : null;

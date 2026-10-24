@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "title": "coLILseum open-seat XTZ duel escrow",
+  "policyStatus": "owner-approved",
+  "compiler": "smartpy-tezos==0.24.1",
+  "sourceHashes": {
+    "OpenDuelXtzEscrow.py": "14e27d628ef6580bae7aebae27ad430e86af1d82f88547ff3d1e860a38d775cb",
+    "test_open_duel.py": "44150b4d1512789c04c3ff8a7c927486a6a3088fdba8ed1b2641232eaef1c46a"
+  },
+  "artifacts": {
+    "contract.json": {
+      "sha256": "cbfb95ba06969dab4d1545bfc83f9d16aaae1dab113389f360909b5ed71d0c77",
+      "bytes": 135196
+    }
+  },
+  "checks": {
+    "smartpyScenarios": "passed",
+    "houseFeeMutez": "500000",
+    "entryQuantumMutez": "10000",
+    "creatorCancellation": "full entry and fee refund before start"
+  }
+}

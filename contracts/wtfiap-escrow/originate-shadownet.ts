@@ -47,7 +47,7 @@ export async function originate(config: PreflightConfig & { walletId: string }, 
   const init = JSON.parse(await readFile(path.join(output, 'preflight/init.json'), 'utf8'));
   assert.equal(hash(JSON.stringify(init)), journal.preflight.initSha256);
   if (!execute) return journal;
-  if (config.kind === 'escrow') {
+  if (config.kind === 'escrow' || config.kind === 'open-duel-xtz') {
     const manifest = JSON.parse(await readFile(path.join(path.dirname(config.artifactPath), 'build-manifest.json'), 'utf8'));
     assert.equal(manifest.policyStatus, 'owner-approved'); assert.equal(manifest.artifacts['contract.json'].sha256, config.artifactSha256);
   }
@@ -98,7 +98,13 @@ export async function originate(config: PreflightConfig & { walletId: string }, 
   const script=await readonly.rpc.getScript(addresses[0],{block:finalized});
   const canonicalCodeSha256=assertTypedScriptIdentity(script.code,code,'Finalized on-chain code differs.');
   const storage=clean(schema.Execute(script.storage));
-  if(config.kind==='escrow') {
+  if(config.kind==='open-duel-xtz') {
+    assert.equal(storage.treasury_address,config.treasuryAddress);
+    assert.equal(storage.xtz_quantum,'10000'); assert.equal(storage.house_fee_mutez,'500000');
+    // Finalized big maps are represented by originated IDs. Empty contents
+    // were proved by the applied origination init comparison above.
+    for (const key of ['rooms','authorized','claims']) assert(/^\d+$/.test(storage[key]));
+  } else if(config.kind==='escrow') {
     assert.equal(storage.room_creator,config.creator); assert.equal(storage.treasury_address,config.treasuryAddress);
     assert.equal(storage.wtf_token_address,config.wtfTokenAddress); assert.equal(storage.wtf_token_id,config.wtfTokenId);
     assert.equal(storage.xtz_quantum,'10000'); assert.equal(storage.wtf_quantum,'1000000');

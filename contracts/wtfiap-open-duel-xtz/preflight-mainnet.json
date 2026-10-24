@@ -1,0 +1,12 @@
+{
+  "kind": "open-duel-xtz",
+  "network": "mainnet",
+  "expectedChainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "artifactPath": "contracts/wtfiap-open-duel-xtz/artifacts/contract.json",
+  "artifactSha256": "cbfb95ba06969dab4d1545bfc83f9d16aaae1dab113389f360909b5ed71d0c77",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "walletId": "reward-disburser",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+}

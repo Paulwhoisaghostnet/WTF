@@ -15495,3 +15495,15 @@ Copy this when adding a new issue:
   - `/tv2` has been removed, so parity between two routed TV clients is no longer a live risk. The remaining work is ordinary `/tv` coverage, not clone parity.
 - Verification idea:
   - CI test job covers `/tv` stream lifecycle, power transitions, channel switching, and error-path fallback directly.
+
+### WTF-BB-707 - XTZ Duel wagers cannot be funded before a challenger takes a seat
+
+- Category: WTFIAP escrow / open-seat admission
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex coLILseum open-seat wagering
+- Last touched: 2026-10-24
+- Score: C3 + F4 + S2 + P1(4) = 13, using the existing board rubric.
+- Evidence: The earlier escrow freezes two paying wallets at creation and the game authority requires both player seats before locking; the creator therefore cannot establish a wager in an empty Duel room. Timed Duel prep also waited until its deadline even when both players were ready.
+- Correction: A versioned open-offer XTZ Duel contract and host path now let the creator stake entry plus 0.5 XTZ before challenger admission. The first finalized authorized guest deposit claims the seat; guest withdrawal reopens it; unmatched cancellation refunds the host entry and fee. Older funded rooms remain on the prior protocol. Timed Duel rounds can begin when both players are ready.
+- Verification: SmartPy scenarios and an isolated PostgreSQL/HTTP state-transition test pass. Read-only preflights typechecked the contract on Mainnet and Shadownet. Shadownet origination `opUAJM8J4xvj62zGNa1XoGdLo8xZWtch7rooSMqwynZ4gBXKxQf` finalized as `KT1JTYi7i1AbwUZE1Ki6zzdhJFQCW86vUaFt`; the durable journal was recovered after a big-map decoder assertion, without another send. On-chain room lifecycle, hosted wallet UX, and Mainnet deployment/activation are pending.

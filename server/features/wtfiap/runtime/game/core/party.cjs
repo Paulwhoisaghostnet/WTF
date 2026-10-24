@@ -146,8 +146,8 @@
     demand(options && identity(options.matchId) && identity(options.seed), 'Match ID and seed are required.');
     demand(Array.isArray(options.players) && [RULES.duelPlayerCount, RULES.playerCount].includes(options.players.length), 'A duel needs two players; a party needs eight.');
     demand(new Set(options.players.map(player => player.playerId)).size === options.players.length, 'Room players must have distinct IDs.');
-    const earlyStart = options.preparationSeconds === null;
-    demand(options.earlyStart === undefined || options.earlyStart === earlyStart, 'Only untimed rooms start when everyone is ready.');
+    const earlyStart = options.earlyStart === undefined ? options.preparationSeconds === null : options.earlyStart;
+    demand(typeof earlyStart === 'boolean' && (options.preparationSeconds !== null || earlyStart), 'Ready-only rounds require everyone ready.');
     demand(options.oddPlayerPolicy === 'round-ai', 'An unmatched commander faces the round AI.');
     demand(options.itemRulesVersion === undefined || options.itemRulesVersion === 1, 'Unknown item rules version.');
     demand(options.cherubRulesVersion === undefined || options.cherubRulesVersion === 1 && options.itemRulesVersion === 1, 'Cherub rewards require item rules.');
@@ -784,7 +784,7 @@
     }
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');
-    demand(state.earlyStart === (state.preparationSeconds === null) && state.oddPlayerPolicy === 'round-ai', 'Invalid party policies.');
+    demand(typeof state.earlyStart === 'boolean' && (state.preparationSeconds !== null || state.earlyStart) && state.oddPlayerPolicy === 'round-ai', 'Invalid party policies.');
     Schedule.validateClock(state.clock);
     demand(state.clock.roundNumber === state.roundNumber && state.clock.preparationSeconds === state.preparationSeconds &&
       state.clock.openedAtMs === state.openedAtMs && state.clock.deadlineAtMs === state.deadlineAtMs && state.clock.earlyStart === state.earlyStart, 'Clock must belong to the active party round.');

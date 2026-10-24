@@ -1,5 +1,14 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "wtfiap.open-seat-xtz-duel",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "server/features/wtfiap/open-duel.test.ts; client/src/features/wtfiap/OpenDuelFundingPanel.tsx; contracts/wtfiap-open-duel-xtz/test_open_duel.py; tests/playwright/inventory/wtfiap-funding.spec.mjs",
+    verificationCommand: "npx tsx --test server/features/wtfiap/open-duel.test.ts && SMARTPY_PYTHON=$(command -v python3) bash scripts/smartpy-cli-wrapper.sh test contracts/wtfiap-open-duel-xtz/test_open_duel.py /tmp/colilseum-open-duel-smartpy",
+    userVisibleAssertion: "An XTZ Duel creator can open Room funding immediately, sign entry plus 0.5 XTZ on the room's clearly labeled Mainnet or Shadownet, and share an open wager. A challenger opens the same funding panel before taking a seat; the first finalized matching deposit claims it. Both ready commanders can begin any timed preparation early. The creator can cancel an unmatched room and recover their entry plus the fee.",
+    durableSideEffectAssertion: "The contract tests prove first-accept ordering, full pre-start refunds, fee custody, technical voids and settlement. The isolated PostgreSQL HTTP test proves the host offer exists before a guest, account-linked guest authorization, signed start, durable seat claim, and a fresh start intent after withdrawal and redeposit. On-chain receipts and a browser wallet story remain required before live custody is claimed.",
+  },
+  {
     id: "wtfiap.escrow-admission-and-recovery",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

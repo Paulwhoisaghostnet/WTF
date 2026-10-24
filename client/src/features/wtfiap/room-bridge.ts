@@ -20,6 +20,16 @@ export function readWtfIapOpenFundingMessage(
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(message.roomCode) ? message.roomCode.toLowerCase() : null;
 }
 
+export function readWtfIapCloseFundingMessage(
+  event: Pick<MessageEvent, "data" | "origin" | "source">,
+  expectedWindow: Window | null,
+  expectedOrigin: string,
+): boolean {
+  return Boolean(expectedWindow && event.source === expectedWindow && event.origin === expectedOrigin &&
+    event.data && typeof event.data === "object" && !Array.isArray(event.data) &&
+    event.data.type === "wtfiap:close-funding");
+}
+
 export function wtfIapFundingRecoveryRoom(path: string): string | null {
   const url = new URL(path, "https://wtfiap.invalid");
   const room = colilseumRoomFromPath(path) ?? (url.pathname === "/wtfiap" || url.pathname === "/colilseum" ? url.searchParams.get("room") : null);

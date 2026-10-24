@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 // The outer app, embedded game, room creation, bridge, controls and recovery UI are real.
 const surface = page => page.locator('[data-wtfiap-surface="true"]:visible');
 async function partyFrame(page) {
+  await surface(page).getByRole("link", { name: "Lobby" }).click();
   const element = await surface(page).locator('iframe[title="coLILseum"]').elementHandle();
   const frame = await element.contentFrame();
   await frame.waitForLoadState("domcontentloaded");
@@ -31,12 +32,38 @@ function fixtureRoom(code) {
 }
 
 test.describe("interaction inventory - WTFIAP funding safety", () => {
-  test.beforeEach(async ({ request }) => { expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy(); });
+  test.beforeEach(async ({ request, page }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    // Legacy funding fixtures explicitly model the pre-open-seat API response.
+    await page.route("**/api/wtfiap/open-duel/rooms/*", route => route.fulfill({ status: 400, json: { ok: false, reason: "This room uses the prior duel rules." } }));
+  });
+
+  test("open-seat duel shows the creator stake before an opponent joins", async ({ page }) => {
+    const roomCode = "66666666-6666-4666-8666-666666666666";
+    const creator = {
+      roomCode, status: "unfunded", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1JTYi7i1AbwUZE1Ki6zzdhJFQCW86vUaFt",
+      terms: { currency: "XTZ", entryAtomic: "10000" }, houseFeeAtomic: "500000",
+      treasuryAddress: "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt", depositedCount: 0,
+      chainStatus: null, potAtomic: "0", authorized: false, authorizationPending: false,
+      guestDepositVerified: false, guestSeatReady: false,
+      self: { isHost: true, canBind: true, walletAddress: null, playerId: "creator", payout: null, actions: {} },
+      config: { enabled: true, reason: null },
+    };
+    await page.route(`**/api/wtfiap/open-duel/rooms/${roomCode}`, route => route.fulfill({ json: { ok: true, room: creator } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
+    await expect(panel).toContainText("Shadownet · test XTZ");
+    await expect(panel).toContainText("Creator stakes 0.51 XTZ");
+    await expect(panel.getByRole("button", { name: "Stake wager" })).toBeVisible();
+    await expect(panel).toContainText("The creator can fund now and leave this room open");
+  });
 
   test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/colilseum?mode=duel", { waitUntil: "domcontentloaded" });
     let frame = await partyFrame(page);
+    await frame.locator("#room-type").selectOption("duel");
     await expect(frame.locator("#tournament-fields")).toBeHidden();
     await frame.locator("#duel-wager").check();
     await expect(frame.locator("#tournament-fields")).toBeVisible();
@@ -52,6 +79,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toBeVisible();
     await page.goto("/colilseum?mode=tournament", { waitUntil: "domcontentloaded" });
     frame = await partyFrame(page);
+    await frame.locator("#room-type").selectOption("tournament");
     await frame.locator("#tournament-ai").check();
     await frame.locator("#create-name").fill("AI tournament host");
     await frame.locator("#prep-time").selectOption("ready");
