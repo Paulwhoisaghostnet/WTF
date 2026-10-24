@@ -12402,3 +12402,12 @@
 **Correction and proof**: Fortune-only rooms now use the shared component catalog for display without exposing inventory controls; item chests calculate their own health when regular treasure is off; virtual opponents display empty optional inventories. New room tests cover Ancient through round five, item chests at round ten, blessings without Items, and round-five Modern opponent views. Old room serialization and player views match the pre-change runtime at 1,132 replay checkpoints.
 
 **Rule**: Every independently selectable mechanic must have its own state, reward, validation, and UI path. Test combinations that remove the former prerequisite, then replay pinned room states before promoting a rules hash.
+## 2026-10-24 - Optional shop effects need value checks across complete matches
+
+**What happened**: coLILseum priced every blessing and curse at five gold. Paired Duel and eight-player Tournament runs showed that the chest and first-reroll modifiers delivered roughly ten or more gold across a match, while one-percentage-point component drops and small relative shop-weight changes delivered much less. The same study found that Mirror Loom AI attempted a paid copy on a full bench even when it would not immediately merge, leaving preparation unable to complete.
+
+**Why it mattered**: A common price hid large differences in economy value, and the invalid AI purchase could stall an AI-filled paid room. Isolated ability checks would not capture cumulative gold, opportunity cost or room readiness.
+
+**Rule**: Compare optional economy effects over complete seeded matches in Duel and Tournament formats, rotate the buyer through seats, and verify resource deltas as well as winner changes. Pin revised terms only to new rooms; replay existing room state and view bytes before release. AI redemptions must check capacity and immediate merge conditions before sending an authoritative action.
+
+---

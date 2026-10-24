@@ -177,7 +177,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(offers).toContainText("These effects last for this match");
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(offers).toBeVisible();
-    await expect(offers.getByRole("button", { name: /Buy .* blessing for 5 gold/ })).toBeVisible();
+    await expect(offers.getByRole("button", { name: /Buy Nimble Ledger blessing for 10 gold/ })).toBeVisible();
+    await expect(offers.getByRole("button", { name: /Buy Dim Coffer curse for 5 gold/ })).toBeVisible();
     expect(errors).toEqual([]);
   });
 

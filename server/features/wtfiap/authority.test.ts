@@ -68,6 +68,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     const host = await request('POST', '/rooms', input, undefined, 201);
     assert.equal(host.view.config.balanceVersion, 1);
     assert.equal(host.view.config.fortuneRulesVersion, 1);
+    assert.equal(host.view.config.fortunePricingVersion, 1);
     const room = `/rooms/${host.roomCode}`;
     assert.equal(host.sharePath, `/wtfiap?room=${host.roomCode}`);
     assert.equal(host.view.players[0].name, 'Canonical Owner');

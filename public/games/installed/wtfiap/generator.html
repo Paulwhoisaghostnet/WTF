@@ -5299,6 +5299,17 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   ].map(value => Object.freeze(value)));
   const byId = Object.freeze(Object.fromEntries(CATALOG.map(value => [value.id, value])));
   const get = id => byId[id] || null;
+  // The first paired Duel/Tournament audit found roughly ten gold of direct
+  // midgame value in self chest/refresh effects and about one gold of expected
+  // value in the rare drop/odds effects. Target-only curses retain five gold:
+  // a buyer spends on one rival while every other tournament seat remains
+  // unaffected. Versioned prices preserve older rooms' five-gold terms.
+  const TUNED_PRICES = Object.freeze({
+    'bright-coffer': 10, 'nimble-ledger': 10, 'scrap-spark': 1,
+    'far-sight': 1, 'mirror-loom': 5, 'dim-coffer': 5,
+    'tangled-ledger': 5, 'damp-scrap': 1, 'near-sight': 1
+  });
+  const priceFor = (id, version) => version === 1 ? TUNED_PRICES[id] ?? null : get(id)?.price ?? null;
   const has = (list, id) => Array.isArray(list) && list.includes(id);
   function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id), options = {}) {
     if (typeof random !== 'function') throw new Error('A seeded shop stream is required.');
@@ -5321,7 +5332,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     ? Math.max(0, base + Number(has(blessings, 'bright-coffer')) - Number(has(curses, 'dim-coffer'))) : base;
   const dropChance = (base, blessings, curses) => Math.max(0, Math.min(1,
     base + (has(blessings, 'scrap-spark') ? .01 : 0) - (has(curses, 'damp-scrap') ? .01 : 0)));
-  return Object.freeze({ OFFER_CHANCE, PRICE, CATALOG, get, draw, tierWeight, rerollPrice, treasureGold, dropChance });
+  return Object.freeze({ OFFER_CHANCE, PRICE, CATALOG, TUNED_PRICES, get, priceFor, draw, tierWeight, rerollPrice, treasureGold, dropChance });
 });
 
 /* Local practice-match coordinator. The existing modules own every economy,
@@ -5511,7 +5522,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, fortunePricingVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -5708,9 +5719,10 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       demand(SIDES.includes(target) && (entry.kind === 'blessing' ? target === side : target !== side), 'Choose the opposing commander for a curse.');
       const list = entry.kind === 'blessing' ? match.players[side].blessings : match.players[target].curses;
       demand(!list.includes(fortuneId), 'That permanent effect is already active.');
-      demand(buyer.gold >= entry.price, 'Not enough gold for this fortune.');
-      buyer.gold -= entry.price; list.push(fortuneId); buyer.fortuneShop[entry.kind + 'Id'] = null;
-      const receipt = { side, target, kind: entry.kind, fortuneId, roundNumber: match.roundNumber, goldSpent: entry.price };
+      const price = Fortunes.priceFor(fortuneId, match.fortunePricingVersion);
+      demand(buyer.gold >= price, 'Not enough gold for this fortune.');
+      buyer.gold -= price; list.push(fortuneId); buyer.fortuneShop[entry.kind + 'Id'] = null;
+      const receipt = { side, target, kind: entry.kind, fortuneId, roundNumber: match.roundNumber, goldSpent: price };
       match.fortuneReceipts.push(receipt);
       return { ok: true, receipt };
     });
@@ -5778,10 +5790,12 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       const offer = match.shops.enemy[index];
       if (offer && offer.cost <= match.players.enemy.gold) buyShop(match, index, 'enemy');
     }
-    if (match.fortuneRulesVersion === 1 && match.enemyPool.length && match.players.enemy.gold >= Fortunes.PRICE) {
+    if (match.fortuneRulesVersion === 1 && match.enemyPool.length) {
       const offer = match.players.enemy.fortuneShop;
-      if (offer?.blessingId) buyFortune(match, offer.blessingId, 'enemy', 'enemy');
-      else if (offer?.curseId) buyFortune(match, offer.curseId, 'player', 'enemy');
+      if (offer?.blessingId && match.players.enemy.gold >= Fortunes.priceFor(offer.blessingId, match.fortunePricingVersion))
+        buyFortune(match, offer.blessingId, 'enemy', 'enemy');
+      else if (offer?.curseId && match.players.enemy.gold >= Fortunes.priceFor(offer.curseId, match.fortunePricingVersion))
+        buyFortune(match, offer.curseId, 'player', 'enemy');
     }
     let merged;
     do {
@@ -6024,6 +6038,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
     demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
     demand(match.fortuneRulesVersion === undefined || match.fortuneRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.fortuneReceipts), 'Unknown practice fortune rules version.');
+    demand(match.fortunePricingVersion === undefined || match.fortunePricingVersion === 1 && match.fortuneRulesVersion === 1,
+      'Unknown practice fortune pricing version.');
     if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
       match.draft.roundNumber === match.roundNumber && Array.isArray(match.draft.availableIds) &&
       match.draft.availableIds.every(Items.isComponent) && new Set(match.draft.availableIds).size === match.draft.availableIds.length &&
@@ -6078,7 +6094,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     }
     if (match.fortuneRulesVersion === 1) for (const receipt of match.fortuneReceipts) {
       const entry = Fortunes.get(receipt.fortuneId);
-      demand(entry && entry.kind === receipt.kind && receipt.goldSpent === entry.price && SIDES.includes(receipt.side) && SIDES.includes(receipt.target) &&
+      demand(entry && entry.kind === receipt.kind && receipt.goldSpent === Fortunes.priceFor(entry.id, match.fortunePricingVersion) && SIDES.includes(receipt.side) && SIDES.includes(receipt.target) &&
         (entry.kind === 'blessing' ? receipt.target === receipt.side : receipt.target !== receipt.side) &&
         match.players[receipt.target][entry.kind === 'blessing' ? 'blessings' : 'curses'].includes(entry.id), 'Fortune purchase receipt is invalid.');
     }
@@ -8149,8 +8165,9 @@ function renderItems(force=false){
         for(const player of itemView.fortuneTargets||[])if(!player.curses?.includes(entry.id)){const option=document.createElement('option');option.value=player.playerId;option.textContent=player.name;target.append(option);}
         label.append(target);card.append(label);
       }
-      const buy=document.createElement('button');buy.type='button';buy.textContent='Buy · '+entry.price+' gold';buy.setAttribute('aria-label','Buy '+entry.name+' '+entry.kind+' for '+entry.price+' gold');
-      buy.disabled=locked||match.players.player.gold<entry.price||entry.kind==='curse'&&!target?.options.length;
+      const price=ABFortunes.priceFor(entry.id,partyMode?partyData?.fortunePricingVersion:match.fortunePricingVersion);
+      const buy=document.createElement('button');buy.type='button';buy.textContent='Buy · '+price+' gold';buy.setAttribute('aria-label','Buy '+entry.name+' '+entry.kind+' for '+price+' gold');
+      buy.disabled=locked||match.players.player.gold<price||entry.kind==='curse'&&!target?.options.length;
       buy.onclick=()=>{markPlayerAction();buyFortune(entry.id,target?.value);};card.append(buy);grid.append(card);
     }
     block.append(h,note,grid);optionalFortuneBlock=block;

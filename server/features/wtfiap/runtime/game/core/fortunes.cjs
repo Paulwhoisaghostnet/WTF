@@ -33,6 +33,17 @@
   ].map(value => Object.freeze(value)));
   const byId = Object.freeze(Object.fromEntries(CATALOG.map(value => [value.id, value])));
   const get = id => byId[id] || null;
+  // The first paired Duel/Tournament audit found roughly ten gold of direct
+  // midgame value in self chest/refresh effects and about one gold of expected
+  // value in the rare drop/odds effects. Target-only curses retain five gold:
+  // a buyer spends on one rival while every other tournament seat remains
+  // unaffected. Versioned prices preserve older rooms' five-gold terms.
+  const TUNED_PRICES = Object.freeze({
+    'bright-coffer': 10, 'nimble-ledger': 10, 'scrap-spark': 1,
+    'far-sight': 1, 'mirror-loom': 5, 'dim-coffer': 5,
+    'tangled-ledger': 5, 'damp-scrap': 1, 'near-sight': 1
+  });
+  const priceFor = (id, version) => version === 1 ? TUNED_PRICES[id] ?? null : get(id)?.price ?? null;
   const has = (list, id) => Array.isArray(list) && list.includes(id);
   function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id), options = {}) {
     if (typeof random !== 'function') throw new Error('A seeded shop stream is required.');
@@ -55,5 +66,5 @@
     ? Math.max(0, base + Number(has(blessings, 'bright-coffer')) - Number(has(curses, 'dim-coffer'))) : base;
   const dropChance = (base, blessings, curses) => Math.max(0, Math.min(1,
     base + (has(blessings, 'scrap-spark') ? .01 : 0) - (has(curses, 'damp-scrap') ? .01 : 0)));
-  return Object.freeze({ OFFER_CHANCE, PRICE, CATALOG, get, draw, tierWeight, rerollPrice, treasureGold, dropChance });
+  return Object.freeze({ OFFER_CHANCE, PRICE, CATALOG, TUNED_PRICES, get, priceFor, draw, tierWeight, rerollPrice, treasureGold, dropChance });
 });

@@ -185,7 +185,7 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, fortunePricingVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -382,9 +382,10 @@
       demand(SIDES.includes(target) && (entry.kind === 'blessing' ? target === side : target !== side), 'Choose the opposing commander for a curse.');
       const list = entry.kind === 'blessing' ? match.players[side].blessings : match.players[target].curses;
       demand(!list.includes(fortuneId), 'That permanent effect is already active.');
-      demand(buyer.gold >= entry.price, 'Not enough gold for this fortune.');
-      buyer.gold -= entry.price; list.push(fortuneId); buyer.fortuneShop[entry.kind + 'Id'] = null;
-      const receipt = { side, target, kind: entry.kind, fortuneId, roundNumber: match.roundNumber, goldSpent: entry.price };
+      const price = Fortunes.priceFor(fortuneId, match.fortunePricingVersion);
+      demand(buyer.gold >= price, 'Not enough gold for this fortune.');
+      buyer.gold -= price; list.push(fortuneId); buyer.fortuneShop[entry.kind + 'Id'] = null;
+      const receipt = { side, target, kind: entry.kind, fortuneId, roundNumber: match.roundNumber, goldSpent: price };
       match.fortuneReceipts.push(receipt);
       return { ok: true, receipt };
     });
@@ -452,10 +453,12 @@
       const offer = match.shops.enemy[index];
       if (offer && offer.cost <= match.players.enemy.gold) buyShop(match, index, 'enemy');
     }
-    if (match.fortuneRulesVersion === 1 && match.enemyPool.length && match.players.enemy.gold >= Fortunes.PRICE) {
+    if (match.fortuneRulesVersion === 1 && match.enemyPool.length) {
       const offer = match.players.enemy.fortuneShop;
-      if (offer?.blessingId) buyFortune(match, offer.blessingId, 'enemy', 'enemy');
-      else if (offer?.curseId) buyFortune(match, offer.curseId, 'player', 'enemy');
+      if (offer?.blessingId && match.players.enemy.gold >= Fortunes.priceFor(offer.blessingId, match.fortunePricingVersion))
+        buyFortune(match, offer.blessingId, 'enemy', 'enemy');
+      else if (offer?.curseId && match.players.enemy.gold >= Fortunes.priceFor(offer.curseId, match.fortunePricingVersion))
+        buyFortune(match, offer.curseId, 'player', 'enemy');
     }
     let merged;
     do {
@@ -698,6 +701,8 @@
     demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
     demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
     demand(match.fortuneRulesVersion === undefined || match.fortuneRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.fortuneReceipts), 'Unknown practice fortune rules version.');
+    demand(match.fortunePricingVersion === undefined || match.fortunePricingVersion === 1 && match.fortuneRulesVersion === 1,
+      'Unknown practice fortune pricing version.');
     if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
       match.draft.roundNumber === match.roundNumber && Array.isArray(match.draft.availableIds) &&
       match.draft.availableIds.every(Items.isComponent) && new Set(match.draft.availableIds).size === match.draft.availableIds.length &&
@@ -752,7 +757,7 @@
     }
     if (match.fortuneRulesVersion === 1) for (const receipt of match.fortuneReceipts) {
       const entry = Fortunes.get(receipt.fortuneId);
-      demand(entry && entry.kind === receipt.kind && receipt.goldSpent === entry.price && SIDES.includes(receipt.side) && SIDES.includes(receipt.target) &&
+      demand(entry && entry.kind === receipt.kind && receipt.goldSpent === Fortunes.priceFor(entry.id, match.fortunePricingVersion) && SIDES.includes(receipt.side) && SIDES.includes(receipt.target) &&
         (entry.kind === 'blessing' ? receipt.target === receipt.side : receipt.target !== receipt.side) &&
         match.players[receipt.target][entry.kind === 'blessing' ? 'blessings' : 'curses'].includes(entry.id), 'Fortune purchase receipt is invalid.');
     }

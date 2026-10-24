@@ -76,7 +76,8 @@ function configuration(input, preserveItemVersion = false) {
     const versions = { balanceVersion: 1, itemRulesVersion: features.items ? 1 : undefined, cherubRulesVersion: features.cherub ? 1 : undefined,
       shopLockRulesVersion: features.shopHold ? 1 : undefined, encounterRulesVersion: features.supplyEncounters ? 1 : undefined,
       draftRulesVersion: features.sharedDraft ? 1 : undefined, planRulesVersion: features.battlePlans ? 1 : undefined,
-      fortuneRulesVersion: features.blessings || features.curses ? 1 : undefined };
+      fortuneRulesVersion: features.blessings || features.curses ? 1 : undefined,
+      fortunePricingVersion: features.blessings || features.curses ? 1 : undefined };
     for (const [key, value] of Object.entries(versions)) requireThat(input[key] === undefined || input[key] === value,
       'Room feature versions must match the chosen rules.');
     input = { ...input, ...versions, treasureEnabled: features.treasure, zoneBonusesEnabled: features.zoneBonuses,
@@ -99,6 +100,8 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.draftRulesVersion === undefined || input.draftRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown shared draft rules version.');
   requireThat(input.planRulesVersion === undefined || input.planRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown battle plan rules version.');
   requireThat(input.fortuneRulesVersion === undefined || input.fortuneRulesVersion === 1, 'Unknown fortune shop rules version.');
+  requireThat(input.fortunePricingVersion === undefined || input.fortunePricingVersion === 1 && input.fortuneRulesVersion === 1,
+    'Unknown fortune pricing version.');
   const versionOn = key => features ? input[key] === 1 : !preserveItemVersion || input[key] === 1;
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
     earlyStart, oddPlayerPolicy: 'round-ai', ...(versionOn('itemRulesVersion') ? { itemRulesVersion: 1 } : {}),
@@ -109,6 +112,7 @@ function configuration(input, preserveItemVersion = false) {
     ...(versionOn('draftRulesVersion') ? { draftRulesVersion: 1 } : {}),
     ...(versionOn('planRulesVersion') ? { planRulesVersion: 1 } : {}),
     ...(versionOn('fortuneRulesVersion') ? { fortuneRulesVersion: 1 } : {}),
+    ...(versionOn('fortunePricingVersion') && versionOn('fortuneRulesVersion') ? { fortunePricingVersion: 1 } : {}),
     ...(features ? { rulesPreset: input.rulesPreset, gameFeatures: features,
       treasureEnabled: features.treasure, zoneBonusesEnabled: features.zoneBonuses,
       ...(features.blessings || features.curses ? { fortuneKinds: { blessings: features.blessings, curses: features.curses } } : {}) } : {}) };

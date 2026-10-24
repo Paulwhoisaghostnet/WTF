@@ -30,6 +30,7 @@
   const draftRound = state => draftOn(state) && state.roundNumber % 4 === 0;
   const plansOn = state => state.planRulesVersion === 1;
   const fortunesOn = state => state.fortuneRulesVersion === 1;
+  const fortunePrice = (state, id) => Fortunes.priceFor(id, state.fortunePricingVersion);
   const treasureOn = state => state.treasureEnabled !== false;
   const zonesOn = state => state.boardMode === 'zone-defense' && state.zoneBonusesEnabled !== false;
   const planRound = state => plansOn(state) && state.roundNumber % 4 === 3;
@@ -156,6 +157,8 @@
     demand(options.draftRulesVersion === undefined || options.draftRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown shared draft rules version.');
     demand(options.planRulesVersion === undefined || options.planRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown battle plan rules version.');
     demand(options.fortuneRulesVersion === undefined || options.fortuneRulesVersion === 1, 'Unknown fortune shop rules version.');
+    demand(options.fortunePricingVersion === undefined || options.fortunePricingVersion === 1 && options.fortuneRulesVersion === 1,
+      'Unknown fortune pricing version.');
     demand(options.treasureEnabled === undefined || typeof options.treasureEnabled === 'boolean', 'Invalid treasure rule.');
     demand(options.zoneBonusesEnabled === undefined || typeof options.zoneBonusesEnabled === 'boolean', 'Invalid zone rule.');
     demand(options.fortuneKinds === undefined || options.fortuneRulesVersion === 1 &&
@@ -170,6 +173,7 @@
       ...(options.draftRulesVersion === 1 ? { draftRulesVersion: 1, draft: null } : {}),
       ...(options.planRulesVersion === 1 ? { planRulesVersion: 1, planReceipts: [] } : {}),
       ...(options.fortuneRulesVersion === 1 ? { fortuneRulesVersion: 1, fortuneReceipts: [] } : {}),
+      ...(options.fortunePricingVersion === 1 ? { fortunePricingVersion: 1 } : {}),
       ...(options.treasureEnabled !== undefined ? { treasureEnabled: options.treasureEnabled } : {}),
       ...(options.zoneBonusesEnabled !== undefined ? { zoneBonusesEnabled: options.zoneBonusesEnabled } : {}),
       ...(options.fortuneKinds ? { fortuneKinds: clone(options.fortuneKinds) } : {}),
@@ -307,10 +311,11 @@
       demand(entry.kind === 'blessing' || target.playerId !== player.playerId && target.hp > 0, 'Choose a living opponent for a curse.');
       const list = entry.kind === 'blessing' ? target.blessings : target.curses;
       demand(!list.includes(entry.id), 'That permanent effect is already active on this commander.');
-      demand(player.gold >= entry.price, 'Not enough gold for this fortune.');
-      player.gold -= entry.price; list.push(entry.id); player.fortuneShop[entry.kind + 'Id'] = null;
+      const price = fortunePrice(state, entry.id);
+      demand(player.gold >= price, 'Not enough gold for this fortune.');
+      player.gold -= price; list.push(entry.id); player.fortuneShop[entry.kind + 'Id'] = null;
       const receipt = { kind: entry.kind, playerId: player.playerId, targetPlayerId: target.playerId,
-        roundNumber: state.roundNumber, fortuneId: entry.id, goldSpent: entry.price, goldReceived: 0 };
+        roundNumber: state.roundNumber, fortuneId: entry.id, goldSpent: price, goldReceived: 0 };
       state.fortuneReceipts.push(receipt); result.receipt = receipt;
     }
     else if (action.type === 'buy') result = buy(state, player, action.index);
@@ -433,14 +438,17 @@
       }
       if (fortunesOn(state)) {
         const current = playerFor(state, playerId), offer = current.fortuneShop;
-        if (current.field.length && current.gold >= Fortunes.PRICE && offer) {
+        if (current.field.length && offer) {
           const target = alive(state).find(other => other.playerId !== playerId && offer.curseId && !other.curses.includes(offer.curseId));
-          const fortuneId = offer.blessingId || (target ? offer.curseId : null);
+          const fortuneId = [offer.blessingId, target ? offer.curseId : null]
+            .find(id => id && current.gold >= fortunePrice(state, id));
           if (fortuneId) required(command(state, { type: 'buyFortune', playerId, fortuneId, ...(target ? { targetPlayerId: target.playerId } : {}) }, atMs));
         }
         for (const ticket of [...playerFor(state, playerId).mirrorTickets]) {
           const owner = playerFor(state, playerId), target = [...owner.field, ...owner.bench].find(unit =>
             Engine.heroById(unit.heroId).cost <= ticket.maxCost && owner.gold >= Engine.heroById(unit.heroId).cost &&
+            (owner.bench.length < RULES.benchCapacity || [...owner.field, ...owner.bench]
+              .filter(copy => copy.heroId === unit.heroId && copy.level === 1).length >= 2) &&
             ShopPool.available(state.shopPool, holders(state)).some(lot => lot.heroId === unit.heroId));
           if (target) { required(command(state, { type: 'useMirrorTicket', playerId, ticketId: ticket.id, unitId: target.id }, atMs)); deployNext(); }
         }
@@ -722,7 +730,7 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(fortunesOn(state) ? { fortuneRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(fortunesOn(state) ? { fortuneRulesVersion: 1, ...(state.fortunePricingVersion === 1 ? { fortunePricingVersion: 1 } : {}) } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: treasureOn(state) && terms.enabled, goldPerChest: treasureOn(state) ? terms.goldPerChest : 0, expiresAtSeconds: treasureOn(state) ? terms.treasureWindowSeconds : null },
@@ -748,6 +756,8 @@
     demand(state.draftRulesVersion === undefined || state.draftRulesVersion === 1 && itemsOn(state), 'Invalid shared draft rules version.');
     demand(state.planRulesVersion === undefined || state.planRulesVersion === 1 && itemsOn(state), 'Invalid battle plan rules version.');
     demand(state.fortuneRulesVersion === undefined || state.fortuneRulesVersion === 1, 'Invalid fortune shop rules version.');
+    demand(state.fortunePricingVersion === undefined || state.fortunePricingVersion === 1 && fortunesOn(state),
+      'Invalid fortune pricing version.');
     demand(state.treasureEnabled === undefined || typeof state.treasureEnabled === 'boolean', 'Invalid treasure rule.');
     demand(state.zoneBonusesEnabled === undefined || typeof state.zoneBonusesEnabled === 'boolean', 'Invalid zone rule.');
     demand(state.fortuneKinds === undefined || fortunesOn(state) && typeof state.fortuneKinds?.blessings === 'boolean' &&
@@ -767,7 +777,7 @@
     if (fortunesOn(state)) for (const receipt of state.fortuneReceipts) {
       const entry = Fortunes.get(receipt.fortuneId), buyer = state.players.find(player => player.playerId === receipt.playerId),
         target = state.players.find(player => player.playerId === receipt.targetPlayerId);
-      demand(entry && buyer && target && receipt.kind === entry.kind && receipt.goldSpent === entry.price && receipt.goldReceived === 0 &&
+      demand(entry && buyer && target && receipt.kind === entry.kind && receipt.goldSpent === fortunePrice(state, entry.id) && receipt.goldReceived === 0 &&
         (!state.fortuneKinds || state.fortuneKinds[entry.kind === 'blessing' ? 'blessings' : 'curses']) &&
         (entry.kind === 'blessing' ? buyer === target && target.blessings.includes(entry.id) : buyer !== target && target.curses.includes(entry.id)),
       'Fortune receipt must identify its payer, target and permanent effect.');
