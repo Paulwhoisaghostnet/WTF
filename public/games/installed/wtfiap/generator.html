@@ -112,6 +112,46 @@ body{background:#071416}
 .compact-stage #mobile-stage-nav .access:not([open]) summary::before{margin:0;font-size:13px}
 .compact-stage #mobile-stage-nav .access[open]{position:fixed;inset:auto 7px 7px auto;z-index:15}
 .compact-stage #mobile-stage-nav .items-toggle:not([hidden]){position:static;flex:0 0 38px;min-width:38px;min-height:32px;height:32px;margin:0;border-color:#48665e;border-radius:5px;background:#162e31;box-shadow:none;font-size:15px}
+/* Landscape touch controls follow the project's 44px target policy. */
+.compact-stage .quick-actions button{min-height:44px}
+.compact-stage .mobile-stage-nav button{min-height:44px}
+.compact-stage #mobile-stage-nav .items-toggle:not([hidden]){flex-basis:44px;min-width:44px;min-height:44px;height:44px}
+.compact-stage #mobile-stage-nav .access:not([open]){flex-basis:46px;min-width:46px}
+.compact-stage #mobile-stage-nav .access:not([open]) summary{min-height:44px;height:44px}
+.compact-stage .mobile-offer-buy{min-height:44px;flex:none}
+.compact-stage .mobile-shop-preview{display:none}
+.compact-stage .mobile-offer{min-height:0;overflow:hidden}
+.compact-stage .mobile-offer-preview{min-height:0;overflow:hidden}
+.mobile-hint[hidden],.compact-stage .mobile-hint[hidden]{display:none}
+.compact-stage .mobile-hint{position:absolute;z-index:7;left:8px;right:8px;top:6px;display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 5px 4px 12px;border:1px solid #e5c783;border-radius:6px;background:#183633f5;color:#fff1cb;box-shadow:0 8px 24px #0009;font:600 12px/1.3 system-ui}
+.mobile-hint span{flex:1}
+.mobile-hint button{flex:none;min-width:44px;min-height:44px;border:1px solid #bfa96f;border-radius:5px;background:#25443e;color:#fff1cb;font:700 21px/1 system-ui}
+.mobile-hint button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
+#mobile-hero-dialog{width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 20px);overflow:auto;margin:auto;padding:16px 18px;border:1px solid #e5c783;border-radius:9px;background:#132b2d;color:#f0ead8;box-shadow:0 18px 60px #000b}
+#mobile-hero-dialog::backdrop{background:#041013dc}
+.mobile-hero-dialog-head{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.mobile-hero-dialog-head p{margin:0;color:#e7c783;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.mobile-hero-dialog-head h2{margin:2px 0 4px;font:28px/1.1 Georgia,serif}
+#mobile-hero-close{flex:0 0 44px;width:44px;height:44px;padding:0;border:1px solid #78918a;border-radius:5px;background:#1c393b;color:#f0ead8;font:28px/1 system-ui}
+#mobile-hero-art{display:grid;place-items:center;height:114px;margin:2px 0 8px;background:radial-gradient(ellipse,#3c615864,transparent 68%)}
+#mobile-hero-art canvas{width:auto;height:114px}
+#mobile-hero-role{margin:0 0 6px;color:#e5c783;font-weight:700}
+#mobile-hero-description{margin:0 0 8px;line-height:1.4}
+#mobile-hero-ratings{margin:0 0 12px;color:#b9d8ca;font-size:13px}
+#mobile-hero-buy{width:100%;min-height:44px;border:1px solid #e5c783;border-radius:5px;background:#dab975;color:#071416;font:700 15px system-ui}
+#mobile-hero-buy:disabled{opacity:.55}
+#mobile-hero-dialog button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
+@media(max-height:400px) and (pointer:coarse){.compact-stage .mobile-offer-cost,.compact-stage .mobile-offer-traits{display:none}.compact-stage .mobile-offer canvas{height:54px}.compact-stage .mobile-offer-preview{gap:1px}.compact-stage .mobile-offer .gain{max-width:100%}.compact-stage .mobile-offer-stats{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}}
+@media(max-height:350px) and (pointer:coarse){.compact-stage .quick-actions{padding:0 4px}.compact-stage .mobile-resource{min-height:28px}.compact-stage .mobile-stage-nav{padding:0 4px}.compact-stage .mobile-offer canvas{height:42px}#mobile-hero-dialog{padding:10px 14px}.mobile-hero-dialog-head h2{font-size:24px}#mobile-hero-art{height:54px;margin:0}#mobile-hero-art canvas{height:54px}#mobile-hero-description{line-height:1.25}}
+.orientation-card #portrait-continue{margin:6px;border-color:#78918a;background:#1c393b;color:#f0ebdc}
+.mobile-bench-heading{display:none}
+.portrait-play.compact-stage .visual-board[data-mobile-view="board"] #game{width:140%;margin-left:-20%;transform:translateY(-40px)}
+.portrait-play.compact-stage .visual-board[data-mobile-view="board"] #mobile-bench{display:flex;top:220px;bottom:0;z-index:2;border-top:1px solid #587267}
+.portrait-play.compact-stage .visual-board[data-mobile-view="board"] .mobile-bench-heading{display:block;flex:none;margin:0;color:#dab975;font:700 11px/1.3 system-ui;letter-spacing:.1em;text-transform:uppercase}
+.portrait-play.compact-stage .mobile-shop-offers{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:230px;flex:none}
+.portrait-play.compact-stage .mobile-bench-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(5,minmax(56px,max-content));flex:none}
+.portrait-play.compact-stage .mobile-bench-slot.empty{opacity:.35}
+.portrait-play.compact-stage .mobile-pane{overflow:auto}
 @media(prefers-reduced-motion:reduce){.info-icon,.items-toggle{transition:none}}
 </style>
 <script data-ab="harness">// The one seeded-PRNG construction every $alea implementation must share:
@@ -157,7 +197,7 @@ function sfc32(a, b, c, d) {
 }
 
 const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const hash=xmur3(seed),rand=sfc32(hash(),hash(),hash(),hash());window.$alea={seed,rand,random:rand,features:traits=>{window.AB_TRAITS=traits;},ready:()=>{document.documentElement.dataset.ready='true';}};</script>
-</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum visual battlefield. Use the game controls below for the same actions with a keyboard or screen reader."></canvas><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><div class="mobile-bench-grid"></div></section><button id="items-toggle" class="items-toggle" type="button" aria-controls="items-panel" aria-expanded="false" aria-label="Open items" title="Items" hidden>◇</button><section id="items-panel" class="items-panel" aria-label="Item shop and inventory" hidden></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary aria-label="Game controls and details">Controls</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Play coLILseum in landscape mode. Rotate your phone to continue.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
+</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum battlefield. Select a hero and tap a friendly tile, or open Controls for named actions with a keyboard or screen reader."></canvas><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><div id="mobile-hint" class="mobile-hint" hidden><span id="mobile-hint-text"></span><button id="mobile-hint-dismiss" type="button" aria-label="Dismiss help tip">×</button></div><dialog id="mobile-hero-dialog" aria-labelledby="mobile-hero-title" aria-describedby="mobile-hero-description"><div class="mobile-hero-dialog-head"><div><p id="mobile-hero-cost"></p><h2 id="mobile-hero-title"></h2></div><button id="mobile-hero-close" type="button" aria-label="Close hero preview">×</button></div><div id="mobile-hero-art" aria-hidden="true"></div><p id="mobile-hero-role"></p><p id="mobile-hero-description"></p><p id="mobile-hero-ratings"></p><button id="mobile-hero-buy" type="button"></button></dialog><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><h2 class="mobile-bench-heading">Reserves</h2><div class="mobile-bench-grid"></div></section><button id="items-toggle" class="items-toggle" type="button" aria-controls="items-panel" aria-expanded="false" aria-label="Open items" title="Items" hidden>◇</button><section id="items-panel" class="items-panel" aria-label="Item shop and inventory" hidden></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary aria-label="Game controls and details">Controls</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Landscape gives you a larger board. Rotate your phone, or use the compact controls if you cannot rotate.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><button id="portrait-continue" type="button">Continue in portrait</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
 <script data-ab="game">/* Numeric item values from Riot TFT client data via CommunityDragon, sampled 2026-10-24.
  * Recipe and display names are authored for coLILseum. This is a pinned data
  * snapshot; live patch drift must not silently change an in-progress match. */
@@ -7262,8 +7302,10 @@ document.querySelector('.skip').addEventListener('click',()=>{const controls=doc
 const portraitPhone=matchMedia('(orientation: portrait) and (pointer: coarse) and (hover: none)');
 const compactControls=matchMedia('(max-width:700px), (pointer: coarse) and (hover: none)');
 const orientationPrompt=document.getElementById('orientation-prompt'),landscapeLock=document.getElementById('landscape-lock');
+let portraitOverride=false;
 function syncMobileOrientation(){
-const blocked=portraitPhone.matches,wasBlocked=!orientationPrompt.hidden;
+if(!portraitPhone.matches)portraitOverride=false;
+const blocked=portraitPhone.matches&&!portraitOverride,wasBlocked=!orientationPrompt.hidden;
 orientationPrompt.hidden=!blocked;document.querySelector('main').inert=blocked;
 landscapeLock.hidden=!(document.fullscreenEnabled&&document.documentElement.requestFullscreen&&screen.orientation?.lock);
 if(blocked&&!wasBlocked){const heading=document.getElementById('orientation-title');heading.tabIndex=-1;heading.focus({preventScroll:true});}
@@ -7272,6 +7314,7 @@ if(!blocked&&wasBlocked&&orientationPrompt.contains(document.activeElement))canv
 portraitPhone.addEventListener('change',syncMobileOrientation);
 addEventListener('resize',syncMobileOrientation);
 landscapeLock.addEventListener('click',async()=>{const status=document.getElementById('orientation-status');try{await document.documentElement.requestFullscreen();await screen.orientation.lock('landscape');status.textContent='Landscape mode is ready.';}catch{status.textContent='This browser cannot lock the screen. Rotate your device sideways to continue.';}syncMobileOrientation();});
+document.getElementById('portrait-continue').addEventListener('click',()=>{portraitOverride=true;syncMobileOrientation();syncStageLayout();setMobileView('shop');draw();document.querySelector('#mobile-stage-nav [data-view="shop"]').focus({preventScroll:true});});
 syncMobileOrientation();
 const token=AB.generate(alea.rand||alea.random,{...AB.DEFAULT_CONFIG,seed:alea.seed});
 const query=new URLSearchParams(location.search),matchMode=query.get('mode')==='match',partyMode=query.get('mode')==='party';
@@ -7285,14 +7328,18 @@ game.balanceVersion=1;
 const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse) and (hover: none)');
 const visualBoard=document.querySelector('.visual-board');
 let mobileView=shopVisible?'shop':'board',mobilePanelKey='';
+const mobileHeroDialog=document.getElementById('mobile-hero-dialog');
+let mobileHeroPreviewOrigin=null;
+mobileHeroDialog.querySelector('#mobile-hero-close').addEventListener('click',()=>mobileHeroDialog.close());
+mobileHeroDialog.addEventListener('close',()=>{if(mobileView==='shop')(mobileHeroPreviewOrigin?.isConnected?mobileHeroPreviewOrigin:document.querySelector('#mobile-stage-nav [data-view="shop"]'))?.focus({preventScroll:true});mobileHeroPreviewOrigin=null;});
 function setMobileView(view){
   if(view==='shop'&&match&&(match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open))view='board';
   mobileView=view;visualBoard.dataset.mobileView=view;
   document.querySelectorAll('#mobile-stage-nav button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.view===view));button.disabled=button.dataset.view==='shop'&&(!match||match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open);});
-  const pan=view==='board'?(shopVisible&&match?.phase==='preparation'?120:220):0,scale=canvas.clientWidth/1440;
+  const pan=document.querySelector('main').classList.contains('portrait-play')?0:view==='board'?(shopVisible&&match?.phase==='preparation'?120:220):0,scale=canvas.clientWidth/1440;
   visualBoard.style.setProperty('--mobile-pan',`${Math.round(pan*scale)}px`);
 }
-function syncStageLayout(){const main=document.querySelector('main'),compact=mobileStageMedia.matches,controls=document.getElementById('accessible-controls'),items=document.getElementById('items-toggle'),nav=document.getElementById('mobile-stage-nav');main.classList.toggle('compact-stage',compact);if(items.parentElement!==(compact?nav:visualBoard))(compact?nav:visualBoard).appendChild(items);if(controls.parentElement!==(compact?nav:main))(compact?nav:main).appendChild(controls);setMobileView(mobileView);}
+function syncStageLayout(){const main=document.querySelector('main'),portrait=portraitPhone.matches&&portraitOverride,compact=mobileStageMedia.matches||portrait,controls=document.getElementById('accessible-controls'),items=document.getElementById('items-toggle'),nav=document.getElementById('mobile-stage-nav');main.classList.toggle('portrait-play',portrait);main.classList.toggle('compact-stage',compact);if(items.parentElement!==(compact?nav:visualBoard))(compact?nav:visualBoard).appendChild(items);if(controls.parentElement!==(compact?nav:main))(compact?nav:main).appendChild(controls);setMobileView(mobileView);}
 mobileStageMedia.addEventListener('change',syncStageLayout);
 addEventListener('resize',syncStageLayout);
 document.querySelectorAll('#mobile-stage-nav button').forEach(button=>button.addEventListener('click',()=>{markPlayerAction();if(button.dataset.view==='shop'&&!shopVisible)shopVisible=true;setMobileView(button.dataset.view);draw();}));
@@ -7393,6 +7440,7 @@ function nextStepHint(){
 if(match&&(partyMode?partyData?.pendingPlan:match.players.player.pendingPlan))return{text:'Choose a battle plan from Items before you mark ready.',target:'items-toggle'};
 if(match&&(partyMode?partyData?.draft&&!partyData.draft.picked:match.draft&&!match.draft.picked))return{text:'Claim one component from the shared draft in Items.',target:'items-toggle'};
 if(match&&chestTerms().enabled&&!match.chests.player)return{text:'Place your treasure chest in your territory before combat.',target:shopVisible?'shop-place-chest':'place-chest'};
+if(match&&shopVisible&&document.querySelector('main').classList.contains('compact-stage')){if(mobileView==='shop'){const offer=match.shops.player[shopPreviewIndex];return offer&&match.players.player.gold>=AB.heroById(offer.heroId).cost?{text:'Tap a hero for details or Buy to recruit. Open Board to place a reserve.',target:'shop-preview-'+shopPreviewIndex}:{text:'Open Board to place a reserve, or refresh the shop if you have gold.',target:'shop-toggle'};}if(selected&&selectedUnit())return{text:'Tap a friendly board space to place your selected hero.',target:hits.find(h=>h.id.startsWith('tile-'))?.id};if(game.bench.length&&game.field.length<game.playerLevel)return{text:'Open Bench, choose a reserve, then tap a friendly board space.',target:'bench-'+game.bench[0].id};return{text:'Open Shop to recruit a hero, or begin combat when your team is ready.',target:'shop-toggle'};}
 if(match&&shopVisible){const offer=match.shops.player[shopPreviewIndex];return offer&&match.players.player.gold>=AB.heroById(offer.heroId).cost?{text:'Preview an offer, recruit it, then place it directly on the visible board.',target:'shop-preview-'+shopPreviewIndex}:{text:'Refresh offers or place reserves on the visible board.',target:'shop-toggle'};}
 if(selected&&selectedUnit()&&!game.opponents.some(u=>u.id===selected))return{text:'Choose a friendly space, or drag the hero there. Drop on a hero to swap; drop on Shop to sell.',target:hits.find(h=>h.id.startsWith('tile-'))?.id};
 if(game.bench.length&&game.field.length<game.playerLevel)return{text:'Drag a reserve onto a friendly board space, or select it and choose a space.',target:'bench-'+game.bench[0].id};
@@ -7405,6 +7453,9 @@ function restartIdleHint(){clearTimeout(idleHintTimer);idleHintTimer=null;if(!ti
 function markPlayerAction(){hintVisible=false;restartIdleHint();}
 function toggleHelp(){hintVisible=!hintVisible;if(hintVisible){const tip=nextStepHint();document.getElementById('announcement').textContent='Help tip: '+tip.text;}draw();}
 function drawHelpTip(){if(!hintVisible||!preparationOpen())return;const tip=nextStepHint(),y=shopVisible?130:632;rect(48,y,232,100,'#253c38',C.gold);text('NEXT STEP',62,y+24,11,C.gold);wrap(tip.text,62,y+49,202,12,C.cream,17);const target=hits.find(h=>h.id===tip.target);if(target){ctx.save();ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(target.x-3,target.y-3,target.w+6,target.h+6);ctx.restore();}}
+document.getElementById('mobile-hint-dismiss').addEventListener('click',()=>{markPlayerAction();draw();});
+function renderMobileHint(){const box=document.getElementById('mobile-hint'),compact=document.querySelector('main').classList.contains('compact-stage');box.hidden=!(compact&&hintVisible&&preparationOpen()&&!mobileHeroDialog.open&&!document.getElementById('accessible-controls').open&&!traitsOpen&&!detailsOpen&&!itemsOpen);if(!box.hidden)document.getElementById('mobile-hint-text').textContent=nextStepHint().text;}
+document.getElementById('accessible-controls').addEventListener('toggle',renderMobileHint);
 function updateInfoIcons(){
 const synergies=AB.synergies(game.field),nextTraits=JSON.stringify([...synergies.factions,...synergies.classes].filter(value=>value.count>0).map(value=>[value.id,value.count,value.current?.count]));
 if(traitSignature!==null&&nextTraits!==traitSignature&&!traitsOpen)unreadTraits=true;
@@ -7499,7 +7550,7 @@ function drawCherub(g,cherub){
 function drawChests(g){for(const chest of visibleChests()){if(chest.rewardKind==='cherub'){drawCherub(g,chest);continue;}const anchor=g.at(chest.col,chest.row),p={x:anchor.x+g.tw*.5,y:anchor.y+g.th*.75},enemy=chest.side==='enemy',active=chest.status==='active',color=chest.rewardKind==='item'?'#c9a8f0':enemy?C.red:C.gold;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.ellipse(anchor.x,anchor.y,6,3,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=active?1:.4;ctx.shadowColor='#0008';ctx.shadowBlur=12;ctx.shadowOffsetY=5;poly([[p.x-22,p.y-8],[p.x,p.y+4],[p.x+22,p.y-8],[p.x,p.y-20]],'#be9553',color);poly([[p.x-22,p.y-8],[p.x-22,p.y-26],[p.x,p.y-14],[p.x,p.y+4]],'#795c35',color);poly([[p.x,p.y-14],[p.x+22,p.y-26],[p.x+22,p.y-8],[p.x,p.y+4]],'#a37a42',color);poly([[p.x-22,p.y-26],[p.x,p.y-38],[p.x+22,p.y-26],[p.x,p.y-14]],'#caa268',color);rect(p.x-3,p.y-19,6,9,'#f5d69b');ctx.shadowBlur=0;ctx.shadowOffsetY=0;rect(p.x-36,p.y-71,72,29,'#102124',color);rect(p.x-25,p.y-49,50,5,'#091616');rect(p.x-25,p.y-49,chest.maxHp?50*Math.max(0,chest.hp/chest.maxHp):0,5,color);text(chest.rewardKind==='item'?'ITEM CHEST':chest.maxHp?Math.ceil(chest.hp)+' HP':'FIELD A HERO',p.x,p.y-56,10,color,'sans-serif','center');if((chest.rewardKind==='item'?itemChestSelected:chestSelected)&&!enemy){ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y+1,30,14,0,0,Math.PI*2);ctx.stroke();}ctx.restore();if(game.phase==='planning'&&!enemy)hit(chest.rewardKind==='item'?'player-item-chest':'player-chest',p.x-36,p.y-71,72,79,chest.rewardKind==='item'?selectItemChest:selectChest,chest.rewardKind==='item'?'Select your item chest':'Select your treasure chest');}}
 function chestInspector(){const preview=chestTerms(),chest=preview.chests.find(c=>c.side==='player');text('YOUR TREASURE',1172,174,12,C.gold);text(chest?.col!==null&&chest?.col!==undefined?'Treasure at '+coordinate(chest.col,chest.row):'Protect the bonus.',1172,210,25,C.cream,'Georgia');wrap('Click a friendly tile to place your chest. It takes no hero slot and may share a starting tile with a hero.',1172,249,220,14);text(preview.goldPerChest+' GOLD PER CHEST',1172,350,15,C.gold);text(preview.expiresAtSeconds+' SECOND WINDOW',1172,381,12,C.muted);if(chest?.maxHp){text(number(chest.maxHp)+' MAX HP',1172,431,20,C.cream);wrap('Based on the roster’s base 1-star HP average and your highest fielded hero’s HP rank. Armor breaks HP ties.',1172,465,220,13);}wrap('Heroes target the nearest enemy hero or chest. A defeated chest pays its capturer; an intact chest pays its owner when combat ends.',1172,565,220,13,C.muted,20);button('chest-deselect','Deselect · Esc',1172,697,220,37,deselect);}
 
-function grid(){const b=game.board,shopOpen=shopVisible&&match?.phase==='preparation',dx=1080/b.rows,dy=(shopOpen?360:480)/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:(shopOpen?345:398)+(c-(b.columns-1)/2)*dy})};}
+function grid(){const b=game.board,shopOpen=shopVisible&&match?.phase==='preparation'&&!document.querySelector('main').classList.contains('portrait-play'),dx=1080/b.rows,dy=(shopOpen?360:480)/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:(shopOpen?345:398)+(c-(b.columns-1)/2)*dy})};}
 function unitFacing(u){const target=(game.battle?.units||[]).find(t=>t.id===u.targetId&&t.alive!==false);if(target&&Math.abs(target.row-u.row)>1e-6)return target.row<u.row?'right':'left';const move=u.lastMove;if(move&&Math.abs(u.row-move.from.row)>1e-6)return u.row<move.from.row?'right':'left';return u.side==='enemy'?'left':'right';}
 
 const reducedCombatMotion=matchMedia('(prefers-reduced-motion: reduce)');
@@ -7698,6 +7749,8 @@ function offerTraitChanges(h){
 }
 function shop(){
 if(!shopVisible||match.phase!=='preparation'||partyData?.eliminated)return;
+const mobileCanvasHidden=document.querySelector('main').classList.contains('compact-stage'),firstShopHit=hits.length;
+if(mobileCanvasHidden){ctx.save();ctx.globalAlpha=0;}
 const offers=match.shops.player,selectedOffer=offers[shopPreviewIndex],preview=selectedOffer?AB.heroById(selectedOffer.heroId):null;
 rect(0,116,1440,644,'#07151799');
 ctx.save();ctx.shadowColor='#000b';ctx.shadowBlur=28;ctx.shadowOffsetY=10;rect(48,528,1344,228,'#102529',C.gold);ctx.restore();
@@ -7736,6 +7789,7 @@ changes.forEach((change,i)=>text(fitText(`${change.activated?'✦ ':change.adds?
 if(stock)text(`Copies: you ${stock.playerOwned} · ${partyMode?'others':'rival'} ${stock.enemyOwned} / ${stock.total}`,784,728,10,C.muted);
 button('shop-buy-'+shopPreviewIndex,'Recruit · '+preview.cost+'g',1193,627,183,49,()=>buyShop(shopPreviewIndex),true,p.gold>=preview.cost,14,`Recruit ${preview.name}, ${preview.cost} gold, shop offer ${shopPreviewIndex+1}`);
 }else text('Choose an available hero.',784,610,17,C.muted,'Georgia');
+if(mobileCanvasHidden){for(const hit of hits.slice(firstShopHit))hit.mobileCanvasHidden=true;ctx.restore();}
 }
 function heroCard(h,x,y,w=434,height=294){
 rect(x,y,w,height,hover==='hero-art-'+h.id?'#1c3435':'#14282a',hover==='hero-art-'+h.id?C.gold:'#314645');const u={id:h.id,heroId:h.id,level:1},roles=roleLabels(h),cl=klass(h.class);
@@ -7854,7 +7908,7 @@ button('help-tip','?',1055,47,35,39,toggleHelp,false,preparationOpen(),19,'Show 
 text('COMMANDER LEVEL',1100,53,10,C.muted);text(String(game.playerLevel),1100,86,32,C.cream,'Georgia');text('FIELD',1392,48,10,C.muted,'sans-serif','right');text(`${game.field.length} / ${game.playerLevel}`,1392,79,28,C.gold,'Georgia','right');text(`BENCH  ${game.bench.length} / 10`,1392,103,12,game.bench.length===10?C.gold:C.teal,'sans-serif','right');line(48,116,1392,116);
 if(tab==='roster')roster();
 else{
-stoneBoard();if(!shopVisible||match?.phase!=='preparation')commandBar();bench();
+stoneBoard();if(!shopVisible||match?.phase!=='preparation'||document.querySelector('main').classList.contains('compact-stage')&&mobileView==='board')commandBar();bench();
 if(hoveredFieldUnit)fieldRatingTooltip(hoveredFieldUnit);
 if(traitsOpen&&!compactControls.matches){rect(32,130,256,620,'#102529',C.line);hit('traits-panel-shield',32,130,256,620,()=>{},'Traits panel',false);synergyPanel();}
 if(detailsOpen&&!compactControls.matches){rect(1154,130,254,630,'#102529',C.line);hit('details-panel-shield',1154,130,254,630,()=>{},'Details panel',false);inspector();}
@@ -7862,10 +7916,10 @@ if(match&&shopVisible&&match.phase==='preparation')shop();
 drawHelpTip();
 drawDrag();
 }
-updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);renderMobilePanels();renderItems();
+updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);renderMobilePanels();renderItems();renderMobileHint();
 }
 
-document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);});
+document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);renderMobileHint();});
 function renderItems(force=false){
   const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode?partyData?.itemRulesVersion===1:matchMode&&match?.cherubRulesVersion===1;
   const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,draft:match?.draft||null,pendingPlan:!!match?.players.player.pendingPlan,freeRerolls:match?.players.player.freeRerolls||0,itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
@@ -7885,7 +7939,7 @@ function renderItems(force=false){
   panel.replaceChildren();
   const heading=document.createElement('div');heading.className='items-head';
   const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':'Items';
-  const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);};heading.append(title,close);panel.append(heading);
+  const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);renderMobileHint();};heading.append(title,close);panel.append(heading);
   const summary=document.createElement('p');summary.textContent=`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
   if(itemView.itemChest&&match.phase==='preparation'&&!itemView.spectating){const place=document.createElement('button');place.type='button';place.textContent='Place item chest · back two rows';place.onclick=()=>{itemsOpen=false;selectItemChest();renderItems(true);};panel.append(place);}
   const locked=(partyMode&&(partyPending||!partyConnected||itemView.eliminated||itemView.spectating))||match.phase!=='preparation';
@@ -7916,7 +7970,22 @@ function updateAccess(){const key=[tab,mobileView,codexMode,codexFaction,faction
 const root=document.getElementById('controls'),focused=document.activeElement?.dataset?.actionId,focusedIndex=[...root.children].findIndex(button=>button.dataset.actionId===focused),old=new Map([...root.children].map(button=>[button.dataset.actionId,button]));
 for(const h of [...hits].filter(h=>h.access!==false).sort((a,b)=>accessibleOrder(a)-accessibleOrder(b))){let b=old.get(h.id);if(!b){b=document.createElement('button');b.type='button';b.dataset.actionId=h.id;}old.delete(h.id);b.textContent=h.label;b.onfocus=()=>{if(/^shop-(buy|preview|card-buy)-\d+$/.test(h.id)){const offer=match?.shops.player[Number(h.id.split('-').at(-1))];if(offer)document.getElementById('details').textContent=accessibleHero(AB.heroById(offer.heroId));}};b.onblur=()=>{document.getElementById('details').textContent=accessibleDetails();};if(/^shop-(buy|preview|card-buy)-\d+$/.test(h.id))b.setAttribute('aria-describedby','details');else b.removeAttribute('aria-describedby');if(h.id==='tips-toggle')b.setAttribute('aria-pressed',String(tipsEnabled));else if(h.id==='traits-toggle')b.setAttribute('aria-pressed',String(showAllTraits));else if(/^(bench-|field-|enemy-)/.test(h.id))b.setAttribute('aria-pressed',String(h.id===`bench-${selected}`||h.id===`field-${selected}`||h.id===`enemy-${selected}`));else b.removeAttribute('aria-pressed');b.onclick=event=>{if(h.id!=='help-tip')markPlayerAction();if(h.id.startsWith('tile-')&&selected){const occupant=game.field.find(u=>u.col===Number(h.id.split('-')[1])&&u.row===Number(h.id.split('-')[2]));h.fn(occupant&&occupant.id!==selected?{shiftKey:true}:event);}else h.fn(event);};root.appendChild(b);}
 for(const stale of old.values())stale.remove();if(focused&&document.activeElement?.dataset?.actionId!==focused){const next=[...root.children].find(button=>button.dataset.actionId===focused)||root.children[Math.min(focusedIndex,root.children.length-1)];next?.focus({preventScroll:true});}updateQuickActions();}
-function updateQuickActions(){const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),shopping=match&&shopVisible&&match.phase==='preparation',ids=compact&&mobileView!=='shop'?['battle','shop-place-chest','place-chest','next-round','pause','new-match','replan']:shopping?[`shop-buy-${shopPreviewIndex}`,'shop-place-chest','shop-reroll','shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){if(compact&&id==='shop-toggle')continue;const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||id==='shop-place-chest'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}root.hidden=compact&&root.childElementCount===0;}
+function updateQuickActions(){
+  const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),shopping=match&&shopVisible&&match.phase==='preparation';
+  const ids=compact&&mobileView!=='shop'?['battle','shop-place-chest','place-chest','next-round','pause','new-match','replan']:shopping?[`shop-buy-${shopPreviewIndex}`,'shop-place-chest','shop-reroll','shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];
+  root.replaceChildren();
+  for(const id of ids){
+    if(compact&&id==='shop-toggle')continue;
+    const action=hits.find(h=>h.id===id);if(!action)continue;
+    const heroPreview=compact&&/^shop-buy-\d+$/.test(id);
+    const button=document.createElement('button');button.type='button';
+    button.textContent=heroPreview?'Hero details':id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
+    button.classList.toggle('primary',!heroPreview&&(id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||id==='shop-place-chest'||['battle','next-round','new-match'].includes(id)));
+    button.addEventListener('click',()=>{markPlayerAction();if(heroPreview)openMobileHeroPreview(shopPreviewIndex,button);else action.fn();});
+    root.appendChild(button);
+  }
+  root.hidden=compact&&root.childElementCount===0;
+}
 function miniUnit(h,level,width,height){
   const picture=document.createElement('canvas');picture.width=width;picture.height=height;picture.setAttribute('aria-hidden','true');
   const miniCtx=picture.getContext('2d');
@@ -7924,13 +7993,31 @@ function miniUnit(h,level,width,height){
   ABArtSprites.drawStars(miniCtx,width/2,7,level,10);
   return picture;
 }
+function openMobileHeroPreview(index,origin){
+  const offer=match?.shops?.player?.[index];if(!offer)return;
+  const h=AB.heroById(offer.heroId),score=ratings(h.id,1),dialog=mobileHeroDialog;
+  mobileHeroPreviewOrigin=origin||document.activeElement;
+  dialog.dataset.offerIndex=String(index);dialog.dataset.heroId=h.id;
+  dialog.querySelector('#mobile-hero-title').textContent=h.name;
+  dialog.querySelector('#mobile-hero-cost').textContent=`${h.cost} gold · 1 star`;
+  dialog.querySelector('#mobile-hero-art').replaceChildren(miniUnit(h,1,180,140));
+  dialog.querySelector('#mobile-hero-role').textContent=`${h.faction?faction(h.faction).name:'Independent'} · ${(h.classes||[]).map(id=>klass(id).name).join(' / ')||'No class'}`;
+  dialog.querySelector('#mobile-hero-description').textContent=`${h.ability.name}: ${h.ability.description}`;
+  dialog.querySelector('#mobile-hero-ratings').textContent=ratingDescription(score);
+  const buy=dialog.querySelector('#mobile-hero-buy');buy.textContent=`Buy ${h.name} · ${h.cost}g`;
+  buy.disabled=match.players.player.gold<h.cost||partyMode&&(!partyConnected||partyPending||partyData?.eliminated||partyData?.spectating);
+  buy.onclick=()=>{if(match?.shops.player[index]?.heroId!==h.id){dialog.close();say('That offer changed. Choose a hero from the current shop.');draw();return;}mobileHeroPreviewOrigin=null;dialog.close();markPlayerAction();buyShop(index);document.querySelector('#mobile-stage-nav [data-view="board"]').focus({preventScroll:true});};
+  if(!dialog.open)dialog.showModal();
+}
 function renderMobilePanels(){
   if(!document.querySelector('main').classList.contains('compact-stage'))return;
   const progress=match?.players.player.progression;
   const resource=document.getElementById('mobile-resource'),metrics=match?[['GOLD',match.players.player.gold+'g'],['LEVEL',String(progress.level)],['XP',progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'],['FIELD',game.field.length+'/'+game.playerLevel],['BENCH',game.bench.length+'/10']]:[['LEVEL',String(game.playerLevel)],['FIELD',game.field.length+'/'+game.playerLevel],['BENCH',game.bench.length+'/10']];
   resource.replaceChildren(...metrics.map(([label,value])=>{const cell=document.createElement('span'),caption=document.createElement('small'),amount=document.createElement('strong');caption.textContent=label;amount.textContent=value;cell.append(caption,amount);return cell;}));
   if(mobileView==='shop'&&match?.phase!=='preparation')setMobileView('board');
-  const offers=match?.shops?.player||[],key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,match?.players.player.shopLocked,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
+  const offers=match?.shops?.player||[];
+  if(mobileHeroDialog.open&&(match?.phase!=='preparation'||offers[Number(mobileHeroDialog.dataset.offerIndex)]?.heroId!==mobileHeroDialog.dataset.heroId))mobileHeroDialog.close();
+  const key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,match?.players.player.shopLocked,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
   if(key===mobilePanelKey)return;mobilePanelKey=key;
   const shopRoot=document.querySelector('.mobile-shop-offers'),benchRoot=document.querySelector('.mobile-bench-grid'),focusedCard=document.activeElement?.closest('.mobile-offer'),focusedOffer=focusedCard?[...shopRoot.children].indexOf(focusedCard):-1,focusedBuy=document.activeElement?.classList.contains('mobile-offer-buy');shopRoot.replaceChildren();benchRoot.replaceChildren();
   document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${offers.filter(Boolean).length} OFFERS${match.players.player.shopLocked?' · SHOP HELD':''}`:'No shop in this mode';
@@ -7939,13 +8026,13 @@ function renderMobilePanels(){
     if(!h){card.textContent='No offer';}else{
       const previewButton=document.createElement('button');previewButton.type='button';previewButton.className='mobile-offer-preview';
       const name=document.createElement('strong');name.textContent=h.name;previewButton.append(name);
-      const cost=document.createElement('span');cost.textContent=`${h.cost}g · ${faction(h.faction).name}`;previewButton.append(cost);
+      const cost=document.createElement('span');cost.className='mobile-offer-cost';cost.textContent=`${h.cost}g · ${faction(h.faction).name}`;previewButton.append(cost);
       previewButton.append(miniUnit(h,1,95,62));
-      const traits=document.createElement('span');traits.textContent=traitIcons(h).map(icon=>icon.name).join(' · ');previewButton.append(traits);
+      const traits=document.createElement('span');traits.className='mobile-offer-traits';traits.textContent=traitIcons(h).map(icon=>icon.name).join(' · ');previewButton.append(traits);
       const change=offerTraitChanges(h).find(item=>item.activated)||offerTraitChanges(h).find(item=>item.adds),gain=document.createElement('span');gain.className='gain';gain.textContent=change?`${change.activated?'✦ Bonus':'↑ '+change.count} ${change.name}`:'Already fielded';previewButton.append(gain);
-      const score=ratings(h.id,1),stats=document.createElement('span');stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;previewButton.append(stats);
-      previewButton.setAttribute('aria-label',`Preview ${h.name}. ${h.cost} gold. ${traitNames(h)}. ${change?.detail||'Already fielded'}. ${ratingDescription(score)}`);
-      previewButton.onclick=()=>{markPlayerAction();shopPreviewIndex=index;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();};
+      const score=ratings(h.id,1),stats=document.createElement('span');stats.className='mobile-offer-stats';stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;previewButton.append(stats);
+      previewButton.setAttribute('aria-label',`Preview ${h.name}. ${h.cost} gold. ${traitNames(h)}. ${change?.detail||'Already fielded'}. ${ratingDescription(score)}. ${h.ability.name}.`);
+      previewButton.onclick=()=>{markPlayerAction();shopPreviewIndex=index;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();openMobileHeroPreview(index,shopRoot.children[index]?.querySelector('.mobile-offer-preview'));};
       const buyButton=document.createElement('button');buyButton.type='button';buyButton.className='mobile-offer-buy';buyButton.textContent=`Buy · ${h.cost}g`;buyButton.setAttribute('aria-label',`Buy ${h.name} for ${h.cost} gold from shop offer ${index+1}`);buyButton.disabled=match.players.player.gold<h.cost||partyMode&&(!partyConnected||partyPending||partyData?.eliminated||partyData?.spectating);buyButton.onclick=()=>{markPlayerAction();buyShop(index);};
       card.append(previewButton,buyButton);
     }
@@ -7962,7 +8049,7 @@ function renderMobilePanels(){
   if(focusedOffer>=0)shopRoot.children[focusedOffer]?.querySelector(focusedBuy?'.mobile-offer-buy':'.mobile-offer-preview')?.focus({preventScroll:true});
 }
 function locate(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*1440/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
-function findHit(p){return [...hits].reverse().find(h=>h.diamond?(Math.abs(p.x-h.diamond.x)/h.diamond.tw+Math.abs(p.y-h.diamond.y)/h.diamond.th<=1):(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h));}
+function findHit(p){return [...hits].reverse().find(h=>!h.mobileCanvasHidden&&(h.diamond?(Math.abs(p.x-h.diamond.x)/h.diamond.tw+Math.abs(p.y-h.diamond.y)/h.diamond.th<=1):(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h)));}
 function dragSellValue(){const u=drag&&[...game.bench,...game.field].find(v=>v.id===drag.unitId);return u?u&&hero(u).cost*3**(u.level-1):0;}
 function dragTarget(p){
 if(!drag?.active)return null;
@@ -7981,7 +8068,25 @@ canvas.addEventListener('pointermove',e=>{const p=locate(e);pointerAt=p;if(drag?
 canvas.addEventListener('pointerup',e=>{if(drag?.pointerId!==e.pointerId)return;const active=drag.active,unitId=drag.unitId,target=active?dragTarget(locate(e)):null;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(active){suppressDragClick=true;markPlayerAction();if(target)dropUnit(unitId,target);else{say('Drop a hero on a friendly tile to place it, or on Shop to sell it.');draw();}}});
 canvas.addEventListener('pointercancel',e=>{if(drag?.pointerId===e.pointerId){drag=null;draw();}});
 canvas.addEventListener('pointerleave',()=>{if(!drag?.active){hover=null;pointerAt=null;draw();}});canvas.addEventListener('click',e=>{if(suppressDragClick){suppressDragClick=false;return;}const h=findHit(locate(e));if(h?.id!=='help-tip')markPlayerAction();if(h)h.fn(e);else if(tab==='arena'&&(selected||selectedTrait||chestSelected))deselect();});
-addEventListener('keydown',e=>{if((matchMode||partyMode)&&!match)return;if(['Escape',' ','r','R','f','F','Backspace'].includes(e.key))markPlayerAction();if(e.key==='Escape'){codexHero=null;deselect();return;}if(['BUTTON','INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable)return;if(e.code==='Space'){e.preventDefault();if(game.phase==='planning')begin();else if(game.phase==='battle'&&!partyMode){paused=!paused;lastTick=0;persistMatch();draw();schedule();}}if(e.key.toLowerCase()==='r')reset();if(e.key.toLowerCase()==='f'){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();}if(e.key==='Backspace'&&game.phase==='planning'){e.preventDefault();recall();}});
+addEventListener('keydown',e=>{
+  if((matchMode||partyMode)&&!match)return;
+  const interactive=e.target.closest?.('button,input,select,textarea,summary,dialog,[role="button"],[role="tab"],[contenteditable="true"]');
+  if(e.key==='Escape'){
+    if(mobileHeroDialog.open){e.preventDefault();mobileHeroDialog.close();return;}
+    const controls=document.getElementById('accessible-controls');
+    if(controls.open){e.preventDefault();controls.open=false;controls.querySelector('summary').focus({preventScroll:true});return;}
+    if(itemsOpen){e.preventDefault();itemsOpen=false;draw();document.getElementById('items-toggle').focus({preventScroll:true});return;}
+    if(traitsOpen||detailsOpen){e.preventDefault();const icon=document.getElementById(traitsOpen?'traits-icon':'details-icon');traitsOpen=false;detailsOpen=false;draw();icon.focus({preventScroll:true});return;}
+    if(interactive)return;
+    markPlayerAction();codexHero=null;deselect();return;
+  }
+  if(interactive)return;
+  if([' ','r','R','f','F','Backspace'].includes(e.key))markPlayerAction();
+  if(e.code==='Space'){e.preventDefault();if(game.phase==='planning')begin();else if(game.phase==='battle'&&!partyMode){paused=!paused;lastTick=0;persistMatch();draw();schedule();}}
+  if(e.key.toLowerCase()==='r')reset();
+  if(e.key.toLowerCase()==='f'){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();}
+  if(e.key==='Backspace'&&game.phase==='planning'){e.preventDefault();recall();}
+});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(idleHintTimer);persistMatch();cancelAnimationFrame(raf);raf=0;lastTick=0;}else{restartIdleHint();schedule();}});
 addEventListener('resize',draw);
 addEventListener('pagehide',persistMatch);

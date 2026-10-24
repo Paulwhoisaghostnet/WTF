@@ -12354,3 +12354,11 @@
 **Correction and proof**: The compact layout now moves both utilities into the Board/Shop/Bench bar, while desktop keeps their existing positions. Changing views invalidates the action list. Browser checks found no overlap with the last Buy button, recruited a hero, switched views, opened Controls, and exercised board placement; the focused hosted game suite passed.
 
 **Rule**: Check fixed utilities against every actionable card at the real phone viewport. A view switch must update any control list derived from that view, even when match state does not change.
+
+## 2026-10-24 — Keep compact game actions and help visible in the active phone view
+
+**What happened**: Short landscape shop cards clipped their details against Buy controls, several touch actions fell below the project's 44px target, and the native Space shortcut could begin combat while a player was opening Controls. An automatic help tip rendered only inside the canvas, where the separate mobile Shop pane covered it. The portrait rotation prompt left players without a usable alternative if they could not rotate.
+
+**Correction and proof**: The compact shop now opens a named hero dialog with ability, ratings and Buy while retaining direct card Buy; keyboard Escape restores focus. Touch actions measure at least 44px at 844×390, 667×375 and 568×320. Native buttons and disclosures own their keyboard events. The help tip is a dismissible DOM element in the active mobile pane, and the orientation prompt offers an explicit portrait layout of the same board. Local touch flows verified purchase, bench selection, board placement and Begin round; hosted Chromium checks cover landscape and portrait views.
+
+**Rule**: Test phone layouts at the shortest supported viewing height, including modal fit and tap target geometry. When canvas gameplay has a DOM overlay, expose contextual actions and help in that overlay and verify the full purchase-to-combat chain in the same view.
