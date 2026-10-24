@@ -39,6 +39,19 @@ async function hit(page, frame, id) {
   await clickGamePoint(page, frame, point);
 }
 
+async function hoverHit(page, frame, id) {
+  const canvas = frame.locator("#game");
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = await canvas.boundingBox();
+  const resolution = await canvas.evaluate(element => ({ width: element.width, height: element.height }));
+  const point = await frame.evaluate(target => {
+    const region = window.AB_UI.hitRegions().find(hit => hit.id === target);
+    if (!region) throw new Error(`Missing hover region ${target}`);
+    return { x: region.x + region.w / 2, y: region.y + region.h / 2 };
+  }, id);
+  await page.mouse.move(bounds.x + point.x * bounds.width / resolution.width, bounds.y + point.y * bounds.height / resolution.height);
+}
+
 async function dragHit(page, frame, sourceId, targetId) {
   const canvas = frame.locator("#game");
   await canvas.scrollIntoViewIfNeeded();
@@ -148,6 +161,17 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(roleRatings.healer.attack).toBeUndefined();
     expect(roleRatings.fighter.attack).toEqual(expect.any(Number));
     expect(roleRatings.fighter.magic).toBeUndefined();
+    const iconInventory = await game.evaluate(() => {
+      const seen = new Set();
+      const missing = [];
+      for (const hero of window.AB.ROSTER) {
+        const icons = window.AB_UI.traitIcons(hero);
+        if (icons.length !== (hero.faction ? 1 + hero.classes.length : 1)) missing.push(hero.id);
+        for (const icon of icons) seen.add(icon.id);
+      }
+      return { missing, factions: window.AB.FACTIONS.filter(faction => !seen.has(faction.id)).map(faction => faction.id), classes: window.AB.CLASSES.filter(clas => !seen.has(clas.id)).map(clas => clas.id) };
+    });
+    expect(iconInventory).toEqual({ missing: [], factions: [], classes: [] });
 
     await hit(page, game, "shop-buy-0");
     let state = await gameState(game);
@@ -157,6 +181,12 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     state = await gameState(game);
     expect(state.field.map(unit => unit.id)).toContain(first);
     expect(state.saveStatus).toBe("saved");
+    await hoverHit(page, game, `field-${first}`);
+    const fieldHover = await game.evaluate(() => window.AB_UI.fieldHover());
+    expect(fieldHover.heroId).toBe(state.field[0].heroId);
+    expect(fieldHover.ratings).toEqual(await game.evaluate(id => window.AB_UI.ratings(id, 1), state.field[0].heroId));
+    expect(fieldHover.icons.length).toBeGreaterThanOrEqual(2);
+    await game.locator("#game").screenshot({ path: test.info().outputPath("field-trait-icons-and-ratings.png") });
 
     await game.evaluate(() => {
       window.AB_UI.begin();

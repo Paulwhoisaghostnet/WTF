@@ -12200,3 +12200,13 @@
 **Correction and proof**: Rebuilt the host after vendoring, then reran the Magic, drag and watcher browser stories against the fresh assets; each passed. The package checksum test and inventory coverage gate pass.
 
 **Rule**: A successful vendor command changes source assets, not the host's served build. Rebuild the host before any browser verdict, including a focused test, and separate stale-build failures from actual game regressions.
+
+---
+
+## 2026-10-23 - Canvas unit badges need reserved space above the board
+
+**What happened**: Adding faction and class badges above Lil Guys field units made a badge row overlap the opposing-team heading at the top of the arena. The shop and bench looked correct, so the collision only appeared after a hero was fielded.
+
+**Why it mattered**: The new identity symbols were visible but the heading became harder to read during the central gameplay action.
+
+**Rule**: After adding above-unit overlays, inspect a populated board at its nearest header edge. Reserve a separate header line for arena labels, and verify the tooltip and badge placement in the embedded wtfOS canvas as well as the standalone game.
