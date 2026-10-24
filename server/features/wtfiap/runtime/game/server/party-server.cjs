@@ -25,6 +25,23 @@ const ordered = value => Array.isArray(value) ? value.map(ordered) : value && ty
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, ordered(value[key])])) : value;
 const fingerprint = value => hash(JSON.stringify(ordered(value)));
 const validText = value => typeof value === 'string' && value.trim().length > 0;
+const FEATURE_KEYS = Object.freeze(['treasure', 'items', 'cherub', 'shopHold', 'battlePlans', 'sharedDraft', 'supplyEncounters', 'blessings', 'curses', 'zoneBonuses']);
+const MODERN_FEATURES = Object.freeze(Object.fromEntries(FEATURE_KEYS.map(key => [key, true])));
+const ANCIENT_FEATURES = Object.freeze(Object.fromEntries(FEATURE_KEYS.map(key => [key, false])));
+function roomFeatures(input) {
+  requireThat(['ancient', 'modern', 'custom'].includes(input.rulesPreset), 'Choose Ancient, Modern, or Custom rules.');
+  const supplied = input.gameFeatures;
+  if (input.rulesPreset === 'custom') {
+    requireThat(supplied && typeof supplied === 'object' && !Array.isArray(supplied) &&
+      Object.keys(supplied).length === FEATURE_KEYS.length && FEATURE_KEYS.every(key => typeof supplied[key] === 'boolean'),
+    'Custom rules must choose every optional feature.');
+  } else requireThat(supplied === undefined || fingerprint(supplied) === fingerprint(input.rulesPreset === 'modern' ? MODERN_FEATURES : ANCIENT_FEATURES),
+    'Preset rules cannot be changed individually.');
+  const features = { ...(input.rulesPreset === 'modern' ? MODERN_FEATURES : input.rulesPreset === 'ancient' ? ANCIENT_FEATURES : supplied) };
+  requireThat(features.items || !['cherub', 'battlePlans', 'sharedDraft', 'supplyEncounters'].some(key => features[key]),
+    'Cherub, battle plans, shared draft, and supply encounters require items.');
+  return features;
+}
 function changes(before, after, at = [], result = []) {
   if (Object.is(before, after)) return result;
   if (!before || !after || typeof before !== 'object' || typeof after !== 'object' ||
@@ -54,6 +71,17 @@ function atomicJSON(filename, value) {
   }
 }
 function configuration(input, preserveItemVersion = false) {
+  const features = input?.rulesPreset === undefined ? null : roomFeatures(input);
+  if (features) {
+    const versions = { balanceVersion: 1, itemRulesVersion: features.items ? 1 : undefined, cherubRulesVersion: features.cherub ? 1 : undefined,
+      shopLockRulesVersion: features.shopHold ? 1 : undefined, encounterRulesVersion: features.supplyEncounters ? 1 : undefined,
+      draftRulesVersion: features.sharedDraft ? 1 : undefined, planRulesVersion: features.battlePlans ? 1 : undefined,
+      fortuneRulesVersion: features.blessings || features.curses ? 1 : undefined };
+    for (const [key, value] of Object.entries(versions)) requireThat(input[key] === undefined || input[key] === value,
+      'Room feature versions must match the chosen rules.');
+    input = { ...input, ...versions, treasureEnabled: features.treasure, zoneBonusesEnabled: features.zoneBonuses,
+      ...(versions.fortuneRulesVersion ? { fortuneKinds: { blessings: features.blessings, curses: features.curses } } : {}) };
+  }
   requireThat(input && Match.hasBoardMode(input.boardMode), 'Select a supported board mode.');
   requireThat(PREPARATION_SECONDS.includes(input.preparationSeconds), 'Choose a preparation timer of 2m, 5m, 10m or everyone ready.');
   const earlyStart = input.preparationSeconds === null;
@@ -70,16 +98,20 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.encounterRulesVersion === undefined || input.encounterRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown encounter rules version.');
   requireThat(input.draftRulesVersion === undefined || input.draftRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown shared draft rules version.');
   requireThat(input.planRulesVersion === undefined || input.planRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown battle plan rules version.');
-  requireThat(input.fortuneRulesVersion === undefined || input.fortuneRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown fortune shop rules version.');
+  requireThat(input.fortuneRulesVersion === undefined || input.fortuneRulesVersion === 1, 'Unknown fortune shop rules version.');
+  const versionOn = key => features ? input[key] === 1 : !preserveItemVersion || input[key] === 1;
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
-    earlyStart, oddPlayerPolicy: 'round-ai', ...(!preserveItemVersion || input.itemRulesVersion === 1 ? { itemRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.balanceVersion === 1 ? { balanceVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.shopLockRulesVersion === 1 ? { shopLockRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.draftRulesVersion === 1 ? { draftRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.planRulesVersion === 1 ? { planRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.fortuneRulesVersion === 1 ? { fortuneRulesVersion: 1 } : {}) };
+    earlyStart, oddPlayerPolicy: 'round-ai', ...(versionOn('itemRulesVersion') ? { itemRulesVersion: 1 } : {}),
+    ...(versionOn('cherubRulesVersion') ? { cherubRulesVersion: 1 } : {}),
+    ...(versionOn('balanceVersion') ? { balanceVersion: 1 } : {}),
+    ...(versionOn('shopLockRulesVersion') ? { shopLockRulesVersion: 1 } : {}),
+    ...(versionOn('encounterRulesVersion') ? { encounterRulesVersion: 1 } : {}),
+    ...(versionOn('draftRulesVersion') ? { draftRulesVersion: 1 } : {}),
+    ...(versionOn('planRulesVersion') ? { planRulesVersion: 1 } : {}),
+    ...(versionOn('fortuneRulesVersion') ? { fortuneRulesVersion: 1 } : {}),
+    ...(features ? { rulesPreset: input.rulesPreset, gameFeatures: features,
+      treasureEnabled: features.treasure, zoneBonusesEnabled: features.zoneBonuses,
+      ...(features.blessings || features.curses ? { fortuneKinds: { blessings: features.blessings, curses: features.curses } } : {}) } : {}) };
   if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');

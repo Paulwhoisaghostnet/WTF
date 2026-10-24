@@ -11,6 +11,20 @@ const hashValue = value => crypto.createHash('sha256').update(stable(value)).dig
 // can continue those frozen rooms. Any later rules hash must prove its own
 // compatibility before inheriting them.
 const compatiblePinnedRules = Object.freeze({
+  // Room variations are pinned only on fresh configs. Two- and eight-player
+  // legacy, item, fortune, and Zone Defense rooms replayed byte-identical
+  // serialized states and player views at 1,132 checkpoints across six rounds.
+  // The previously broken round-five virtual-opponent view now supplies empty
+  // item/fortune data; no old serializable state changes at that point.
+  'cb522a7d5245560b0aed42218bf283172338f13b2b178bb2c98e6e7f77ca86a9': Object.freeze([
+    'f4439f387f98e419c2d6cca7825c7730e3442c2f665cefb982ee1da3be1f1711',
+    '838117450b955e3f47b35a9fdb714b002b5c99ba5d37911eb506638defd7c612',
+    'dd7c9167362f17983d507ba907b8aba87ac6150f01562224d9871c13f6bebb3d',
+    'f6808dd4d3cc63e38b1ab9691826b14e2acc0bc837188aa784f96ff710b107de',
+    '4415776d4b0db7a07f3346bdf0c4014c68808060d32e974bbf7703ba47ac8d73',
+    '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd',
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
   // Fortunes are opt-in for newly created rooms. Legacy and the latest
   // pre-fortune two- and eight-seat rooms replayed three rounds with
   // byte-identical serialized states and player views against the prior runtime.

@@ -12394,3 +12394,11 @@
 **Why it mattered**: Optional offers can look like the next required step and obstruct round progression even when all controls technically work.
 
 **Rule**: Render mandatory plan, draft, chest and component-shop choices before optional modifiers. Browser journeys must select the intended section by its accessible content and assert the resulting phase or state, not rely on incidental button order.
+
+## 2026-10-24 - Optional room systems must not assume their old companion system
+
+**What happened**: Separating blessings from Items and treasure exposed two implicit dependencies: the fortune panel always read an item catalog, and item chest combat expected a regular treasure chest for its health. A fifth-round supply opponent also lacked the inventory fields expected by the public view.
+
+**Correction and proof**: Fortune-only rooms now use the shared component catalog for display without exposing inventory controls; item chests calculate their own health when regular treasure is off; virtual opponents display empty optional inventories. New room tests cover Ancient through round five, item chests at round ten, blessings without Items, and round-five Modern opponent views. Old room serialization and player views match the pre-change runtime at 1,132 replay checkpoints.
+
+**Rule**: Every independently selectable mechanic must have its own state, reward, validation, and UI path. Test combinations that remove the former prerequisite, then replay pinned room states before promoting a rules hash.

@@ -20,6 +20,7 @@ function roomSummary(room) {
   return {
     roomCode: room.roomCode, type, phase, capacity, openSeats: phase === 'lobby' && !room.fundingLock ? capacity - room.players.length : 0,
     aiFill: room.config.allowAI === true, watcherCount: Array.isArray(room.watchers) ? room.watchers.length : 0,
+    rulesPreset: room.config.rulesPreset || 'original',
     players: room.players.map(player => ({ name: String(player.name || 'Commander'), isAI: player.isAI === true,
       ...record.get(player.playerId) })),
     wager: wager ? { currency: wager.currency, entryFee: wager.entryFee,

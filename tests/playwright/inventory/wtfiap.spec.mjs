@@ -613,6 +613,79 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await guestContext.close(); }
   });
 
+  test("room creator pins Ancient and Custom optional rules while the core duel stays playable", async ({ page, browser }) => {
+    const errors = []; page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#rules-preset")).toHaveValue("modern");
+    await page.locator("#rules-preset").selectOption("custom");
+    await expect(page.locator("#custom-rules")).toBeVisible();
+    await page.locator('[data-feature="items"]').uncheck();
+    await expect(page.locator('[data-feature="cherub"]')).toBeDisabled();
+    await expect(page.locator('[data-feature="battlePlans"]')).not.toBeChecked();
+    await page.locator('[data-feature="blessings"]').check();
+    await page.screenshot({ path: test.info().outputPath("custom-room-rules.png"), fullPage: true });
+    await page.locator("#rules-preset").selectOption("ancient");
+    await expect(page.locator("#custom-rules")).toBeHidden();
+    await page.locator("#rules-preset").selectOption("custom");
+    await expect(page.locator("[data-feature]:checked")).toHaveCount(0);
+    await page.locator("#rules-preset").selectOption("ancient");
+    await page.locator("#create-name").fill("Ancient host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#room-rules")).toContainText("Ancient · core hero play");
+    const code = await page.locator("#invite-code").inputValue();
+    const lobby = (await (await page.request.get(`/api/wtfiap/party/rooms/${code}/lobby`)).json()).view;
+    expect(lobby.config.gameFeatures.items).toBe(false);
+    expect(lobby.config.gameFeatures.treasure).toBe(false);
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto(`/games/installed/wtfiap/party.html?room=${code}`);
+      await guest.locator("#join-name").fill("Ancient guest");
+      await guest.locator("#join-room").click();
+      await expect(guest.locator("#room-rules")).toContainText("Ancient · core hero play");
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#start-room").click();
+      const arena = await gameFrame(page, "#arena-frame");
+      await expect(arena.locator("#items-toggle")).toBeHidden();
+      const state = await gameState(arena);
+      expect(state.match.shops.player[0]).toBeTruthy();
+      await arena.locator("#game").screenshot({ path: test.info().outputPath("ancient-room-board.png") });
+    } finally { await guestContext.close(); }
+    expect(errors).toEqual([]);
+  });
+
+  test("a blessings-only Custom room exposes fortunes without item equipment", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#rules-preset").selectOption("custom");
+    for (const input of await page.locator("[data-feature]").all()) if (await input.isEnabled() && await input.isChecked()) await input.uncheck();
+    await page.locator('[data-feature="blessings"]').check();
+    await page.locator("#create-name").fill("Blessed host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#room-rules")).toContainText("Custom · Blessings");
+    const code = await page.locator("#invite-code").inputValue();
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto(`/games/installed/wtfiap/party.html?room=${code}`);
+      await guest.locator("#join-name").fill("Blessed guest");
+      await guest.locator("#join-room").click();
+      await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
+      await expect(page.locator("#alive-count")).toContainText("2 / 2 seats");
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#start-room").click();
+      const arena = await gameFrame(page, "#arena-frame");
+      await expect(arena.locator("#items-toggle")).toBeVisible();
+      await arena.locator("#items-toggle").click();
+      await expect(arena.locator("#items-panel")).toContainText("Blessings & curses");
+      await expect(arena.locator("#items-panel")).not.toContainText("Inventory and equipment");
+      expect((await gameState(arena)).match.players.player.gold).toBe(1);
+    } finally { await guestContext.close(); }
+  });
+
   test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
     await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
     await surface(page).getByRole("link", { name: "Duel" }).click();

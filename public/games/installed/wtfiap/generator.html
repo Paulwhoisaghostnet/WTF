@@ -5300,13 +5300,15 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   const byId = Object.freeze(Object.fromEntries(CATALOG.map(value => [value.id, value])));
   const get = id => byId[id] || null;
   const has = (list, id) => Array.isArray(list) && list.includes(id);
-  function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id)) {
+  function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id), options = {}) {
     if (typeof random !== 'function') throw new Error('A seeded shop stream is required.');
     const roll = random();
     if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('Fortune roll must be in [0, 1).');
     if (roll >= OFFER_CHANCE) return null;
-    const blessings = CATALOG.filter(value => value.kind === 'blessing' && !ownedBlessings.includes(value.id));
-    const curses = CATALOG.filter(value => value.kind === 'curse' && eligibleCurses.includes(value.id));
+    const allowed = value => (options.items !== false || !['scrap-spark', 'damp-scrap'].includes(value.id)) &&
+      (options.treasure !== false || !['bright-coffer', 'dim-coffer'].includes(value.id));
+    const blessings = CATALOG.filter(value => value.kind === 'blessing' && options.blessings !== false && allowed(value) && !ownedBlessings.includes(value.id));
+    const curses = CATALOG.filter(value => value.kind === 'curse' && options.curses !== false && allowed(value) && eligibleCurses.includes(value.id));
     if (!blessings.length && !curses.length) return null;
     return { roll, blessingId: blessings.length ? blessings[Math.floor(random() * blessings.length)].id : null,
       curseId: curses.length ? curses[Math.floor(random() * curses.length)].id : null };
@@ -8101,26 +8103,26 @@ updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);
 
 document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);renderMobileHint();});
 function renderItems(force=false){
-  const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode?partyData?.itemRulesVersion===1:matchMode&&match?.cherubRulesVersion===1;
+  const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode?partyData?.itemRulesVersion===1||partyData?.fortuneRulesVersion===1:matchMode&&match?.cherubRulesVersion===1;
   const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,draft:match?.draft||null,pendingPlan:!!match?.players.player.pendingPlan,freeRerolls:match?.players.player.freeRerolls||0,fortuneShop:match?.players.player.fortuneShop||null,mirrorTickets:match?.players.player.mirrorTickets||[],fortuneTargets:[{playerId:'enemy',name:'Opponent',curses:match?.players.enemy.curses||[]}],itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
   const itemAction=(type,args)=>{if(partyMode)return partyCommand(type,args);const r=type==='equipItem'?ABMatch.equipItem(match,args.unitId,args.itemId):ABMatch.unequipItem(match,args.unitId,args.itemId);if(r.ok)persistMatch();say(r.ok?(type==='equipItem'?'Item equipped.':'Item returned to inventory.'):r.reason);draw();return r.ok;};
   toggle.hidden=!enabled;
   if(!enabled){panel.hidden=true;return;}
-  toggle.textContent='◇ '+(itemView.items.length+(itemView.mirrorTickets?.length||0))+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked||fortuneAvailable()?' !':'');
+  toggle.textContent=(partyMode&&partyData?.itemRulesVersion!==1?'✧':'◇')+' '+(itemView.items.length+(itemView.mirrorTickets?.length||0))+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked||fortuneAvailable()?' !':'');
   toggle.setAttribute('aria-expanded',String(itemsOpen));
-  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} items; ${itemView.items.length} in inventory; ${itemView.mirrorTickets?.length||0} Mirror Tickets${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}${fortuneAvailable()?'; optional fortune shop available':''}`);
+  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} ${partyMode&&partyData?.itemRulesVersion!==1?'blessings and curses':'items'}; ${itemView.items.length} in inventory; ${itemView.mirrorTickets?.length||0} Mirror Tickets${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}${fortuneAvailable()?'; optional fortune shop available':''}`);
   panel.hidden=!itemsOpen;
   if(!itemsOpen)return;
-  const inventory=itemView.items||[],shop=itemView.itemShop,components=itemView.itemCatalog.components,
+  const inventory=itemView.items||[],shop=itemView.itemShop,components=itemView.itemCatalog?.components||ABItems.COMPONENTS,
     selectedUnitId=[...game.field,...game.bench].some(unit=>unit.id===itemTargetId)?itemTargetId:selected&&[...game.field,...game.bench].some(unit=>unit.id===selected)?selected:[...game.field,...game.bench][0]?.id||null;
   itemTargetId=selectedUnitId;
   const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,itemView.fortuneShop,itemView.mirrorTickets,itemView.fortuneTargets,match?.players.player.blessings,match?.players.player.curses,itemView.draft,itemView.pendingPlan,itemView.freeRerolls,inventory,itemView.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
   if(!force&&key===itemPanelKey)return;itemPanelKey=key;
   panel.replaceChildren();
   const heading=document.createElement('div');heading.className='items-head';
-  const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':fortuneAvailable()?'Fortune shop · optional':'Items';
+  const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':fortuneAvailable()?'Fortune shop · optional':partyMode&&partyData?.itemRulesVersion!==1?'Blessings & curses':'Items';
   const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);renderMobileHint();};heading.append(title,close);panel.append(heading);
-  const summary=document.createElement('p');summary.textContent=`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
+  const summary=document.createElement('p');summary.textContent=partyMode&&partyData?.itemRulesVersion!==1?`${match.players.player.gold} gold · permanent blessings and curses`:`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
   if(itemView.itemChest&&match.phase==='preparation'&&!itemView.spectating){const place=document.createElement('button');place.type='button';place.textContent='Place item chest · back two rows';place.onclick=()=>{itemsOpen=false;selectItemChest();renderItems(true);};panel.append(place);}
   const locked=(partyMode&&(partyPending||!partyConnected||itemView.eliminated||itemView.spectating))||match.phase!=='preparation';
   function makeItemButton(itemId,action,price){
@@ -8176,11 +8178,11 @@ function renderItems(force=false){
   if(shop?.open){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One purchase before the hero shop returns';const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'buyItem',5)));if(shop.completedId)grid.append(makeItemButton(shop.completedId,'buyItem',10));const pass=document.createElement('button');pass.type='button';pass.textContent='Pass · open hero shop';pass.disabled=locked;pass.onclick=()=>{markPlayerAction();partyCommand('passItemShop');};block.append(h,grid,pass);panel.append(block);}
   if(optionalFortuneBlock)panel.append(optionalFortuneBlock);
   if(optionalMirrorBlock)panel.append(optionalMirrorBlock);
-  const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Inventory and equipment';block.append(h);
+  if(!partyMode||partyData?.itemRulesVersion===1){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Inventory and equipment';block.append(h);
   const grid=document.createElement('div');grid.className='item-grid';inventory.forEach((itemId,index)=>{const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name;button.title=info.description;button.setAttribute('aria-pressed',String(itemSelectedId===index));button.onclick=()=>{itemSelectedId=index;renderItems(true);};grid.append(button);});if(!inventory.length)grid.textContent='No items held yet. Battles and item shops can grant components.';block.append(grid);
   if(inventory.length){const selectedItem=ABItems.item(inventory[Number.isInteger(itemSelectedId)&&itemSelectedId<inventory.length?itemSelectedId:0]);const effect=document.createElement('p');effect.textContent=selectedItem.name+': '+selectedItem.description;block.append(effect);}
   const equip=document.createElement('div');equip.className='item-equip-row';const label=document.createElement('label');label.textContent='Equip hero ';const select=document.createElement('select');select.setAttribute('aria-label','Hero to equip');for(const unit of [...game.field,...game.bench]){const option=document.createElement('option');option.value=unit.id;option.textContent=hero(unit).name+' '+unit.level+'★ · '+(unit.itemIds?.length||0)+'/3 items';select.append(option);}select.value=itemTargetId||'';select.onchange=()=>{itemTargetId=select.value;renderItems(true);};label.append(select);equip.append(label);const equipButton=document.createElement('button');equipButton.type='button';equipButton.textContent='Equip selected item';equipButton.disabled=locked||!inventory.length||!itemTargetId;equipButton.onclick=()=>{markPlayerAction();itemAction('equipItem',{unitId:itemTargetId,itemId:inventory[Number.isInteger(itemSelectedId)&&itemSelectedId<inventory.length?itemSelectedId:0]});};equip.append(equipButton);block.append(equip);
-  const unit=[...game.field,...game.bench].find(entry=>entry.id===itemTargetId);if(unit?.itemIds?.length){const slots=document.createElement('div');slots.className='item-grid';for(const itemId of unit.itemIds){const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name+' · Remove';button.disabled=locked;button.onclick=()=>{markPlayerAction();itemAction('unequipItem',{unitId:unit.id,itemId});};slots.append(button);}block.append(slots);}panel.append(block);
+  const unit=[...game.field,...game.bench].find(entry=>entry.id===itemTargetId);if(unit?.itemIds?.length){const slots=document.createElement('div');slots.className='item-grid';for(const itemId of unit.itemIds){const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name+' · Remove';button.disabled=locked;button.onclick=()=>{markPlayerAction();itemAction('unequipItem',{unitId:unit.id,itemId});};slots.append(button);}block.append(slots);}panel.append(block);}
 }
 
 let accessKey='';

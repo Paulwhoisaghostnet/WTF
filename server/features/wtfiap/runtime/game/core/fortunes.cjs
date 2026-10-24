@@ -34,13 +34,15 @@
   const byId = Object.freeze(Object.fromEntries(CATALOG.map(value => [value.id, value])));
   const get = id => byId[id] || null;
   const has = (list, id) => Array.isArray(list) && list.includes(id);
-  function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id)) {
+  function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id), options = {}) {
     if (typeof random !== 'function') throw new Error('A seeded shop stream is required.');
     const roll = random();
     if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('Fortune roll must be in [0, 1).');
     if (roll >= OFFER_CHANCE) return null;
-    const blessings = CATALOG.filter(value => value.kind === 'blessing' && !ownedBlessings.includes(value.id));
-    const curses = CATALOG.filter(value => value.kind === 'curse' && eligibleCurses.includes(value.id));
+    const allowed = value => (options.items !== false || !['scrap-spark', 'damp-scrap'].includes(value.id)) &&
+      (options.treasure !== false || !['bright-coffer', 'dim-coffer'].includes(value.id));
+    const blessings = CATALOG.filter(value => value.kind === 'blessing' && options.blessings !== false && allowed(value) && !ownedBlessings.includes(value.id));
+    const curses = CATALOG.filter(value => value.kind === 'curse' && options.curses !== false && allowed(value) && eligibleCurses.includes(value.id));
     if (!blessings.length && !curses.length) return null;
     return { roll, blessingId: blessings.length ? blessings[Math.floor(random() * blessings.length)].id : null,
       curseId: curses.length ? curses[Math.floor(random() * curses.length)].id : null };

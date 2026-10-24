@@ -19,8 +19,16 @@ test('room browser lists only public active tables and receipt-backed player rec
     }));
     const [table] = listRooms(dataDir);
     assert.equal(table.type, 'duel'); assert.equal(table.openSeats, 0);
+    assert.equal(table.rulesPreset, 'original');
     assert.equal(table.wager.network, 'mainnet'); assert.equal(table.watcherCount, 1);
     assert.deepEqual(table.players.map(({ wins, losses }) => [wins, losses]), [[1, 0], [0, 1]]);
     assert.doesNotMatch(JSON.stringify(table), /private|secret|sessionToken|receipts/);
   } finally { fs.rmSync(dataDir, { recursive: true, force: true }); }
+});
+
+test('room browser labels a creator-pinned variation without revealing its private match', () => {
+  const table = require('./room-directory.cjs').roomSummary({ roomCode: 'room', config: { roomType: 'duel', rulesPreset: 'ancient' },
+    players: [{ playerId: 'p1', name: 'A', isAI: false }], watchers: [], match: null });
+  assert.equal(table.rulesPreset, 'ancient');
+  assert.equal(table.openSeats, 1);
 });
