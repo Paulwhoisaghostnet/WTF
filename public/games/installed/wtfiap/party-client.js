@@ -214,7 +214,7 @@ function renderRoomBrowser(rooms){
   $('room-browser-status').textContent=rooms.length?rooms.length+' table'+(rooms.length===1?'':'s')+' available to join or watch.':'No active tables yet. Create one to invite other players.';
   if(!rooms.length){const empty=document.createElement('p');empty.className='table-empty';empty.textContent='No rooms are open right now.';root.append(empty);return;}
   for(const table of rooms){
-    const card=document.createElement('article');card.className='table-card'+(table.wager?' wager':'');
+    const card=document.createElement('article');card.className='table-card '+table.type+(table.wager?' prize':'');
     const top=document.createElement('div');top.className='table-top';const title=document.createElement('h3');title.textContent=(table.type==='duel'?'⚔ Duel':table.type==='tournament'?'🏆 Tournament':'♟ Party')+' table';
     const count=document.createElement('strong');count.textContent=table.players.length+' / '+table.capacity;count.setAttribute('aria-label',table.players.length+' occupied seats of '+table.capacity);top.append(title,count);card.append(top);
     const badges=document.createElement('div');badges.className='table-badges';

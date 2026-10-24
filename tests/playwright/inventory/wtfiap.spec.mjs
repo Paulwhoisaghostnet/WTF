@@ -87,7 +87,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
   });
 
-  test("desktop launch runs the real practice shop and preserves the standalone game control", async ({ page }) => {
+  test("desktop launch shows credits and four choices, then practice runs the real shop", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -95,7 +95,24 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(icon).toContainText("coLILseum");
     await icon.dblclick();
     await expect(surface(page)).toHaveAttribute("aria-label", "coLILseum");
-    await expect(surface(page).getByRole("link", { name: "Meet the heroes" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: "Home" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: "Lobby" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: "Learn" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: "Team Builder" })).toBeVisible();
+    await expect(surface(page).getByRole("link", { name: /^(Duel|Party|Tournament)$/ })).toHaveCount(0);
+    const splash = await hostFrame(page);
+    await expect(splash.locator(".choices a")).toHaveCount(4);
+    await expect(splash.locator("#intro-copy")).toContainText("Lil Guys Present's");
+    await expect(splash.locator("#intro-copy")).toContainText("A FAFO lab game");
+    await splash.locator("#skip").click();
+    await expect(splash.locator("#intro")).toBeHidden();
+    await expect(splash.locator(".brand").first()).toHaveJSProperty("complete", true);
+    await expect.poll(() => splash.evaluate(() => document.querySelector('.brand').naturalWidth)).toBeGreaterThan(0);
+    const splashLayout = await splash.evaluate(() => ({ bottom: document.querySelector('.choices').getBoundingClientRect().bottom, viewport: innerHeight, castLoaded: [...document.querySelectorAll('.cast img')].every(img => img.naturalWidth > 0) }));
+    expect(splashLayout.castLoaded).toBe(true);
+    expect(splashLayout.bottom).toBeLessThanOrEqual(splashLayout.viewport);
+    await splash.locator("body").screenshot({ path: test.info().outputPath("colilseum-splash.png") });
+    await surface(page).getByRole("link", { name: "Practice" }).click();
     const practice = await hostFrame(page);
     const game = await gameFrame(practice, "#frame");
     expect(await game.evaluate(() => window.AB.FACTIONS.map(faction => faction.name))).toContain("The Cookout");
@@ -133,7 +150,111 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await popup.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_GAME);
     await expect(popup).toHaveURL(/\/games\/installed\/wtfiap\/generator\.html\?/);
     await popup.close();
+    await surface(page).getByRole("link", { name: "Lobby" }).click();
+    const returnedLobby = await hostFrame(page);
+    await expect(returnedLobby.locator("#room-browser-title")).toHaveText("Find your next match");
     expect(errors).toEqual([]);
+  });
+
+  test("Team Builder filters the v2 cast and highlights an active lineup in the shop", async ({ page }) => {
+    await page.goto("/games/installed/wtfiap/generator.html?seed=lineup-browser-check&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+    const firstId = await page.evaluate(() => window.AB_MATCH().shops.player[0].heroId);
+    const hero = await page.evaluate(id => { const h = window.AB.heroById(id); return { name: h.name, faction: h.faction, classId: h.classes[0], cost: h.cost }; }, firstId);
+    await page.goto("/games/installed/wtfiap/team-builder.html");
+    await expect(page.locator(".hero")).toHaveCount(50);
+    await page.locator("#faction").selectOption(hero.faction);
+    await page.locator("#class").selectOption(hero.classId);
+    const card = page.locator(".hero").filter({ has: page.getByRole("heading", { name: hero.name, exact: true }) });
+    await expect(card).toBeVisible();
+    await card.getByRole("button", { name: "Add to lineup" }).click();
+    await expect(card).toHaveClass(/chosen/);
+    await expect(page.locator("#selection li")).toHaveCount(1);
+    await page.locator("#plan-name").fill("Opening formation");
+    await page.reload();
+    await expect(page.locator("#plan-name")).toHaveValue("Opening formation");
+    await expect(page.locator("#selection li")).toHaveCount(1);
+    await page.locator("#new-plan").click();
+    await page.locator("#plan-name").fill("Alternative plan");
+    await page.goto("/games/installed/wtfiap/generator.html?seed=lineup-browser-check&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+    const state = await page.evaluate(() => JSON.parse(window.render_game_to_text()));
+    expect(state.lineup.name).toBe("Opening formation");
+    expect(state.lineup.heroIds).toContain(firstId);
+    expect(state.lineup.shopMatches[0]).toBe(true);
+    await page.locator("#game").screenshot({ path: test.info().outputPath("planned-shop-hero.png") });
+    await hit(page, page, "shop-lineups");
+    await page.locator("#lineup-options").getByRole("button", { name: "Alternative plan · 0 heroes" }).click();
+    expect((await page.evaluate(() => JSON.parse(window.render_game_to_text()))).lineup.shopMatches[0]).toBe(false);
+    await hit(page, page, "shop-lineups");
+    await page.locator("#lineup-options").getByRole("button", { name: "Opening formation · 1 hero" }).click();
+    expect((await page.evaluate(() => JSON.parse(window.render_game_to_text()))).lineup.shopMatches[0]).toBe(true);
+  });
+
+  test("Learn guides a real first round through shop, board, and info icons", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/learn.html");
+    const game = await gameFrame(page, "#arena");
+    await expect(page.locator("#title")).toHaveText("Welcome to the arena");
+    await page.locator("#next").click();
+    await hit(page, game, "shop-preview-0");
+    await expect(page.locator("#title")).toHaveText("Recruit your first hero");
+    await hit(page, game, "shop-card-buy-0");
+    await expect(page.locator("#title")).toHaveText("Place your hero");
+    const tile = await game.evaluate(() => window.AB_UI.grid().tiles.find(tile => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
+    await clickGamePoint(page, game, tile);
+    await expect(page.locator("#title")).toHaveText("Reveal the whole board");
+    await hit(page, game, "shop-toggle");
+    await expect(page.locator("#title")).toHaveText("Read team bonuses");
+    await game.locator("#traits-icon").click();
+    await expect(page.locator("#title")).toHaveText("Read hero details");
+    await game.locator("#details-icon").click();
+    await expect(page.locator("#title")).toHaveText("Explore items");
+    await game.locator("#items-toggle").click();
+    await expect(page.locator("#title")).toHaveText("Return to the arena");
+    await game.locator("#items-panel .items-head button").click();
+    await expect(page.locator("#title")).toHaveText("Find named controls");
+    await game.locator("#accessible-controls summary").click();
+    await expect(page.locator("#title")).toHaveText("Close the control panel");
+    await game.locator("#accessible-controls summary").click();
+    await expect(page.locator("#title")).toHaveText("Plan your economy");
+    await page.locator("#next").click();
+    await hit(page, game, "battle");
+    await expect(page.locator("#title")).toHaveText("You know the basics");
+    expect(errors).toEqual([]);
+  });
+
+  test("mobile splash and Team Builder keep their choices within the viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/games/installed/wtfiap/welcome.html");
+    await page.locator("#skip").click();
+    await expect(page.locator(".choices a")).toHaveCount(4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator('.choices a[href="team-builder.html"]').click();
+    await expect(page.locator(".hero")).toHaveCount(50);
+    await expect(page.locator("#plan-editor")).not.toHaveAttribute("open", "");
+    expect(await page.locator(".hero").first().evaluate(hero => hero.getBoundingClientRect().top)).toBeLessThan(844);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath("team-builder-mobile.png") });
+  });
+
+  test("landscape phone shop marks lineup offers and opens the plan picker", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+    const page = await context.newPage();
+    try {
+      await page.goto("/games/installed/wtfiap/generator.html?seed=phone-lineup&mode=match&boardMode=standard");
+      await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+      await page.evaluate(() => {
+        const id = window.AB_MATCH().shops.player[0].heroId;
+        localStorage.setItem("colilseum:lineups:v1", JSON.stringify({ plans: [{ id: "phone-plan", name: "Phone plan", heroIds: [id] }], activeId: "phone-plan" }));
+        dispatchEvent(new StorageEvent("storage", { key: "colilseum:lineups:v1" }));
+      });
+      await expect.poll(() => page.locator(".mobile-offer.planned").count()).toBeGreaterThan(0);
+      await page.locator("#lineup-open-mobile").click();
+      await expect(page.locator("#lineup-dialog")).toBeVisible();
+      await expect(page.locator("#lineup-options")).toContainText("Phone plan");
+    } finally { await context.close(); }
   });
 
   test("Lil Guy Studio Cherub yields an equipable component in practice", async ({ page }) => {
@@ -333,7 +454,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   test("shared arena drags, swaps and sells heroes with star-aware shop and bench ratings", async ({ page }) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    await page.goto("/wtfiap?mode=practice", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     const game = await gameFrame(host, "#frame");
     const ratingCheck = await game.evaluate(() => {
@@ -421,7 +542,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
 
   test("preparation hints wait 30 seconds and can be disabled across reloads", async ({ page }) => {
     await page.clock.install();
-    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    await page.goto("/wtfiap?mode=practice", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
     let game = await gameFrame(host, "#frame");
     expect((await gameState(game)).help.visible).toBe(false);
@@ -472,7 +593,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await context.close();
   });
 
-  test("Stuffs Play opens Party, creates a real room and reloads its purchased formation", async ({ page }) => {
+  test("Stuffs Play opens splash then Lobby, creates a real room and reloads its purchased formation", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -487,7 +608,10 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     }).toBe(true);
     await page.screenshot({ path: test.info().outputPath("stuffs-play.png"), fullPage: true });
     await menuEntry.click();
-    await surface(page).getByRole("link", { name: "Party", exact: true }).click();
+    await expect(surface(page).getByRole("link", { name: "Lobby", exact: true })).toBeVisible();
+    const welcome = await hostFrame(page);
+    await welcome.locator("#skip").click();
+    await welcome.locator('.choices a[href="party.html"]').click();
     let party = await hostFrame(page);
     await expect(party.locator("#create-name")).toBeVisible();
     await expect(party.locator('.welcome-hero h1')).toHaveText('Choose your room.');
@@ -556,10 +680,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("two people can create and start a free coLILseum duel", async ({ page, browser }) => {
-    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
-    await surface(page).getByRole("link", { name: "Duel" }).click();
+    await page.goto("/wtfiap?mode=party", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
-    await expect(host.locator("#room-type")).toHaveValue("duel");
+    await host.locator("#room-type").selectOption("duel");
     await host.locator("#create-name").fill("Duel host");
     await host.locator("#prep-time").selectOption("ready");
     await host.locator("#create-room").click();
@@ -614,6 +737,35 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await card.getByRole("button", { name: `Join duel room ${code}` }).click();
       await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
     } finally { await guestContext.close(); }
+  });
+
+  test("lobby cards mark room type and add an outer gold border only for prizes", async ({ page }) => {
+    const room = (roomCode, type, wager = null) => ({ roomCode, type, wager, phase: "lobby",
+      capacity: type === "duel" ? 2 : 8, openSeats: type === "duel" ? 1 : 7,
+      players: [{ name: "Host", isAI: false, wins: 0, losses: 0 }], watcherCount: 0, rulesPreset: "modern", aiFill: false });
+    await page.route("**/api/wtfiap/party/rooms", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, rooms: [
+      room("11111111-1111-4111-8111-111111111111", "duel"),
+      room("22222222-2222-4222-8222-222222222222", "party"),
+      room("33333333-3333-4333-8333-333333333333", "tournament"),
+      room("44444444-4444-4444-8444-444444444444", "duel", { entryFee: "1", currency: "XTZ", network: "shadownet" }),
+      room("55555555-5555-4555-8555-555555555555", "tournament", { entryFee: "1", currency: "WTF", network: "mainnet" }),
+    ] }) }));
+    await page.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
+    const cards = page.locator(".table-card");
+    await expect(cards).toHaveCount(5);
+    const style = index => cards.nth(index).evaluate(element => {
+      const css = getComputedStyle(element);
+      return { border: css.borderTopColor, outline: css.outlineColor, outlineStyle: css.outlineStyle, outlineWidth: css.outlineWidth };
+    });
+    expect(await style(0)).toMatchObject({ border: "rgb(226, 119, 112)", outlineStyle: "none" });
+    expect(await style(1)).toMatchObject({ border: "rgb(122, 168, 232)", outlineStyle: "none" });
+    expect(await style(2)).toMatchObject({ border: "rgb(132, 198, 155)", outlineStyle: "none" });
+    expect(await style(3)).toMatchObject({ border: "rgb(226, 119, 112)", outline: "rgb(218, 185, 117)", outlineStyle: "solid", outlineWidth: "2px" });
+    expect(await style(4)).toMatchObject({ border: "rgb(132, 198, 155)", outline: "rgb(218, 185, 117)", outlineStyle: "solid", outlineWidth: "2px" });
+    await page.locator("#room-browser").screenshot({ path: test.info().outputPath("room-type-and-prize-borders.png") });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator("#room-browser").screenshot({ path: test.info().outputPath("room-type-and-prize-borders-mobile.png") });
   });
 
   test("full waiting tables leave discovery and a host can close an unstarted room", async ({ page, browser }) => {
@@ -720,9 +872,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
-    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
-    await surface(page).getByRole("link", { name: "Duel" }).click();
+    await page.goto("/wtfiap?mode=party", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);
+    await host.locator("#room-type").selectOption("duel");
     await host.locator("#duel-wager").check();
     await host.locator("#entry-currency").selectOption("XTZ");
     await expect(host.locator("#entry-network-choice")).toBeVisible();

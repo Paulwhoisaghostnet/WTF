@@ -96,15 +96,13 @@ export function WtfIap() {
   return (
     <AppWindow title="coLILseum">
       <GameSurface aria-label="coLILseum" data-wtfiap-surface="true">
-        <ModeNavigation aria-label="coLILseum game modes">
-          <div className="group"><span className="group-label">Play</span>
+        <ModeNavigation aria-label="coLILseum navigation">
+          <div className="group"><span className="group-label">coLILseum</span>
+            <a href={`${WTFIAP_ASSET_ROOT}/welcome.html`} target={frameName} onClick={resetRoom}>Home</a>
             <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Practice</a>
-            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=duel`} target={frameName} onClick={resetRoom}>Duel</a>
-            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=party`} target={frameName} onClick={resetRoom}>Party</a>
-            <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=tournament`} target={frameName} onClick={resetRoom}>Tournament</a>
-          </div>
-          <div className="group"><span className="group-label">Explore</span>
-            <a href={`${WTFIAP_ASSET_ROOT}/cast.html`} target={frameName} onClick={resetRoom}>Meet the heroes</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/party.html`} target={frameName} onClick={resetRoom}>Lobby</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/learn.html`} target={frameName} onClick={resetRoom}>Learn</a>
+            <a href={`${WTFIAP_ASSET_ROOT}/team-builder.html`} target={frameName} onClick={resetRoom}>Team Builder</a>
           </div>
           {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => setFundingOpen(open => !open)}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
         </ModeNavigation>

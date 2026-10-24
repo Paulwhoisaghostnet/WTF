@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "6104a878234e6e0d86ddda3109961d82ab72d90212ffe86ec5f0aba043c12f46",
+  "generatorSha256": "5167ed2644fb4ba981d954f70e718c59ce7962a4c5539d2537ec88ed5b90f02f",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,9 +19,9 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "6104a878234e6e0d86ddda3109961d82ab72d90212ffe86ec5f0aba043c12f46",
-      "sha256": "6104a878234e6e0d86ddda3109961d82ab72d90212ffe86ec5f0aba043c12f46",
-      "bytes": 12903410
+      "sourceSha256": "5167ed2644fb4ba981d954f70e718c59ce7962a4c5539d2537ec88ed5b90f02f",
+      "sha256": "5167ed2644fb4ba981d954f70e718c59ce7962a4c5539d2537ec88ed5b90f02f",
+      "bytes": 12910005
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
@@ -31,11 +31,39 @@
       "bytes": 12278004
     },
     {
+      "path": "public/games/installed/wtfiap/welcome.html",
+      "sourcePath": "dist/welcome.html",
+      "sourceSha256": "05946fa54808b64b3c2e3244366d4ec5aaa9c011da7a2d9fd75e1e7253fadf28",
+      "sha256": "05946fa54808b64b3c2e3244366d4ec5aaa9c011da7a2d9fd75e1e7253fadf28",
+      "bytes": 4719
+    },
+    {
+      "path": "public/games/installed/wtfiap/learn.html",
+      "sourcePath": "dist/learn.html",
+      "sourceSha256": "ef8969f716fce894df2c2ea13b681eacee1f062219d89ae282ed62c1430fa91e",
+      "sha256": "ef8969f716fce894df2c2ea13b681eacee1f062219d89ae282ed62c1430fa91e",
+      "bytes": 6239
+    },
+    {
+      "path": "public/games/installed/wtfiap/team-builder.html",
+      "sourcePath": "dist/team-builder.html",
+      "sourceSha256": "54cc0b70f4e2faa269c947924c93e2413027531bad899233ef5151f014d6d381",
+      "sha256": "54cc0b70f4e2faa269c947924c93e2413027531bad899233ef5151f014d6d381",
+      "bytes": 29247
+    },
+    {
+      "path": "public/games/installed/wtfiap/colilseum-brand.svg",
+      "sourcePath": "dist/colilseum-brand.svg",
+      "sourceSha256": "27665279df2a906810e6877b78b708b8e939fe8be61923561e9edf09d4c27c97",
+      "sha256": "27665279df2a906810e6877b78b708b8e939fe8be61923561e9edf09d4c27c97",
+      "bytes": 1219
+    },
+    {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "a041a4c17809fcb402bd06fb1ce2302c620afea318b66728be56af36b587ea44",
-      "sha256": "a041a4c17809fcb402bd06fb1ce2302c620afea318b66728be56af36b587ea44",
-      "bytes": 67192
+      "sourceSha256": "8fbe39a1b6ec8418b6218880fb14793ff1a4cef9034be62a70d2f6ac2cbe8565",
+      "sha256": "8fbe39a1b6ec8418b6218880fb14793ff1a4cef9034be62a70d2f6ac2cbe8565",
+      "bytes": 67204
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -45,11 +73,361 @@
       "bytes": 8610
     },
     {
+      "path": "public/games/installed/wtfiap/hero-art/ember-ranger.png",
+      "sourcePath": "dist/hero-art/ember-ranger.png",
+      "sourceSha256": "ead67162e54f983c1f7fb211f9f1580bce477ded82d6865ae41cee3e7d2250a7",
+      "sha256": "ead67162e54f983c1f7fb211f9f1580bce477ded82d6865ae41cee3e7d2250a7",
+      "bytes": 198745
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/tide-mender.png",
+      "sourcePath": "dist/hero-art/tide-mender.png",
+      "sourceSha256": "39fe75d79bacc32ff1f76d6280932b7708b287889f2ad92e04e65f243aacc08d",
+      "sha256": "39fe75d79bacc32ff1f76d6280932b7708b287889f2ad92e04e65f243aacc08d",
+      "bytes": 132119
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/rime-boruun.png",
+      "sourcePath": "dist/hero-art/rime-boruun.png",
+      "sourceSha256": "4e2fcce418b4e59383bbb612a691acfd1ee73f78d33f67d7b11aa9ad836d1772",
+      "sha256": "4e2fcce418b4e59383bbb612a691acfd1ee73f78d33f67d7b11aa9ad836d1772",
+      "bytes": 124879
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-vanguard.png",
+      "sourcePath": "dist/hero-art/ember-vanguard.png",
+      "sourceSha256": "3d3782633eec631e62e1ef9c5dfca3e015edf1edc6b476c82827fa1a76cdf265",
+      "sha256": "3d3782633eec631e62e1ef9c5dfca3e015edf1edc6b476c82827fa1a76cdf265",
+      "bytes": 120701
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-artificer.png",
+      "sourcePath": "dist/hero-art/ember-artificer.png",
+      "sourceSha256": "323e092503af3e50b6b8049d1355fc9d06f2fe427345a9075e824a8a56154740",
+      "sha256": "323e092503af3e50b6b8049d1355fc9d06f2fe427345a9075e824a8a56154740",
+      "bytes": 187313
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-sazrik.png",
+      "sourcePath": "dist/hero-art/ember-sazrik.png",
+      "sourceSha256": "6bc210cfb3141c8df385c7d2750a7b7f139ea5892aef12e22bea63311deacf2f",
+      "sha256": "6bc210cfb3141c8df385c7d2750a7b7f139ea5892aef12e22bea63311deacf2f",
+      "bytes": 99298
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-duelist.png",
+      "sourcePath": "dist/hero-art/ember-duelist.png",
+      "sourceSha256": "a45a7eea2edb6f782bad39cda3cb39e9f91fd7a4a00560d81de1c50a071c5e26",
+      "sha256": "a45a7eea2edb6f782bad39cda3cb39e9f91fd7a4a00560d81de1c50a071c5e26",
+      "bytes": 227568
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-vikka.png",
+      "sourcePath": "dist/hero-art/ember-vikka.png",
+      "sourceSha256": "1884201993197ccd4bbb5eceba1bc1ff2818f0e967925e09968c190e5d96c139",
+      "sha256": "1884201993197ccd4bbb5eceba1bc1ff2818f0e967925e09968c190e5d96c139",
+      "bytes": 164224
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-korrun.png",
+      "sourcePath": "dist/hero-art/ember-korrun.png",
+      "sourceSha256": "bd6c643072cc3cdd9253d99113d9e981cf2ab737205731d4450957ebaf740cd1",
+      "sha256": "bd6c643072cc3cdd9253d99113d9e981cf2ab737205731d4450957ebaf740cd1",
+      "bytes": 137475
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-drazhul.png",
+      "sourcePath": "dist/hero-art/ember-drazhul.png",
+      "sourceSha256": "a081ca079d5560604ecf88172b41cfa64fedf487cf4003e7eb9310fe70084c9a",
+      "sha256": "a081ca079d5560604ecf88172b41cfa64fedf487cf4003e7eb9310fe70084c9a",
+      "bytes": 144672
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-aereth.png",
+      "sourcePath": "dist/hero-art/ember-aereth.png",
+      "sourceSha256": "228cdd1e77f6e88f062e9625f381a72b196680ada97b7b60bf01e6b929d36308",
+      "sha256": "228cdd1e77f6e88f062e9625f381a72b196680ada97b7b60bf01e6b929d36308",
+      "bytes": 187985
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/ember-stormcaller.png",
+      "sourcePath": "dist/hero-art/ember-stormcaller.png",
+      "sourceSha256": "57aadc04715008875fe1197268173aace7c49f3c8048ada7f5b1d1b47ce61792",
+      "sha256": "57aadc04715008875fe1197268173aace7c49f3c8048ada7f5b1d1b47ce61792",
+      "bytes": 138824
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/tide-sentinel.png",
+      "sourcePath": "dist/hero-art/tide-sentinel.png",
+      "sourceSha256": "6cc5f65c7ef070fcb8b0e54ecf304ad00596e44b7b9bd6e9553d4e1a69ea6485",
+      "sha256": "6cc5f65c7ef070fcb8b0e54ecf304ad00596e44b7b9bd6e9553d4e1a69ea6485",
+      "bytes": 172015
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/tide-arcanist.png",
+      "sourcePath": "dist/hero-art/tide-arcanist.png",
+      "sourceSha256": "591e95bbcd683c2679f42b4f2187eba01e0f13ba836a610cb288c475493edddb",
+      "sha256": "591e95bbcd683c2679f42b4f2187eba01e0f13ba836a610cb288c475493edddb",
+      "bytes": 292858
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/tide-ranger.png",
+      "sourcePath": "dist/hero-art/tide-ranger.png",
+      "sourceSha256": "990d04a501104e797ca77e5dbb2e052ee6d939dadde2fe2d31bcc9e1f52ba6c5",
+      "sha256": "990d04a501104e797ca77e5dbb2e052ee6d939dadde2fe2d31bcc9e1f52ba6c5",
+      "bytes": 201303
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/tide-hexbinder.png",
+      "sourcePath": "dist/hero-art/tide-hexbinder.png",
+      "sourceSha256": "ab0f85f19bed774fcf77320d88c6c602d50f2c73336ad19b31866a4d83bc2e4b",
+      "sha256": "ab0f85f19bed774fcf77320d88c6c602d50f2c73336ad19b31866a4d83bc2e4b",
+      "bytes": 152872
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/verdant-mender.png",
+      "sourcePath": "dist/hero-art/verdant-mender.png",
+      "sourceSha256": "19ae7d53089357f297719597e83841edb7d75f2318f98b8e3d0056371403747f",
+      "sha256": "19ae7d53089357f297719597e83841edb7d75f2318f98b8e3d0056371403747f",
+      "bytes": 266820
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/verdant-hexbinder.png",
+      "sourcePath": "dist/hero-art/verdant-hexbinder.png",
+      "sourceSha256": "a0e442223c4c73bceea6412aad2380e5264992e2220831e9aae633da837f56fb",
+      "sha256": "a0e442223c4c73bceea6412aad2380e5264992e2220831e9aae633da837f56fb",
+      "bytes": 177380
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/verdant-duelist.png",
+      "sourcePath": "dist/hero-art/verdant-duelist.png",
+      "sourceSha256": "d32c67ccc82833c4fa9259fcd431491c5b9d0f059fac015eea9cf68ec30731fe",
+      "sha256": "d32c67ccc82833c4fa9259fcd431491c5b9d0f059fac015eea9cf68ec30731fe",
+      "bytes": 189191
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/verdant-vanguard.png",
+      "sourcePath": "dist/hero-art/verdant-vanguard.png",
+      "sourceSha256": "176314a70ab8bcb938934f4d24ee2e06c25e1f73815d6a3b8e81593b2a16f225",
+      "sha256": "176314a70ab8bcb938934f4d24ee2e06c25e1f73815d6a3b8e81593b2a16f225",
+      "bytes": 126478
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/verdant-assassin.png",
+      "sourcePath": "dist/hero-art/verdant-assassin.png",
+      "sourceSha256": "2db84593a6358df25bad3d563879f4b47b3a9cdad30f63a5eecafea6d14bbb5b",
+      "sha256": "2db84593a6358df25bad3d563879f4b47b3a9cdad30f63a5eecafea6d14bbb5b",
+      "bytes": 177045
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/hollow-assassin.png",
+      "sourcePath": "dist/hero-art/hollow-assassin.png",
+      "sourceSha256": "51cbbaf6639680b0c6c13cb0957c4f77ef06bf0be10390968a90b008e853fdf4",
+      "sha256": "51cbbaf6639680b0c6c13cb0957c4f77ef06bf0be10390968a90b008e853fdf4",
+      "bytes": 132436
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/hollow-stormcaller.png",
+      "sourcePath": "dist/hero-art/hollow-stormcaller.png",
+      "sourceSha256": "bb53cc641d67d8a3f906d4f130989790337c59b8f8c3e90c5dfbb2017d9bbaf2",
+      "sha256": "bb53cc641d67d8a3f906d4f130989790337c59b8f8c3e90c5dfbb2017d9bbaf2",
+      "bytes": 80733
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/hollow-artificer.png",
+      "sourcePath": "dist/hero-art/hollow-artificer.png",
+      "sourceSha256": "542fc1d77f08fc98f07097595f748515a7ba4b5084ce096965ab10d7cda5b417",
+      "sha256": "542fc1d77f08fc98f07097595f748515a7ba4b5084ce096965ab10d7cda5b417",
+      "bytes": 201367
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/hollow-duelist.png",
+      "sourcePath": "dist/hero-art/hollow-duelist.png",
+      "sourceSha256": "74609ce7e4f9294d432331b784bdc3c8aaabd8056c11780b25ed91ced82d38a2",
+      "sha256": "74609ce7e4f9294d432331b784bdc3c8aaabd8056c11780b25ed91ced82d38a2",
+      "bytes": 190024
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/hollow-sentinel.png",
+      "sourcePath": "dist/hero-art/hollow-sentinel.png",
+      "sourceSha256": "acbe9aabd56c926540b0cd59a8a997e88e992b8dd303ea5809f523d9f9e968e2",
+      "sha256": "acbe9aabd56c926540b0cd59a8a997e88e992b8dd303ea5809f523d9f9e968e2",
+      "bytes": 105391
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/iron-arcanist.png",
+      "sourcePath": "dist/hero-art/iron-arcanist.png",
+      "sourceSha256": "dd6e03d169aa96682ab2e6e41b2012b2f671b2131bd8c0a079628450c7b4b393",
+      "sha256": "dd6e03d169aa96682ab2e6e41b2012b2f671b2131bd8c0a079628450c7b4b393",
+      "bytes": 303765
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/iron-hexbinder.png",
+      "sourcePath": "dist/hero-art/iron-hexbinder.png",
+      "sourceSha256": "0eee22a9ec1e8f574311c7798f7066c3122d17b53bd7148cea22554434bb0a96",
+      "sha256": "0eee22a9ec1e8f574311c7798f7066c3122d17b53bd7148cea22554434bb0a96",
+      "bytes": 159041
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/iron-artificer.png",
+      "sourcePath": "dist/hero-art/iron-artificer.png",
+      "sourceSha256": "a7abf62c8c7f34bc86086843fb63ef6d8c077358bbf634b93ceda1d61ad7d2d8",
+      "sha256": "a7abf62c8c7f34bc86086843fb63ef6d8c077358bbf634b93ceda1d61ad7d2d8",
+      "bytes": 170884
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/iron-vanguard.png",
+      "sourcePath": "dist/hero-art/iron-vanguard.png",
+      "sourceSha256": "080a569c78fc67cdab69d1897083a681c87a5176128f76e8a0659762254e8739",
+      "sha256": "080a569c78fc67cdab69d1897083a681c87a5176128f76e8a0659762254e8739",
+      "bytes": 238650
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/iron-ranger.png",
+      "sourcePath": "dist/hero-art/iron-ranger.png",
+      "sourceSha256": "0d744e2ed557935ade769b11849f5ec8d968b5815112c4b2282105216f1cb39f",
+      "sha256": "0d744e2ed557935ade769b11849f5ec8d968b5815112c4b2282105216f1cb39f",
+      "bytes": 148446
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/astral-mender.png",
+      "sourcePath": "dist/hero-art/astral-mender.png",
+      "sourceSha256": "703a9a25182f8a6b0e62a0fccdddc69170c71bd47ea3a3d9e8034c72482732ee",
+      "sha256": "703a9a25182f8a6b0e62a0fccdddc69170c71bd47ea3a3d9e8034c72482732ee",
+      "bytes": 187703
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/astral-arcanist.png",
+      "sourcePath": "dist/hero-art/astral-arcanist.png",
+      "sourceSha256": "14c4d70591894c92532c42eaaf2d70db5e2d01ff2c1b22c5a8f7ced3470cfadb",
+      "sha256": "14c4d70591894c92532c42eaaf2d70db5e2d01ff2c1b22c5a8f7ced3470cfadb",
+      "bytes": 158151
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/astral-assassin.png",
+      "sourcePath": "dist/hero-art/astral-assassin.png",
+      "sourceSha256": "c5a918eb1af8cc6b9edeafa8239f62dae7d12fa62e7d90dd3cc4e6d464869ec9",
+      "sha256": "c5a918eb1af8cc6b9edeafa8239f62dae7d12fa62e7d90dd3cc4e6d464869ec9",
+      "bytes": 157641
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/astral-sentinel.png",
+      "sourcePath": "dist/hero-art/astral-sentinel.png",
+      "sourceSha256": "cf5522ddde21cbb95a3a5e169b34cb9a91f7d85c66fb49a4b6caf6753856a935",
+      "sha256": "cf5522ddde21cbb95a3a5e169b34cb9a91f7d85c66fb49a4b6caf6753856a935",
+      "bytes": 148043
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/astral-stormcaller.png",
+      "sourcePath": "dist/hero-art/astral-stormcaller.png",
+      "sourceSha256": "a2145749eda174dccca8e73b82838b1b630ef31fb40b33753ac9cc361b7f9ef3",
+      "sha256": "a2145749eda174dccca8e73b82838b1b630ef31fb40b33753ac9cc361b7f9ef3",
+      "bytes": 267735
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/dune-stormcaller.png",
+      "sourcePath": "dist/hero-art/dune-stormcaller.png",
+      "sourceSha256": "c41616cad2cbc7d792fcce7ad3fc55cb669917bb989f8428b2e3cc3439b67aa6",
+      "sha256": "c41616cad2cbc7d792fcce7ad3fc55cb669917bb989f8428b2e3cc3439b67aa6",
+      "bytes": 178313
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/dune-vanguard.png",
+      "sourcePath": "dist/hero-art/dune-vanguard.png",
+      "sourceSha256": "5773839fab154389495c3ec9e08775e4aac1e496361b14ed36d292d1cc57b1dc",
+      "sha256": "5773839fab154389495c3ec9e08775e4aac1e496361b14ed36d292d1cc57b1dc",
+      "bytes": 188629
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/dune-duelist.png",
+      "sourcePath": "dist/hero-art/dune-duelist.png",
+      "sourceSha256": "cbb5bbd01f9f526378bc88a06d9693e17422685b4b2a332f250e31a9f5445e45",
+      "sha256": "cbb5bbd01f9f526378bc88a06d9693e17422685b4b2a332f250e31a9f5445e45",
+      "bytes": 245362
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/dune-ranger.png",
+      "sourcePath": "dist/hero-art/dune-ranger.png",
+      "sourceSha256": "8d0b8009ac5663ccef21ea068e3a057ea5f3baf70b567152d24067cef0d8f071",
+      "sha256": "8d0b8009ac5663ccef21ea068e3a057ea5f3baf70b567152d24067cef0d8f071",
+      "bytes": 234216
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/dune-mender.png",
+      "sourcePath": "dist/hero-art/dune-mender.png",
+      "sourceSha256": "f7ca0b328d5d40fac2da731730bbb608782ae630215f1d32fbed78e9da598726",
+      "sha256": "f7ca0b328d5d40fac2da731730bbb608782ae630215f1d32fbed78e9da598726",
+      "bytes": 222099
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/silk-luneth.png",
+      "sourcePath": "dist/hero-art/silk-luneth.png",
+      "sourceSha256": "c391267e4fc01f7655d969b80bda848a4033651acc79433f926de30b0c56ca25",
+      "sha256": "c391267e4fc01f7655d969b80bda848a4033651acc79433f926de30b0c56ca25",
+      "bytes": 225148
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/silk-thimri.png",
+      "sourcePath": "dist/hero-art/silk-thimri.png",
+      "sourceSha256": "0e526b5f1f7bc0a8286412bca59158c2658ede64283eff1f6b5a1a99baf3c8c2",
+      "sha256": "0e526b5f1f7bc0a8286412bca59158c2658ede64283eff1f6b5a1a99baf3c8c2",
+      "bytes": 244343
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/silk-vespera.png",
+      "sourcePath": "dist/hero-art/silk-vespera.png",
+      "sourceSha256": "70e7077548198d2de0094bad326918c9810e3012de867a0a2ae3d0e5c55ec4bc",
+      "sha256": "70e7077548198d2de0094bad326918c9810e3012de867a0a2ae3d0e5c55ec4bc",
+      "bytes": 219759
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/silk-orruma.png",
+      "sourcePath": "dist/hero-art/silk-orruma.png",
+      "sourceSha256": "7dae9eaf8ddf0469e4c5d7db970bdc8e0815b5cb15970033ebfdd53cf892d4d7",
+      "sha256": "7dae9eaf8ddf0469e4c5d7db970bdc8e0815b5cb15970033ebfdd53cf892d4d7",
+      "bytes": 249955
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/rime-soryn.png",
+      "sourcePath": "dist/hero-art/rime-soryn.png",
+      "sourceSha256": "a9b8764011d4b84f3cbe522230d1854e8a045eb026a134e93c7817f8820b6e89",
+      "sha256": "a9b8764011d4b84f3cbe522230d1854e8a045eb026a134e93c7817f8820b6e89",
+      "bytes": 126513
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/rime-urvek.png",
+      "sourcePath": "dist/hero-art/rime-urvek.png",
+      "sourceSha256": "81a25f92c302a0b24721a919ab6ca3d3f308a151784b31c4ae56b27d01e0d78d",
+      "sha256": "81a25f92c302a0b24721a919ab6ca3d3f308a151784b31c4ae56b27d01e0d78d",
+      "bytes": 155861
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/gargoyle-kharvox.png",
+      "sourcePath": "dist/hero-art/gargoyle-kharvox.png",
+      "sourceSha256": "5aebc682b76cff94e9e79f9a54ef93f944443ee695dfff87dae82af634c9e5b4",
+      "sha256": "5aebc682b76cff94e9e79f9a54ef93f944443ee695dfff87dae82af634c9e5b4",
+      "bytes": 129294
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/gargoyle-elyra.png",
+      "sourcePath": "dist/hero-art/gargoyle-elyra.png",
+      "sourceSha256": "b0be4405696012f2d009dd82fab513b341cbf4d0041512e29af67d7d2c8cc725",
+      "sha256": "b0be4405696012f2d009dd82fab513b341cbf4d0041512e29af67d7d2c8cc725",
+      "bytes": 187510
+    },
+    {
+      "path": "public/games/installed/wtfiap/hero-art/mime.png",
+      "sourcePath": "dist/hero-art/mime.png",
+      "sourceSha256": "3a33a010ad290407cd7cb455d64512ae67c6b462b11a104332ebf9fdea4a5b1e",
+      "sha256": "3a33a010ad290407cd7cb455d64512ae67c6b462b11a104332ebf9fdea4a5b1e",
+      "bytes": 224825
+    },
+    {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "394217e2343709d7163c60b1a8fe6f7b987e012e7f70660cb207785dbd40e4cd",
-      "sha256": "44f584f859a272bdf8a3d40b368ff9a7bfe5367df58787ddf79344dad837c6ad",
-      "bytes": 635625
+      "sourceSha256": "0072c543b82c4b5801c14ae50c35e0a3e5e30e25357c8a9ffe3b7122ea55129f",
+      "sha256": "3dcdbe97a64025e848c639ae9fbe1a2138de97d678b71ce7e16f72d6720f33aa",
+      "bytes": 635736
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",

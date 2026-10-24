@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" role="img" aria-labelledby="title desc">
+  <title id="title">coLILseum</title>
+  <desc id="desc">The coLILseum name, with LIL in arena gold, in the game’s cream and forest color palette.</desc>
+  <defs>
+    <linearGradient id="stone" x2="0" y2="1"><stop stop-color="#fff9e9"/><stop offset="1" stop-color="#d6d0b8"/></linearGradient>
+    <linearGradient id="gold" x2="0" y2="1"><stop stop-color="#ffe9ab"/><stop offset=".55" stop-color="#e5bb68"/><stop offset="1" stop-color="#a86d30"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#00100f" flood-opacity=".75"/></filter>
+  </defs>
+  <g filter="url(#shadow)" font-family="Georgia,serif" font-size="154" font-weight="700" letter-spacing="-12" text-anchor="middle" paint-order="stroke fill" stroke="#12352f" stroke-width="11" stroke-linejoin="round">
+    <text x="450" y="155" fill="url(#stone)">co<tspan fill="url(#gold)">LIL</tspan>seum</text>
+  </g>
+  <path d="M90 183 H810" stroke="#c9984f" stroke-width="5" stroke-linecap="round"/>
+  <path d="M350 191 Q450 215 550 191" fill="none" stroke="#c9984f" stroke-width="4" stroke-linecap="round"/>
+</svg>

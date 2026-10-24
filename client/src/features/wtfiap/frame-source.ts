@@ -11,6 +11,10 @@ export function wtfIapEntryPath(windowPath: string | null, activePath: string, s
 // Use the owning window's path; other desktop apps can change the ambient URL.
 export function wtfIapFrameSource(windowPath: string | null, mode?: "party"): string {
   const entry = new URL(windowPath || "/wtfiap", "https://wtfos.invalid");
-  const party = mode === "party" || entry.searchParams.has("room") || ["duel", "party", "tournament"].includes(entry.searchParams.get("mode") || "");
-  return `${WTFIAP_ASSET_ROOT}/${party ? "party" : "index"}.html${entry.search}`;
+  const requested = entry.searchParams.get("mode");
+  const page = mode === "party" || entry.searchParams.has("room") || requested === "party" ? "party"
+    : requested === "practice" ? "index"
+    : requested === "learn" ? "learn"
+    : requested === "team-builder" ? "team-builder" : "welcome";
+  return `${WTFIAP_ASSET_ROOT}/${page}.html${entry.search}`;
 }

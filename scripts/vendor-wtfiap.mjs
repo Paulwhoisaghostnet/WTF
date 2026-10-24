@@ -27,8 +27,13 @@ if (sourceFlag !== -1) {
     assert.equal(digest(fs.readFileSync(path.join(source, entry.path))), entry.sha256, `Stale game build: ${entry.path}`);
   }
   assert.equal(digest(fs.readFileSync(path.join(source, "dist/generator.html"))), build.sha256, "Generator does not match the build manifest");
-  for (const name of ["index.html", "generator.html", "cast.html", "party-client.js", "tournament.js"]) {
+  for (const name of ["index.html", "generator.html", "cast.html", "welcome.html", "learn.html", "team-builder.html", "colilseum-brand.svg", "party-client.js", "tournament.js"]) {
     copy(`dist/${name}`, `${assets}/${name}`);
+  }
+  for (const art of build.sourceFiles.filter((entry) => entry.path.startsWith("source/assets/lil-guys/") && entry.path.endsWith(".png"))) {
+    const name = path.basename(art.path);
+    assert.equal(digest(fs.readFileSync(path.join(source, "dist/hero-art", name))), art.sha256, `Stale hero art: ${name}`);
+    copy(`dist/hero-art/${name}`, `${assets}/hero-art/${name}`);
   }
   copy("dist/party.html", `${assets}/party.html`, (html) => {
     const marker = "<!--WTFIAP_HOST_BOOTSTRAP-->";

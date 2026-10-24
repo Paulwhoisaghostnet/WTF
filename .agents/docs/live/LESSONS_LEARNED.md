@@ -12429,3 +12429,23 @@
 **Why it mattered**: A correct directory filter still fails if its phase and player records are read from the wrong persistence representation. This was visible only by inspecting real saved room files, not object-only fixtures.
 
 **Rule**: Parse the exact durable representation before deriving public summaries. Test both serialized finished matches and serialized live matches, including a real browser flow that starts a room and checks its directory phase.
+
+---
+
+## 2026-10-24 - One destination should have one menu entry
+
+**What happened**: coLILseum showed Duel, Party, and Tournament as separate window-bar links, but each opened the same lobby with only a different room-type preset. The desktop icon instead opened Practice, making the room directory feel secondary.
+
+**Why it mattered**: Three near-identical destinations obscured the game's main entry point and made users infer modes from navigation rather than from the actual room cards and creation controls.
+
+**Rule**: Give the room directory one Lobby link from the welcome splash and window menu. Keep Practice separate, keep mode selection inside the room form, and convey type and prize status on each room card with text and icon labels alongside distinct borders.
+
+---
+
+## 2026-10-24 - Teach the game on the real arena
+
+**What happened**: A first-time walkthrough needed to explain the shop, board, information icons, items, and Controls without producing another game surface. A separate mock board would diverge as game controls change.
+
+**Why it mattered**: Players should carry the same actions from Learn into Practice and rooms. The tutorial now listens for actual arena actions, and Team Builder stores lineup intent separately from match state.
+
+**Rule**: Put guided steps around the shared renderer and advance them from real control actions. Keep planning data in one browser key that both roster planning and the live shop read, with an in-shop plan picker so players do not leave a match.
