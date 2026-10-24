@@ -80,7 +80,7 @@ test("Start Menu model leads with the five commissioned tasks", () => {
   );
 
   assert.deepEqual(signature.slice(0, 8), [
-    "Play",
+    "Games",
     "Create",
     "Shop",
     "Events",
@@ -140,19 +140,20 @@ test("Start Menu shows Macaroni to trusted creators under Create", () => {
   );
 });
 
-test("Start Menu model keeps Casino in Play and My Games in My Media", () => {
+test("Start Menu model keeps coLILseum in Games and My Games in My Media", () => {
   const groups = buildStartMenuGroups(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
   const byKey = new Map(groups.map((group) => [group.key, group]));
-  const play = byKey.get("gaming")!;
+  const games = byKey.get("gaming")!;
   const myMedia = byKey.get("my-media")!;
 
   assert.deepEqual(
-    play.items.map((item) => item.label),
+    games.items.map((item) => item.label),
     ["WTF Casino", "WTF Arcade", "coLILseum", "Game Console", "Game Studio", "DedRooms"]
   );
-  assert.equal(play.items.find((item) => item.path === "/casino")?.disabled, true);
+  assert.equal(games.items.find((item) => item.path === "/casino")?.disabled, true);
+  assert.equal(games.items.find((item) => item.label === "coLILseum")?.path, "/colilseum");
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
 });
 
@@ -332,10 +333,10 @@ test("Start Menu search can open a whole category by group name", () => {
   const entries = buildStartMenuEntries(PAGE_DEFS, {}, "contestant", {
     casinoMembershipActive: false,
   });
-  const filtered = filterStartMenuEntriesByQuery(entries, "play");
+  const filtered = filterStartMenuEntriesByQuery(entries, "games");
   const groups = filtered.flatMap((entry) => (entry.kind === "group" ? [entry.group] : []));
 
-  assert.equal(groups[0].label, "Play");
+  assert.equal(groups[0].label, "Games");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
     ["WTF Casino", "WTF Arcade", "coLILseum", "Game Console", "Game Studio", "DedRooms"]

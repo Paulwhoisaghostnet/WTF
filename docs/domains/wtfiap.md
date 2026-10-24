@@ -1,6 +1,6 @@
 # coLILseum
 
-coLILseum is the original autobattler hosted in a native wtfOS window at `/colilseum`. Launch it from its desktop icon or **Stuffs → Play → coLILseum**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
+coLILseum is the original autobattler hosted in a native wtfOS window at `/colilseum`. Launch it from its desktop icon or **Stuffs → Games → coLILseum**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
 
 ## Play
 

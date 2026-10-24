@@ -47,7 +47,7 @@ const CATEGORY_META: Record<StartMenuCategoryKey, { label: string; icon: string 
   create: { label: "Create", icon: "✦" },
   social: { label: "Talk", icon: "✉️" },
   "on-chain": { label: "Shop", icon: "🛍️" },
-  gaming: { label: "Play", icon: "🕹️" },
+  gaming: { label: "Games", icon: "🕹️" },
   "my-media": { label: "My Media", icon: "📂" },
   browse: { label: "Browse", icon: "🕸️" },
   account: { label: "Account", icon: "👤" },

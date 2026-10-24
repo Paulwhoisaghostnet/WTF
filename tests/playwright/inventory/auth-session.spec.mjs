@@ -106,7 +106,7 @@ test.describe("interaction inventory - auth session recovery", () => {
 
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open Stuffs menu" }).click();
-    await page.getByText("Play", { exact: true }).last().click();
+    await page.getByText("Games", { exact: true }).last().click();
 
     const casinoItem = page.getByText("WTF Casino", { exact: true }).locator("..");
     await expect(casinoItem).toBeVisible();

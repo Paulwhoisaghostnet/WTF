@@ -593,12 +593,12 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await context.close();
   });
 
-  test("Stuffs Play opens splash then Lobby, creates a real room and reloads its purchased formation", async ({ page }) => {
+  test("Stuffs Games opens splash then Lobby, creates a real room and reloads its purchased formation", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open Stuffs menu" }).click();
-    await page.getByText("Play", { exact: true }).last().click();
+    await page.getByText("Games", { exact: true }).last().click();
     const menuEntry = page.getByText("coLILseum", { exact: true }).last();
     await expect(menuEntry).toBeVisible();
     const flyout = page.locator('[data-start-menu-flyout="gaming"]');

@@ -12469,3 +12469,13 @@
 **Why it mattered**: The server intentionally hashes its room runtime for funded-match continuity. A display-link edit in that runtime is still a different pinned version and cannot be shipped over a funded match without a proved compatibility migration.
 
 **Rule**: Keep public-route and invite presentation changes in the shell and hosted client when active funded rooms exist. Confirm the authoritative rules hash is byte-identical to the deployed release before retrying deployment; leave the room API's legacy `sharePath` for compatibility until a separately verified migration is needed.
+
+---
+
+## 2026-10-24 - Game discoverability depends on the visible Stuffs category name
+
+**What happened**: coLILseum already had a canonical `/colilseum` launcher in the Start Menu's internal `gaming` group, but that group was shown to players as “Play.” A request to find the game under “Games” could not be satisfied by route registration alone.
+
+**Why it mattered**: Players navigate by the menu labels they can see. Internal group keys and successful direct links do not prove that the named player-facing section exists.
+
+**Rule**: Check the rendered category label and the app entry together. Keep navigation help, inventory wording, and browser assertions aligned with the visible menu name.

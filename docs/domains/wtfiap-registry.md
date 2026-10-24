@@ -9,7 +9,7 @@ Companion to [WTFIAP-v0.01](./wtfiap.md), under the [master register](./master-r
 | Display name | WTFIAP-v0.01 |
 | Desktop app key / persisted icon key | `wtfiap` |
 | Native route | `/colilseum` and `/colilseum/:roomCode`; legacy `/wtfiap` |
-| Menu | Stuffs → Play |
+| Menu | Stuffs → Games |
 | Placement and price | Default desktop; free |
 | Native owner | `client/src/pages/WtfIap.tsx` |
 | Browser runtime | `/games/installed/wtfiap/index.html`, `/games/installed/wtfiap/party.html` |
