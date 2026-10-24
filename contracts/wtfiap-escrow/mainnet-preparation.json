@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "authorized-awaiting-deployment",
+  "status": "deployed-pending-host-activation",
   "network": "mainnet",
   "chainId": "NetXdQprcVkpaWU",
   "artifactPath": "contracts/wtfiap-escrow/artifacts/contract.json",
@@ -27,8 +27,8 @@
   "prizeRoundingPolicy": "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1",
   "readOnlyPreflight": "proof/mainnet-2026-10-23-ai/preflight.json",
   "treasuryProof": "proof/mainnet-2026-10-23-ai/treasury.json",
-  "originationOperation": null,
-  "escrowContract": null,
+  "originationOperation": "opLxc8WFKxWGysKxRBZ5gfEZydqiXajyMhHg73GcRd5vmYTmVXx",
+  "escrowContract": "KT19LxQyVRCJCrWM9ViPuprvSHbHd2nSy4GM",
   "writesAuthorized": true,
   "activationRequirements": [
     "Verify finalized origination receipt, exact live code and storage.",
@@ -37,5 +37,6 @@
     "Verify player-paid WTF deposit gas and storage, claims and treasury in a bounded live room."
   ],
   "originationPayerWalletId": "reward-disburser",
-  "originationPayerAddress": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u"
+  "originationPayerAddress": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "deploymentProof": "proof/mainnet-2026-10-23-ai/deployment.json"
 }

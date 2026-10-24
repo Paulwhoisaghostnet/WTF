@@ -8,7 +8,7 @@ import { readPuppetCredentials, buildPuppetKeyringEnv } from '../../tests/e2e/pu
 import { playAuthoritativeTournament, waitForRoomView } from '../../tests/e2e/puppets/wtfiap-match-driver.mjs';
 import { verifyWtfiapTransfer } from '../../tests/e2e/puppets/wtfiap-chain-evidence.mjs';
 
-const baseURL='https://wtfos.app',ids=['bert','ernie','elmo','bigbird','thecount','snuffaluffagus','grover','cookiemonster'];
+const baseURL='https://wtfos.app',allIds=['bert','ernie','elmo','bigbird','thecount','snuffaluffagus','grover','cookiemonster'];
 const {fundingCalls}=tsxRequire('../../client/src/features/wtfiap/funding-wallet.ts',import.meta.url);
 async function json(response){const body=await response.json();assert(response.ok(),body.reason||body.error||`HTTP ${response.status()}`);return body;}
 // Respect the deployed rate-limit response exactly. A rejected 429 is safe to
@@ -21,11 +21,14 @@ function rateAware(context){
   return {get:send('get'),post:send('post'),storageState:()=>context.storageState(),dispose:()=>context.dispose()};
 }
 async function main(){
-  const selectedCurrency=process.argv[2];
+  const aiFill=process.argv.includes('--ai-fill'),ids=aiFill?allIds.slice(0,2):allIds;
+  const selectedCurrency=process.argv.slice(2).find(arg=>['XTZ','WTF'].includes(arg));
+  assert(process.argv.slice(2).every(arg=>arg==='--ai-fill'||['XTZ','WTF'].includes(arg)));
+  assert(!aiFill||selectedCurrency==='XTZ','The AI-fill hosted proof exercises Shadownet XTZ explicitly.');
   assert(!selectedCurrency||['XTZ','WTF'].includes(selectedCurrency),'Optional argument must select XTZ or WTF');
   assert.equal(process.env.WTF_E2E_WTFIAP_HOST_WRITES,'1','Root must explicitly hand off hosted Shadownet writes');
   assert.equal(process.env.WTF_E2E_LIVE_BASE_URL,baseURL);assert(/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(process.env.WTF_E2E_WTFIAP_ESCROW||''));
-  const directory=path.resolve('.tmp/wtfiap-host-20261022.local'),statePath=path.join(directory,'proof-state.json');
+  const directory=path.resolve('.tmp/wtfiap-host-20261022.local'),statePath=path.join(directory,aiFill?'ai-proof-state.json':'proof-state.json');
   const sessions=JSON.parse(await readFile(path.join(directory,'sessions.json'),'utf8')),credentials=await readPuppetCredentials();
   let state;try{state=JSON.parse(await readFile(statePath,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;state={version:1,baseURL,escrowContract:process.env.WTF_E2E_WTFIAP_ESCROW,rooms:{}};}
   assert.equal(state.baseURL,baseURL);assert.equal(state.escrowContract,process.env.WTF_E2E_WTFIAP_ESCROW);
@@ -43,7 +46,7 @@ async function main(){
     for(const currency of selectedCurrency?[selectedCurrency]:['XTZ','WTF']){
       let checkpoint=state.rooms[currency];
       if(!checkpoint){checkpoint=state.rooms[currency]={status:'creating-room',players:{},operations:{}};await save();
-        const host=await entrants[0].write('/api/wtfiap/party/rooms',{name:`Hosted Shadownet ${currency} proof`,boardMode:'standard',preparationSeconds:null,roomType:'tournament',tournament:{currency,entryFee:'0.01'}});
+        const host=await entrants[0].write('/api/wtfiap/party/rooms',{name:`Hosted Shadownet ${currency} proof`,boardMode:'standard',preparationSeconds:null,roomType:'tournament',tournament:{currency,entryFee:'0.01'},allowAI:aiFill});
         Object.assign(checkpoint,{roomCode:host.roomCode,status:'lobby'});checkpoint.players[ids[0]]={playerId:host.playerId,sessionToken:host.sessionToken};await save();}
       assert(checkpoint.roomCode,'An ambiguous room-creation response requires reconciliation, never a new room');
       const code=checkpoint.roomCode,route=`/api/wtfiap/funding/rooms/${code}`;
@@ -74,15 +77,15 @@ async function main(){
       if(!checkpoint.opened){for(const entrant of entrants)await entrant.write(route+'/bind-wallet',{walletAddress:entrant.actor.walletAddress});await entrants[0].write(route+'/open');checkpoint.opened=true;await save();}
       await waitForRoomView({baseURL,roomCode:code,entrant:entrants[0],predicate:v=>['funding','starting','active','settling','settled'].includes(v.tournament?.funding?.status)});
       if(!checkpoint.started){for(const entrant of entrants)await walletAction(entrant,'deposit',entrant.actor.id+':deposit');
-        assert.equal((await read(entrants[0])).depositedCount,8);await entrants[0].write(route+'/start');checkpoint.started=true;await save();}
+        assert.equal((await read(entrants[0])).depositedCount,ids.length);await entrants[0].write(route+'/start');checkpoint.started=true;await save();}
       await waitForRoomView({baseURL,roomCode:code,entrant:entrants[0],predicate:v=>['preparation','combat','finished'].includes(v.phase)});
       const match=await playAuthoritativeTournament({baseURL,roomCode:code,entrants,onRound:async({roundNumber,survivors})=>console.log(JSON.stringify({currency,roomCode:code,roundNumber,survivors}))});
       const settled=await waitForRoomView({baseURL,roomCode:code,entrant:entrants[0],predicate:v=>v.tournament?.funding?.status==='settled'}),funding=settled.tournament.funding;
-      const quantum=BigInt(configuration.currencyQuantaAtomic[currency]);assert.equal(BigInt(funding.prizeSummary.allocatedPlayerPrizesAtomic)+BigInt(funding.prizeSummary.treasuryRemainderAtomic),8n*quantum);
+      const quantum=BigInt(configuration.currencyQuantaAtomic[currency]);assert.equal(BigInt(funding.prizeSummary.allocatedPlayerPrizesAtomic)+BigInt(funding.prizeSummary.treasuryRemainderAtomic),BigInt(ids.length)*quantum);
       for(const payout of funding.payouts){assert.equal(BigInt(payout.amountAtomic)%quantum,0n);if(BigInt(payout.amountAtomic)>0n)await walletAction(entrants.find(e=>e.playerId===payout.playerId),'claim',payout.playerId+':claim');}
       if(BigInt(funding.prizeSummary.treasuryRemainderAtomic)>0n)await waitForRoomView({baseURL,roomCode:code,entrant:entrants[0],predicate:v=>v.tournament?.funding?.prizeSummary?.treasuryClaimed===true});
-      const verified=await read(entrants[0]);checkpoint.status='complete';checkpoint.summary={kind:'hosted-authoritative-Shadownet-match',baseURL,currency,escrowContract:configuration.escrowContract,roomCode:code,match:match.summary,prizeSummary:verified.prizeSummary,operations:Object.values(checkpoint.operations),noGameplayStateInjection:true,noAccountOrWalletLinkChanges:true};await save();
-      await mkdir('output/wtfiap-escrow/hosted-matches',{recursive:true});await writeFile(`output/wtfiap-escrow/hosted-matches/${currency}.json`,JSON.stringify(checkpoint.summary,null,2)+'\n');console.log(JSON.stringify({currency,roomCode:code,status:'complete',winnerId:match.view.winnerId}));
+      const verified=await read(entrants[0]);checkpoint.status='complete';checkpoint.summary={kind:'hosted-authoritative-Shadownet-match',aiFill,payingHumans:ids.length,baseURL,currency,escrowContract:configuration.escrowContract,roomCode:code,match:match.summary,prizeSummary:verified.prizeSummary,operations:Object.values(checkpoint.operations),noGameplayStateInjection:true,noAccountOrWalletLinkChanges:true};await save();
+      await mkdir('output/wtfiap-escrow/hosted-matches',{recursive:true});await writeFile(`output/wtfiap-escrow/hosted-matches/${aiFill?'ai-':''}${currency}.json`,JSON.stringify(checkpoint.summary,null,2)+'\n');console.log(JSON.stringify({currency,roomCode:code,status:'complete',winnerId:match.view.winnerId,aiFill}));
     }
   }finally{for(const entrant of entrants)await entrant.request.dispose();}
 }

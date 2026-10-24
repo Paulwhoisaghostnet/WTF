@@ -10,7 +10,7 @@ import { readWtfIapRoomMessage, wtfIapFundingRecoveryRoom } from "./room-bridge"
 const config: FundingConfig = { enabled: true, network: "shadownet", chainId: "NetXsqzbfFenSTS", rpcUrl: "https://tezos-shadownet.octez.io/", escrowContract: "KT1Escrow", wtfToken: { contract: "KT1WTF", tokenId: "0", decimals: 8 }, currencyDecimals: { XTZ: 6, WTF: 8 }, currencyQuantaAtomic: { XTZ: "10000", WTF: "1000000" }, treasuryAddress: "tz1TreasuryFixture", prizeRoundingPolicy: "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1" };
 function roomFixture(): FundingRoom {
   const room: FundingRoom = {
-    roomCode: "11111111-1111-4111-8111-111111111111", roomId: "a".repeat(64), termsHash: "b".repeat(64), status: "funding", feeQuantumAtomic: "10000", refundPolicy: "prestart-withdrawal;technical-void-full-refund-v1", treasuryAddress: config.treasuryAddress, prizeRoundingPolicy: config.prizeRoundingPolicy, prizeSummary: null,
+    roomCode: "11111111-1111-4111-8111-111111111111", roomType: "tournament", aiFill: false, battlefieldSeats: 8, payingEntrants: 8, roomId: "a".repeat(64), termsHash: "b".repeat(64), status: "funding", feeQuantumAtomic: "10000", refundPolicy: "prestart-withdrawal;technical-void-full-refund-v1", treasuryAddress: config.treasuryAddress, prizeRoundingPolicy: config.prizeRoundingPolicy, prizeSummary: null,
     network: config.network, chainId: config.chainId, escrowContract: config.escrowContract, wtfToken: config.wtfToken,
     terms: { currency: "XTZ", entryFee: "1", entryAtomic: "1000000", decimals: 6, prizePercentages: ["50", "35", "15"] },
     roster: [{ playerId: "seat1", name: "Test entrant", walletAddress: "tz1Bound", deposited: false }],

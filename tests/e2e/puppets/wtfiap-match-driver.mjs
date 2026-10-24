@@ -53,11 +53,12 @@ export async function waitForRoomView({baseURL,roomCode,entrant,predicate}) {
     }
   } finally { controller.abort();await reader?.cancel().catch(()=>{}); }
 }
-// All eight entrants remain real authenticated human seats. This is a test
-// strategy issuing ordinary buys, deployments and ready commands; it cannot
+// Entrants are the real authenticated paying human seats; AI fills other
+// battlefield seats in the selected room. This strategy issues ordinary buys,
+// deployments and ready commands; it cannot
 // inject match state, accelerate the clock, select winners or settle money.
 export async function playAuthoritativeTournament({baseURL,roomCode,entrants,onRound=async()=>{}}) {
-  assert.equal(entrants.length,RULES.playerCount);assert.equal(new Set(entrants.map(e=>e.playerId)).size,RULES.playerCount);
+  assert(entrants.length>=2&&entrants.length<=RULES.playerCount);assert.equal(new Set(entrants.map(e=>e.playerId)).size,entrants.length);
   let commands=0,view=await roomView(roomCode,entrants[0]);const rounds=[];
   async function deploy(entrant,current){
     while(current.self.bench.length&&current.self.field.length<current.self.fieldCapacity){

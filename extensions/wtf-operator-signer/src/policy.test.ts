@@ -110,6 +110,35 @@ test("Shadownet and Mainnet WTFIAP signer lanes remain separate", () => {
     payload: { contract: mainnetContract, entrypoint: "start_room", args: {}, mutez: 0 } })), "WTFIAP_INTENT_REQUIRED");
 });
 
+test("WTFIAP signer validates two-human AI rooms and full-field ranks while preserving pinned old rooms", () => {
+  const entrants = ["tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ", "tz1g49uR2BF63hfhZzWr1yQRGfVWinycYwBJ"];
+  const target = { version: 1, auth: "test", requestId: "ai-room", walletId: "wtfiap-referee", intent: "wtfiap_escrow",
+    payload: { contract: "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh", chainId: "NetXsqzbfFenSTS", entrypoint: "create_room",
+      args: { room_id: "a".repeat(64), terms_hash: "b".repeat(64), rules_hash: "c".repeat(64), seed_commitment: "d".repeat(64),
+        referee: entrants[0], currency: "0", entry_amount: "10000", payout_mode: "1", entrants } } };
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse(target));
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    args: { ...target.payload.args, payout_mode: "0" } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    args: { ...target.payload.args, entrants: [entrants[0]] } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    args: { ...target.payload.args, payout_mode: "0", entrants: [...entrants, "tz1a5q2EhDdenvyYB95oYtaaBWJ4PStzgBmk"] } } }));
+  const oldEntrants = Array.from({ length: 8 }, (_, i) => "tz1" + String(i + 1).repeat(33));
+  const { payout_mode: _mode, ...oldArgs } = target.payload.args;
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload,
+    args: { ...oldArgs, entrants: oldEntrants } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...target, payload: { ...target.payload, args: oldArgs } }));
+  const ranks = entrants.map((player, i) => ({ player, rank: String(i ? 5 : 2), group_size: "1" }));
+  const finish = { ...target, payload: { contract: target.payload.contract, chainId: target.payload.chainId,
+    entrypoint: "finalize_room", args: { room_id: target.payload.args.room_id, match_id: "e".repeat(64),
+      transcript_hash: "f".repeat(64), result_hash: "a".repeat(64), ranks } } };
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse(finish));
+  assert.doesNotThrow(() => operatorSignerEnvelopeSchema.parse({ ...finish, payload: { ...finish.payload,
+    args: { ...finish.payload.args, ranks: oldEntrants.map((player, i) => ({ player, rank: String(i + 1) })) } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...finish, payload: { ...finish.payload,
+    args: { ...finish.payload.args, ranks: ranks.map(({ group_size: _size, ...rank }) => rank) } } }));
+});
+
 function policyCode(config: SignerEnv, envelope: Parameters<typeof enforceEnvelopePolicy>[1]) {
   const result = enforceEnvelopePolicy(config, envelope);
   return result && !result.ok ? result.code : undefined;

@@ -107,10 +107,21 @@ export const operatorSignerOriginationPayloadSchema = z.object({
   label: z.string().trim().min(1).max(160).optional(),
 });
 
-// Widths and collection length come from SHA-256 and the eight-human room contract.
+// Hash widths come from SHA-256. Both the previous eight-human contract and
+// the duel/AI-filled tournament revision remain valid for pinned old rooms.
 const wtfiapHash = z.string().regex(/^[a-f0-9]{64}$/);
 const wtfiapNat = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const wtfiapAddress = z.string().regex(/^(tz[1-4]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/);
+const wtfiapPlace = z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]);
+const distinctAddresses = (xs: string[]) => new Set(xs).size === xs.length;
+const wtfiapNewEntrants = z.array(wtfiapAddress).min(2).max(8).refine(distinctAddresses);
+const wtfiapOldEntrants = z.array(wtfiapAddress).length(8).refine(distinctAddresses);
+const wtfiapCreateBase = { room_id: wtfiapHash, terms_hash: wtfiapHash, rules_hash: wtfiapHash,
+  seed_commitment: wtfiapHash, referee: wtfiapAddress, currency: z.enum(["0", "1"]), entry_amount: wtfiapNat };
+const wtfiapNewRanks = z.array(z.object({ player: wtfiapAddress, rank: wtfiapPlace,
+  group_size: wtfiapPlace }).strict()).min(2).max(8).refine(xs => distinctAddresses(xs.map(x => x.player)));
+const wtfiapOldRanks = z.array(z.object({ player: wtfiapAddress, rank: wtfiapPlace }).strict())
+  .length(8).refine(xs => distinctAddresses(xs.map(x => x.player)));
 const wtfiapTarget = {
   contract: tezosContractAddressSchema,
   chainId: z.enum(["NetXdQprcVkpaWU", "NetXsqzbfFenSTS"]),
@@ -118,19 +129,15 @@ const wtfiapTarget = {
 };
 export const operatorSignerWtfIapPayloadSchema = z.discriminatedUnion("entrypoint", [
   z.object({ ...wtfiapTarget, entrypoint: z.literal("create_room"), args: z.object({
-    room_id: wtfiapHash, terms_hash: wtfiapHash, rules_hash: wtfiapHash,
-    seed_commitment: wtfiapHash, referee: wtfiapAddress,
-    currency: z.enum(["0", "1"]), entry_amount: wtfiapNat,
-    entrants: z.array(wtfiapAddress).length(8).refine((xs) => new Set(xs).size === 8),
-  }).strict() }).strict(),
+    ...wtfiapCreateBase, payout_mode: z.enum(["0", "1"]), entrants: wtfiapNewEntrants,
+  }).strict().refine(args => args.payout_mode !== "0" || args.entrants.length === 2)
+    .or(z.object({ ...wtfiapCreateBase, entrants: wtfiapOldEntrants }).strict()) }).strict(),
   z.object({ ...wtfiapTarget, entrypoint: z.literal("start_room"), args: z.object({
     room_id: wtfiapHash, expected_terms_hash: wtfiapHash, match_id: wtfiapHash,
   }).strict() }).strict(),
   z.object({ ...wtfiapTarget, entrypoint: z.literal("finalize_room"), args: z.object({
     room_id: wtfiapHash, match_id: wtfiapHash, transcript_hash: wtfiapHash,
-    result_hash: wtfiapHash, ranks: z.array(z.object({
-      player: wtfiapAddress, rank: z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]),
-    }).strict()).length(8).refine((xs) => new Set(xs.map((x) => x.player)).size === 8),
+    result_hash: wtfiapHash, ranks: wtfiapNewRanks.or(wtfiapOldRanks),
   }).strict() }).strict(),
   z.object({ ...wtfiapTarget, entrypoint: z.literal("void_room"), args: z.object({
     room_id: wtfiapHash, reason_hash: wtfiapHash, evidence_hash: wtfiapHash,

@@ -12242,3 +12242,11 @@
 **Correction and proof**: The revised escrow freezes only paying human wallets, records full-field rank and tie size for each human, and assigns absent AI prize shares and rounding remainders to the fixed treasury. Paid duels freeze two wallets and award the full pot to the winner. SmartPy and arithmetic tests, a full two-human/six-AI match, funding adapter tests, and browser funding stories pass. The new Shadownet artifact originated with verified code and storage. Rebuilding the host after vendoring made the exact Party browser story pass.
 
 **Rule**: Keep tournament battlefield seats separate from escrow entrants, derive every payout from authoritative full-field results, and rebuild the served host package after every game vendor update before browser verification.
+
+## 2026-10-23 — Escrow request DTOs must change with the contract and game
+
+**What happened**: A live two-human Shadownet tournament locked eight battlefield seats but its escrow creation stopped before signing. The game and contract accepted two paying humans, while the shared operator-signer request schema still required eight entrants and omitted `payout_mode`. Funding correctly recorded the submission as unresolved; no on-chain room or deposit was created.
+
+**Correction and proof**: The signer schema now validates the new two-through-eight paying-human roster, duel/tournament mode and full-field tie sizes. It still accepts the previous eight-human DTO so pinned old rooms remain recoverable. Added focused schema regression tests; signer type check/build, host type check/build and all focused tests pass. New admissions were disabled during rollout so no other room could enter the same unresolved state.
+
+**Rule**: When an escrow entrypoint changes, exercise the complete game → funding adapter → shared signer DTO → signer policy → contract path with the smallest live room before enabling new admissions. Unit tests at each separate layer do not prove the handoff.
