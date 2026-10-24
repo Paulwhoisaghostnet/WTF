@@ -10,6 +10,9 @@ export const fundingWalletGateway: FundingWalletGateway = {
   assertReady: assertNetworkReadyForSend,
   async chainId() { return (await getTezos()).rpc.getChainId(); },
   async send(calls, expectedWallet, network, chainId) {
+    // A room may switch the selected chain immediately before this call.
+    // Activate that chain's wallet provider before resolving the contract.
+    await assertNetworkReadyForSend(expectedWallet);
     const tezos = await getTezos();
     const batch = tezos.wallet.batch();
     for (const call of calls) {

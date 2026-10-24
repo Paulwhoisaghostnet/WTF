@@ -11,6 +11,12 @@ const hashValue = value => crypto.createHash('sha256').update(stable(value)).dig
 // can continue those frozen rooms. Any later rules hash must prove its own
 // compatibility before inheriting them.
 const compatiblePinnedRules = Object.freeze({
+  // Old and new engine replays matched serialized state and public views
+  // across the deployed two- and eight-player preparation modes. The
+  // pinned-duel-parity fixture records the previous runtime's digests.
+  'ff9a0853ce61ba222b6414f7c65d960936c909289312b59a4384ef974c0ad135': Object.freeze([
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
   // Closing an unfunded, unstarted room is a new lifecycle action. Existing
   // escrow-bound waiting and active rooms retain their prior state and view;
   // both phases were replayed through the previous and current authorities.
