@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "status": "prepared-not-deployed",
+  "status": "authorized-awaiting-deployment",
   "network": "mainnet",
   "chainId": "NetXdQprcVkpaWU",
   "artifactPath": "contracts/wtfiap-escrow/artifacts/contract.json",
-  "artifactSha256": "d3cec0eaa8ebe362315f455c78a5fee278dbdb131b7fbe809b6310b3fbf2b34c",
-  "canonicalCodeSha256": "85cdf287fa2f6e15ce9dbdad82f8559021c0027d1b72256b25c9572a946ca57d",
+  "artifactSha256": "50944a178b52a411498f747f346af03553067702b5eddccaf82d035c0ec67926",
+  "canonicalCodeSha256": "d4e870627065c1a91e2bc848d7aef6329a2071a1180700a7492ecb2087f478b1",
   "creatorAndReferee": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
   "wtfToken": {
     "contract": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD",
@@ -25,17 +25,17 @@
   ],
   "refundPolicy": "prestart-withdrawal;technical-void-full-refund-v1",
   "prizeRoundingPolicy": "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1",
-  "readOnlyPreflight": "proof/mainnet-2026-10-22/preflight.json",
-  "treasuryProof": "proof/mainnet-treasury.json",
+  "readOnlyPreflight": "proof/mainnet-2026-10-23-ai/preflight.json",
+  "treasuryProof": "proof/mainnet-2026-10-23-ai/treasury.json",
   "originationOperation": null,
   "escrowContract": null,
-  "writesAuthorized": false,
+  "writesAuthorized": true,
   "activationRequirements": [
-    "Complete the Shadownet functional proofs referenced by the readiness report.",
-    "Obtain separate Mainnet deployment authorization.",
-    "Re-resolve treasury and refresh exact payer estimate, balance and referee operating funds.",
-    "Originate the same tested artifact with the Mainnet token and fixed treasury.",
-    "Verify finalized receipt, exact live code and constructor storage before enabling funded rooms.",
-    "Configure explicit Mainnet game and signer lanes; retain pinned testnet records for outstanding recovery."
-  ]
+    "Verify finalized origination receipt, exact live code and storage.",
+    "Exercise Shadownet two-human AI-place settlement and recovery.",
+    "Configure explicit Mainnet game and signer lanes; retain pinned testnet records for outstanding recovery.",
+    "Verify player-paid WTF deposit gas and storage, claims and treasury in a bounded live room."
+  ],
+  "originationPayerWalletId": "reward-disburser",
+  "originationPayerAddress": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u"
 }

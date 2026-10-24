@@ -1,12 +1,13 @@
-# WTFIAP-v0.01 tournament escrow
+# coLILseum duel and tournament escrow
 
-The local contract implements the owner-approved eight-human tournament policy.
-No Mainnet deployment is implied. The deployment and live Shadownet proof records
-must supply their exact contract addresses, compiled hashes and applied operations.
+The contract implements paid two-human duels and eight-seat tournaments with two
+through eight paying humans. Unfilled tournament seats are AI. The deployed
+address, compiled hash and applied operations are recorded per network under
+`proof/`; the Mainnet deployment record is separate from Shadownet.
 
 ## Contract boundary
 
-The creator freezes eight distinct wallet addresses, room terms, rules and seed
+The creator freezes distinct paying wallet addresses, room terms, rules and seed
 commitments, currency, entry amount and referee before funding. The server owns
 human/account admission and authoritative game results. The contract checks all
 competition ranks and computes payouts; callers cannot supply arbitrary awards.
@@ -17,10 +18,13 @@ wtf.tez resolution. Synthetic Shadownet rehearsals explicitly use a test treasur
 
 The approved entry and prize step is 0.01 units in either currency: 10,000 mutez
 for XTZ and 1,000,000 base units for WTF (eight decimals). Entry must be a positive
-multiple. Start requires eight applied deposits. Payouts use the full pot's
-50/35/15 percentages. Tied players combine the percentages of their occupied
-places, divide equally, and each final share is rounded down to its currency
-step. The aggregate pot minus these awards belongs to the fixed treasury.
+multiple. Start requires every paying human's applied deposit. A duel has exactly
+two paying humans and awards its full pot to the winner. A tournament has eight
+battlefield places and two through eight paying humans; it applies 50/35/15 to
+those places. AI in a prize place receive no wallet claim: their share belongs
+to the fixed treasury. Tied commanders combine the percentages of occupied
+places and divide equally across the full tie group, including AI. Each human
+share is rounded down to the currency step; the rest belongs to the treasury.
 For example, a 0.08 XTZ pot with unique places awards 0.04/0.02/0.01 XTZ and
 0.01 XTZ to treasury. A second/third tie instead awards 0.02 XTZ to each, leaving
 no remainder. A below-step share can be zero. No extra atom breaks a tie.
@@ -34,12 +38,12 @@ active=1, settled=2, technically voided=3.
 
 | Entrypoint | Caller and effect |
 | --- | --- |
-| `create_room({room_id,terms_hash,rules_hash,seed_commitment,referee,currency,entry_amount,entrants})` | Immutable creator; freezes the eight-wallet room and entry quantum. |
+| `create_room({room_id,terms_hash,rules_hash,seed_commitment,referee,currency,entry_amount,payout_mode,entrants})` | Immutable creator; freezes the paying wallets, duel (`0`) or tournament (`1`) mode and entry quantum. |
 | `join_room({room_id,expected_terms_hash})` | Listed unpaid entrant; exact XTZ entry or exact FA2 pull with zero tez. |
 | `refund(room_id)` | Funded participant before start or after technical void; removes its funded flag and returns its entire entry. Re-entry is possible only before start. |
-| `start_room({room_id,expected_terms_hash,match_id})` | Pinned referee, eight funded wallets; records match and ends withdrawals. |
+| `start_room({room_id,expected_terms_hash,match_id})` | Pinned referee, all paying wallets funded; records match and ends withdrawals. |
 | `void_room({room_id,reason_hash,evidence_hash})` | Pinned referee in funding or active state only; records auditable technical failure and enables full refunds. |
-| `finalize_room({room_id,match_id,transcript_hash,result_hash,ranks})` | Pinned referee, active state, exactly eight unique `{player,rank}` records; computes player and treasury liabilities. |
+| `finalize_room({room_id,match_id,transcript_hash,result_hash,ranks})` | Pinned referee, active state, one `{player,rank,group_size}` record per paying human. Rank and tie size include AI places in tournaments; the contract computes human and treasury liabilities. |
 | `claim(room_id)` | The winning wallet itself; single-use transfer to that wallet. |
 | `claim_treasury(room_id)` | Anyone may trigger the single-use remainder transfer, but its recipient is always the fixed treasury. The server can automate it. |
 
@@ -48,11 +52,11 @@ match timeout or arbitrary cancellation authority exists. Treasury claims are
 separate so a failed treasury transfer cannot block player payouts. All failed
 native/FA2 transfers roll back the corresponding bookkeeping atomically.
 
-Ranks must equal one plus the number of entrants ranked earlier, with one unique
-rank-1 survivor. The server derives them by elimination round, final raw HP,
+The server derives all eight finish places by elimination round, final raw HP,
 final gold, then final fielded-team max HP; remaining ties share occupied prizes.
 These off-chain ranking facts are bound by the pinned referee and result hashes,
-not recomputed by Michelson.
+not recomputed by Michelson. The contract checks that submitted human rank spans
+are valid and nonoverlapping. Missing rank spans represent AI finish places.
 
 ## Storage and conservation
 

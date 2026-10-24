@@ -11,19 +11,25 @@ def ranks_for_partition(breaks):
     return ranks
 
 
-def allocate(entry, quantum, ranks):
+def allocate(entry, quantum, ranks, mode="tournament", group_sizes=None):
     if entry <= 0 or entry % quantum:
         raise ValueError("entry must be a positive quantum multiple")
-    if len(ranks) != 8 or ranks.count(1) != 1:
-        raise ValueError("eight entrants and one surviving winner required")
-    pot = entry * 8
-    ideals = [Fraction(pot * n, 100) for n in (50, 35, 15)]
+    if (mode == "duel" and (len(ranks) != 2 or ranks.count(1) < 1)) or (mode == "tournament" and not 2 <= len(ranks) <= 8):
+        raise ValueError("mode and entrant count must agree")
+    pot = entry * len(ranks)
+    weights = (100,) if mode == "duel" else (50, 35, 15)
+    ideals = [Fraction(pot * n, 100) for n in weights]
     result = []
+    sizes = group_sizes or {rank: ranks.count(rank) for rank in ranks}
     for rank in ranks:
-        if rank != 1 + sum(other < rank for other in ranks):
-            raise ValueError("invalid competition rank")
-        count = ranks.count(rank)
-        combined = sum(ideals[place - 1] for place in range(rank, rank + count) if place <= 3)
+        count = sizes[rank]
+        if not 1 <= rank <= (2 if mode == "duel" else 8) or count < ranks.count(rank) or rank + count > (3 if mode == "duel" else 9):
+            raise ValueError("invalid rank group")
+        if any(other != rank and not (other + sizes[other] <= rank or rank + count <= other) for other in ranks):
+            raise ValueError("overlapping rank groups")
+        if mode == "duel" and (count != ranks.count(rank) or rank != 1 + sum(other < rank for other in ranks)):
+            raise ValueError("invalid duel rank")
+        combined = sum(ideals[place - 1] for place in range(rank, rank + count) if place <= len(weights))
         result.append(int(combined / count / quantum) * quantum)
     return result, pot - sum(result)
 
@@ -55,13 +61,31 @@ class PayoutProof(unittest.TestCase):
         self.assertEqual(allocate(10000, 10000, [1, 2, 3, 4, 5, 6, 7, 8]), ([40000, 20000, 10000, 0, 0, 0, 0, 0], 10000))
         self.assertEqual(allocate(10000, 10000, [1, 2, 2, 4, 5, 6, 7, 8]), ([40000, 20000, 20000, 0, 0, 0, 0, 0], 0))
         self.assertEqual(allocate(1000000, 1000000, [1, 2, 3, 3, 5, 6, 7, 8]), ([4000000, 2000000, 0, 0, 0, 0, 0, 0], 2000000))
+        self.assertEqual(allocate(10000, 10000, [1, 1, 3, 4, 5, 6, 7, 8]), ([30000, 30000, 10000, 0, 0, 0, 0, 0], 10000))
+
+    def test_duel_winner_and_exact_tie_for_both_assets(self):
+        for quantum in (10000, 1000000):
+            for units in (1, 2, 9, 2**53 + 1):
+                entry = quantum * units
+                self.assertEqual(allocate(entry, quantum, [1, 2], "duel"), ([entry * 2, 0], 0))
+                self.assertEqual(allocate(entry, quantum, [1, 1], "duel"), ([entry, entry], 0))
+
+    def test_ai_places_and_mixed_ties_return_unclaimed_shares_to_treasury(self):
+        for quantum in (10000, 1000000):
+            for humans in range(2, 9):
+                pot = 10 * quantum * humans
+                ranks = list(range(9 - humans, 9))
+                amounts, treasury = allocate(10 * quantum, quantum, ranks)
+                self.assertEqual(sum(amounts) + treasury, pot)
+                self.assertEqual(amounts, [pot * (50, 35, 15)[rank - 1] // 100 // quantum * quantum if rank <= 3 else 0 for rank in ranks])
+            self.assertEqual(allocate(10 * quantum, quantum, [2, 5], group_sizes={2: 2, 5: 1}), ([5 * quantum, 0], 15 * quantum))
 
     def test_entry_quantum_and_invalid_competition_ranks(self):
         for quantum in (10000, 1000000):
             for entry in (0, quantum - 1, quantum + 1):
                 with self.assertRaises(ValueError):
                     allocate(entry, quantum, list(range(1, 9)))
-            for ranks in ([1, 2, 2, 3, 5, 6, 7, 8], [1, 1, 3, 4, 5, 6, 7, 8], [1, 2, 3]):
+            for ranks in ([1, 2, 2, 3, 5, 6, 7, 8], [1, 1, 2, 4, 5, 6, 7, 8], [1]):
                 with self.assertRaises(ValueError):
                     allocate(quantum, quantum, ranks)
 

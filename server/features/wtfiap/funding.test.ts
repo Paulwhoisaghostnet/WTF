@@ -9,7 +9,9 @@ const config: FundingConfig = { enabled: true, network: "shadownet", chainId: "N
   escrowContract: "KT1" + "1".repeat(33), scriptHash: "a".repeat(64), creatorAddress: addresses[0], refereeAddress: addresses[0], walletId: "test-referee",
   wtfToken: { contract: "KT1" + "2".repeat(33), tokenId: "0", decimals: 8 }, rulesHash: "b".repeat(64),
   currencyQuantaAtomic: { XTZ:"10000", WTF:"1000000" }, treasuryAddress: addresses[0], prizeRoundingPolicy:"floor-each-prize-to-quantum;remainder-to-wtf.tez-v1", feeQuantumAtomic: "10000", refundPolicy: "explicit-test-policy" };
-function fixture() {
+function fixture(variant: { humans?: number; roomType?: "duel" | "tournament"; aiFill?: boolean } = {}) {
+  const humans = variant.humans ?? 8;
+  const roomType = variant.roomType ?? "tournament";
   const rows = new Map<string, FundingRecord>(); let queue = Promise.resolve(), workerLocked = false, failCommit = false, gameUnavailable = false;
   const extraLinks = new Set<string>(); let auditFails=false;
   const store: FundingStore = {
@@ -23,13 +25,16 @@ function fixture() {
     async exclusive(fn) { if (workerLocked) return false; workerLocked = true; try { await fn(); return true; } finally { workerLocked = false; } },
   };
   const room: GameRoom = { roomCode: "test-room", hostPlayerId: "p0", phase: "lobby", lock: null,
-    config: { roomType: "tournament", tournament: { currency: "XTZ", entryAtomic: "1000000", entryFee: "1", prizePercentages: ["50", "35", "15"] } },
-    players: addresses.map((_, i) => ({ playerId: "p" + i, name: "Human " + i, isAI: false, accountId: String(i + 1) })) };
+    config: roomType === "duel" ? { roomType, duelWager: { currency: "XTZ", entryAtomic: "1000000", entryFee: "1", payoutPolicy: "winner-takes-pot" } }
+      : { roomType, ...(variant.aiFill ? { allowAI: true } : {}), tournament: { currency: "XTZ", entryAtomic: "1000000", entryFee: "1", prizePercentages: ["50", "35", "15"] } },
+    players: addresses.slice(0, humans).map((_, i) => ({ playerId: "p" + i, name: "Human " + i, isAI: false, accountId: String(i + 1) })) };
   let result: any = null, starts = 0, observed: ChainRoom | null = null, lostResponse = false;
   const submissions: any[] = [];
   const game: FundingGame = {
     inspect(code) { if (gameUnavailable) throw new Error("old engine unavailable"); assert.equal(code, room.roomCode); return clone(room); }, list() { return room.lock ? [room.roomCode] : []; },
-    lock(code, binding) { assert.equal(code, room.roomCode); room.lock ||= { ...binding, seedCommitment: "c".repeat(64) }; return clone(room); },
+    lock(code, binding) { assert.equal(code, room.roomCode); if (!room.lock && variant.aiFill) {
+      while (room.players.length < 8) room.players.push({ playerId: "ai" + room.players.length, name: "AI " + room.players.length, isAI: true, accountId: null });
+    } room.lock ||= { ...binding, seedCommitment: "c".repeat(64) }; return clone(room); },
     start(_code, binding) { assert.equal(binding.matchId, room.lock.matchId); if (room.phase === "lobby") { starts++; room.phase = "preparation"; } return clone(room); },
     audit() { return {ok:!auditFails,code:auditFails?"authoritative-game-failure":"healthy",evidence:{snapshotHash:"e".repeat(64),failure:auditFails?"fixture transition failure":null}}; },
     markVoided(){room.phase="voided";},
@@ -48,9 +53,10 @@ function fixture() {
     onWake: () => {} }); // Explicit test driver advances the event-triggered worker.
   function observe(paid = 0, status: ChainRoom["status"] = "funding") {
     const record = rows.get(room.roomCode)!;
+    const entrantAddresses = record.bindings.map(binding => binding.walletAddress);
     observed = { blockHash: "Bfinal", level: 10, termsHash: record.termsHash!, rulesHash: config.rulesHash,
       seedCommitment: room.lock.seedCommitment, referee: config.refereeAddress, currency: "0", entryAtomic: "1000000",
-      entrants: addresses, paid: addresses.slice(0, paid), held: String(paid * 1000000), paidOut: "0", status,
+      payoutMode: roomType === "duel" ? "0" : "1", entrants: entrantAddresses, paid: entrantAddresses.slice(0, paid), held: String(paid * 1000000), paidOut: "0", status,
       deposited:String(paid*1000000),refunded:"0",quantum:"10000",treasuryAmount:"0",treasuryClaimed:false,voidReasonHash:null,voidEvidenceHash:null,
       matchId: status === "funding" ? null : room.lock.matchId, resultHash: null, transcriptHash: null, claims: {} };
   }
@@ -132,17 +138,17 @@ test("funded rooms bind exact linked humans, freeze terms and do not mistake sub
   await assert.rejects(s.bind("test-room", "99", addresses[0]), /does not own/);
   await s.bind("test-room", "1", addresses[0]);
   await assert.rejects(s.open("test-room", "2"), /Only the room host/);
-  await assert.rejects(s.open("test-room", "1"), /Eight linked/);
+  await assert.rejects(s.open("test-room", "1"), /Every human entrant must link/);
   for (let i = 1; i < 8; i++) await s.bind("test-room", String(i + 1), addresses[i]);
   await s.open("test-room", "1"); await s.drain();
   assert.equal(f.submissions.length, 1);
   assert.equal(f.rows.get("test-room")!.intents[0].status, "submitted");
   await s.observe("test-room", "1", { action: "deposit", operationHash: opHash });
   assert.equal((await s.view("test-room", "1")).depositedCount, 0);
-  await assert.rejects(s.start("test-room", "1"), /Eight finalized deposits/);
+  await assert.rejects(s.start("test-room", "1"), /Every paying entrant must have a finalized deposit/);
   f.observe(7); await s.drain();
   assert.equal((await s.view("test-room", "1")).depositedCount, 7);
-  await assert.rejects(s.start("test-room", "1"), /Eight finalized deposits/);
+  await assert.rejects(s.start("test-room", "1"), /Every paying entrant must have a finalized deposit/);
   f.observe(8); await s.drain(); await s.start("test-room", "1"); await s.drain();
   assert.equal(f.submissions.length, 2); assert.equal(f.starts, 0, "submitted start is not an applied start");
   await s.drain(); assert.equal(f.submissions.length, 2, "do not repeat submitted start");
@@ -183,6 +189,49 @@ test("settlement is derived from the frozen authoritative result and exact tie r
   const v = await s.view("test-room", "1"); assert.equal(v.status, "settled");
   assert.equal(v.self.actions.claim.entrypoint, "claim"); assert.equal(v.self.payout?.amount, "4000000");
   const n = f.submissions.length; await s.drain(); assert.equal(f.submissions.length, n);
+  await s.close();
+});
+
+test("a paid duel freezes two wallets and settles the winner-takes-pot rank", async () => {
+  const f = fixture({ humans: 2, roomType: "duel" }), s = f.service();
+  await s.bind("test-room", "1", addresses[0]); await s.bind("test-room", "2", addresses[1]);
+  await s.open("test-room", "1"); await s.drain();
+  assert.equal(f.submissions[0].params.payout_mode, "0");
+  assert.deepEqual(f.submissions[0].params.entrants, addresses.slice(0, 2));
+  f.observe(2); await s.drain(); await s.start("test-room", "1"); await s.drain();
+  f.observe(2, "active"); await s.drain();
+  f.setResult({ matchId: "party:test-room", receiptsHash: "d".repeat(64), groups: [
+    { placeFrom: 1, placeTo: 1, playerIds: ["p0"] }, { placeFrom: 2, placeTo: 2, playerIds: ["p1"] }] });
+  await s.drain();
+  assert.deepEqual(f.submissions.at(-1).params.ranks, [
+    { player: addresses[0], rank: "1", group_size: "1" }, { player: addresses[1], rank: "2", group_size: "1" }]);
+  await s.close();
+});
+
+test("AI-filled tournament pays only two human entrants while preserving all eight finish places", async () => {
+  const f = fixture({ humans: 2, aiFill: true }), s = f.service();
+  await s.bind("test-room", "1", addresses[0]); await s.bind("test-room", "2", addresses[1]);
+  await s.open("test-room", "1"); await s.drain();
+  assert.equal(f.room.players.length, 8);
+  assert.equal(f.room.players.filter(player => player.isAI).length, 6);
+  assert.deepEqual(f.submissions[0].params.entrants, addresses.slice(0, 2));
+  assert.equal(f.submissions[0].params.payout_mode, "1");
+  const fundingView = await s.view("test-room", "1");
+  assert.equal(fundingView.payingEntrants, 2); assert.equal(fundingView.roster.length, 2);
+  f.observe(2); await s.drain(); await s.start("test-room", "1"); await s.drain();
+  f.observe(2, "active"); await s.drain();
+  f.setResult({ matchId: "party:test-room", receiptsHash: "d".repeat(64), groups: [
+    { placeFrom: 1, placeTo: 1, playerIds: ["ai2"] },
+    { placeFrom: 2, placeTo: 3, playerIds: ["p0", "ai3"] },
+    { placeFrom: 4, placeTo: 4, playerIds: ["ai4"] },
+    { placeFrom: 5, placeTo: 5, playerIds: ["p1"] },
+    { placeFrom: 6, placeTo: 6, playerIds: ["ai5"] },
+    { placeFrom: 7, placeTo: 7, playerIds: ["ai6"] },
+    { placeFrom: 8, placeTo: 8, playerIds: ["ai7"] }] });
+  await s.drain();
+  assert.deepEqual(f.submissions.at(-1).params.ranks, [
+    { player: addresses[0], rank: "2", group_size: "2" }, { player: addresses[1], rank: "5", group_size: "1" }]);
+  assert.equal(f.submissions.at(-1).params.transcript_hash, "d".repeat(64));
   await s.close();
 });
 

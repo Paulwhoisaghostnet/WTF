@@ -148,11 +148,15 @@ test("verified failed observations permit recovery, while disabling new funding 
 test("native room bridge accepts only its same-origin iframe and public room/reset identity", () => {
   const source = {} as Window, other = {} as Window, origin = "https://wtfos.app";
   const data = { type: "wtfiap:room", roomCode: roomFixture().roomCode, roomType: "tournament", sessionToken: "must-not-cross", walletRequest: "ignored" };
-  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data }, source, origin), { type: "wtfiap:room", roomCode: data.roomCode, roomType: "tournament" });
+  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data }, source, origin), { type: "wtfiap:room", roomCode: data.roomCode, roomType: "tournament", wagered: true });
+  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { ...data, roomType: "duel", wagered: true } }, source, origin),
+    { type: "wtfiap:room", roomCode: data.roomCode, roomType: "duel", wagered: true });
+  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { ...data, roomType: "duel", wagered: false } }, source, origin),
+    { type: "wtfiap:room", roomCode: data.roomCode, roomType: "duel", wagered: false });
   assert.equal(readWtfIapRoomMessage({ source: other, origin, data }, source, origin), null);
   assert.equal(readWtfIapRoomMessage({ source, origin: "https://other.example", data }, source, origin), null);
   assert.equal(readWtfIapRoomMessage({ source, origin, data: { ...data, roomCode: "https://evil.example" } }, source, origin), null);
-  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { type: "wtfiap:room", roomCode: null, roomType: null } }, source, origin), { type: "wtfiap:room", roomCode: null, roomType: null });
+  assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { type: "wtfiap:room", roomCode: null, roomType: null } }, source, origin), { type: "wtfiap:room", roomCode: null, roomType: null, wagered: false });
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}&funding=1`), data.roomCode);
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}`), null);
   assert.equal(wtfIapFundingRecoveryRoom("/wtfiap?room=malformed&funding=1"), null);

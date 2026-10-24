@@ -23,11 +23,11 @@ dummy = token_module.main
 def digest(value):
     return sp.bytes("0x" + hashlib.sha256(value.encode()).hexdigest())
 
-def fixture(scenario, treasury_address=None):
+def fixture(scenario, treasury_address=None, player_count=8):
     creator = sp.test_account("WTFIAP room creator")
     referee = sp.test_account("WTFIAP room referee")
     outsider = sp.test_account("WTFIAP outsider")
-    players = [sp.test_account("WTFIAP entrant " + str(i)) for i in range(8)]
+    players = [sp.test_account("WTFIAP entrant " + str(i)) for i in range(player_count)]
     token = dummy.DummyWtfFA2(
         admin=creator.address, metadata=sp.big_map({"": sp.bytes("0x")}),
         ledger={}, token_metadata=token_module.token_metadata(),
@@ -39,12 +39,15 @@ def fixture(scenario, treasury_address=None):
     return SimpleNamespace(creator=creator, referee=referee, outsider=outsider,
                            players=players, token=token, escrow=escrow, treasury=treasury)
 
-def create(f, name="room", currency=0, entry=None, entrants=None, **overrides):
+def create(f, name="room", currency=0, entry=None, entrants=None, payout_mode=None, **overrides):
     if entry is None:
         entry = 10000 if currency == 0 else 1000000
+    if payout_mode is None:
+        payout_mode = 0 if len(f.players) == 2 else 1
     values = dict(room_id=digest(name), terms_hash=digest(name + ":terms"),
                   rules_hash=digest("rules"), seed_commitment=digest("seed"),
                   referee=f.referee.address, currency=currency, entry_amount=entry,
+                  payout_mode=payout_mode,
                   entrants=entrants or [p.address for p in f.players])
     values.update(overrides)
     return sp.record(**values)
@@ -55,11 +58,13 @@ def join(name="room"):
 def start(name="room"):
     return sp.record(room_id=digest(name), expected_terms_hash=digest(name + ":terms"), match_id=digest(name + ":match"))
 
-def outcome(f, name="room", ranks=None, order=None, **overrides):
-    rank_values = ranks or list(range(1, 9))
+def outcome(f, name="room", ranks=None, order=None, group_sizes=None, **overrides):
+    rank_values = ranks or list(range(1, len(f.players) + 1))
     values = dict(room_id=digest(name), match_id=digest(name + ":match"),
                   transcript_hash=digest(name + ":transcript"), result_hash=digest(name + ":result"),
-                  ranks=[sp.record(player=f.players[i].address, rank=rank_values[i]) for i in (order or range(8))])
+                  ranks=[sp.record(player=f.players[i].address, rank=rank_values[i],
+                                   group_size=(group_sizes or {value: rank_values.count(value) for value in rank_values})[rank_values[i]])
+                         for i in (order or range(len(f.players)))])
     values.update(overrides)
     return sp.record(**values)
 
@@ -113,7 +118,8 @@ def funding_and_bindings():
     f.escrow.default(_sender=f.players[0], _amount=sp.mutez(1), _valid=False, _exception="DEFAULT_DISABLED")
     f.escrow.create_room(create(f), _sender=f.outsider, _valid=False, _exception="NOT_ROOM_CREATOR")
     f.escrow.create_room(create(f), _sender=f.creator, _amount=sp.mutez(1), _valid=False, _exception="NO_XTZ_IN")
-    f.escrow.create_room(create(f, entrants=[p.address for p in f.players[:7]]), _sender=f.creator, _valid=False, _exception="EIGHT_ENTRANTS_REQUIRED")
+    f.escrow.create_room(create(f, entrants=[f.players[0].address]), _sender=f.creator, _valid=False, _exception="TOURNAMENT_ENTRANT_COUNT")
+    f.escrow.create_room(create(f, payout_mode=2), _sender=f.creator, _valid=False, _exception="BAD_PAYOUT_MODE")
     f.escrow.create_room(create(f, entrants=[f.players[0].address] * 8), _sender=f.creator, _valid=False, _exception="DUPLICATE_ENTRANT")
     f.escrow.create_room(create(f, entry=0), _sender=f.creator, _valid=False, _exception="ZERO_ENTRY")
     f.escrow.create_room(create(f, entry=10001), _sender=f.creator, _valid=False, _exception="ENTRY_QUANTUM")
@@ -140,9 +146,9 @@ def funding_and_bindings():
     f.escrow.start_room(start(), _sender=f.referee, _valid=False, _exception="ROOM_NOT_FUNDING")
     f.escrow.finalize_room(outcome(f), _sender=f.outsider, _valid=False, _exception="NOT_REFEREE")
     f.escrow.finalize_room(outcome(f, match_id=digest("different-match")), _sender=f.referee, _valid=False, _exception="MATCH_MISMATCH")
-    f.escrow.finalize_room(outcome(f, ranks=[1, 2, 2, 3, 5, 6, 7, 8]), _sender=f.referee, _valid=False, _exception="INVALID_COMPETITION_RANK")
-    f.escrow.finalize_room(outcome(f, ranks=[1, 1, 3, 4, 5, 6, 7, 8]), _sender=f.referee, _valid=False, _exception="UNIQUE_WINNER_REQUIRED")
-    f.escrow.finalize_room(outcome(f, order=[0, 1, 2, 3, 4, 5, 6, 6]), _sender=f.referee, _valid=False, _exception="DUPLICATE_RANKED_PLAYER")
+    f.escrow.finalize_room(outcome(f, ranks=[1, 2, 2, 3, 5, 6, 7, 8]), _sender=f.referee, _valid=False, _exception="OVERLAPPING_RANK_GROUPS")
+    f.escrow.finalize_room(outcome(f, ranks=[1, 1, 2, 4, 5, 6, 7, 8]), _sender=f.referee, _valid=False, _exception="OVERLAPPING_RANK_GROUPS")
+    f.escrow.finalize_room(outcome(f, order=[0, 1, 2, 3, 4, 5, 6, 6]), _sender=f.referee, _valid=False, _exception="GROUP_SIZE_UNDERCOUNTS_HUMANS")
     f.escrow.finalize_room(outcome(f, ranks=[0, 2, 3, 4, 5, 6, 7, 8]), _sender=f.referee, _valid=False, _exception="BAD_RANK")
     s.verify(f.escrow.data.rooms[digest("room")].status == 1)
     s.verify(~f.escrow.data.claims.contains((digest("room"), f.players[0].address)))
@@ -181,6 +187,65 @@ def token_atomicity_and_claims():
     s.verify(f.token.data.ledger[f.treasury.address] == 2000000)
     s.verify(f.token.data.ledger[f.escrow.address] == 0)
     s.verify(f.escrow.data.rooms[digest("room")].held == 0)
+
+@sp.add_test()
+def duel_winner_takes_pot_and_exact_tie():
+    s = sp.test_scenario("wtfiap_escrow_duels", [dummy, main])
+    f = fixture(s, player_count=2)
+    for currency in [0, 1]:
+        name = "duel-" + str(currency)
+        entry = 10000 if currency == 0 else 1000000
+        f.escrow.create_room(create(f, name, currency), _sender=f.creator)
+        fund(f, name, currency)
+        f.escrow.refund(digest(name), _sender=f.players[1])
+        f.escrow.start_room(start(name), _sender=f.referee, _valid=False, _exception="ROOM_NOT_FUNDED")
+        f.escrow.join_room(join(name), _sender=f.players[1], _amount=sp.mutez(entry if currency == 0 else 0))
+        f.escrow.start_room(start(name), _sender=f.referee)
+        f.escrow.finalize_room(outcome(f, name), _sender=f.referee)
+        s.verify(claim_value(f, name, 0).amount == entry * 2)
+        s.verify(claim_value(f, name, 1).amount == 0)
+        s.verify(f.escrow.data.rooms[digest(name)].treasury_amount == 0)
+        f.escrow.claim(digest(name), _sender=f.players[1], _valid=False, _exception="NO_AWARD")
+        f.escrow.claim(digest(name), _sender=f.players[0])
+        f.escrow.claim_treasury(digest(name), _sender=f.outsider, _valid=False, _exception="NO_TREASURY_AWARD")
+        s.verify(f.escrow.data.rooms[digest(name)].held == 0)
+    tie = "duel-tie"
+    f.escrow.create_room(create(f, tie), _sender=f.creator)
+    fund(f, tie)
+    f.escrow.start_room(start(tie), _sender=f.referee)
+    f.escrow.finalize_room(outcome(f, tie, ranks=[1, 1]), _sender=f.referee)
+    for player in f.players:
+        s.verify(f.escrow.data.claims[(digest(tie), player.address)].amount == 10000)
+        f.escrow.claim(digest(tie), _sender=player)
+    s.verify(f.escrow.data.rooms[digest(tie)].held == 0)
+
+@sp.add_test()
+def ai_filled_tournament_prizes_retain_full_field_places():
+    s = sp.test_scenario("wtfiap_escrow_ai_filled", [dummy, main])
+    f = fixture(s, player_count=2)
+    for currency in [0, 1]:
+        quantum = 10000 if currency == 0 else 1000000
+        entry = 10 * quantum
+        name = "ai-field-" + str(currency)
+        f.escrow.create_room(create(f, name, currency, entry=entry, payout_mode=1), _sender=f.creator)
+        fund(f, name, currency, entry)
+        f.escrow.start_room(start(name), _sender=f.referee)
+        # AI holds first and third; humans occupy second and fifth.
+        f.escrow.finalize_room(outcome(f, name, ranks=[2, 5]), _sender=f.referee)
+        s.verify(claim_value(f, name, 0).amount == 7 * quantum)
+        s.verify(claim_value(f, name, 1).amount == 0)
+        s.verify(f.escrow.data.rooms[digest(name)].treasury_amount == 13 * quantum)
+        f.escrow.claim(digest(name), _sender=f.players[0])
+        f.escrow.claim_treasury(digest(name), _sender=f.outsider)
+        s.verify(f.escrow.data.rooms[digest(name)].held == 0)
+    tied = "ai-tied-with-human"
+    f.escrow.create_room(create(f, tied, entry=100000, payout_mode=1), _sender=f.creator)
+    fund(f, tied, entry=100000)
+    f.escrow.start_room(start(tied), _sender=f.referee)
+    # The human at second ties with AI for second and third place.
+    f.escrow.finalize_room(outcome(f, tied, ranks=[2, 5], group_sizes={2: 2, 5: 1}), _sender=f.referee)
+    s.verify(claim_value(f, tied, 0).amount == 50000)
+    s.verify(f.escrow.data.rooms[digest(tied)].treasury_amount == 150000)
 
 @sp.add_test()
 def ties_and_permutations():
@@ -308,7 +373,7 @@ def recipient_failure_is_isolated():
     for player in f.players[1:]:
         f.escrow.join_room(join(), _sender=player, _amount=sp.mutez(10000))
     f.escrow.start_room(start(), _sender=f.referee)
-    f.escrow.finalize_room(sp.record(room_id=digest("room"), match_id=digest("room:match"), transcript_hash=digest("room:transcript"), result_hash=digest("room:result"), ranks=[sp.record(player=address, rank=i + 1) for i, address in enumerate(addresses)]), _sender=f.referee)
+    f.escrow.finalize_room(sp.record(room_id=digest("room"), match_id=digest("room:match"), transcript_hash=digest("room:transcript"), result_hash=digest("room:result"), ranks=[sp.record(player=address, rank=i + 1, group_size=1) for i, address in enumerate(addresses)]), _sender=f.referee)
     rejector.request_claim(digest("room"), _sender=f.players[0], _valid=False, _exception="RECIPIENT_REJECTED")
     s.verify(~f.escrow.data.claims[(digest("room"), rejector.address)].claimed)
     s.verify(f.escrow.data.rooms[digest("room")].held == 80000)

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **668** · Open: **2** · Claimed: **41** · In Progress: **12** · Blocked: **4** · Fixed: **118** · Verified: **487** · Archived: **4**
+Total: **668** · Open: **2** · Claimed: **41** · In Progress: **13** · Blocked: **3** · Fixed: **118** · Verified: **487** · Archived: **4**
 
 ## Canonical Board
 
@@ -76,6 +76,7 @@ Total: **668** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 127 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 127 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
+| WTF-BB-701 | In Progress | Codex coLILseum dual-network wagering | 2026-10-23 | WTFIAP escrow / Mainnet admission | P1 | 13 | 188 | 3 | 4 | 2 | Mainnet WTF wagers lack a verified escrow and dedicated signer lane |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 188 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
 | WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 188 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 188 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
@@ -86,7 +87,6 @@ Total: **668** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 466 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
 | WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-371 | Blocked | Repository owner / Twitter developer account | 2026-08-30 | Secrets / git history | P0 | 17 | 38 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
-| WTF-BB-701 | Blocked | Codex coLILseum dual-network wagering | 2026-10-23 | WTFIAP escrow / Mainnet admission | P1 | 13 | 188 | 3 | 4 | 2 | Mainnet WTF wagers lack a verified escrow and dedicated signer lane |
 | WTF-BB-313 | Blocked | Codex live user-story gap loop | 2026-06-22 | Skywire / live AT puppet coverage | P1 | 11 | 380 | 2 | 4 | 1 | Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential |
 | WTF-BB-527 | Fixed | Codex Ravioli boundary-40 recovery | - | Pasta Protocol / blind-pack cryptographic portability | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli encrypted non-canonical AAD but pinned a canonical envelope |
 | WTF-BB-425 | Fixed | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / Ravioli recipe integrity | P0 | 19 | 3 | 4 | 5 | 5 | Ravioli v3 commits exact allocated payloads and an explicit generated-at-open `None`; the real Studio/holder UI harness now passes all five modes, six atomic opens, two collectors, substitution rejection, SmartPy atomicity/compilation, and strict TzKT FA2/token/balance acceptance, with fresh Shadownet execution still required before Verified |
@@ -1718,6 +1718,20 @@ Total: **668** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
+### WTF-BB-701 - Mainnet WTF wagers lack a verified escrow and dedicated signer lane
+
+- Category: WTFIAP escrow / Mainnet admission
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex coLILseum dual-network wagering
+- Last touched: 2026-10-23
+- Score: C3 + F4 + S2 + P1(4) = 13
+- Evidence: Hosted funding was pinned globally to Shadownet; the operator signer allowed one WTFIAP chain, RPC, wallet and journal. The approved Mainnet escrow was not originated. The planned contract-admin wallet held 745,372 mutez while a fresh RPC preflight reported 2,327,500 mutez of storage cost before transaction fees.
+- Correction direction: Select the funding lane from room currency, preserve pinned legacy records, add a separate exact Mainnet signer allowlist and journal, then originate and verify the approved Mainnet escrow using an explicitly authorized funded payer. Enable Mainnet admissions only after finalized script/storage and signer configuration match.
+- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and read-only Mainnet origination wrapper are implemented. Focused funding, signer, contract and browser tests pass.
+- Owner authorization on 2026-10-23: Use the reward-disburser wallet for Mainnet origination, and extend paid wagering to both two-player duels and eight-player tournaments. The escrow source and application must support both formats before activation.
+- Pending proof: Compile and test the revised escrow, originate fresh Shadownet and Mainnet deployments, verify code/storage, configure both signer lanes, and complete live deposits, settlement, withdrawals and claims.
+
 ### WTF-BB-622 - Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry
 
 - Category: Desktop OS / commissioned app wayfinding and runtime state
@@ -1997,19 +2011,6 @@ Total: **668** · Open: **2** · Claimed: **41** · In Progress: **12** · Block
   - Revoke/rotate the historic Twitter credential at the provider and provide non-secret confirmation that it is invalid. Then inventory authorized deploy consumers and explicitly authorize a coordinated rewrite if desired.
 - Verification after unblock:
   - Confirm at the provider that the historic credential is invalid, run a redacted full-history scan against any rewritten mirror, and smoke-test every authorized deploy consumer with replacement credentials.
-
-### WTF-BB-701 - Mainnet WTF wagers lack a verified escrow and dedicated signer lane
-
-- Category: WTFIAP escrow / Mainnet admission
-- Priority: P1
-- Status: Blocked
-- Owner/Session: Codex coLILseum dual-network wagering
-- Last touched: 2026-10-23
-- Score: C3 + F4 + S2 + P1(4) = 13
-- Evidence: Hosted funding was pinned globally to Shadownet; the operator signer allowed one WTFIAP chain, RPC, wallet and journal. The approved Mainnet escrow was not originated. The planned contract-admin wallet held 745,372 mutez while a fresh RPC preflight reported 2,327,500 mutez of storage cost before transaction fees.
-- Correction direction: Select the funding lane from room currency, preserve pinned legacy records, add a separate exact Mainnet signer allowlist and journal, then originate and verify the approved Mainnet escrow using an explicitly authorized funded payer. Enable Mainnet admissions only after finalized script/storage and signer configuration match.
-- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and read-only Mainnet origination wrapper are implemented. Focused funding, signer, contract and browser tests pass.
-- Remaining blocker: An authorized funded origination payer has not been chosen; Mainnet deployment, activation and live WTF deposit/claim proof remain pending. No Mainnet WTFIAP signing is claimed.
 
 ### WTF-BB-313 - Connected Skywire live-status, signal publishing, and OAuth permission-sync stories cannot be fully tested on production because no live puppet has a connected AT Protocol account and deployed env files expose only public AT config, not a dedicated AT puppet credential
 

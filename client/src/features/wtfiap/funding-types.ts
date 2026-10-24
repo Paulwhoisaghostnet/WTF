@@ -30,8 +30,12 @@ export interface FundingWalletAction {
 
 export interface FundingRoom {
   roomCode: string;
+  roomType: "duel" | "tournament";
+  aiFill: boolean;
+  battlefieldSeats: number;
+  payingEntrants: number;
   status: string;
-  terms: { currency: FundingCurrency; entryFee: string; entryAtomic: string; decimals: number; prizePercentages: string[] };
+  terms: { currency: FundingCurrency; entryFee: string; entryAtomic: string; decimals: number; prizePercentages?: string[]; payoutPolicy?: string };
   roomId: string | null;
   termsHash: string | null;
   network: string;

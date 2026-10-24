@@ -33,9 +33,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "5a66a5355e1050e78a03255c7d1753a0a47c3ce9479123037386e7e5364bd6a6",
-      "sha256": "5a66a5355e1050e78a03255c7d1753a0a47c3ce9479123037386e7e5364bd6a6",
-      "bytes": 51014
+      "sourceSha256": "5221bcdb2e7fc1521383c83f05a3deb2ad790e0d43a3b68bc2f4004274f2c2c7",
+      "sha256": "5221bcdb2e7fc1521383c83f05a3deb2ad790e0d43a3b68bc2f4004274f2c2c7",
+      "bytes": 56193
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -47,9 +47,9 @@
     {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "6549a86c349337887c4c07354dcb584de2e384241880c256a8e4cd0d25ed731f",
-      "sha256": "4edf68cb82732faa3ed38f676b5c189ac7188b6e50c8e79f858c2c1ac710f1db",
-      "bytes": 20289
+      "sourceSha256": "4762b703aa60441ec2cf83e267c506f99688096bd2e560b08d5ca74420a08c85",
+      "sha256": "5660338259e81025a809a6c6ca9684f7c50a091c149426a1e72b12b7d70f5334",
+      "bytes": 20620
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",
@@ -60,9 +60,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
       "sourcePath": "game/server/party-server.cjs",
-      "sourceSha256": "b20a02c493424ff5fbfae0d493680c844ad5ab0f38fe26aad47c9cef2baae3a1",
-      "sha256": "b20a02c493424ff5fbfae0d493680c844ad5ab0f38fe26aad47c9cef2baae3a1",
-      "bytes": 44652
+      "sourceSha256": "b8d36bba9ce720ece5f3fb4f3a3cf04bb4d9d5c1729aa3533a39b8372fed0ad8",
+      "sha256": "b8d36bba9ce720ece5f3fb4f3a3cf04bb4d9d5c1729aa3533a39b8372fed0ad8",
+      "bytes": 50023
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",
@@ -84,6 +84,13 @@
       "sourceSha256": "2320f8763ebc5a3453e615b9c420d4e2e97b924ef197903a4e1fe2e402391c70",
       "sha256": "2320f8763ebc5a3453e615b9c420d4e2e97b924ef197903a4e1fe2e402391c70",
       "bytes": 15044
+    },
+    {
+      "path": "server/features/wtfiap/runtime/game/core/duel-wager.cjs",
+      "sourcePath": "game/core/duel-wager.cjs",
+      "sourceSha256": "5996ff07a81f439b8802a6e618a6def720b5b1082fd1a95c916eb6cc859c9549",
+      "sha256": "5996ff07a81f439b8802a6e618a6def720b5b1082fd1a95c916eb6cc859c9549",
+      "bytes": 1466
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/income.cjs",

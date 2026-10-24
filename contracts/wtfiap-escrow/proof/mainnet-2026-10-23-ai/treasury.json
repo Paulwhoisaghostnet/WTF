@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "mode": "read-only",
+  "domain": "wtf.tez",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tcinfra.net/rpc/tezos/mainnet",
+  "block": "BLYsPe6Fe1DXR7eDXbLw1F1DC8sdjLGKe2h5bkzPHkWpDesZS3h",
+  "level": 15506824,
+  "blockTimestamp": "2026-10-24T04:02:10Z",
+  "checkAddress": "KT1F7JKNqwaoLzRsMio1MQC7zv3jG9dHcDdJ",
+  "registryAddress": "KT1GBZmSxmnKJXGMdMLbugPfLyUPmuLSMwKS",
+  "address": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "owner": "tz1MteuAFzFRki5apC8tVZaFCBhWeaXdZYnM",
+  "expiresAtUtc": "2027-04-10T01:17:34.000Z",
+  "resolutionSource": "https://developers.tezos.domains/interoperability/name-resolution"
+}

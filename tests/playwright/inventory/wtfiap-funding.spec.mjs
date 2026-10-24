@@ -23,7 +23,7 @@ async function createPreview(page) {
 }
 const fixtureConfig = { enabled: true, network: "shadownet", chainId: "NetXsqzbfFenSTS", rpcUrl: "https://tezos-shadownet.octez.io/", escrowContract: "KT1ReadOnlyFixtureEscrow", wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 }, currencyDecimals: { XTZ: 6, WTF: 8 }, currencyQuantaAtomic: { XTZ: "10000", WTF: "1000000" }, treasuryAddress: "tz1ReadOnlyFixtureTreasury", refundPolicy: "prestart-withdrawal;technical-void-full-refund-v1", prizeRoundingPolicy: "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1" };
 function fixtureRoom(code) {
-  return { roomCode: code, roomId: "a".repeat(64), termsHash: "b".repeat(64), status: "funding", feeQuantumAtomic: "10000", refundPolicy: fixtureConfig.refundPolicy, treasuryAddress: fixtureConfig.treasuryAddress, prizeRoundingPolicy: fixtureConfig.prizeRoundingPolicy, prizeSummary: null, network: fixtureConfig.network, chainId: fixtureConfig.chainId, escrowContract: fixtureConfig.escrowContract, wtfToken: fixtureConfig.wtfToken,
+  return { roomCode: code, roomType: "tournament", aiFill: false, battlefieldSeats: 8, payingEntrants: 8, roomId: "a".repeat(64), termsHash: "b".repeat(64), status: "funding", feeQuantumAtomic: "10000", refundPolicy: fixtureConfig.refundPolicy, treasuryAddress: fixtureConfig.treasuryAddress, prizeRoundingPolicy: fixtureConfig.prizeRoundingPolicy, prizeSummary: null, network: fixtureConfig.network, chainId: fixtureConfig.chainId, escrowContract: fixtureConfig.escrowContract, wtfToken: fixtureConfig.wtfToken,
     terms: { currency: "XTZ", entryFee: "1", entryAtomic: "1000000", decimals: 6, prizePercentages: ["50", "35", "15"] },
     roster: [{ playerId: "fixture-seat", name: "Fixture entrant", walletAddress: "tz1ReadOnlyFixtureWallet", deposited: false }], depositedCount: 0, potAtomic: "0", chainStatus: "funding", finalizedBlock: { hash: "fixture-finalized-block", level: 42 }, lastReconciledAt: null, operations: [],
     self: { playerId: "fixture-seat", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false, actions: {}, payout: null, pendingOperations: [{ playerId: "fixture-seat", action: "deposit", operationHash: "ooReadOnlyFixtureSubmitted", observedAt: "2026-10-19T00:00:00Z" }] },
@@ -32,6 +32,37 @@ function fixtureRoom(code) {
 
 test.describe("interaction inventory - WTFIAP funding safety", () => {
   test.beforeEach(async ({ request }) => { expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy(); });
+
+  test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {
+    const errors = []; page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/wtfiap?mode=duel", { waitUntil: "domcontentloaded" });
+    let frame = await partyFrame(page);
+    await expect(frame.locator("#tournament-fields")).toBeHidden();
+    await frame.locator("#duel-wager").check();
+    await expect(frame.locator("#tournament-fields")).toBeVisible();
+    await frame.locator("#create-name").fill("Prize duel host");
+    await frame.locator("#prep-time").selectOption("ready");
+    await frame.locator("#entry-currency").selectOption("WTF");
+    await frame.locator("#entry-fee").fill("0.01");
+    await expect(frame.locator("#create-prize-preview")).toContainText("0.02 WTF");
+    await frame.locator("#create-room").click();
+    await expect(frame.locator("#tournament-terms")).toContainText("Duel entry: 0.01 WTF");
+    await expect(frame.locator("#start-room")).toBeDisabled();
+    await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toBeVisible();
+    await page.goto("/wtfiap?mode=tournament", { waitUntil: "domcontentloaded" });
+    frame = await partyFrame(page);
+    await frame.locator("#tournament-ai").check();
+    await frame.locator("#create-name").fill("AI tournament host");
+    await frame.locator("#prep-time").selectOption("ready");
+    await frame.locator("#entry-currency").selectOption("XTZ");
+    await frame.locator("#entry-fee").fill("0.01");
+    await expect(frame.locator("#create-prize-preview")).toContainText("Prize pool at this payer count: 0.02 XTZ");
+    await frame.locator("#create-room").click();
+    await expect(frame.locator("#room-prize-preview")).toContainText("AI may take a prize place");
+    await expect(frame.locator("#ai-fill-controls")).toBeVisible();
+    await expect(frame.locator("#fill-ai")).toBeChecked();
+    expect(errors).toEqual([]);
+  });
 
   test("native funding panel recovers a submitted fixture without opening a wallet and resets on leaving", async ({ page }) => {
     const errors = [], observed = [];
@@ -49,7 +80,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       return route.fulfill({ json: { ok: true, room } });
     });
     await surface(page).getByRole("button", { name: "Room funding", exact: true }).click();
-    const panel = surface(page).getByRole("region", { name: "Tournament funding" });
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
     await expect(panel).toContainText("Tezos shadownet");
     await expect(panel).toContainText("Server verification pending");
     await expect(panel).toContainText("ooReadOnlyFixtureSubmitted");
@@ -58,7 +89,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await panel.getByRole("button", { name: "Recheck status" }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: test.info().outputPath("funding-pending-controls-fixture.png"), fullPage: true });
     await panel.getByRole("button", { name: "Recheck status" }).click();
-    await expect(panel).toContainText("1 / 8 deposits verified");
+    await expect(panel).toContainText("1 / 8 paying deposits verified");
     await expect(panel).not.toContainText("Server verification pending");
     expect(observed).toHaveLength(1);
     await page.setViewportSize({ width: 390, height: 844 });
@@ -110,7 +141,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: { ...fixtureConfig, enabled: false, reason: "New funding disabled in this read-only fixture." } } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
-    const panel = surface(page).getByRole("region", { name: "Tournament funding" });
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
     await expect(panel).toContainText("4 XTZ · Available to claim");
     await expect(panel).toContainText("Existing verified prize claims and eligible full entry refunds remain available");
     await expect(panel).toContainText("Tezos mainnet selected in wtfOS");
@@ -134,7 +165,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: fixtureConfig } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
-    const panel = surface(page).getByRole("region", { name: "Tournament funding" }), open = panel.getByRole("button", { name: "Freeze eight wallets & open escrow" });
+    const panel = surface(page).getByRole("region", { name: "Room funding" }), open = panel.getByRole("button", { name: "Freeze 8 wallets & open escrow" });
     await expect(open).toBeDisabled();
     await expect(panel).toContainText("positive multiple of 0.01 XTZ");
     await expect(panel).toContainText("all remaining room currency goes to wtf.tez");
@@ -165,7 +196,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: settings } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
-    const panel = surface(page).getByRole("region", { name: "Tournament funding" });
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
     await expect(panel.getByRole("button", { name: "Withdraw full entry to bound wallet" })).toBeDisabled();
     await expect(panel).toContainText("Server verification pending");
     await panel.getByRole("button", { name: "Use shadownet for wallet operations" }).click();
@@ -233,7 +264,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     let writes = 0;
     await page.route("**/api/wtfiap/funding/**", route => { if (route.request().method() !== "GET") writes++; return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: { ...fixtureConfig, network: room.network, chainId: room.chainId } } : { ok: true, room } }); });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
-    const panel = surface(page).getByRole("region", { name: "Tournament funding" });
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
     await expect(panel).toContainText("Tezos shadownet selected in wtfOS");
     await expect(panel.getByRole("button", { name: "Deposit 1 XTZ" })).toBeDisabled();
     await panel.getByRole("button", { name: "Use mainnet for wallet operations" }).click();

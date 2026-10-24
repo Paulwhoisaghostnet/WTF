@@ -67,7 +67,7 @@ export function WtfIap() {
     }
   }, [windowPath, activePath, search]);
   const frameSource = wtfIapFrameSource(entryPath);
-  const fundingRoom = room?.roomType === "tournament" ? room.roomCode : recoveryRoom;
+  const fundingRoom = room?.wagered ? room.roomCode : recoveryRoom;
   useEffect(() => {
     const code = wtfIapFundingRecoveryRoom(entryPath);
     setRecoveryRoom(code);
@@ -79,7 +79,7 @@ export function WtfIap() {
       const message = readWtfIapRoomMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
       if (!message) return;
       setRoom(message);
-      if (message.roomType === "party" || message.roomType === "duel" || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
+      if (!message.wagered || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
       if (message.roomCode) receivedRoom.current = true;
     };
     window.addEventListener("message", receive);

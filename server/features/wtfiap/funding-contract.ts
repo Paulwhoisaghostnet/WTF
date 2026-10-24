@@ -105,6 +105,7 @@ export function tezosFundingChain(toolkit = (rpc: string): any => new TezosToolk
       }
       return { blockHash, level: header.level, termsHash: String(room.terms_hash), rulesHash: String(room.rules_hash),
         seedCommitment: String(room.seed_commitment), referee: String(room.referee), currency: nat(room.currency), entryAtomic: nat(room.entry_amount),
+        ...(room.payout_mode !== undefined ? { payoutMode: nat(room.payout_mode) } : {}),
         entrants: [...room.entrants].map(String), paid: [...room.paid].map(String), held: nat(room.held), paidOut: nat(room.paid_out), status,
         deposited: nat(room.deposited), refunded: nat(room.refunded), quantum: nat(room.quantum),
         treasuryAmount: nat(room.treasury_amount), treasuryClaimed: room.treasury_claimed === true,

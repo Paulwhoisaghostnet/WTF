@@ -1,7 +1,11 @@
-"""WTFIAP-v0.01 tournament escrow: LOCAL DRAFT, not deployed.
+"""coLILseum duel and tournament escrow source.
 
-Eight fixed entrants; 50/35/15 occupied-place shares rounded down to 0.01
-room-currency units. Remainders belong to the immutable deployment treasury.
+Two entrants share one winner-takes-pot duel; tournaments accept two through
+eight paying humans and may include AI battlefield seats. Tournament prizes
+stay at full-field places 1/2/3; AI shares remain for the treasury. Exact ties
+share occupied prizes, including AI members of the tie. Every entitlement is
+rounded down to 0.01 room-currency units; the immutable treasury receives the
+remainder. Source alone is not proof of a deployed contract.
 Pre-start withdrawals and evidence-bound referee technical voids return exact
 entries. This source is not evidence of a deployed or funded contract.
 """
@@ -19,13 +23,15 @@ def wtfiap_escrow_main():
         ("from_", "txs")
     )
     TransferInput: type = sp.record(from_=sp.address, to_=sp.address, amount=sp.nat)
-    Rank: type = sp.record(player=sp.address, rank=sp.nat).layout(("player", "rank"))
+    Rank: type = sp.record(player=sp.address, rank=sp.nat, group_size=sp.nat).layout(
+        ("player", ("rank", "group_size"))
+    )
     CreateRoom: type = sp.record(
         room_id=sp.bytes, terms_hash=sp.bytes, rules_hash=sp.bytes,
         seed_commitment=sp.bytes, referee=sp.address, currency=sp.nat,
-        entry_amount=sp.nat, entrants=sp.list[sp.address],
+        entry_amount=sp.nat, payout_mode=sp.nat, entrants=sp.list[sp.address],
     ).layout(("room_id", ("terms_hash", ("rules_hash", ("seed_commitment", (
-        "referee", ("currency", ("entry_amount", "entrants"))))))))
+        "referee", ("currency", ("entry_amount", ("payout_mode", "entrants")))))))))
     JoinRoom: type = sp.record(room_id=sp.bytes, expected_terms_hash=sp.bytes).layout(
         ("room_id", "expected_terms_hash")
     )
@@ -41,7 +47,7 @@ def wtfiap_escrow_main():
     ).layout(("room_id", ("reason_hash", "evidence_hash")))
     Room: type = sp.record(
         terms_hash=sp.bytes, rules_hash=sp.bytes, seed_commitment=sp.bytes,
-        referee=sp.address, currency=sp.nat, entry_amount=sp.nat,
+        referee=sp.address, currency=sp.nat, entry_amount=sp.nat, payout_mode=sp.nat,
         entrants=sp.list[sp.address], roster_hash=sp.bytes, status=sp.nat,
         paid=sp.set[sp.address], held=sp.nat, paid_out=sp.nat,
         match_id=sp.option[sp.bytes], result_hash=sp.option[sp.bytes],
@@ -95,12 +101,16 @@ def wtfiap_escrow_main():
             assert sp.len(params.seed_commitment) == 32, "BAD_SEED_COMMITMENT"
             assert not params.room_id in self.data.rooms, "ROOM_EXISTS"
             assert params.currency <= 1, "BAD_CURRENCY"
+            assert params.payout_mode <= 1, "BAD_PAYOUT_MODE"
             assert params.entry_amount > 0, "ZERO_ENTRY"
             quantum = self.data.xtz_quantum
             if params.currency == 1:
                 quantum = self.data.wtf_quantum
             assert sp.mod(params.entry_amount, quantum) == 0, "ENTRY_QUANTUM"
-            assert sp.len(params.entrants) == 8, "EIGHT_ENTRANTS_REQUIRED"
+            if params.payout_mode == 0:
+                assert sp.len(params.entrants) == 2, "DUEL_REQUIRES_TWO_ENTRANTS"
+            else:
+                assert sp.len(params.entrants) >= 2 and sp.len(params.entrants) <= 8, "TOURNAMENT_ENTRANT_COUNT"
             seen = sp.cast(set(), sp.set[sp.address])
             for player in params.entrants:
                 assert not player in seen, "DUPLICATE_ENTRANT"
@@ -109,6 +119,7 @@ def wtfiap_escrow_main():
                 terms_hash=params.terms_hash, rules_hash=params.rules_hash,
                 seed_commitment=params.seed_commitment, referee=params.referee,
                 currency=params.currency, entry_amount=params.entry_amount,
+                payout_mode=params.payout_mode,
                 entrants=params.entrants, roster_hash=sp.blake2b(sp.pack(params.entrants)),
                 status=sp.nat(0), paid=sp.cast(set(), sp.set[sp.address]),
                 held=sp.nat(0), paid_out=sp.nat(0),
@@ -153,8 +164,8 @@ def wtfiap_escrow_main():
             assert room.status == 0, "ROOM_NOT_FUNDING"
             assert room.terms_hash == params.expected_terms_hash, "TERMS_MISMATCH"
             assert sp.len(params.match_id) == 32, "BAD_MATCH_ID"
-            assert sp.len(room.paid) == 8, "ROOM_NOT_FUNDED"
-            assert room.held == room.entry_amount * 8, "DEPOSIT_CONSERVATION"
+            assert sp.len(room.paid) == sp.len(room.entrants), "ROOM_NOT_FUNDED"
+            assert room.held == room.entry_amount * sp.len(room.entrants), "DEPOSIT_CONSERVATION"
             room.status = 1
             room.match_id = sp.Some(params.match_id)
             self.data.rooms[params.room_id] = room
@@ -171,10 +182,10 @@ def wtfiap_escrow_main():
             assert params.match_id == room.match_id.unwrap_some(), "MATCH_MISMATCH"
             assert sp.len(params.transcript_hash) == 32, "BAD_TRANSCRIPT_HASH"
             assert sp.len(params.result_hash) == 32, "BAD_RESULT_HASH"
-            assert sp.len(params.ranks) == 8, "EIGHT_RANKS_REQUIRED"
+            assert sp.len(params.ranks) == sp.len(room.entrants), "RANK_COUNT_MISMATCH"
             # Combine the exact percentages for occupied prize places first,
             # divide among tied players, then round each share down once.
-            pot = room.entry_amount * 8
+            pot = room.entry_amount * sp.len(room.entrants)
             assert room.held == pot, "DEPOSIT_CONSERVATION"
             seen = sp.cast(set(), sp.set[sp.address])
             winner_count = sp.nat(0)
@@ -183,30 +194,45 @@ def wtfiap_escrow_main():
                 assert result.player in room.paid, "RANKED_NON_ENTRANT"
                 assert not result.player in seen, "DUPLICATE_RANKED_PLAYER"
                 seen.add(result.player)
-                assert result.rank >= 1 and result.rank <= 8, "BAD_RANK"
+                assert result.group_size >= 1, "BAD_GROUP_SIZE"
+                place_limit = sp.nat(8)
+                if room.payout_mode == 0:
+                    place_limit = sp.nat(2)
+                assert result.rank >= 1 and result.rank + result.group_size <= place_limit + 1, "BAD_RANK"
                 earlier = sp.nat(0)
                 tied = sp.nat(0)
                 for other in params.ranks:
                     if other.rank < result.rank:
                         earlier += 1
+                        assert other.rank + other.group_size <= result.rank, "OVERLAPPING_RANK_GROUPS"
+                    if other.rank > result.rank:
+                        assert result.rank + result.group_size <= other.rank, "OVERLAPPING_RANK_GROUPS"
                     if other.rank == result.rank:
                         tied += 1
-                assert result.rank == earlier + 1, "INVALID_COMPETITION_RANK"
+                        assert other.group_size == result.group_size, "INCONSISTENT_GROUP_SIZE"
+                assert tied <= result.group_size, "GROUP_SIZE_UNDERCOUNTS_HUMANS"
+                if room.payout_mode == 0:
+                    assert result.group_size == tied and result.rank == earlier + 1, "INVALID_DUEL_RANK"
                 if result.rank == 1:
                     winner_count += 1
                 combined_percent = sp.nat(0)
-                if result.rank <= 1 and result.rank + tied > 1:
-                    combined_percent += 50
-                if result.rank <= 2 and result.rank + tied > 2:
-                    combined_percent += 35
-                if result.rank <= 3 and result.rank + tied > 3:
-                    combined_percent += 15
+                if room.payout_mode == 0:
+                    if result.rank <= 1 and result.rank + result.group_size > 1:
+                        combined_percent += 100
+                else:
+                    if result.rank <= 1 and result.rank + result.group_size > 1:
+                        combined_percent += 50
+                    if result.rank <= 2 and result.rank + result.group_size > 2:
+                        combined_percent += 35
+                    if result.rank <= 3 and result.rank + result.group_size > 3:
+                        combined_percent += 15
                 amount = sp.fst(sp.ediv(
-                    pot * combined_percent, 100 * tied * room.quantum
+                    pot * combined_percent, 100 * result.group_size * room.quantum
                 ).unwrap_some()) * room.quantum
                 self.data.claims[(params.room_id, result.player)] = sp.record(amount=amount, claimed=False)
                 allocated += amount
-            assert winner_count == 1, "UNIQUE_WINNER_REQUIRED"
+            if room.payout_mode == 0:
+                assert winner_count >= 1, "FIRST_PLACE_REQUIRED"
             room.treasury_amount = sp.as_nat(pot - allocated, error="PRIZE_CONSERVATION")
             room.status = 2
             room.result_hash = sp.Some(params.result_hash)

@@ -442,6 +442,7 @@ export async function runProof(config: ProofConfig, outputDir: string, execute: 
     await step(prefix + 'create', config.creator, config.escrowAddress, 'create_room', {
       room_id: roomId, terms_hash: termsHash, rules_hash: config.rulesHash, seed_commitment: config.seedCommitment,
       referee: config.referee.address, currency: item.currency, entry_amount: entry, entrants: terms.entrants,
+      payout_mode: 1,
     });
     async function deposit(actor: Actor, label = '') {
       const operator = { owner: actor.address, operator: config.escrowAddress, token_id: config.wtfTokenId };
@@ -487,7 +488,8 @@ export async function runProof(config: ProofConfig, outputDir: string, execute: 
       }
     } else {
       expected = expectedAwards(entry, String(quantum), item.ranks);
-      const ranks = config.entrants.map((a, i) => ({ player: a.address, rank: item.ranks[i] }));
+      const ranks = config.entrants.map((a, i) => ({ player: a.address, rank: item.ranks[i],
+        group_size: item.ranks.filter(rank => rank === item.ranks[i]).length }));
       const resultHash = sha256(stable({ matchId, ranks, synthetic: true }));
       const transcriptHash = sha256(stable({ matchId, termsHash, resultHash, steps: 'fund,start,referee-rank,claim,treasury' }));
       await step(prefix + 'settle', config.referee, config.escrowAddress, 'finalize_room', {

@@ -12234,3 +12234,11 @@
 **What happened**: coLILseum's tournament funding config and operator signer each held one global Tezos network. Shadownet XTZ worked, but selecting WTF could not create an independent Mainnet wager; changing the global network would also misroute existing Shadownet rooms. The Mainnet escrow had not been originated and the planned contract-admin wallet lacked even the RPC-reported storage charge.
 
 **Correction and rule**: Choose a new room's funding lane from its currency, then pin the exact network, contract, token, treasury and signer identity in the durable room. Fetch room-specific public config for wallet actions, verify the finalized escrow code/storage before freezing terms, and keep legacy records usable for claims and refunds. Give each signer lane its own contract allowlist, wallet, RPC and journal. Keep Mainnet admission disabled until a funded authorized payer originates the approved artifact and its finalized deployment and hosted payment flow are verified; a read-only estimate or local browser fixture is not live custody proof.
+
+## 2026-10-23 — AI prize places require full-field ranks but only human escrow entrants
+
+**What happened**: The first paid tournament contract assumed eight paying wallets, so six AI seats could not join a two-human prize tournament. Its prize allocation also needed the full eight-place tie group even when some tied commanders were AI. A hosted Party smoke initially exercised a stale `dist/public` copy after the source package was vendored.
+
+**Correction and proof**: The revised escrow freezes only paying human wallets, records full-field rank and tie size for each human, and assigns absent AI prize shares and rounding remainders to the fixed treasury. Paid duels freeze two wallets and award the full pot to the winner. SmartPy and arithmetic tests, a full two-human/six-AI match, funding adapter tests, and browser funding stories pass. The new Shadownet artifact originated with verified code and storage. Rebuilding the host after vendoring made the exact Party browser story pass.
+
+**Rule**: Keep tournament battlefield seats separate from escrow entrants, derive every payout from authoritative full-field results, and rebuild the served host package after every game vendor update before browser verification.

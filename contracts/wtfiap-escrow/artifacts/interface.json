@@ -9,6 +9,10 @@
       "XTZ": "0",
       "WTF": "1"
     },
+    "payoutMode": {
+      "duel": "0",
+      "tournament": "1"
+    },
     "status": {
       "funding": "0",
       "active": "1",
@@ -110,14 +114,25 @@
                                             ]
                                           },
                                           {
-                                            "prim": "list",
+                                            "prim": "pair",
                                             "args": [
                                               {
-                                                "prim": "address"
+                                                "prim": "nat",
+                                                "annots": [
+                                                  "%payout_mode"
+                                                ]
+                                              },
+                                              {
+                                                "prim": "list",
+                                                "args": [
+                                                  {
+                                                    "prim": "address"
+                                                  }
+                                                ],
+                                                "annots": [
+                                                  "%entrants"
+                                                ]
                                               }
-                                            ],
-                                            "annots": [
-                                              "%entrants"
                                             ]
                                           }
                                         ]
@@ -202,9 +217,20 @@
                                         ]
                                       },
                                       {
-                                        "prim": "nat",
-                                        "annots": [
-                                          "%rank"
+                                        "prim": "pair",
+                                        "args": [
+                                          {
+                                            "prim": "nat",
+                                            "annots": [
+                                              "%rank"
+                                            ]
+                                          },
+                                          {
+                                            "prim": "nat",
+                                            "annots": [
+                                              "%group_size"
+                                            ]
+                                          }
                                         ]
                                       }
                                     ]
@@ -479,48 +505,48 @@
                                                       {
                                                         "prim": "nat",
                                                         "annots": [
-                                                          "%quantum"
+                                                          "%payout_mode"
                                                         ]
                                                       },
                                                       {
                                                         "prim": "pair",
                                                         "args": [
                                                           {
-                                                            "prim": "address",
+                                                            "prim": "nat",
                                                             "annots": [
-                                                              "%referee"
+                                                              "%quantum"
                                                             ]
                                                           },
                                                           {
                                                             "prim": "pair",
                                                             "args": [
                                                               {
-                                                                "prim": "nat",
+                                                                "prim": "address",
                                                                 "annots": [
-                                                                  "%refunded"
+                                                                  "%referee"
                                                                 ]
                                                               },
                                                               {
                                                                 "prim": "pair",
                                                                 "args": [
                                                                   {
-                                                                    "prim": "option",
-                                                                    "args": [
-                                                                      {
-                                                                        "prim": "bytes"
-                                                                      }
-                                                                    ],
+                                                                    "prim": "nat",
                                                                     "annots": [
-                                                                      "%result_hash"
+                                                                      "%refunded"
                                                                     ]
                                                                   },
                                                                   {
                                                                     "prim": "pair",
                                                                     "args": [
                                                                       {
-                                                                        "prim": "bytes",
+                                                                        "prim": "option",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "bytes"
+                                                                          }
+                                                                        ],
                                                                         "annots": [
-                                                                          "%roster_hash"
+                                                                          "%result_hash"
                                                                         ]
                                                                       },
                                                                       {
@@ -529,7 +555,7 @@
                                                                           {
                                                                             "prim": "bytes",
                                                                             "annots": [
-                                                                              "%rules_hash"
+                                                                              "%roster_hash"
                                                                             ]
                                                                           },
                                                                           {
@@ -538,82 +564,93 @@
                                                                               {
                                                                                 "prim": "bytes",
                                                                                 "annots": [
-                                                                                  "%seed_commitment"
+                                                                                  "%rules_hash"
                                                                                 ]
                                                                               },
                                                                               {
                                                                                 "prim": "pair",
                                                                                 "args": [
                                                                                   {
-                                                                                    "prim": "nat",
+                                                                                    "prim": "bytes",
                                                                                     "annots": [
-                                                                                      "%status"
+                                                                                      "%seed_commitment"
                                                                                     ]
                                                                                   },
                                                                                   {
                                                                                     "prim": "pair",
                                                                                     "args": [
                                                                                       {
-                                                                                        "prim": "bytes",
+                                                                                        "prim": "nat",
                                                                                         "annots": [
-                                                                                          "%terms_hash"
+                                                                                          "%status"
                                                                                         ]
                                                                                       },
                                                                                       {
                                                                                         "prim": "pair",
                                                                                         "args": [
                                                                                           {
-                                                                                            "prim": "option",
-                                                                                            "args": [
-                                                                                              {
-                                                                                                "prim": "bytes"
-                                                                                              }
-                                                                                            ],
+                                                                                            "prim": "bytes",
                                                                                             "annots": [
-                                                                                              "%transcript_hash"
+                                                                                              "%terms_hash"
                                                                                             ]
                                                                                           },
                                                                                           {
                                                                                             "prim": "pair",
                                                                                             "args": [
                                                                                               {
-                                                                                                "prim": "nat",
+                                                                                                "prim": "option",
+                                                                                                "args": [
+                                                                                                  {
+                                                                                                    "prim": "bytes"
+                                                                                                  }
+                                                                                                ],
                                                                                                 "annots": [
-                                                                                                  "%treasury_amount"
+                                                                                                  "%transcript_hash"
                                                                                                 ]
                                                                                               },
                                                                                               {
                                                                                                 "prim": "pair",
                                                                                                 "args": [
                                                                                                   {
-                                                                                                    "prim": "bool",
+                                                                                                    "prim": "nat",
                                                                                                     "annots": [
-                                                                                                      "%treasury_claimed"
+                                                                                                      "%treasury_amount"
                                                                                                     ]
                                                                                                   },
                                                                                                   {
                                                                                                     "prim": "pair",
                                                                                                     "args": [
                                                                                                       {
-                                                                                                        "prim": "option",
-                                                                                                        "args": [
-                                                                                                          {
-                                                                                                            "prim": "bytes"
-                                                                                                          }
-                                                                                                        ],
+                                                                                                        "prim": "bool",
                                                                                                         "annots": [
-                                                                                                          "%void_evidence_hash"
+                                                                                                          "%treasury_claimed"
                                                                                                         ]
                                                                                                       },
                                                                                                       {
-                                                                                                        "prim": "option",
+                                                                                                        "prim": "pair",
                                                                                                         "args": [
                                                                                                           {
-                                                                                                            "prim": "bytes"
+                                                                                                            "prim": "option",
+                                                                                                            "args": [
+                                                                                                              {
+                                                                                                                "prim": "bytes"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "annots": [
+                                                                                                              "%void_evidence_hash"
+                                                                                                            ]
+                                                                                                          },
+                                                                                                          {
+                                                                                                            "prim": "option",
+                                                                                                            "args": [
+                                                                                                              {
+                                                                                                                "prim": "bytes"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "annots": [
+                                                                                                              "%void_reason_hash"
+                                                                                                            ]
                                                                                                           }
-                                                                                                        ],
-                                                                                                        "annots": [
-                                                                                                          "%void_reason_hash"
                                                                                                         ]
                                                                                                       }
                                                                                                     ]
@@ -796,14 +833,25 @@
                                   ]
                                 },
                                 {
-                                  "prim": "list",
+                                  "prim": "pair",
                                   "args": [
                                     {
-                                      "prim": "address"
+                                      "prim": "nat",
+                                      "annots": [
+                                        "%payout_mode"
+                                      ]
+                                    },
+                                    {
+                                      "prim": "list",
+                                      "args": [
+                                        {
+                                          "prim": "address"
+                                        }
+                                      ],
+                                      "annots": [
+                                        "%entrants"
+                                      ]
                                     }
-                                  ],
-                                  "annots": [
-                                    "%entrants"
                                   ]
                                 }
                               ]
@@ -878,9 +926,20 @@
                               ]
                             },
                             {
-                              "prim": "nat",
-                              "annots": [
-                                "%rank"
+                              "prim": "pair",
+                              "args": [
+                                {
+                                  "prim": "nat",
+                                  "annots": [
+                                    "%rank"
+                                  ]
+                                },
+                                {
+                                  "prim": "nat",
+                                  "annots": [
+                                    "%group_size"
+                                  ]
+                                }
                               ]
                             }
                           ]
@@ -1089,48 +1148,48 @@
                                           {
                                             "prim": "nat",
                                             "annots": [
-                                              "%quantum"
+                                              "%payout_mode"
                                             ]
                                           },
                                           {
                                             "prim": "pair",
                                             "args": [
                                               {
-                                                "prim": "address",
+                                                "prim": "nat",
                                                 "annots": [
-                                                  "%referee"
+                                                  "%quantum"
                                                 ]
                                               },
                                               {
                                                 "prim": "pair",
                                                 "args": [
                                                   {
-                                                    "prim": "nat",
+                                                    "prim": "address",
                                                     "annots": [
-                                                      "%refunded"
+                                                      "%referee"
                                                     ]
                                                   },
                                                   {
                                                     "prim": "pair",
                                                     "args": [
                                                       {
-                                                        "prim": "option",
-                                                        "args": [
-                                                          {
-                                                            "prim": "bytes"
-                                                          }
-                                                        ],
+                                                        "prim": "nat",
                                                         "annots": [
-                                                          "%result_hash"
+                                                          "%refunded"
                                                         ]
                                                       },
                                                       {
                                                         "prim": "pair",
                                                         "args": [
                                                           {
-                                                            "prim": "bytes",
+                                                            "prim": "option",
+                                                            "args": [
+                                                              {
+                                                                "prim": "bytes"
+                                                              }
+                                                            ],
                                                             "annots": [
-                                                              "%roster_hash"
+                                                              "%result_hash"
                                                             ]
                                                           },
                                                           {
@@ -1139,7 +1198,7 @@
                                                               {
                                                                 "prim": "bytes",
                                                                 "annots": [
-                                                                  "%rules_hash"
+                                                                  "%roster_hash"
                                                                 ]
                                                               },
                                                               {
@@ -1148,82 +1207,93 @@
                                                                   {
                                                                     "prim": "bytes",
                                                                     "annots": [
-                                                                      "%seed_commitment"
+                                                                      "%rules_hash"
                                                                     ]
                                                                   },
                                                                   {
                                                                     "prim": "pair",
                                                                     "args": [
                                                                       {
-                                                                        "prim": "nat",
+                                                                        "prim": "bytes",
                                                                         "annots": [
-                                                                          "%status"
+                                                                          "%seed_commitment"
                                                                         ]
                                                                       },
                                                                       {
                                                                         "prim": "pair",
                                                                         "args": [
                                                                           {
-                                                                            "prim": "bytes",
+                                                                            "prim": "nat",
                                                                             "annots": [
-                                                                              "%terms_hash"
+                                                                              "%status"
                                                                             ]
                                                                           },
                                                                           {
                                                                             "prim": "pair",
                                                                             "args": [
                                                                               {
-                                                                                "prim": "option",
-                                                                                "args": [
-                                                                                  {
-                                                                                    "prim": "bytes"
-                                                                                  }
-                                                                                ],
+                                                                                "prim": "bytes",
                                                                                 "annots": [
-                                                                                  "%transcript_hash"
+                                                                                  "%terms_hash"
                                                                                 ]
                                                                               },
                                                                               {
                                                                                 "prim": "pair",
                                                                                 "args": [
                                                                                   {
-                                                                                    "prim": "nat",
+                                                                                    "prim": "option",
+                                                                                    "args": [
+                                                                                      {
+                                                                                        "prim": "bytes"
+                                                                                      }
+                                                                                    ],
                                                                                     "annots": [
-                                                                                      "%treasury_amount"
+                                                                                      "%transcript_hash"
                                                                                     ]
                                                                                   },
                                                                                   {
                                                                                     "prim": "pair",
                                                                                     "args": [
                                                                                       {
-                                                                                        "prim": "bool",
+                                                                                        "prim": "nat",
                                                                                         "annots": [
-                                                                                          "%treasury_claimed"
+                                                                                          "%treasury_amount"
                                                                                         ]
                                                                                       },
                                                                                       {
                                                                                         "prim": "pair",
                                                                                         "args": [
                                                                                           {
-                                                                                            "prim": "option",
-                                                                                            "args": [
-                                                                                              {
-                                                                                                "prim": "bytes"
-                                                                                              }
-                                                                                            ],
+                                                                                            "prim": "bool",
                                                                                             "annots": [
-                                                                                              "%void_evidence_hash"
+                                                                                              "%treasury_claimed"
                                                                                             ]
                                                                                           },
                                                                                           {
-                                                                                            "prim": "option",
+                                                                                            "prim": "pair",
                                                                                             "args": [
                                                                                               {
-                                                                                                "prim": "bytes"
+                                                                                                "prim": "option",
+                                                                                                "args": [
+                                                                                                  {
+                                                                                                    "prim": "bytes"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "annots": [
+                                                                                                  "%void_evidence_hash"
+                                                                                                ]
+                                                                                              },
+                                                                                              {
+                                                                                                "prim": "option",
+                                                                                                "args": [
+                                                                                                  {
+                                                                                                    "prim": "bytes"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "annots": [
+                                                                                                  "%void_reason_hash"
+                                                                                                ]
                                                                                               }
-                                                                                            ],
-                                                                                            "annots": [
-                                                                                              "%void_reason_hash"
                                                                                             ]
                                                                                           }
                                                                                         ]

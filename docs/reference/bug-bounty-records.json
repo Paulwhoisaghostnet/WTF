@@ -10637,7 +10637,7 @@
     },
     {
       "id": "WTF-BB-701",
-      "status": "Blocked",
+      "status": "In Progress",
       "owner": "Codex coLILseum dual-network wagering",
       "lastTouched": "2026-10-23",
       "category": "WTFIAP escrow / Mainnet admission",
@@ -10648,7 +10648,7 @@
       "points": 13,
       "rank": 188,
       "title": "Mainnet WTF wagers lack a verified escrow and dedicated signer lane",
-      "body": "- Evidence: Hosted funding was pinned globally to Shadownet; the operator signer allowed one WTFIAP chain, RPC, wallet and journal. The approved Mainnet escrow was not originated. The planned contract-admin wallet held 745,372 mutez while a fresh RPC preflight reported 2,327,500 mutez of storage cost before transaction fees.\n- Correction direction: Select the funding lane from room currency, preserve pinned legacy records, add a separate exact Mainnet signer allowlist and journal, then originate and verify the approved Mainnet escrow using an explicitly authorized funded payer. Enable Mainnet admissions only after finalized script/storage and signer configuration match.\n- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and read-only Mainnet origination wrapper are implemented. Focused funding, signer, contract and browser tests pass.\n- Remaining blocker: An authorized funded origination payer has not been chosen; Mainnet deployment, activation and live WTF deposit/claim proof remain pending. No Mainnet WTFIAP signing is claimed.\n"
+      "body": "- Evidence: Hosted funding was pinned globally to Shadownet; the operator signer allowed one WTFIAP chain, RPC, wallet and journal. The approved Mainnet escrow was not originated. The planned contract-admin wallet held 745,372 mutez while a fresh RPC preflight reported 2,327,500 mutez of storage cost before transaction fees.\n- Correction direction: Select the funding lane from room currency, preserve pinned legacy records, add a separate exact Mainnet signer allowlist and journal, then originate and verify the approved Mainnet escrow using an explicitly authorized funded payer. Enable Mainnet admissions only after finalized script/storage and signer configuration match.\n- Local correction: Room routing, room-specific config, signer lane separation, on-chain pre-open verification, player fee disclosure and read-only Mainnet origination wrapper are implemented. Focused funding, signer, contract and browser tests pass.\n- Owner authorization on 2026-10-23: Use the reward-disburser wallet for Mainnet origination, and extend paid wagering to both two-player duels and eight-player tournaments. The escrow source and application must support both formats before activation.\n- Pending proof: Compile and test the revised escrow, originate fresh Shadownet and Mainnet deployments, verify code/storage, configure both signer lanes, and complete live deposits, settlement, withdrawals and claims.\n"
     }
   ]
 }
