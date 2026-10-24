@@ -7,10 +7,10 @@
   'use strict';
   if (typeof module !== 'undefined' && module.exports) module.exports = factory(
     require('../../source/engine.js'), require('./match.cjs'), require('./progression.cjs'), require('./income.cjs'),
-    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('./party-schedule.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'));
+    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('./party-schedule.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'), require('./fortunes.cjs'));
   else root.ABParty = factory(root.AB, root.ABMatch, root.ABProgression, root.ABIncome, root.ABCommanderHealth,
-    root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABPartySchedule, root.ABZonePolicy, root.ABItems);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Match, Progression, Income, Health, Treasure, ChestHealth, ShopPool, Schedule, ZonePolicy, Items) {
+    root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABPartySchedule, root.ABZonePolicy, root.ABItems, root.ABFortunes);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Match, Progression, Income, Health, Treasure, ChestHealth, ShopPool, Schedule, ZonePolicy, Items, Fortunes) {
   'use strict';
   const RULES = Object.freeze({ playerCount: 8, duelPlayerCount: 2, startingGold: 1, startingHP: 100, shopSize: 4, benchCapacity: 10, rerollCost: 2 });
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -29,6 +29,7 @@
   const draftOn = state => state.draftRulesVersion === 1;
   const draftRound = state => draftOn(state) && state.roundNumber % 4 === 0;
   const plansOn = state => state.planRulesVersion === 1;
+  const fortunesOn = state => state.fortuneRulesVersion === 1;
   const planRound = state => plansOn(state) && state.roundNumber % 4 === 3;
   const itemRandom = (state, label) => Engine.makeRandom(state.seed + ':items:' + label);
   const alive = state => state.players.filter(player => player.hp > 0);
@@ -77,7 +78,8 @@
       ...(other === player ? [] : other.shop.filter(Boolean))]));
     const random = Engine.makeRandom(state.seed + ':party-shop:' + player.playerId + ':' + state.roundNumber + ':' + draw);
     const offers = Array.from({ length: RULES.shopSize }, (_, index) => {
-      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (state.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost));
+      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (state.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
+        .map(tier => fortunesOn(state) ? { ...tier, weight: Fortunes.tierWeight(tier.weight, tier.cost, player.blessings, player.curses) } : tier);
       if (!tiers.length) return null;
       let cost = 1;
       if (state.roundNumber > 1) {
@@ -90,6 +92,11 @@
         heroId: lot.heroId, level: 1, cost, lotIds: [lot.id] };
     });
     player.shop = offers; player.shopDraw++;
+    if (fortunesOn(state)) {
+      const eligible = Fortunes.CATALOG.filter(entry => entry.kind === 'curse' && alive(state).some(target =>
+        target.playerId !== player.playerId && !target.curses.includes(entry.id))).map(entry => entry.id);
+      player.fortuneShop = Fortunes.draw(Engine.makeRandom(state.seed + ':fortune:' + player.playerId + ':' + state.roundNumber + ':' + draw), player.blessings, eligible);
+    }
   }
   function drawAll(state) {
     // Rotate first drawer each round; all old reservations are already gone.
@@ -145,6 +152,7 @@
     demand(options.encounterRulesVersion === undefined || options.encounterRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown encounter rules version.');
     demand(options.draftRulesVersion === undefined || options.draftRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown shared draft rules version.');
     demand(options.planRulesVersion === undefined || options.planRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown battle plan rules version.');
+    demand(options.fortuneRulesVersion === undefined || options.fortuneRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown fortune shop rules version.');
     const state = { schemaVersion: 1, matchId: options.matchId, seed: options.seed, boardMode: options.boardMode,
       ...(options.itemRulesVersion === 1 ? { itemRulesVersion: 1, itemReceipts: [] } : {}),
       ...(options.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
@@ -153,6 +161,7 @@
       ...(options.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
       ...(options.draftRulesVersion === 1 ? { draftRulesVersion: 1, draft: null } : {}),
       ...(options.planRulesVersion === 1 ? { planRulesVersion: 1, planReceipts: [] } : {}),
+      ...(options.fortuneRulesVersion === 1 ? { fortuneRulesVersion: 1, fortuneReceipts: [] } : {}),
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
@@ -164,6 +173,7 @@
           mergeSerial: 0, chest: null, ready: false, eliminatedRound: null,
           ...(options.shopLockRulesVersion === 1 ? { shopLocked: false } : {}),
           ...(options.planRulesVersion === 1 ? { pendingPlan: false, freeRerolls: 0, plans: [] } : {}),
+          ...(options.fortuneRulesVersion === 1 ? { blessings: [], curses: [], fortuneShop: null, mirrorTickets: [] } : {}),
           ...(options.itemRulesVersion === 1 ? { items: [], itemShop: null, itemChest: null, winStreak: 0, lossStreak: 0, pendingComponentChoices: 0 } : {}) };
       }), pairings: [], combats: [], receipts: [], shopReceipts: [], actions: [], winnerId: null, lastRecycling: null };
     openPreparation(state, options.openedAtMs); validate(state); return state;
@@ -177,6 +187,9 @@
     while ((group = Engine.mergeGroups(game).find(group => group.heroId === offer.heroId))) {
       const combined = required(Engine.combine(game, group.heroId, group.level));
       if (itemsOn(state)) player.items.push(...(combined.overflowItemIds || []));
+      if (fortunesOn(state) && player.blessings.includes('mirror-loom') && combined.unit.level === 2)
+        player.mirrorTickets.push({ id: state.matchId + ':mirror:' + player.playerId + ':' + combined.unit.id,
+          maxCost: Engine.heroById(combined.unit.heroId).cost });
       upgrades.push(combined.unit.level);
     }
     demand(game.bench.length <= RULES.benchCapacity, 'Make room on the ten-slot bench.');
@@ -185,6 +198,33 @@
     return { receipt, upgrades };
   }
   function saleValue(unit) { const hero = Engine.heroById(unit?.heroId); demand(hero && [1, 2, 3].includes(unit.level), 'Choose an owned hero.'); return hero.cost * 3 ** (unit.level - 1); }
+  function useMirrorTicket(state, player, ticketId, unitId) {
+    demand(fortunesOn(state), 'This room has no Mirror Tickets.');
+    const ticket = player.mirrorTickets.find(value => value.id === ticketId);
+    const target = [...player.field, ...player.bench].find(value => value.id === unitId), hero = Engine.heroById(target?.heroId);
+    demand(ticket && hero && hero.cost <= ticket.maxCost, 'Choose an owned hero within this ticket’s cost tier.');
+    demand(player.gold >= hero.cost, 'A Mirror Ticket still pays the hero’s normal gold cost.');
+    const lot = ShopPool.available(state.shopPool, holders(state)).find(value => value.heroId === hero.id);
+    demand(lot, 'No copy of that hero remains in the shared pool.');
+    const game = armyGame(state, player), unit = { id: roundId(state) + ':mirror:' + player.playerId + ':' + state.revision,
+      heroId: hero.id, level: 1, lotIds: [lot.id] };
+    game.bench.push(unit); const upgrades = []; let group;
+    while ((group = Engine.mergeGroups(game).find(group => group.heroId === hero.id))) {
+      const combined = required(Engine.combine(game, group.heroId, group.level));
+      if (itemsOn(state)) player.items.push(...(combined.overflowItemIds || []));
+      if (player.blessings.includes('mirror-loom') && combined.unit.level === 2)
+        player.mirrorTickets.push({ id: state.matchId + ':mirror:' + player.playerId + ':' + combined.unit.id,
+          maxCost: Engine.heroById(combined.unit.heroId).cost });
+      upgrades.push(combined.unit.level);
+    }
+    demand(game.bench.length <= RULES.benchCapacity, 'Make room on the ten-slot bench.');
+    player.gold -= hero.cost; player.mirrorTickets.splice(player.mirrorTickets.findIndex(value => value.id === ticketId), 1);
+    commitArmy(player, game);
+    const receipt = { kind: 'mirror-copy', playerId: player.playerId, roundNumber: state.roundNumber,
+      ticketId, heroId: hero.id, lotId: lot.id, goldSpent: hero.cost, goldReceived: 0 };
+    state.shopReceipts.push(receipt);
+    return { receipt, upgrades };
+  }
   function sell(state, player, unitId) {
     const unit = [...player.field, ...player.bench].find(unit => unit.id === unitId); demand(unit, 'Choose an owned hero.');
     const goldReceived = saleValue(unit); demand(safe(player.gold + goldReceived), 'Gold exceeds exact numeric representation.');
@@ -247,7 +287,22 @@
         }
       }
     }
+    else if (action.type === 'buyFortune') {
+      demand(fortunesOn(state), 'This room uses its original shop rules.');
+      const entry = Fortunes.get(action.fortuneId);
+      demand(entry && player.fortuneShop?.[entry.kind + 'Id'] === entry.id, 'Choose an offered blessing or curse.');
+      const target = entry.kind === 'blessing' ? player : playerFor(state, action.targetPlayerId);
+      demand(entry.kind === 'blessing' || target.playerId !== player.playerId && target.hp > 0, 'Choose a living opponent for a curse.');
+      const list = entry.kind === 'blessing' ? target.blessings : target.curses;
+      demand(!list.includes(entry.id), 'That permanent effect is already active on this commander.');
+      demand(player.gold >= entry.price, 'Not enough gold for this fortune.');
+      player.gold -= entry.price; list.push(entry.id); player.fortuneShop[entry.kind + 'Id'] = null;
+      const receipt = { kind: entry.kind, playerId: player.playerId, targetPlayerId: target.playerId,
+        roundNumber: state.roundNumber, fortuneId: entry.id, goldSpent: entry.price, goldReceived: 0 };
+      state.fortuneReceipts.push(receipt); result.receipt = receipt;
+    }
     else if (action.type === 'buy') result = buy(state, player, action.index);
+    else if (action.type === 'useMirrorTicket') result = useMirrorTicket(state, player, action.ticketId, action.unitId);
     else if (action.type === 'sell') result = sell(state, player, action.unitId);
     else if (action.type === 'choosePlan') {
       demand(plansOn(state) && player.pendingPlan && ['treasury', 'armory', 'scout'].includes(action.planId),
@@ -277,8 +332,11 @@
     }
     else if (action.type === 'reroll') {
       demand(!itemsOn(state) || !player.itemShop?.open, 'Choose one item or pass the item shop before refreshing heroes.');
-      const price = plansOn(state) && player.freeRerolls > 0 ? 0 : RULES.rerollCost;
-      demand(player.gold >= price, 'Refreshing costs two gold.'); refreshShop(state, player); player.gold -= price;
+      const free = plansOn(state) && player.freeRerolls > 0;
+      const priorPaid = state.shopReceipts.some(receipt => receipt.kind === 'reroll' && receipt.playerId === player.playerId && receipt.roundNumber === state.roundNumber && receipt.goldSpent > 0);
+      const price = free ? 0 : fortunesOn(state)
+        ? Fortunes.rerollPrice(RULES.rerollCost, player.blessings, player.curses, !priorPaid) : RULES.rerollCost;
+      demand(player.gold >= price, 'Not enough gold for this shop refresh.'); refreshShop(state, player); player.gold -= price;
       if (price === 0) player.freeRerolls--;
       if (shopLockOn(state)) player.shopLocked = false;
       const receipt = { kind: 'reroll', playerId: player.playerId, roundNumber: state.roundNumber, goldSpent: price, goldReceived: 0 };
@@ -294,6 +352,9 @@
       else {
         const combined = required(Engine.combine(game, action.heroId, action.stars));
         if (itemsOn(state)) player.items.push(...(combined.overflowItemIds || []));
+        if (fortunesOn(state) && player.blessings.includes('mirror-loom') && combined.unit.level === 2)
+          player.mirrorTickets.push({ id: state.matchId + ':mirror:' + player.playerId + ':' + combined.unit.id,
+            maxCost: Engine.heroById(combined.unit.heroId).cost });
       }
       commitArmy(player, game);
     } else if (action.type === 'moveChest') {
@@ -357,6 +418,20 @@
       deployNext();
       for (let index = 0; index < RULES.shopSize; index++) { const current = playerFor(state, playerId), offer = current.shop[index];
         if (offer && offer.cost <= current.gold) { const bought = command(state, { type: 'buy', playerId, index }, atMs); if (bought.ok) deployNext(); }
+      }
+      if (fortunesOn(state)) {
+        const current = playerFor(state, playerId), offer = current.fortuneShop;
+        if (current.field.length && current.gold >= Fortunes.PRICE && offer) {
+          const target = alive(state).find(other => other.playerId !== playerId && offer.curseId && !other.curses.includes(offer.curseId));
+          const fortuneId = offer.blessingId || (target ? offer.curseId : null);
+          if (fortuneId) required(command(state, { type: 'buyFortune', playerId, fortuneId, ...(target ? { targetPlayerId: target.playerId } : {}) }, atMs));
+        }
+        for (const ticket of [...playerFor(state, playerId).mirrorTickets]) {
+          const owner = playerFor(state, playerId), target = [...owner.field, ...owner.bench].find(unit =>
+            Engine.heroById(unit.heroId).cost <= ticket.maxCost && owner.gold >= Engine.heroById(unit.heroId).cost &&
+            ShopPool.available(state.shopPool, holders(state)).some(lot => lot.heroId === unit.heroId));
+          if (target) { required(command(state, { type: 'useMirrorTicket', playerId, ticketId: ticket.id, unitId: target.id }, atMs)); deployNext(); }
+        }
       }
       if (itemsOn(state)) {
         while (playerFor(state, playerId).items.length) {
@@ -514,9 +589,11 @@
       const hpAfter = outcome === 'loss' && !encounterRound(state) ? Math.max(0, player.hp - damage) : player.hp;
       const xp = required(Progression.awardCompletedCombat(player.progression, { matchId: state.matchId, playerId: player.playerId,
         expectedRevision: player.progression.revision, roundId: roundId(state), combatId, status: 'completed', outcome }));
+      const baseTreasure = treasure.payouts.find(payout => payout.playerId === player.playerId).gold;
+      const paidTreasure = fortunesOn(state) ? Fortunes.treasureGold(baseTreasure, player.blessings, player.curses) : baseTreasure;
       return { playerId: player.playerId, outcome, hpBefore: player.hp, hpAfter, damage: player.hp - hpAfter, xp,
         ...(state.boardMode === 'zone-defense' ? { zoneGold: zoneGold[side] } : {}),
-        treasureGold: treasure.payouts.find(payout => payout.playerId === player.playerId).gold };
+        treasureGold: paidTreasure, ...(fortunesOn(state) ? { fortuneGold: paidTreasure - baseTreasure } : {}) };
     });
     return { pair: clone(pair), combatId, result: game.result, elapsedSeconds: game.battle.elapsed, survivors, treasure, awards,
       ...(itemsOn(state) ? { itemChestCaptures } : {}),
@@ -532,8 +609,11 @@
       player.hp = award.hpAfter; player.gold += goldAward; player.progression = award.xp.state;
       if (itemsOn(state)) {
         const previousStreak = award.outcome === 'win' ? player.winStreak : player.lossStreak;
-        const drop = Items.reward({ outcome: award.outcome, previousStreak,
-          random: itemRandom(state, 'drop:' + state.roundNumber + ':' + player.playerId) });
+        const random = itemRandom(state, 'drop:' + state.roundNumber + ':' + player.playerId);
+        const drop = fortunesOn(state) ? (() => {
+          const chance = Fortunes.dropChance(Items.dropChance(award.outcome, previousStreak), player.blessings, player.curses);
+          const roll = random(); return { chance, roll, itemId: roll < chance ? Items.componentIds[Math.floor(random() * Items.componentIds.length)] : null };
+        })() : Items.reward({ outcome: award.outcome, previousStreak, random });
         if (drop.itemId) player.items.push(drop.itemId);
         player.winStreak = award.outcome === 'win' ? previousStreak + 1 : 0;
         player.lossStreak = award.outcome === 'loss' ? previousStreak + 1 : 0;
@@ -619,7 +699,8 @@
       xpIntoLevel: player.progression.xpIntoLevel, xpToNext: Progression.COMMANDER_LEVEL_COSTS[player.progression.level - 1] ?? null,
       totalEarnedXP: player.progression.totalEarnedXP, field: player.field.map(publicUnit), bench: player.bench.map(publicUnit),
       ready: player.ready, chest: player.chest, ...(itemsOn(state) ? { itemChest: player.itemChest } : {}), chestMaxHp: player.field.length ? ChestHealth.calculateChestHealth(referenceFor(state), player.field.map(unit => unit.heroId)).maxHp : null, eliminatedRound: player.eliminatedRound,
-      ...(itemsOn(state) ? { itemCount: player.items.length, winStreak: player.winStreak, lossStreak: player.lossStreak } : {}) });
+      ...(itemsOn(state) ? { itemCount: player.items.length, winStreak: player.winStreak, lossStreak: player.lossStreak } : {}),
+      ...(fortunesOn(state) ? { blessings: player.blessings, curses: player.curses } : {}) });
     const combat = state.combats.find(combat => combat.pair.playerId === playerId || (!combat.pair.isRoundAI && combat.pair.enemyId === playerId));
     const owned = state.players.flatMap(player => [...player.field, ...player.bench]);
     const supply = Engine.ROSTER.map(hero => ({ heroId: hero.id, total: state.shopPool.copiesByCost[hero.cost],
@@ -628,12 +709,14 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(fortunesOn(state) ? { fortuneRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds },
       self: { ...publicPlayer(own), shop: own.shop.map(offer => offer ? publicUnit(offer) : null), ...(shopLockOn(state) ? { shopLocked: own.shopLocked } : {}), ...(plansOn(state) ? { pendingPlan: own.pendingPlan, freeRerolls: own.freeRerolls, plans: own.plans } : {}),
-        ...(itemsOn(state) ? { items: own.items, itemShop: own.itemShop, pendingComponentChoices: own.pendingComponentChoices } : {}) }, supply, pairings: state.pairings,
+        ...(itemsOn(state) ? { items: own.items, itemShop: own.itemShop, pendingComponentChoices: own.pendingComponentChoices } : {}),
+        ...(fortunesOn(state) ? { fortuneShop: own.fortuneShop, mirrorTickets: own.mirrorTickets, paidRefreshThisRound: state.shopReceipts.some(receipt =>
+          receipt.kind === 'reroll' && receipt.playerId === own.playerId && receipt.roundNumber === state.roundNumber && receipt.goldSpent > 0) } : {}) }, supply, pairings: state.pairings,
       combat: combat ? { pair: combat.pair, enemyPlayer: combat.npc ? publicPlayer(combat.npc) : null, board: combat.game.board,
         ...(combat.game.zoneDefense ? { zoneDefense: combat.game.zoneDefense } : {}), phase: combat.game.phase, result: combat.game.result, battle } : null,
       lastRound: last ? { roundNumber: last.roundNumber, pairings: last.pairings, results: last.results.map(result => ({ pair: result.pair,
@@ -651,6 +734,8 @@
     demand(state.encounterRulesVersion === undefined || state.encounterRulesVersion === 1 && itemsOn(state), 'Invalid encounter rules version.');
     demand(state.draftRulesVersion === undefined || state.draftRulesVersion === 1 && itemsOn(state), 'Invalid shared draft rules version.');
     demand(state.planRulesVersion === undefined || state.planRulesVersion === 1 && itemsOn(state), 'Invalid battle plan rules version.');
+    demand(state.fortuneRulesVersion === undefined || state.fortuneRulesVersion === 1 && itemsOn(state), 'Invalid fortune shop rules version.');
+    if (fortunesOn(state)) demand(Array.isArray(state.fortuneReceipts), 'Fortune purchase receipts are required.');
     if (plansOn(state)) demand(Array.isArray(state.planReceipts), 'Battle plan receipts are required.');
     if (draftOn(state)) {
       demand(state.draft === null || draftRound(state) && state.draft.roundNumber === state.roundNumber &&
@@ -662,6 +747,13 @@
       'Invalid shared component draft.');
     }
     if (itemsOn(state)) demand(Array.isArray(state.itemReceipts), 'Item receipts are required.');
+    if (fortunesOn(state)) for (const receipt of state.fortuneReceipts) {
+      const entry = Fortunes.get(receipt.fortuneId), buyer = state.players.find(player => player.playerId === receipt.playerId),
+        target = state.players.find(player => player.playerId === receipt.targetPlayerId);
+      demand(entry && buyer && target && receipt.kind === entry.kind && receipt.goldSpent === entry.price && receipt.goldReceived === 0 &&
+        (entry.kind === 'blessing' ? buyer === target && target.blessings.includes(entry.id) : buyer !== target && target.curses.includes(entry.id)),
+      'Fortune receipt must identify its payer, target and permanent effect.');
+    }
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');
     demand(state.earlyStart === (state.preparationSeconds === null) && state.oddPlayerPolicy === 'round-ai', 'Invalid party policies.');
@@ -683,6 +775,17 @@
       demand(safe(player.shopDraw) && safe(player.mergeSerial), 'Invalid army/shop counters.');
       if (shopLockOn(state)) demand(typeof player.shopLocked === 'boolean', 'Shop lock state is invalid.');
       if (plansOn(state)) demand(typeof player.pendingPlan === 'boolean' && safe(player.freeRerolls) && Array.isArray(player.plans), 'Battle plan state is invalid.');
+      if (fortunesOn(state)) {
+        demand(Array.isArray(player.blessings) && Array.isArray(player.curses) && Array.isArray(player.mirrorTickets) &&
+          player.mirrorTickets.every(ticket => identity(ticket.id) && Number.isInteger(ticket.maxCost) && ticket.maxCost >= 1 && ticket.maxCost <= 5) &&
+          new Set(player.mirrorTickets.map(ticket => ticket.id)).size === player.mirrorTickets.length &&
+          player.blessings.every(id => Fortunes.get(id)?.kind === 'blessing') && player.curses.every(id => Fortunes.get(id)?.kind === 'curse') &&
+          new Set(player.blessings).size === player.blessings.length && new Set(player.curses).size === player.curses.length, 'Permanent fortunes cannot stack by name.');
+        const offer = player.fortuneShop;
+        demand(offer === null || Number.isFinite(offer.roll) && offer.roll >= 0 && offer.roll < Fortunes.OFFER_CHANCE &&
+          (offer.blessingId === null || Fortunes.get(offer.blessingId)?.kind === 'blessing') &&
+          (offer.curseId === null || Fortunes.get(offer.curseId)?.kind === 'curse'), 'Invalid optional fortune offers.');
+      }
       if (itemsOn(state)) {
         demand(Array.isArray(player.items) && player.items.every(Items.isItem), 'Inventory contains an unknown item.');
         demand(safe(player.winStreak) && safe(player.lossStreak) && !(player.winStreak && player.lossStreak)
@@ -707,12 +810,16 @@
       let hp = RULES.startingHP, treasureGold = 0, zoneGold = 0, combatCount = 0;
       for (const round of state.receipts) for (const result of round.results) for (const award of result.awards.filter(award => award.playerId === player.playerId)) {
         demand(award.hpBefore === hp && award.hpAfter === Math.max(0, hp - award.damage), 'Commander HP must carry between completed combats.'); hp = award.hpAfter; treasureGold += award.treasureGold; zoneGold += award.zoneGold ?? 0; combatCount++;
+        if (fortunesOn(state)) demand(Number.isSafeInteger(award.fortuneGold) &&
+          award.treasureGold === result.treasure.payouts.find(payout => payout.playerId === player.playerId).gold + award.fortuneGold,
+        'Fortune chest adjustments must reconcile to the verified payout.');
       }
       demand(hp === player.hp && player.progression.receipts.filter(receipt => receipt.kind === 'combat').length === combatCount, 'Combat progression or HP history differs.');
       const gold = RULES.startingGold + player.income.receipts.reduce((sum, receipt) => sum + Income.BASE_ROUND_INCOME + receipt.interest, 0) + treasureGold + zoneGold
         - player.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((sum, receipt) => sum + receipt.goldSpent, 0)
         + state.shopReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived - receipt.goldSpent, 0)
         - (itemsOn(state) ? state.itemReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldSpent, 0) : 0)
+        - (fortunesOn(state) ? state.fortuneReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldSpent, 0) : 0)
         + (plansOn(state) ? state.planReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived, 0) : 0);
       demand(gold === player.gold, 'Gold must follow income, treasure and transactions.');
     }

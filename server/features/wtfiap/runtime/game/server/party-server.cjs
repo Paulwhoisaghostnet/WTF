@@ -70,6 +70,7 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.encounterRulesVersion === undefined || input.encounterRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown encounter rules version.');
   requireThat(input.draftRulesVersion === undefined || input.draftRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown shared draft rules version.');
   requireThat(input.planRulesVersion === undefined || input.planRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown battle plan rules version.');
+  requireThat(input.fortuneRulesVersion === undefined || input.fortuneRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown fortune shop rules version.');
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
     earlyStart, oddPlayerPolicy: 'round-ai', ...(!preserveItemVersion || input.itemRulesVersion === 1 ? { itemRulesVersion: 1 } : {}),
     ...(!preserveItemVersion || input.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
@@ -77,7 +78,8 @@ function configuration(input, preserveItemVersion = false) {
     ...(!preserveItemVersion || input.shopLockRulesVersion === 1 ? { shopLockRulesVersion: 1 } : {}),
     ...(!preserveItemVersion || input.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
     ...(!preserveItemVersion || input.draftRulesVersion === 1 ? { draftRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.planRulesVersion === 1 ? { planRulesVersion: 1 } : {}) };
+    ...(!preserveItemVersion || input.planRulesVersion === 1 ? { planRulesVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.fortuneRulesVersion === 1 ? { fortuneRulesVersion: 1 } : {}) };
   if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');

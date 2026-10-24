@@ -25,6 +25,7 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .items-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.items-head h2{margin:0;font:24px Georgia,serif;color:#f1d694}.items-head button,.items-panel button,.items-panel select{min-height:40px;padding:7px 11px;border:1px solid #78918a;border-radius:5px;background:#1c393b;color:#f0ebdc;font:inherit}
 .items-panel button:disabled{opacity:.5}.items-panel button:focus-visible,.items-toggle:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
 .item-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:12px 0}.item-grid button{text-align:left}.item-grid button strong,.item-grid button small{display:block}.item-grid button strong{color:#f1d694}.item-panel-section{border-top:1px solid #45615c;margin-top:14px;padding-top:12px}.item-equip-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.item-equip-row select{max-width:220px}
+.fortune-card{display:flex;flex-direction:column;gap:8px;border:1px solid #8b7959;border-radius:7px;padding:12px;background:#213536}.fortune-card strong{color:#f1d694}.fortune-card p{margin:0;line-height:1.35}.fortune-card label{display:flex;align-items:center;gap:8px}.fortune-card select{flex:1;min-width:0}.fortune-card button{margin-top:auto;font-weight:700}
 .compact-stage{width:100%;height:100dvh;display:flex;flex-direction:column}
 .compact-stage .quick-actions{display:flex;position:static;flex:none;gap:4px;padding:4px;background:#102529}
 .compact-stage .quick-actions button{flex:1;min-width:0;min-height:36px;padding:4px;font-size:12px}
@@ -121,6 +122,7 @@ body{background:#071416}
 .compact-stage .info-icon{width:44px;height:44px}
 .compact-stage #mobile-stage-nav .info-icon{position:static;flex:0 0 44px;margin:0;border-radius:5px;font-size:22px}
 .compact-stage .items-panel button,.compact-stage .items-panel select{min-height:44px}
+.compact-stage .items-panel{position:fixed;inset:6px;max-height:none;z-index:20;padding:12px;overflow:auto}
 .compact-stage .mobile-offer-buy{min-height:44px;flex:none}
 .compact-stage .mobile-shop-preview{display:none}
 .compact-stage .mobile-offer{min-height:0;overflow:hidden}
@@ -5262,6 +5264,64 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   return Object.freeze({ COPIES_BY_COST, COPIES_BY_PLAYER_COUNT, PLAYER_COUNT, create, available, validate, summary, recycleForPreparation });
 });
 
+/* Seeded, optional shop modifiers. A fortune belongs to its buyer for the
+ * entire match; a curse belongs to its target. Hero lots remain in the shared
+ * shop pool, and an offer never changes a previously pinned room's rules. */
+(function (root, factory) {
+  'use strict';
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.ABFortunes = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const OFFER_CHANCE = .15;
+  // The 5-gold price matches the existing owner-approved component shop. The
+  // modifiers deliberately pay less than a component's direct combat value.
+  const PRICE = 5;
+  const CATALOG = Object.freeze([
+    { id: 'bright-coffer', kind: 'blessing', name: 'Bright Coffer', glyph: '✧', price: PRICE,
+      description: 'Gain 1 extra gold when you earn treasure-chest gold.' },
+    { id: 'nimble-ledger', kind: 'blessing', name: 'Nimble Ledger', glyph: '↻', price: PRICE,
+      description: 'Your first paid hero-shop refresh each round costs 1 less gold.' },
+    { id: 'scrap-spark', kind: 'blessing', name: 'Scrap Spark', glyph: '◇', price: PRICE,
+      description: 'Component drop chance after combat rises by 1 percentage point.' },
+    { id: 'far-sight', kind: 'blessing', name: 'Far Sight', glyph: '◉', price: PRICE,
+      description: 'Available heroes costing 3 or more gain 5% relative shop draw weight.' },
+    { id: 'mirror-loom', kind: 'blessing', name: 'Mirror Loom', glyph: '◐', price: PRICE,
+      description: 'Each new 2-star hero grants a Mirror Ticket. Spend it to buy a matching 1-star copy from the shared pool at that hero’s normal cost; the copy cannot cost more than the hero that made the ticket.' },
+    { id: 'dim-coffer', kind: 'curse', name: 'Dim Coffer', glyph: '◈', price: PRICE,
+      description: 'Target loses 1 gold from a positive treasure-chest payout.' },
+    { id: 'tangled-ledger', kind: 'curse', name: 'Tangled Ledger', glyph: '⌁', price: PRICE,
+      description: 'Target’s first paid hero-shop refresh each round costs 1 extra gold.' },
+    { id: 'damp-scrap', kind: 'curse', name: 'Damp Scrap', glyph: '◌', price: PRICE,
+      description: 'Target’s component drop chance falls by 1 percentage point.' },
+    { id: 'near-sight', kind: 'curse', name: 'Near Sight', glyph: '◍', price: PRICE,
+      description: 'Target’s available heroes costing 3 or more lose 5% relative shop draw weight.' }
+  ].map(value => Object.freeze(value)));
+  const byId = Object.freeze(Object.fromEntries(CATALOG.map(value => [value.id, value])));
+  const get = id => byId[id] || null;
+  const has = (list, id) => Array.isArray(list) && list.includes(id);
+  function draw(random, ownedBlessings = [], eligibleCurses = CATALOG.filter(value => value.kind === 'curse').map(value => value.id)) {
+    if (typeof random !== 'function') throw new Error('A seeded shop stream is required.');
+    const roll = random();
+    if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('Fortune roll must be in [0, 1).');
+    if (roll >= OFFER_CHANCE) return null;
+    const blessings = CATALOG.filter(value => value.kind === 'blessing' && !ownedBlessings.includes(value.id));
+    const curses = CATALOG.filter(value => value.kind === 'curse' && eligibleCurses.includes(value.id));
+    if (!blessings.length && !curses.length) return null;
+    return { roll, blessingId: blessings.length ? blessings[Math.floor(random() * blessings.length)].id : null,
+      curseId: curses.length ? curses[Math.floor(random() * curses.length)].id : null };
+  }
+  const tierWeight = (weight, cost, blessings, curses) => cost >= 3
+    ? weight * (has(blessings, 'far-sight') ? 1.05 : 1) * (has(curses, 'near-sight') ? .95 : 1) : weight;
+  const rerollPrice = (base, blessings, curses, firstPaid) => firstPaid
+    ? base - Number(has(blessings, 'nimble-ledger')) + Number(has(curses, 'tangled-ledger')) : base;
+  const treasureGold = (base, blessings, curses) => base > 0
+    ? Math.max(0, base + Number(has(blessings, 'bright-coffer')) - Number(has(curses, 'dim-coffer'))) : base;
+  const dropChance = (base, blessings, curses) => Math.max(0, Math.min(1,
+    base + (has(blessings, 'scrap-spark') ? .01 : 0) - (has(curses, 'damp-scrap') ? .01 : 0)));
+  return Object.freeze({ OFFER_CHANCE, PRICE, CATALOG, get, draw, tierWeight, rerollPrice, treasureGold, dropChance });
+});
+
 /* Local practice-match coordinator. The existing modules own every economy,
  * progression and HP rule. This adapter consumes only its own engine result;
  * it is not a server validator or permission to settle a paid room.
@@ -5275,9 +5335,9 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   'use strict';
   if (typeof module !== 'undefined' && module.exports) module.exports = factory(
     require('../../source/engine.js'), require('./progression.cjs'), require('./income.cjs'),
-    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'));
-  else root.ABMatch = factory(root.AB, root.ABProgression, root.ABIncome, root.ABCommanderHealth, root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABZonePolicy, root.ABItems);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Progression, Income, Health, Treasure, ChestHealth, ShopPool, ZonePolicy, Items) {
+    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'), require('./fortunes.cjs'));
+  else root.ABMatch = factory(root.AB, root.ABProgression, root.ABIncome, root.ABCommanderHealth, root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABZonePolicy, root.ABItems, root.ABFortunes);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Progression, Income, Health, Treasure, ChestHealth, ShopPool, ZonePolicy, Items, Fortunes) {
   'use strict';
   if (![Engine, Progression, Income, Health, Treasure, ChestHealth].every(Boolean)) throw new Error('Load the engine and shared match-rule modules before ABMatch.');
   const SIDES = ['player', 'enemy'];
@@ -5449,7 +5509,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -5458,7 +5518,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     match.game.itemRulesVersion = 1;
     match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
-    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [], shopLocked: false, pendingPlan: false, freeRerolls: 0, plans: [],
+    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [], shopLocked: false, pendingPlan: false, freeRerolls: 0, plans: [], blessings: [], curses: [], fortuneShop: null, mirrorTickets: [], winStreak: 0, lossStreak: 0,
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
       income: Income.createLedger({ matchId, playerId: side }) };
     synchronize(match); for (const side of SIDES) refreshShop(match, side); prepareAI(match); validate(match); return match;
@@ -5501,7 +5561,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     // Old unbought offers are released for this draw. Other shops stay reserved.
     let available = ShopPool.available(match.shopPool, poolHolders(match, [side]));
     const offers = Array.from({ length: RULES.shopSize }, (_, index) => {
-      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (match.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost));
+      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (match.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
+        .map(tier => match.fortuneRulesVersion === 1 ? { ...tier, weight: Fortunes.tierWeight(tier.weight, tier.cost, match.players[side].blessings, match.players[side].curses) } : tier);
       if (!tiers.length) return null;
       let cost = tiers[0].cost;
       if (match.roundNumber > 1) {
@@ -5514,6 +5575,11 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     });
     // Commit only after every slot has been drawn; there are no retry limits.
     match.shops[side] = offers; match.shopDraws[side] = draw + 1;
+    if (match.fortuneRulesVersion === 1) {
+      const buyer = match.players[side], target = match.players[side === 'player' ? 'enemy' : 'player'];
+      const eligible = Fortunes.CATALOG.filter(entry => entry.kind === 'curse' && !target.curses.includes(entry.id)).map(entry => entry.id);
+      buyer.fortuneShop = Fortunes.draw(Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':fortune:' + side + ':' + match.roundNumber + ':' + draw), buyer.blessings, eligible);
+    }
   }
   function poolSummary(match) {
     if (match.schemaVersion !== 2) return null;
@@ -5564,6 +5630,12 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       'Make room on the ten-slot bench before buying.');
     return { unit: result, upgrades, pool, serial };
   }
+  function grantMirrorTickets(match, side, upgrades) {
+    if (match.fortuneRulesVersion !== 1 || !match.players[side].blessings.includes('mirror-loom')) return;
+    for (const upgrade of upgrades.filter(value => value.level === 2)) match.players[side].mirrorTickets.push({
+      id: match.matchId + ':mirror:' + side + ':' + upgrade.unitId,
+      maxCost: Engine.heroById(upgrade.heroId).cost });
+  }
   function buyShop(match, index, side = 'player') {
     return guarded(() => {
       demand(preparation(match), 'Buy heroes during round preparation.'); demand(SIDES.includes(side), 'Unknown commander side.'); validateSupply(match);
@@ -5581,6 +5653,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
         match.game.field = next.game.field; match.game.bench = next.game.bench; match.game.mergeSerial = next.game.mergeSerial;
         if (match.cherubRulesVersion === 1) commander.items.push(...next.overflowItems);
       } else { match.enemyPool = next.pool; match.enemyMergeSerial = next.serial; fieldAI(match); }
+      grantMirrorTickets(match, side, next.upgrades);
       match.shopReceipts.push({ kind: 'purchase', side, roundNumber: match.roundNumber, offer: clone(offer), goldBefore: before, goldSpent: offer.cost, goldAfter: commander.gold });
       return { ok: true, unit: next.unit, upgrades: next.upgrades };
     });
@@ -5612,13 +5685,58 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   function rerollShop(match, side = 'player') {
     return guarded(() => {
       demand(preparation(match), 'Refresh the shop during round preparation.'); demand(SIDES.includes(side), 'Unknown commander side.');
-      const commander = match.players[side], price = match.planRulesVersion === 1 && commander.freeRerolls > 0 ? 0 : RULES.rerollCost;
-      demand(commander.gold >= price, 'Refreshing the shop costs two gold.');
+      const commander = match.players[side], free = match.planRulesVersion === 1 && commander.freeRerolls > 0;
+      const priorPaid = match.shopReceipts.some(receipt => receipt.kind === 'reroll' && receipt.side === side && receipt.roundNumber === match.roundNumber && receipt.goldSpent > 0);
+      const price = free ? 0 : match.fortuneRulesVersion === 1
+        ? Fortunes.rerollPrice(RULES.rerollCost, commander.blessings, commander.curses, !priorPaid) : RULES.rerollCost;
+      demand(commander.gold >= price, 'Not enough gold for this shop refresh.');
       const before = commander.gold; refreshShop(match, side); commander.gold -= price;
       if (price === 0) commander.freeRerolls--;
       if (match.shopLockRulesVersion === 1) commander.shopLocked = false;
       match.shopReceipts.push({ kind: 'reroll', side, roundNumber: match.roundNumber, draw: match.shopDraws[side] - 1, goldBefore: before, goldSpent: price, goldAfter: commander.gold });
       return { ok: true };
+    });
+  }
+  function buyFortune(match, fortuneId, targetSide = 'enemy', side = 'player') {
+    return guarded(() => {
+      demand(match.fortuneRulesVersion === 1 && preparation(match) && SIDES.includes(side), 'This match has no fortune shop.');
+      const entry = Fortunes.get(fortuneId), buyer = match.players[side];
+      demand(entry && buyer.fortuneShop?.[entry.kind + 'Id'] === fortuneId, 'Choose a current blessing or curse offer.');
+      const target = entry.kind === 'blessing' ? side : targetSide;
+      demand(SIDES.includes(target) && (entry.kind === 'blessing' ? target === side : target !== side), 'Choose the opposing commander for a curse.');
+      const list = entry.kind === 'blessing' ? match.players[side].blessings : match.players[target].curses;
+      demand(!list.includes(fortuneId), 'That permanent effect is already active.');
+      demand(buyer.gold >= entry.price, 'Not enough gold for this fortune.');
+      buyer.gold -= entry.price; list.push(fortuneId); buyer.fortuneShop[entry.kind + 'Id'] = null;
+      const receipt = { side, target, kind: entry.kind, fortuneId, roundNumber: match.roundNumber, goldSpent: entry.price };
+      match.fortuneReceipts.push(receipt);
+      return { ok: true, receipt };
+    });
+  }
+  function useMirrorTicket(match, ticketId, unitId, side = 'player') {
+    return guarded(() => {
+      demand(match.fortuneRulesVersion === 1 && preparation(match) && SIDES.includes(side), 'Mirror Tickets belong to fortune matches in preparation.');
+      validateSupply(match);
+      const commander = match.players[side], ticket = commander.mirrorTickets.find(value => value.id === ticketId);
+      const owned = side === 'player' ? [...match.game.field, ...match.game.bench] : match.enemyPool;
+      const target = owned.find(value => value.id === unitId), hero = Engine.heroById(target?.heroId);
+      demand(ticket && hero && hero.cost <= ticket.maxCost, 'Choose an owned hero within this ticket’s cost tier.');
+      demand(commander.gold >= hero.cost, 'A Mirror Ticket still pays the hero’s normal gold cost.');
+      const lot = ShopPool.available(match.shopPool, poolHolders(match)).find(value => value.heroId === hero.id);
+      demand(lot, 'No copy of that hero remains in the shared pool.');
+      const offer = { id: roundId(match) + ':mirror:' + side + ':' + ticket.id, heroId: hero.id, level: 1, cost: hero.cost, lotIds: [lot.id] };
+      const next = purchaseInventory(match, side, offer), before = commander.gold;
+      const staged = { ...match, game: side === 'player' ? next.game : match.game, enemyPool: side === 'enemy' ? next.pool : match.enemyPool };
+      ShopPool.validate(staged.shopPool, poolHolders(staged), Engine.ROSTER);
+      commander.gold -= hero.cost; commander.mirrorTickets.splice(commander.mirrorTickets.indexOf(ticket), 1);
+      if (side === 'player') {
+        match.game.field = next.game.field; match.game.bench = next.game.bench; match.game.mergeSerial = next.game.mergeSerial;
+        commander.items.push(...next.overflowItems);
+      } else { match.enemyPool = next.pool; match.enemyMergeSerial = next.serial; fieldAI(match); }
+      grantMirrorTickets(match, side, next.upgrades);
+      match.shopReceipts.push({ kind: 'mirror-copy', side, roundNumber: match.roundNumber, offer: clone(offer), ticketId,
+        goldBefore: before, goldSpent: hero.cost, goldAfter: commander.gold });
+      return { ok: true, unit: next.unit, upgrades: next.upgrades };
     });
   }
   function setShopLocked(match, value, side = 'player') {
@@ -5657,6 +5775,11 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     for (let index = 0; index < match.shops.enemy.length; index++) {
       const offer = match.shops.enemy[index];
       if (offer && offer.cost <= match.players.enemy.gold) buyShop(match, index, 'enemy');
+    }
+    if (match.fortuneRulesVersion === 1 && match.enemyPool.length && match.players.enemy.gold >= Fortunes.PRICE) {
+      const offer = match.players.enemy.fortuneShop;
+      if (offer?.blessingId) buyFortune(match, offer.blessingId, 'enemy', 'enemy');
+      else if (offer?.curseId) buyFortune(match, offer.curseId, 'player', 'enemy');
     }
     let merged;
     do {
@@ -5735,7 +5858,10 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     for (const side of SIDES) {
       xp[side] = required(Progression.awardCompletedCombat(match.players[side].progression, { ...common, playerId: side,
         expectedRevision: match.players[side].progression.revision, outcome: winnerSide === null ? 'draw' : side === winnerSide ? 'win' : 'loss' }));
-      balances[side] = match.players[side].gold + treasure.receipt.payouts.find(payout => payout.playerId === side).gold + zoneGold[side];
+      const baseTreasure = treasure.receipt.payouts.find(payout => payout.playerId === side).gold;
+      const paidTreasure = match.fortuneRulesVersion === 1
+        ? Fortunes.treasureGold(baseTreasure, match.players[side].blessings, match.players[side].curses) : baseTreasure;
+      balances[side] = match.players[side].gold + paidTreasure + zoneGold[side];
       demand(safeGold(balances[side]), 'Gold balance exceeds exact numeric representation.');
     }
     const cherubRewards = match.cherubRulesVersion === 1 ? game.battle.events.filter(event => event.type === 'cherub-defeated').map(event => {
@@ -5747,12 +5873,33 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':encounter:' + match.roundNumber)() * Items.componentIds.length)] : null;
     // All pure module transitions have succeeded. Commit their effects together.
     match.health = health.state; match.treasure = treasure.state;
-    for (const side of SIDES) { match.players[side].progression = xp[side].state; match.players[side].gold = balances[side]; }
+    const fortuneGold = match.fortuneRulesVersion === 1 ? Object.fromEntries(SIDES.map(side => {
+      const base = treasure.receipt.payouts.find(payout => payout.playerId === side).gold;
+      return [side, Fortunes.treasureGold(base, match.players[side].blessings, match.players[side].curses) - base];
+    })) : null;
+    const fortuneDrops = match.fortuneRulesVersion === 1 ? Object.fromEntries(SIDES.map(side => {
+      const player = match.players[side], outcome = winnerSide === null ? 'draw' : winnerSide === side ? 'win' : 'loss';
+      const priorStreak = outcome === 'win' ? player.winStreak : player.lossStreak;
+      const base = Items.dropChance(outcome, priorStreak);
+      const chance = Fortunes.dropChance(base, player.blessings, player.curses);
+      const random = Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':fortune-drop:' + match.roundNumber + ':' + side);
+      const roll = random();
+      return [side, { outcome, priorStreak, chance, roll, itemId: roll < chance ? Items.componentIds[Math.floor(random() * Items.componentIds.length)] : null }];
+    })) : null;
+    for (const side of SIDES) {
+      const player = match.players[side]; player.progression = xp[side].state; player.gold = balances[side];
+      if (fortuneDrops) {
+        const drop = fortuneDrops[side]; if (drop.itemId) player.items.push(drop.itemId);
+        player.winStreak = drop.outcome === 'win' ? drop.priorStreak + 1 : 0;
+        player.lossStreak = drop.outcome === 'loss' ? drop.priorStreak + 1 : 0;
+      }
+    }
     for (const reward of cherubRewards) match.players[reward.side].items.push(reward.itemId);
     if (encounterReward) match.players.player.items.push(encounterReward);
     const receipt = { roundNumber: match.roundNumber, roundId: common.roundId, combatId: common.combatId, result, winnerSide,
       combatEndedAtSeconds: game.battle.elapsed, health: health.receipt, treasure: treasure.receipt,
       ...(match.cherubRulesVersion === 1 ? { cherubRewards } : {}),
+      ...(match.fortuneRulesVersion === 1 ? { fortuneGold, fortuneDrops } : {}),
       ...(encounterRound ? { encounterReward } : {}),
       ...(match.boardMode === 'zone-defense' ? { zoneGold, zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       xp: { player: xp.player.receipt, enemy: xp.enemy.receipt } };
@@ -5838,6 +5985,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     if (!preparation(match)) return fail('Combine heroes during round preparation.');
     const result = Engine.combine(match.game, heroId, stars);
     if (result.ok && match.cherubRulesVersion === 1) match.players.player.items.push(...(result.overflowItemIds || []));
+    if (result.ok) grantMirrorTickets(match, 'player', [{ heroId, level: result.unit.level, unitId: result.unit.id }]);
     return result;
   }
   function equipItem(match, unitId, itemId) {
@@ -5873,6 +6021,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice encounter rules version.');
     demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
     demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
+    demand(match.fortuneRulesVersion === undefined || match.fortuneRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.fortuneReceipts), 'Unknown practice fortune rules version.');
     if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
       match.draft.roundNumber === match.roundNumber && Array.isArray(match.draft.availableIds) &&
       match.draft.availableIds.every(Items.isComponent) && new Set(match.draft.availableIds).size === match.draft.availableIds.length &&
@@ -5884,6 +6033,18 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     for (const side of SIDES) {
       const commander = match.players[side]; Progression.validate(commander.progression); Income.validate(commander.income);
       if (match.planRulesVersion === 1) demand(typeof commander.pendingPlan === 'boolean' && safeGold(commander.freeRerolls) && Array.isArray(commander.plans), 'Invalid practice battle plan.');
+      if (match.fortuneRulesVersion === 1) {
+        demand(Array.isArray(commander.blessings) && Array.isArray(commander.curses) && Array.isArray(commander.mirrorTickets) &&
+          commander.mirrorTickets.every(ticket => typeof ticket.id === 'string' && Number.isInteger(ticket.maxCost) && ticket.maxCost >= 1 && ticket.maxCost <= 5) &&
+          new Set(commander.mirrorTickets.map(ticket => ticket.id)).size === commander.mirrorTickets.length &&
+          safeGold(commander.winStreak) && safeGold(commander.lossStreak) && !(commander.winStreak && commander.lossStreak), 'Invalid permanent fortunes.');
+        demand(commander.blessings.every(id => Fortunes.get(id)?.kind === 'blessing') && commander.curses.every(id => Fortunes.get(id)?.kind === 'curse') &&
+          new Set(commander.blessings).size === commander.blessings.length && new Set(commander.curses).size === commander.curses.length, 'Fortune effects cannot stack by name.');
+        const offer = commander.fortuneShop;
+        demand(offer === null || Number.isFinite(offer.roll) && offer.roll >= 0 && offer.roll < Fortunes.OFFER_CHANCE &&
+          (offer.blessingId === null || Fortunes.get(offer.blessingId)?.kind === 'blessing') &&
+          (offer.curseId === null || Fortunes.get(offer.curseId)?.kind === 'curse'), 'Invalid optional fortune shop.');
+      }
       if (match.shopLockRulesVersion === 1) demand(typeof commander.shopLocked === 'boolean', 'Invalid practice shop lock.');
       if (match.cherubRulesVersion === 1) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
       if (match.cherubRulesVersion === 1 && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
@@ -5894,6 +6055,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       const expectedGold = match.startingGold + commander.income.receipts.reduce((total, receipt) => total + Income.BASE_ROUND_INCOME + receipt.interest, 0)
         + match.treasure.receipts.reduce((total, receipt) => total + receipt.payouts.find(payout => payout.playerId === side).gold, 0)
         + (match.planRulesVersion === 1 ? match.planReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldReceived, 0) : 0)
+        + (match.fortuneRulesVersion === 1 ? match.receipts.reduce((total, receipt) => total + receipt.fortuneGold[side], 0)
+          - match.fortuneReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldSpent, 0) : 0)
         + match.receipts.reduce((total, receipt) => total + (receipt.zoneGold?.[side] ?? 0), 0)
         - commander.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((total, receipt) => total + receipt.goldSpent, 0)
         - match.shopReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldSpent, 0)
@@ -5910,6 +6073,12 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       demand(Array.isArray(match.shops[side]) && match.shops[side].length === RULES.shopSize && Number.isSafeInteger(match.shopDraws[side]) &&
         match.shopDraws[side] >= (match.shopLockRulesVersion === 1 ? 1 : match.roundNumber), 'Each preparation needs a four-offer shop.');
       for (const offer of match.shops[side].filter(Boolean)) demand(offer.level === 1 && Engine.heroById(offer.heroId).cost === offer.cost && (match.roundNumber > 1 || offer.cost === 1), 'Shop offers must match their approved stars and cost tier.');
+    }
+    if (match.fortuneRulesVersion === 1) for (const receipt of match.fortuneReceipts) {
+      const entry = Fortunes.get(receipt.fortuneId);
+      demand(entry && entry.kind === receipt.kind && receipt.goldSpent === entry.price && SIDES.includes(receipt.side) && SIDES.includes(receipt.target) &&
+        (entry.kind === 'blessing' ? receipt.target === receipt.side : receipt.target !== receipt.side) &&
+        match.players[receipt.target][entry.kind === 'blessing' ? 'blessings' : 'curses'].includes(entry.id), 'Fortune purchase receipt is invalid.');
     }
     const ended = match.phase === 'round-result' || match.phase === 'finished';
     demand(match.receipts.length === match.roundNumber - (ended ? 0 : 1) && match.health.receipts.length === match.receipts.length && match.treasure.receipts.length === match.receipts.length,
@@ -5977,7 +6146,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       return { ok: true, match: upgraded };
     });
   }
-  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, setShopLocked, draftPick, choosePlan, moveChest, chestPreview,
+  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, buyFortune, useMirrorTicket, setShopLocked, draftPick, choosePlan, moveChest, chestPreview,
     deploy, recall, combine, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
 });
 
@@ -7533,7 +7702,14 @@ function startMatch(){if(partyMode)return {ok:false,reason:'Start a room from th
 function buyShop(index){if(partyCommand('buy',{index}))return;if(!match)return;const r=ABMatch.buyShop(match,index);game=match.game;if(r.ok){persistMatch();clearSelection();if(r.unit)selected=r.unit.id;setMobileView('board');say(r.upgrades?.length?hero(r.unit).name+' combined into '+r.unit.level+' stars.':r.unit?hero(r.unit).name+' recruited and selected. Click a friendly tile to field this hero.':'Hero recruited. Select the reserve, then a friendly tile.');}else say(r.reason);draw();}
 function sellUnit(unitId){if(!match||!unitId)return;if(partyCommand('sell',{unitId}))return;const r=ABMatch.sellHero(match,unitId);game=match.game;if(r.ok){clearSelection();persistMatch();say(hero(r.unit).name+' sold for '+r.goldReceived+' gold.');}else say(r.reason);draw();}
 function sellHero(){sellUnit(selected);}
-function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const free=match.players.player.freeRerolls>0,r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();say(r.ok?`Shop refreshed ${free?'with a scout reroll':'for 2 gold'}.`+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
+function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();const spent=match.shopReceipts.at(-1)?.goldSpent;say(r.ok?`Shop refreshed ${spent?'for '+spent+' gold':'with a free scout refresh'}.`+(fortuneAvailable()?' Optional fortunes are available.':'')+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
+function currentFortuneShop(){return partyMode?partyData?.fortuneShop:match?.players.player.fortuneShop;}
+function fortuneAvailable(){const offer=currentFortuneShop();return !!(offer?.blessingId||offer?.curseId);}
+function shopRefreshPrice(){if(!match)return 2;const player=match.players.player;if(player.freeRerolls>0)return 0;
+  const paid=partyMode?!!player.paidRefreshThisRound:match.shopReceipts.some(receipt=>receipt.kind==='reroll'&&receipt.side==='player'&&receipt.roundNumber===match.roundNumber&&receipt.goldSpent>0);
+  return (partyMode?partyData?.fortuneRulesVersion:match.fortuneRulesVersion)===1?ABFortunes.rerollPrice(2,player.blessings,player.curses,!paid):2;}
+function openFortuneShop(){itemsOpen=true;renderItems(true);renderMobileHint();document.getElementById('items-panel').scrollTop=0;document.getElementById('items-panel').querySelector('.items-head button')?.focus({preventScroll:true});}
+function buyFortune(fortuneId,targetPlayerId){if(partyCommand('buyFortune',{fortuneId,targetPlayerId}))return;const result=ABMatch.buyFortune(match,fortuneId,targetPlayerId||'enemy');if(result.ok)persistMatch();say(result.ok?`${ABFortunes.get(fortuneId).name} is now active for this match.`:result.reason);draw();}
 function toggleShopLock(){if(!match||match.phase!=='preparation')return;const next=!match.players.player.shopLocked;if(partyCommand('setShopLocked',{value:next}))return;const r=ABMatch.setShopLocked(match,next);if(r.ok)persistMatch();say(r.ok?next?'Shop held. Remaining offers stay for next preparation.':'Shop released. New offers arrive next preparation.':r.reason);draw();}
 function visibleChests(){
   if(!match)return [];
@@ -7761,8 +7937,9 @@ rect(48,528,1344,3,C.gold);
 text('SHOP',64,555,21,C.cream,'Georgia');
 const p=match.players.player,progress=p.progression;
 text(`${p.gold}g · LV ${progress.level} · XP ${progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'} · FIELD ${game.field.length}/${game.playerLevel} · BENCH ${game.bench.length}/10`,174,553,13,C.gold);
-button('shop-reroll',p.freeRerolls?'Refresh · FREE '+p.freeRerolls:'Refresh · 2g',570,535,132,29,rerollShop,false,p.freeRerolls>0||p.gold>=2,12);
+const refreshPrice=shopRefreshPrice();button('shop-reroll',refreshPrice?'Refresh · '+refreshPrice+'g':'Refresh · FREE',570,535,132,29,rerollShop,false,p.gold>=refreshPrice,12);
 button('shop-buy-xp','+4 XP · 4g',710,535,120,29,buyXP,false,p.gold>=4&&progress.level<10,12,'Buy 4 commander XP for 4 gold');
+if(fortuneAvailable())button('shop-fortunes','✧ Fortunes',1032,535,146,29,openFortuneShop,true,true,12,'Open optional blessing and curse offers');
 if((partyMode?partyData.shopLockRulesVersion:match.shopLockRulesVersion)===1)button('shop-lock',p.shopLocked?'Held ✓ · release':'Hold offers',1186,535,184,29,toggleShopLock,false,!partyData?.spectating,12,'Keep unbought shop offers through the next preparation');
 const canStart=game.field.length>0&&(!chestTerms().enabled||!!match.chests.player);
 if(chestTerms().enabled&&!match.chests.player)button('shop-place-chest','Place treasure →',840,535,184,29,()=>{shopVisible=false;setMobileView('board');selectChest();},true,true,12);
@@ -7925,23 +8102,23 @@ updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);
 document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);renderMobileHint();});
 function renderItems(force=false){
   const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode?partyData?.itemRulesVersion===1:matchMode&&match?.cherubRulesVersion===1;
-  const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,draft:match?.draft||null,pendingPlan:!!match?.players.player.pendingPlan,freeRerolls:match?.players.player.freeRerolls||0,itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
+  const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,draft:match?.draft||null,pendingPlan:!!match?.players.player.pendingPlan,freeRerolls:match?.players.player.freeRerolls||0,fortuneShop:match?.players.player.fortuneShop||null,mirrorTickets:match?.players.player.mirrorTickets||[],fortuneTargets:[{playerId:'enemy',name:'Opponent',curses:match?.players.enemy.curses||[]}],itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
   const itemAction=(type,args)=>{if(partyMode)return partyCommand(type,args);const r=type==='equipItem'?ABMatch.equipItem(match,args.unitId,args.itemId):ABMatch.unequipItem(match,args.unitId,args.itemId);if(r.ok)persistMatch();say(r.ok?(type==='equipItem'?'Item equipped.':'Item returned to inventory.'):r.reason);draw();return r.ok;};
   toggle.hidden=!enabled;
   if(!enabled){panel.hidden=true;return;}
-  toggle.textContent='◇ '+itemView.items.length+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked?' !':'');
+  toggle.textContent='◇ '+(itemView.items.length+(itemView.mirrorTickets?.length||0))+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked||fortuneAvailable()?' !':'');
   toggle.setAttribute('aria-expanded',String(itemsOpen));
-  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} items; ${itemView.items.length} in inventory${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}`);
+  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} items; ${itemView.items.length} in inventory; ${itemView.mirrorTickets?.length||0} Mirror Tickets${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}${fortuneAvailable()?'; optional fortune shop available':''}`);
   panel.hidden=!itemsOpen;
   if(!itemsOpen)return;
   const inventory=itemView.items||[],shop=itemView.itemShop,components=itemView.itemCatalog.components,
     selectedUnitId=[...game.field,...game.bench].some(unit=>unit.id===itemTargetId)?itemTargetId:selected&&[...game.field,...game.bench].some(unit=>unit.id===selected)?selected:[...game.field,...game.bench][0]?.id||null;
   itemTargetId=selectedUnitId;
-  const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,itemView.draft,itemView.pendingPlan,itemView.freeRerolls,inventory,itemView.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
+  const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,itemView.fortuneShop,itemView.mirrorTickets,itemView.fortuneTargets,match?.players.player.blessings,match?.players.player.curses,itemView.draft,itemView.pendingPlan,itemView.freeRerolls,inventory,itemView.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
   if(!force&&key===itemPanelKey)return;itemPanelKey=key;
   panel.replaceChildren();
   const heading=document.createElement('div');heading.className='items-head';
-  const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':'Items';
+  const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':fortuneAvailable()?'Fortune shop · optional':'Items';
   const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);renderMobileHint();};heading.append(title,close);panel.append(heading);
   const summary=document.createElement('p');summary.textContent=`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
   if(itemView.itemChest&&match.phase==='preparation'&&!itemView.spectating){const place=document.createElement('button');place.type='button';place.textContent='Place item chest · back two rows';place.onclick=()=>{itemsOpen=false;selectItemChest();renderItems(true);};panel.append(place);}
@@ -7955,9 +8132,50 @@ function renderItems(force=false){
     button.onclick=()=>{markPlayerAction();partyCommand(action,{itemId});};return button;
   }
   if(itemView.pendingPlan){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One plan for this preparation';const grid=document.createElement('div');grid.className='item-grid';for(const [planId,label,detail]of [['treasury','Treasury','Gain 5 gold now'],['armory','Armory','Gain one seeded component'],['scout','Scout','Gain three free shop refreshes']]){const button=document.createElement('button');button.type='button';button.disabled=locked;const name=document.createElement('strong');name.textContent=label;const info=document.createElement('small');info.textContent=detail;button.append(name,info);button.onclick=()=>{markPlayerAction();if(partyMode)partyCommand('choosePlan',{planId});else{const result=ABMatch.choosePlan(match,planId);if(result.ok){itemsOpen=false;shopVisible=true;setMobileView('shop');persistMatch();}say(result.ok?label+' plan selected.':result.reason);draw();}};grid.append(button);}block.append(h,grid);panel.append(block);}
+  let optionalFortuneBlock=null,optionalMirrorBlock=null;
+  if(itemView.fortuneShop&&(itemView.fortuneShop.blessingId||itemView.fortuneShop.curseId)){
+    const block=document.createElement('section');block.className='item-panel-section fortune-offers';const h=document.createElement('h3');h.textContent='Optional blessings and curses';
+    const note=document.createElement('p');note.textContent='These effects last for this match. Blessings help you; curses affect the opponent you choose. Hero offers remain available.';
+    const grid=document.createElement('div');grid.className='item-grid';
+    for(const fortuneId of [itemView.fortuneShop.blessingId,itemView.fortuneShop.curseId].filter(Boolean)){
+      const entry=ABFortunes.get(fortuneId),card=document.createElement('div');card.className='fortune-card';
+      const name=document.createElement('strong');name.textContent=entry.glyph+' '+entry.name+' · '+entry.kind;
+      const detail=document.createElement('p');detail.textContent=entry.description;card.append(name,detail);
+      let target=null;
+      if(entry.kind==='curse'){
+        const label=document.createElement('label');label.textContent='Target ';target=document.createElement('select');target.setAttribute('aria-label','Curse target for '+entry.name);
+        for(const player of itemView.fortuneTargets||[])if(!player.curses?.includes(entry.id)){const option=document.createElement('option');option.value=player.playerId;option.textContent=player.name;target.append(option);}
+        label.append(target);card.append(label);
+      }
+      const buy=document.createElement('button');buy.type='button';buy.textContent='Buy · '+entry.price+' gold';buy.setAttribute('aria-label','Buy '+entry.name+' '+entry.kind+' for '+entry.price+' gold');
+      buy.disabled=locked||match.players.player.gold<entry.price||entry.kind==='curse'&&!target?.options.length;
+      buy.onclick=()=>{markPlayerAction();buyFortune(entry.id,target?.value);};card.append(buy);grid.append(card);
+    }
+    block.append(h,note,grid);optionalFortuneBlock=block;
+  }
+  if((match.players.player.blessings?.length||match.players.player.curses?.length)&&((partyMode?partyData?.fortuneRulesVersion:match.fortuneRulesVersion)===1)){
+    const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Permanent effects on your commander';
+    const list=document.createElement('p');list.textContent=[...(match.players.player.blessings||[]),...(match.players.player.curses||[])].map(id=>ABFortunes.get(id)?.name).filter(Boolean).join(' · ');block.append(h,list);panel.append(block);
+  }
+  if(itemView.mirrorTickets?.length){
+    const block=document.createElement('section');block.className='item-panel-section';const heading=document.createElement('h3');heading.textContent='Mirror Tickets · shared-pool copies';
+    const note=document.createElement('p');note.textContent='A ticket reserves no hero. Choose an owned hero, pay its normal cost, and take a matching 1-star copy only if stock remains.';
+    const grid=document.createElement('div');grid.className='item-grid';
+    for(const ticket of itemView.mirrorTickets){const card=document.createElement('div');card.className='fortune-card';
+      const title=document.createElement('strong');title.textContent='◐ Mirror Ticket · up to '+ticket.maxCost+' cost';
+      const select=document.createElement('select');select.setAttribute('aria-label','Hero to copy with Mirror Ticket');
+      for(const unit of [...game.field,...game.bench])if(hero(unit).cost<=ticket.maxCost){const option=document.createElement('option');option.value=unit.id;option.textContent=hero(unit).name+' · '+hero(unit).cost+' gold';select.append(option);}
+      const buy=document.createElement('button');buy.type='button';const update=()=>{const unit=[...game.field,...game.bench].find(value=>value.id===select.value);buy.textContent=unit?'Copy '+hero(unit).name+' · '+hero(unit).cost+' gold':'No eligible hero';buy.disabled=locked||!unit||match.players.player.gold<hero(unit).cost;};
+      select.onchange=update;update();buy.onclick=()=>{markPlayerAction();if(partyCommand('useMirrorTicket',{ticketId:ticket.id,unitId:select.value}))return;const result=ABMatch.useMirrorTicket(match,ticket.id,select.value);if(result.ok)persistMatch();say(result.ok?'Mirror Ticket copied a shared-pool hero.':result.reason);draw();};
+      card.append(title,select,buy);grid.append(card);
+    }
+    block.append(heading,note,grid);optionalMirrorBlock=block;
+  }
   if(itemView.draft&&!itemView.draft.picked){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Claim one available component. Each pick leaves the shared table.';const grid=document.createElement('div');grid.className='item-grid';for(const itemId of itemView.draft.availableIds){const button=makeItemButton(itemId,'draftPick');button.onclick=()=>{markPlayerAction();if(partyMode)partyCommand('draftPick',{itemId});else{const result=ABMatch.draftPick(match,itemId);if(result.ok){itemsOpen=false;shopVisible=true;setMobileView('shop');persistMatch();}say(result.ok?'Component claimed from the shared draft.':result.reason);draw();}};grid.append(button);}block.append(h,grid);panel.append(block);}
   if(itemView.pendingComponentChoices){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent=`Captured chest: choose ${itemView.pendingComponentChoices} component${itemView.pendingComponentChoices===1?'':'s'}`;const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'chooseComponent')));block.append(h,grid);panel.append(block);}
   if(shop?.open){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One purchase before the hero shop returns';const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'buyItem',5)));if(shop.completedId)grid.append(makeItemButton(shop.completedId,'buyItem',10));const pass=document.createElement('button');pass.type='button';pass.textContent='Pass · open hero shop';pass.disabled=locked;pass.onclick=()=>{markPlayerAction();partyCommand('passItemShop');};block.append(h,grid,pass);panel.append(block);}
+  if(optionalFortuneBlock)panel.append(optionalFortuneBlock);
+  if(optionalMirrorBlock)panel.append(optionalMirrorBlock);
   const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Inventory and equipment';block.append(h);
   const grid=document.createElement('div');grid.className='item-grid';inventory.forEach((itemId,index)=>{const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name;button.title=info.description;button.setAttribute('aria-pressed',String(itemSelectedId===index));button.onclick=()=>{itemSelectedId=index;renderItems(true);};grid.append(button);});if(!inventory.length)grid.textContent='No items held yet. Battles and item shops can grant components.';block.append(grid);
   if(inventory.length){const selectedItem=ABItems.item(inventory[Number.isInteger(itemSelectedId)&&itemSelectedId<inventory.length?itemSelectedId:0]);const effect=document.createElement('p');effect.textContent=selectedItem.name+': '+selectedItem.description;block.append(effect);}
@@ -7975,14 +8193,14 @@ for(const h of [...hits].filter(h=>h.access!==false).sort((a,b)=>accessibleOrder
 for(const stale of old.values())stale.remove();if(focused&&document.activeElement?.dataset?.actionId!==focused){const next=[...root.children].find(button=>button.dataset.actionId===focused)||root.children[Math.min(focusedIndex,root.children.length-1)];next?.focus({preventScroll:true});}updateQuickActions();}
 function updateQuickActions(){
   const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),shopping=match&&shopVisible&&match.phase==='preparation';
-  const ids=compact&&mobileView!=='shop'?['battle','shop-place-chest','place-chest','next-round','pause','new-match','replan']:shopping?[`shop-buy-${shopPreviewIndex}`,'shop-place-chest','shop-reroll','shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];
+  const ids=compact&&mobileView!=='shop'?['battle','shop-place-chest','place-chest','next-round','pause','new-match','replan']:shopping?[`shop-buy-${shopPreviewIndex}`,'shop-place-chest','shop-reroll',fortuneAvailable()?'shop-fortunes':'shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];
   root.replaceChildren();
   for(const id of ids){
     if(compact&&id==='shop-toggle')continue;
     const action=hits.find(h=>h.id===id);if(!action)continue;
     const heroPreview=compact&&/^shop-buy-\d+$/.test(id);
     const button=document.createElement('button');button.type='button';
-    button.textContent=heroPreview?'Hero details':id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
+    button.textContent=heroPreview?'Hero details':id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-fortunes'?'✧ Fortunes':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
     button.classList.toggle('primary',!heroPreview&&(id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||id==='shop-place-chest'||['battle','next-round','new-match'].includes(id)));
     button.addEventListener('click',()=>{markPlayerAction();if(heroPreview)openMobileHeroPreview(shopPreviewIndex,button);else action.fn();});
     root.appendChild(button);
@@ -8021,10 +8239,10 @@ function renderMobilePanels(){
   if(mobileView==='shop'&&match?.phase!=='preparation')setMobileView('board');
   const offers=match?.shops?.player||[];
   if(mobileHeroDialog.open&&(match?.phase!=='preparation'||offers[Number(mobileHeroDialog.dataset.offerIndex)]?.heroId!==mobileHeroDialog.dataset.heroId))mobileHeroDialog.close();
-  const key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,match?.players.player.shopLocked,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
+  const key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,match?.players.player.shopLocked,currentFortuneShop(),offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
   if(key===mobilePanelKey)return;mobilePanelKey=key;
   const shopRoot=document.querySelector('.mobile-shop-offers'),benchRoot=document.querySelector('.mobile-bench-grid'),focusedCard=document.activeElement?.closest('.mobile-offer'),focusedOffer=focusedCard?[...shopRoot.children].indexOf(focusedCard):-1,focusedBuy=document.activeElement?.classList.contains('mobile-offer-buy');shopRoot.replaceChildren();benchRoot.replaceChildren();
-  document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${offers.filter(Boolean).length} OFFERS${match.players.player.shopLocked?' · SHOP HELD':''}`:'No shop in this mode';
+  document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${offers.filter(Boolean).length} OFFERS${match.players.player.shopLocked?' · SHOP HELD':''}${fortuneAvailable()?' · ✧ FORTUNES AVAILABLE':''}`:'No shop in this mode';
   offers.forEach((offer,index)=>{
     const h=offer&&AB.heroById(offer.heroId),card=document.createElement('div');card.className='mobile-offer'+(index===shopPreviewIndex?' selected':'');
     if(!h){card.textContent='No offer';}else{

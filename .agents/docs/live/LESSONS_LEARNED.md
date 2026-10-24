@@ -12378,3 +12378,19 @@
 **Correction and proof**: Traits and Details now sit in the mobile Board/Shop/Bench view bar beside Items and Controls. Both icons retain their unread/focus behavior while the board has no fixed utility controls over its tiles. Direct portrait and landscape touches placed a selected hero on A1 with no horizontal overflow; the hosted portrait browser story asserts that exact chain.
 
 **Rule**: For touch gameplay, verify hit targets with `elementFromPoint` at board coordinates after every overlay reposition. A visible square is not playable if utility chrome owns its pointer hit.
+
+## 2026-10-24 - Package only the hosted game rules that are ready to run
+
+**What happened**: The local coLILseum source contained a staged sponsored-tournament server and prize module that the hosted game had not released. A blanket vendor copy pulled those files into the fortune-shop package, even though the request only added blessings and curses. The new manifest also changed the authoritative rules hash, while one frozen-hash assertion still expected the prior release.
+
+**Why it mattered**: A feature-scoped game release could accidentally expose an unfinished money room type. A stale exact-hash test could mask the actual compatibility question: whether ongoing funded rooms retain their old state and player views.
+
+**Rule**: Package the release-ready server source explicitly, omit staged modules and test files, then replay old room configurations against both runtimes before mapping a new hash to pinned rules. Assert the new hash and old-hash compatibility separately.
+
+## 2026-10-24 - Optional game offers must follow required round choices
+
+**What happened**: A new fortune card rendered before the round-four shared component draft. An existing browser journey used the first Items-panel action for its draft pick and instead bought the optional curse, leaving the required draft unresolved and combat in preparation.
+
+**Why it mattered**: Optional offers can look like the next required step and obstruct round progression even when all controls technically work.
+
+**Rule**: Render mandatory plan, draft, chest and component-shop choices before optional modifiers. Browser journeys must select the intended section by its accessible content and assert the resulting phase or state, not rely on incidental button order.

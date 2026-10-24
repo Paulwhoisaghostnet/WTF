@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "eb7dfc2484b60afd290b8edee89acfb56290cb1e83787eebd8ef17f6646d19b6",
+  "generatorSha256": "a50c602b89cc18b34bb563980da1aac750d7b911f44a983c4fd6503b2115f15e",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,10 +19,9 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "eb7dfc2484b60afd290b8edee89acfb56290cb1e83787eebd8ef17f6646d19b6",
-      "sha256": "eb7dfc2484b60afd290b8edee89acfb56290cb1e83787eebd8ef17f6646d19b6",
-      "bytes": 12879945,
-      "generatedBy": "Source game build"
+      "sourceSha256": "a50c602b89cc18b34bb563980da1aac750d7b911f44a983c4fd6503b2115f15e",
+      "sha256": "a50c602b89cc18b34bb563980da1aac750d7b911f44a983c4fd6503b2115f15e",
+      "bytes": 12901387
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
@@ -34,10 +33,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "9e64f0423fceb18e6ae610cffb95e5cd0a6f17197e17d7767b871439000d943a",
-      "sha256": "9e64f0423fceb18e6ae610cffb95e5cd0a6f17197e17d7767b871439000d943a",
-      "bytes": 63430,
-      "generatedBy": "Source game build"
+      "sourceSha256": "3bc578bfa5edac003352ffbc96dec50db2cf9b347473ff2e511cb6c89a7b1bb9",
+      "sha256": "3bc578bfa5edac003352ffbc96dec50db2cf9b347473ff2e511cb6c89a7b1bb9",
+      "bytes": 63978
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -61,11 +59,10 @@
     },
     {
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
-      "sourcePath": "game/server/party-server.cjs",
-      "sourceSha256": "c9217dfdbdc53e217cf5f1134c87a86a68db4a3f4d23cee346e17af1867432ee",
-      "sha256": "37c265d102a863ba1d043fc3a78259a56c1a56c315347e79712c6ab97ba91626",
-      "bytes": 51924,
-      "generatedBy": "TFT comparison release; versioned shop hold, plans, shared draft, supply encounters"
+      "sourcePath": "game/server/party-server.wtfos.cjs",
+      "sourceSha256": "7060cb1a116b4612dce1c98edff65bf95f28cc19f3d9b8f4c35444e2d2a32e30",
+      "sha256": "7060cb1a116b4612dce1c98edff65bf95f28cc19f3d9b8f4c35444e2d2a32e30",
+      "bytes": 52186
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",
@@ -94,6 +91,13 @@
       "sourceSha256": "e0ec51d954ea0fef1d7efe0162a2dcbfdc90d14ac2ec2a2adc8a631d5c27fe10",
       "sha256": "e0ec51d954ea0fef1d7efe0162a2dcbfdc90d14ac2ec2a2adc8a631d5c27fe10",
       "bytes": 2431
+    },
+    {
+      "path": "server/features/wtfiap/runtime/game/core/fortunes.cjs",
+      "sourcePath": "game/core/fortunes.cjs",
+      "sourceSha256": "19cecbb6768e7edbdadfc01f41b7d0045591827e2f59c7314773353b8adc4cc9",
+      "sha256": "19cecbb6768e7edbdadfc01f41b7d0045591827e2f59c7314773353b8adc4cc9",
+      "bytes": 4414
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/income.cjs",
@@ -126,10 +130,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/core/match.cjs",
       "sourcePath": "game/core/match.cjs",
-      "sourceSha256": "53d61bdac5d3abf8a4bcb06b32d6d72e43bd8ef00d750a191d3280176a95bc6e",
-      "sha256": "53d61bdac5d3abf8a4bcb06b32d6d72e43bd8ef00d750a191d3280176a95bc6e",
-      "bytes": 55798,
-      "generatedBy": "Source game build"
+      "sourceSha256": "5e84996bf1082eb7377aab0a60aca2fe0a976009265480e26d47b16942a0e08f",
+      "sha256": "5e84996bf1082eb7377aab0a60aca2fe0a976009265480e26d47b16942a0e08f",
+      "bytes": 65510
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/party-schedule.cjs",
@@ -148,10 +151,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/core/party.cjs",
       "sourcePath": "game/core/party.cjs",
-      "sourceSha256": "0a9dc2039ed1fa834e5cfab99e443d1d4c975b91d73856c094d52f12d7bc4dcc",
-      "sha256": "0a9dc2039ed1fa834e5cfab99e443d1d4c975b91d73856c094d52f12d7bc4dcc",
-      "bytes": 65701,
-      "generatedBy": "Source game build"
+      "sourceSha256": "98f4a059f0d7106fd080f7bdc81670b5799983f555a8452315434efd9d8b2fdc",
+      "sha256": "98f4a059f0d7106fd080f7bdc81670b5799983f555a8452315434efd9d8b2fdc",
+      "bytes": 75737
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/preparation.cjs",
@@ -172,8 +174,7 @@
       "sourcePath": "game/core/shop-pool.cjs",
       "sourceSha256": "8ab795d85f66ee75af2408cc1b3b40c4155e23a4ca6d54782218bac68ab7dfd5",
       "sha256": "8ab795d85f66ee75af2408cc1b3b40c4155e23a4ca6d54782218bac68ab7dfd5",
-      "bytes": 7718,
-      "generatedBy": "Source game build"
+      "bytes": 7718
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/tournament-accounting.cjs",

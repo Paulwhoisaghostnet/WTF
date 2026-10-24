@@ -162,6 +162,25 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("a seeded optional fortune draw opens the same shop controls on desktop and landscape phone", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/generator.html?seed=fortune-ui-13&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+    const state = await gameState(page);
+    expect(state.match.players.player.fortuneShop?.blessingId).toBeTruthy();
+    expect(state.match.players.player.fortuneShop?.curseId).toBeTruthy();
+    await hit(page, page, "shop-fortunes");
+    const offers = page.locator("#items-panel .fortune-offers");
+    await expect(offers).toBeVisible();
+    await expect(offers.locator(".fortune-card")).toHaveCount(2);
+    await expect(offers).toContainText("These effects last for this match");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(offers).toBeVisible();
+    await expect(offers.getByRole("button", { name: /Buy .* blessing for 5 gold/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
   test("practice offers shop hold, battle plans, shared draft, and protected supply encounters", async ({ page }) => {
     await page.goto("/games/installed/wtfiap/generator.html?seed=tft-parity-browser&mode=match&boardMode=standard");
     await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
@@ -188,7 +207,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect((await gameState(page)).match.players.player.gold).toBe(gold);
     await finish();
     await expect(page.locator("#items-panel")).toContainText("Shared component draft");
-    await page.locator("#items-panel .item-panel-section button").first().click();
+    await page.locator("#items-panel .item-panel-section").filter({ hasText: "Claim one available component." }).locator("button").first().click();
     expect((await gameState(page)).match.players.player.items.length).toBeGreaterThan(0);
     await finish();
     expect((await gameState(page)).match.roundNumber).toBe(5);
