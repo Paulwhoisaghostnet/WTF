@@ -18,6 +18,15 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     durableSideEffectAssertion: "The browser story checks a shop purchase changes gold and army ownership, then creates a real authority-backed room and reloads its URL to recover the same commander seat. Native invitation entry forwards room parameters to the Party frame. Route smoke alone is not room persistence proof.",
   },
   {
+    id: "wtfiap.spectator-and-private-chat",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "tests/playwright/inventory/wtfiap.spec.mjs",
+    verificationCommand: "npm run build && npx playwright test tests/playwright/inventory/wtfiap.spec.mjs --grep 'watchers follow'",
+    userVisibleAssertion: "An invited person can watch a live Duel, Party or Tournament without taking a seat, choose whose match to follow, and use the same arena as players. Room chat reaches players and watchers; a whisper appears only for its sender and chosen recipient. A compact Chat control exposes the conversation without displacing the board.",
+    durableSideEffectAssertion: "The authoritative room stores watcher-only sessions and messages separately from players, shops and match rules. Server tests deny watcher commands and replays, strip private shop offers from watched views, filter whispers before snapshots and live streams, and recover chat across restart. Browser tests follow a commander through live combat and verify room and private delivery across separate clients.",
+  },
+  {
     id: "gameshow.host-contestant-stage",
     domain: "Gameshow Participation, Progression, and Rewards",
     ownerSurfaceIds: ["rounds", "control-board", "challenges"],

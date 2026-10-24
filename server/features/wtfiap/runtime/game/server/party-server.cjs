@@ -134,7 +134,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   const now = () => { const value = clock(); requireThat(Number.isSafeInteger(value) && value >= 0, 'The server clock must produce epoch milliseconds.'); return value; };
   const filename = room => path.join(directory, room.roomCode + '.json');
   const diskState = room => ({ ...room, match: room.match ? (room._terminalSerialized || Party.serialize(room.match)) : null });
-  function persist(room) {
+  function persist(room, notifyFunding = true) {
     if (!room.voidArchive && room.fundingLock && room.match?.phase === 'finished' && !room.terminalArchive) {
       // Cache completed human views only after replay-derived accounting has
       // been validated under this room's pinned rules. Historical claims must
@@ -149,7 +149,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     atomicJSON(filename(room), diskState(room));
     // A host notification is only a wake-up hint. The durable room is the
     // recovery source; a missed notification must never lose a result.
-    if (onRoomChanged) queueMicrotask(() => onRoomChanged(room.roomCode));
+    if (notifyFunding && onRoomChanged) queueMicrotask(() => onRoomChanged(room.roomCode));
   }
   const isTournament = room => room.config.roomType === 'tournament';
   const isDuel = room => room.config.roomType === 'duel';
@@ -195,6 +195,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     if (!entry.endsWith('.json')) continue;
     const room = JSON.parse(fs.readFileSync(path.join(directory, entry), 'utf8'));
     requireThat(room.version === 1 && validText(room.roomCode) && entry === room.roomCode + '.json', 'Unsupported persisted party room.');
+    // Older rooms predate the spectator/chat side channel. It never changes
+    // match rules, seed, entrants, escrow terms or replay accounting.
+    room.watchers ||= [];
+    room.watcherSessions ||= {};
+    room.messages ||= [];
     const restoredConfig = configuration({ ...room.config, ...(room.config.tournament ? { tournament: {
       currency: room.config.tournament.currency, entryFee: room.config.tournament.entryFee,
       prizePercentages: room.config.tournament.prizePercentages } } : {}) });
@@ -231,10 +236,22 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function lobby(room) {
     return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, phase: room.voidArchive ? 'voided' : room.match ? room.match.phase : 'lobby',
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
+      watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
-  function snapshot(room, session, atMs = now()) {
-    const base = room.terminalArchive ? clone(room.terminalArchive.views[session.playerId]) : room.match ? Party.view(room.match, session.playerId) : lobby(room);
+  function snapshot(room, session, atMs = now(), requestedWatchPlayerId = null) {
+    const spectator = !!session.watcherId;
+    const viewerId = spectator ? session.watcherId : session.playerId;
+    const watchedPlayerId = spectator ? (room.players.some(player => player.playerId === requestedWatchPlayerId) ? requestedWatchPlayerId
+      : (room.match?.players.find(player => player.hp > 0)?.playerId || room.players[0]?.playerId)) : session.playerId;
+    const base = room.terminalArchive ? clone(room.terminalArchive.views[watchedPlayerId])
+      : room.match ? Party.view(room.match, watchedPlayerId) : lobby(room);
+    if (spectator && room.match) {
+      // Party.view contains a commander's private shop. A watcher gets the
+      // same public board and combat, with no offers or actionable seat.
+      base.self.shop = [null, null, null, null];
+      base.supply = base.supply.map(stock => ({ ...stock, you: 0 }));
+    }
     if (isTournament(room) && room.match && !room.terminalArchive) {
       const eliminated = new Map(Standings.finalOutcomes(room.match).filter(outcome => outcome.eliminatedRound !== null)
         .map(outcome => [outcome.playerId, outcome]));
@@ -244,14 +261,19 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
     }
     return { ...base, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
-      authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: session.nextSequence, capacity: roomCapacity(room),
+      authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: spectator ? null : session.nextSequence,
+      viewer: { id: viewerId, name: spectator ? room.watchers.find(watcher => watcher.watcherId === viewerId)?.name : room.players.find(player => player.playerId === viewerId)?.name,
+        role: spectator ? 'watcher' : 'player' }, watchingPlayerId: watchedPlayerId,
+      watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
+      messages: room.messages.filter(message => message.channel === 'room' || message.senderId === viewerId || message.recipientId === viewerId).map(clone),
+      capacity: roomCapacity(room),
       sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
   }
   function publish(room) {
     const subscribers = streams.get(room.roomCode); if (!subscribers) return;
     for (const subscriber of subscribers) {
       if (subscriber.blocked) { subscriber.pending = true; continue; }
-      const view = snapshot(room, subscriber.session);
+      const view = snapshot(room, subscriber.session, now(), subscriber.watchPlayerId);
       const event = subscriber.lastView ? 'patch' : 'snapshot';
       const data = subscriber.lastView ? { baseViewRevision: subscriber.viewRevision, viewRevision: subscriber.viewRevision + 1,
         patch: changes(subscriber.lastView, view) } : { ok: true, view, viewRevision: 0 };
@@ -305,7 +327,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function authenticate(request, room) {
     const authorization = request.headers.authorization || '';
     requireThat(authorization.startsWith('Bearer '), 'A party session token is required.', 401);
-    const session = room.sessions[hash(authorization.slice(7))];
+    const session = room.sessions[hash(authorization.slice(7))] || room.watcherSessions[hash(authorization.slice(7))];
     requireThat(session, 'This party session is not valid.', 401);
     if (session.accountId !== undefined) requireThat(actor(request)?.id === session.accountId, 'Sign in to the account that owns this commander.', 403);
     return session;
@@ -328,6 +350,16 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     const session = { playerId, nextSequence: 1, commands: {}, ...(account ? { accountId: account.id } : {}) };
     room.sessions[hash(sessionToken)] = session;
     return { playerId, sessionToken, session };
+  }
+  function addWatcher(room, name, request) {
+    const account = actor(request);
+    if (account) name = account.name;
+    requireThat(validText(name), 'Enter a name to watch this room.');
+    const watcherId = crypto.randomUUID(), sessionToken = crypto.randomUUID();
+    room.watchers.push({ watcherId, name: name.trim() });
+    const session = { watcherId, ...(account ? { accountId: account.id } : {}) };
+    room.watcherSessions[hash(sessionToken)] = session;
+    return { watcherId, sessionToken, session };
   }
   function replay(room, session) {
     // Replays never expose the private engine seed, other shops or session
@@ -353,13 +385,14 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
       if (endpoint === '/rooms' && request.method === 'POST') {
         const input = await bodyJSON(request), config = configuration(input);
-        const room = { version: 1, roomCode: crypto.randomUUID(), revision: 0, config, players: [], sessions: {}, match: null, createdAtMs: now() };
+        const room = { version: 1, roomCode: crypto.randomUUID(), revision: 0, config, players: [], sessions: {},
+          watchers: [], watcherSessions: {}, messages: [], match: null, createdAtMs: now() };
         const identity = addHuman(room, input.name, request); room.hostPlayerId = identity.playerId;
         persist(room); rooms.set(room.roomCode, room);
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
-      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|start|commands|events|replay|lobby))?$/);
+      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|commands|messages|events|replay|lobby))?$/);
       requireThat(route, 'Unknown party endpoint.', 404);
       const room = rooms.get(route[1]); requireThat(room, 'Party room not found.', 404);
       const action = route[2];
@@ -373,22 +406,54 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
+      if (request.method === 'POST' && action === 'watch') {
+        const input = await bodyJSON(request);
+        requireThat(Object.keys(input).every(key => key === 'name'), 'Watching does not create a player seat or change room terms.');
+        const identity = addWatcher(room, input.name, request);
+        room.revision++; persist(room, false); publish(room);
+        writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.watcherId,
+          role: 'watcher', sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath,
+          view: snapshot(room, identity.session) }); return;
+      }
       const session = authenticate(request, room); advance(room);
-      if (request.method === 'GET' && !action) { writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return; }
-      if (request.method === 'GET' && action === 'replay') { writeJSON(response, 200, { ok: true, replay: replay(room, session) }); return; }
+      const watchedPlayerId = url.searchParams.get('watch');
+      if (request.method === 'GET' && !action) { writeJSON(response, 200, { ok: true, view: snapshot(room, session, now(), watchedPlayerId) }); return; }
+      if (request.method === 'GET' && action === 'replay') {
+        requireThat(!session.watcherId, 'Only a commander can download their round records.', 403);
+        writeJSON(response, 200, { ok: true, replay: replay(room, session) }); return;
+      }
       if (request.method === 'GET' && action === 'events') {
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
         response.flushHeaders();
-        const subscriber = { response, session, blocked: false, pending: false, lastView: null, viewRevision: -1 };
+        const subscriber = { response, session, watchPlayerId: watchedPlayerId, blocked: false, pending: false, lastView: null, viewRevision: -1 };
         if (!streams.has(room.roomCode)) streams.set(room.roomCode, new Set());
         streams.get(room.roomCode).add(subscriber);
         response.on('drain', () => { subscriber.blocked = false; if (subscriber.pending) { subscriber.pending = false; publish(room); } });
         response.on('close', () => { streams.get(room.roomCode)?.delete(subscriber); });
         publish(room); return;
       }
+      if (request.method === 'POST' && action === 'messages') {
+        const input = await bodyJSON(request), senderId = session.watcherId || session.playerId;
+        requireThat(Object.keys(input).every(key => ['channel', 'recipientId', 'text'].includes(key)), 'A message may contain only its channel, recipient and text.');
+        requireThat(input.channel === 'room' || input.channel === 'whisper', 'Choose room chat or a whisper.');
+        requireThat(validText(input.text), 'Write a message before sending it.');
+        const sender = room.players.find(player => player.playerId === senderId) || room.watchers.find(watcher => watcher.watcherId === senderId);
+        requireThat(sender, 'The sender is no longer in this room.', 403);
+        let recipient;
+        if (input.channel === 'whisper') {
+          recipient = room.players.find(player => player.playerId === input.recipientId && !player.isAI)
+            || room.watchers.find(watcher => watcher.watcherId === input.recipientId);
+          requireThat(recipient && input.recipientId !== senderId, 'Choose another person in this room for a whisper.');
+        } else requireThat(input.recipientId === undefined, 'Room chat cannot have a private recipient.');
+        room.messages.push({ id: crypto.randomUUID(), channel: input.channel, senderId, senderName: sender.name,
+          ...(recipient ? { recipientId: input.recipientId, recipientName: recipient.name } : {}), text: input.text.trim(), sentAtMs: now() });
+        room.revision++; persist(room, false); publish(room);
+        writeJSON(response, 200, { ok: true, view: snapshot(room, session, now(), watchedPlayerId) }); return;
+      }
       if (request.method === 'POST' && action === 'start') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(!session.watcherId, 'Watchers cannot start a match.', 403);
         requireThat(session.playerId === room.hostPlayerId, 'Only the room host can start the party.', 403);
         if (isTournament(room) || isDuel(room)) requireThat(input.fillAI === false, 'This room requires human entrants; AI fill is unavailable.');
         if (room.match) { writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return; }
@@ -410,6 +475,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'commands') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(!session.watcherId, 'Watchers cannot command a team.', 403);
         requireThat(!room.voidArchive && !room.fundingFaultArchive, 'This funded tournament is paused for technical-void reconciliation.', 409);
         requireThat(room.match, 'Start the party before issuing game commands.', 409);
         requireThat(validText(input.commandId), 'Every command needs a persistent commandId.');

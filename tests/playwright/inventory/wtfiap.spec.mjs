@@ -249,4 +249,106 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(host.locator("#alive-count")).toContainText("2 alive");
     } finally { await guestContext.close(); }
   });
+
+  test("watchers follow the shared arena and room chat keeps whispers private", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#create-name").fill("Host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toHaveValue("");
+    const code = await page.locator("#invite-code").inputValue();
+    expect(code).not.toBe("");
+
+    const guestContext = await browser.newContext();
+    const guest = await guestContext.newPage();
+    const watcherContext = await browser.newContext();
+    const watcher = await watcherContext.newPage();
+    try {
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto(`/games/installed/wtfiap/party.html?room=${code}`);
+      await guest.locator("#join-name").fill("Guest");
+      await guest.locator("#join-room").click();
+      await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
+      const guestId = await guest.evaluate(() => JSON.parse(window.render_game_to_text()).viewer.id);
+
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#start-room").click();
+      await gameFrame(page, "#arena-frame");
+      await expect(page.locator("#standings-panel")).toBeHidden();
+      await page.locator("#standings-panel-toggle").click();
+      await expect(page.locator("#standings-panel")).toBeVisible();
+      await page.locator("#standings-panel-toggle").click();
+
+      expect((await watcher.request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+      await watcher.goto(`/games/installed/wtfiap/party.html?room=${code}`);
+      await watcher.locator("#join-name").fill("Watcher");
+      await watcher.locator("#watch-room").click();
+      const watchedArena = await gameFrame(watcher, "#arena-frame");
+      expect((await gameState(watchedArena)).party.spectating).toBe(true);
+      expect((await gameState(watchedArena)).match.shops.player).toEqual([null, null, null, null]);
+      expect(await watchedArena.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("shop-buy-")))).toBe(false);
+      await watcher.locator("#standings-panel-toggle").click();
+      await watcher.locator("#scout-player").selectOption(guestId);
+      await expect.poll(async () => (await watcher.evaluate(() => JSON.parse(window.render_game_to_text()))).watchingPlayerId).toBe(guestId);
+      const followedName = await watcher.evaluate(id => JSON.parse(window.render_game_to_text()).players.find(player => player.playerId === id).name, guestId);
+      await expect.poll(async () => (await gameState(watchedArena)).message).toContain(`Watching ${followedName}.`);
+      await watcher.locator("#standings-panel-toggle").click();
+
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#chat-panel-toggle").click();
+      await page.locator("#chat-text").fill("Hello room");
+      await page.locator("#chat-form button").click();
+      await expect(page.locator("#chat-messages")).toContainText("Hello room");
+      await expect(watcher.locator("#chat-panel-toggle")).toHaveClass(/updated/);
+      await watcher.locator("#chat-panel-toggle").click();
+      await expect(watcher.locator("#chat-messages")).toContainText("Hello room");
+      await guest.locator("#chat-panel-toggle").click();
+      await expect(guest.locator("#chat-messages")).toContainText("Hello room");
+
+      await page.locator("#chat-target").selectOption(guestId);
+      await page.locator("#chat-text").fill("Only for guest");
+      await page.locator("#chat-form button").click();
+      await expect(guest.locator("#chat-messages")).toContainText("Only for guest");
+      await expect(watcher.locator("#chat-messages")).not.toContainText("Only for guest");
+
+      expect((await watcher.request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+      await watcher.locator("#chat-target").selectOption(guestId);
+      await watcher.locator("#chat-text").fill("Watcher to guest");
+      await watcher.locator("#chat-form button").click();
+      await expect(guest.locator("#chat-messages")).toContainText("Watcher to guest");
+      await expect(page.locator("#chat-messages")).not.toContainText("Watcher to guest");
+      await watcher.screenshot({ path: test.info().outputPath("watcher-chat.png"), fullPage: true });
+      await watcher.setViewportSize({ width: 600, height: 340 });
+      await expect(watcher.locator("#chat-panel-toggle .rail-label")).toBeHidden();
+      const compactChat = await watcher.locator("#chat-panel").boundingBox();
+      const compactToggle = await watcher.locator("#chat-panel-toggle").boundingBox();
+      expect(compactChat).toBeTruthy();
+      expect(compactToggle).toBeTruthy();
+      expect(compactChat.x).toBeGreaterThanOrEqual(0);
+      expect(compactChat.x + compactChat.width).toBeLessThanOrEqual(600);
+      expect(compactChat.y + compactChat.height).toBeLessThanOrEqual(340);
+      expect(compactToggle.x + compactToggle.width).toBeLessThanOrEqual(600);
+      await watcher.setViewportSize({ width: 1280, height: 720 });
+      await watcher.reload();
+      await expect(watcher.locator("#phase-label")).toContainText("Round 1");
+      const recoveredArena = await gameFrame(watcher, "#arena-frame");
+      await expect.poll(async () => (await gameState(recoveredArena)).party.spectating).toBe(true);
+      await expect.poll(async () => (await watcher.evaluate(() => JSON.parse(window.render_game_to_text()))).watchingPlayerId).toBe(guestId);
+      await watcher.screenshot({ path: test.info().outputPath("watcher-arena.png"), fullPage: true });
+
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      const hostArena = await gameFrame(page, "#arena-frame");
+      await buyAndDeploy(page, hostArena);
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      const guestArena = await gameFrame(guest, "#arena-frame");
+      await buyAndDeploy(guest, guestArena);
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await hit(page, hostArena, "battle");
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await hit(guest, guestArena, "battle");
+      await expect.poll(async () => (await gameState(recoveredArena)).match.phase).toBe("combat");
+      expect((await gameState(recoveredArena)).battle.units.length).toBeGreaterThan(0);
+      await watcher.screenshot({ path: test.info().outputPath("watcher-combat.png"), fullPage: true });
+    } finally { await guestContext.close(); await watcherContext.close(); }
+  });
 });

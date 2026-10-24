@@ -12170,3 +12170,17 @@
 **What happened**: The live Duel link selected a two-player room, but the shared landing page still introduced itself as an eight-commander Party and labeled its header Party & Tournament. The room controls worked; the surrounding text gave players the wrong expectation.
 
 **Rule**: When several modes share a page, check its introductory copy through every production navigation link. Keep shared copy accurate for all modes, and reserve player counts and prize terms for the selected room's controls.
+
+## 2026-10-23 — Room spectators need their own authority identity and filtered stream
+
+**What happened**: The shared arena was already reusable for watching, but a player snapshot includes that player's private shop and command sequence. Sending one room-wide chat list would expose whispers to every SSE subscriber. The first browser placement check also read an older host build after vendoring and clicked through the lower desktop edge.
+
+**Correction and proof**: Watchers now receive separate hashed sessions that never occupy seats or enter escrow accounting. Each GET and SSE subscriber receives a server-filtered view: the followed board has no shop offers, and whispers are included only for their sender and recipient. Room messages and watcher access persist across restart; chat and watcher joins do not wake funding reconciliation. Rebuild the host after vendoring before running pointer tests. Source authority and hosted multi-browser tests exercise private delivery and live combat watching.
+
+**Rule**: Share the board renderer, never a player's authorization. Apply privacy before serialization to each subscriber, and keep social side-channel writes separate from funded match transitions. A browser harness must serve the freshly rebuilt host assets before its visual result counts as evidence.
+
+## 2026-10-23 — App-owned behavior assertions need reciprocal registration
+
+**What happened**: The new spectator and private-chat browser assertion was registered in the domain workflow but the inventory coverage gate still failed. The WTFIAP app surface separately declares the assertion IDs that it owns.
+
+**Rule**: When adding a behavior assertion, register it in both the domain workflow and the owning app surface, then run the inventory coverage gate before the full browser suite.
