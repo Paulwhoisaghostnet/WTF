@@ -4,7 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { WindowPathContext } from "../lib/window-context";
 import { WTFIAP_ASSET_ROOT, wtfIapEntryPath, wtfIapFrameSource } from "../features/wtfiap/frame-source";
-import { readWtfIapRoomMessage, wtfIapFundingRecoveryRoom, type WtfIapRoomMessage } from "../features/wtfiap/room-bridge";
+import { readWtfIapOpenFundingMessage, readWtfIapRoomMessage, wtfIapFundingRecoveryRoom, type WtfIapRoomMessage } from "../features/wtfiap/room-bridge";
 import { FundingPanel } from "../features/wtfiap/FundingPanel";
 
 const GameSurface = styled.section`
@@ -54,6 +54,7 @@ export function WtfIap() {
   const frameName = `wtfiap-${useId()}`;
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [room, setRoom] = useState<WtfIapRoomMessage | null>(null);
+  const roomRef = useRef<WtfIapRoomMessage | null>(null);
   const [fundingOpen, setFundingOpen] = useState(false);
   const [recoveryRoom, setRecoveryRoom] = useState<string | null>(null);
   const receivedRoom = useRef(false);
@@ -76,8 +77,14 @@ export function WtfIap() {
   }, [entryPath]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
+      const fundingRequest = readWtfIapOpenFundingMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
+      if (fundingRequest && roomRef.current?.wagered && roomRef.current.roomCode?.toLowerCase() === fundingRequest) {
+        setFundingOpen(true);
+        return;
+      }
       const message = readWtfIapRoomMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
       if (!message) return;
+      roomRef.current = message;
       setRoom(message);
       if (!message.wagered || (!message.roomCode && receivedRoom.current)) { setFundingOpen(false); setRecoveryRoom(null); }
       if (message.roomCode) receivedRoom.current = true;
@@ -85,7 +92,7 @@ export function WtfIap() {
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
   }, []);
-  function resetRoom() { setRoom(null); setRecoveryRoom(null); setFundingOpen(false); receivedRoom.current = false; }
+  function resetRoom() { roomRef.current = null; setRoom(null); setRecoveryRoom(null); setFundingOpen(false); receivedRoom.current = false; }
   return (
     <AppWindow title="coLILseum">
       <GameSurface aria-label="coLILseum" data-wtfiap-surface="true">

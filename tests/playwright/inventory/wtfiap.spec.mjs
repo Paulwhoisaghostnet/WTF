@@ -70,8 +70,8 @@ async function dragHit(page, frame, sourceId, targetId) {
   await page.mouse.up();
 }
 
-async function buyAndDeploy(page, frame, useDrag = false) {
-  await hit(page, frame, "shop-buy-0");
+async function buyAndDeploy(page, frame, useDrag = false, purchaseId = "shop-buy-0") {
+  await hit(page, frame, purchaseId);
   await frame.waitForFunction(() => window.AB_GAME().bench.length === 1);
   const unitId = await frame.evaluate(() => window.AB_GAME().bench[0].id);
   if ((await gameState(frame)).selected !== unitId) await hit(page, frame, `bench-${unitId}`);
@@ -104,10 +104,12 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect((await gameState(game)).shop.visible).toBe(true);
     expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("tile-")))).toBe(true);
     expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id === "shop-buy-0"))).toBe(true);
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id === "shop-card-buy-0"))).toBe(true);
     await hit(page, game, "shop-preview-1");
     expect((await gameState(game)).shop.previewIndex).toBe(1);
     await hit(page, game, "shop-preview-0");
-    const unitId = await buyAndDeploy(page, game);
+    await game.locator("#game").screenshot({ path: test.info().outputPath("shop-card-buy-desktop.png") });
+    const unitId = await buyAndDeploy(page, game, false, "shop-card-buy-0");
     const state = await gameState(game);
     expect(state.match.players.player.gold).toBe(0);
     expect(state.match.shops.player[0]).toBeNull();
@@ -145,9 +147,10 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "shop");
       await expect(phone.locator(".mobile-offer")).toHaveCount(4);
       expect(await phone.locator('.mobile-offer canvas').first().evaluate(canvas => [...canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data].some((value, index) => index % 4 === 3 && value > 0))).toBe(true);
-      await phone.locator(".mobile-offer").nth(1).click();
+      await phone.locator("#mobile-shop").screenshot({ path: test.info().outputPath("shop-card-buy-landscape.png") });
+      await phone.locator(".mobile-offer").nth(1).getByRole("button", { name: /^Preview/ }).click();
       expect((await gameState(phone)).shop.previewIndex).toBe(1);
-      await phone.getByRole("button", { name: "Recruit preview" }).click();
+      await phone.locator(".mobile-offer").nth(1).getByRole("button", { name: /^Buy/ }).click();
       await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "board");
       await phone.getByRole("button", { name: "Bench", exact: true }).click();
       await expect(phone.locator(".mobile-bench-slot:not(.empty)")).toHaveCount(1);
@@ -313,7 +316,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await party.locator("#start-room").click();
     const game = await gameFrame(party, "#arena-frame");
     expect(await game.evaluate(() => window.AB.ROSTER.find(hero => hero.id === "ember-vanguard")?.name)).toBe("Briq");
-    const unitId = await buyAndDeploy(page, game, true);
+    const unitId = await buyAndDeploy(page, game, true, "shop-card-buy-0");
     await page.screenshot({ path: test.info().outputPath("party-formation.png"), fullPage: true });
 
     // Reload the native invitation URL, not an intercepted/mock room response.

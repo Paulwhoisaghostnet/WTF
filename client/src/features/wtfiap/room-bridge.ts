@@ -5,6 +5,19 @@ export interface WtfIapRoomMessage {
   wagered: boolean;
 }
 
+export function readWtfIapOpenFundingMessage(
+  event: Pick<MessageEvent, "data" | "origin" | "source">,
+  expectedWindow: Window | null,
+  expectedOrigin: string,
+): string | null {
+  if (!expectedWindow || event.source !== expectedWindow || event.origin !== expectedOrigin) return null;
+  const data: unknown = event.data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const message = data as Record<string, unknown>;
+  if (message.type !== "wtfiap:open-funding" || typeof message.roomCode !== "string") return null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(message.roomCode) ? message.roomCode.toLowerCase() : null;
+}
+
 export function wtfIapFundingRecoveryRoom(path: string): string | null {
   const url = new URL(path, "https://wtfiap.invalid");
   const room = url.searchParams.get("room");

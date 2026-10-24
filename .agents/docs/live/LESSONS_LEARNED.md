@@ -12266,3 +12266,19 @@
 **Correction and proof**: Room views now expose only that room's reconciliation error, while the operator health endpoint retains the service-wide diagnostic. A focused test sets an unrelated global error, verifies the healthy room has no warning, and then verifies a real room error remains visible. Funding tests, inventory coverage and TypeScript checks pass.
 
 **Rule**: Keep aggregate operator health separate from a player's room status. A failure in one escrow room must not imply that a different player's payment is delayed.
+
+## 2026-10-23 — A verified escrow deposit still needs a visible player action
+
+**What happened**: The native funding panel could submit a signed Shadownet XTZ or Mainnet WTF deposit, but the game room offered no direct path to that action. Players saw deposit status and instructions to find Room funding, while the actual wallet button sat below lengthy technical details.
+
+**Correction and proof**: Seated prize Duel and Tournament rooms now show a prominent Set up / deposit wager button. Its same-origin bridge only asks the native host to open funding for the current room. The panel presents Bind, Open, Deposit, Start, Claim and Refund above technical details; the existing wallet submission and finalized-chain verification remain intact. The focused browser story clicks from a real room into an enabled deposit action, and the wallet adapter unit tests, hosted package checksum, TypeScript check, game browser stories and inventory coverage pass.
+
+**Rule**: Payment state and payment initiation must be connected in the player flow. Keep signing in the native wallet boundary, but put the current available wallet action where a paying player expects it in the room.
+
+## 2026-10-23 — Shop preview must coexist with buying at the hero card
+
+**What happened**: The streamlined shop let players select a hero card and recruit from a separate preview action, but removed direct buying from the individual cards. This added an extra step to the most common shop decision.
+
+**Correction and proof**: Each canvas offer now has a Buy button with its own hit region, while the full card still selects a preview and the preview retains Recruit. Landscape mobile cards expose separate Preview and Buy buttons, avoiding nested interactive elements. Both controls call the existing authoritative buy path. Focused desktop and mobile browser stories pass; inspected screenshots show distinct controls and a readable landscape shop.
+
+**Rule**: A hero card may open details without making its purchase action remote. Keep the purchase control on the card and retain a separate path for deliberate preview-first decisions.

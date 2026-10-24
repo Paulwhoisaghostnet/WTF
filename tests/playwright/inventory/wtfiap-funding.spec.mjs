@@ -48,6 +48,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await frame.locator("#create-room").click();
     await expect(frame.locator("#tournament-terms")).toContainText("Duel entry: 0.01 WTF");
     await expect(frame.locator("#start-room")).toBeDisabled();
+    await expect(frame.getByRole("button", { name: "Deposit or manage wager" })).toBeVisible();
     await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toBeVisible();
     await page.goto("/wtfiap?mode=tournament", { waitUntil: "domcontentloaded" });
     frame = await partyFrame(page);
@@ -58,10 +59,32 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await frame.locator("#entry-fee").fill("0.01");
     await expect(frame.locator("#create-prize-preview")).toContainText("Prize pool at this payer count: 0.02 XTZ");
     await frame.locator("#create-room").click();
+    await expect(frame.getByRole("button", { name: "Deposit or manage wager" })).toBeVisible();
     await expect(frame.locator("#room-prize-preview")).toContainText("AI may take a prize place");
     await expect(frame.locator("#ai-fill-controls")).toBeVisible();
     await expect(frame.locator("#fill-ai")).toBeChecked();
     expect(errors).toEqual([]);
+  });
+
+  test("a paying entrant opens the wallet deposit action from the room", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("wtf:network", "shadownet"));
+    const { frame, roomCode } = await createPreview(page);
+    const room = fixtureRoom(roomCode);
+    room.self.pendingOperations = [];
+    room.self.actions.deposit = { entrypoint: "join_room", params: { room_id: room.roomId, expected_terms_hash: room.termsHash }, amountMutez: "1000000", expectedWallet: room.self.walletAddress, contract: room.escrowContract, network: room.network, chainId: room.chainId };
+    await page.route("**/api/wtfiap/funding/**", route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: fixtureConfig } : { ok: true, room } }));
+    await frame.getByRole("button", { name: "Deposit or manage wager" }).click();
+    const panel = surface(page).getByRole("region", { name: "Room funding" });
+    const deposit = panel.getByRole("button", { name: "Deposit 1 XTZ" });
+    await expect(deposit).toBeVisible();
+    await expect(deposit).toBeEnabled();
+    expect(await panel.evaluate(element => {
+      const action = element.querySelector('.payment-step');
+      const details = element.querySelector('dl');
+      return !!action && !!details && Boolean(action.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING);
+    })).toBe(true);
+    await expect(panel).toContainText("approve the transaction in your Tezos wallet");
+    await page.screenshot({ path: test.info().outputPath("room-deposit-action-fixture.png"), fullPage: true });
   });
 
   test("native funding panel recovers a submitted fixture without opening a wallet and resets on leaving", async ({ page }) => {
@@ -79,7 +102,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       }
       return route.fulfill({ json: { ok: true, room } });
     });
-    await surface(page).getByRole("button", { name: "Room funding", exact: true }).click();
+    await frame.getByRole("button", { name: "Deposit or manage wager" }).click();
     const panel = surface(page).getByRole("region", { name: "Room funding" });
     await expect(panel).toContainText("Tezos shadownet");
     await expect(panel).toContainText("Server verification pending");
@@ -109,6 +132,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await page.route(`**/api/wtfiap/party/rooms/${roomCode}/events`, route => route.fulfill({ status: 200, contentType: "text/event-stream", body: ": fixture stream closed\n\n" }));
     await frame.goto(frame.url());
     await expect(frame.locator("#tournament-terms")).toContainText("Escrow tournament · Tezos shadownet");
+    await expect(frame.getByRole("button", { name: "Deposit or manage wager" })).toBeVisible();
     await expect(frame.locator("#tournament-terms")).toContainText("Verified deposits: 1 XTZ");
     await expect(frame.locator("#tournament-terms")).not.toContainText("No funds collected or paid");
     await expect(frame.locator("#start-room")).toHaveText("Use Room funding to start");

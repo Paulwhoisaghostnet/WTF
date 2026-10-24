@@ -15430,3 +15430,25 @@ Copy this when adding a new issue:
   - `/tv2` has been removed, so parity between two routed TV clients is no longer a live risk. The remaining work is ordinary `/tv` coverage, not clone parity.
 - Verification idea:
   - CI test job covers `/tv` stream lifecycle, power transitions, channel switching, and error-path fallback directly.
+
+### WTF-BB-702 - Verified: funded coLILseum rooms did not expose a direct deposit action
+
+- Category: coLILseum / wager admission UX
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex funded-room deposit pass 2026-10-23
+- Score: C2 + F3 + S2 + P1(4) = 11
+- Evidence: The game room showed a deposit count and told players to find Room funding, but had no deposit control; the native wallet button was below the long technical room summary.
+- Correction: Add a prominent seated-player wager button that opens the same-origin native funding panel for the exact room, and place the available wallet action above technical details. Ordinary free rooms and watchers have no funding action.
+- Verification: The focused browser story opens funding from a created prize room and finds an enabled deposit button. Native wallet adapter tests still prove explicit signing, chain pinning, duplicate-submission protection and finalized verification. Host package checksum, TypeScript, game browser stories and inventory coverage pass. This UI fixture does not transfer funds.
+
+### WTF-BB-703 - Verified: coLILseum shop cards lost direct Buy controls
+
+- Category: coLILseum / shop UX
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex shop-card purchase pass 2026-10-23
+- Score: C2 + F3 + S1 + P2(3) = 9
+- Evidence: Four hero cards selected previews, but only the separate preview action recruited the selected offer. Landscape mobile cards likewise had no individual purchase action.
+- Correction: Restore a Buy button on every canvas and mobile offer while preserving card selection, hero inspection and preview Recruit. Route both purchase actions through the existing game command.
+- Verification: Focused desktop and landscape browser stories buy directly from a hero card and keep preview selection working; screenshots show distinct controls. The same domain test also checks the bought unit and gold change. No separate shop rules were added.

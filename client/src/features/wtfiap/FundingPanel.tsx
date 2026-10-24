@@ -22,6 +22,11 @@ const Panel = styled.section`
   dt { font-weight: bold; } dd { margin: 0; overflow-wrap: anywhere; }
   ul { padding-left: 20px; } li { margin-block: 8px; overflow-wrap: anywhere; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+  .payment-step { padding: 14px; border: 2px solid #8b6825; background: #e8dfc7; color: #111; }
+  .payment-step h3 { margin: 0 0 6px; }
+  .payment-step p { margin: 0; }
+  .payment-step button { background: #2c584d; color: #fff; border: 1px solid #17372f; font-weight: 700; }
+  .payment-step button:disabled { background: #61736e; }
   .status { padding: 10px; border: 1px solid currentColor; }
   .error { color: var(--wtf-error-color, #900); }
 `;
@@ -144,6 +149,25 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
     <p><a href={`/wtfiap?room=${encodeURIComponent(roomCode)}&funding=1`}>Open this room’s funding recovery page</a> · Save this link to check deposits and claims independently of the battlefield.</p>
     {config && !config.enabled && <p className="status">{config.reason || "New tournament funding is unavailable on this deployment."}{room?.chainStatus ? " Existing verified prize claims and eligible full entry refunds remain available to their bound wallets." : " No entry can be deposited here while funding is unavailable."}</p>}
     {room && <>
+      {networkMismatch && <div className="status"><p>This room stays on Tezos {room.network}. wtfOS currently uses {currentNetwork} for wallet operations. Select the room’s network before depositing, withdrawing or claiming. Account ownership is verified separately on Mainnet; the shared wallet connector will request the room’s network when you submit an operation.</p><button disabled={busy} onClick={() => void run(async () => {
+        localStorage.setItem("wtf:network", room.network);
+        window.dispatchEvent(new Event("wtf:network-selected"));
+        setCurrentNetwork(getNetwork());
+        setMessage(`Tezos ${room.network} selected for wtfOS wallet operations. No wallet operation was sent.`);
+      })}>Use {room.network} for wallet operations</button></div>}
+      {(room.self.canOpen || room.self.actions.deposit) && entryError && <p role="alert" className="error">{entryError}</p>}
+      <section className="payment-step" aria-label="Wager actions">
+        <h3>{room.self.actions.deposit ? "Deposit your entry" : "Wager setup and claims"}</h3>
+        <p>{room.self.actions.deposit ? "Choose Deposit, then approve the transaction in your Tezos wallet. The room updates after the deposit is verified on-chain." : "Complete the available wallet step below to advance this room."}</p>
+      <div className="actions">
+        {room.self.canBind && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
+        {room.self.canOpen && <button disabled={actionsDisabled || !config?.enabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze {room.payingEntrants} wallets &amp; open escrow</button>}
+        {room.self.actions.deposit && <button disabled={actionsDisabled || !config?.enabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}</button>}
+        {room.self.canStart && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded {room.roomType}</button>}
+        {room.self.actions.claim && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("claim"))}>Claim prize to bound wallet</button>}
+        {room.self.actions.refund && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("refund"))}>{refundLabel}</button>}
+      </div>
+      </section>
       <dl>
         <dt>Room</dt><dd>{room.roomCode}</dd>
         <dt>Network</dt><dd>Tezos {room.network} · <code>{room.chainId}</code></dd>
@@ -163,25 +187,10 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
         {room.terms.currency === "WTF" && <><dt>WTF asset</dt><dd><code>{room.wtfToken.contract}</code> · token {room.wtfToken.tokenId}</dd></>}
       </dl>
       <p>Wallet bindings and entry terms freeze when the host opens escrow. Deposits are verified on-chain before the host can start the match.</p>
-      {networkMismatch && <div className="status"><p>This room stays on Tezos {room.network}. wtfOS currently uses {currentNetwork} for wallet operations. Select the room’s network before depositing, withdrawing or claiming. Account ownership is verified separately on Mainnet; the shared wallet connector will request the room’s network when you submit an operation.</p><button disabled={busy} onClick={() => void run(async () => {
-        localStorage.setItem("wtf:network", room.network);
-        window.dispatchEvent(new Event("wtf:network-selected"));
-        setCurrentNetwork(getNetwork());
-        setMessage(`Tezos ${room.network} selected for wtfOS wallet operations. No wallet operation was sent.`);
-      })}>Use {room.network} for wallet operations</button></div>}
-      {(room.self.canOpen || room.self.actions.deposit) && entryError && <p role="alert" className="error">{entryError}</p>}
       {room.chainStatus === "voided" && <p className="status">This match was technically voided. Each paid entrant can recover their full entry from escrow; no prizes are awarded.</p>}
       {refunded && room.chainStatus === "funding" && room.self.actions.deposit && <p className="status">Your full entry withdrawal is verified. You can deposit again while this room remains open for funding.</p>}
       {room.terms.currency === "WTF" && <p>A WTF deposit asks your wallet to approve one batch: allow this escrow to transfer WTF, deposit the entry, then remove its permission. Your wallet also needs XTZ on {room.network} to pay the transaction and storage fees.</p>}
       <ul aria-label="Paying wallet roster">{room.roster.map(player => <li key={player.playerId}><strong>{player.name}</strong> · <code>{player.walletAddress || "Wallet not bound"}</code> · {player.deposited ? "Deposit verified" : "No verified deposit"}</li>)}</ul>
-      <div className="actions">
-        {room.self.canBind && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
-        {room.self.canOpen && <button disabled={actionsDisabled || !config?.enabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze {room.payingEntrants} wallets &amp; open escrow</button>}
-        {room.self.actions.deposit && <button disabled={actionsDisabled || !config?.enabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}</button>}
-        {room.self.canStart && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded {room.roomType}</button>}
-        {room.self.actions.claim && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("claim"))}>Claim prize to bound wallet</button>}
-        {room.self.actions.refund && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("refund"))}>{refundLabel}</button>}
-      </div>
       {room.health.error && <p className="status">Chain verification is delayed: {room.health.error}. A submitted hash does not yet prove payment. Use Recheck status.</p>}
     </>}
     {checkpoint && <p className="status">{checkpoint.action} submitted · <code>{checkpoint.operationHash}</code><br />Verification pending. Rechecking never sends another wallet operation.</p>}

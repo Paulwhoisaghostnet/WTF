@@ -5,7 +5,7 @@ import { acknowledgeFundingCheckpoint, submitFundingAction } from "./funding-sub
 import { createFundingActionLatch, loadFundingCheckpoint, type FundingCheckpointStore, type FundingCheckpoint } from "./funding-checkpoint";
 import { fundingCalls, sendFundingAction, type FundingWalletGateway } from "./funding-wallet";
 import { formatFundingAmount, fundingEntryError, type FundingConfig, type FundingRoom, type FundingWalletAction } from "./funding-types";
-import { readWtfIapRoomMessage, wtfIapFundingRecoveryRoom } from "./room-bridge";
+import { readWtfIapOpenFundingMessage, readWtfIapRoomMessage, wtfIapFundingRecoveryRoom } from "./room-bridge";
 
 const config: FundingConfig = { enabled: true, network: "shadownet", chainId: "NetXsqzbfFenSTS", rpcUrl: "https://tezos-shadownet.octez.io/", escrowContract: "KT1Escrow", wtfToken: { contract: "KT1WTF", tokenId: "0", decimals: 8 }, currencyDecimals: { XTZ: 6, WTF: 8 }, currencyQuantaAtomic: { XTZ: "10000", WTF: "1000000" }, treasuryAddress: "tz1TreasuryFixture", prizeRoundingPolicy: "floor-each-prize-to-quantum;remainder-to-wtf.tez-v1" };
 function roomFixture(): FundingRoom {
@@ -156,6 +156,11 @@ test("native room bridge accepts only its same-origin iframe and public room/res
   assert.equal(readWtfIapRoomMessage({ source: other, origin, data }, source, origin), null);
   assert.equal(readWtfIapRoomMessage({ source, origin: "https://other.example", data }, source, origin), null);
   assert.equal(readWtfIapRoomMessage({ source, origin, data: { ...data, roomCode: "https://evil.example" } }, source, origin), null);
+  const open = { type: "wtfiap:open-funding", roomCode: data.roomCode };
+  assert.equal(readWtfIapOpenFundingMessage({ source, origin, data: open }, source, origin), data.roomCode);
+  assert.equal(readWtfIapOpenFundingMessage({ source: other, origin, data: open }, source, origin), null);
+  assert.equal(readWtfIapOpenFundingMessage({ source, origin: "https://other.example", data: open }, source, origin), null);
+  assert.equal(readWtfIapOpenFundingMessage({ source, origin, data: { ...open, roomCode: "https://evil.example" } }, source, origin), null);
   assert.deepEqual(readWtfIapRoomMessage({ source, origin, data: { type: "wtfiap:room", roomCode: null, roomType: null } }, source, origin), { type: "wtfiap:room", roomCode: null, roomType: null, wagered: false });
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}&funding=1`), data.roomCode);
   assert.equal(wtfIapFundingRecoveryRoom(`/wtfiap?room=${data.roomCode}`), null);
