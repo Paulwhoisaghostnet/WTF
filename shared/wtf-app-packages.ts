@@ -55,7 +55,7 @@ export type WtfAppPackageAcceptance = {
 const domainGuides = {
   wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
   identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
-  wtfiap: { label: "WTFIAP-v0.01", guide: "docs/domains/wtfiap.md" },
+  wtfiap: { label: "coLILseum", guide: "docs/domains/wtfiap.md" },
   arcadeConsoleGameStudio: {
     label: "Arcade, Console, And Game Studio",
     guide: "docs/domains/arcade-console-game-studio.md",

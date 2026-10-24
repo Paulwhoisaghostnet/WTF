@@ -113,7 +113,7 @@ for (const currency of ["XTZ", "WTF"]) test(`native ${currency} Shadownet tourna
       }
     } else {
     await page.goto("/wtfiap?mode=party");
-    const frame = await (await surface(page).locator('iframe[title="WTFIAP-v0.01"]').elementHandle()).contentFrame();
+    const frame = await (await surface(page).locator('iframe[title="coLILseum"]').elementHandle()).contentFrame();
     await frame.locator("#room-type").selectOption("tournament"); await frame.locator("#create-name").fill(`Shadownet ${currency} browser proof`);
     await frame.locator("#prep-time").selectOption("ready"); await frame.locator("#entry-currency").selectOption(currency); await frame.locator("#entry-fee").fill("0.01");
     await frame.locator("#create-room").click(); await expect(frame.locator("#invite-code")).not.toHaveValue(""); roomCode = await frame.locator("#invite-code").inputValue();

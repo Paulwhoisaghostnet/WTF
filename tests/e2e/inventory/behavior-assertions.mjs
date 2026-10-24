@@ -14,7 +14,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     ownerSurfaceIds: ["wtfiap"],
     ownerSpec: "tests/playwright/inventory/wtfiap.spec.mjs; client/src/features/wtfiap/frame-source.test.ts; server/features/wtfiap/authority.test.ts",
     verificationCommand: "npm run build && npx playwright test tests/playwright/inventory/wtfiap.spec.mjs && npx tsx --test client/src/features/wtfiap/frame-source.test.ts",
-    userVisibleAssertion: "The exact WTFIAP-v0.01 desktop icon and Stuffs Play entry launch the native window. Its real packaged game previews trait progress, buys and fields a hero while the board stays visible, and keeps landscape Shop and Bench panes usable; Party creates a room, exposes invitation terms, and preserves room queries. Tournament preview visibly collects or pays no funds.",
+    userVisibleAssertion: "The exact coLILseum desktop icon and Stuffs Play entry launch the native window. Its real packaged game previews trait progress, buys and fields a hero while the board stays visible, and keeps landscape Shop and Bench panes usable; Party creates a room, exposes invitation terms, and preserves room queries. Tournament preview visibly collects or pays no funds.",
     durableSideEffectAssertion: "The browser story checks a shop purchase changes gold and army ownership, then creates a real authority-backed room and reloads its URL to recover the same commander seat. Native invitation entry forwards room parameters to the Party frame. Route smoke alone is not room persistence proof.",
   },
   {

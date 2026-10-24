@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Lil Guys · Practice</title>
+  <title>coLILseum · Practice</title>
   <style>
     :root{color-scheme:dark;--ink:#0b171a;--panel:#13272a;--line:#38514e;--cream:#e8e2cd;--muted:#a2b3ac;--gold:#dab975}
     *{box-sizing:border-box}
@@ -28,7 +28,7 @@
 </head>
 <body>
   <header class="arena-rail">
-    <div class="mode"><strong>Lil Guys</strong><span> · Practice</span></div>
+    <div class="mode"><strong>coLILseum</strong><span> · Practice</span></div>
     <div class="rail-actions">
       <a id="standalone" href="generator.html?mode=match&amp;boardMode=standard&amp;seed=formation-rarity-4" target="_blank" rel="noopener" aria-label="Open practice in a new tab" title="Open practice in a new tab">↗</a>
       <details id="practice-options">
@@ -47,7 +47,7 @@
       </details>
     </div>
   </header>
-  <iframe id="frame" title="Playable Lil Guys practice match" allow="fullscreen; orientation-lock"></iframe>
+  <iframe id="frame" title="Playable coLILseum practice match" allow="fullscreen; orientation-lock"></iframe>
   <script>
     const boardMode=document.getElementById('board-mode'),frame=document.getElementById('frame'),params=new URLSearchParams(location.search),seed=params.has('seed')?params.get('seed'):'formation-rarity-4';
     if([...boardMode.options].some(option=>option.value===params.get('boardMode')))boardMode.value=params.get('boardMode');

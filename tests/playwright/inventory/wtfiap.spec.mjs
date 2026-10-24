@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const surface = (page) => page.locator('[data-wtfiap-surface="true"]:visible');
 
 async function hostFrame(page) {
-  const iframe = surface(page).locator('iframe[title="WTFIAP-v0.01"]');
+  const iframe = surface(page).locator('iframe[title="coLILseum"]');
   await expect(iframe).toBeVisible();
   const frame = await (await iframe.elementHandle()).contentFrame();
   await frame.waitForLoadState("domcontentloaded");
@@ -92,9 +92,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const icon = page.locator('[data-desktop-icon-key="wtfiap"]');
-    await expect(icon).toContainText("WTFIAP-v0.01");
+    await expect(icon).toContainText("coLILseum");
     await icon.dblclick();
-    await expect(surface(page)).toHaveAttribute("aria-label", "WTFIAP-v0.01");
+    await expect(surface(page)).toHaveAttribute("aria-label", "coLILseum");
     await expect(surface(page).getByRole("link", { name: "Meet the heroes" })).toBeVisible();
     const practice = await hostFrame(page);
     const game = await gameFrame(practice, "#frame");
@@ -291,7 +291,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open Stuffs menu" }).click();
     await page.getByText("Play", { exact: true }).last().click();
-    const menuEntry = page.getByText("WTFIAP-v0.01", { exact: true }).last();
+    const menuEntry = page.getByText("coLILseum", { exact: true }).last();
     await expect(menuEntry).toBeVisible();
     const flyout = page.locator('[data-start-menu-flyout="gaming"]');
     await expect.poll(async () => {
@@ -366,7 +366,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await guest.close();
   });
 
-  test("two people can create and start a free Lil Guys duel", async ({ page, browser }) => {
+  test("two people can create and start a free coLILseum duel", async ({ page, browser }) => {
     await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
     await surface(page).getByRole("link", { name: "Duel" }).click();
     const host = await hostFrame(page);

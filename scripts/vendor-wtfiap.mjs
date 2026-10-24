@@ -52,7 +52,7 @@ if (sourceFlag !== -1) {
   files.push({ path: `${runtime}/package.json`, generatedBy: "scripts/vendor-wtfiap.mjs", sha256: digest(packageBoundary), bytes: Buffer.byteLength(packageBoundary) });
   fs.writeFileSync(manifestPath, JSON.stringify({
     schemaVersion: 1,
-    title: "WTFIAP-v0.01",
+    title: "coLILseum",
     appKey: "wtfiap",
     generatorSha256: build.sha256,
     sourceProject: "lil-guys-autobattler",
@@ -65,7 +65,7 @@ if (sourceFlag !== -1) {
 }
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-assert.equal(manifest.title, "WTFIAP-v0.01");
+assert.equal(manifest.title, "coLILseum");
 assert.equal(manifest.appKey, "wtfiap");
 for (const file of manifest.files) {
   const absolute = path.resolve(root, file.path);
@@ -75,4 +75,4 @@ for (const file of manifest.files) {
   assert.equal(digest(bytes), file.sha256, `Packaged source changed: ${file.path}`);
 }
 assert.equal(digest(fs.readFileSync(path.join(root, assets, "generator.html"))), manifest.generatorSha256);
-console.log(`WTFIAP-v0.01 package verified: ${manifest.files.length} files; generator ${manifest.generatorSha256}`);
+console.log(`coLILseum package verified: ${manifest.files.length} files; generator ${manifest.generatorSha256}`);

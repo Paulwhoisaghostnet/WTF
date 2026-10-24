@@ -1,6 +1,6 @@
-# WTFIAP-v0.01
+# coLILseum
 
-WTFIAP-v0.01 is the original autobattler hosted in a native wtfOS window at `/wtfiap`. Launch it from its desktop icon or **Stuffs → Play → WTFIAP-v0.01**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
+coLILseum is the original autobattler hosted in a native wtfOS window at `/wtfiap`. Launch it from its desktop icon or **Stuffs → Play → coLILseum**. The app is a free default desktop entry; the existing wtfOS app availability controls apply.
 
 ## Play
 

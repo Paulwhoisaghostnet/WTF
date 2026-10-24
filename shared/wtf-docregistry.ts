@@ -52,7 +52,7 @@ export const WTF_DOMAIN_DOC_REGISTRY = {
     installKeyPolicy: "docs/domains/identity-and-social-registry.md",
   },
   wtfiap: {
-    label: "WTFIAP-v0.01",
+    label: "coLILseum",
     guide: "docs/domains/wtfiap.md",
     registry: "docs/domains/wtfiap-registry.md",
     commandPalette: "docs/domains/wtfiap-registry.md",

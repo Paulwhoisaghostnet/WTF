@@ -150,7 +150,7 @@ test("Start Menu model keeps Casino in Play and My Games in My Media", () => {
 
   assert.deepEqual(
     play.items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "WTFIAP-v0.01", "Game Console", "Game Studio", "DedRooms"]
+    ["WTF Casino", "WTF Arcade", "coLILseum", "Game Console", "Game Studio", "DedRooms"]
   );
   assert.equal(play.items.find((item) => item.path === "/casino")?.disabled, true);
   assert.equal(myMedia.items.find((item) => item.label === "My Games")?.path, "/console");
@@ -338,6 +338,6 @@ test("Start Menu search can open a whole category by group name", () => {
   assert.equal(groups[0].label, "Play");
   assert.deepEqual(
     groups[0].items.map((item) => item.label),
-    ["WTF Casino", "WTF Arcade", "WTFIAP-v0.01", "Game Console", "Game Studio", "DedRooms"]
+    ["WTF Casino", "WTF Arcade", "coLILseum", "Game Console", "Game Studio", "DedRooms"]
   );
 });

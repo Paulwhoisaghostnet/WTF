@@ -533,7 +533,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/tv", component: TVPage, auth: true, title: "WTF TV", group: "media", startMenu: true, desktopIcon: true },
   { pattern: "/dicksword", component: DickswordPage, auth: true, title: "Dicksword", group: "social", startMenu: true, desktopIcon: true },
   { pattern: "/i-hate-telegram", component: IHateTelegramPage, auth: true, title: "I Hate Telegram", group: "social", startMenu: true, desktopIcon: true },
-  { pattern: "/wtfiap", component: WtfIapPage, auth: false, title: "WTFIAP-v0.01", group: "gaming", startMenu: true, desktopIcon: true },
+  { pattern: "/wtfiap", component: WtfIapPage, auth: false, title: "coLILseum", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/arcade", component: ArcadePage, auth: false, title: "WTF Arcade", group: "gaming", startMenu: true, desktopIcon: true },
   { pattern: "/casino", component: CasinoPage, auth: true, title: "WTF Casino", group: "casino", startMenu: true, desktopIcon: true },
   { pattern: "/casino/wtf-button", component: WtfButtonPage, auth: true, title: "WTF Button", group: "casino" },

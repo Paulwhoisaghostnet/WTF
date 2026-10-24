@@ -500,7 +500,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "i-hate-telegram": "I Hate Telegram",
   "dear-diary": "Dear Diary",
   arcade: "WTF Arcade",
-  wtfiap: "WTFIAP-v0.01",
+  wtfiap: "coLILseum",
   casino: "WTF Casino",
   "dues-manager": "Club Dues Manager",
   console: "WTF Console",

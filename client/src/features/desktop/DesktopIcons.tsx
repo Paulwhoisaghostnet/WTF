@@ -952,7 +952,7 @@ export function buildDesktopIconDefs(
     },
     {
       key: "wtfiap",
-      label: "WTFIAP-v0.01",
+      label: "coLILseum",
       icon: <ArcadeDeskIcon><Swords size={24} aria-hidden="true" /></ArcadeDeskIcon>,
       defaultX: 252,
       defaultY: 452,

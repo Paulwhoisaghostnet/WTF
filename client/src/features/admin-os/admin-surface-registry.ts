@@ -30,7 +30,7 @@ export type DoctrineDomainGuide = {
 export const DOCTRINE_DOMAIN_GUIDES = {
   wtfOs: { label: "WTF OS", guide: "docs/domains/wtf-os.md" },
   identityAndSocial: { label: "Identity And Social", guide: "docs/domains/identity-and-social.md" },
-  wtfiap: { label: "WTFIAP-v0.01", guide: "docs/domains/wtfiap.md" },
+  wtfiap: { label: "coLILseum", guide: "docs/domains/wtfiap.md" },
   arcadeConsoleGameStudio: {
     label: "Arcade, Console, And Game Studio",
     guide: "docs/domains/arcade-console-game-studio.md",
@@ -1466,7 +1466,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
   },
   {
     id: "wtfiap",
-    label: "WTFIAP-v0.01",
+    label: "coLILseum",
     domain: "WTFIAP",
     subdomain: "Autobattler practice and multiplayer rooms",
     kind: "app",

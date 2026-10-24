@@ -12220,3 +12220,11 @@
 **Why it mattered**: The same game renderer has different visible bounds inside a hosted room and on a landscape phone. Canvas hit regions can exist while a parent overlay intercepts clicks; broad canvas selectors can silently affect secondary art canvases.
 
 **Rule**: After changing shared arena geometry, exercise its primary action through the hosted room with optional drawers open, and inspect phone Shop, Board, Bench and combat screenshots. Scope battlefield layout rules to the battlefield canvas and verify its hit coordinates against the actually visible viewport.
+
+## 2026-10-23 — A game name spans the package, launcher, and playable views
+
+**What happened**: The autobattler still showed its former development name in the canvas, practice wrapper, room invitation text, cast gallery, desktop icon, start menu, window title, and assistive labels. Changing only the canvas would have left players seeing two names for the same room and app.
+
+**Correction and proof**: Renamed those player-facing surfaces to the exact `coLILseum` spelling, retained the stable `wtfiap` app key, route, room links, and source-art attribution, and updated the owning browser and inventory assertions. The source build and local game smoke, host build/type check, package checksum, inventory coverage, and focused practice/room browser stories pass.
+
+**Rule**: Treat product renaming as a cross-surface release. Keep technical identifiers and invitation routes stable unless migration is separately requested, and verify the actual hosted launcher and gameplay frame together.

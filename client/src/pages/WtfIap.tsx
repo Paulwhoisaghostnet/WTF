@@ -87,9 +87,9 @@ export function WtfIap() {
   }, []);
   function resetRoom() { setRoom(null); setRecoveryRoom(null); setFundingOpen(false); receivedRoom.current = false; }
   return (
-    <AppWindow title="WTFIAP-v0.01">
-      <GameSurface aria-label="WTFIAP-v0.01" data-wtfiap-surface="true">
-        <ModeNavigation aria-label="WTFIAP game modes">
+    <AppWindow title="coLILseum">
+      <GameSurface aria-label="coLILseum" data-wtfiap-surface="true">
+        <ModeNavigation aria-label="coLILseum game modes">
           <div className="group"><span className="group-label">Play</span>
             <a href={`${WTFIAP_ASSET_ROOT}/index.html`} target={frameName} onClick={resetRoom}>Practice</a>
             <a href={`${WTFIAP_ASSET_ROOT}/party.html?mode=duel`} target={frameName} onClick={resetRoom}>Duel</a>
@@ -106,7 +106,7 @@ export function WtfIap() {
           ref={frameRef}
           style={fundingOpen ? { display: "none" } : undefined}
           name={frameName}
-          title="WTFIAP-v0.01"
+          title="coLILseum"
           src={frameSource}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
           allow="fullscreen; orientation-lock; clipboard-write"

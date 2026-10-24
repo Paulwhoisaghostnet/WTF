@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 // The outer app, embedded game, room creation, bridge, controls and recovery UI are real.
 const surface = page => page.locator('[data-wtfiap-surface="true"]:visible');
 async function partyFrame(page) {
-  const element = await surface(page).locator('iframe[title="WTFIAP-v0.01"]').elementHandle();
+  const element = await surface(page).locator('iframe[title="coLILseum"]').elementHandle();
   const frame = await element.contentFrame();
   await frame.waitForLoadState("domcontentloaded");
   return frame;
