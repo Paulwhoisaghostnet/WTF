@@ -2807,6 +2807,17 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   const TERRAIN = typeof module !== 'undefined' && module.exports ? require('./terrain.js') : root.ABTerrain;
   const ZONES = typeof module !== 'undefined' && module.exports ? require('./zones.js') : root.ABZones;
   const ITEMS = typeof module !== 'undefined' && module.exports ? require('../game/core/items.cjs') : root.ABItems;
+  // New balance revisions are opt-in per match. A saved room with no revision
+  // keeps the exact stats it started with, including after a server restart.
+  const BALANCE_ADJUSTMENTS = Object.freeze({"tide-mender":{"ability":0.969823},"verdant-mender":{"ability":1.031119},"astral-mender":{"ability":1.18},"silk-luneth":{"ability":0.847458},"ember-duelist":{"attack":0.980577},"verdant-duelist":{"attack":1.001151},"ember-vikka":{"attack":1.052691},"silk-thimri":{"attack":1.001612},"verdant-hexbinder":{"ability":1.152542},"ember-sazrik":{"ability":0.848386},"tide-arcanist":{"ability":0.867647},"gargoyle-kharvox":{"ability":1.132353},"hollow-duelist":{"attack":1.132353},"dune-duelist":{"attack":0.867647},"hollow-artificer":{"ability":1.132353},"iron-artificer":{"ability":0.867647},"iron-hexbinder":{"ability":1.105281},"silk-vespera":{"ability":0.904739},"tide-hexbinder":{"ability":0.965918},"iron-vanguard":{"ability":1.116883},"ember-drazhul":{"ability":0.883117},"rime-boruun":{"ability":1.035289},"astral-sentinel":{"ability":0.91786},"silk-orruma":{"ability":1.089491},"ember-ranger":{"attack":1.04907},"dune-ranger":{"attack":0.953225},"dune-mender":{"ability":1.116883},"ember-aereth":{"ability":0.895349},"ember-stormcaller":{"ability":0.895349},"astral-stormcaller":{"ability":1.116883}});
+  // Final comparison against full eight-commander tournaments exposed team
+  // ability outliers left by the ten stat passes. Keep this revision pinned to
+  // new matches so serialized older rooms retain their authored actions.
+  const BALANCE_ACTION_ADJUSTMENTS = Object.freeze({
+    'ember-ranger': { 0: { factor: 1.2 } },
+    'ember-drazhul': { 0: { factor: 0.95 } },
+    'iron-vanguard': { 2: { factor: 1.9 } }
+  });
   const hasItem = (unit, id) => unit.itemIds?.includes(id) || false;
   const itemValue = (id, key) => ITEMS.VALUES[id]?.[key] || 0;
   const clearSight = (game, a, b) => !game.board.terrain || TERRAIN.clearSight(game.board, a, b);
@@ -3249,6 +3260,15 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       openingShield: hero.faction === 'gargoyle' && faction ? hp * 0.18 : 0,
       factionPower: faction, factionComplete, classPower: role, classPowers
     };
+    if (unit.balanceVersion === 1) {
+      const adjustment = BALANCE_ADJUSTMENTS[hero.id];
+      if (adjustment) {
+        const health = adjustment.health ?? 1, attack = adjustment.attack ?? 1, ability = adjustment.ability ?? 1;
+        result.maxHp *= health; result.hp *= health;
+        result.shield *= health; result.openingShield *= health;
+        result.attack *= attack; result.abilityScore *= ability;
+      }
+    }
     if (unit.itemIds?.length) {
       const itemStats = ITEMS.statsFor(unit.itemIds);
       result.maxHp = result.hp = (result.maxHp + itemStats.health) * (1 + itemStats.healthRatio);
@@ -3298,12 +3318,13 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
           pool[Math.floor(random() * pool.length)].id, pool[Math.floor(random() * pool.length)].id] };
       }
       const ready = aliasAbilityPoints({
-        ...clone(unit), ...deriveStats(unit, traits), side, alive: true,
+        ...clone(unit), ...deriveStats({ ...unit, balanceVersion: game.balanceVersion }, traits), side, alive: true,
         radius: bodyProfile(unit).radius, bodyScale: bodyProfile(unit).scale,
         mana: 0, maxMana: hero.ability.manaCost ?? 3, cooldown: 0, attacks: 0, statuses: [], targetId: null, openingEffects: [],
         combatClass: hero.primaryClass, combatClasses: [...hero.classes], combatFaction: hero.faction, abilityProfile: hero.primaryClass,
         abilityName: hero.id === 'mime' ? 'Pantomime' : hero.ability.name, abilityLevel: unit.level,
-        abilityId: hero.id === 'mime' ? 'mime-pantomime' : hero.ability.id, abilityActions: hero.id === 'mime' ? [{ type: 'hit', target: 'target', factor: 1.2 }] : clone(hero.ability.actions),
+        abilityId: hero.id === 'mime' ? 'mime-pantomime' : hero.ability.id, abilityActions: hero.id === 'mime' ? [{ type: 'hit', target: 'target', factor: 1.2 }] : clone(hero.ability.actions.map((action,index)=>game.balanceVersion===1&&BALANCE_ACTION_ADJUSTMENTS[hero.id]?.[index]
+          ? {...action,...BALANCE_ACTION_ADJUSTMENTS[hero.id][index]} : action)),
         mimickedUnitId: null, mimickedHeroId: null,
         originCol: unit.col, originRow: unit.row, lastAction: null, lastMove: null, navigationTurn: null
       });
@@ -3371,7 +3392,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       const endRow = chest.side === 'player' ? game.board.rows : game.board.halfRows;
       if (!Number.isInteger(chest.col) || chest.col < 0 || chest.col >= game.board.columns || !Number.isInteger(chest.row) || chest.row < firstRow || chest.row >= endRow) throw new Error('Place each chest in its owner’s deployment territory.');
       if (kind === 'item' && (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1)) throw new Error('Item chests belong in the two back rows.');
-      if (kind === 'cherub' && (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1) || chest.maxHp !== cherubMaxHp())) throw new Error('Cherub uses the roster-derived low HP and front-center position.');
+      if (kind === 'cherub' && (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1) || chest.maxHp !== cherubMaxHp(game.balanceVersion))) throw new Error('Cherub uses the roster-derived low HP and front-center position.');
       if (!Number.isFinite(chest.maxHp) || chest.maxHp <= 0) throw new Error('Chest maximum HP must be supplied explicitly and be positive.');
       const armor = chest.armor === undefined ? 0 : chest.armor;
       if (!Number.isFinite(armor) || armor < 0) throw new Error('Chest armor must be nonnegative; omit it for no armor.');
@@ -3386,9 +3407,9 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
 
   // The weakest named hero's unsynergized one-star health is the low-health
   // reference; no new arbitrary combat stat is introduced for this NPC.
-  function cherubMaxHp() { return Math.min(...ROSTER.map(hero => deriveStats({ heroId: hero.id, level: 1 }, synergies([])).maxHp)); }
+  function cherubMaxHp(balanceVersion) { return Math.min(...ROSTER.map(hero => deriveStats({ heroId: hero.id, level: 1, balanceVersion }, synergies([])).maxHp)); }
   function cherubObjectives(game, prefix) {
-    const col = Math.floor((game.board.columns - 1) / 2), maxHp = cherubMaxHp();
+    const col = Math.floor((game.board.columns - 1) / 2), maxHp = cherubMaxHp(game.balanceVersion);
     return ['player', 'enemy'].map(side => ({ id: prefix + ':cherub:' + side, side, col,
       row: side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1, maxHp }));
   }
@@ -5198,6 +5219,11 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const stats = Engine.deriveStats({ heroId: hero.id, level: 1 }, Engine.synergies([]));
     return { id: hero.id, maxHp: stats.maxHp, armor: stats.armor };
   }));
+  const balancedReference = ChestHealth.createReference(Engine.ROSTER.map(hero => {
+    const stats = Engine.deriveStats({ heroId: hero.id, level: 1, balanceVersion: 1 }, Engine.synergies([]));
+    return { id: hero.id, maxHp: stats.maxHp, armor: stats.armor };
+  }));
+  const referenceFor = match => match.balanceVersion === 1 ? balancedReference : reference;
   function required(result) {
     if (!result.ok) throw new Error(result.reason || result.error.message);
     return result;
@@ -5337,13 +5363,14 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
       treasure: Treasure.createLedger({ matchId, playerIds: SIDES }), receipts: [], lastReceipt: null, lastIncome: null, winnerSide: null };
     if (options.boardMode !== undefined) { match.boardMode = options.boardMode; match.game.board = boardForLevel(options.boardMode, 1); }
     match.game.itemRulesVersion = 1;
+    match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
     for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [],
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
@@ -5532,7 +5559,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     return { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds,
       chests: !terms.enabled ? [] : SIDES.map(side => {
         const units = side === 'player' ? match.game.field : match.game.opponents;
-        const health = units.length ? ChestHealth.calculateChestHealth(reference, units.map(unit => unit.heroId)) : null;
+        const health = units.length ? ChestHealth.calculateChestHealth(referenceFor(match), units.map(unit => unit.heroId)) : null;
         const position = match.chests[side];
         return { id: roundId(match) + ':chest:' + side, side, col: position ? position.col : null,
           row: position ? position.row : null, maxHp: health ? health.maxHp : null, health };
@@ -5693,6 +5720,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     demand(match.startingGold === RULES.startingGold && Number.isSafeInteger(match.roundNumber) && match.roundNumber >= 1, 'Invalid starting gold or round number.');
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
     demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
+    demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
     Health.validate(match.health); Treasure.validate(match.treasure);
     demand(match.health.matchId === match.matchId && match.treasure.matchId === match.matchId && match.health.startingHP === 100, 'Health and treasure ledgers must belong to this match.');
     demand(match.health.players.map(player => player.playerId).join(',') === SIDES.join(','), 'Commander identities must match their board sides.');
@@ -7135,6 +7163,7 @@ const matchSaveKey=boardMode?'lil-guys-v2:local-match:board-mode:rectangular:'+b
 // The preparation shop docks below the arena while keeping board hits live.
 if(matchMode||partyMode)canvas.height=1000;
 let game=AB.createGame(token),selected=null,selectedTrait=null,hover=null,hits=[],message='Choose a champion from your bench, then a tile on your side.',tab='arena',rosterPage=0,codexMode='overview',codexFaction='ember',codexHero=null,codexClassMode='bonuses',factionPage=0,factionPlan=false,showAllTraits=false,shopVisible=matchMode||partyMode,shopPreviewIndex=0,traitsOpen=false,detailsOpen=false,unreadTraits=false,unreadDetails=false,traitSignature=null,detailSignature=null,paused=false,raf=0,lastTick=0,drag=null,suppressDragClick=false;
+game.balanceVersion=1;
 const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse) and (hover: none)');
 const visualBoard=document.querySelector('.visual-board');
 let mobileView=shopVisible?'shop':'board',mobilePanelKey='';
@@ -7162,10 +7191,9 @@ const C={ink:'#0b171a',panel:'#101f23',line:'#304448',cream:'#e8e2cd',muted:'#9c
 const MAGIC_CLASSES=new Set(['sentinel','arcanist','mender','artificer','stormcaller','hexbinder']);
 const magicUser=h=>h.id==='mime'||MAGIC_CLASSES.has(h.primaryClass);
 function abilityOutput(h,s){const actions=(h.ability.actions||[]).filter(action=>['hit','heal','shield','burn'].includes(action.type));return actions.length?Math.max(...actions.map(action=>s.abilityScore*(action.factor??1)*(action.type==='heal'?s.healingPower:action.type==='shield'?s.shieldPower:s.spellPower)*(action.repeat||1))):s.abilityScore*h.ability.potency;}
-const ratingStats=AB.ROSTER.flatMap(h=>[1,2,3].map(level=>{const s=AB.deriveStats({heroId:h.id,level},AB.synergies([]));return{heroId:h.id,level,attack:s.attack,magic:abilityOutput(h,s),defense:s.maxHp*(1+s.armor/100),speed:s.speed};}));
-const ratingBounds=Object.fromEntries(['attack','magic','defense','speed'].map(key=>{const samples=key==='magic'?ratingStats.filter(s=>magicUser(AB.heroById(s.heroId))):ratingStats;return[key,{min:Math.min(...samples.map(s=>s[key])),max:Math.max(...samples.map(s=>s[key]))}];}));
-const ratingScore=(key,value)=>{const {min,max}=ratingBounds[key];return max===min?10:1+Math.round(9*(value-min)/(max-min));};
-const ratings=(heroId,level)=>{const s=ratingStats.find(v=>v.heroId===heroId&&v.level===level);if(!s)return null;const key=magicUser(AB.heroById(heroId))?'magic':'attack';return{[key]:ratingScore(key,s[key]),defense:ratingScore('defense',s.defense),speed:ratingScore('speed',s.speed)};};
+const ratingTables=[undefined,1].map(balanceVersion=>{const stats=AB.ROSTER.flatMap(h=>[1,2,3].map(level=>{const s=AB.deriveStats({heroId:h.id,level,balanceVersion},AB.synergies([]));return{heroId:h.id,level,attack:s.attack,magic:abilityOutput(h,s),defense:s.maxHp*(1+s.armor/100),speed:s.speed};}));const bounds=Object.fromEntries(['attack','magic','defense','speed'].map(key=>{const samples=key==='magic'?stats.filter(s=>magicUser(AB.heroById(s.heroId))):stats;return[key,{min:Math.min(...samples.map(s=>s[key])),max:Math.max(...samples.map(s=>s[key]))}];}));return{stats,bounds};});
+const ratingScore=(key,value,bounds)=>{const {min,max}=bounds[key];return max===min?10:1+Math.round(9*(value-min)/(max-min));};
+const ratings=(heroId,level)=>{const{stats,bounds}=ratingTables[game.balanceVersion===1?1:0],s=stats.find(v=>v.heroId===heroId&&v.level===level);if(!s)return null;const key=magicUser(AB.heroById(heroId))?'magic':'attack';return{[key]:ratingScore(key,s[key],bounds),defense:ratingScore('defense',s.defense,bounds),speed:ratingScore('speed',s.speed,bounds)};};
 const ratingDescription=score=>`${score.magic===undefined?'Attack':'Magic'} ${score.attack??score.magic} of 10, defense ${score.defense} of 10, speed ${score.speed} of 10`;
 const ratingRows={attack:['ATK','#ef8178'],magic:['MAG','#bd91e9'],defense:['DEF','#82bde9'],speed:['SPD','#a5d983']};
 function ratingBars(heroId,level,x,y,segmentWidth,gap){const score=ratings(heroId,level);if(!score)return;const keys=[score.magic===undefined?'attack':'magic','defense','speed'];for(let row=0;row<keys.length;row++){const key=keys[row],[label,color]=ratingRows[key],top=y+row*13;text(label+' '+score[key],x,top+8,9,color);for(let point=0;point<10;point++)rect(x+44+point*(segmentWidth+gap),top+2,segmentWidth,7,point<score[key]?color:'#34484a');}}
@@ -7515,7 +7543,7 @@ text(h.id==='mime'?'No class · Copies ally':roleName(cl.primaryArchetype)+' · 
 ABArt.drawUnit(ctx,1280,416,88,u,h,{detail:true,maxWidth:200,enemy:game.opponents.includes(u),selected:false});
 text(fitText(h.species||'Independent performer',220,13),1172,431,13,C.cream);text(h.id==='mime'?'Independent · No faction':f.name,1172,451,13,f.color||C.teal);
 if(h.id==='mime')text(copied?fitText('Mimics '+copied.name,125,11):'Awaiting ally',1392,451,11,copied?C.gold:C.muted,'sans-serif','right');
-line(1172,462,1392,462);const stats=live||AB.deriveStats(u,AB.synergies(game.opponents.some(e=>e.id===u.id)?game.opponents:game.field));
+line(1172,462,1392,462);const stats=live||AB.deriveStats({...u,balanceVersion:game.balanceVersion},AB.synergies(game.opponents.some(e=>e.id===u.id)?game.opponents:game.field));
 statItems(stats).forEach(([label,value],i)=>{const x=1172+(i%3)*76,y=481+Math.floor(i/3)*48;text(label,x,y,label==='ABILITY SCORE'?8:9,C.muted);text(value,x,y+22,21,C.cream);});
 text(fitText(live?.abilityName||h.ability.name,220,17),1172,578,17,C.gold,'Georgia');
 text('ABILITY POINTS',1172,601,9,C.muted);text(`${number(abilityPoints(live))} / ${number(maxAbilityPoints(live,h))} AP`,1392,601,11,C.gold,'sans-serif','right');
@@ -7610,7 +7638,7 @@ wrap(ABArt.identityDescription(h.id)||(h.id==='mime'?'A silent performer with a 
 text(h.ability.name,822,611,23,C.gold,'Georgia');
 const description=h.id==='mime'?'Copies a random fielded ally’s unique ability, ability-point profile and final combat stats ×1.25. Keeps its own theatrical appearance, with no faction or class.':h.ability.description;
 const abilityEnd=wrap(description,822,640,524,13,C.cream,19);
-const base=AB.deriveStats({heroId:h.id,level:1},AB.synergies([])),profile=abilityProfile(h);
+const base=AB.deriveStats({heroId:h.id,level:1,balanceVersion:game.balanceVersion},AB.synergies([])),profile=abilityProfile(h);
 wrap(profile?`${profile.name}: ${profile.description}`:'The Mime inherits its chosen ally’s ability-point regeneration and job trigger.',822,abilityEnd+9,524,12,C.gold,17);
 text('SPEED: NORMAL ATTACKS + MOVEMENT   ·   ABILITIES: SCORE + AP',822,802,10,C.muted);
 text('1 STAR · BEFORE TEAM BONUSES',822,826,10,C.muted);
@@ -7754,7 +7782,7 @@ function renderItems(force=false){
 }
 
 let accessKey='';
-function accessibleHero(h,u){const stats=AB.deriveStats(u||{heroId:h.id,level:1},AB.synergies(game.field)),score=ratings(h.id,u?.level||1),classes=(h.classes||[]).map(id=>klass(id).name).join(' and ')||'no class';return `${h.name}, ${u?.level||1} star, cost ${h.cost}. ${h.faction?faction(h.faction).name:'Independent'}; ${classes}. ${h.ability.name}: ${h.ability.description} Ratings: ${ratingDescription(score)}.${score.magic===undefined?'':' Magic rates the strongest healing, shielding, or damaging ability before team bonuses.'} Health ${Math.round(stats.maxHp||stats.hp)}, attack ${Math.round(stats.attack)}, armor ${Math.round(stats.armor)}, speed ${number(stats.speed)}. ${ABArt.identityDescription(h.id)||''}`;}
+function accessibleHero(h,u){const stats=AB.deriveStats({...(u||{heroId:h.id,level:1}),balanceVersion:game.balanceVersion},AB.synergies(game.field)),score=ratings(h.id,u?.level||1),classes=(h.classes||[]).map(id=>klass(id).name).join(' and ')||'no class';return `${h.name}, ${u?.level||1} star, cost ${h.cost}. ${h.faction?faction(h.faction).name:'Independent'}; ${classes}. ${h.ability.name}: ${h.ability.description} Ratings: ${ratingDescription(score)}.${score.magic===undefined?'':' Magic rates the strongest healing, shielding, or damaging ability before team bonuses.'} Health ${Math.round(stats.maxHp||stats.hp)}, attack ${Math.round(stats.attack)}, armor ${Math.round(stats.armor)}, speed ${number(stats.speed)}. ${ABArt.identityDescription(h.id)||''}`;}
 function accessibleDetails(){if(tab==='arena'&&match&&shopVisible&&match.phase==='preparation'){const offer=match.shops.player[shopPreviewIndex];if(offer)return accessibleHero(AB.heroById(offer.heroId));}if(codexHero){const h=AB.heroById(codexHero);return accessibleHero(h);}if(selectedTrait){const def=(selectedTrait.kind==='factions'?AB.FACTIONS:AB.CLASSES).find(t=>t.id===selectedTrait.id);return `${def.name}. ${(def.milestones||[]).map(m=>`${m.count} heroes: ${m.description}`).join(' ')}`;}const u=selectedUnit();return u?accessibleHero(hero(u),u):'Select a hero or trait to read its details here.';}
 function accessibleOrder(h){return /^arena-tab$|^roster-tab$/.test(h.id)?0:h.id.startsWith('shop-')?1:h.id.startsWith('bench-')?2:h.id.startsWith('tile-')?3:h.id.startsWith('field-')?4:h.id.startsWith('enemy-')?5:h.id.startsWith('synergy-')?9:6;}
 function updateAccess(){const key=[tab,codexMode,codexFaction,factionPage,factionPlan,selectedTrait?.id,codexHero,game.phase,selected,chestSelected,shopVisible,shopPreviewIndex,showAllTraits,tipsEnabled,hintVisible,match?.roundNumber,match?.players.player.gold,match?.players.player.hp,match?.players.enemy.hp,rosterPage,message,...hits.filter(h=>h.access!==false).map(h=>h.id+':'+h.label)].join('|');if(key===accessKey)return;accessKey=key;document.getElementById('description').textContent=`${match?`${boardInfo().name}, ${game.board.columns} by ${game.board.rows} board. ${game.board.playerStartRow===game.board.halfRows?'No contested rows.':(game.board.playerStartRow-game.board.halfRows)+' contested middle rows; no deployment there.'} Round ${match.roundNumber}. Your commander ${match.players.player.hp} HP and ${match.players.player.gold} gold. Rival ${match.players.enemy.hp} HP${partyMode?'':' and '+match.players.enemy.gold+' gold'}. `:''}Player level ${game.playerLevel}, ${game.field.length} fielded, ${game.bench.length} on the bench. ${message}`;document.getElementById('details').textContent=accessibleDetails();
@@ -7830,7 +7858,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeo
 addEventListener('resize',draw);
 addEventListener('pagehide',persistMatch);
 window.advanceTime=ms=>{cancelAnimationFrame(raf);raf=0;lastTick=0;advance(ms);persistMatch();};
-window.render_game_to_text=()=>JSON.stringify({mode:partyMode?'party':matchMode?'match':'token',party:partyMode?{pending:partyPending,connected:partyConnected,ready:partyData?.ready,eliminated:partyData?.eliminated,spectating:partyData?.spectating,watchingName:partyData?.watchingName}:undefined,saveStatus,match:match?{boardMode:boardInfo(),pool:poolInfo(),roundNumber:match.roundNumber,phase:match.phase,players:match.players,chests:match.chests,chestPreview:chestTerms(),lastReceipt:match.lastReceipt,receipts:match.receipts,winnerSide:match.winnerSide,lastIncome:match.lastIncome,shops:match.shops}:null,chestSelected,coordinateSystem:`planning uses integer starting tiles; combat uses simultaneous continuous positions and Euclidean distances; circular bodies may share a square during combat when they fit; bodies and appearance grow with star rank; side view: columns A onward increase downward; numbered rows increase left to right; player home row 1 is left, enemies start right; A1 is the upper-left home corner; stored col/row are zero-based; player rows ${game.board.playerStartRow}–${game.board.rows-1}, enemy rows 0–${game.board.halfRows-1}, ${game.board.playerStartRow===game.board.halfRows?'no contested rows':'contested rows '+game.board.halfRows+'–'+(game.board.playerStartRow-1)}; canvas width1440; height1000`,seed:partyMode?undefined:token.seed,phase:game.phase,projection:'side',facing:(game.battle?.units||[...game.field.map(u=>({...u,side:'player'})),...game.opponents.map(u=>({...u,side:'enemy'}))]).map(u=>({id:u.id,facing:unitFacing(u),mirrored:unitFacing(u)==='right'})),tab,paused,traitInspection:traitInspection(),zoneDefense:zoneSnapshot()||null,codex:{mode:codexMode,classMode:codexClassMode,spotlight:codexHero?identity(AB.heroById(codexHero)):null,factionPlan,factionOverview:AB.FACTIONS.map(f=>factionSummary(f.id)),factionSummary:codexMode==='factions'?factionSummary(codexFaction):null,bridges:codexMode==='factions'?factionBridges(codexFaction):[],factionId:codexMode==='factions'?codexFaction:null,page:codexMode==='factions'?factionPage:rosterPage,totalHeroes:codexMode==='factions'?factionHeroes().length:AB.ROSTER.length,perPage:CODEX_PAGE_SIZE,heroIds:codexHeroes().map(h=>h.id),identities:codexHeroes().map(identity),lineage:codexMode==='factions'?faction(codexFaction).lineage:null,appearance:codexMode==='factions'?faction(codexFaction).appearance:null,roles:codexHeroes().map(h=>({heroId:h.id,...roleLabels(h)})),classes:codexMode==='classes'?AB.CLASSES:[],strategy:codexMode==='factions'?faction(codexFaction).strategy:null},archetypes:AB.ARCHETYPES,inspection:selectedUnit()?{stats:statSummary(inspectedCombatUnit()||AB.deriveStats(selectedUnit(),AB.synergies(game.opponents.some(u=>u.id===selected)?game.opponents:game.field))),abilityProfile:abilityProfile(hero(selectedUnit()),inspectedCombatUnit())||null,abilityPoints:abilityPoints(inspectedCombatUnit()),maxAbilityPoints:maxAbilityPoints(inspectedCombatUnit(),hero(selectedUnit())),unitId:selected,heroId:selectedUnit().heroId,identity:identity(hero(selectedUnit())),evolution:ABArtSprites.evolutionProfile(selectedUnit(),hero(selectedUnit())),body:AB.bodyProfile(selectedUnit()),roles:roleLabels(hero(selectedUnit())),statuses:statusLabels(inspectedCombatUnit()),combat:inspectedCombatUnit()}:null,playerLevel:game.playerLevel,fieldLimit:game.playerLevel,benchCapacity:10,board:{...game.board,columnLabels:Array.from({length:game.board.columns},(_,c)=>String.fromCharCode(65+c)),rowLabels:Array.from({length:game.board.rows},(_,r)=>game.board.rows-r)},selected,message,panels:{traitsOpen,detailsOpen,unreadTraits,unreadDetails},help:{automaticTipsEnabled:tipsEnabled,idleThresholdMs:IDLE_HINT_MS,visible:hintVisible,nextStep:nextStepHint()},shop:{visible:shopVisible,previewIndex:shopPreviewIndex,offerRatings:match?.shops.player.map(offer=>offer?ratings(offer.heroId,1):null)},showAllTraits,visibleStatusIcons:(game.phase==='planning'?AB.previewCombatUnits(game):game.battle?.units||[]).filter(u=>u.alive!==false).map(u=>({unitId:u.id,icons:statusDetails(u,{preparation:game.phase==='planning'}).map(({key,symbol,label})=>({key,symbol,label}))})).filter(u=>u.icons.length),bench:game.bench.map(u=>({...u,cost:hero(u).cost,ratings:ratings(u.heroId,u.level)})),field:game.field.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),opponents:game.opponents.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),synergies:AB.synergies(game.field),mergeGroups:AB.mergeGroups(game).map(g=>({heroId:g.heroId,level:g.level,count:g.count})),battle:game.battle,cherubs:visibleChests().filter(objective=>objective.rewardKind==='cherub').map(({id,side,col,row,hp,maxHp,status})=>({id,side,col,row,hp,maxHp,status})),result:game.result});
+window.render_game_to_text=()=>JSON.stringify({mode:partyMode?'party':matchMode?'match':'token',party:partyMode?{pending:partyPending,connected:partyConnected,ready:partyData?.ready,eliminated:partyData?.eliminated,spectating:partyData?.spectating,watchingName:partyData?.watchingName}:undefined,saveStatus,match:match?{boardMode:boardInfo(),pool:poolInfo(),roundNumber:match.roundNumber,phase:match.phase,players:match.players,chests:match.chests,chestPreview:chestTerms(),lastReceipt:match.lastReceipt,receipts:match.receipts,winnerSide:match.winnerSide,lastIncome:match.lastIncome,shops:match.shops}:null,chestSelected,coordinateSystem:`planning uses integer starting tiles; combat uses simultaneous continuous positions and Euclidean distances; circular bodies may share a square during combat when they fit; bodies and appearance grow with star rank; side view: columns A onward increase downward; numbered rows increase left to right; player home row 1 is left, enemies start right; A1 is the upper-left home corner; stored col/row are zero-based; player rows ${game.board.playerStartRow}–${game.board.rows-1}, enemy rows 0–${game.board.halfRows-1}, ${game.board.playerStartRow===game.board.halfRows?'no contested rows':'contested rows '+game.board.halfRows+'–'+(game.board.playerStartRow-1)}; canvas width1440; height1000`,seed:partyMode?undefined:token.seed,phase:game.phase,projection:'side',facing:(game.battle?.units||[...game.field.map(u=>({...u,side:'player'})),...game.opponents.map(u=>({...u,side:'enemy'}))]).map(u=>({id:u.id,facing:unitFacing(u),mirrored:unitFacing(u)==='right'})),tab,paused,traitInspection:traitInspection(),zoneDefense:zoneSnapshot()||null,codex:{mode:codexMode,classMode:codexClassMode,spotlight:codexHero?identity(AB.heroById(codexHero)):null,factionPlan,factionOverview:AB.FACTIONS.map(f=>factionSummary(f.id)),factionSummary:codexMode==='factions'?factionSummary(codexFaction):null,bridges:codexMode==='factions'?factionBridges(codexFaction):[],factionId:codexMode==='factions'?codexFaction:null,page:codexMode==='factions'?factionPage:rosterPage,totalHeroes:codexMode==='factions'?factionHeroes().length:AB.ROSTER.length,perPage:CODEX_PAGE_SIZE,heroIds:codexHeroes().map(h=>h.id),identities:codexHeroes().map(identity),lineage:codexMode==='factions'?faction(codexFaction).lineage:null,appearance:codexMode==='factions'?faction(codexFaction).appearance:null,roles:codexHeroes().map(h=>({heroId:h.id,...roleLabels(h)})),classes:codexMode==='classes'?AB.CLASSES:[],strategy:codexMode==='factions'?faction(codexFaction).strategy:null},archetypes:AB.ARCHETYPES,inspection:selectedUnit()?{stats:statSummary(inspectedCombatUnit()||AB.deriveStats({...selectedUnit(),balanceVersion:game.balanceVersion},AB.synergies(game.opponents.some(u=>u.id===selected)?game.opponents:game.field))),abilityProfile:abilityProfile(hero(selectedUnit()),inspectedCombatUnit())||null,abilityPoints:abilityPoints(inspectedCombatUnit()),maxAbilityPoints:maxAbilityPoints(inspectedCombatUnit(),hero(selectedUnit())),unitId:selected,heroId:selectedUnit().heroId,identity:identity(hero(selectedUnit())),evolution:ABArtSprites.evolutionProfile(selectedUnit(),hero(selectedUnit())),body:AB.bodyProfile(selectedUnit()),roles:roleLabels(hero(selectedUnit())),statuses:statusLabels(inspectedCombatUnit()),combat:inspectedCombatUnit()}:null,playerLevel:game.playerLevel,fieldLimit:game.playerLevel,benchCapacity:10,board:{...game.board,columnLabels:Array.from({length:game.board.columns},(_,c)=>String.fromCharCode(65+c)),rowLabels:Array.from({length:game.board.rows},(_,r)=>game.board.rows-r)},selected,message,panels:{traitsOpen,detailsOpen,unreadTraits,unreadDetails},help:{automaticTipsEnabled:tipsEnabled,idleThresholdMs:IDLE_HINT_MS,visible:hintVisible,nextStep:nextStepHint()},shop:{visible:shopVisible,previewIndex:shopPreviewIndex,offerRatings:match?.shops.player.map(offer=>offer?ratings(offer.heroId,1):null)},showAllTraits,visibleStatusIcons:(game.phase==='planning'?AB.previewCombatUnits(game):game.battle?.units||[]).filter(u=>u.alive!==false).map(u=>({unitId:u.id,icons:statusDetails(u,{preparation:game.phase==='planning'}).map(({key,symbol,label})=>({key,symbol,label}))})).filter(u=>u.icons.length),bench:game.bench.map(u=>({...u,cost:hero(u).cost,ratings:ratings(u.heroId,u.level)})),field:game.field.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),opponents:game.opponents.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),synergies:AB.synergies(game.field),mergeGroups:AB.mergeGroups(game).map(g=>({heroId:g.heroId,level:g.level,count:g.count})),battle:game.battle,cherubs:visibleChests().filter(objective=>objective.rewardKind==='cherub').map(({id,side,col,row,hp,maxHp,status})=>({id,side,col,row,hp,maxHp,status})),result:game.result});
 window.AB_GAME=()=>game;window.AB_TOKEN=partyMode?null:JSON.parse(JSON.stringify(token));window.AB_MATCH=()=>match;window.AB_UI={select,deselect,deploy:actDeploy,recall,begin,reset,draw,combine,startMatch,nextRound,buyXP,selectChest,buyShop,sellHero,rerollShop,ratings,traitIcons,fieldHover:()=>hoveredFieldUnit?{heroId:hoveredFieldUnit.h.id,ratings:ratings(hoveredFieldUnit.h.id,hoveredFieldUnit.u.level),icons:traitIcons(hoveredFieldUnit.h)}:null,grid:()=>({columns:game.board.columns,rows:game.board.rows,halfRows:game.board.halfRows,playerStartRow:game.board.playerStartRow,neutralRow:game.board.neutralRow,tiles:Array.from({length:game.board.rows},(_,r)=>Array.from({length:game.board.columns},(_,c)=>({col:c,row:r,coordinate:coordinate(c,r),...grid().at(c,r)}))).flat()}),hitRegions:()=>hits.map(({fn,...h})=>h)};
 if(matchMode){try{const saved=localStorage.getItem(matchSaveKey);if(saved){match=ABMatch.restore(saved);if((match.boardMode||null)!==boardMode){match=null;throw new Error('Saved match belongs to another board mode.');}let supplyNotice='';if(match.schemaVersion===1){const converted=ABMatch.upgradeLegacy(match);if(converted.ok){const backupKey=matchSaveKey+':before-shared-pool';if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,saved);match=converted.match;supplyNotice=' Shared hero supply is now active.';persistMatch();}else supplyNotice=' Legacy supply retained: this saved army exceeds the new copy counts. New matches use shared supply.';}game=match.game;paused=match.phase==='combat';message='Your local match has been restored.'+supplyNotice+(paused?' Combat is paused; resume when ready.':' Continue from the saved preparation or result.');saveStatus='saved';}}catch(error){saveStatus='unavailable';}if(!match){match=ABMatch.createMatch({token,...(boardMode?{boardMode}:{})});game=match.game;message='Round 1. Buy a 1-gold hero from the shop below, then place it on a friendly tile.';persistMatch();}}
 // Readiness means the complete embedded artwork is decoded and visible.

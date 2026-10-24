@@ -12330,3 +12330,11 @@
 **Correction and proof**: The host package changes only Cherub game modules and a narrow room-config adaptation. New rooms pin `cherubRulesVersion: 1`; restored rooms without it retain their prior objective set and receipts. Serialized first-round item-free and item-enabled legacy transcripts match the previous runtime byte for byte. The package checksum, hosted authority and funding tests, browser Cherub story, inventory coverage and type check pass.
 
 **Rule**: Add optional combat objectives behind room creation versions, preserve absent fields during restoration, and compare frozen-room transcripts before accepting a new rules hash as compatible. Vendor only the finished source subset when adjacent work is staged.
+
+## 2026-10-24 — Pin balance revisions at match creation and preserve old combat transcripts
+
+**What happened**: Ten controlled hero-balance cycles and 1,000 AI Party tournaments identified same-cost role gaps and team ability outliers. Applying the new stats unconditionally would have changed active room outcomes and their pinned wager rules mid-match.
+
+**Correction and proof**: New practice and hosted rooms opt into `balanceVersion: 1`; older room configs omit it. Stat, ability-action, chest, and Cherub calculations read that pinned version. Two prior item-rule transcripts and a prior Cherub room's serialized first-combat state and public view remain byte-identical. The new-room version survives room serialization and authority restart; source and hosted balance tests, package checksum, authority, and browser checks pass.
+
+**Rule**: Balance releases that affect combat or rewards belong to immutable match terms. Compare old-room transcripts and views before adding an exact rules-hash compatibility mapping; never apply a new tuning table to an active funded room by default.

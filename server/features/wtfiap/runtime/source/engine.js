@@ -22,6 +22,17 @@
   const TERRAIN = typeof module !== 'undefined' && module.exports ? require('./terrain.js') : root.ABTerrain;
   const ZONES = typeof module !== 'undefined' && module.exports ? require('./zones.js') : root.ABZones;
   const ITEMS = typeof module !== 'undefined' && module.exports ? require('../game/core/items.cjs') : root.ABItems;
+  // New balance revisions are opt-in per match. A saved room with no revision
+  // keeps the exact stats it started with, including after a server restart.
+  const BALANCE_ADJUSTMENTS = Object.freeze({"tide-mender":{"ability":0.969823},"verdant-mender":{"ability":1.031119},"astral-mender":{"ability":1.18},"silk-luneth":{"ability":0.847458},"ember-duelist":{"attack":0.980577},"verdant-duelist":{"attack":1.001151},"ember-vikka":{"attack":1.052691},"silk-thimri":{"attack":1.001612},"verdant-hexbinder":{"ability":1.152542},"ember-sazrik":{"ability":0.848386},"tide-arcanist":{"ability":0.867647},"gargoyle-kharvox":{"ability":1.132353},"hollow-duelist":{"attack":1.132353},"dune-duelist":{"attack":0.867647},"hollow-artificer":{"ability":1.132353},"iron-artificer":{"ability":0.867647},"iron-hexbinder":{"ability":1.105281},"silk-vespera":{"ability":0.904739},"tide-hexbinder":{"ability":0.965918},"iron-vanguard":{"ability":1.116883},"ember-drazhul":{"ability":0.883117},"rime-boruun":{"ability":1.035289},"astral-sentinel":{"ability":0.91786},"silk-orruma":{"ability":1.089491},"ember-ranger":{"attack":1.04907},"dune-ranger":{"attack":0.953225},"dune-mender":{"ability":1.116883},"ember-aereth":{"ability":0.895349},"ember-stormcaller":{"ability":0.895349},"astral-stormcaller":{"ability":1.116883}});
+  // Final comparison against full eight-commander tournaments exposed team
+  // ability outliers left by the ten stat passes. Keep this revision pinned to
+  // new matches so serialized older rooms retain their authored actions.
+  const BALANCE_ACTION_ADJUSTMENTS = Object.freeze({
+    'ember-ranger': { 0: { factor: 1.2 } },
+    'ember-drazhul': { 0: { factor: 0.95 } },
+    'iron-vanguard': { 2: { factor: 1.9 } }
+  });
   const hasItem = (unit, id) => unit.itemIds?.includes(id) || false;
   const itemValue = (id, key) => ITEMS.VALUES[id]?.[key] || 0;
   const clearSight = (game, a, b) => !game.board.terrain || TERRAIN.clearSight(game.board, a, b);
@@ -464,6 +475,15 @@
       openingShield: hero.faction === 'gargoyle' && faction ? hp * 0.18 : 0,
       factionPower: faction, factionComplete, classPower: role, classPowers
     };
+    if (unit.balanceVersion === 1) {
+      const adjustment = BALANCE_ADJUSTMENTS[hero.id];
+      if (adjustment) {
+        const health = adjustment.health ?? 1, attack = adjustment.attack ?? 1, ability = adjustment.ability ?? 1;
+        result.maxHp *= health; result.hp *= health;
+        result.shield *= health; result.openingShield *= health;
+        result.attack *= attack; result.abilityScore *= ability;
+      }
+    }
     if (unit.itemIds?.length) {
       const itemStats = ITEMS.statsFor(unit.itemIds);
       result.maxHp = result.hp = (result.maxHp + itemStats.health) * (1 + itemStats.healthRatio);
@@ -513,12 +533,13 @@
           pool[Math.floor(random() * pool.length)].id, pool[Math.floor(random() * pool.length)].id] };
       }
       const ready = aliasAbilityPoints({
-        ...clone(unit), ...deriveStats(unit, traits), side, alive: true,
+        ...clone(unit), ...deriveStats({ ...unit, balanceVersion: game.balanceVersion }, traits), side, alive: true,
         radius: bodyProfile(unit).radius, bodyScale: bodyProfile(unit).scale,
         mana: 0, maxMana: hero.ability.manaCost ?? 3, cooldown: 0, attacks: 0, statuses: [], targetId: null, openingEffects: [],
         combatClass: hero.primaryClass, combatClasses: [...hero.classes], combatFaction: hero.faction, abilityProfile: hero.primaryClass,
         abilityName: hero.id === 'mime' ? 'Pantomime' : hero.ability.name, abilityLevel: unit.level,
-        abilityId: hero.id === 'mime' ? 'mime-pantomime' : hero.ability.id, abilityActions: hero.id === 'mime' ? [{ type: 'hit', target: 'target', factor: 1.2 }] : clone(hero.ability.actions),
+        abilityId: hero.id === 'mime' ? 'mime-pantomime' : hero.ability.id, abilityActions: hero.id === 'mime' ? [{ type: 'hit', target: 'target', factor: 1.2 }] : clone(hero.ability.actions.map((action,index)=>game.balanceVersion===1&&BALANCE_ACTION_ADJUSTMENTS[hero.id]?.[index]
+          ? {...action,...BALANCE_ACTION_ADJUSTMENTS[hero.id][index]} : action)),
         mimickedUnitId: null, mimickedHeroId: null,
         originCol: unit.col, originRow: unit.row, lastAction: null, lastMove: null, navigationTurn: null
       });
@@ -586,7 +607,7 @@
       const endRow = chest.side === 'player' ? game.board.rows : game.board.halfRows;
       if (!Number.isInteger(chest.col) || chest.col < 0 || chest.col >= game.board.columns || !Number.isInteger(chest.row) || chest.row < firstRow || chest.row >= endRow) throw new Error('Place each chest in its owner’s deployment territory.');
       if (kind === 'item' && (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1)) throw new Error('Item chests belong in the two back rows.');
-      if (kind === 'cherub' && (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1) || chest.maxHp !== cherubMaxHp())) throw new Error('Cherub uses the roster-derived low HP and front-center position.');
+      if (kind === 'cherub' && (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1) || chest.maxHp !== cherubMaxHp(game.balanceVersion))) throw new Error('Cherub uses the roster-derived low HP and front-center position.');
       if (!Number.isFinite(chest.maxHp) || chest.maxHp <= 0) throw new Error('Chest maximum HP must be supplied explicitly and be positive.');
       const armor = chest.armor === undefined ? 0 : chest.armor;
       if (!Number.isFinite(armor) || armor < 0) throw new Error('Chest armor must be nonnegative; omit it for no armor.');
@@ -601,9 +622,9 @@
 
   // The weakest named hero's unsynergized one-star health is the low-health
   // reference; no new arbitrary combat stat is introduced for this NPC.
-  function cherubMaxHp() { return Math.min(...ROSTER.map(hero => deriveStats({ heroId: hero.id, level: 1 }, synergies([])).maxHp)); }
+  function cherubMaxHp(balanceVersion) { return Math.min(...ROSTER.map(hero => deriveStats({ heroId: hero.id, level: 1, balanceVersion }, synergies([])).maxHp)); }
   function cherubObjectives(game, prefix) {
-    const col = Math.floor((game.board.columns - 1) / 2), maxHp = cherubMaxHp();
+    const col = Math.floor((game.board.columns - 1) / 2), maxHp = cherubMaxHp(game.balanceVersion);
     return ['player', 'enemy'].map(side => ({ id: prefix + ':cherub:' + side, side, col,
       row: side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1, maxHp }));
   }

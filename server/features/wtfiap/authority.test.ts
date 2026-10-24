@@ -66,6 +66,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     const input = { name: 'Forged Admin', boardMode: 'standard', preparationSeconds: null };
     await request('POST', '/rooms', input, undefined, 403, { 'X-CSRF-Token': '' });
     const host = await request('POST', '/rooms', input, undefined, 201);
+    assert.equal(host.view.config.balanceVersion, 1);
     const room = `/rooms/${host.roomCode}`;
     assert.equal(host.sharePath, `/wtfiap?room=${host.roomCode}`);
     assert.equal(host.view.players[0].name, 'Canonical Owner');
@@ -83,6 +84,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     assert.equal(started.view.players.length, 8);
     assert.equal(started.view.players.filter((p: any) => p.isAI).length, 6);
     assert.equal(started.view.phase, 'preparation');
+    assert.equal(started.view.balanceVersion, 1);
     const streamed = await fetch(base + API_PREFIX + room + '/events', { headers: { Authorization: `Bearer ${host.sessionToken}` } });
     assert.equal(streamed.headers.get('content-type'), 'text/event-stream; charset=utf-8');
     streamReader = streamed.body!.getReader();
@@ -132,6 +134,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     assert.equal(readdirSync(dataDir).filter(f => f.endsWith('.json')).length, 1);
     await open();
     const restored = (await request('GET', room, undefined, host.sessionToken)).view;
+    assert.equal(restored.balanceVersion, 1);
     assert.notEqual(restored.authorityEpoch, before.authorityEpoch);
     assert.deepEqual(restored.self, before.self);
     assert.equal(restored.nextCommandSequence, before.nextCommandSequence);

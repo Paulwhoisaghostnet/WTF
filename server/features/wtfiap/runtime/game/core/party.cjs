@@ -22,14 +22,16 @@
   const roundId = state => state.matchId + ':round:' + state.roundNumber;
   const itemsOn = state => state.itemRulesVersion === 1;
   const cherubsOn = state => state.cherubRulesVersion === 1;
+  const balanceOn = state => state.balanceVersion === 1;
   const itemRandom = (state, label) => Engine.makeRandom(state.seed + ':items:' + label);
   const alive = state => state.players.filter(player => player.hp > 0);
   const playerFor = (state, id) => { const player = state.players.find(player => player.playerId === id); demand(player, 'Unknown party player.'); return player; };
   const holders = state => state.players.flatMap(player => [...player.field, ...player.bench, ...player.shop.filter(Boolean)]);
-  const reference = ChestHealth.createReference(Engine.ROSTER.map(hero => {
-    const stats = Engine.deriveStats({ heroId: hero.id, level: 1 }, Engine.synergies([]));
+  const references = [undefined, 1].map(balanceVersion => ChestHealth.createReference(Engine.ROSTER.map(hero => {
+    const stats = Engine.deriveStats({ heroId: hero.id, level: 1, balanceVersion }, Engine.synergies([]));
     return { id: hero.id, maxHp: stats.maxHp, armor: stats.armor };
-  }));
+  })));
+  const referenceFor = state => references[balanceOn(state) ? 1 : 0];
   function position(board, col, row) {
     demand(Number.isInteger(col) && col >= 0 && col < board.columns && Number.isInteger(row) && row >= board.playerStartRow && row < board.rows,
       'Place this object in your territory.');
@@ -125,9 +127,11 @@
     demand(options.oddPlayerPolicy === 'round-ai', 'An unmatched commander faces the round AI.');
     demand(options.itemRulesVersion === undefined || options.itemRulesVersion === 1, 'Unknown item rules version.');
     demand(options.cherubRulesVersion === undefined || options.cherubRulesVersion === 1 && options.itemRulesVersion === 1, 'Cherub rewards require item rules.');
+    demand(options.balanceVersion === undefined || options.balanceVersion === 1, 'Unknown hero balance version.');
     const state = { schemaVersion: 1, matchId: options.matchId, seed: options.seed, boardMode: options.boardMode,
       ...(options.itemRulesVersion === 1 ? { itemRulesVersion: 1, itemReceipts: [] } : {}),
       ...(options.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
+      ...(options.balanceVersion === 1 ? { balanceVersion: 1 } : {}),
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
@@ -363,7 +367,7 @@
     if (state.roundNumber < 5) return { roundNumber: state.roundNumber, chests: [], ...cherubTerms };
     const chests = ['player', 'enemy'].map(side => {
       const player = side === 'enemy' && npc ? npc : playerFor(state, side === 'player' ? pair.playerId : pair.enemyId), units = side === 'player' ? game.field : game.opponents;
-      const health = units.length ? ChestHealth.calculateChestHealth(reference, units.map(unit => unit.heroId)) : null;
+      const health = units.length ? ChestHealth.calculateChestHealth(referenceFor(state), units.map(unit => unit.heroId)) : null;
       const chest = player.chest;
       return { id: pair.id + ':chest:' + side, side, col: side === 'player' ? chest.col : state.board.columns - 1 - chest.col,
         row: side === 'player' ? chest.row : state.board.rows - 1 - chest.row, maxHp: health?.maxHp ?? null };
@@ -384,6 +388,7 @@
     const token = { version: 5, config: { ...Engine.DEFAULT_CONFIG, benchCapacity: RULES.benchCapacity }, playerLevel: a.progression.level,
       board: clone(state.board), bench: [], opponents: [], battleSeed: combatSeed };
     const game = Engine.createGame(token); if (itemsOn(state)) game.itemRulesVersion = 1;
+    if (balanceOn(state)) game.balanceVersion = 1;
     game.field = clone(a.field).map(unit => ({ ...unit, id: 'player:' + unit.id }));
     if (state.boardMode === 'zone-defense') game.zoneDefense = clone(state.zoneDefense);
     game.opponents = clone(b.field).map(unit => ({ ...unit, id: 'enemy:' + unit.id, col: state.board.columns - 1 - unit.col, row: state.board.rows - 1 - unit.row }));
@@ -525,7 +530,7 @@
       hp: player.hp, gold: player.gold, level: player.progression.level, fieldCapacity: player.progression.fieldCapacity,
       xpIntoLevel: player.progression.xpIntoLevel, xpToNext: Progression.COMMANDER_LEVEL_COSTS[player.progression.level - 1] ?? null,
       totalEarnedXP: player.progression.totalEarnedXP, field: player.field.map(publicUnit), bench: player.bench.map(publicUnit),
-      ready: player.ready, chest: player.chest, ...(itemsOn(state) ? { itemChest: player.itemChest } : {}), chestMaxHp: player.field.length ? ChestHealth.calculateChestHealth(reference, player.field.map(unit => unit.heroId)).maxHp : null, eliminatedRound: player.eliminatedRound,
+      ready: player.ready, chest: player.chest, ...(itemsOn(state) ? { itemChest: player.itemChest } : {}), chestMaxHp: player.field.length ? ChestHealth.calculateChestHealth(referenceFor(state), player.field.map(unit => unit.heroId)).maxHp : null, eliminatedRound: player.eliminatedRound,
       ...(itemsOn(state) ? { itemCount: player.items.length, winStreak: player.winStreak, lossStreak: player.lossStreak } : {}) });
     const combat = state.combats.find(combat => combat.pair.playerId === playerId || (!combat.pair.isRoundAI && combat.pair.enemyId === playerId));
     const owned = state.players.flatMap(player => [...player.field, ...player.bench]);
@@ -535,7 +540,7 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds },
@@ -553,6 +558,7 @@
     demand([RULES.duelPlayerCount, RULES.playerCount].includes(state.players.length) && new Set(state.players.map(player => player.playerId)).size === state.players.length, 'A room retains its original players.');
     demand(state.itemRulesVersion === undefined || state.itemRulesVersion === 1, 'Invalid item rules version.');
     demand(state.cherubRulesVersion === undefined || state.cherubRulesVersion === 1 && itemsOn(state), 'Invalid Cherub rules version.');
+    demand(state.balanceVersion === undefined || state.balanceVersion === 1, 'Invalid hero balance version.');
     if (itemsOn(state)) demand(Array.isArray(state.itemReceipts), 'Item receipts are required.');
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');

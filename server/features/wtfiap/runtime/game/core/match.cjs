@@ -41,6 +41,11 @@
     const stats = Engine.deriveStats({ heroId: hero.id, level: 1 }, Engine.synergies([]));
     return { id: hero.id, maxHp: stats.maxHp, armor: stats.armor };
   }));
+  const balancedReference = ChestHealth.createReference(Engine.ROSTER.map(hero => {
+    const stats = Engine.deriveStats({ heroId: hero.id, level: 1, balanceVersion: 1 }, Engine.synergies([]));
+    return { id: hero.id, maxHp: stats.maxHp, armor: stats.armor };
+  }));
+  const referenceFor = match => match.balanceVersion === 1 ? balancedReference : reference;
   function required(result) {
     if (!result.ok) throw new Error(result.reason || result.error.message);
     return result;
@@ -180,13 +185,14 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
       treasure: Treasure.createLedger({ matchId, playerIds: SIDES }), receipts: [], lastReceipt: null, lastIncome: null, winnerSide: null };
     if (options.boardMode !== undefined) { match.boardMode = options.boardMode; match.game.board = boardForLevel(options.boardMode, 1); }
     match.game.itemRulesVersion = 1;
+    match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
     for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [],
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
@@ -375,7 +381,7 @@
     return { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds,
       chests: !terms.enabled ? [] : SIDES.map(side => {
         const units = side === 'player' ? match.game.field : match.game.opponents;
-        const health = units.length ? ChestHealth.calculateChestHealth(reference, units.map(unit => unit.heroId)) : null;
+        const health = units.length ? ChestHealth.calculateChestHealth(referenceFor(match), units.map(unit => unit.heroId)) : null;
         const position = match.chests[side];
         return { id: roundId(match) + ':chest:' + side, side, col: position ? position.col : null,
           row: position ? position.row : null, maxHp: health ? health.maxHp : null, health };
@@ -536,6 +542,7 @@
     demand(match.startingGold === RULES.startingGold && Number.isSafeInteger(match.roundNumber) && match.roundNumber >= 1, 'Invalid starting gold or round number.');
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
     demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
+    demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
     Health.validate(match.health); Treasure.validate(match.treasure);
     demand(match.health.matchId === match.matchId && match.treasure.matchId === match.matchId && match.health.startingHP === 100, 'Health and treasure ledgers must belong to this match.');
     demand(match.health.players.map(player => player.playerId).join(',') === SIDES.join(','), 'Commander identities must match their board sides.');

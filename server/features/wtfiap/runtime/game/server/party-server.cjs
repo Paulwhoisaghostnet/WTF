@@ -65,9 +65,11 @@ function configuration(input, preserveItemVersion = false) {
     'Tournament money terms belong in the tournament configuration.');
   requireThat(input.itemRulesVersion === undefined || input.itemRulesVersion === 1, 'Unknown item rules version.');
   requireThat(input.cherubRulesVersion === undefined || input.cherubRulesVersion === 1 && input.itemRulesVersion === 1, 'Cherub requires the item system.');
+  requireThat(input.balanceVersion === undefined || input.balanceVersion === 1, 'Unknown hero balance version.');
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
     earlyStart, oddPlayerPolicy: 'round-ai', ...(!preserveItemVersion || input.itemRulesVersion === 1 ? { itemRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}) };
+    ...(!preserveItemVersion || input.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.balanceVersion === 1 ? { balanceVersion: 1 } : {}) };
   if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');
