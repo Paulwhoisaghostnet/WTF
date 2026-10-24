@@ -1,0 +1,23 @@
+{
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpc": "https://tcinfra.net/rpc/tezos/mainnet",
+  "escrowContract": "KT19LxQyVRCJCrWM9ViPuprvSHbHd2nSy4GM",
+  "roomCode": "aaa20e17-c723-45a4-92f8-4e6530d63690",
+  "roomId": "45ec2101739dd6ba16cfbd292fa383d7cb5a59bc34a2a21d4a69c394d77d21a8",
+  "operationHash": "ongzMRTDmREtre47kMvvN6V89yVqpkU86yQSyBcJcqkZPGEZC74",
+  "operationStatus": "applied",
+  "operationLevel": 15507278,
+  "finalizedBlockHash": "BM4YG2vciemzo9Js2eAg121GAzRwhPURHMv6R6PQBrrLk1Xpou4",
+  "finalizedLevel": 15507282,
+  "payoutMode": "duel",
+  "currency": "WTF",
+  "entryAtomic": "1000000",
+  "payingEntrants": [
+    "tz1Wgw6czWVy2cq8q14rSY8EYpGN5FwHDcxG",
+    "tz1ffK8hBzdeVtJxKe77UYznYb6wuo1EB6uN"
+  ],
+  "chainRoomStatus": "funding",
+  "deposits": 0,
+  "proofBoundary": "Room opening only. No WTF deposit or Mainnet settlement was performed."
+}
