@@ -12362,3 +12362,11 @@
 **Correction and proof**: The compact shop now opens a named hero dialog with ability, ratings and Buy while retaining direct card Buy; keyboard Escape restores focus. Touch actions measure at least 44px at 844×390, 667×375 and 568×320. Native buttons and disclosures own their keyboard events. The help tip is a dismissible DOM element in the active mobile pane, and the orientation prompt offers an explicit portrait layout of the same board. Local touch flows verified purchase, bench selection, board placement and Begin round; hosted Chromium checks cover landscape and portrait views.
 
 **Rule**: Test phone layouts at the shortest supported viewing height, including modal fit and tap target geometry. When canvas gameplay has a DOM overlay, expose contextual actions and help in that overlay and verify the full purchase-to-combat chain in the same view. Update ARIA live regions only when their values change; a render loop must not rebuild unchanged status text.
+
+## 2026-10-24 — Size the mobile arena against combat geometry
+
+**What happened**: The mobile Board view used the preparation shop's shorter grid to choose its canvas crop. Combat widened the vertical grid to its full battlefield height, so a first-row hero and its trait symbols slipped under the view bar.
+
+**Correction and proof**: The Board canvas now uses one framing across preparation and combat. Landscape screenshots at 844×390 and 568×320 show both armies; the hosted browser assertion checks first and last row centers during combat. Purchase, placement and round start still use the same canvas and pass the owning game suite.
+
+**Rule**: Verify mobile framing in the largest board geometry a phase can render, including hero art and trait badges, before treating a preparation screenshot as proof of combat visibility.

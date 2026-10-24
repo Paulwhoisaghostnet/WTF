@@ -296,8 +296,14 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await phone.mouse.click(position.x,position.y);
       expect((await gameState(phone)).field.map(unit => unit.coordinate)).toContain("A1");
       expect((await gameState(phone)).shop.visible).toBe(true);
+      const framing=await phone.evaluate(() => { const tiles=AB_UI.grid().tiles,canvas=document.getElementById('game').getBoundingClientRect(),view=document.querySelector('.visual-board').getBoundingClientRect();const y=coordinate=>canvas.y+tiles.find(tile=>tile.coordinate===coordinate).y*canvas.height/1000;return {near:y('A1')-view.top,far:view.bottom-y('E5')}; });
+      expect(framing.near).toBeGreaterThan(20);
+      expect(framing.far).toBeGreaterThan(10);
       await phone.getByRole("button", { name: /Begin round/ }).click();
       expect((await gameState(phone)).phase).toBe("battle");
+      const combatFraming=await phone.evaluate(() => { const tiles=AB_UI.grid().tiles,canvas=document.getElementById('game').getBoundingClientRect(),view=document.querySelector('.visual-board').getBoundingClientRect();const y=coordinate=>canvas.y+tiles.find(tile=>tile.coordinate===coordinate).y*canvas.height/1000;return {near:y('A1')-view.top,far:view.bottom-y('E5')}; });
+      expect(combatFraming.near).toBeGreaterThan(40);
+      expect(combatFraming.far).toBeGreaterThan(0);
       await expect(phone.getByRole("button", { name: "Pause" })).toBeVisible();
       await phone.screenshot({ path: test.info().outputPath("landscape-game.png") });
       expect(errors).toEqual([]);

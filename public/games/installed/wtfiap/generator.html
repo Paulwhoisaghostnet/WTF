@@ -35,7 +35,7 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .mobile-stage-nav button[aria-pressed="true"]{border-color:#dab975;background:#4b452e;color:#ffe9b0}
 .compact-stage .visual-board{flex:1;min-height:0;overflow:hidden}
 .compact-stage .visual-board #game{width:100%;min-width:0;height:auto;transform:translateY(calc(-1 * var(--mobile-pan,0px)))}
-.compact-stage .visual-board[data-mobile-view="board"] #game{width:123%;margin-left:-11.5%}
+.compact-stage .visual-board[data-mobile-view="board"] #game{width:85%;margin-inline:auto}
 .compact-stage .visual-board[data-mobile-view="shop"] #game,.compact-stage .visual-board[data-mobile-view="bench"] #game{visibility:hidden}
 .compact-stage .visual-board[data-mobile-view="shop"] #mobile-shop,.compact-stage .visual-board[data-mobile-view="bench"] #mobile-bench{display:flex}
 .compact-stage .mobile-pane{position:absolute;inset:0;z-index:2;flex-direction:column;gap:5px;padding:5px 8px;background:#102529;overflow:auto}
@@ -7338,7 +7338,7 @@ function setMobileView(view){
   if(view==='shop'&&match&&(match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open))view='board';
   mobileView=view;visualBoard.dataset.mobileView=view;
   document.querySelectorAll('#mobile-stage-nav button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.view===view));button.disabled=button.dataset.view==='shop'&&(!match||match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open);});
-  const pan=document.querySelector('main').classList.contains('portrait-play')?0:view==='board'?(shopVisible&&match?.phase==='preparation'?120:220):0,scale=canvas.clientWidth/1440;
+  const pan=document.querySelector('main').classList.contains('portrait-play')?0:view==='board'?95:0,scale=canvas.clientWidth/1440;
   visualBoard.style.setProperty('--mobile-pan',`${Math.round(pan*scale)}px`);
 }
 function syncStageLayout(){const main=document.querySelector('main'),portrait=portraitPhone.matches&&portraitOverride,compact=mobileStageMedia.matches||portrait,controls=document.getElementById('accessible-controls'),items=document.getElementById('items-toggle'),nav=document.getElementById('mobile-stage-nav');main.classList.toggle('portrait-play',portrait);main.classList.toggle('compact-stage',compact);if(items.parentElement!==(compact?nav:visualBoard))(compact?nav:visualBoard).appendChild(items);if(controls.parentElement!==(compact?nav:main))(compact?nav:main).appendChild(controls);setMobileView(mobileView);}
