@@ -395,6 +395,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(phone.locator('#mobile-bench')).toBeVisible();
       await expect(phone.locator('#phase-cue')).toContainText('ROUND 1 · SHOP');
       await expect(phone.locator('#phase-cue')).toContainText('visible board');
+      await expect(phone.locator('#phase-cue span')).toBeVisible();
       expect(await phone.evaluate(async () => { let changes=0;const rail=document.getElementById('mobile-resource'),observer=new MutationObserver(records=>changes+=records.length);observer.observe(rail,{childList:true,subtree:true,characterData:true});AB_UI.draw();AB_UI.draw();await Promise.resolve();observer.disconnect();return changes; })).toBe(0);
       await expect(phone.locator('#mobile-stage-nav #items-toggle')).toBeVisible();
       await expect(phone.locator('#mobile-stage-nav #accessible-controls')).toBeVisible();
