@@ -31,7 +31,7 @@ test('a persisted Cherub room keeps its old combat transcript and public view', 
   assert.equal(state.balanceVersion, undefined);
   assert.equal(sha(Party.serialize(state)), '6bf6152d787ccd624bac610c5aba6900b358576f4776e90b4cc96bbca02e6850');
   assert.equal(sha(JSON.stringify(Party.view(state, 'a'))), '58759e18ea01350a537eb112024b0eac286cbfa0ec479363d5b886d574e8ed86');
-  assert.equal(Rules.getRuntimeRulesHash(process.cwd()), 'c9b670f86935273edc58cc3ec9565c8095b38246f0623e9ad68fd9f19fe58302');
+  assert.equal(Rules.getRuntimeRulesHash(process.cwd()), 'b6685336ab0dbd4b5875774e7fae17a2136003ab8ef8f3c416e967fc6ac3c8d8');
   assert.equal(Rules.supportsPinnedRules(Rules.getRuntimeRulesHash(process.cwd()),
     '838117450b955e3f47b35a9fdb714b002b5c99ba5d37911eb506638defd7c612'), true);
   assert.equal(Rules.supportsPinnedRules(Rules.getRuntimeRulesHash(process.cwd()),

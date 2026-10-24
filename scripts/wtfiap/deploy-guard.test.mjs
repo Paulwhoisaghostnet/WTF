@@ -13,7 +13,7 @@ test('active funded rooms and orphan game locks prevent incompatible replacement
 });
 test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
-  const currentRelease = 'c9b670f86935273edc58cc3ec9565c8095b38246f0623e9ad68fd9f19fe58302';
+  const currentRelease = 'b6685336ab0dbd4b5875774e7fae17a2136003ab8ef8f3c416e967fc6ac3c8d8';
   assert.equal(rules.getRuntimeRulesHash(), currentRelease);
   assert.equal(rules.supportsPinnedRules(currentRelease, '838117450b955e3f47b35a9fdb714b002b5c99ba5d37911eb506638defd7c612'), true);
   assert.equal(rules.supportsPinnedRules(currentRelease, oldRules), true);

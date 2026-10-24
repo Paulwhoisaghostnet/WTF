@@ -12411,3 +12411,11 @@
 **Rule**: Compare optional economy effects over complete seeded matches in Duel and Tournament formats, rotate the buyer through seats, and verify resource deltas as well as winner changes. Pin revised terms only to new rooms; replay existing room state and view bytes before release. AI redemptions must check capacity and immediate merge conditions before sending an authoritative action.
 
 ---
+
+## 2026-10-24 - Lobby discovery needs a room lifecycle, not a file count
+
+**What happened**: coLILseum preserved room files for recovery but listed every unstarted room indefinitely. A live lobby accumulated full waiting tables and release-smoke rooms that visitors could neither join nor watch.
+
+**Why it mattered**: Persistence is appropriate for escrow and replay, but a directory that equates a saved record with an available table becomes unusable even though match state remains intact.
+
+**Rule**: Derive discovery from joinability or a live match. Give hosts a durable close action for unstarted, unfunded rooms, preserve closed records for audit, and refuse room closure after escrow binds or combat begins. Do not guess an expiration timeout for abandoned rooms.

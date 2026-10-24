@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { listRooms } = require('./room-directory.cjs');
+const { listRooms, roomSummary } = require('./room-directory.cjs');
 
 test('room browser lists only public active tables and receipt-backed player records', () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wtfiap-rooms-'));
@@ -31,4 +31,16 @@ test('room browser labels a creator-pinned variation without revealing its priva
     players: [{ playerId: 'p1', name: 'A', isAI: false }], watchers: [], match: null });
   assert.equal(table.rulesPreset, 'ancient');
   assert.equal(table.openSeats, 1);
+});
+
+test('directory includes joinable and live rooms but excludes full waiting, closed and terminal records', () => {
+  const base = { roomCode: 'table', config: { roomType: 'duel' }, players: [{ playerId: 'p1', name: 'Host' }] };
+  assert.equal(roomSummary(base).openSeats, 1);
+  assert.equal(roomSummary({ ...base, players: [...base.players, { playerId: 'p2', name: 'Guest' }] }), null);
+  assert.equal(roomSummary({ ...base, players: [...base.players, { playerId: 'p2', name: 'Guest' }],
+    match: { phase: 'preparation' } }).phase, 'preparation');
+  assert.equal(roomSummary({ ...base, closedAtMs: 100, closedByPlayerId: 'p1' }), null);
+  assert.equal(roomSummary({ ...base, match: { phase: 'finished' } }), null);
+  assert.equal(roomSummary({ ...base, voidArchive: {} }), null);
+  assert.equal(roomSummary({ ...base, fundingFaultArchive: {} }), null);
 });

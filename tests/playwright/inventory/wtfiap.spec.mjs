@@ -614,6 +614,36 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await guestContext.close(); }
   });
 
+  test("full waiting tables leave discovery and a host can close an unstarted room", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#create-name").fill("Closing host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toHaveValue("");
+    const code = await page.locator("#invite-code").inputValue();
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto(`/games/installed/wtfiap/party.html?room=${code}`, { waitUntil: "domcontentloaded" });
+      await guest.locator("#join-name").fill("Closing guest");
+      await guest.locator("#join-room").click();
+      await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
+      await guest.locator("#other-room").click();
+      await guest.locator("#refresh-rooms").click();
+      await expect(guest.getByRole("button", { name: `Watch duel room ${code}` })).toHaveCount(0);
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await expect(page.locator("#close-room")).toBeVisible();
+      await page.locator("#close-room").click();
+      await expect(page.locator("#phase-label")).toHaveText("Room closed");
+      await expect(page.locator("#room-rules")).toContainText("no longer listed or joinable");
+      await expect(page.locator("#start-room")).toBeHidden();
+      const lobby = await (await page.request.get(`/api/wtfiap/party/rooms/${code}/lobby`)).json();
+      expect(lobby.view.phase).toBe("closed");
+      await page.screenshot({ path: test.info().outputPath("closed-room.png"), fullPage: true });
+    } finally { await guestContext.close(); }
+  });
+
   test("room creator pins Ancient and Custom optional rules while the core duel stays playable", async ({ page, browser }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });

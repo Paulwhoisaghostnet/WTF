@@ -297,6 +297,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.watchers ||= [];
     room.watcherSessions ||= {};
     room.messages ||= [];
+    if (room.closedAtMs !== undefined) requireThat(Number.isSafeInteger(room.closedAtMs) && room.closedAtMs >= room.createdAtMs &&
+      room.closedByPlayerId === room.hostPlayerId && !room.match && !room.fundingLock,
+    'Closed room archive must be an unfunded, unstarted host action.');
     const restoredConfig = configuration({ ...room.config, ...(room.config.tournament ? { tournament: {
       currency: room.config.tournament.currency, entryFee: room.config.tournament.entryFee,
       prizePercentages: room.config.tournament.prizePercentages } } : {}),
@@ -341,7 +344,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     rooms.set(room.roomCode, room);
   }
   function lobby(room) {
-    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, phase: room.voidArchive ? 'voided' : room.match ? room.match.phase : 'lobby',
+    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId,
+      phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match ? room.match.phase : 'lobby',
+      ...(!room.match && !room.fundingLock ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
@@ -501,7 +506,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
-      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|commands|messages|events|replay|lobby))?$/);
+      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|close|commands|messages|events|replay|lobby))?$/);
       requireThat(route, 'Unknown party endpoint.', 404);
       const room = rooms.get(route[1]); requireThat(room, 'Party room not found.', 404);
       const action = route[2];
@@ -509,7 +514,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'join') {
         const input = await bodyJSON(request);
         immutableTerms(input);
-        requireThat(!room.match && !room.fundingLock, 'This party has already started or frozen its funded entrants.', 409);
+        requireThat(room.closedAtMs === undefined && !room.match && !room.fundingLock,
+          'This room is closed, already started, or has frozen funded entrants.', 409);
         requireThat(room.players.length < roomCapacity(room), 'All room seats are occupied.', 409);
         const identity = addHuman(room, input.name, request); room.revision++; persist(room); publish(room);
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
@@ -517,6 +523,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
       if (request.method === 'POST' && action === 'watch') {
         const input = await bodyJSON(request);
+        requireThat(room.closedAtMs === undefined, 'This room is closed.', 409);
         requireThat(Object.keys(input).every(key => key === 'name'), 'Watching does not create a player seat or change room terms.');
         const identity = addWatcher(room, input.name, request);
         room.revision++; persist(room, false); publish(room);
@@ -526,6 +533,18 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
       const session = authenticate(request, room); advance(room);
       const watchedPlayerId = url.searchParams.get('watch');
+      if (request.method === 'POST' && action === 'close') {
+        const input = await bodyJSON(request);
+        requireThat(Object.keys(input).length === 0, 'Closing a room needs no extra terms.');
+        requireThat(!session.watcherId && session.playerId === room.hostPlayerId,
+          'Only the room host can close it.', 403);
+        requireThat(!room.match && !room.fundingLock, 'Started or escrow-bound rooms cannot be closed.', 409);
+        if (room.closedAtMs === undefined) {
+          room.closedAtMs = now(); room.closedByPlayerId = session.playerId;
+          room.revision++; persist(room, false); publish(room);
+        }
+        writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
+      }
       if (request.method === 'GET' && !action) { writeJSON(response, 200, { ok: true, view: snapshot(room, session, now(), watchedPlayerId) }); return; }
       if (request.method === 'GET' && action === 'replay') {
         requireThat(!session.watcherId, 'Only a commander can download their round records.', 403);
@@ -543,6 +562,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       }
       if (request.method === 'POST' && action === 'messages') {
         const input = await bodyJSON(request), senderId = session.watcherId || session.playerId;
+        requireThat(room.closedAtMs === undefined, 'This room is closed.', 409);
         requireThat(Object.keys(input).every(key => ['channel', 'recipientId', 'text'].includes(key)), 'A message may contain only its channel, recipient and text.');
         requireThat(input.channel === 'room' || input.channel === 'whisper', 'Choose room chat or a whisper.');
         requireThat(validText(input.text), 'Write a message before sending it.');
@@ -562,6 +582,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'start') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(room.closedAtMs === undefined, 'This room is closed.', 409);
         requireThat(!session.watcherId, 'Watchers cannot start a match.', 403);
         requireThat(session.playerId === room.hostPlayerId, 'Only the room host can start the party.', 403);
         if (isDuel(room) || isTournament(room) && room.config.allowAI !== true)
@@ -588,6 +609,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'commands') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(room.closedAtMs === undefined, 'This room is closed.', 409);
         requireThat(!session.watcherId, 'Watchers cannot command a team.', 403);
         requireThat(!room.voidArchive && !room.fundingFaultArchive, 'This funded tournament is paused for technical-void reconciliation.', 409);
         requireThat(room.match, 'Start the party before issuing game commands.', 409);
@@ -648,13 +670,15 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
       const accounts = new Map(Object.values(room.sessions).map(session => [session.playerId, session.accountId ?? null]));
       return { roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
-        phase: room.voidArchive ? 'voided' : room.match?.phase || 'lobby', players: room.players.map(player => ({ ...clone(player), accountId: accounts.get(player.playerId) })),
+        phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match?.phase || 'lobby',
+        players: room.players.map(player => ({ ...clone(player), accountId: accounts.get(player.playerId) })),
         lock: room.fundingLock ? (({ seed, ...publicLock }) => clone(publicLock))(room.fundingLock) : null };
     },
     list() { return [...rooms.values()].filter(room => room.fundingLock).map(room => room.roomCode); },
     lock(roomCode, binding) {
       const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
-      requireThat(hasWagerTerms(room) && !room.match, 'Only an unstarted wager room can open escrow.', 409);
+      requireThat(hasWagerTerms(room) && !room.match && room.closedAtMs === undefined,
+        'Only an open, unstarted wager room can open escrow.', 409);
       for (const key of ['roomId', 'termsHash', 'rulesHash', 'matchId']) requireThat(typeof binding[key] === 'string' && /^[a-f0-9]{64}$/.test(binding[key]), 'Invalid funding commitment.');
       requireThat(['mainnet', 'shadownet'].includes(binding.network) && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(binding.escrowContract), 'Invalid escrow binding.');
       const expected = { roomId: binding.roomId, termsHash: binding.termsHash, rulesHash: binding.rulesHash,
