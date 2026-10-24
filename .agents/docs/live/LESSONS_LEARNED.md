@@ -12523,3 +12523,9 @@
 **What happened**: The aggregate test gate found two old assertions after coLILseum's packaging and menu updates. A funding manifest test selected the old party-server source path, and the FAQ tutorial kept "Play" in its step text while its narration and current Stuffs menu said "Games".
 
 **Rule**: Assert the canonical packaged destination when a source file can be renamed during vendoring, and keep tutorial steps, spoken text, and the visible menu label aligned in the same change.
+
+## 2026-10-24 - Full hosted-round browser stories need a measured CI deadline
+
+**What happened**: The item-shop browser story advanced through four authoritative hosted rounds before checking the component purchase. It passed locally in 43 seconds but exceeded the standard 60-second per-test timeout in CI; the other 781 inventory stories passed.
+
+**Rule**: Retain the full hosted purchase path, and mark this measured slow story with Playwright's built-in `test.slow()` deadline rather than weakening the combat or purchase assertions. Review the duration again if the game loop changes.

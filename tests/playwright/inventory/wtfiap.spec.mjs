@@ -872,6 +872,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
   });
 
   test("hosted item shop accepts a component purchase and returns to the hero shop", async ({ page }) => {
+    // Four authoritative server rounds took 43s locally and exceeded the
+    // standard 60s deadline on CI. Keep the end-to-end room path intact.
+    test.slow();
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
