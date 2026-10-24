@@ -82,5 +82,39 @@
     }
   ],
   "noGameplayStateInjection": true,
-  "noAccountOrWalletLinkChanges": true
+  "noAccountOrWalletLinkChanges": true,
+  "treasuryTransfer": {
+    "from": "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+    "to": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+    "amountMutez": "20000",
+    "operationHash": "oomtburtXo9mkD23vGqRJKYhrsv87xQ5cuRyvmMWWhz359XeLXG",
+    "level": 5615815,
+    "status": "applied"
+  },
+  "chainOperations": [
+    {
+      "kind": "create_room",
+      "operationHash": "opCpoXzhxsZ2amSo8QuzkoT32sym3mUV515QSJsE8DbnuravkwB",
+      "level": 5615692,
+      "status": "applied"
+    },
+    {
+      "kind": "start_room",
+      "operationHash": "onoyBwDSNA3veXgZE2Pb2bJZ4BjdndhQUQnU4DTsM8XDV7Y32fb",
+      "level": 5615730,
+      "status": "applied"
+    },
+    {
+      "kind": "finalize_room",
+      "operationHash": "ooiMmvbqedBPVLP1b5qbcNSxQpPCAFBEV7RFu459gGm3M13QvCm",
+      "level": 5615811,
+      "status": "applied"
+    },
+    {
+      "kind": "claim_treasury",
+      "operationHash": "oomtburtXo9mkD23vGqRJKYhrsv87xQ5cuRyvmMWWhz359XeLXG",
+      "level": 5615815,
+      "status": "applied"
+    }
+  ]
 }
