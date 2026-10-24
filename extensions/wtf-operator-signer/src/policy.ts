@@ -11,6 +11,22 @@ import {
 } from "../../../shared/operator-signer";
 import type { SignerEnv } from "./env";
 
+export function wtfIapSignerLane(env: SignerEnv, chainId: string) {
+  if (chainId === "NetXdQprcVkpaWU" && env.WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID !== chainId &&
+      env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID === chainId) {
+    return { contracts: env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS,
+      walletId: env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_WALLET_ID,
+      chainId: env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID,
+      rpc: env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_RPC,
+      journalPath: env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_JOURNAL_PATH };
+  }
+  return { contracts: env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS,
+    walletId: env.WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID,
+    chainId: env.WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID,
+    rpc: env.WTF_OPERATOR_SIGNER_WTFIAP_RPC,
+    journalPath: env.WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH };
+}
+
 export function parseEnvelope(raw: string):
   | { ok: true; envelope: OperatorSignerEnvelope }
   | { ok: false; response: OperatorSignerResponse } {
@@ -36,16 +52,17 @@ export function enforceEnvelopePolicy(
   if (envelope.intent === "health") return null;
 
   if (envelope.intent === "wtfiap_escrow") {
-    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS?.includes(envelope.payload.contract)) {
+    const lane = wtfIapSignerLane(env, envelope.payload.chainId);
+    if (!lane.contracts?.includes(envelope.payload.contract)) {
       return refuse("WTFIAP escrow is not allowlisted", "WTFIAP_CONTRACT", envelope.requestId);
     }
-    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID || envelope.walletId !== env.WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID) {
+    if (!lane.walletId || envelope.walletId !== lane.walletId) {
       return refuse("WTFIAP referee wallet mismatch", "WTFIAP_WALLET", envelope.requestId);
     }
-    if (!env.WTF_OPERATOR_SIGNER_WTFIAP_RPC) {
+    if (!lane.rpc) {
       return refuse("WTFIAP requires its own explicit RPC", "WTFIAP_RPC", envelope.requestId);
     }
-    if (envelope.payload.chainId !== env.WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID) {
+    if (envelope.payload.chainId !== lane.chainId) {
       return refuse("WTFIAP chain mismatch", "WTFIAP_CHAIN", envelope.requestId);
     }
   }
@@ -70,7 +87,7 @@ export function enforceEnvelopePolicy(
 
   if (isOperatorSignerContractCallIntent(envelope.intent)) {
     const payload = envelope.payload as OperatorSignerContractCallPayload;
-    if (env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS?.includes(payload.contract)) {
+    if ([...env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS, ...env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS].includes(payload.contract)) {
       return refuse("WTFIAP escrow requires its durable typed intent", "WTFIAP_INTENT_REQUIRED", envelope.requestId);
     }
     if (payload.mutez > env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ) {

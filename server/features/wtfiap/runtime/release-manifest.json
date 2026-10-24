@@ -6,7 +6,7 @@
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
-  "funding": "Native host escrow enforces verified Shadownet room-currency prizes and refunds; settled older rooms retain their original commitments",
+  "funding": "Native host escrow pins Shadownet XTZ or Mainnet WTF per new room; older funded rooms retain their original network and recovery commitments",
   "recipe": "npm run build in the source project; node scripts/vendor-wtfiap.mjs --source <game-workspace>; node scripts/vendor-wtfiap.mjs",
   "files": [
     {
@@ -33,9 +33,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "390d8ecd57aff1ef0916ca98d990efe99c53e0f498cf28819c391e1662c5b805",
-      "sha256": "390d8ecd57aff1ef0916ca98d990efe99c53e0f498cf28819c391e1662c5b805",
-      "bytes": 50864
+      "sourceSha256": "5a66a5355e1050e78a03255c7d1753a0a47c3ce9479123037386e7e5364bd6a6",
+      "sha256": "5a66a5355e1050e78a03255c7d1753a0a47c3ce9479123037386e7e5364bd6a6",
+      "bytes": 51014
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -47,9 +47,9 @@
     {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "c23297457283a944a3ba44466a85307c96e48cf2a952d728b8c2e6dced8eccab",
-      "sha256": "b2a46823ca30554aa82bf404d858dc9da71d482455c28ae591fa616a7181fdd0",
-      "bytes": 20132
+      "sourceSha256": "6549a86c349337887c4c07354dcb584de2e384241880c256a8e4cd0d25ed731f",
+      "sha256": "4edf68cb82732faa3ed38f676b5c189ac7188b6e50c8e79f858c2c1ac710f1db",
+      "bytes": 20289
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",

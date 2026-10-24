@@ -1,6 +1,6 @@
 # WTFIAP-v0.01 escrow readiness
 
-This release targets **Tezos Shadownet**. Mainnet work is preparation only: no Mainnet operation has been signed or injected. Testnet contracts and the hosted Shadownet lane are deployed; complete native and hosted game verification is still in progress.
+New XTZ tournament rooms target **Tezos Shadownet**. New WTF tournament rooms target a separately configured **Tezos Mainnet** lane. Mainnet work is preparation only until its escrow is originated and verified: no Mainnet WTFIAP operation has been signed or injected. Existing funded rooms retain their pinned network and contract.
 
 ## Approved economics and recovery
 
@@ -51,11 +51,17 @@ Technical voids are private operator maintenance: stop the app, obtain the deplo
 
 Mainnet remains disabled. The production asset will be WTF `KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD`, token 0, eight decimals, on `NetXdQprcVkpaWU`.
 
+The game now selects the funding lane by room currency and exposes exact room-specific settings at `GET /api/wtfiap/funding/config?room=<code>`. The operator signer has independent Mainnet contract, wallet, RPC and durable-journal allowlists. The Mainnet lane cannot inherit the Shadownet escrow or signer settings; blank Mainnet fields keep new WTF deposits disabled. Player WTF approval, deposit and permission removal remain one wallet batch with zero XTZ attached; the initiating wallet pays Tezos gas and storage fees in XTZ. Claims and refunds for older rooms remain pinned to their original deployment.
+
+Mainnet admission requires all `WTFIAP_MAINNET_*` game settings from `.env.example` and all `WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_*` signer settings from the signer `.env.example`, matching the finalized deployment. `originate-mainnet.ts` checks the exact approved artifact, creator, WTF asset and resolved treasury; it is read-only unless explicitly called with `--execute`.
+
 Readonly finalized Tezos Domains resolution proves that `wtf.tez` resolves to `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`; its domain owner is a different address. The record expires 2027-04-10. See [treasury resolution evidence](../../contracts/wtfiap-escrow/proof/mainnet-treasury.json), reproducible with `scripts/wtfiap/resolve-treasury.mjs`.
 
 The current artifact and Mainnet initial storage typecheck under protocol `PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY`. Readonly estimation using the funded public treasury address requires **2,406,769 mutez**: 10,019 fee plus 2,396,750 storage burn. No key was loaded and signing is impossible in this helper. The primary RPC returned 503; the approved Mainnet fallback completed the check. [Current estimate](../../contracts/wtfiap-escrow/proof/mainnet-2026-10-22/preflight.json).
 
 The planned creator/referee is the existing contract-admin `tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo`, observed with 745,372 mutez. The treasury was only the readonly estimation source; this does not authorize treasury spending. Before Mainnet activation, select/fund the actual origination payer, refresh its exact estimate and referee operating budget, re-resolve `wtf.tez`, originate the tested artifact, verify finalized code/storage and then configure the Mainnet lane through a separately authorized deployment. Historic `preflight-mainnet-draft` reports refer to the superseded draft and are not current costs.
+
+A fresh read-only preflight on 2026-10-23 typechecked the current artifact and storage but could not estimate an origination signed by contract-admin: its 745,372-mutez balance is below the RPC's 2,327,500-mutez storage charge before transaction fees. The previous 2,406,769-mutez total was estimated using the treasury address only; it is a cost reference, not permission to spend treasury funds. The new read-only originator completed without signing. A funded, authorized payer and a fresh exact estimate are still required before any Mainnet operation.
 
 ## Verification commands and boundaries
 

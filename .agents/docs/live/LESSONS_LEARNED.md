@@ -12228,3 +12228,9 @@
 **Correction and proof**: Renamed those player-facing surfaces to the exact `coLILseum` spelling, retained the stable `wtfiap` app key, route, room links, and source-art attribution, and updated the owning browser and inventory assertions. The source build and local game smoke, host build/type check, package checksum, inventory coverage, and focused practice/room browser stories pass.
 
 **Rule**: Treat product renaming as a cross-surface release. Keep technical identifiers and invitation routes stable unless migration is separately requested, and verify the actual hosted launcher and gameplay frame together.
+
+## 2026-10-23 — Funded room currency must select both the game and signer chain
+
+**What happened**: coLILseum's tournament funding config and operator signer each held one global Tezos network. Shadownet XTZ worked, but selecting WTF could not create an independent Mainnet wager; changing the global network would also misroute existing Shadownet rooms. The Mainnet escrow had not been originated and the planned contract-admin wallet lacked even the RPC-reported storage charge.
+
+**Correction and rule**: Choose a new room's funding lane from its currency, then pin the exact network, contract, token, treasury and signer identity in the durable room. Fetch room-specific public config for wallet actions, verify the finalized escrow code/storage before freezing terms, and keep legacy records usable for claims and refunds. Give each signer lane its own contract allowlist, wallet, RPC and journal. Keep Mainnet admission disabled until a funded authorized payer originates the approved artifact and its finalized deployment and hosted payment flow are verified; a read-only estimate or local browser fixture is not live custody proof.

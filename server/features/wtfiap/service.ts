@@ -10,7 +10,7 @@ import { db, pool } from "../../db";
 import { register, runJob } from "../../lib/scheduler";
 import { createFundingService, type FundingGame } from "./funding";
 import { postgresFundingStore } from "./funding-store";
-import { fundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
+import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
 
 export type WtfiapAuthority = {
   handler: RequestHandler;
@@ -45,9 +45,10 @@ export function getWtfiapAuthority(): WtfiapAuthority {
 }
 export function getWtfiapFunding() {
   if (!funding) {
-    const config = fundingConfig();
+    const config = shadownetXtzFundingConfig();
+    const mainnetWtf = mainnetWtfFundingConfig();
     const store = postgresFundingStore(pool);
-    funding = createFundingService({ config, store, game: getWtfiapAuthority().funding,
+    funding = createFundingService({ config, configs: { XTZ: config, WTF: mainnetWtf }, store, game: getWtfiapAuthority().funding,
       chain: tezosFundingChain(), onWake: () => { void runJob(JOB_NAME); },
       linkedWallet: async (userId, address) => {
         const rows = await db.select({ id: userWallets.id }).from(userWallets)
@@ -60,7 +61,23 @@ export function getWtfiapFunding() {
       return { cursorAfter: { ...funding!.health } };
     } });
     monitorStartup = store.list().then(records => {
-      monitors = fundingMonitorConfigs(config, records).map(pinned => monitorFundingHeads(pinned, () => funding?.kick(), funding!.health));
+      const states: Array<{ connected: boolean; error: string | null }> = [];
+      monitors = fundingMonitorConfigs([config, mainnetWtf], records).map(pinned => {
+        const state = { connected: false, error: null as string | null }; states.push(state);
+        const laneHealth = {
+          get headStreamConnected() { return state.connected; },
+          set headStreamConnected(value: boolean) {
+            state.connected = value;
+            funding!.health.headStreamConnected = states.some(item => item.connected);
+          },
+          get error() { return state.error; },
+          set error(value: string | null) {
+            state.error = value;
+            if (value && !states.some(item => item.connected)) funding!.health.error = value;
+          },
+        };
+        return monitorFundingHeads(pinned, () => funding?.kick(), laneHealth);
+      });
     }).catch(() => { funding!.health.error = "Saved funding networks could not be loaded for chain monitoring."; });
   }
   return funding;

@@ -86,7 +86,12 @@ treasury remainder, permissions/replays and failed-recipient isolation.
 Preflight uses supplied public creator/token/treasury settings, empty liabilities
 and fixed approved quanta. It typechecks code and typed storage on the chosen
 chain and estimates origination. It has no signing or injection path. Fixture
-storage files must never be deployed unchanged. Mainnet remains preparation only.
+storage files must never be deployed unchanged. Mainnet remains preparation only
+until the exact payer is funded and an applied origination is verified. The
+`originate-mainnet.ts` wrapper pins the approved Mainnet artifact, creator,
+real WTF token, treasury and configured Mainnet RPC. It defaults to read-only;
+`--execute` requires an explicitly selected Mainnet keyring wallet ID in the
+public config. The Shadownet wrapper refuses a Mainnet config.
 
 ## Coordinated Shadownet lifecycle
 

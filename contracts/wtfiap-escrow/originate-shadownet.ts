@@ -30,7 +30,8 @@ function clean(v: any): any {
   return v;
 }
 export async function originate(config: PreflightConfig & { walletId: string }, output: string, execute: boolean) {
-  assert.equal(config.network, 'shadownet'); assert.equal(config.expectedChainId, SHADOWNET_CHAIN_ID);
+  assert(config.network === 'shadownet' || config.network === 'mainnet');
+  assert.equal(config.expectedChainId, config.network === 'shadownet' ? SHADOWNET_CHAIN_ID : 'NetXdQprcVkpaWU');
   assert(config.walletId); // Immutable creator may be the explicitly configured hosted referee; signer remains bound to source.
   const file = path.join(output, 'origination.json'), configHash = hash(stable(config));
   let journal: any;
@@ -61,7 +62,7 @@ export async function originate(config: PreflightConfig & { walletId: string }, 
   if (!journal.operationHash) {
     const keyring = new PlatformWalletKeyring(await signerEnv(config.rpcUrl));
     const { wallet, signer } = await keyring.getSigner(config.walletId);
-    assert.equal(wallet.network, 'shadownet'); assert.equal(wallet.address, config.source);
+    assert.equal(wallet.network, config.network); assert.equal(wallet.address, config.source);
     assert.equal(await signer.publicKeyHash(), config.source);
     const toolkit = buildToolkit(signer, config.rpcUrl); assert.equal(await toolkit.rpc.getChainId(), config.expectedChainId);
     const estimate = await toolkit.estimate.originate({ code, init });
@@ -109,5 +110,6 @@ export async function originate(config: PreflightConfig & { walletId: string }, 
 if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const args=process.argv.slice(2),execute=args.includes('--execute'),pos=args.filter(v=>v!=='--execute');
   assert.equal(pos.length,2,'Usage: tsx originate-shadownet.ts <public-config.json> <proof-directory> [--execute]');
-  originate(JSON.parse(await readFile(pos[0],'utf8')),pos[1],execute).then(r=>console.log(JSON.stringify({status:r.status,contractAddress:r.contractAddress,operationHash:r.operationHash}))).catch(error=>{console.error(error instanceof Error?error.message:String(error));process.exitCode=1;});
+  const config=JSON.parse(await readFile(pos[0],'utf8')); assert.equal(config.network,'shadownet');
+  originate(config,pos[1],execute).then(r=>console.log(JSON.stringify({status:r.status,contractAddress:r.contractAddress,operationHash:r.operationHash}))).catch(error=>{console.error(error instanceof Error?error.message:String(error));process.exitCode=1;});
 }

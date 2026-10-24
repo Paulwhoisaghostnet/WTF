@@ -9,8 +9,18 @@ return async (req, res, next) => {
     demand(await canAccess(req), "WTFIAP is unavailable for this account.", 403);
     const service = getService(), endpoint = req.path.slice(prefix.length);
     res.setHeader("Cache-Control", "no-store");
-    if (req.method === "GET" && endpoint === "/config") return res.json({ ok: true, config: service.publicConfig() });
-    if (req.method === "GET" && endpoint === "/health") return res.json({ ok: true, enabled: service.publicConfig().enabled, health: service.health });
+    if (req.method === "GET" && endpoint === "/config") {
+      const code = req.query.room;
+      demand(code === undefined || (typeof code === "string" && /^[A-Za-z0-9-]+$/.test(code)), "Invalid room code.", 400);
+      return res.json({ ok: true, config: code ? await service.publicConfigForRoom(code) : service.publicConfig(),
+        lanes: service.publicConfigs() });
+    }
+    if (req.method === "GET" && endpoint === "/health") {
+      const lanes = service.publicConfigs();
+      return res.json({ ok: true, enabled: lanes.XTZ.enabled || lanes.WTF.enabled, lanes: {
+        XTZ: { enabled: lanes.XTZ.enabled, network: lanes.XTZ.network },
+        WTF: { enabled: lanes.WTF.enabled, network: lanes.WTF.network } }, health: service.health });
+    }
     const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(bind-wallet|open|start|observe|reconcile))?$/);
     demand(route, "Unknown funded-room endpoint.", 404);
     const code = route[1], action = route[2], userId = req.user ? String((req.user as any).id) : null;

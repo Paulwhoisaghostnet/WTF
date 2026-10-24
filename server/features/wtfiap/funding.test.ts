@@ -43,7 +43,7 @@ function fixture() {
       return { operationHash: opHash };
     },
   };
-  const service = () => createFundingService({ config, store, game, chain,
+  const service = (configs?: Partial<Record<"XTZ" | "WTF", FundingConfig>>) => createFundingService({ config, configs, store, game, chain,
     linkedWallet: async (id, address) => addresses[Number(id) - 1] === address || extraLinks.has(id + ":" + address),
     onWake: () => {} }); // Explicit test driver advances the event-triggered worker.
   function observe(paid = 0, status: ChainRoom["status"] = "funding") {
@@ -98,6 +98,32 @@ test("reconcile callers finish their pass while later wakes continue, and close 
   await Promise.all([first, joined, laterWake, closing]);
   assert.equal(passes, 2, "shutdown suppresses the queued follow-up");
   assert.equal(active, 0);
+});
+
+test("new WTF rooms pin Mainnet while XTZ and existing WTF rooms retain Shadownet", async () => {
+  const mainnet: FundingConfig = { ...config, network: "mainnet", chainId: "NetXdQprcVkpaWU",
+    rpcUrl: "https://tezos-mainnet.octez.io/", escrowContract: "KT1" + "3".repeat(33),
+    wtfToken: { contract: "KT1" + "4".repeat(33), tokenId: "0", decimals: 8 } };
+  const lanes = { XTZ: config, WTF: mainnet };
+  const xtz = fixture();
+  assert.equal((await xtz.service(lanes).view("test-room", "1")).network, "shadownet");
+  await xtz.service(lanes).bind("test-room", "1", addresses[0]);
+  assert.equal(xtz.rows.get("test-room")!.config.escrowContract, config.escrowContract);
+  const wtf = fixture();
+  wtf.room.config.tournament.currency = "WTF";
+  const s = wtf.service(lanes);
+  assert.equal((await s.view("test-room", "1")).network, "mainnet");
+  await s.bind("test-room", "1", addresses[0]);
+  assert.equal(wtf.rows.get("test-room")!.config.escrowContract, mainnet.escrowContract);
+  const rotated = wtf.service({ XTZ: config, WTF: { ...mainnet, escrowContract: "KT1" + "5".repeat(33) } });
+  assert.equal((await rotated.publicConfigForRoom("test-room")).enabled, false);
+  assert.equal((await rotated.view("test-room", "1")).self.canBind, false);
+  const legacy = fixture();
+  legacy.room.config.tournament.currency = "WTF";
+  await legacy.service().bind("test-room", "1", addresses[0]);
+  assert.equal((await legacy.service(lanes).view("test-room", "1")).network, "shadownet");
+  await legacy.service(lanes).bind("test-room", "2", addresses[1]);
+  assert.equal(legacy.rows.get("test-room")!.config.escrowContract, config.escrowContract);
 });
 
 test("funded rooms bind exact linked humans, freeze terms and do not mistake submitted hashes for deposits", async () => {

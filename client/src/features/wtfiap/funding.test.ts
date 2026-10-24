@@ -61,6 +61,28 @@ test("WTF deposits use one scoped permission/deposit/removal batch and reject as
   for (const operator of [{ ...action.fa2Operator!, owner: "tz1Other" }, { ...action.fa2Operator!, tokenId: "1" }, { ...action.fa2Operator!, operator: "KT1Other" }]) assert.throws(() => fundingCalls(config, room, "deposit", { ...action, fa2Operator: operator }, "tz1Bound"));
 });
 
+test("Mainnet WTF deposit pins the real asset and sends zero attached XTZ from the entrant wallet", async () => {
+  const mainnet: FundingConfig = { ...config, network: "mainnet", chainId: "NetXdQprcVkpaWU",
+    rpcUrl: "https://tezos-mainnet.octez.io/", escrowContract: "KT1MainnetEscrow",
+    wtfToken: { contract: "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD", tokenId: "0", decimals: 8 } };
+  const room = roomFixture(); room.network = mainnet.network; room.chainId = mainnet.chainId;
+  room.escrowContract = mainnet.escrowContract; room.wtfToken = mainnet.wtfToken;
+  room.terms = { ...room.terms, currency: "WTF", decimals: 8, entryFee: "0.01", entryAtomic: "1000000" };
+  room.feeQuantumAtomic = "1000000";
+  const action: FundingWalletAction = { ...room.self.actions.deposit!, contract: mainnet.escrowContract,
+    network: mainnet.network, chainId: mainnet.chainId, amountMutez: "0",
+    fa2Operator: { owner: "tz1Bound", contract: mainnet.wtfToken.contract, tokenId: "0", operator: mainnet.escrowContract } };
+  const calls = fundingCalls(mainnet, room, "deposit", action, "tz1Bound");
+  assert.deepEqual(calls.map(c => c.amountMutez), ["0", "0", "0"]);
+  assert.deepEqual(calls.map(c => c.contract), [mainnet.wtfToken.contract, mainnet.escrowContract, mainnet.wtfToken.contract]);
+  assert.throws(() => fundingCalls(config, room, "deposit", action, "tz1Bound"), /configuration does not match/);
+  const gateway: FundingWalletGateway = { network: () => "mainnet", async assertOwnership() {}, async assertReady() {},
+    async chainId() { return "NetXdQprcVkpaWU"; }, async send(batch) {
+      assert.deepEqual(batch, calls); return { opHash: "ooMainnetWtfSubmitted" };
+    } };
+  await sendFundingAction(gateway, mainnet, room, "deposit", action, "tz1Bound");
+});
+
 test("XTZ atomic strings retain their value through the installed Taquito transfer preparation", async () => {
   const atomic = "9007199254740993000001";
   const require = createRequire(import.meta.url);

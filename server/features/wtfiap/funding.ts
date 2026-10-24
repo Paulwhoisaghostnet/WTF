@@ -66,14 +66,28 @@ export type WalletAction = { entrypoint: string; params: unknown; amountMutez: s
   contract: string; network: string; chainId: string;
   fa2Operator?: { contract: string; tokenId: string; owner: string; operator: string } };
 
-export function createFundingService({ config, store, game, chain, linkedWallet, clock = () => new Date(), onWake }: {
-  config: FundingConfig; store: FundingStore; game: FundingGame; chain: FundingChain;
+export function createFundingService({ config, configs, store, game, chain, linkedWallet, clock = () => new Date(), onWake }: {
+  config: FundingConfig; configs?: Partial<Record<"XTZ" | "WTF", FundingConfig>>; store: FundingStore; game: FundingGame; chain: FundingChain;
   linkedWallet: (userId: string, address: string) => Promise<boolean>; clock?: () => Date; onWake?: () => void;
 }) {
   let running: Promise<void> | null = null, rerun = false, closed = false;
   const health = { lastAttemptAt: null as string | null, lastSuccessAt: null as string | null,
     error: null as string | null, headStreamConnected: false };
-  function enabled() { demand(config.enabled, config.reason || "Funded rooms are not configured.", 503); }
+  function selected(room: GameRoom, record?: FundingRecord | null) {
+    const lane = configs?.[room.config.tournament.currency as "XTZ" | "WTF"] || config;
+    if (!record) return lane;
+    // Older funded rooms retain their deployment, but changing any pinned
+    // signer or asset identity cannot reactivate admissions on an old room.
+    const matches = (current: FundingConfig) => current.chainId === record.config.chainId &&
+      current.escrowContract === record.config.escrowContract && current.scriptHash === record.config.scriptHash &&
+      current.creatorAddress === record.config.creatorAddress && current.refereeAddress === record.config.refereeAddress &&
+      current.walletId === record.config.walletId && current.treasuryAddress === record.config.treasuryAddress &&
+      current.wtfToken.contract === record.config.wtfToken.contract && current.wtfToken.tokenId === record.config.wtfToken.tokenId;
+    if (matches(lane)) return lane;
+    if (matches(config)) return config;
+    return { ...record.config, enabled: false, reason: "This room's pinned escrow no longer accepts new funding. Verified claims and refunds remain available." };
+  }
+  function enabled(c: FundingConfig) { demand(c.enabled, c.reason || "Funded rooms are not configured.", 503); }
   async function seat(code: string, userId: string | null) {
     demand(userId, "Sign in to the account that owns this commander.", 401);
     const saved = await store.read(code);
@@ -85,8 +99,9 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
   }
   function fresh(room: GameRoom): FundingRecord {
     demand(room.phase === "lobby", "This tournament has already started.");
-    return { schemaVersion: 1, roomCode: room.roomCode, config: { ...clone(config), feeQuantumAtomic: config.currencyQuantaAtomic[room.config.tournament.currency as "XTZ" | "WTF"] }, terms: clone(room.config.tournament), bindings: [],
-      roomId: commitment({ version: "wtfiap-room-v1", network: config.network, contract: config.escrowContract, roomCode: room.roomCode }),
+    const lane = selected(room);
+    return { schemaVersion: 1, roomCode: room.roomCode, config: { ...clone(lane), feeQuantumAtomic: lane.currencyQuantaAtomic[room.config.tournament.currency as "XTZ" | "WTF"] }, terms: clone(room.config.tournament), bindings: [],
+      roomId: commitment({ version: "wtfiap-room-v1", network: lane.network, contract: lane.escrowContract, roomCode: room.roomCode }),
       termsHash: null, lock: null, startRequested: false, status: "binding", chain: null, intents: [], observations: [], lastReconciledAt: null, error: null,
       roomSnapshot: clone(room), finalResult: null, technicalVoid: null };
   }
@@ -115,13 +130,14 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     record.intents.push(value); return value;
   }
   async function bind(code: string, userId: string, walletAddress: string) {
-    enabled(); const { room, player } = await seat(code, userId);
+    const { room, player } = await seat(code, userId);
+    enabled(selected(room, await store.read(code)));
     demand(/^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(walletAddress), "Use the exact linked Tezos wallet address.", 400);
     demand(await linkedWallet(userId, walletAddress), "Link and verify this wallet with your account before entering.", 403);
     await store.mutate(code, old => {
       // No escrow intent or lock means no payment is possible. Rebinding is
       // an explicit safe restart after a compatible UI/config release.
-      const record = old && (old.lock || room.lock || old.config.rulesHash === config.rulesHash) ? old : fresh(room); verifyLocal(record, room);
+      const record = old && (old.lock || room.lock || old.config.rulesHash === selected(room, old).rulesHash) ? old : fresh(room); verifyLocal(record, room);
       demand(room.phase === "lobby", "This tournament has already started.");
       const prior = record.bindings.find(b => b.playerId === player.playerId);
       demand(!(record.lock || room.lock) || prior?.walletAddress === walletAddress, "Funded wallet bindings are frozen.");
@@ -134,7 +150,8 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     return view(code, userId);
   }
   async function open(code: string, userId: string) {
-    enabled(); const { room, player } = await seat(code, userId);
+    const { room, player } = await seat(code, userId);
+    enabled(selected(room, await store.read(code)));
     demand(room.hostPlayerId === player.playerId, "Only the room host can open escrow.", 403);
     await store.mutate(code, async old => {
       demand(old, "Bind all entrant wallets first."); const record = old; verifyLocal(record, room);
@@ -143,6 +160,9 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
       demand(record.config.feeQuantumAtomic && BigInt(record.terms.entryAtomic) % BigInt(record.config.feeQuantumAtomic) === 0n,
         "The entry fee must meet the exact equal-prize granularity shown in the room terms.", 400);
       demand(record.config.refundPolicy, "The refund policy is not configured.", 503);
+      // Before any frozen game or signer intent exists, verify the exact
+      // finalized contract script and immutable token/treasury storage.
+      if (!record.lock) demand(await chain.read(record) === null, "This escrow room identity already exists on-chain.");
       const termsHash = commitment({ version: "wtfiap-terms-v1", roomId: record.roomId, terms: record.terms,
         entrants: record.bindings.map(b => ({ playerId: b.playerId, wallet: b.walletAddress })),
         refundPolicy: record.config.refundPolicy, feeQuantumAtomic: record.config.feeQuantumAtomic, treasuryAddress: record.config.treasuryAddress, prizeRoundingPolicy: record.config.prizeRoundingPolicy });
@@ -161,7 +181,8 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     kick(); return view(code, userId);
   }
   async function start(code: string, userId: string) {
-    enabled(); const { room, player } = await seat(code, userId);
+    const { room, player } = await seat(code, userId);
+    enabled(selected(room, await store.read(code)));
     demand(player.playerId === room.hostPlayerId, "Only the host can request the funded match start.", 403);
     await store.mutate(code, old => {
       demand(old?.lock, "Open and fund the escrow first."); verifyLocal(old, room);
@@ -283,7 +304,7 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     }
     // Disabling admissions pauses creation and starts. Existing settlement,
     // audited voids and treasury liabilities retain their pinned obligations.
-    if (!config.enabled && ["create_room", "start_room"].includes(next.kind)) return;
+    if (!selected(record.roomSnapshot, record).enabled && ["create_room", "start_room"].includes(next.kind)) return;
     await store.mutate(code, old => {
       demand(old, "Durable funding room missing.");
       const op = old.intents.find(i => i.id === next.id); demand(op?.status === "planned", "Operation already checkpointed.");
@@ -366,11 +387,12 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
     const room = (record?.finalResult || record?.technicalVoid) ? record.roomSnapshot : game.inspect(code), player = userId ? room.players.find(p => p.accountId === userId) : undefined;
     demand(room.config.roomType === "tournament", "Only tournament rooms have funding terms.");
     const binding = record?.bindings.find(b => b.playerId === player?.playerId);
+    const lane = selected(room, record);
     const actions: Record<string, WalletAction> = {};
     if (binding && record?.chain && !record.error) {
       const base = { expectedWallet: binding.walletAddress, contract: record.config.escrowContract,
         network: record.config.network, chainId: record.config.chainId };
-      if (config.enabled && !record.technicalVoid && record.chain.status === "funding" && !record.chain.paid.includes(binding.walletAddress)) actions.deposit = {
+      if (lane.enabled && !record.technicalVoid && record.chain.status === "funding" && !record.chain.paid.includes(binding.walletAddress)) actions.deposit = {
         ...base, entrypoint: "join_room", params: { room_id: record.roomId, expected_terms_hash: record.termsHash },
         amountMutez: record.terms.currency === "XTZ" ? record.terms.entryAtomic : "0",
         ...(record.terms.currency === "WTF" ? { fa2Operator: { contract: record.config.wtfToken.contract,
@@ -381,7 +403,7 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
       if (record.chain.status === "settled" && claim && !claim.claimed && BigInt(claim.amount) > 0n)
         actions.claim = { ...base, entrypoint: "claim", params: record.roomId, amountMutez: "0" };
     }
-    const c = record?.config || { ...config, feeQuantumAtomic: config.currencyQuantaAtomic[room.config.tournament.currency as "XTZ" | "WTF"] };
+    const c = record?.config || { ...lane, feeQuantumAtomic: lane.currencyQuantaAtomic[room.config.tournament.currency as "XTZ" | "WTF"] };
     return { roomCode: code, status: record?.status || "binding", terms: record?.terms || room.config.tournament,
       roomId: record?.roomId || null, termsHash: record?.termsHash || null,
       network: c.network, chainId: c.chainId, escrowContract: c.escrowContract, wtfToken: c.wtfToken,
@@ -395,18 +417,30 @@ export function createFundingService({ config, store, game, chain, linkedWallet,
       finalizedBlock: record?.chain ? { hash: record.chain.blockHash, level: record.chain.level } : null,
       operations: (record?.intents || []).map(i => ({ kind: i.kind, status: i.status, operationHash: i.operationHash || null })),
       self: { playerId: player?.playerId || null, walletAddress: binding?.walletAddress || null,
-        canBind: Boolean(player && config.enabled && room.phase === "lobby" && !record?.lock && !room.lock),
-        canOpen: Boolean(config.enabled && player?.playerId === room.hostPlayerId && record?.bindings.length === 8 && !record.lock),
-        canStart: Boolean(config.enabled && !record?.technicalVoid && player?.playerId === room.hostPlayerId && record?.chain?.status === "funding" && record.chain.paid.length === 8),
+        canBind: Boolean(player && lane.enabled && room.phase === "lobby" && !record?.lock && !room.lock),
+        canOpen: Boolean(lane.enabled && player?.playerId === room.hostPlayerId && record?.bindings.length === 8 && !record.lock),
+        canStart: Boolean(lane.enabled && !record?.technicalVoid && player?.playerId === room.hostPlayerId && record?.chain?.status === "funding" && record.chain.paid.length === 8),
         actions, payout: binding && record?.chain?.claims[binding.walletAddress] || null,
         pendingOperations: (record?.observations || []).filter(o => o.playerId === player?.playerId) },
       error: record?.error || null, health: { ...health } };
   }
+  const publicConfig = (c: FundingConfig) => ({ enabled: c.enabled, ...(c.reason ? { reason: c.reason } : {}),
+      network: c.network, chainId: c.chainId, rpcUrl: c.rpcUrl, escrowContract: c.escrowContract,
+      wtfToken: c.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: c.feeQuantumAtomic, refundPolicy: c.refundPolicy,
+      currencyQuantaAtomic: c.currencyQuantaAtomic, treasuryAddress: c.treasuryAddress, prizeRoundingPolicy: c.prizeRoundingPolicy });
   return { bind, open, start, observe, view, drain, kick, health, requestTechnicalVoid,
     inspectSeat: seat, publicConfig: () => ({ enabled: config.enabled, ...(config.reason ? { reason: config.reason } : {}),
       network: config.network, chainId: config.chainId, rpcUrl: config.rpcUrl, escrowContract: config.escrowContract,
       wtfToken: config.wtfToken, currencyDecimals: { XTZ: 6, WTF: 8 }, feeQuantumAtomic: config.feeQuantumAtomic, refundPolicy: config.refundPolicy,
       currencyQuantaAtomic: config.currencyQuantaAtomic, treasuryAddress: config.treasuryAddress, prizeRoundingPolicy: config.prizeRoundingPolicy }),
+    publicConfigs: () => ({ XTZ: publicConfig(configs?.XTZ || config), WTF: publicConfig(configs?.WTF || config) }),
+    publicConfigForRoom: async (code: string) => {
+      const record = await store.read(code);
+      const room = (record?.finalResult || record?.technicalVoid) ? record.roomSnapshot : game.inspect(code);
+      demand(room.config.roomType === "tournament", "Only tournament rooms have funding terms.", 400);
+      const lane = selected(room, record);
+      return publicConfig(record ? { ...record.config, enabled: lane.enabled, reason: lane.reason } : lane);
+    },
     close: async () => { closed = true; if (running) await running; },
   };
 }

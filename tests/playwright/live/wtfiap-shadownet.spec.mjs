@@ -72,7 +72,9 @@ async function sendWallet(page, wallet, roomCode, kind, name, entrant, configura
   return hash;
 }
 
-for (const currency of ["XTZ", "WTF"]) test(`native ${currency} Shadownet tournament deposits, withdrawal, replay and claims reconcile with real escrow`, async ({ playwright, browser, baseURL }, testInfo) => {
+// New WTF rooms use the independently pinned Mainnet lane. Existing Shadownet
+// WTF rooms remain recoverable, but new Shadownet admission is XTZ only.
+for (const currency of ["XTZ"]) test(`native ${currency} Shadownet tournament deposits, withdrawal, replay and claims reconcile with real escrow`, async ({ playwright, browser, baseURL }, testInfo) => {
   test.setTimeout(0); // A complete authoritative match has no artificial round/time cap.
   expect(["localhost", "127.0.0.1", "[::1]"]).toContain(new URL(baseURL).hostname);
   expect(process.env.WTF_E2E_WTFIAP_ESCROW).toMatch(/^KT1/);

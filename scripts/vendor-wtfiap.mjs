@@ -58,7 +58,7 @@ if (sourceFlag !== -1) {
     sourceProject: "lil-guys-autobattler",
     sourceCast: "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
     castHeroes: 50,
-    funding: "Native host escrow enforces verified Shadownet room-currency prizes and refunds; settled older rooms retain their original commitments",
+    funding: "Native host escrow pins Shadownet XTZ or Mainnet WTF per new room; older funded rooms retain their original network and recovery commitments",
     recipe: "npm run build in the source project; node scripts/vendor-wtfiap.mjs --source <game-workspace>; node scripts/vendor-wtfiap.mjs",
     files,
   }, null, 2) + "\n");

@@ -28,6 +28,7 @@ const Panel = styled.section`
 
 type RoomResponse = { ok: true; room: FundingRoom };
 const endpoint = (roomCode: string) => `/api/wtfiap/funding/rooms/${encodeURIComponent(roomCode)}`;
+const configEndpoint = (roomCode: string) => `/api/wtfiap/funding/config?room=${encodeURIComponent(roomCode)}`;
 
 export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn(): void }) {
   const { user } = useAuth();
@@ -62,7 +63,7 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
     try { setCheckpoint(loadFundingCheckpoint(localStorage, accountId, roomCode)); } catch (reason) { setError((reason as Error).message); }
     setBusy(true);
     Promise.all([
-      api.get<{ ok: true; config: FundingConfig }>("/api/wtfiap/funding/config"),
+      api.get<{ ok: true; config: FundingConfig }>(configEndpoint(roomCode)),
       api.get<RoomResponse>(endpoint(roomCode)),
     ]).then(([settings, view]) => {
       if (turn === generation.current) { setConfig(settings.config); setRoom(view.room); }
@@ -90,7 +91,7 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
   async function refresh() {
     if (!accountId) return;
     if (!room || !config) {
-      const [settings, view] = await Promise.all([api.get<{ ok: true; config: FundingConfig }>("/api/wtfiap/funding/config"), api.get<RoomResponse>(endpoint(roomCode))]);
+      const [settings, view] = await Promise.all([api.get<{ ok: true; config: FundingConfig }>(configEndpoint(roomCode)), api.get<RoomResponse>(endpoint(roomCode))]);
       setConfig(settings.config); setRoom(view.room);
       return;
     }
@@ -131,7 +132,7 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
   if (!user) return <Panel aria-label="Tournament funding"><h2>Tournament funding</h2><p>Sign in to wtfOS and join this room with your account before binding a wallet or funding an entry. Free Party mode and tournament previews remain available without payment.</p><button onClick={onReturn}>Return to game</button></Panel>;
   const serverPending = room?.self.pendingOperations.filter(item => item.status !== "failed" && item.status !== "applied" && !fundingActionCompleted(room, item.action)) || [];
   const pending = Boolean(checkpoint || serverPending.length);
-  const actionsDisabled = busy || pending || !config?.enabled;
+  const actionsDisabled = busy || pending;
   const entryError = room ? fundingEntryError(room) : null;
   const networkMismatch = Boolean(room && currentNetwork !== room.network);
   const refunded = room?.self.pendingOperations.some(item => item.action === "refund" && item.status === "applied");
@@ -171,13 +172,13 @@ export function FundingPanel({ roomCode, onReturn }: { roomCode: string; onRetur
       {(room.self.canOpen || room.self.actions.deposit) && entryError && <p role="alert" className="error">{entryError}</p>}
       {room.chainStatus === "voided" && <p className="status">This match was technically voided. Each paid entrant can recover their full entry from escrow; no prizes are awarded.</p>}
       {refunded && room.chainStatus === "funding" && room.self.actions.deposit && <p className="status">Your full entry withdrawal is verified. You can deposit again while this room remains open for funding.</p>}
-      {room.terms.currency === "WTF" && <p>A WTF deposit asks your wallet to approve one batch: allow this escrow to transfer WTF, deposit the entry, then remove its permission.</p>}
+      {room.terms.currency === "WTF" && <p>A WTF deposit asks your wallet to approve one batch: allow this escrow to transfer WTF, deposit the entry, then remove its permission. Your wallet also needs XTZ on {room.network} to pay the transaction and storage fees.</p>}
       <ul aria-label="Tournament wallet roster">{room.roster.map(player => <li key={player.playerId}><strong>{player.name}</strong> · <code>{player.walletAddress || "Wallet not bound"}</code> · {player.deposited ? "Deposit verified" : "No verified deposit"}</li>)}</ul>
       <div className="actions">
-        {room.self.canBind && <button disabled={actionsDisabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
-        {room.self.canOpen && <button disabled={actionsDisabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze eight wallets &amp; open escrow</button>}
-        {room.self.actions.deposit && <button disabled={actionsDisabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}</button>}
-        {room.self.canStart && <button disabled={actionsDisabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded tournament</button>}
+        {room.self.canBind && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(bind)}>{wallet.address ? "Bind connected wallet" : "Connect and bind wallet"}</button>}
+        {room.self.canOpen && <button disabled={actionsDisabled || !config?.enabled || !!entryError} onClick={() => void run(async () => { if (entryError) throw new Error(entryError); await mutate("open"); setMessage("Escrow creation requested. Recheck status to follow the server’s submitted operation."); })}>Freeze eight wallets &amp; open escrow</button>}
+        {room.self.actions.deposit && <button disabled={actionsDisabled || !config?.enabled || !!entryError || networkMismatch} onClick={() => void run(() => send("deposit"))}>{refunded ? "Redeposit" : "Deposit"} {formatFundingAmount(room.terms.entryAtomic, room.terms.decimals)} {room.terms.currency}</button>}
+        {room.self.canStart && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded tournament</button>}
         {room.self.actions.claim && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("claim"))}>Claim prize to bound wallet</button>}
         {room.self.actions.refund && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("refund"))}>{refundLabel}</button>}
       </div>

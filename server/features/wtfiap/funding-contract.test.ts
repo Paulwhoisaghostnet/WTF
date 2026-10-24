@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { hashTypedScript } from "../../../contracts/wtfiap-escrow/script-identity";
 import { ParameterSchema } from "@taquito/michelson-encoder";
 import { commitment, type FundingRecord, type FundingConfig } from "./funding";
-import { fundingConfig, fundingMonitorConfigs, monitorFundingHeads, rpcEndpoints, tezosFundingChain } from "./funding-contract";
+import { fundingConfig, shadownetXtzFundingConfig, mainnetWtfFundingConfig, fundingMonitorConfigs, monitorFundingHeads, rpcEndpoints, tezosFundingChain } from "./funding-contract";
 const require = createRequire(import.meta.url);
 const rules = require('./rules.cjs');
 const wallet = "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
@@ -46,6 +46,22 @@ test('configuration isolates the scoped Shadownet asset and enables only a compl
   const manifest=JSON.parse(readFileSync('server/features/wtfiap/runtime/release-manifest.json','utf8'));
   const h=rules.rulesHashFromManifest(manifest);manifest.generatorSha256='new-art';manifest.title='changed-public-label';assert.equal(rules.rulesHashFromManifest(manifest),h);
   manifest.files.find((x:any)=>x.sourcePath==='game/server/party-server.cjs').sha256='0'.repeat(64);assert.notEqual(rules.rulesHashFromManifest(manifest),h);
+});
+test('Mainnet WTF requires its own complete lane and never inherits Shadownet settings',()=>{
+  const legacy = { WTFIAP_ESCROW_NETWORK:'shadownet', WTFIAP_FUNDED_ENABLED:'1', WTFIAP_ESCROW_CONTRACT:contract,
+    WTFIAP_ESCROW_SCRIPT_HASH:cfg.scriptHash, WTFIAP_REFEREE_ADDRESS:wallet, WTFIAP_ROOM_CREATOR_ADDRESS:wallet,
+    WTFIAP_REFEREE_WALLET_ID:'shadownet-referee', WTFIAP_WTF_TOKEN_CONTRACT:'KT1L5m2ohNDhbzSbRcitn1LaMmGf7jhDbVGj',
+    WTFIAP_TREASURY_ADDRESS:wallet, WTFIAP_CHAIN_MIN_BLOCK_DELAY_SECONDS:'6' };
+  const unavailable=mainnetWtfFundingConfig(legacy);
+  assert.equal(unavailable.network,'mainnet');assert.equal(unavailable.enabled,false);assert.equal(unavailable.escrowContract,'');
+  const ready=mainnetWtfFundingConfig({...legacy,WTFIAP_MAINNET_FUNDED_ENABLED:'1',WTFIAP_MAINNET_ESCROW_CONTRACT:'KT1'+'3'.repeat(33),
+    WTFIAP_MAINNET_ESCROW_SCRIPT_HASH:cfg.scriptHash,WTFIAP_MAINNET_REFEREE_ADDRESS:wallet,WTFIAP_MAINNET_ROOM_CREATOR_ADDRESS:wallet,
+    WTFIAP_MAINNET_REFEREE_WALLET_ID:'mainnet-referee',WTFIAP_MAINNET_WTF_TOKEN_CONTRACT:contract,
+    WTFIAP_MAINNET_WTF_TOKEN_ID:'0',WTFIAP_MAINNET_TREASURY_ADDRESS:wallet,WTFIAP_MAINNET_CHAIN_MIN_BLOCK_DELAY_SECONDS:'6'});
+  assert.equal(ready.enabled,true);assert.equal(ready.network,'mainnet');assert.equal(ready.chainId,'NetXdQprcVkpaWU');
+  assert.equal(ready.escrowContract,'KT1'+'3'.repeat(33));
+  const wrongXtz=shadownetXtzFundingConfig({WTFIAP_ESCROW_NETWORK:'mainnet',WTFIAP_FUNDED_ENABLED:'1',WTFIAP_ESCROW_CONTRACT:'KT1'+'3'.repeat(33)});
+  assert.equal(wrongXtz.network,'shadownet');assert.equal(wrongXtz.escrowContract,'');assert.equal(wrongXtz.enabled,false);
 });
 test('failed wallet retry requires exact finalized RPC operation; indexer status alone never suffices',async()=>{
   const f=fixture(); f.room.paid=[]; const opHash='o'+'1'.repeat(50),api=JSON.parse(readFileSync('contracts/wtfiap-escrow/artifacts/interface.json','utf8'));

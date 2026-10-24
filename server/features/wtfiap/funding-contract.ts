@@ -45,6 +45,30 @@ export function fundingConfig(env: NodeJS.ProcessEnv = process.env): FundingConf
   if (!config.enabled) config.reason = "New tournament funding is unavailable until its network, escrow deployment, referee, treasury and currency configuration are verified.";
   return config;
 }
+export function shadownetXtzFundingConfig(env: NodeJS.ProcessEnv = process.env): FundingConfig {
+  const legacy = fundingConfig(env);
+  return legacy.network === "shadownet" ? legacy : fundingConfig({ WTFIAP_ESCROW_NETWORK: "shadownet" });
+}
+// Mainnet admission has its own explicit settings. Never inherit the active
+// Shadownet deployment or the process-wide Tezos RPC into this lane.
+export function mainnetWtfFundingConfig(env: NodeJS.ProcessEnv = process.env): FundingConfig {
+  const config = fundingConfig({
+    WTFIAP_ESCROW_NETWORK: "mainnet",
+    WTFIAP_FUNDED_ENABLED: env.WTFIAP_MAINNET_FUNDED_ENABLED,
+    WTFIAP_ESCROW_RPC_URL: env.WTFIAP_MAINNET_ESCROW_RPC_URL,
+    WTFIAP_ESCROW_CONTRACT: env.WTFIAP_MAINNET_ESCROW_CONTRACT,
+    WTFIAP_ESCROW_SCRIPT_HASH: env.WTFIAP_MAINNET_ESCROW_SCRIPT_HASH,
+    WTFIAP_REFEREE_ADDRESS: env.WTFIAP_MAINNET_REFEREE_ADDRESS,
+    WTFIAP_ROOM_CREATOR_ADDRESS: env.WTFIAP_MAINNET_ROOM_CREATOR_ADDRESS,
+    WTFIAP_REFEREE_WALLET_ID: env.WTFIAP_MAINNET_REFEREE_WALLET_ID,
+    WTFIAP_WTF_TOKEN_CONTRACT: env.WTFIAP_MAINNET_WTF_TOKEN_CONTRACT,
+    WTFIAP_WTF_TOKEN_ID: env.WTFIAP_MAINNET_WTF_TOKEN_ID,
+    WTFIAP_TREASURY_ADDRESS: env.WTFIAP_MAINNET_TREASURY_ADDRESS,
+    WTFIAP_CHAIN_MIN_BLOCK_DELAY_SECONDS: env.WTFIAP_MAINNET_CHAIN_MIN_BLOCK_DELAY_SECONDS,
+  });
+  config.feeQuantumAtomic = config.currencyQuantaAtomic.WTF;
+  return config;
+}
 export const rpcEndpoints = (config: FundingConfig) => config.rpcUrl.replace(/\/$/, "") === NETWORKS[config.network].rpc.replace(/\/$/, "")
   ? [config.rpcUrl, NETWORKS[config.network].fallback] : [config.rpcUrl];
 const nat = (v: any) => String(v?.toFixed ? v.toFixed() : v);
@@ -146,8 +170,8 @@ export function tezosFundingChain(toolkit = (rpc: string): any => new TezosToolk
   };
 }
 
-export function fundingMonitorConfigs(current: FundingConfig, records: FundingRecord[]): FundingConfig[] {
-  const configurations = [...(current.enabled ? [current] : []), ...records.filter(r => r.lock).map(r => r.config)];
+export function fundingMonitorConfigs(current: FundingConfig | FundingConfig[], records: FundingRecord[]): FundingConfig[] {
+  const configurations = [...(Array.isArray(current) ? current : [current]).filter(c => c.enabled), ...records.filter(r => r.lock).map(r => r.config)];
   return [...new Map(configurations.map(c => [commitment({ chainId: c.chainId, rpcUrl: c.rpcUrl }), c])).values()];
 }
 

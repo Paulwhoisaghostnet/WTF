@@ -19,6 +19,7 @@ import {
   okResponse,
   parseEnvelope,
   refuse,
+  wtfIapSignerLane,
 } from "./policy";
 
 const logger = pino({ name: "wtf-operator-signer" });
@@ -176,7 +177,8 @@ async function handleWtfIap(
 ): Promise<string> {
   return wtfiapQueue.run(envelope.walletId, async () => {
     const { wallet, signer } = await keyring.getSigner(envelope.walletId);
-    const tz = new TezosToolkit(env.WTF_OPERATOR_SIGNER_WTFIAP_RPC);
+    const lane = wtfIapSignerLane(env, envelope.payload.chainId);
+    const tz = new TezosToolkit(lane.rpc);
     tz.setProvider({ signer });
     const chainId = await tz.rpc.getChainId();
     if (chainId !== envelope.payload.chainId || wallet.chainId !== chainId) {
@@ -189,7 +191,7 @@ async function handleWtfIap(
     const method = contract.methodsObject[envelope.payload.entrypoint];
     if (typeof method !== "function") return JSON.stringify(refuse("WTFIAP contract entrypoint missing", "BAD_EP", envelope.requestId));
     let confirmation: (() => Promise<unknown>) | undefined;
-    const response = await journalWtfIapSend(env.WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH, envelope, async () => {
+    const response = await journalWtfIapSend(lane.journalPath, envelope, async () => {
       const op = await method(envelope.payload.args).send({ amount: 0, mutez: true });
       confirmation = () => op.confirmation(1);
       return okResponse({ requestId: envelope.requestId, intent: envelope.intent, signedBy: wallet.address, opHash: op.hash });

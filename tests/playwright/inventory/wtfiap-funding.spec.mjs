@@ -107,7 +107,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await page.route("**/api/wtfiap/party/**", route => route.fulfill({ status: 503, json: { ok: false, reason: "Explicit fixture: battlefield restoration unavailable" } }));
     await page.route("**/api/wtfiap/funding/**", route => {
       if (route.request().method() !== "GET") walletMutations++;
-      return route.fulfill({ json: route.request().url().endsWith("/config") ? { ok: true, config: { ...fixtureConfig, enabled: false, reason: "New funding disabled in this read-only fixture." } } : { ok: true, room } });
+      return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: { ...fixtureConfig, enabled: false, reason: "New funding disabled in this read-only fixture." } } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
     const panel = surface(page).getByRole("region", { name: "Tournament funding" });
@@ -131,7 +131,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     let opens = 0;
     await page.route("**/api/wtfiap/funding/**", route => {
       if (route.request().url().endsWith("/open")) opens++;
-      return route.fulfill({ json: route.request().url().endsWith("/config") ? { ok: true, config: fixtureConfig } : { ok: true, room } });
+      return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: fixtureConfig } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
     const panel = surface(page).getByRole("region", { name: "Tournament funding" }), open = panel.getByRole("button", { name: "Freeze eight wallets & open escrow" });
@@ -162,7 +162,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
       if (route.request().method() !== "GET") { expect(route.request().url()).toContain("/reconcile"); reconciles++; room.self.pendingOperations[0].status = "applied"; room.roster[0].deposited = false; room.depositedCount = 0; room.potAtomic = "0"; delete room.self.actions.refund;
         if (room.chainStatus === "funding") room.self.actions.deposit = { ...refund, entrypoint: "join_room", params: { room_id: room.roomId, expected_terms_hash: room.termsHash }, fa2Operator: { contract: room.wtfToken.contract, tokenId: room.wtfToken.tokenId, owner: room.self.walletAddress, operator: room.escrowContract } };
       }
-      return route.fulfill({ json: route.request().url().endsWith("/config") ? { ok: true, config: settings } : { ok: true, room } });
+      return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: settings } : { ok: true, room } });
     });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
     const panel = surface(page).getByRole("region", { name: "Tournament funding" });
@@ -231,7 +231,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     room.network = "mainnet"; room.chainId = "NetXdQprcVkpaWU"; room.self.pendingOperations = [];
     room.self.actions.deposit = { entrypoint: "join_room", params: { room_id: room.roomId, expected_terms_hash: room.termsHash }, amountMutez: "1000000", expectedWallet: room.self.walletAddress, contract: room.escrowContract, network: room.network, chainId: room.chainId };
     let writes = 0;
-    await page.route("**/api/wtfiap/funding/**", route => { if (route.request().method() !== "GET") writes++; return route.fulfill({ json: route.request().url().endsWith("/config") ? { ok: true, config: { ...fixtureConfig, network: room.network, chainId: room.chainId } } : { ok: true, room } }); });
+    await page.route("**/api/wtfiap/funding/**", route => { if (route.request().method() !== "GET") writes++; return route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: { ...fixtureConfig, network: room.network, chainId: room.chainId } } : { ok: true, room } }); });
     await page.goto(`/wtfiap?room=${roomCode}&funding=1`);
     const panel = surface(page).getByRole("region", { name: "Tournament funding" });
     await expect(panel).toContainText("Tezos shadownet selected in wtfOS");

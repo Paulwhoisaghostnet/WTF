@@ -309,6 +309,11 @@ async function buildEnv(flags: Flags, network: PlatformWalletNetwork): Promise<S
     WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID: "",
     WTF_OPERATOR_SIGNER_WTFIAP_RPC: "",
     WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH: "/tmp/wtfiap-signer-journal",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS: [],
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_WALLET_ID: "",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID: "",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_RPC: "",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_JOURNAL_PATH: "/tmp/wtfiap-mainnet-signer-journal",
     WTF_OPERATOR_SIGNER_AUDIT_LOG:
       process.env.WTF_OPERATOR_SIGNER_AUDIT_LOG ||
       "/var/log/wtf/operator-signer.log",

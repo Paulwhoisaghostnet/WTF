@@ -30,6 +30,11 @@ const env: SignerEnv = {
   WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID: "",
     WTF_OPERATOR_SIGNER_WTFIAP_RPC: "",
   WTF_OPERATOR_SIGNER_WTFIAP_JOURNAL_PATH: "/tmp/wtfiap-journal",
+  WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS: [],
+  WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_WALLET_ID: "",
+  WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID: "",
+  WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_RPC: "",
+  WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_JOURNAL_PATH: "/tmp/wtfiap-mainnet-journal",
 };
 
 test("disburse_wtf policy only permits configured FA2 reward assets", () => {
@@ -83,6 +88,26 @@ test("WTFIAP lane pins contract, wallet and chain even when custom calls are dis
     contract: "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD", entrypoint: "start_room", args: {}, mutez: 0,
   } });
   assert.equal(policyCode({ ...allowed, WTF_OPERATOR_SIGNER_ALLOW_CUSTOM: 1 }, custom), "WTFIAP_INTENT_REQUIRED");
+});
+
+test("Shadownet and Mainnet WTFIAP signer lanes remain separate", () => {
+  const shadownetContract = "KT1" + "1".repeat(33), mainnetContract = "KT1" + "2".repeat(33);
+  const settings: SignerEnv = { ...env,
+    WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS: [shadownetContract], WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID: "test-referee",
+    WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID: "NetXsqzbfFenSTS", WTF_OPERATOR_SIGNER_WTFIAP_RPC: "https://tezos-shadownet.octez.io/",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS: [mainnetContract], WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_WALLET_ID: "mainnet-referee",
+    WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID: "NetXdQprcVkpaWU", WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_RPC: "https://tezos-mainnet.octez.io/" };
+  const make = (walletId: string, chainId: string, contract: string) => operatorSignerEnvelopeSchema.parse({
+    version: 1, auth: settings.WTF_OPERATOR_SIGNER_AUTH_TOKEN, requestId: "room-start", walletId,
+    intent: "wtfiap_escrow", payload: { contract, chainId, entrypoint: "start_room",
+      args: { room_id: "a".repeat(64), expected_terms_hash: "b".repeat(64), match_id: "c".repeat(64) } } });
+  assert.equal(enforceEnvelopePolicy(settings, make("test-referee", "NetXsqzbfFenSTS", shadownetContract)), null);
+  assert.equal(enforceEnvelopePolicy(settings, make("mainnet-referee", "NetXdQprcVkpaWU", mainnetContract)), null);
+  assert.equal(policyCode(settings, make("test-referee", "NetXdQprcVkpaWU", shadownetContract)), "WTFIAP_CONTRACT");
+  assert.equal(policyCode(settings, make("mainnet-referee", "NetXsqzbfFenSTS", mainnetContract)), "WTFIAP_CONTRACT");
+  assert.equal(policyCode({ ...settings, WTF_OPERATOR_SIGNER_ALLOW_CUSTOM: 1 }, operatorSignerEnvelopeSchema.parse({
+    ...make("mainnet-referee", "NetXdQprcVkpaWU", mainnetContract), intent: "custom",
+    payload: { contract: mainnetContract, entrypoint: "start_room", args: {}, mutez: 0 } })), "WTFIAP_INTENT_REQUIRED");
 });
 
 function policyCode(config: SignerEnv, envelope: Parameters<typeof enforceEnvelopePolicy>[1]) {
