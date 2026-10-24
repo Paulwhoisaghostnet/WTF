@@ -12459,3 +12459,13 @@
 **Why it mattered**: The room recovered correctly, but duplicate canvases and taskbar entries made a simple invite navigation look like a separate game. Updating only the URL parser and invite builder would have left the user experience broken.
 
 **Rule**: For a windowed app with path-based detail links, rekey its existing window when the detail route is opened. Verify the invite text, direct path reload, room recovery, and one visible app surface together. Keep old invitation routes as compatibility aliases while canonical launchers use the new route.
+
+---
+
+## 2026-10-24 - Public game URLs must not change pinned match rules
+
+**What happened**: The first coLILseum URL release changed the vendored room server's `sharePath` string builder. The production deploy guard rejected it because a funded match was pinned to the prior authoritative runtime hash, even though the intended change was only an invitation URL.
+
+**Why it mattered**: The server intentionally hashes its room runtime for funded-match continuity. A display-link edit in that runtime is still a different pinned version and cannot be shipped over a funded match without a proved compatibility migration.
+
+**Rule**: Keep public-route and invite presentation changes in the shell and hosted client when active funded rooms exist. Confirm the authoritative rules hash is byte-identical to the deployed release before retrying deployment; leave the room API's legacy `sharePath` for compatibility until a separately verified migration is needed.

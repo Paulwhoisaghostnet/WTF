@@ -70,7 +70,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     assert.equal(host.view.config.fortuneRulesVersion, 1);
     assert.equal(host.view.config.fortunePricingVersion, 1);
     const room = `/rooms/${host.roomCode}`;
-    assert.equal(host.sharePath, `/colilseum/${host.roomCode}`);
+    assert.equal(host.sharePath, `/wtfiap?room=${host.roomCode}`);
     assert.equal(host.view.players[0].name, 'Canonical Owner');
     await request('POST', `${room}/join`, { name: 'Second seat' }, undefined, 409);
     user = null;
