@@ -11,6 +11,21 @@ test('active funded rooms and orphan game locks prevent incompatible replacement
   assert.doesNotThrow(() => assertFundingCompatibility([active], [{ roomCode: 'funded', rulesHash: 'old' }], 'old'));
   assert.doesNotThrow(() => assertFundingCompatibility([{ ...active, status: 'settled', hasFinalResult: true }], [{ roomCode: 'funded', rulesHash: 'old' }], 'new'));
 });
+test('an active open-seat duel is bound to its durable escrow record before replacement', () => {
+  const record = { roomCode: 'open-duel', source: 'open-duel', hasLock: true, rulesHash: 'current',
+    status: 'starting', roomId: 'room-id', termsHash: 'terms-hash', matchId: 'match-id',
+    network: 'shadownet', escrowContract: 'KT1contract' };
+  const lock = { roomCode: record.roomCode, rulesHash: record.rulesHash, version: 3,
+    roomId: record.roomId, termsHash: record.termsHash, matchId: record.matchId,
+    network: record.network, escrowContract: record.escrowContract };
+  assert.doesNotThrow(() => assertFundingCompatibility([record], [lock], 'current'));
+  assert.throws(() => assertFundingCompatibility([], [lock], 'current'), /no matching durable/);
+  assert.throws(() => assertFundingCompatibility([{ ...record, hasLock: false }], [lock], 'current'), /no matching durable/);
+  assert.throws(() => assertFundingCompatibility([record], [{ ...lock, termsHash: 'other' }], 'current'), /inconsistent open-duel/);
+  assert.throws(() => assertFundingCompatibility([record], [{ ...lock, version: 2 }], 'current'), /wrong escrow binding version/);
+  assert.throws(() => assertFundingCompatibility([record, record], [lock], 'current'), /Duplicate durable/);
+  assert.throws(() => assertFundingCompatibility([record], [lock], 'future'), /pinned rules/);
+});
 test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
   const currentRelease = 'ff9a0853ce61ba222b6414f7c65d960936c909289312b59a4384ef974c0ad135';

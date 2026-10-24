@@ -16,11 +16,17 @@ export function hasVerifiedTechnicalVoid(record) {
       intent.params?.reason_hash === proof.reasonHash && intent.params?.evidence_hash === proof.evidenceHash);
 }
 export function assertFundingCompatibility(records, locks, incomingRules) {
+  if (new Set(records.map(record => record.roomCode)).size !== records.length) throw new Error('Duplicate durable escrow bindings for one game.');
   const byCode = new Map(records.map(record => [record.roomCode, record]));
   for (const lock of locks) {
     const record = byCode.get(lock.roomCode);
     if (!record?.hasLock) throw new Error(`Funded game ${lock.roomCode} has no matching durable escrow binding; reconcile it before deployment.`);
     if (record.rulesHash !== lock.rulesHash) throw new Error(`Funded game ${lock.roomCode} has inconsistent rules commitments.`);
+    if (lock.version === 3 && (record.source !== 'open-duel' ||
+      ['roomId', 'termsHash', 'matchId', 'network', 'escrowContract'].some(key => record[key] !== lock[key])))
+      throw new Error(`Funded game ${lock.roomCode} has inconsistent open-duel escrow commitments.`);
+    if (record.source === 'open-duel' && lock.version !== 3)
+      throw new Error(`Funded game ${lock.roomCode} has the wrong escrow binding version.`);
   }
   for (const record of records.filter(record => record.hasLock)) {
     const terminal = record.status === 'settled' && record.hasFinalResult || hasVerifiedTechnicalVoid(record);
@@ -52,13 +58,26 @@ async function acquireSnapshot() {
     });
   });
   child.stdin.write(`SELECT pg_advisory_lock(hashtextextended('${DEPLOY_GATE}',0));
-SELECT 'WTFIAP_SNAPSHOT:' || COALESCE(jsonb_agg(jsonb_build_object(
- 'roomCode',room_code,'hasLock',jsonb_typeof(document->'lock')='object',
- 'rulesHash',document->'config'->>'rulesHash','status',document->>'status',
- 'hasFinalResult',jsonb_typeof(document->'finalResult')='object',
- 'roomId',document->>'roomId','technicalVoid',document->'technicalVoid',
- 'chain',document->'chain','intents',document->'intents')),'[]'::jsonb)::text
-FROM wtfiap_funded_rooms;
+WITH escrow_bindings AS (
+ SELECT jsonb_build_object(
+  'source','funded-room','roomCode',room_code,'hasLock',jsonb_typeof(document->'lock')='object',
+  'rulesHash',document->'config'->>'rulesHash','status',document->>'status',
+  'hasFinalResult',jsonb_typeof(document->'finalResult')='object',
+  'roomId',document->>'roomId','technicalVoid',document->'technicalVoid',
+  'chain',document->'chain','intents',document->'intents') AS binding
+ FROM wtfiap_funded_rooms
+ UNION ALL
+ SELECT jsonb_build_object(
+  'source','open-duel','roomCode',room_code,
+  'hasLock',document ? 'startHash' AND document ? 'guestWallet',
+  'rulesHash',document->>'rulesHash','status',document->>'status',
+  'hasFinalResult',document ? 'finalHash',
+  'roomId',document->>'roomId','termsHash',document->>'termsHash',
+  'matchId',document->>'matchId','network',document->>'network',
+  'escrowContract',document->>'contract') AS binding
+ FROM wtfiap_open_duels
+)
+SELECT 'WTFIAP_SNAPSHOT:' || COALESCE(jsonb_agg(binding),'[]'::jsonb)::text FROM escrow_bindings;
 `);
   const release = async () => { lines.close(); child.stdin.end('\\q\n'); await exited; };
   try { return { records: await snapshot, release }; }

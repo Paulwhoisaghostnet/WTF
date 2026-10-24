@@ -12493,3 +12493,11 @@
 **Why it mattered**: Authoritative item tests passed while the live player action could not reach the server. A supported server command is unusable if the client bridge rejects it.
 
 **Rule**: For each visible hosted control, check the arena message, client allowlist and exact forwarded fields against the authoritative command. A client-side rejection must acknowledge the iframe so its pending indicator clears. Prove the real room flow at the scheduled round, including gold and inventory effects.
+
+## 2026-10-24 - Funded-room deployment guard must read every escrow protocol
+
+**What happened**: A client-only coLILseum item-shop release failed closed because the deploy guard read `wtfiap_funded_rooms` but the active creator-first XTZ Duel was durably recorded in `wtfiap_open_duels`. The game lock had version 3 and matched that record, yet the guard reported no binding.
+
+**Why it mattered**: The safety check correctly prevented an unproved replacement, but left an active wagered game on the old client. The two storage protocols need the same deploy gate.
+
+**Rule**: Snapshot both escrow tables under the existing advisory lock. For a version-3 game lock, require the open-duel record and compare room, terms, rules, match, network, and contract commitments before replacement. Never treat a missing record as permission to deploy.
