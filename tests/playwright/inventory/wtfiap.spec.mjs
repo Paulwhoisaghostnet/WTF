@@ -39,14 +39,33 @@ async function hit(page, frame, id) {
   await clickGamePoint(page, frame, point);
 }
 
-async function buyAndDeploy(page, frame) {
+async function dragHit(page, frame, sourceId, targetId) {
+  const canvas = frame.locator("#game");
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = await canvas.boundingBox();
+  const resolution = await canvas.evaluate(element => ({ width: element.width, height: element.height }));
+  const points = await frame.evaluate(([source, target]) => [source, target].map(id => {
+    const region = window.AB_UI.hitRegions().find(hit => hit.id === id);
+    if (!region) throw new Error(`Missing drag region ${id}`);
+    return { x: region.x + region.w / 2, y: region.y + region.h / 2 };
+  }), [sourceId, targetId]);
+  const location = point => ({ x: bounds.x + point.x * bounds.width / resolution.width, y: bounds.y + point.y * bounds.height / resolution.height });
+  const from = location(points[0]), to = location(points[1]);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.up();
+}
+
+async function buyAndDeploy(page, frame, useDrag = false) {
   await hit(page, frame, "shop-buy-0");
   await frame.waitForFunction(() => window.AB_GAME().bench.length === 1);
   if ((await gameState(frame)).shop.visible) await hit(page, frame, "shop-toggle");
   const unitId = await frame.evaluate(() => window.AB_GAME().bench[0].id);
   if ((await gameState(frame)).selected !== unitId) await hit(page, frame, `bench-${unitId}`);
   const tile = await frame.evaluate(() => window.AB_UI.grid().tiles.find((tile) => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
-  await clickGamePoint(page, frame, tile);
+  if (useDrag) await dragHit(page, frame, `bench-${unitId}`, `tile-${tile.col}-${tile.row}`);
+  else await clickGamePoint(page, frame, tile);
   await frame.waitForFunction(() => window.AB_GAME().field.length === 1);
   return unitId;
 }
@@ -98,6 +117,67 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await popup.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_GAME);
     await expect(popup).toHaveURL(/\/games\/installed\/wtfiap\/generator\.html\?/);
     await popup.close();
+    expect(errors).toEqual([]);
+  });
+
+  test("shared arena drags, swaps and sells heroes with star-aware shop and bench ratings", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/wtfiap", { waitUntil: "domcontentloaded" });
+    const host = await hostFrame(page);
+    const game = await gameFrame(host, "#frame");
+    const ratingCheck = await game.evaluate(() => {
+      const invalid = [], unchanged = [];
+      for (const hero of window.AB.ROSTER) {
+        const scores = [1, 2, 3].map(star => window.AB_UI.ratings(hero.id, star));
+        if (scores.some(score => Object.values(score).some(value => !Number.isInteger(value) || value < 1 || value > 10))) invalid.push(hero.id);
+        if (new Set(scores.map(score => JSON.stringify(score))).size !== 3) unchanged.push(hero.id);
+      }
+      return { invalid, unchanged };
+    });
+    expect(ratingCheck).toEqual({ invalid: [], unchanged: [] });
+    const firstOfferRating = (await gameState(game)).shop.offerRatings[0];
+    expect(firstOfferRating).toMatchObject({ defense: expect.any(Number), speed: expect.any(Number) });
+    expect(firstOfferRating.attack ?? firstOfferRating.magic).toEqual(expect.any(Number));
+    const roleRatings = await game.evaluate(() => {
+      const healer = window.AB.ROSTER.find(hero => hero.primaryClass === "mender" && hero.cost === 1);
+      const fighter = window.AB.ROSTER.find(hero => hero.primaryClass === "duelist");
+      return { healer: window.AB_UI.ratings(healer.id, 1), fighter: window.AB_UI.ratings(fighter.id, 1) };
+    });
+    expect(roleRatings.healer.magic).toBeGreaterThan(1);
+    expect(roleRatings.healer.attack).toBeUndefined();
+    expect(roleRatings.fighter.attack).toEqual(expect.any(Number));
+    expect(roleRatings.fighter.magic).toBeUndefined();
+
+    await hit(page, game, "shop-buy-0");
+    let state = await gameState(game);
+    const first = state.bench[0].id;
+    expect(state.bench[0].ratings).toEqual(await game.evaluate(id => window.AB_UI.ratings(id, 1), state.bench[0].heroId));
+    await dragHit(page, game, `bench-${first}`, `tile-0-${state.board.rows - 1}`);
+    state = await gameState(game);
+    expect(state.field.map(unit => unit.id)).toContain(first);
+    expect(state.saveStatus).toBe("saved");
+
+    await game.evaluate(() => {
+      window.AB_UI.begin();
+      while (window.AB_GAME().phase === "battle") window.advanceTime(1000);
+      window.AB_UI.nextRound();
+    });
+    await hit(page, game, "shop-buy-0");
+    state = await gameState(game);
+    const second = state.bench[0].id;
+    await dragHit(page, game, `bench-${second}`, `field-${first}`);
+    state = await gameState(game);
+    expect(state.field.map(unit => unit.id)).toContain(second);
+    expect(state.bench.map(unit => unit.id)).toContain(first);
+    expect(state.selected).toBe(first);
+
+    const beforeSale = state.match.players.player.gold;
+    await dragHit(page, game, `bench-${first}`, "shop-toggle");
+    state = await gameState(game);
+    expect(state.bench.map(unit => unit.id)).not.toContain(first);
+    expect(state.match.players.player.gold).toBe(beforeSale + 1);
+    await page.screenshot({ path: test.info().outputPath("drag-ratings-practice.png"), fullPage: true });
     expect(errors).toEqual([]);
   });
 
@@ -166,7 +246,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await party.locator("#start-room").click();
     const game = await gameFrame(party, "#arena-frame");
     expect(await game.evaluate(() => window.AB.ROSTER.find(hero => hero.id === "ember-vanguard")?.name)).toBe("Briq");
-    const unitId = await buyAndDeploy(page, game);
+    const unitId = await buyAndDeploy(page, game, true);
     await page.screenshot({ path: test.info().outputPath("party-formation.png"), fullPage: true });
 
     // Reload the native invitation URL, not an intercepted/mock room response.

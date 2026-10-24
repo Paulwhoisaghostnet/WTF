@@ -12184,3 +12184,19 @@
 **What happened**: The new spectator and private-chat browser assertion was registered in the domain workflow but the inventory coverage gate still failed. The WTFIAP app surface separately declares the assertion IDs that it owns.
 
 **Rule**: When adding a behavior assertion, register it in both the domain workflow and the owning app surface, then run the inventory coverage gate before the full browser suite.
+
+## 2026-10-23 — Exercise the embedded game frame and keep economy receipts intact
+
+**What happened**: A local pointer harness first looked for `AB_UI` on the practice wrapper page, while the shared renderer lives in its generator iframe. A later visual-only harness directly raised commander gold; the authority's receipt validator correctly rejected that unreceipted balance and the UI displayed a storage warning.
+
+**Correction and proof**: Browser checks now target the generator frame and use real shop, combat, income, placement and sale actions for persistence assertions. The hosted inventory test drags in both local practice and a server-run Party room. Legitimate purchase, drag placement and reload preserve the formation; the focused WTFIAP browser suite passes.
+
+**Rule**: Read game state from the renderer iframe and use real economy actions whenever the expected result includes a saved or server-authoritative state. Direct state injection can isolate presentation, but its validation warnings must not be mistaken for product defects.
+
+## 2026-10-23 — Rebuild hosted assets after every game vendor refresh
+
+**What happened**: The WTFIAP package manifest and public generator were refreshed, but a browser run immediately after that refresh still served the previous `dist/public` copy. Its Magic rating assertion failed even though the new source and package were correct. An unrelated watcher timing assertion also failed in that stale-build run and passed when rerun on the rebuilt host.
+
+**Correction and proof**: Rebuilt the host after vendoring, then reran the Magic, drag and watcher browser stories against the fresh assets; each passed. The package checksum test and inventory coverage gate pass.
+
+**Rule**: A successful vendor command changes source assets, not the host's served build. Rebuild the host before any browser verdict, including a focused test, and separate stale-build failures from actual game regressions.
