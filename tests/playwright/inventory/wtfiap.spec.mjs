@@ -282,6 +282,10 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(phone.locator(".mobile-bench-slot:not(.empty)")).toHaveCount(1);
       await phone.locator(".mobile-bench-slot:not(.empty)").click();
       await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "board");
+      expect(await phone.locator('.info-icon:not([hidden])').evaluateAll(elements => elements.every(element => element.getBoundingClientRect().height >= 44 && element.getBoundingClientRect().width >= 44))).toBe(true);
+      await phone.locator('#items-toggle').click();
+      expect(await phone.locator('#items-panel button').first().evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      await phone.getByRole('button', { name: 'Close ×' }).click();
       const position = await phone.evaluate(() => {
         const tile=window.AB_UI.grid().tiles.find(item => item.coordinate === 'A1'),canvas=document.getElementById('game').getBoundingClientRect(),view=document.querySelector('.visual-board').getBoundingClientRect();
         return { x:canvas.x+tile.x*canvas.width/1440,y:canvas.y+tile.y*canvas.height/1000,viewTop:view.top,viewBottom:view.bottom };
