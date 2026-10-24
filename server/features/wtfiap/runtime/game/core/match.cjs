@@ -185,7 +185,7 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -194,7 +194,7 @@
     match.game.itemRulesVersion = 1;
     match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
-    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [],
+    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [], shopLocked: false, pendingPlan: false, freeRerolls: 0, plans: [],
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
       income: Income.createLedger({ matchId, playerId: side }) };
     synchronize(match); for (const side of SIDES) refreshShop(match, side); prepareAI(match); validate(match); return match;
@@ -348,10 +348,44 @@
   function rerollShop(match, side = 'player') {
     return guarded(() => {
       demand(preparation(match), 'Refresh the shop during round preparation.'); demand(SIDES.includes(side), 'Unknown commander side.');
-      const commander = match.players[side]; demand(commander.gold >= RULES.rerollCost, 'Refreshing the shop costs two gold.');
-      const before = commander.gold; refreshShop(match, side); commander.gold -= RULES.rerollCost;
-      match.shopReceipts.push({ kind: 'reroll', side, roundNumber: match.roundNumber, draw: match.shopDraws[side] - 1, goldBefore: before, goldSpent: RULES.rerollCost, goldAfter: commander.gold });
+      const commander = match.players[side], price = match.planRulesVersion === 1 && commander.freeRerolls > 0 ? 0 : RULES.rerollCost;
+      demand(commander.gold >= price, 'Refreshing the shop costs two gold.');
+      const before = commander.gold; refreshShop(match, side); commander.gold -= price;
+      if (price === 0) commander.freeRerolls--;
+      if (match.shopLockRulesVersion === 1) commander.shopLocked = false;
+      match.shopReceipts.push({ kind: 'reroll', side, roundNumber: match.roundNumber, draw: match.shopDraws[side] - 1, goldBefore: before, goldSpent: price, goldAfter: commander.gold });
       return { ok: true };
+    });
+  }
+  function setShopLocked(match, value, side = 'player') {
+    return guarded(() => {
+      demand(match.shopLockRulesVersion === 1 && preparation(match) && SIDES.includes(side) && typeof value === 'boolean', 'Hold shop offers during preparation.');
+      match.players[side].shopLocked = value;
+      return { ok: true };
+    });
+  }
+  function draftPick(match, itemId) {
+    return guarded(() => {
+      demand(preparation(match) && match.draftRulesVersion === 1 && match.draft?.roundNumber === match.roundNumber &&
+        !match.draft.picked && match.draft.availableIds.includes(itemId), 'Choose an available shared-draft component.');
+      match.draft.availableIds.splice(match.draft.availableIds.indexOf(itemId), 1);
+      match.draft.picked = true; match.players.player.items.push(itemId);
+      return { ok: true, itemId };
+    });
+  }
+  function choosePlan(match, planId, side = 'player') {
+    return guarded(() => {
+      demand(preparation(match) && match.planRulesVersion === 1 && SIDES.includes(side) &&
+        match.players[side].pendingPlan && ['treasury', 'armory', 'scout'].includes(planId), 'Choose an available battle plan.');
+      const player = match.players[side], receipt = { side, roundNumber: match.roundNumber, planId,
+        goldReceived: 0, itemId: null, freeRerolls: 0 };
+      player.pendingPlan = false; player.plans.push({ roundNumber: match.roundNumber, planId });
+      if (planId === 'treasury') { player.gold += 5; receipt.goldReceived = 5; }
+      else if (planId === 'armory') {
+        const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':plan-armory:' + match.roundNumber + ':' + side);
+        receipt.itemId = Items.componentIds[Math.floor(random() * Items.componentIds.length)]; player.items.push(receipt.itemId);
+      } else { player.freeRerolls += 3; receipt.freeRerolls = 3; }
+      match.planReceipts.push(receipt); return { ok: true, receipt };
     });
   }
   function prepareAI(match) {
@@ -397,6 +431,11 @@
   function beginCombat(match) {
     return guarded(() => {
       demand(preparation(match), 'This round is not awaiting combat.'); validateInventory(match);
+      if (match.planRulesVersion === 1 && match.players.player.pendingPlan) required(choosePlan(match, 'treasury'));
+      if (match.draft && !match.draft.picked) {
+        const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':draft-auto:' + match.roundNumber);
+        required(draftPick(match, match.draft.availableIds[Math.floor(random() * match.draft.availableIds.length)]));
+      }
       const preview = chestPreview(match);
       demand(preview.chests.every(chest => chest.col !== null && chest.row !== null), 'Place your treasure chest before starting this round.');
       demand(preview.chests.every(chest => chest.maxHp !== null), 'Field a hero to determine treasure health.');
@@ -417,7 +456,9 @@
       return { unitId: unit.id, stars: unit.level, cost: Engine.heroById(unit.heroId).cost, hp: unit.hp, maxHp: unit.maxHp };
     });
     const common = { matchId: match.matchId, roundId: roundId(match), combatId: combatId(match), status: 'completed' };
-    const health = required(Health.applyCombatResult(match.health, { ...common, expectedRevision: match.health.revision, winnerId: winnerSide, survivingHeroes }));
+    const encounterRound = match.encounterRulesVersion === 1 && match.roundNumber % 5 === 0;
+    const health = required(Health.applyCombatResult(match.health, { ...common, expectedRevision: match.health.revision,
+      winnerId: encounterRound ? null : winnerSide, survivingHeroes: encounterRound ? [] : survivingHeroes }));
     const treasure = required(Treasure.settleRound(match.treasure, { ...common, expectedRevision: match.treasure.revision,
       roundNumber: match.roundNumber, combatEndedAtSeconds: game.battle.elapsed,
       chests: (game.battle.objectives || []).filter(chest => chest.rewardKind !== 'cherub').map(chest => ({ chestId: chest.id, ownerId: chest.side })),
@@ -438,13 +479,17 @@
       return { cherubId: event.cherubId, side: event.captorSide,
         itemId: Items.componentIds[Math.floor(random() * Items.componentIds.length)] };
     }) : [];
+    const encounterReward = encounterRound && winnerSide === 'player' ? Items.componentIds[Math.floor(
+      Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':encounter:' + match.roundNumber)() * Items.componentIds.length)] : null;
     // All pure module transitions have succeeded. Commit their effects together.
     match.health = health.state; match.treasure = treasure.state;
     for (const side of SIDES) { match.players[side].progression = xp[side].state; match.players[side].gold = balances[side]; }
     for (const reward of cherubRewards) match.players[reward.side].items.push(reward.itemId);
+    if (encounterReward) match.players.player.items.push(encounterReward);
     const receipt = { roundNumber: match.roundNumber, roundId: common.roundId, combatId: common.combatId, result, winnerSide,
       combatEndedAtSeconds: game.battle.elapsed, health: health.receipt, treasure: treasure.receipt,
       ...(match.cherubRulesVersion === 1 ? { cherubRewards } : {}),
+      ...(encounterRound ? { encounterReward } : {}),
       ...(match.boardMode === 'zone-defense' ? { zoneGold, zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       xp: { player: xp.player.receipt, enemy: xp.enemy.receipt } };
     match.receipts.push(receipt); match.lastReceipt = receipt;
@@ -462,14 +507,18 @@
       demand(match.phase === 'round-result' && match.health.phase === 'active', 'Finish this combat before starting the next preparation.'); validateSupply(match);
       const next = match.roundNumber + 1; demand(Number.isSafeInteger(next), 'Round number exceeds exact numeric representation.');
       Treasure.calculateRoundTerms(next);
+      if (match.shopLockRulesVersion === 1) for (const side of SIDES)
+        if (match.players[side].shopLocked && !match.shops[side].some(Boolean)) match.players[side].shopLocked = false;
       // Stage every shop return together before any commander receives a new draw.
       // A continuing duel has two living commanders; eight-player elimination
       // uses this same pure pool transition with its full original room roster.
       const enemyFieldIds = new Set(match.game.opponents.map(unit => unit.id));
       const recycled = match.schemaVersion === 2 ? ShopPool.recycleForPreparation(match.shopPool, [
-        { playerId: 'player', commanderHP: match.players.player.hp, field: match.game.field, bench: match.game.bench, shop: match.shops.player },
+        { playerId: 'player', commanderHP: match.players.player.hp, field: match.game.field, bench: match.game.bench, shop: match.shops.player,
+          ...(match.shopLockRulesVersion === 1 ? { preserveShop: match.players.player.shopLocked } : {}) },
         { playerId: 'enemy', commanderHP: match.players.enemy.hp, field: match.enemyPool.filter(unit => enemyFieldIds.has(unit.id)),
-          bench: match.enemyPool.filter(unit => !enemyFieldIds.has(unit.id)), shop: match.shops.enemy }
+          bench: match.enemyPool.filter(unit => !enemyFieldIds.has(unit.id)), shop: match.shops.enemy,
+          ...(match.shopLockRulesVersion === 1 ? { preserveShop: match.players.enemy.shopLocked } : {}) }
       ], Engine.ROSTER) : null;
       const income = {};
       for (const side of SIDES) income[side] = required(Income.awardAtPreparationStart(match.players[side].income,
@@ -478,9 +527,23 @@
       for (const side of SIDES) { match.players[side].income = income[side].state; match.players[side].gold = income[side].receipt.resultingGold; }
       match.lastIncome = { player: income.player.receipt, enemy: income.enemy.receipt };
       match.roundNumber = next; match.phase = 'preparation'; Engine.resetBattle(match.game); synchronize(match);
+      if (match.planRulesVersion === 1) {
+        for (const side of SIDES) match.players[side].pendingPlan = next % 4 === 3;
+        if (match.players.enemy.pendingPlan) required(choosePlan(match, 'treasury', 'enemy'));
+      }
+      if (match.draftRulesVersion === 1) {
+        match.draft = next % 4 === 0 ? { roundNumber: next, availableIds: [...Items.componentIds], picked: false } : null;
+        if (match.draft) {
+          const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':draft-enemy:' + next);
+          const itemId = match.draft.availableIds.splice(Math.floor(random() * match.draft.availableIds.length), 1)[0];
+          match.players.enemy.items.push(itemId);
+          const target = match.enemyPool[0]; if (target) { target.itemIds ||= []; target.itemIds.push(itemId); }
+        }
+      }
       // Both old shops return before the new preparation draws either side.
       if (recycled) for (const player of recycled.players) match.shops[player.playerId] = player.shop;
-      for (const side of SIDES) refreshShop(match, side); prepareAI(match);
+      for (const side of SIDES) if (match.shopLockRulesVersion !== 1 || !match.players[side].shopLocked) refreshShop(match, side);
+      prepareAI(match);
       if (next >= 5 && !match.chests.enemy) {
         // A deterministic legal tile from the token's existing entropy. This is
         // placement policy, not an additional chest stat or economy parameter.
@@ -543,11 +606,21 @@
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
     demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
     demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
+    demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice encounter rules version.');
+    demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
+    demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
+    if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
+      match.draft.roundNumber === match.roundNumber && Array.isArray(match.draft.availableIds) &&
+      match.draft.availableIds.every(Items.isComponent) && new Set(match.draft.availableIds).size === match.draft.availableIds.length &&
+      typeof match.draft.picked === 'boolean', 'Invalid practice shared draft.');
+    demand(match.shopLockRulesVersion === undefined || match.shopLockRulesVersion === 1, 'Unknown practice shop lock rules version.');
     Health.validate(match.health); Treasure.validate(match.treasure);
     demand(match.health.matchId === match.matchId && match.treasure.matchId === match.matchId && match.health.startingHP === 100, 'Health and treasure ledgers must belong to this match.');
     demand(match.health.players.map(player => player.playerId).join(',') === SIDES.join(','), 'Commander identities must match their board sides.');
     for (const side of SIDES) {
       const commander = match.players[side]; Progression.validate(commander.progression); Income.validate(commander.income);
+      if (match.planRulesVersion === 1) demand(typeof commander.pendingPlan === 'boolean' && safeGold(commander.freeRerolls) && Array.isArray(commander.plans), 'Invalid practice battle plan.');
+      if (match.shopLockRulesVersion === 1) demand(typeof commander.shopLocked === 'boolean', 'Invalid practice shop lock.');
       if (match.cherubRulesVersion === 1) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
       if (match.cherubRulesVersion === 1 && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
         demand(!unit.itemIds || Array.isArray(unit.itemIds) && unit.itemIds.length <= 3 && unit.itemIds.every(Items.isItem), 'Invalid equipped item.');
@@ -556,6 +629,7 @@
       demand(JSON.stringify(commander.progression.xpCosts) === JSON.stringify(Progression.COMMANDER_LEVEL_COSTS), 'Use the approved XP curve.');
       const expectedGold = match.startingGold + commander.income.receipts.reduce((total, receipt) => total + Income.BASE_ROUND_INCOME + receipt.interest, 0)
         + match.treasure.receipts.reduce((total, receipt) => total + receipt.payouts.find(payout => payout.playerId === side).gold, 0)
+        + (match.planRulesVersion === 1 ? match.planReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldReceived, 0) : 0)
         + match.receipts.reduce((total, receipt) => total + (receipt.zoneGold?.[side] ?? 0), 0)
         - commander.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((total, receipt) => total + receipt.goldSpent, 0)
         - match.shopReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldSpent, 0)
@@ -569,7 +643,8 @@
       for (const [index, receipt] of commander.income.receipts.entries()) demand(receipt.roundId === roundId(match, index + 2), 'Preparation income must follow round order.');
       for (const [index, receipt] of settled.entries()) demand(receipt.roundId === roundId(match, index + 1) && receipt.combatId === roundId(match, index + 1) + ':combat', 'Combat XP must follow round order.');
       if (match.chests[side]) checkPosition(side, match.chests[side].col, match.chests[side].row, match.game.board);
-      demand(Array.isArray(match.shops[side]) && match.shops[side].length === RULES.shopSize && Number.isSafeInteger(match.shopDraws[side]) && match.shopDraws[side] >= match.roundNumber, 'Each preparation needs a four-offer shop.');
+      demand(Array.isArray(match.shops[side]) && match.shops[side].length === RULES.shopSize && Number.isSafeInteger(match.shopDraws[side]) &&
+        match.shopDraws[side] >= (match.shopLockRulesVersion === 1 ? 1 : match.roundNumber), 'Each preparation needs a four-offer shop.');
       for (const offer of match.shops[side].filter(Boolean)) demand(offer.level === 1 && Engine.heroById(offer.heroId).cost === offer.cost && (match.roundNumber > 1 || offer.cost === 1), 'Shop offers must match their approved stars and cost tier.');
     }
     const ended = match.phase === 'round-result' || match.phase === 'finished';
@@ -638,6 +713,6 @@
       return { ok: true, match: upgraded };
     });
   }
-  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, moveChest, chestPreview,
+  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, setShopLocked, draftPick, choosePlan, moveChest, chestPreview,
     deploy, recall, combine, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
 });

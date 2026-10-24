@@ -12338,3 +12338,11 @@
 **Correction and proof**: New practice and hosted rooms opt into `balanceVersion: 1`; older room configs omit it. Stat, ability-action, chest, and Cherub calculations read that pinned version. Two prior item-rule transcripts and a prior Cherub room's serialized first-combat state and public view remain byte-identical. The new-room version survives room serialization and authority restart; source and hosted balance tests, package checksum, authority, and browser checks pass.
 
 **Rule**: Balance releases that affect combat or rewards belong to immutable match terms. Compare old-room transcripts and views before adding an exact rules-hash compatibility mapping; never apply a new tuning table to an active funded room by default.
+
+## 2026-10-24 — Keep required round actions visible through the shop overlay
+
+**What happened**: A new fifth-round browser flow stopped at treasure placement. The shop overlay hid the command bar's placement button while Begin round remained disabled, leaving no visible way to perform the required action.
+
+**Correction and proof**: The open shop now exposes Place treasure, which closes the overlay and selects the chest for placement. The contextual next-step hint points to that action when the shop is open. The harness serves `dist/public`, so the host bundle was rebuilt after changing the packaged game before rerunning the browser flow.
+
+**Rule**: If an overlay hides a required prerequisite control, surface that prerequisite in the overlay and make the next-step hint identify the visible control. Rebuild the host bundle before interpreting harness UI results.

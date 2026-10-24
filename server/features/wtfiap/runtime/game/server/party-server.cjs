@@ -66,10 +66,18 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.itemRulesVersion === undefined || input.itemRulesVersion === 1, 'Unknown item rules version.');
   requireThat(input.cherubRulesVersion === undefined || input.cherubRulesVersion === 1 && input.itemRulesVersion === 1, 'Cherub requires the item system.');
   requireThat(input.balanceVersion === undefined || input.balanceVersion === 1, 'Unknown hero balance version.');
+  requireThat(input.shopLockRulesVersion === undefined || input.shopLockRulesVersion === 1, 'Unknown shop lock rules version.');
+  requireThat(input.encounterRulesVersion === undefined || input.encounterRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown encounter rules version.');
+  requireThat(input.draftRulesVersion === undefined || input.draftRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown shared draft rules version.');
+  requireThat(input.planRulesVersion === undefined || input.planRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown battle plan rules version.');
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
     earlyStart, oddPlayerPolicy: 'round-ai', ...(!preserveItemVersion || input.itemRulesVersion === 1 ? { itemRulesVersion: 1 } : {}),
     ...(!preserveItemVersion || input.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
-    ...(!preserveItemVersion || input.balanceVersion === 1 ? { balanceVersion: 1 } : {}) };
+    ...(!preserveItemVersion || input.balanceVersion === 1 ? { balanceVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.shopLockRulesVersion === 1 ? { shopLockRulesVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.draftRulesVersion === 1 ? { draftRulesVersion: 1 } : {}),
+    ...(!preserveItemVersion || input.planRulesVersion === 1 ? { planRulesVersion: 1 } : {}) };
   if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');

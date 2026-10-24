@@ -162,6 +162,49 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("practice offers shop hold, battle plans, shared draft, and protected supply encounters", async ({ page }) => {
+    await page.goto("/games/installed/wtfiap/generator.html?seed=tft-parity-browser&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+    const held = (await gameState(page)).match.shops.player.slice(1);
+    await hit(page, page, "shop-lock");
+    expect((await gameState(page)).shop.locked).toBe(true);
+    await buyAndDeploy(page, page);
+    const finish = async () => {
+      await hit(page, page, "battle");
+      await page.evaluate(() => window.advanceTime(30000));
+      expect((await gameState(page)).match.phase).toBe("round-result");
+      await hit(page, page, "next-round");
+    };
+    await finish();
+    expect((await gameState(page)).match.shops.player.slice(1)).toEqual(held);
+    await hit(page, page, "shop-reroll");
+    expect((await gameState(page)).shop.locked).toBe(false);
+    await finish();
+    await expect(page.locator("#items-panel")).toContainText("Choose a battle plan");
+    await page.locator("#items-panel button").filter({ hasText: "Scout" }).click();
+    expect((await gameState(page)).match.players.player.freeRerolls).toBe(3);
+    const gold = (await gameState(page)).match.players.player.gold;
+    await hit(page, page, "shop-reroll");
+    expect((await gameState(page)).match.players.player.gold).toBe(gold);
+    await finish();
+    await expect(page.locator("#items-panel")).toContainText("Shared component draft");
+    await page.locator("#items-panel .item-panel-section button").first().click();
+    expect((await gameState(page)).match.players.player.items.length).toBeGreaterThan(0);
+    await finish();
+    expect((await gameState(page)).match.roundNumber).toBe(5);
+    expect((await gameState(page)).match.chestPreview.enabled).toBe(true);
+    expect((await gameState(page)).match.chests.player).toBeNull();
+    expect(await page.evaluate(() => window.AB_UI.hitRegions().map(region => region.id))).toContain("shop-place-chest");
+    await hit(page, page, "shop-place-chest");
+    expect((await gameState(page)).shop.visible).toBe(false);
+    const chestTile = await page.evaluate(() => window.AB_UI.grid().tiles.find(tile => tile.col === 1 && tile.row === window.AB_GAME().board.rows - 1));
+    await clickGamePoint(page, page, chestTile);
+    const hp = (await gameState(page)).match.players.player.hp;
+    await hit(page, page, "battle");
+    await page.evaluate(() => window.advanceTime(30000));
+    expect((await gameState(page)).match.players.player.hp).toBe(hp);
+  });
+
   test("field status symbols show real preparation and combat effects", async ({ page }) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));

@@ -36,6 +36,15 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     durableSideEffectAssertion: "The authoritative room records a seeded Cherub capture and inventory receipt. Prior item-free and item-enabled room transcripts remain byte-identical under the new versioned runtime, so existing funded rooms continue without Cherub.",
   },
   {
+    id: "wtfiap.shop-hold-and-round-choices",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "tests/playwright/inventory/wtfiap.spec.mjs; server/features/wtfiap/tft-parity.test.cjs",
+    verificationCommand: "node --test server/features/wtfiap/tft-parity.test.cjs && npm run build && npx playwright test tests/playwright/inventory/wtfiap.spec.mjs --grep 'shop hold, battle plans'",
+    userVisibleAssertion: "The shared arena lets players hold and release hero offers, choose a battle plan in the Items panel, claim one component from a contested shared draft, and see protected round-scaled AI supply encounters. The same controls work in local practice and new room matches; watchers cannot command them.",
+    durableSideEffectAssertion: "The authority reserves held physical hero lots, records plan and draft choices, restores them from replay, resolves timed unclaimed picks, and awards seeded supply-encounter components without commander HP loss. Eight-player tests prove every draft component is claimed at most once; legacy room transcript and view hashes remain unchanged under the new rules hash.",
+  },
+  {
     id: "wtfiap.spectator-and-private-chat",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

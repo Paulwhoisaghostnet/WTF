@@ -23,6 +23,13 @@
   const itemsOn = state => state.itemRulesVersion === 1;
   const cherubsOn = state => state.cherubRulesVersion === 1;
   const balanceOn = state => state.balanceVersion === 1;
+  const shopLockOn = state => state.shopLockRulesVersion === 1;
+  const encountersOn = state => state.encounterRulesVersion === 1;
+  const encounterRound = state => encountersOn(state) && state.roundNumber % 5 === 0;
+  const draftOn = state => state.draftRulesVersion === 1;
+  const draftRound = state => draftOn(state) && state.roundNumber % 4 === 0;
+  const plansOn = state => state.planRulesVersion === 1;
+  const planRound = state => plansOn(state) && state.roundNumber % 4 === 3;
   const itemRandom = (state, label) => Engine.makeRandom(state.seed + ':items:' + label);
   const alive = state => state.players.filter(player => player.hp > 0);
   const playerFor = (state, id) => { const player = state.players.find(player => player.playerId === id); demand(player, 'Unknown party player.'); return player; };
@@ -87,7 +94,10 @@
   function drawAll(state) {
     // Rotate first drawer each round; all old reservations are already gone.
     const players = alive(state), offset = (state.roundNumber - 1) % players.length;
-    for (let index = 0; index < players.length; index++) refreshShop(state, players[(index + offset) % players.length]);
+    for (let index = 0; index < players.length; index++) {
+      const player = players[(index + offset) % players.length];
+      if (!shopLockOn(state) || !player.shopLocked) refreshShop(state, player);
+    }
   }
   function openPreparation(state, atMs) {
     expandBoard(state);
@@ -97,6 +107,9 @@
       openedAtMs: atMs, playerIds: alive(state).map(player => player.playerId), earlyStart: state.earlyStart });
     state.deadlineAtMs = state.clock.deadlineAtMs; state.combats = []; state.pairings = [];
     for (const player of state.players) { player.ready = false; if (itemsOn(state)) player.itemShop = null; }
+    if (plansOn(state)) for (const player of alive(state)) player.pendingPlan = planRound(state);
+    if (draftOn(state)) state.draft = draftRound(state) ? { roundNumber: state.roundNumber,
+      availableIds: [...Items.componentIds], pickedPlayerIds: [] } : null;
     drawAll(state);
     for (const player of alive(state)) {
       if (state.roundNumber >= 5 && !player.chest) {
@@ -128,10 +141,18 @@
     demand(options.itemRulesVersion === undefined || options.itemRulesVersion === 1, 'Unknown item rules version.');
     demand(options.cherubRulesVersion === undefined || options.cherubRulesVersion === 1 && options.itemRulesVersion === 1, 'Cherub rewards require item rules.');
     demand(options.balanceVersion === undefined || options.balanceVersion === 1, 'Unknown hero balance version.');
+    demand(options.shopLockRulesVersion === undefined || options.shopLockRulesVersion === 1, 'Unknown shop lock rules version.');
+    demand(options.encounterRulesVersion === undefined || options.encounterRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown encounter rules version.');
+    demand(options.draftRulesVersion === undefined || options.draftRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown shared draft rules version.');
+    demand(options.planRulesVersion === undefined || options.planRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown battle plan rules version.');
     const state = { schemaVersion: 1, matchId: options.matchId, seed: options.seed, boardMode: options.boardMode,
       ...(options.itemRulesVersion === 1 ? { itemRulesVersion: 1, itemReceipts: [] } : {}),
       ...(options.cherubRulesVersion === 1 ? { cherubRulesVersion: 1 } : {}),
       ...(options.balanceVersion === 1 ? { balanceVersion: 1 } : {}),
+      ...(options.shopLockRulesVersion === 1 ? { shopLockRulesVersion: 1 } : {}),
+      ...(options.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
+      ...(options.draftRulesVersion === 1 ? { draftRulesVersion: 1, draft: null } : {}),
+      ...(options.planRulesVersion === 1 ? { planRulesVersion: 1, planReceipts: [] } : {}),
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
@@ -141,6 +162,8 @@
           progression: Progression.createProgression({ matchId: options.matchId, playerId: input.playerId, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
           income: Income.createLedger({ matchId: options.matchId, playerId: input.playerId }), field: [], bench: [], shop: [], shopDraw: 0,
           mergeSerial: 0, chest: null, ready: false, eliminatedRound: null,
+          ...(options.shopLockRulesVersion === 1 ? { shopLocked: false } : {}),
+          ...(options.planRulesVersion === 1 ? { pendingPlan: false, freeRerolls: 0, plans: [] } : {}),
           ...(options.itemRulesVersion === 1 ? { items: [], itemShop: null, itemChest: null, winStreak: 0, lossStreak: 0, pendingComponentChoices: 0 } : {}) };
       }), pairings: [], combats: [], receipts: [], shopReceipts: [], actions: [], winnerId: null, lastRecycling: null };
     openPreparation(state, options.openedAtMs); validate(state); return state;
@@ -226,10 +249,39 @@
     }
     else if (action.type === 'buy') result = buy(state, player, action.index);
     else if (action.type === 'sell') result = sell(state, player, action.unitId);
+    else if (action.type === 'choosePlan') {
+      demand(plansOn(state) && player.pendingPlan && ['treasury', 'armory', 'scout'].includes(action.planId),
+        'Choose an available battle plan for this preparation.');
+      player.pendingPlan = false; player.plans.push({ roundNumber: state.roundNumber, planId: action.planId });
+      const receipt = { kind: 'battle-plan', playerId: player.playerId, roundNumber: state.roundNumber,
+        planId: action.planId, goldReceived: 0, itemId: null, freeRerolls: 0 };
+      if (action.planId === 'treasury') { player.gold += 5; receipt.goldReceived = 5; }
+      else if (action.planId === 'armory') {
+        const random = itemRandom(state, 'plan-armory:' + state.roundNumber + ':' + player.playerId);
+        receipt.itemId = Items.componentIds[Math.floor(random() * Items.componentIds.length)]; player.items.push(receipt.itemId);
+      } else { player.freeRerolls += 3; receipt.freeRerolls = 3; }
+      state.planReceipts.push(receipt); result.receipt = receipt;
+    }
+    else if (action.type === 'draftPick') {
+      demand(draftOn(state) && state.draft?.roundNumber === state.roundNumber &&
+        !state.draft.pickedPlayerIds.includes(player.playerId) && state.draft.availableIds.includes(action.itemId),
+      'Choose an available component from this round’s shared draft.');
+      state.draft.availableIds.splice(state.draft.availableIds.indexOf(action.itemId), 1);
+      state.draft.pickedPlayerIds.push(player.playerId); player.items.push(action.itemId);
+      state.itemReceipts.push({ kind: 'shared-draft', playerId: player.playerId, roundNumber: state.roundNumber,
+        itemId: action.itemId, goldSpent: 0, goldReceived: 0 });
+    }
+    else if (action.type === 'setShopLocked') {
+      demand(shopLockOn(state) && typeof action.value === 'boolean', 'Choose whether to hold these shop offers.');
+      player.shopLocked = action.value;
+    }
     else if (action.type === 'reroll') {
       demand(!itemsOn(state) || !player.itemShop?.open, 'Choose one item or pass the item shop before refreshing heroes.');
-      demand(player.gold >= RULES.rerollCost, 'Refreshing costs two gold.'); refreshShop(state, player); player.gold -= RULES.rerollCost;
-      const receipt = { kind: 'reroll', playerId: player.playerId, roundNumber: state.roundNumber, goldSpent: RULES.rerollCost, goldReceived: 0 };
+      const price = plansOn(state) && player.freeRerolls > 0 ? 0 : RULES.rerollCost;
+      demand(player.gold >= price, 'Refreshing costs two gold.'); refreshShop(state, player); player.gold -= price;
+      if (price === 0) player.freeRerolls--;
+      if (shopLockOn(state)) player.shopLocked = false;
+      const receipt = { kind: 'reroll', playerId: player.playerId, roundNumber: state.roundNumber, goldSpent: price, goldReceived: 0 };
       state.shopReceipts.push(receipt); result.receipt = receipt;
     } else if (action.type === 'buyXP') {
       const purchase = required(Progression.purchaseXP(player.progression, { matchId: state.matchId, playerId: player.playerId,
@@ -255,6 +307,7 @@
       demand(!player.chest || player.chest.col !== action.col || player.chest.row !== action.row, 'Keep the gold and item chests on separate spaces.');
       player.itemChest = { col: action.col, row: action.row };
     } else if (action.type === 'ready') {
+      demand(!action.value || !plansOn(state) || !player.pendingPlan, 'Choose your battle plan before marking ready.');
       demand(typeof action.value === 'boolean', 'Ready must be true or false.'); state.clock = Schedule.setReady(state.clock, player.playerId, action.value, atMs); player.ready = action.value;
     } else throw new Error('Unknown party command.');
     if (action.type !== 'ready' && player.ready) { state.clock = Schedule.setReady(state.clock, player.playerId, false, atMs); player.ready = false; }
@@ -272,6 +325,12 @@
   function prepareAI(state, playerId, atMs = state.lastAdvancedAtMs) {
     return guarded(() => {
       const player = playerFor(state, playerId); demand(player.isAI && player.hp > 0, 'Choose an active AI commander.');
+      if (plansOn(state) && player.pendingPlan) required(command(state, { type: 'choosePlan', playerId, planId: 'treasury' }, atMs));
+      if (state.draft && !state.draft.pickedPlayerIds.includes(playerId) && state.draft.availableIds.length) {
+        const random = itemRandom(state, 'draft-ai:' + state.roundNumber + ':' + playerId);
+        required(command(state, { type: 'draftPick', playerId,
+          itemId: state.draft.availableIds[Math.floor(random() * state.draft.availableIds.length)] }, atMs));
+      }
       if (itemsOn(state)) {
         while (playerFor(state, playerId).pendingComponentChoices > 0) {
           const random = itemRandom(state, 'ai-choice:' + state.roundNumber + ':' + playerId + ':' + playerFor(state, playerId).pendingComponentChoices);
@@ -402,8 +461,27 @@
     return { pair: clone(pair), initial, config, instant, game, npc }; 
   }
   function beginCombat(state, atMs) {
-    state.pairings = Schedule.pair({ playerIds: alive(state).map(player => player.playerId), seed: state.seed,
-      roundNumber: state.roundNumber, history: state.receipts.map(receipt => ({ roundNumber: receipt.roundNumber, pairings: receipt.pairings })), oddPlayerPolicy: state.oddPlayerPolicy });
+    if (plansOn(state)) for (const player of alive(state).filter(entry => entry.pendingPlan)) {
+      player.pendingPlan = false; player.plans.push({ roundNumber: state.roundNumber, planId: 'treasury' });
+      player.gold += 5; state.planReceipts.push({ kind: 'battle-plan-auto', playerId: player.playerId,
+        roundNumber: state.roundNumber, planId: 'treasury', goldReceived: 5, itemId: null, freeRerolls: 0 });
+    }
+    if (state.draft) for (const player of alive(state).filter(entry => !state.draft.pickedPlayerIds.includes(entry.playerId))
+      .sort((a, b) => a.hp - b.hp || a.playerId.localeCompare(b.playerId))) {
+      const random = itemRandom(state, 'draft-auto:' + state.roundNumber + ':' + player.playerId);
+      const itemId = state.draft.availableIds[Math.floor(random() * state.draft.availableIds.length)];
+      demand(itemId, 'The shared draft has no component left for an active commander.');
+      state.draft.availableIds.splice(state.draft.availableIds.indexOf(itemId), 1);
+      state.draft.pickedPlayerIds.push(player.playerId); player.items.push(itemId);
+      state.itemReceipts.push({ kind: 'shared-draft-auto', playerId: player.playerId, roundNumber: state.roundNumber,
+        itemId, goldSpent: 0, goldReceived: 0 });
+    }
+    state.pairings = encounterRound(state)
+      ? alive(state).map((player, index) => ({ id: 'round:' + state.roundNumber + ':encounter:' + index,
+        playerId: player.playerId, enemyId: 'round-ai:' + state.roundNumber + ':' + player.playerId,
+        isGhost: false, isRoundAI: true }))
+      : Schedule.pair({ playerIds: alive(state).map(player => player.playerId), seed: state.seed,
+        roundNumber: state.roundNumber, history: state.receipts.map(receipt => ({ roundNumber: receipt.roundNumber, pairings: receipt.pairings })), oddPlayerPolicy: state.oddPlayerPolicy });
     state.combats = state.pairings.filter(pair => pair.enemyId !== null).map(pair => makeCombat(state, pair));
     state.phase = 'combat'; state.combatStartedAtMs = atMs; state.lastAdvancedAtMs = atMs; state.revision++;
   }
@@ -433,7 +511,7 @@
     const zoneGold = state.boardMode === 'zone-defense' ? ZonePolicy.goldPayouts(game.zoneDefense, zoneGoldEvents) : { player: 0, enemy: 0 };
     const awards = ['player', ...(pair.isRoundAI ? [] : ['enemy'])].map(side => {
       const player = playerFor(state, sideId(side)), outcome = winnerSide === null ? 'draw' : side === winnerSide ? 'win' : 'loss';
-      const hpAfter = outcome === 'loss' ? Math.max(0, player.hp - damage) : player.hp;
+      const hpAfter = outcome === 'loss' && !encounterRound(state) ? Math.max(0, player.hp - damage) : player.hp;
       const xp = required(Progression.awardCompletedCombat(player.progression, { matchId: state.matchId, playerId: player.playerId,
         expectedRevision: player.progression.revision, roundId: roundId(state), combatId, status: 'completed', outcome }));
       return { playerId: player.playerId, outcome, hpBefore: player.hp, hpAfter, damage: player.hp - hpAfter, xp,
@@ -484,12 +562,22 @@
       state.itemReceipts.push({ kind: 'cherub-capture', playerId: captor.playerId, roundNumber: state.roundNumber,
         cherubId: capture.cherubId, itemId, goldSpent: 0, goldReceived: 0 });
     }
+    if (encounterRound(state)) for (const award of awards.filter(award => award.outcome === 'win')) {
+      const random = itemRandom(state, 'encounter:' + state.roundNumber + ':' + award.playerId);
+      const itemId = Items.componentIds[Math.floor(random() * Items.componentIds.length)];
+      playerFor(state, award.playerId).items.push(itemId);
+      award.encounterItem = itemId;
+      state.itemReceipts.push({ kind: 'encounter-win', playerId: award.playerId, roundNumber: state.roundNumber,
+        itemId, goldSpent: 0, goldReceived: 0 });
+    }
     const receipt = { roundNumber: state.roundNumber, pairings: clone(state.pairings), startedAtMs: state.combatStartedAtMs,
       settledAtMs: atMs, results: results.map(result => ({ ...result, awards: result.awards.map(award => ({ ...award, xp: award.xp.receipt })) })) };
     state.receipts.push(receipt); state.revision++;
     if (alive(state).length <= 1) { state.phase = 'finished'; state.winnerId = alive(state)[0]?.playerId ?? null; return; }
+    if (shopLockOn(state)) for (const player of alive(state)) if (player.shopLocked && !player.shop.some(Boolean)) player.shopLocked = false;
     const recycled = ShopPool.recycleForPreparation(state.shopPool, state.players.map(player => ({ playerId: player.playerId,
-      commanderHP: player.hp, field: player.field, bench: player.bench, shop: player.shop })), Engine.ROSTER);
+      commanderHP: player.hp, field: player.field, bench: player.bench, shop: player.shop,
+      ...(shopLockOn(state) ? { preserveShop: player.shopLocked } : {}) })), Engine.ROSTER);
     state.lastRecycling = { beforeRound: state.roundNumber + 1, releasedLotIds: recycled.releasedLotIds };
     for (const returned of recycled.players) Object.assign(playerFor(state, returned.playerId), { field: returned.field, bench: returned.bench, shop: returned.shop });
     state.roundNumber++; demand(safe(state.roundNumber), 'Round number exceeds exact numeric representation.');
@@ -540,18 +628,18 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: 1 } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds },
-      self: { ...publicPlayer(own), shop: own.shop.map(offer => offer ? publicUnit(offer) : null),
+      self: { ...publicPlayer(own), shop: own.shop.map(offer => offer ? publicUnit(offer) : null), ...(shopLockOn(state) ? { shopLocked: own.shopLocked } : {}), ...(plansOn(state) ? { pendingPlan: own.pendingPlan, freeRerolls: own.freeRerolls, plans: own.plans } : {}),
         ...(itemsOn(state) ? { items: own.items, itemShop: own.itemShop, pendingComponentChoices: own.pendingComponentChoices } : {}) }, supply, pairings: state.pairings,
       combat: combat ? { pair: combat.pair, enemyPlayer: combat.npc ? publicPlayer(combat.npc) : null, board: combat.game.board,
         ...(combat.game.zoneDefense ? { zoneDefense: combat.game.zoneDefense } : {}), phase: combat.game.phase, result: combat.game.result, battle } : null,
       lastRound: last ? { roundNumber: last.roundNumber, pairings: last.pairings, results: last.results.map(result => ({ pair: result.pair,
         result: result.result, elapsedSeconds: result.elapsedSeconds, awards: result.awards.map(award => ({ playerId: award.playerId,
           outcome: award.outcome, damage: award.damage, hpAfter: award.hpAfter, treasureGold: award.treasureGold,
-          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), ...(itemsOn(state) ? { itemDrop: award.itemDrop || null } : {}), ...(cherubsOn(state) ? { cherubItems: award.cherubItems || [] } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
+          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), ...(itemsOn(state) ? { itemDrop: award.itemDrop || null } : {}), ...(cherubsOn(state) ? { cherubItems: award.cherubItems || [] } : {}), ...(encountersOn(state) ? { encounterItem: award.encounterItem || null } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
   }
   function validate(state) {
     demand(state && state.schemaVersion === 1 && identity(state.matchId) && identity(state.seed), 'Invalid party identity.');
@@ -559,6 +647,20 @@
     demand(state.itemRulesVersion === undefined || state.itemRulesVersion === 1, 'Invalid item rules version.');
     demand(state.cherubRulesVersion === undefined || state.cherubRulesVersion === 1 && itemsOn(state), 'Invalid Cherub rules version.');
     demand(state.balanceVersion === undefined || state.balanceVersion === 1, 'Invalid hero balance version.');
+    demand(state.shopLockRulesVersion === undefined || state.shopLockRulesVersion === 1, 'Invalid shop lock rules version.');
+    demand(state.encounterRulesVersion === undefined || state.encounterRulesVersion === 1 && itemsOn(state), 'Invalid encounter rules version.');
+    demand(state.draftRulesVersion === undefined || state.draftRulesVersion === 1 && itemsOn(state), 'Invalid shared draft rules version.');
+    demand(state.planRulesVersion === undefined || state.planRulesVersion === 1 && itemsOn(state), 'Invalid battle plan rules version.');
+    if (plansOn(state)) demand(Array.isArray(state.planReceipts), 'Battle plan receipts are required.');
+    if (draftOn(state)) {
+      demand(state.draft === null || draftRound(state) && state.draft.roundNumber === state.roundNumber &&
+        Array.isArray(state.draft.availableIds) && state.draft.availableIds.every(Items.isComponent) &&
+        new Set(state.draft.availableIds).size === state.draft.availableIds.length &&
+        Array.isArray(state.draft.pickedPlayerIds) && new Set(state.draft.pickedPlayerIds).size === state.draft.pickedPlayerIds.length &&
+        state.draft.pickedPlayerIds.every(id => state.players.some(player => player.playerId === id)) &&
+        state.draft.availableIds.length + state.draft.pickedPlayerIds.length === Items.componentIds.length,
+      'Invalid shared component draft.');
+    }
     if (itemsOn(state)) demand(Array.isArray(state.itemReceipts), 'Item receipts are required.');
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');
@@ -579,6 +681,8 @@
       demand(JSON.stringify(player.progression.xpCosts) === JSON.stringify(Progression.COMMANDER_LEVEL_COSTS), 'Use the approved commander XP curve.');
       demand(player.bench.length <= RULES.benchCapacity && player.field.length <= player.progression.fieldCapacity && player.shop.length === RULES.shopSize, 'Army or shop capacity exceeded.');
       demand(safe(player.shopDraw) && safe(player.mergeSerial), 'Invalid army/shop counters.');
+      if (shopLockOn(state)) demand(typeof player.shopLocked === 'boolean', 'Shop lock state is invalid.');
+      if (plansOn(state)) demand(typeof player.pendingPlan === 'boolean' && safe(player.freeRerolls) && Array.isArray(player.plans), 'Battle plan state is invalid.');
       if (itemsOn(state)) {
         demand(Array.isArray(player.items) && player.items.every(Items.isItem), 'Inventory contains an unknown item.');
         demand(safe(player.winStreak) && safe(player.lossStreak) && !(player.winStreak && player.lossStreak)
@@ -608,7 +712,8 @@
       const gold = RULES.startingGold + player.income.receipts.reduce((sum, receipt) => sum + Income.BASE_ROUND_INCOME + receipt.interest, 0) + treasureGold + zoneGold
         - player.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((sum, receipt) => sum + receipt.goldSpent, 0)
         + state.shopReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived - receipt.goldSpent, 0)
-        - (itemsOn(state) ? state.itemReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldSpent, 0) : 0);
+        - (itemsOn(state) ? state.itemReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldSpent, 0) : 0)
+        + (plansOn(state) ? state.planReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived, 0) : 0);
       demand(gold === player.gold, 'Gold must follow income, treasure and transactions.');
     }
     for (const [index, receipt] of state.receipts.entries()) {

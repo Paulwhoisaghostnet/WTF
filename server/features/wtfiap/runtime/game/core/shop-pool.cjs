@@ -116,7 +116,7 @@
       ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item)])) : value;
     const nextPlayers = clone(players);
     for (const player of nextPlayers) {
-      player.shop = player.shop.map(() => null);
+      if (!player.preserveShop || player.commanderHP === 0) player.shop = player.shop.map(() => null);
       if (player.commanderHP === 0) { player.field = []; player.bench = []; }
     }
     const remaining = holdersFor(nextPlayers), beforeIds = heldIds(pool, holders), afterIds = heldIds(pool, remaining);

@@ -11,6 +11,18 @@ const hashValue = value => crypto.createHash('sha256').update(stable(value)).dig
 // can continue those frozen rooms. Any later rules hash must prove its own
 // compatibility before inheriting them.
 const compatiblePinnedRules = Object.freeze({
+  // Shop hold, battle plans, shared component draft, and supply encounters
+  // are enabled only by fresh room config flags. Legacy, item, Cherub, and
+  // balanced first-round transcripts and public views, plus a balanced
+  // eight-seat eight-round transcript, were replayed byte for byte against
+  // the previous runtime before admitting pinned wager rooms.
+  '838117450b955e3f47b35a9fdb714b002b5c99ba5d37911eb506638defd7c612': Object.freeze([
+    'dd7c9167362f17983d507ba907b8aba87ac6150f01562224d9871c13f6bebb3d',
+    'f6808dd4d3cc63e38b1ab9691826b14e2acc0bc837188aa784f96ff710b107de',
+    '4415776d4b0db7a07f3346bdf0c4014c68808060d32e974bbf7703ba47ac8d73',
+    '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd',
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
   // The hero rebalance is fixed on new rooms with balanceVersion 1. Existing
   // rooms have no balanceVersion; old item-free, item-enabled and Cherub
   // transcripts and public views remain byte-identical under this release.

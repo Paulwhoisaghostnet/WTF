@@ -5162,7 +5162,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item)])) : value;
     const nextPlayers = clone(players);
     for (const player of nextPlayers) {
-      player.shop = player.shop.map(() => null);
+      if (!player.preserveShop || player.commanderHP === 0) player.shop = player.shop.map(() => null);
       if (player.commanderHP === 0) { player.field = []; player.bench = []; }
     }
     const remaining = holdersFor(nextPlayers), beforeIds = heldIds(pool, holders), afterIds = heldIds(pool, remaining);
@@ -5363,7 +5363,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -5372,7 +5372,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     match.game.itemRulesVersion = 1;
     match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
-    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [],
+    for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [], shopLocked: false, pendingPlan: false, freeRerolls: 0, plans: [],
       progression: Progression.createProgression({ matchId, playerId: side, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
       income: Income.createLedger({ matchId, playerId: side }) };
     synchronize(match); for (const side of SIDES) refreshShop(match, side); prepareAI(match); validate(match); return match;
@@ -5526,10 +5526,44 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   function rerollShop(match, side = 'player') {
     return guarded(() => {
       demand(preparation(match), 'Refresh the shop during round preparation.'); demand(SIDES.includes(side), 'Unknown commander side.');
-      const commander = match.players[side]; demand(commander.gold >= RULES.rerollCost, 'Refreshing the shop costs two gold.');
-      const before = commander.gold; refreshShop(match, side); commander.gold -= RULES.rerollCost;
-      match.shopReceipts.push({ kind: 'reroll', side, roundNumber: match.roundNumber, draw: match.shopDraws[side] - 1, goldBefore: before, goldSpent: RULES.rerollCost, goldAfter: commander.gold });
+      const commander = match.players[side], price = match.planRulesVersion === 1 && commander.freeRerolls > 0 ? 0 : RULES.rerollCost;
+      demand(commander.gold >= price, 'Refreshing the shop costs two gold.');
+      const before = commander.gold; refreshShop(match, side); commander.gold -= price;
+      if (price === 0) commander.freeRerolls--;
+      if (match.shopLockRulesVersion === 1) commander.shopLocked = false;
+      match.shopReceipts.push({ kind: 'reroll', side, roundNumber: match.roundNumber, draw: match.shopDraws[side] - 1, goldBefore: before, goldSpent: price, goldAfter: commander.gold });
       return { ok: true };
+    });
+  }
+  function setShopLocked(match, value, side = 'player') {
+    return guarded(() => {
+      demand(match.shopLockRulesVersion === 1 && preparation(match) && SIDES.includes(side) && typeof value === 'boolean', 'Hold shop offers during preparation.');
+      match.players[side].shopLocked = value;
+      return { ok: true };
+    });
+  }
+  function draftPick(match, itemId) {
+    return guarded(() => {
+      demand(preparation(match) && match.draftRulesVersion === 1 && match.draft?.roundNumber === match.roundNumber &&
+        !match.draft.picked && match.draft.availableIds.includes(itemId), 'Choose an available shared-draft component.');
+      match.draft.availableIds.splice(match.draft.availableIds.indexOf(itemId), 1);
+      match.draft.picked = true; match.players.player.items.push(itemId);
+      return { ok: true, itemId };
+    });
+  }
+  function choosePlan(match, planId, side = 'player') {
+    return guarded(() => {
+      demand(preparation(match) && match.planRulesVersion === 1 && SIDES.includes(side) &&
+        match.players[side].pendingPlan && ['treasury', 'armory', 'scout'].includes(planId), 'Choose an available battle plan.');
+      const player = match.players[side], receipt = { side, roundNumber: match.roundNumber, planId,
+        goldReceived: 0, itemId: null, freeRerolls: 0 };
+      player.pendingPlan = false; player.plans.push({ roundNumber: match.roundNumber, planId });
+      if (planId === 'treasury') { player.gold += 5; receipt.goldReceived = 5; }
+      else if (planId === 'armory') {
+        const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':plan-armory:' + match.roundNumber + ':' + side);
+        receipt.itemId = Items.componentIds[Math.floor(random() * Items.componentIds.length)]; player.items.push(receipt.itemId);
+      } else { player.freeRerolls += 3; receipt.freeRerolls = 3; }
+      match.planReceipts.push(receipt); return { ok: true, receipt };
     });
   }
   function prepareAI(match) {
@@ -5575,6 +5609,11 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   function beginCombat(match) {
     return guarded(() => {
       demand(preparation(match), 'This round is not awaiting combat.'); validateInventory(match);
+      if (match.planRulesVersion === 1 && match.players.player.pendingPlan) required(choosePlan(match, 'treasury'));
+      if (match.draft && !match.draft.picked) {
+        const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':draft-auto:' + match.roundNumber);
+        required(draftPick(match, match.draft.availableIds[Math.floor(random() * match.draft.availableIds.length)]));
+      }
       const preview = chestPreview(match);
       demand(preview.chests.every(chest => chest.col !== null && chest.row !== null), 'Place your treasure chest before starting this round.');
       demand(preview.chests.every(chest => chest.maxHp !== null), 'Field a hero to determine treasure health.');
@@ -5595,7 +5634,9 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       return { unitId: unit.id, stars: unit.level, cost: Engine.heroById(unit.heroId).cost, hp: unit.hp, maxHp: unit.maxHp };
     });
     const common = { matchId: match.matchId, roundId: roundId(match), combatId: combatId(match), status: 'completed' };
-    const health = required(Health.applyCombatResult(match.health, { ...common, expectedRevision: match.health.revision, winnerId: winnerSide, survivingHeroes }));
+    const encounterRound = match.encounterRulesVersion === 1 && match.roundNumber % 5 === 0;
+    const health = required(Health.applyCombatResult(match.health, { ...common, expectedRevision: match.health.revision,
+      winnerId: encounterRound ? null : winnerSide, survivingHeroes: encounterRound ? [] : survivingHeroes }));
     const treasure = required(Treasure.settleRound(match.treasure, { ...common, expectedRevision: match.treasure.revision,
       roundNumber: match.roundNumber, combatEndedAtSeconds: game.battle.elapsed,
       chests: (game.battle.objectives || []).filter(chest => chest.rewardKind !== 'cherub').map(chest => ({ chestId: chest.id, ownerId: chest.side })),
@@ -5616,13 +5657,17 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       return { cherubId: event.cherubId, side: event.captorSide,
         itemId: Items.componentIds[Math.floor(random() * Items.componentIds.length)] };
     }) : [];
+    const encounterReward = encounterRound && winnerSide === 'player' ? Items.componentIds[Math.floor(
+      Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':encounter:' + match.roundNumber)() * Items.componentIds.length)] : null;
     // All pure module transitions have succeeded. Commit their effects together.
     match.health = health.state; match.treasure = treasure.state;
     for (const side of SIDES) { match.players[side].progression = xp[side].state; match.players[side].gold = balances[side]; }
     for (const reward of cherubRewards) match.players[reward.side].items.push(reward.itemId);
+    if (encounterReward) match.players.player.items.push(encounterReward);
     const receipt = { roundNumber: match.roundNumber, roundId: common.roundId, combatId: common.combatId, result, winnerSide,
       combatEndedAtSeconds: game.battle.elapsed, health: health.receipt, treasure: treasure.receipt,
       ...(match.cherubRulesVersion === 1 ? { cherubRewards } : {}),
+      ...(encounterRound ? { encounterReward } : {}),
       ...(match.boardMode === 'zone-defense' ? { zoneGold, zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       xp: { player: xp.player.receipt, enemy: xp.enemy.receipt } };
     match.receipts.push(receipt); match.lastReceipt = receipt;
@@ -5640,14 +5685,18 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       demand(match.phase === 'round-result' && match.health.phase === 'active', 'Finish this combat before starting the next preparation.'); validateSupply(match);
       const next = match.roundNumber + 1; demand(Number.isSafeInteger(next), 'Round number exceeds exact numeric representation.');
       Treasure.calculateRoundTerms(next);
+      if (match.shopLockRulesVersion === 1) for (const side of SIDES)
+        if (match.players[side].shopLocked && !match.shops[side].some(Boolean)) match.players[side].shopLocked = false;
       // Stage every shop return together before any commander receives a new draw.
       // A continuing duel has two living commanders; eight-player elimination
       // uses this same pure pool transition with its full original room roster.
       const enemyFieldIds = new Set(match.game.opponents.map(unit => unit.id));
       const recycled = match.schemaVersion === 2 ? ShopPool.recycleForPreparation(match.shopPool, [
-        { playerId: 'player', commanderHP: match.players.player.hp, field: match.game.field, bench: match.game.bench, shop: match.shops.player },
+        { playerId: 'player', commanderHP: match.players.player.hp, field: match.game.field, bench: match.game.bench, shop: match.shops.player,
+          ...(match.shopLockRulesVersion === 1 ? { preserveShop: match.players.player.shopLocked } : {}) },
         { playerId: 'enemy', commanderHP: match.players.enemy.hp, field: match.enemyPool.filter(unit => enemyFieldIds.has(unit.id)),
-          bench: match.enemyPool.filter(unit => !enemyFieldIds.has(unit.id)), shop: match.shops.enemy }
+          bench: match.enemyPool.filter(unit => !enemyFieldIds.has(unit.id)), shop: match.shops.enemy,
+          ...(match.shopLockRulesVersion === 1 ? { preserveShop: match.players.enemy.shopLocked } : {}) }
       ], Engine.ROSTER) : null;
       const income = {};
       for (const side of SIDES) income[side] = required(Income.awardAtPreparationStart(match.players[side].income,
@@ -5656,9 +5705,23 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       for (const side of SIDES) { match.players[side].income = income[side].state; match.players[side].gold = income[side].receipt.resultingGold; }
       match.lastIncome = { player: income.player.receipt, enemy: income.enemy.receipt };
       match.roundNumber = next; match.phase = 'preparation'; Engine.resetBattle(match.game); synchronize(match);
+      if (match.planRulesVersion === 1) {
+        for (const side of SIDES) match.players[side].pendingPlan = next % 4 === 3;
+        if (match.players.enemy.pendingPlan) required(choosePlan(match, 'treasury', 'enemy'));
+      }
+      if (match.draftRulesVersion === 1) {
+        match.draft = next % 4 === 0 ? { roundNumber: next, availableIds: [...Items.componentIds], picked: false } : null;
+        if (match.draft) {
+          const random = Engine.makeRandom(String(match.game.token.battleSeed ?? match.game.token.seed) + ':draft-enemy:' + next);
+          const itemId = match.draft.availableIds.splice(Math.floor(random() * match.draft.availableIds.length), 1)[0];
+          match.players.enemy.items.push(itemId);
+          const target = match.enemyPool[0]; if (target) { target.itemIds ||= []; target.itemIds.push(itemId); }
+        }
+      }
       // Both old shops return before the new preparation draws either side.
       if (recycled) for (const player of recycled.players) match.shops[player.playerId] = player.shop;
-      for (const side of SIDES) refreshShop(match, side); prepareAI(match);
+      for (const side of SIDES) if (match.shopLockRulesVersion !== 1 || !match.players[side].shopLocked) refreshShop(match, side);
+      prepareAI(match);
       if (next >= 5 && !match.chests.enemy) {
         // A deterministic legal tile from the token's existing entropy. This is
         // placement policy, not an additional chest stat or economy parameter.
@@ -5721,11 +5784,21 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
     demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
     demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
+    demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice encounter rules version.');
+    demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
+    demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
+    if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
+      match.draft.roundNumber === match.roundNumber && Array.isArray(match.draft.availableIds) &&
+      match.draft.availableIds.every(Items.isComponent) && new Set(match.draft.availableIds).size === match.draft.availableIds.length &&
+      typeof match.draft.picked === 'boolean', 'Invalid practice shared draft.');
+    demand(match.shopLockRulesVersion === undefined || match.shopLockRulesVersion === 1, 'Unknown practice shop lock rules version.');
     Health.validate(match.health); Treasure.validate(match.treasure);
     demand(match.health.matchId === match.matchId && match.treasure.matchId === match.matchId && match.health.startingHP === 100, 'Health and treasure ledgers must belong to this match.');
     demand(match.health.players.map(player => player.playerId).join(',') === SIDES.join(','), 'Commander identities must match their board sides.');
     for (const side of SIDES) {
       const commander = match.players[side]; Progression.validate(commander.progression); Income.validate(commander.income);
+      if (match.planRulesVersion === 1) demand(typeof commander.pendingPlan === 'boolean' && safeGold(commander.freeRerolls) && Array.isArray(commander.plans), 'Invalid practice battle plan.');
+      if (match.shopLockRulesVersion === 1) demand(typeof commander.shopLocked === 'boolean', 'Invalid practice shop lock.');
       if (match.cherubRulesVersion === 1) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
       if (match.cherubRulesVersion === 1 && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
         demand(!unit.itemIds || Array.isArray(unit.itemIds) && unit.itemIds.length <= 3 && unit.itemIds.every(Items.isItem), 'Invalid equipped item.');
@@ -5734,6 +5807,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       demand(JSON.stringify(commander.progression.xpCosts) === JSON.stringify(Progression.COMMANDER_LEVEL_COSTS), 'Use the approved XP curve.');
       const expectedGold = match.startingGold + commander.income.receipts.reduce((total, receipt) => total + Income.BASE_ROUND_INCOME + receipt.interest, 0)
         + match.treasure.receipts.reduce((total, receipt) => total + receipt.payouts.find(payout => payout.playerId === side).gold, 0)
+        + (match.planRulesVersion === 1 ? match.planReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldReceived, 0) : 0)
         + match.receipts.reduce((total, receipt) => total + (receipt.zoneGold?.[side] ?? 0), 0)
         - commander.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((total, receipt) => total + receipt.goldSpent, 0)
         - match.shopReceipts.filter(receipt => receipt.side === side).reduce((total, receipt) => total + receipt.goldSpent, 0)
@@ -5747,7 +5821,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       for (const [index, receipt] of commander.income.receipts.entries()) demand(receipt.roundId === roundId(match, index + 2), 'Preparation income must follow round order.');
       for (const [index, receipt] of settled.entries()) demand(receipt.roundId === roundId(match, index + 1) && receipt.combatId === roundId(match, index + 1) + ':combat', 'Combat XP must follow round order.');
       if (match.chests[side]) checkPosition(side, match.chests[side].col, match.chests[side].row, match.game.board);
-      demand(Array.isArray(match.shops[side]) && match.shops[side].length === RULES.shopSize && Number.isSafeInteger(match.shopDraws[side]) && match.shopDraws[side] >= match.roundNumber, 'Each preparation needs a four-offer shop.');
+      demand(Array.isArray(match.shops[side]) && match.shops[side].length === RULES.shopSize && Number.isSafeInteger(match.shopDraws[side]) &&
+        match.shopDraws[side] >= (match.shopLockRulesVersion === 1 ? 1 : match.roundNumber), 'Each preparation needs a four-offer shop.');
       for (const offer of match.shops[side].filter(Boolean)) demand(offer.level === 1 && Engine.heroById(offer.heroId).cost === offer.cost && (match.roundNumber > 1 || offer.cost === 1), 'Shop offers must match their approved stars and cost tier.');
     }
     const ended = match.phase === 'round-result' || match.phase === 'finished';
@@ -5816,7 +5891,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       return { ok: true, match: upgraded };
     });
   }
-  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, moveChest, chestPreview,
+  return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, setShopLocked, draftPick, choosePlan, moveChest, chestPreview,
     deploy, recall, combine, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
 });
 
@@ -7268,14 +7343,16 @@ function chestTerms(){return partyMode?partyData.chestPreview:ABMatch.chestPrevi
 function heroStock(id){return partyMode?partyData.heroSupply?.[id]||null:ABMatch.heroSupply(match,id);}
 function poolInfo(){return partyMode?partyData.pool||null:ABMatch.poolSummary(match);}
 function partyCommand(type,args={}){if(!partyMode)return false;if(partyData?.spectating){say('You are watching this team. Only its commander can change the formation.');draw();return true;}if(!match||partyPending||!partyConnected){say(partyPending?'Waiting for the server to acknowledge your previous action.':'Reconnecting. Your last acknowledged formation is shown.');draw();return true;}if(match.phase!=='preparation'||partyData.eliminated){say('Preparation has closed. This action was not sent.');draw();return true;}partyPending=true;say('Sending '+type+'… waiting for server acknowledgement.');parent.postMessage({type:'party-command',command:{type,...args}},location.origin);draw();return true;}
-if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName,itemShopClosed=partyData?.itemShop?.open&&!next.itemShop?.open;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating&&!next.itemShop?.open;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();}if(next.itemShop?.open||next.pendingComponentChoices){itemsOpen=true;shopVisible=false;setMobileView('board');}else if(itemShopClosed){itemsOpen=false;shopVisible=true;setMobileView('shop');}if(next.spectating){shopVisible=false;setMobileView('board');}partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
+if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName,itemShopClosed=partyData?.itemShop?.open&&!next.itemShop?.open,draftClosed=partyData?.draft&&!partyData.draft.picked&&next.draft?.picked,planClosed=partyData?.pendingPlan&&!next.pendingPlan;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating&&!next.itemShop?.open;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();}if(next.itemShop?.open||next.pendingComponentChoices||next.pendingPlan||next.draft&&!next.draft.picked){itemsOpen=true;shopVisible=false;setMobileView('board');}else if(itemShopClosed||draftClosed||planClosed){itemsOpen=false;shopVisible=true;setMobileView('shop');}if(next.spectating){shopVisible=false;setMobileView('board');}partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
 function say(s){message=s;document.getElementById('announcement').textContent=s;}
 function preparationOpen(){return tab==='arena'&&!document.hidden&&(match?match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating:game.phase==='planning');}
 function nextStepHint(){
+if(match&&(partyMode?partyData?.pendingPlan:match.players.player.pendingPlan))return{text:'Choose a battle plan from Items before you mark ready.',target:'items-toggle'};
+if(match&&(partyMode?partyData?.draft&&!partyData.draft.picked:match.draft&&!match.draft.picked))return{text:'Claim one component from the shared draft in Items.',target:'items-toggle'};
+if(match&&chestTerms().enabled&&!match.chests.player)return{text:'Place your treasure chest in your territory before combat.',target:shopVisible?'shop-place-chest':'place-chest'};
 if(match&&shopVisible){const offer=match.shops.player[shopPreviewIndex];return offer&&match.players.player.gold>=AB.heroById(offer.heroId).cost?{text:'Preview an offer, recruit it, then place it directly on the visible board.',target:'shop-preview-'+shopPreviewIndex}:{text:'Refresh offers or place reserves on the visible board.',target:'shop-toggle'};}
 if(selected&&selectedUnit()&&!game.opponents.some(u=>u.id===selected))return{text:'Choose a friendly space, or drag the hero there. Drop on a hero to swap; drop on Shop to sell.',target:hits.find(h=>h.id.startsWith('tile-'))?.id};
 if(game.bench.length&&game.field.length<game.playerLevel)return{text:'Drag a reserve onto a friendly board space, or select it and choose a space.',target:'bench-'+game.bench[0].id};
-if(match&&chestTerms().enabled&&!match.chests.player)return{text:'Place your treasure chest in your territory before combat.',target:'place-chest'};
 if(match&&!game.field.length)return{text:'Open the shop to recruit a hero for your first field slot.',target:'shop-toggle'};
 if(match&&partyMode)return partyData?.readyOnly&&!partyData.ready?{text:'Your team is set. Press Ready for combat when your formation is finished.',target:'battle'}:{text:'Your team is set. You can inspect the shop, buy XP, or adjust positions before combat.',target:'shop-toggle'};
 if(match)return{text:'Your team is set. Begin the round when you are ready.',target:'battle'};
@@ -7350,8 +7427,8 @@ function combine(g){if(partyCommand('combine',{heroId:g.heroId,stars:g.level}))r
 function schedule(){if(partyMode)return;if(!raf&&game.phase==='battle'&&!paused)raf=requestAnimationFrame(tick);}
 function tick(t){raf=0;if(game.phase!=='battle'||paused)return;if(lastTick)advance(t-lastTick);lastTick=t;draw();schedule();}
 function advance(ms){if(partyMode){draw();return;}if(game.phase==='battle'&&!paused){if(match){ABMatch.step(match,ms/1000);game=match.game;}else AB.step(game,ms/1000);if(game.phase==='finished'){persistMatch();say(match?roundMessage():game.result==='victory'?'Victory. Your formation held the field.':game.result==='defeat'?'Defeat. Try a different formation.':'Both armies fell. Try a different formation.');lastTick=0;}draw();}}
-function roundMessage(){if(match.phase==='finished')return match.players.player.hp<=0?'Match lost. Your commander has fallen.':match.players.enemy.hp<=0?'Match won. The rival commander has fallen.':'Match complete.';const receipt=match.lastReceipt,damage=receipt?.health.appliedDamage||0,xp=receipt?.xp.player.xpGranted||0,gold=receipt?.treasure.payouts.find(p=>p.playerId==='player')?.gold||0,cherubItems=(receipt?.cherubRewards||[]).filter(reward=>reward.side==='player').map(reward=>ABItems.item(reward.itemId)?.name||'component');return (game.result==='victory'?'Round won. ':game.result==='defeat'?'Round lost. ':'Round drawn. ')+`${game.result==='defeat'?'Your commander':game.result==='victory'?'Rival commander':'Commanders'} −${damage} HP · +${xp} XP · treasure +${gold}g${receipt?.zoneGold?.player?' · zones +'+receipt.zoneGold.player+'g':''}${cherubItems.length?' · Cherub: '+cherubItems.join(', '):''}. Next preparation adds income.`;}
-function nextRound(){if(partyMode)return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.nextRound(match);if(!r.ok){say(r.reason);draw();return;}game=match.game;persistMatch();clearSelection();shopVisible=true;shopPreviewIndex=0;setMobileView('shop');hintVisible=false;restartIdleHint();paused=false;lastTick=0;say(`Round ${match.roundNumber}. +${match.lastIncome.player.baseIncome} base gold + ${match.lastIncome.player.interest} interest. Your army and commander progress carry forward.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:'')+(match.roundNumber>=5&&!match.chests.player?' Place your treasure in friendly territory.':''));draw();}
+function roundMessage(){if(match.phase==='finished')return match.players.player.hp<=0?'Match lost. Your commander has fallen.':match.players.enemy.hp<=0?'Match won. The rival commander has fallen.':'Match complete.';const receipt=match.lastReceipt,damage=receipt?.health.appliedDamage||0,xp=receipt?.xp.player.xpGranted||0,gold=receipt?.treasure.payouts.find(p=>p.playerId==='player')?.gold||0,cherubItems=(receipt?.cherubRewards||[]).filter(reward=>reward.side==='player').map(reward=>ABItems.item(reward.itemId)?.name||'component');return (game.result==='victory'?'Round won. ':game.result==='defeat'?'Round lost. ':'Round drawn. ')+`${game.result==='defeat'?'Your commander':game.result==='victory'?'Rival commander':'Commanders'} −${damage} HP · +${xp} XP · treasure +${gold}g${receipt?.zoneGold?.player?' · zones +'+receipt.zoneGold.player+'g':''}${cherubItems.length?' · Cherub: '+cherubItems.join(', '):''}${receipt?.encounterReward?' · Supply: '+(ABItems.item(receipt.encounterReward)?.name||'component'):''}. Next preparation adds income.`;}
+function nextRound(){if(partyMode)return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.nextRound(match);if(!r.ok){say(r.reason);draw();return;}game=match.game;persistMatch();clearSelection();shopVisible=!match.draft&&!match.players.player.pendingPlan;itemsOpen=!!match.draft||match.players.player.pendingPlan;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();paused=false;lastTick=0;say(`Round ${match.roundNumber}. +${match.lastIncome.player.baseIncome} base gold + ${match.lastIncome.player.interest} interest. Your army and commander progress carry forward.`+(match.draft?' Choose a component from the shared draft.':match.players.player.pendingPlan?' Choose a battle plan.':'')+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:'')+(match.roundNumber>=5&&!match.chests.player?' Place your treasure in friendly territory.':''));draw();}
 function buyXP(){if(partyCommand('buyXP'))return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.buyXP(match);game=match.game;if(r.ok)persistMatch();say(r.ok?`Bought 4 XP for 4 gold. Commander level ${game.playerLevel}; ${game.playerLevel} field slots.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:''):r.reason);draw();}
 function selectChest(){if(!match||match.phase!=='preparation'||match.roundNumber<5)return;const was=chestSelected;clearSelection();chestSelected=!was;say(chestSelected?'Treasure selected. Click a friendly tile to place it; it can share a hero’s starting tile.':'Treasure deselected.');draw();}
 function selectItemChest(){if(!partyMode||!partyData?.itemChest||match.phase!=='preparation')return;const was=itemChestSelected;clearSelection();itemChestSelected=!was;say(itemChestSelected?'Item chest selected. Place it in one of your two back rows.':'Item chest deselected.');draw();}
@@ -7359,7 +7436,8 @@ function startMatch(){if(partyMode)return {ok:false,reason:'Start a room from th
 function buyShop(index){if(partyCommand('buy',{index}))return;if(!match)return;const r=ABMatch.buyShop(match,index);game=match.game;if(r.ok){persistMatch();clearSelection();if(r.unit)selected=r.unit.id;setMobileView('board');say(r.upgrades?.length?hero(r.unit).name+' combined into '+r.unit.level+' stars.':r.unit?hero(r.unit).name+' recruited and selected. Click a friendly tile to field this hero.':'Hero recruited. Select the reserve, then a friendly tile.');}else say(r.reason);draw();}
 function sellUnit(unitId){if(!match||!unitId)return;if(partyCommand('sell',{unitId}))return;const r=ABMatch.sellHero(match,unitId);game=match.game;if(r.ok){clearSelection();persistMatch();say(hero(r.unit).name+' sold for '+r.goldReceived+' gold.');}else say(r.reason);draw();}
 function sellHero(){sellUnit(selected);}
-function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();say(r.ok?'Shop refreshed for 2 gold.'+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
+function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const free=match.players.player.freeRerolls>0,r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();say(r.ok?`Shop refreshed ${free?'with a scout reroll':'for 2 gold'}.`+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
+function toggleShopLock(){if(!match||match.phase!=='preparation')return;const next=!match.players.player.shopLocked;if(partyCommand('setShopLocked',{value:next}))return;const r=ABMatch.setShopLocked(match,next);if(r.ok)persistMatch();say(r.ok?next?'Shop held. Remaining offers stay for next preparation.':'Shop released. New offers arrive next preparation.':r.reason);draw();}
 function visibleChests(){
   if(!match)return [];
   if(game.battle)return game.battle.objectives||[];
@@ -7562,7 +7640,7 @@ else if(match.phase==='combat'){button('pause',paused?'Resume':'Pause',948,678,1
 else if(match.phase==='round-result'){button('next-round','Next round  →',948,678,190,52,nextRound,true);const gold=match.lastReceipt?.treasure?.payouts?.find(p=>p.playerId==='player')?.gold;if(gold!==undefined)text('Treasure +'+gold+'g',928,709,13,C.gold,'sans-serif','right');}
 else button('new-match','New practice match',948,678,190,52,startMatch,true);}
 function partyCommandBar(){line(300,661,1138,661);text('ROUND '+match.roundNumber+' · '+(partyData.spectating?'WATCHING':partyData.eliminated?'ELIMINATED':match.phase.toUpperCase()),311,683,11,C.teal);wrap(message,311,706,425,12,C.muted,17);if(match.phase==='preparation'&&!partyData.eliminated&&!partyData.spectating){if(partyData.readyOnly)button('battle',partyPending?'Awaiting server…':partyData.ready?'Ready ✓ · undo':'Ready for combat',948,678,190,52,begin,true);else wrap('Combat starts when the preparation timer ends.',958,693,180,12,C.gold,18);button('buy-xp','Buy 4 XP · 4g',758,678,176,32,buyXP,false,match.players.player.gold>=4&&game.playerLevel<10,13);if(chestTerms().enabled)button('place-chest',chestSelected?'Treasure selected':match.chests.player?'Move treasure':'Place treasure',758,718,176,32,selectChest,chestSelected,true,13);else text('Treasure begins round 5',846,742,11,C.muted,'sans-serif','center');const chosen=selectedUnit(),groups=AB.mergeGroups(game),group=groups.find(g=>g.heroId===chosen?.heroId&&g.level===chosen?.level)||groups[0];if(group)button('combine','Combine ×3 ↑',948,737,190,26,()=>combine(group),false,true,12);else if(selected||chestSelected)button('deselect','Deselect · Esc',948,737,190,26,deselect,false,true,12);}else text(partyData.spectating?'Following '+fitText(partyData.watchingName||'a commander',190,13):match.phase==='combat'?'Live server combat':partyData.eliminated?'Scout the remaining commanders above.':'The room advances together.',1138,710,13,C.gold,'sans-serif','right');}
-function resourceHeader(label){const p=match.players.player,progress=p.progression; text(label+' · ROUND '+match.roundNumber,432,31,11,C.gold);text('GOLD',432,53,10,C.muted);text(p.gold+'g',432,88,30,C.gold,'Georgia');text('XP',555,53,10,C.muted);text(progress.level<10?progress.xpIntoLevel+' / '+progress.xpCosts[progress.level-1]:'MAX',555,84,22,C.cream,'Georgia');button('xp-add','+',710,51,43,37,buyXP,false,match.phase==='preparation'&&p.gold>=4&&progress.level<10,23,'Buy 4 commander XP for 4 gold');text((partyData?.spectating?'WATCHING':'YOU')+' '+p.hp+' HP · RIVAL '+match.players.enemy.hp+' HP',432,105,11,C.teal);}
+function resourceHeader(label){const p=match.players.player,progress=p.progression; text(label+' · ROUND '+match.roundNumber+((partyMode?partyData?.encounterRound:match.encounterRulesVersion===1&&match.roundNumber%5===0)?' · SUPPLY ENCOUNTER':''),432,31,11,C.gold);text('GOLD',432,53,10,C.muted);text(p.gold+'g',432,88,30,C.gold,'Georgia');text('XP',555,53,10,C.muted);text(progress.level<10?progress.xpIntoLevel+' / '+progress.xpCosts[progress.level-1]:'MAX',555,84,22,C.cream,'Georgia');button('xp-add','+',710,51,43,37,buyXP,false,match.phase==='preparation'&&p.gold>=4&&progress.level<10,23,'Buy 4 commander XP for 4 gold');text((partyData?.spectating?'WATCHING':'YOU')+' '+p.hp+' HP · RIVAL '+match.players.enemy.hp+' HP',432,105,11,C.teal);}
 function matchHeader(){if(partyMode){partyHeader();return;}resourceHeader('LOCAL PRACTICE');if(saveStatus==='unavailable')text('Browser storage unavailable',765,105,10,C.gold);}
 function partyHeader(){resourceHeader(partyData?.roomType==='duel'?'DUEL':partyData?.roomType==='tournament'?'TOURNAMENT':'PARTY');if(partyPending||!partyConnected)text(partyPending?'Action pending':'Reconnecting',765,105,10,C.gold);}
 function offerTraitChanges(h){
@@ -7582,10 +7660,12 @@ rect(48,528,1344,228,'#102529f5',C.gold);
 text('SHOP',64,555,21,C.cream,'Georgia');
 const p=match.players.player,progress=p.progression;
 text(`${p.gold}g · LV ${progress.level} · XP ${progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'} · FIELD ${game.field.length}/${game.playerLevel} · BENCH ${game.bench.length}/10`,174,553,13,C.gold);
-button('shop-reroll','Refresh · 2g',570,535,132,29,rerollShop,false,p.gold>=2,12);
+button('shop-reroll',p.freeRerolls?'Refresh · FREE '+p.freeRerolls:'Refresh · 2g',570,535,132,29,rerollShop,false,p.freeRerolls>0||p.gold>=2,12);
 button('shop-buy-xp','+4 XP · 4g',710,535,120,29,buyXP,false,p.gold>=4&&progress.level<10,12,'Buy 4 commander XP for 4 gold');
+if((partyMode?partyData.shopLockRulesVersion:match.shopLockRulesVersion)===1)button('shop-lock',p.shopLocked?'Held ✓ · release':'Hold offers',1186,535,184,29,toggleShopLock,false,!partyData?.spectating,12,'Keep unbought shop offers through the next preparation');
 const canStart=game.field.length>0&&(!chestTerms().enabled||!!match.chests.player);
-if(partyMode){if(partyData.readyOnly)button('battle',partyData.ready?'Ready ✓ · undo':'Ready for combat',840,535,184,29,begin,true,true,12);else text('Combat begins when the timer ends',1024,554,11,C.muted,'sans-serif','right');}
+if(chestTerms().enabled&&!match.chests.player)button('shop-place-chest','Place treasure →',840,535,184,29,()=>{shopVisible=false;setMobileView('board');selectChest();},true,true,12);
+else if(partyMode){if(partyData.readyOnly)button('battle',partyData.ready?'Ready ✓ · undo':'Ready for combat',840,535,184,29,begin,true,true,12);else text('Combat begins when the timer ends',1024,554,11,C.muted,'sans-serif','right');}
 else button('battle','Begin round →',840,535,184,29,begin,true,canStart,12);
 for(let i=0;i<4;i++){
 const x=64+i*177,y=572,w=166,cardH=172,offer=offers[i],h=offer?AB.heroById(offer.heroId):null;
@@ -7743,11 +7823,11 @@ updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);
 document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);});
 function renderItems(force=false){
   const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode?partyData?.itemRulesVersion===1:matchMode&&match?.cherubRulesVersion===1;
-  const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
+  const itemView=partyMode?partyData:{items:match?.players.player.items||[],pendingComponentChoices:0,itemShop:null,itemChest:null,draft:match?.draft||null,pendingPlan:!!match?.players.player.pendingPlan,freeRerolls:match?.players.player.freeRerolls||0,itemCatalog:{components:ABItems.COMPONENTS},eliminated:false,spectating:false};
   const itemAction=(type,args)=>{if(partyMode)return partyCommand(type,args);const r=type==='equipItem'?ABMatch.equipItem(match,args.unitId,args.itemId):ABMatch.unequipItem(match,args.unitId,args.itemId);if(r.ok)persistMatch();say(r.ok?(type==='equipItem'?'Item equipped.':'Item returned to inventory.'):r.reason);draw();return r.ok;};
   toggle.hidden=!enabled;
   if(!enabled){panel.hidden=true;return;}
-  toggle.textContent='◇ '+itemView.items.length+(itemView.pendingComponentChoices?' !':'');
+  toggle.textContent='◇ '+itemView.items.length+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked?' !':'');
   toggle.setAttribute('aria-expanded',String(itemsOpen));
   toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} items; ${itemView.items.length} in inventory${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}`);
   panel.hidden=!itemsOpen;
@@ -7755,11 +7835,11 @@ function renderItems(force=false){
   const inventory=itemView.items||[],shop=itemView.itemShop,components=itemView.itemCatalog.components,
     selectedUnitId=[...game.field,...game.bench].some(unit=>unit.id===itemTargetId)?itemTargetId:selected&&[...game.field,...game.bench].some(unit=>unit.id===selected)?selected:[...game.field,...game.bench][0]?.id||null;
   itemTargetId=selectedUnitId;
-  const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,inventory,itemView.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
+  const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,itemView.draft,itemView.pendingPlan,itemView.freeRerolls,inventory,itemView.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
   if(!force&&key===itemPanelKey)return;itemPanelKey=key;
   panel.replaceChildren();
   const heading=document.createElement('div');heading.className='items-head';
-  const title=document.createElement('h2');title.textContent=shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':'Items';
+  const title=document.createElement('h2');title.textContent=itemView.pendingPlan?'Choose a battle plan':itemView.draft&&!itemView.draft.picked?'Shared component draft':shop?.open?'Component shop · choose one':itemView.pendingComponentChoices?'Choose your captured chest reward':'Items';
   const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);};heading.append(title,close);panel.append(heading);
   const summary=document.createElement('p');summary.textContent=`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
   if(itemView.itemChest&&match.phase==='preparation'&&!itemView.spectating){const place=document.createElement('button');place.type='button';place.textContent='Place item chest · back two rows';place.onclick=()=>{itemsOpen=false;selectItemChest();renderItems(true);};panel.append(place);}
@@ -7772,6 +7852,8 @@ function renderItems(force=false){
     button.append(name,detail,effect);button.disabled=locked||price!==undefined&&match.players.player.gold<price;
     button.onclick=()=>{markPlayerAction();partyCommand(action,{itemId});};return button;
   }
+  if(itemView.pendingPlan){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One plan for this preparation';const grid=document.createElement('div');grid.className='item-grid';for(const [planId,label,detail]of [['treasury','Treasury','Gain 5 gold now'],['armory','Armory','Gain one seeded component'],['scout','Scout','Gain three free shop refreshes']]){const button=document.createElement('button');button.type='button';button.disabled=locked;const name=document.createElement('strong');name.textContent=label;const info=document.createElement('small');info.textContent=detail;button.append(name,info);button.onclick=()=>{markPlayerAction();if(partyMode)partyCommand('choosePlan',{planId});else{const result=ABMatch.choosePlan(match,planId);if(result.ok){itemsOpen=false;shopVisible=true;setMobileView('shop');persistMatch();}say(result.ok?label+' plan selected.':result.reason);draw();}};grid.append(button);}block.append(h,grid);panel.append(block);}
+  if(itemView.draft&&!itemView.draft.picked){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Claim one available component. Each pick leaves the shared table.';const grid=document.createElement('div');grid.className='item-grid';for(const itemId of itemView.draft.availableIds){const button=makeItemButton(itemId,'draftPick');button.onclick=()=>{markPlayerAction();if(partyMode)partyCommand('draftPick',{itemId});else{const result=ABMatch.draftPick(match,itemId);if(result.ok){itemsOpen=false;shopVisible=true;setMobileView('shop');persistMatch();}say(result.ok?'Component claimed from the shared draft.':result.reason);draw();}};grid.append(button);}block.append(h,grid);panel.append(block);}
   if(itemView.pendingComponentChoices){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent=`Captured chest: choose ${itemView.pendingComponentChoices} component${itemView.pendingComponentChoices===1?'':'s'}`;const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'chooseComponent')));block.append(h,grid);panel.append(block);}
   if(shop?.open){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One purchase before the hero shop returns';const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'buyItem',5)));if(shop.completedId)grid.append(makeItemButton(shop.completedId,'buyItem',10));const pass=document.createElement('button');pass.type='button';pass.textContent='Pass · open hero shop';pass.disabled=locked;pass.onclick=()=>{markPlayerAction();partyCommand('passItemShop');};block.append(h,grid,pass);panel.append(block);}
   const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Inventory and equipment';block.append(h);
@@ -7789,7 +7871,7 @@ function updateAccess(){const key=[tab,codexMode,codexFaction,factionPage,factio
 const root=document.getElementById('controls'),focused=document.activeElement?.dataset?.actionId,focusedIndex=[...root.children].findIndex(button=>button.dataset.actionId===focused),old=new Map([...root.children].map(button=>[button.dataset.actionId,button]));
 for(const h of [...hits].filter(h=>h.access!==false).sort((a,b)=>accessibleOrder(a)-accessibleOrder(b))){let b=old.get(h.id);if(!b){b=document.createElement('button');b.type='button';b.dataset.actionId=h.id;}old.delete(h.id);b.textContent=h.label;b.onfocus=()=>{if(/^shop-(buy|preview|card-buy)-\d+$/.test(h.id)){const offer=match?.shops.player[Number(h.id.split('-').at(-1))];if(offer)document.getElementById('details').textContent=accessibleHero(AB.heroById(offer.heroId));}};b.onblur=()=>{document.getElementById('details').textContent=accessibleDetails();};if(/^shop-(buy|preview|card-buy)-\d+$/.test(h.id))b.setAttribute('aria-describedby','details');else b.removeAttribute('aria-describedby');if(h.id==='tips-toggle')b.setAttribute('aria-pressed',String(tipsEnabled));else if(h.id==='traits-toggle')b.setAttribute('aria-pressed',String(showAllTraits));else if(/^(bench-|field-|enemy-)/.test(h.id))b.setAttribute('aria-pressed',String(h.id===`bench-${selected}`||h.id===`field-${selected}`||h.id===`enemy-${selected}`));else b.removeAttribute('aria-pressed');b.onclick=event=>{if(h.id!=='help-tip')markPlayerAction();if(h.id.startsWith('tile-')&&selected){const occupant=game.field.find(u=>u.col===Number(h.id.split('-')[1])&&u.row===Number(h.id.split('-')[2]));h.fn(occupant&&occupant.id!==selected?{shiftKey:true}:event);}else h.fn(event);};root.appendChild(b);}
 for(const stale of old.values())stale.remove();if(focused&&document.activeElement?.dataset?.actionId!==focused){const next=[...root.children].find(button=>button.dataset.actionId===focused)||root.children[Math.min(focusedIndex,root.children.length-1)];next?.focus({preventScroll:true});}updateQuickActions();}
-function updateQuickActions(){const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),ids=match&&shopVisible&&match.phase==='preparation'?['shop-toggle',`shop-buy-${shopPreviewIndex}`,'shop-reroll','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){if(compact&&id==='shop-toggle')continue;const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}}
+function updateQuickActions(){const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),ids=match&&shopVisible&&match.phase==='preparation'?['shop-toggle',`shop-buy-${shopPreviewIndex}`,'shop-reroll','shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){if(compact&&id==='shop-toggle')continue;const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}}
 function miniUnit(h,level,width,height){
   const picture=document.createElement('canvas');picture.width=width;picture.height=height;picture.setAttribute('aria-hidden','true');
   const miniCtx=picture.getContext('2d');
@@ -7802,10 +7884,10 @@ function renderMobilePanels(){
   const progress=match?.players.player.progression;
   document.getElementById('mobile-resource').textContent=match?`${match.players.player.gold}g  ·  LV ${progress.level}  ·  XP ${progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'}  ·  FIELD ${game.field.length}/${game.playerLevel}  ·  BENCH ${game.bench.length}/10`:`LV ${game.playerLevel}  ·  FIELD ${game.field.length}/${game.playerLevel}  ·  BENCH ${game.bench.length}/10`;
   if(mobileView==='shop'&&match?.phase!=='preparation')setMobileView('board');
-  const offers=match?.shops?.player||[],key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
+  const offers=match?.shops?.player||[],key=JSON.stringify([partyPending,partyConnected,partyData?.eliminated,partyData?.spectating,match?.roundNumber,match?.phase,match?.players.player.gold,match?.players.player.shopLocked,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
   if(key===mobilePanelKey)return;mobilePanelKey=key;
   const shopRoot=document.querySelector('.mobile-shop-offers'),benchRoot=document.querySelector('.mobile-bench-grid'),focusedCard=document.activeElement?.closest('.mobile-offer'),focusedOffer=focusedCard?[...shopRoot.children].indexOf(focusedCard):-1,focusedBuy=document.activeElement?.classList.contains('mobile-offer-buy');shopRoot.replaceChildren();benchRoot.replaceChildren();
-  document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${match.players.player.gold} GOLD · ${game.bench.length}/10 BENCH`:'No shop in this mode';
+  document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${match.players.player.gold} GOLD · ${game.bench.length}/10 BENCH${match.players.player.shopLocked?' · SHOP HELD':''}`:'No shop in this mode';
   offers.forEach((offer,index)=>{
     const h=offer&&AB.heroById(offer.heroId),card=document.createElement('div');card.className='mobile-offer'+(index===shopPreviewIndex?' selected':'');
     if(!h){card.textContent='No offer';}else{
@@ -7858,7 +7940,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeo
 addEventListener('resize',draw);
 addEventListener('pagehide',persistMatch);
 window.advanceTime=ms=>{cancelAnimationFrame(raf);raf=0;lastTick=0;advance(ms);persistMatch();};
-window.render_game_to_text=()=>JSON.stringify({mode:partyMode?'party':matchMode?'match':'token',party:partyMode?{pending:partyPending,connected:partyConnected,ready:partyData?.ready,eliminated:partyData?.eliminated,spectating:partyData?.spectating,watchingName:partyData?.watchingName}:undefined,saveStatus,match:match?{boardMode:boardInfo(),pool:poolInfo(),roundNumber:match.roundNumber,phase:match.phase,players:match.players,chests:match.chests,chestPreview:chestTerms(),lastReceipt:match.lastReceipt,receipts:match.receipts,winnerSide:match.winnerSide,lastIncome:match.lastIncome,shops:match.shops}:null,chestSelected,coordinateSystem:`planning uses integer starting tiles; combat uses simultaneous continuous positions and Euclidean distances; circular bodies may share a square during combat when they fit; bodies and appearance grow with star rank; side view: columns A onward increase downward; numbered rows increase left to right; player home row 1 is left, enemies start right; A1 is the upper-left home corner; stored col/row are zero-based; player rows ${game.board.playerStartRow}–${game.board.rows-1}, enemy rows 0–${game.board.halfRows-1}, ${game.board.playerStartRow===game.board.halfRows?'no contested rows':'contested rows '+game.board.halfRows+'–'+(game.board.playerStartRow-1)}; canvas width1440; height1000`,seed:partyMode?undefined:token.seed,phase:game.phase,projection:'side',facing:(game.battle?.units||[...game.field.map(u=>({...u,side:'player'})),...game.opponents.map(u=>({...u,side:'enemy'}))]).map(u=>({id:u.id,facing:unitFacing(u),mirrored:unitFacing(u)==='right'})),tab,paused,traitInspection:traitInspection(),zoneDefense:zoneSnapshot()||null,codex:{mode:codexMode,classMode:codexClassMode,spotlight:codexHero?identity(AB.heroById(codexHero)):null,factionPlan,factionOverview:AB.FACTIONS.map(f=>factionSummary(f.id)),factionSummary:codexMode==='factions'?factionSummary(codexFaction):null,bridges:codexMode==='factions'?factionBridges(codexFaction):[],factionId:codexMode==='factions'?codexFaction:null,page:codexMode==='factions'?factionPage:rosterPage,totalHeroes:codexMode==='factions'?factionHeroes().length:AB.ROSTER.length,perPage:CODEX_PAGE_SIZE,heroIds:codexHeroes().map(h=>h.id),identities:codexHeroes().map(identity),lineage:codexMode==='factions'?faction(codexFaction).lineage:null,appearance:codexMode==='factions'?faction(codexFaction).appearance:null,roles:codexHeroes().map(h=>({heroId:h.id,...roleLabels(h)})),classes:codexMode==='classes'?AB.CLASSES:[],strategy:codexMode==='factions'?faction(codexFaction).strategy:null},archetypes:AB.ARCHETYPES,inspection:selectedUnit()?{stats:statSummary(inspectedCombatUnit()||AB.deriveStats({...selectedUnit(),balanceVersion:game.balanceVersion},AB.synergies(game.opponents.some(u=>u.id===selected)?game.opponents:game.field))),abilityProfile:abilityProfile(hero(selectedUnit()),inspectedCombatUnit())||null,abilityPoints:abilityPoints(inspectedCombatUnit()),maxAbilityPoints:maxAbilityPoints(inspectedCombatUnit(),hero(selectedUnit())),unitId:selected,heroId:selectedUnit().heroId,identity:identity(hero(selectedUnit())),evolution:ABArtSprites.evolutionProfile(selectedUnit(),hero(selectedUnit())),body:AB.bodyProfile(selectedUnit()),roles:roleLabels(hero(selectedUnit())),statuses:statusLabels(inspectedCombatUnit()),combat:inspectedCombatUnit()}:null,playerLevel:game.playerLevel,fieldLimit:game.playerLevel,benchCapacity:10,board:{...game.board,columnLabels:Array.from({length:game.board.columns},(_,c)=>String.fromCharCode(65+c)),rowLabels:Array.from({length:game.board.rows},(_,r)=>game.board.rows-r)},selected,message,panels:{traitsOpen,detailsOpen,unreadTraits,unreadDetails},help:{automaticTipsEnabled:tipsEnabled,idleThresholdMs:IDLE_HINT_MS,visible:hintVisible,nextStep:nextStepHint()},shop:{visible:shopVisible,previewIndex:shopPreviewIndex,offerRatings:match?.shops.player.map(offer=>offer?ratings(offer.heroId,1):null)},showAllTraits,visibleStatusIcons:(game.phase==='planning'?AB.previewCombatUnits(game):game.battle?.units||[]).filter(u=>u.alive!==false).map(u=>({unitId:u.id,icons:statusDetails(u,{preparation:game.phase==='planning'}).map(({key,symbol,label})=>({key,symbol,label}))})).filter(u=>u.icons.length),bench:game.bench.map(u=>({...u,cost:hero(u).cost,ratings:ratings(u.heroId,u.level)})),field:game.field.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),opponents:game.opponents.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),synergies:AB.synergies(game.field),mergeGroups:AB.mergeGroups(game).map(g=>({heroId:g.heroId,level:g.level,count:g.count})),battle:game.battle,cherubs:visibleChests().filter(objective=>objective.rewardKind==='cherub').map(({id,side,col,row,hp,maxHp,status})=>({id,side,col,row,hp,maxHp,status})),result:game.result});
+window.render_game_to_text=()=>JSON.stringify({mode:partyMode?'party':matchMode?'match':'token',party:partyMode?{pending:partyPending,connected:partyConnected,ready:partyData?.ready,eliminated:partyData?.eliminated,spectating:partyData?.spectating,watchingName:partyData?.watchingName}:undefined,saveStatus,match:match?{boardMode:boardInfo(),pool:poolInfo(),roundNumber:match.roundNumber,phase:match.phase,players:match.players,chests:match.chests,chestPreview:chestTerms(),lastReceipt:match.lastReceipt,receipts:match.receipts,winnerSide:match.winnerSide,lastIncome:match.lastIncome,shops:match.shops}:null,chestSelected,coordinateSystem:`planning uses integer starting tiles; combat uses simultaneous continuous positions and Euclidean distances; circular bodies may share a square during combat when they fit; bodies and appearance grow with star rank; side view: columns A onward increase downward; numbered rows increase left to right; player home row 1 is left, enemies start right; A1 is the upper-left home corner; stored col/row are zero-based; player rows ${game.board.playerStartRow}–${game.board.rows-1}, enemy rows 0–${game.board.halfRows-1}, ${game.board.playerStartRow===game.board.halfRows?'no contested rows':'contested rows '+game.board.halfRows+'–'+(game.board.playerStartRow-1)}; canvas width1440; height1000`,seed:partyMode?undefined:token.seed,phase:game.phase,projection:'side',facing:(game.battle?.units||[...game.field.map(u=>({...u,side:'player'})),...game.opponents.map(u=>({...u,side:'enemy'}))]).map(u=>({id:u.id,facing:unitFacing(u),mirrored:unitFacing(u)==='right'})),tab,paused,traitInspection:traitInspection(),zoneDefense:zoneSnapshot()||null,codex:{mode:codexMode,classMode:codexClassMode,spotlight:codexHero?identity(AB.heroById(codexHero)):null,factionPlan,factionOverview:AB.FACTIONS.map(f=>factionSummary(f.id)),factionSummary:codexMode==='factions'?factionSummary(codexFaction):null,bridges:codexMode==='factions'?factionBridges(codexFaction):[],factionId:codexMode==='factions'?codexFaction:null,page:codexMode==='factions'?factionPage:rosterPage,totalHeroes:codexMode==='factions'?factionHeroes().length:AB.ROSTER.length,perPage:CODEX_PAGE_SIZE,heroIds:codexHeroes().map(h=>h.id),identities:codexHeroes().map(identity),lineage:codexMode==='factions'?faction(codexFaction).lineage:null,appearance:codexMode==='factions'?faction(codexFaction).appearance:null,roles:codexHeroes().map(h=>({heroId:h.id,...roleLabels(h)})),classes:codexMode==='classes'?AB.CLASSES:[],strategy:codexMode==='factions'?faction(codexFaction).strategy:null},archetypes:AB.ARCHETYPES,inspection:selectedUnit()?{stats:statSummary(inspectedCombatUnit()||AB.deriveStats({...selectedUnit(),balanceVersion:game.balanceVersion},AB.synergies(game.opponents.some(u=>u.id===selected)?game.opponents:game.field))),abilityProfile:abilityProfile(hero(selectedUnit()),inspectedCombatUnit())||null,abilityPoints:abilityPoints(inspectedCombatUnit()),maxAbilityPoints:maxAbilityPoints(inspectedCombatUnit(),hero(selectedUnit())),unitId:selected,heroId:selectedUnit().heroId,identity:identity(hero(selectedUnit())),evolution:ABArtSprites.evolutionProfile(selectedUnit(),hero(selectedUnit())),body:AB.bodyProfile(selectedUnit()),roles:roleLabels(hero(selectedUnit())),statuses:statusLabels(inspectedCombatUnit()),combat:inspectedCombatUnit()}:null,playerLevel:game.playerLevel,fieldLimit:game.playerLevel,benchCapacity:10,board:{...game.board,columnLabels:Array.from({length:game.board.columns},(_,c)=>String.fromCharCode(65+c)),rowLabels:Array.from({length:game.board.rows},(_,r)=>game.board.rows-r)},selected,message,panels:{traitsOpen,detailsOpen,unreadTraits,unreadDetails},help:{automaticTipsEnabled:tipsEnabled,idleThresholdMs:IDLE_HINT_MS,visible:hintVisible,nextStep:nextStepHint()},shop:{visible:shopVisible,locked:!!match?.players.player.shopLocked,previewIndex:shopPreviewIndex,offerRatings:match?.shops.player.map(offer=>offer?ratings(offer.heroId,1):null)},showAllTraits,visibleStatusIcons:(game.phase==='planning'?AB.previewCombatUnits(game):game.battle?.units||[]).filter(u=>u.alive!==false).map(u=>({unitId:u.id,icons:statusDetails(u,{preparation:game.phase==='planning'}).map(({key,symbol,label})=>({key,symbol,label}))})).filter(u=>u.icons.length),bench:game.bench.map(u=>({...u,cost:hero(u).cost,ratings:ratings(u.heroId,u.level)})),field:game.field.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),opponents:game.opponents.map(u=>({...u,coordinate:startingCoordinate(u),cost:hero(u).cost})),synergies:AB.synergies(game.field),mergeGroups:AB.mergeGroups(game).map(g=>({heroId:g.heroId,level:g.level,count:g.count})),battle:game.battle,cherubs:visibleChests().filter(objective=>objective.rewardKind==='cherub').map(({id,side,col,row,hp,maxHp,status})=>({id,side,col,row,hp,maxHp,status})),result:game.result});
 window.AB_GAME=()=>game;window.AB_TOKEN=partyMode?null:JSON.parse(JSON.stringify(token));window.AB_MATCH=()=>match;window.AB_UI={select,deselect,deploy:actDeploy,recall,begin,reset,draw,combine,startMatch,nextRound,buyXP,selectChest,buyShop,sellHero,rerollShop,ratings,traitIcons,fieldHover:()=>hoveredFieldUnit?{heroId:hoveredFieldUnit.h.id,ratings:ratings(hoveredFieldUnit.h.id,hoveredFieldUnit.u.level),icons:traitIcons(hoveredFieldUnit.h)}:null,grid:()=>({columns:game.board.columns,rows:game.board.rows,halfRows:game.board.halfRows,playerStartRow:game.board.playerStartRow,neutralRow:game.board.neutralRow,tiles:Array.from({length:game.board.rows},(_,r)=>Array.from({length:game.board.columns},(_,c)=>({col:c,row:r,coordinate:coordinate(c,r),...grid().at(c,r)}))).flat()}),hitRegions:()=>hits.map(({fn,...h})=>h)};
 if(matchMode){try{const saved=localStorage.getItem(matchSaveKey);if(saved){match=ABMatch.restore(saved);if((match.boardMode||null)!==boardMode){match=null;throw new Error('Saved match belongs to another board mode.');}let supplyNotice='';if(match.schemaVersion===1){const converted=ABMatch.upgradeLegacy(match);if(converted.ok){const backupKey=matchSaveKey+':before-shared-pool';if(!localStorage.getItem(backupKey))localStorage.setItem(backupKey,saved);match=converted.match;supplyNotice=' Shared hero supply is now active.';persistMatch();}else supplyNotice=' Legacy supply retained: this saved army exceeds the new copy counts. New matches use shared supply.';}game=match.game;paused=match.phase==='combat';message='Your local match has been restored.'+supplyNotice+(paused?' Combat is paused; resume when ready.':' Continue from the saved preparation or result.');saveStatus='saved';}}catch(error){saveStatus='unavailable';}if(!match){match=ABMatch.createMatch({token,...(boardMode?{boardMode}:{})});game=match.game;message='Round 1. Buy a 1-gold hero from the shop below, then place it on a friendly tile.';persistMatch();}}
 // Readiness means the complete embedded artwork is decoded and visible.
