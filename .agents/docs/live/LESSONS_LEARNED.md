@@ -12370,3 +12370,11 @@
 **Correction and proof**: The Board canvas now uses one framing across preparation and combat. Landscape screenshots at 844×390 and 568×320 show both armies; the hosted browser assertion checks first and last row centers during combat. Purchase, placement and round start still use the same canvas and pass the owning game suite.
 
 **Rule**: Verify mobile framing in the largest board geometry a phase can render, including hero art and trait badges, before treating a preparation screenshot as proof of combat visibility.
+
+## 2026-10-24 — Keep mobile utility icons out of board hit regions
+
+**What happened**: Moving the compact Board viewport made its first friendly tile visible, but the absolute Traits icon still covered A1 on portrait phones. A direct touch opened the trait panel instead of placing the selected reserve.
+
+**Correction and proof**: Traits and Details now sit in the mobile Board/Shop/Bench view bar beside Items and Controls. Both icons retain their unread/focus behavior while the board has no fixed utility controls over its tiles. Direct portrait and landscape touches placed a selected hero on A1 with no horizontal overflow; the hosted portrait browser story asserts that exact chain.
+
+**Rule**: For touch gameplay, verify hit targets with `elementFromPoint` at board coordinates after every overlay reposition. A visible square is not playable if utility chrome owns its pointer hit.

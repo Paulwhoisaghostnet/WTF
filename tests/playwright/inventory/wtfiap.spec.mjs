@@ -432,6 +432,10 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.locator('.mobile-offer-buy').first().click();
     await page.getByRole('button', { name: 'Board', exact: true }).click();
     await expect(page.locator('#mobile-bench .mobile-bench-slot:not(.empty)')).toHaveCount(1);
+    await page.locator('#mobile-bench .mobile-bench-slot:not(.empty)').click();
+    const home=await page.evaluate(() => { const tile=AB_UI.grid().tiles.find(item=>item.coordinate==='A1'),canvas=document.getElementById('game').getBoundingClientRect();return {x:canvas.x+tile.x*canvas.width/1440,y:canvas.y+tile.y*canvas.height/1000}; });
+    await page.touchscreen.tap(home.x,home.y);
+    expect((await gameState(page)).field.map(unit=>unit.coordinate)).toContain('A1');
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(page.locator("#orientation-prompt")).toBeHidden();
@@ -440,11 +444,11 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.locator('.mobile-offer-preview').nth(1).click();
     await expect(page.locator('#mobile-hero-dialog')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.locator("#details-icon")).toHaveClass(/unread/);
-    expect(await page.locator("#details-icon").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+    await expect(page.locator("#traits-icon")).toHaveClass(/unread/);
+    expect(await page.locator("#traits-icon").evaluate(element => getComputedStyle(element).animationName)).toBe("none");
     await page.getByRole('button', { name: 'Board', exact: true }).click();
-    await page.locator("#details-icon").click();
-    await expect(page.locator("#details-panel")).toBeVisible();
+    await page.locator("#traits-icon").click();
+    await expect(page.locator("#traits-panel")).toBeVisible();
     await context.close();
   });
 
