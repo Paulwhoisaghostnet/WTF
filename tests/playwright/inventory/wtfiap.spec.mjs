@@ -871,6 +871,42 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await guestContext.close(); }
   });
 
+  test("hosted item shop accepts a component purchase and returns to the hero shop", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
+    await page.locator("#rules-preset").selectOption("custom");
+    for (const input of await page.locator("[data-feature]").all()) {
+      if (await input.isEnabled() && await input.isChecked()) await input.uncheck();
+    }
+    await page.locator('[data-feature="items"]').check();
+    await page.locator("#create-name").fill("Item shop host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await page.locator("#fill-ai").check();
+    await page.locator("#start-room").click();
+    const arena = await gameFrame(page, "#arena-frame");
+    await buyAndDeploy(page, arena, true, "shop-card-buy-0");
+    for (let nextRound = 2; nextRound <= 5; nextRound++) {
+      await hit(page, arena, "battle");
+      await arena.waitForFunction(round => window.AB_MATCH().roundNumber === round, nextRound);
+    }
+    const offer = arena.locator("#items-panel .item-panel-section").filter({ hasText: "One purchase before the hero shop returns" });
+    await expect(offer).toBeVisible();
+    const goldBefore = (await gameState(arena)).match.players.player.gold;
+    const itemsBefore = Number((await arena.locator("#items-toggle").getAttribute("aria-label")).match(/(\d+) in inventory/)[1]);
+    await offer.locator("button").first().click();
+    await expect.poll(async () => (await page.evaluate(() => JSON.parse(window.render_game_to_text()))).pending).toBeNull();
+    await expect(offer).toBeHidden();
+    const after = await page.evaluate(() => JSON.parse(window.render_game_to_text()));
+    const itemsAfter = Number((await arena.locator("#items-toggle").getAttribute("aria-label")).match(/(\d+) in inventory/)[1]);
+    expect(itemsAfter).toBe(itemsBefore + 1);
+    expect((await gameState(arena)).match.players.player.gold).toBe(goldBefore - 5);
+    expect(after.message).not.toContain("Unknown party action");
+    await arena.locator("#game").screenshot({ path: test.info().outputPath("party-item-shop-purchased.png") });
+    expect(errors).toEqual([]);
+  });
+
   test("Mainnet XTZ wager duels show their network and creator fee before room creation", async ({ page }) => {
     await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
     const host = await hostFrame(page);

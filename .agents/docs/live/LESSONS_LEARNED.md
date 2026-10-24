@@ -12485,3 +12485,11 @@
 **What happened**: The prior Duel escrow path froze two human wallets before contract creation, so a room creator could not stake until a challenger had already joined. A UI-only Stake button could not resolve that protocol ordering. During the new Shadownet origination proof, finalized big maps decoded to numeric IDs, not empty arrays; an overstrict postcondition stopped the proof after an applied transaction.
 
 **Correction and rule**: Give new XTZ Duel rooms an explicit versioned open-offer protocol: the creator funds entry plus fee first, the referee authorizes account-linked challenger wallets, and the first finalized matching deposit claims the seat. Preserve prior funded rooms on their pinned contract path. Bind each start signer intent to the guest and cumulative deposit counter so withdrawal and redeposit can be retried without replaying an old failed operation. For contract originations, prove empty big-map contents from the applied init and compare finalized big-map IDs as IDs; never resend an injected operation because a post-verification assertion failed. The same origination journal recovered the applied Shadownet contract without a second send.
+
+## 2026-10-24 - Hosted game controls need a command-bridge parity check
+
+**What happened**: The Round 5 component shop displayed correctly, but its purchase emitted `buyItem` through the arena iframe while the outer party client allowlist omitted item commands. The outer client reported “Unknown party action.” and left the iframe waiting for acknowledgement.
+
+**Why it mattered**: Authoritative item tests passed while the live player action could not reach the server. A supported server command is unusable if the client bridge rejects it.
+
+**Rule**: For each visible hosted control, check the arena message, client allowlist and exact forwarded fields against the authoritative command. A client-side rejection must acknowledge the iframe so its pending indicator clears. Prove the real room flow at the scheduled round, including gold and inventory effects.
