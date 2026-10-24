@@ -12517,3 +12517,9 @@
 **Why it mattered**: The emergency claim fix could not use the normal production deployment while the security gate failed. Forcing npm audit's suggested ATProto downgrade would have changed the social API instead of addressing the vulnerable parser versions.
 
 **Rule**: Inspect the exact locked package graph and advisory fix ranges, update compatible leaves, and run clean-install audit plus affected runtime, typecheck, and build proofs. A lockfile refresh can also select a newer build tool with incompatible optional imports, so preserve the last working Vite version when the update only needs runtime parser patches. Keep a security-gated deployment on the normal path; do not bypass the audit for an unrelated urgent fix.
+
+## 2026-10-24 - Release fixtures must track the current packaged path and label
+
+**What happened**: The aggregate test gate found two old assertions after coLILseum's packaging and menu updates. A funding manifest test selected the old party-server source path, and the FAQ tutorial kept "Play" in its step text while its narration and current Stuffs menu said "Games".
+
+**Rule**: Assert the canonical packaged destination when a source file can be renamed during vendoring, and keep tutorial steps, spoken text, and the visible menu label aligned in the same change.

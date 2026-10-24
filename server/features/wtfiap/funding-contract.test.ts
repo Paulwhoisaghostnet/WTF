@@ -45,7 +45,8 @@ test('configuration isolates the scoped Shadownet asset and enables only a compl
   assert.equal(rules.hashValue(code),commitment(code));
   const manifest=JSON.parse(readFileSync('server/features/wtfiap/runtime/release-manifest.json','utf8'));
   const h=rules.rulesHashFromManifest(manifest);manifest.generatorSha256='new-art';manifest.title='changed-public-label';assert.equal(rules.rulesHashFromManifest(manifest),h);
-  manifest.files.find((x:any)=>x.sourcePath==='game/server/party-server.cjs').sha256='0'.repeat(64);assert.notEqual(rules.rulesHashFromManifest(manifest),h);
+  const authorityFile=manifest.files.find((x:any)=>x.path==='server/features/wtfiap/runtime/game/server/party-server.cjs');
+  assert(authorityFile);authorityFile.sha256='0'.repeat(64);assert.notEqual(rules.rulesHashFromManifest(manifest),h);
 });
 test('Mainnet WTF requires its own complete lane and never inherits Shadownet settings',()=>{
   const legacy = { WTFIAP_ESCROW_NETWORK:'shadownet', WTFIAP_FUNDED_ENABLED:'1', WTFIAP_ESCROW_CONTRACT:contract,
