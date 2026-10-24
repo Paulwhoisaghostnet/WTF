@@ -7329,7 +7329,7 @@ let game=AB.createGame(token),selected=null,selectedTrait=null,hover=null,hits=[
 game.balanceVersion=1;
 const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse) and (hover: none)');
 const visualBoard=document.querySelector('.visual-board');
-let mobileView=shopVisible?'shop':'board',mobilePanelKey='';
+let mobileView=shopVisible?'shop':'board',mobilePanelKey='',mobileResourceKey='';
 const mobileHeroDialog=document.getElementById('mobile-hero-dialog');
 let mobileHeroPreviewOrigin=null;
 mobileHeroDialog.querySelector('#mobile-hero-close').addEventListener('click',()=>mobileHeroDialog.close());
@@ -8015,7 +8015,8 @@ function renderMobilePanels(){
   if(!document.querySelector('main').classList.contains('compact-stage'))return;
   const progress=match?.players.player.progression;
   const resource=document.getElementById('mobile-resource'),metrics=match?[['GOLD',match.players.player.gold+'g'],['LEVEL',String(progress.level)],['XP',progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'],['FIELD',game.field.length+'/'+game.playerLevel],['BENCH',game.bench.length+'/10']]:[['LEVEL',String(game.playerLevel)],['FIELD',game.field.length+'/'+game.playerLevel],['BENCH',game.bench.length+'/10']];
-  resource.replaceChildren(...metrics.map(([label,value])=>{const cell=document.createElement('span'),caption=document.createElement('small'),amount=document.createElement('strong');caption.textContent=label;amount.textContent=value;cell.append(caption,amount);return cell;}));
+  const resourceKey=JSON.stringify(metrics);
+  if(resourceKey!==mobileResourceKey){mobileResourceKey=resourceKey;resource.replaceChildren(...metrics.map(([label,value])=>{const cell=document.createElement('span'),caption=document.createElement('small'),amount=document.createElement('strong');caption.textContent=label;amount.textContent=value;cell.append(caption,amount);return cell;}));}
   if(mobileView==='shop'&&match?.phase!=='preparation')setMobileView('board');
   const offers=match?.shops?.player||[];
   if(mobileHeroDialog.open&&(match?.phase!=='preparation'||offers[Number(mobileHeroDialog.dataset.offerIndex)]?.heroId!==mobileHeroDialog.dataset.heroId))mobileHeroDialog.close();
