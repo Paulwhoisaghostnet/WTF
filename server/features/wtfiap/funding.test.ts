@@ -132,6 +132,17 @@ test("new WTF rooms pin Mainnet while XTZ and existing WTF rooms retain Shadowne
   assert.equal(legacy.rows.get("test-room")!.config.escrowContract, config.escrowContract);
 });
 
+test("an unrelated room's reconciliation error does not warn healthy players", async () => {
+  const f = fixture(), s = f.service();
+  await s.bind("test-room", "1", addresses[0]);
+  s.health.error = "Another room has an unresolved submission.";
+  assert.equal((await s.view("test-room", "1")).health.error, null);
+  f.rows.get("test-room")!.error = "This room needs reconciliation.";
+  assert.equal((await s.view("test-room", "1")).health.error, "This room needs reconciliation.");
+  assert.equal(s.health.error, "Another room has an unresolved submission.");
+  await s.close();
+});
+
 test("funded rooms bind exact linked humans, freeze terms and do not mistake submitted hashes for deposits", async () => {
   const f = fixture(), s = f.service();
   await assert.rejects(s.bind("test-room", "1", addresses[1]), /Link and verify/);

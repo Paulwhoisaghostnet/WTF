@@ -12258,3 +12258,11 @@
 **Correction and proof**: Run the proof with the production puppet keyring and its matching master key, assert each signer address against the linked wallet, and journal every submitted operation before observing it. On restart, locate the submitted hash and verify the exact finalized transfer through RPC rather than sending a second transaction. Reconcile until the room reflects that transfer. Two human deposits then funded a live six-AI tournament; the authoritative match finished and the full AI prize pot was claimed by the pinned treasury.
 
 **Rule**: A wallet ID is not a wallet identity across keyring files. Hosted payment proofs must pin the credentials, keyring and master key as one set, and use finalized operation hashes for safe resumption through delayed server reconciliation.
+
+## 2026-10-24 — Funding diagnostics must identify the affected room
+
+**What happened**: A rejected, zero-deposit test room correctly stayed in `submission-unknown`, but its service-wide diagnostic was copied into every room view. Healthy players saw a chain-delay warning even after their own wager had settled or opened normally.
+
+**Correction and proof**: Room views now expose only that room's reconciliation error, while the operator health endpoint retains the service-wide diagnostic. A focused test sets an unrelated global error, verifies the healthy room has no warning, and then verifies a real room error remains visible. Funding tests, inventory coverage and TypeScript checks pass.
+
+**Rule**: Keep aggregate operator health separate from a player's room status. A failure in one escrow room must not imply that a different player's payment is delayed.

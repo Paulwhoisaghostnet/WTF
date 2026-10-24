@@ -456,7 +456,7 @@ export function createFundingService({ config, configs, store, game, chain, link
           record.chain.paid.length === record.bindings.length),
         actions, payout: binding && record?.chain?.claims[binding.walletAddress] || null,
         pendingOperations: (record?.observations || []).filter(o => o.playerId === player?.playerId) },
-      error: record?.error || null, health: { ...health } };
+      error: record?.error || null, health: { ...health, error: record?.error || null } };
   }
   const publicConfig = (c: FundingConfig) => ({ enabled: c.enabled, ...(c.reason ? { reason: c.reason } : {}),
       network: c.network, chainId: c.chainId, rpcUrl: c.rpcUrl, escrowContract: c.escrowContract,
