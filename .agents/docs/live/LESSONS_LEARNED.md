@@ -12529,3 +12529,11 @@
 **What happened**: The item-shop browser story advanced through four authoritative hosted rounds before checking the component purchase. It passed locally in 43 seconds but exceeded the standard 60-second per-test timeout in CI; the other 781 inventory stories passed.
 
 **Rule**: Retain the full hosted purchase path, and mark this measured slow story with Playwright's built-in `test.slow()` deadline rather than weakening the combat or purchase assertions. Review the duration again if the game loop changes.
+
+## 2026-10-24 - Automatic wager payout requires a versioned escrow, not a client-side claim shortcut
+
+**What happened**: A completed XTZ Duel settled into a winner-owned on-chain claim, so the player still had to open a separate funding screen and sign a claim transaction. A browser RPC outage could also interrupt that final step.
+
+**Why it mattered**: The game already knew the authoritative winner and paid for a referee settlement, but the room still appeared to require another player action before the prize moved.
+
+**Rule**: For new direct-payout rooms, settle the prize and house fee in the same atomic `finalize_room` operation, then show the paid receipt without a Claim button. Pin each room's contract, script identity, payout mode, and terms so older claim-based rooms remain usable after the active deployment rotates. Prove actual internal XTZ transfers on Shadownet and do not infer Mainnet player-payment success from contract origination alone.

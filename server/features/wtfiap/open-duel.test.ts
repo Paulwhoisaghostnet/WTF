@@ -8,10 +8,28 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import pg from 'pg';
-import { createOpenDuelService } from './open-duel';
+import { createOpenDuelService, openDuelConfigs } from './open-duel';
 import { createOpenDuelHandler } from './open-duel-http';
 
 const url = process.env.WTFIAP_TEST_DATABASE_URL;
+test('duel escrow configuration binds payout mode to its verified script', () => {
+  const prefix = 'WTFIAP_OPEN_DUEL_MAINNET_';
+  const env: NodeJS.ProcessEnv = {
+    [prefix + 'ENABLED']: '1', [prefix + 'CONTRACT']: 'KT1' + '3'.repeat(33),
+    [prefix + 'REFEREE_ADDRESS']: 'tz1' + '1'.repeat(33),
+    [prefix + 'TREASURY_ADDRESS']: 'tz1' + '2'.repeat(33),
+    [prefix + 'REFEREE_WALLET_ID']: 'test-referee',
+    [prefix + 'SCRIPT_HASH']: 'ff8046cf0feca9d027acd111bb2cf656e142a8fd5765a2e711585dd5cb041181',
+    [prefix + 'PAYOUT_MODE']: 'auto',
+  };
+  assert.equal(openDuelConfigs(env).mainnet.enabled, true);
+  assert.equal(openDuelConfigs(env).mainnet.payoutMode, 1);
+  env[prefix + 'PAYOUT_MODE'] = 'claim';
+  assert.equal(openDuelConfigs(env).mainnet.enabled, false);
+  env[prefix + 'SCRIPT_HASH'] = 'fa075804205228a3ecc4dbf08ba23fb39a1041bf16d57d4981b68f364652f899';
+  assert.equal(openDuelConfigs(env).mainnet.enabled, true);
+  assert.equal(openDuelConfigs(env).mainnet.payoutMode, 0);
+});
 test('creator stakes before any challenger; first finalized deposit takes the durable duel seat',
   { skip: !url && 'Requires isolated local PostgreSQL proof lane.' }, async () => {
     assert(['localhost', '127.0.0.1', '::1'].includes(new URL(url!).hostname));
@@ -31,9 +49,10 @@ test('creator stakes before any challenger; first finalized deposit takes the du
       scriptHash: 'a'.repeat(64), referee: hostWallet, walletId: 'test-referee', treasury: hostWallet };
     let chainRoom: any = null;
     const authorized = new Set<string>(), signed: Array<{ entrypoint: string; guest?: string }> = [];
+    const configs: any = { shadownet: config, mainnet: { ...config, network: 'mainnet', enabled: false } };
     const service = createOpenDuelService({ pool, game: authority.funding as any,
       linkedWallet: async (userId, wallet) => userId === '1' ? wallet === hostWallet : userId === '2' && wallet === guestWallet,
-      configs: { shadownet: config, mainnet: { ...config, network: 'mainnet', enabled: false } },
+      configs,
       adapters: { readChain: async () => ({ room: chainRoom, authorized: new Set(authorized) }),
         sign: async (_record, entrypoint, params, guest) => {
           signed.push({ entrypoint, guest });
@@ -97,6 +116,22 @@ test('creator stakes before any challenger; first finalized deposit takes the du
       assert.equal(game.status, 200); assert.equal(game.data.view.phase, 'preparation');
       assert.equal(game.data.view.config.earlyStart, true);
       assert.equal((await service.read(code))?.guestWallet, guestWallet);
+      (authority.funding as any).result = () => ({
+        groups: [{ placeFrom: 1, playerIds: [saved.host.playerId] },
+          { placeFrom: 2, playerIds: [seat.data.seat.playerId] }],
+        receiptsHash: 'c'.repeat(64),
+      });
+      await service.reconcile(code);
+      assert.equal(signed.at(-1)?.entrypoint, 'finalize_room');
+      assert((await service.read(code))?.finalHash);
+      // Rotating new admissions to v2 must leave this already funded v1 room
+      // bound to its original claim contract and available winner claim.
+      configs.shadownet = { ...config, contract: 'KT1' + '4'.repeat(33), scriptHash: 'b'.repeat(64), payoutMode: 1 };
+      chainRoom.status = 'settled'; chainRoom.claims = { [guestWallet]: { amount: '2000000', claimed: false } };
+      const legacy = await service.view(code, '2');
+      assert.equal(legacy.escrowContract, saved.contract);
+      assert.equal(legacy.payoutMode, 'claim');
+      assert.equal(legacy.self.actions.claim?.contract, saved.contract);
     } finally {
       await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
       await authority.close(); await pool.end(); await admin.query(`DROP SCHEMA "${schema}" CASCADE`); await admin.end();
