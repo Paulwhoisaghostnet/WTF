@@ -1,0 +1,13 @@
+{
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "contract": "KT1Tz9f3584SxyHLWeoPiHhFPxWMJmqQzTaL",
+  "operationHash": "ooNDfL4A5E3NPD54DMexQFATXBa1PdmhCkuFKTDQwASzcjRw7Vx",
+  "canonicalCodeSha256": "fa075804205228a3ecc4dbf08ba23fb39a1041bf16d57d4981b68f364652f899",
+  "treasury": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "houseFeeMutez": "500000",
+  "entryQuantumMutez": "10000",
+  "finalizedBlock": "BMGrkw1JNNqJragz16cB8XHo8PRhMrrYoKM658cfcmamdFS48pN",
+  "finalizedLevel": 15516124,
+  "proof": "proof/mainnet-2026-10-24/origination.json"
+}

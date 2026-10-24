@@ -1,0 +1,37 @@
+{
+  "prim": "Pair",
+  "args": [
+    [],
+    {
+      "prim": "Pair",
+      "args": [
+        [],
+        {
+          "prim": "Pair",
+          "args": [
+            {
+              "int": "500000"
+            },
+            {
+              "prim": "Pair",
+              "args": [
+                [],
+                {
+                  "prim": "Pair",
+                  "args": [
+                    {
+                      "string": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+                    },
+                    {
+                      "int": "10000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

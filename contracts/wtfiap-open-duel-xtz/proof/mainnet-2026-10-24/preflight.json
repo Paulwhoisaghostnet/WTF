@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "mode": "read-only",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "block": "BMTRweoF7pDRJGb5VpL7QTxAsuF4Y768aWEy8vQ359Ta6Covi5U",
+  "level": 15516118,
+  "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY",
+  "artifactSha256": "cbfb95ba06969dab4d1545bfc83f9d16aaae1dab113389f360909b5ed71d0c77",
+  "canonicalCodeSha256": "fa075804205228a3ecc4dbf08ba23fb39a1041bf16d57d4981b68f364652f899",
+  "initSha256": "cfa07b38c57b88965b67c6b8bd398ecf5b258615aaa2e03c7b7dc255329795f3",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "sourceBalanceMutez": "18897051",
+  "constants": {
+    "costPerByte": "250",
+    "originationSize": 257,
+    "hardGasLimitPerOperation": "1040000"
+  },
+  "codeCheck": {
+    "typechecked": true,
+    "remainingGas": "1038084618",
+    "responseSha256": "d1db78e4885d5dc4d3eb0028eed60c147a3c2258fbbe82d8d3c3e5071602b36d"
+  },
+  "dataCheck": {
+    "typechecked": true,
+    "remainingGas": "1039990260",
+    "responseSha256": "8daca0430892f1c3f43beccb87d1c6b57a3a466333a9a264d9332f5085523763"
+  },
+  "scriptSize": {
+    "script_size": 366656
+  },
+  "estimate": {
+    "suggestedFeeMutez": "9307",
+    "burnFeeMutez": "2235000",
+    "gasLimit": "4695",
+    "storageLimit": "8940",
+    "requiredMutez": "2244307",
+    "affordable": true
+  }
+}
