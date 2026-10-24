@@ -73,7 +73,6 @@ async function dragHit(page, frame, sourceId, targetId) {
 async function buyAndDeploy(page, frame, useDrag = false) {
   await hit(page, frame, "shop-buy-0");
   await frame.waitForFunction(() => window.AB_GAME().bench.length === 1);
-  if ((await gameState(frame)).shop.visible) await hit(page, frame, "shop-toggle");
   const unitId = await frame.evaluate(() => window.AB_GAME().bench[0].id);
   if ((await gameState(frame)).selected !== unitId) await hit(page, frame, `bench-${unitId}`);
   const tile = await frame.evaluate(() => window.AB_UI.grid().tiles.find((tile) => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
@@ -103,7 +102,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(await game.evaluate(() => window.AB.ROSTER.length)).toBe(50);
     expect((await gameState(game)).match.players.player.gold).toBe(1);
     expect((await gameState(game)).shop.visible).toBe(true);
-    expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("tile-")))).toBe(false);
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("tile-")))).toBe(true);
+    expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id === "shop-buy-0"))).toBe(true);
     await hit(page, game, "shop-preview-1");
     expect((await gameState(game)).shop.previewIndex).toBe(1);
     await hit(page, game, "shop-preview-0");
@@ -114,7 +114,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(state.field[0].id).toBe(unitId);
     expect(state.projection).toBe("side");
     expect(state.facing.find(unit => unit.id === unitId)?.mirrored).toBe(true);
-    expect(state.shop.visible).toBe(false);
+    expect(state.shop.visible).toBe(true);
+    await hit(page, game, "shop-toggle");
     expect(state.panels).toMatchObject({ traitsOpen: false, detailsOpen: false, unreadTraits: true });
     expect(await game.evaluate(() => window.AB_UI.hitRegions().filter(hit => hit.id.startsWith("synergy-")).length)).toBe(0);
     await game.locator("#traits-icon").click();
@@ -131,6 +132,42 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(popup).toHaveURL(/\/games\/installed\/wtfiap\/generator\.html\?/);
     await popup.close();
     expect(errors).toEqual([]);
+  });
+
+  test("landscape phone keeps shop and bench readable while the shared board remains playable", async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+    const phone = await context.newPage(),errors=[];
+    phone.on("pageerror", error => errors.push(error.message));
+    try {
+      await phone.goto("/games/installed/wtfiap/generator.html?mode=match&seed=inventory-mobile-ux");
+      await phone.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+      await expect(phone.locator("main")).toHaveClass(/compact-stage/);
+      await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "shop");
+      await expect(phone.locator(".mobile-offer")).toHaveCount(4);
+      expect(await phone.locator('.mobile-offer canvas').first().evaluate(canvas => [...canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data].some((value, index) => index % 4 === 3 && value > 0))).toBe(true);
+      await phone.locator(".mobile-offer").nth(1).click();
+      expect((await gameState(phone)).shop.previewIndex).toBe(1);
+      await phone.getByRole("button", { name: "Recruit preview" }).click();
+      await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "board");
+      await phone.getByRole("button", { name: "Bench", exact: true }).click();
+      await expect(phone.locator(".mobile-bench-slot:not(.empty)")).toHaveCount(1);
+      await phone.locator(".mobile-bench-slot:not(.empty)").click();
+      await expect(phone.locator('.visual-board')).toHaveAttribute("data-mobile-view", "board");
+      const position = await phone.evaluate(() => {
+        const tile=window.AB_UI.grid().tiles.find(item => item.coordinate === 'A1'),canvas=document.getElementById('game').getBoundingClientRect(),view=document.querySelector('.visual-board').getBoundingClientRect();
+        return { x:canvas.x+tile.x*canvas.width/1440,y:canvas.y+tile.y*canvas.height/1000,viewTop:view.top,viewBottom:view.bottom };
+      });
+      expect(position.y).toBeGreaterThan(position.viewTop);
+      expect(position.y).toBeLessThan(position.viewBottom);
+      await phone.mouse.click(position.x,position.y);
+      expect((await gameState(phone)).field.map(unit => unit.coordinate)).toContain("A1");
+      expect((await gameState(phone)).shop.visible).toBe(true);
+      await phone.getByRole("button", { name: /Begin round/ }).click();
+      expect((await gameState(phone)).phase).toBe("battle");
+      await expect(phone.getByRole("button", { name: "Pause" })).toBeVisible();
+      await phone.screenshot({ path: test.info().outputPath("landscape-game.png") });
+      expect(errors).toEqual([]);
+    } finally { await context.close(); }
   });
 
   test("shared arena drags, swaps and sells heroes with star-aware shop and bench ratings", async ({ page }) => {

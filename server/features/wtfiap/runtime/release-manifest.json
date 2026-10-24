@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "WTFIAP-v0.01",
   "appKey": "wtfiap",
-  "generatorSha256": "8c97fe6a0488c3e6e1e7e3b560cd83e86bb04d309643aef9635c767564c60323",
+  "generatorSha256": "69f66c3a72f740d3c35048064368e7ae1b71f7e7130c816555204d974d6f5e08",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,9 +19,9 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "8c97fe6a0488c3e6e1e7e3b560cd83e86bb04d309643aef9635c767564c60323",
-      "sha256": "8c97fe6a0488c3e6e1e7e3b560cd83e86bb04d309643aef9635c767564c60323",
-      "bytes": 12662456
+      "sourceSha256": "69f66c3a72f740d3c35048064368e7ae1b71f7e7130c816555204d974d6f5e08",
+      "sha256": "69f66c3a72f740d3c35048064368e7ae1b71f7e7130c816555204d974d6f5e08",
+      "bytes": 12673740
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",

@@ -18,6 +18,37 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .orientation-prompt{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:#0b171a;color:#e8e2cd;text-align:center}
 .orientation-card{max-width:34rem}.orientation-mark{display:block;margin-bottom:10px;color:#dab975;font-size:4rem;line-height:1}.orientation-card h1{margin:0 0 10px;font:2rem Georgia,serif}.orientation-card h1:focus{outline:none}.orientation-card p{margin:0 0 18px}.orientation-card button{min-height:44px;padding:9px 18px;border:1px solid #dab975;border-radius:5px;background:#dab975;color:#0b171a;font:inherit;font-weight:700}.orientation-card button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
 .quick-actions{display:none}
+.mobile-stage-nav,.mobile-pane{display:none}
+.compact-stage{width:100%;height:100dvh;display:flex;flex-direction:column}
+.compact-stage .quick-actions{display:flex;position:static;flex:none;gap:4px;padding:4px;background:#102529}
+.compact-stage .quick-actions button{flex:1;min-width:0;min-height:36px;padding:4px;font-size:12px}
+.mobile-resource{display:none}
+.compact-stage .mobile-resource{display:flex;flex:none;justify-content:space-around;gap:6px;min-height:25px;padding:2px 6px;background:#254039;color:#ffe6a3;font:700 12px/20px system-ui;white-space:nowrap}
+.compact-stage .mobile-stage-nav{display:flex;flex:none;gap:4px;padding:3px 6px;background:#102529}
+.mobile-stage-nav button{flex:1;min-height:34px;border:1px solid #45615c;border-radius:4px;background:#1b3336;color:#e8e2cd;font:600 13px system-ui}
+.mobile-stage-nav button[aria-pressed="true"]{border-color:#dab975;background:#4b452e;color:#ffe9b0}
+.compact-stage .visual-board{flex:1;min-height:0;overflow:hidden}
+.compact-stage .visual-board #game{width:100%;min-width:0;height:auto;transform:translateY(calc(-1 * var(--mobile-pan,0px)))}
+.compact-stage .visual-board[data-mobile-view="board"] #game{width:123%;margin-left:-11.5%}
+.compact-stage .visual-board[data-mobile-view="shop"] #game,.compact-stage .visual-board[data-mobile-view="bench"] #game{visibility:hidden}
+.compact-stage .visual-board[data-mobile-view="shop"] #mobile-shop,.compact-stage .visual-board[data-mobile-view="bench"] #mobile-bench{display:flex}
+.compact-stage .mobile-pane{position:absolute;inset:0;z-index:2;flex-direction:column;gap:5px;padding:5px 8px;background:#102529;overflow:auto}
+.mobile-shop-status{display:flex;gap:12px;flex:none;color:#f1d694;font-weight:700;font-size:13px}
+.mobile-shop-offers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;flex:1;min-height:0}
+.mobile-offer{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:4px 6px;border:1px solid #45615c;border-radius:4px;background:#172e30;color:#e8e2cd;text-align:left;font:12px/1.15 system-ui}
+.mobile-offer.selected{border-color:#dab975;background:#29403b}
+.mobile-offer strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mobile-offer canvas{height:55px;width:auto;max-width:100%;align-self:center}
+.mobile-offer .gain{color:#f5d487;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mobile-shop-preview{flex:none;max-height:42px;overflow:hidden;color:#d8e2d6;font-size:12px}
+.mobile-bench-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:5px;flex:1;min-height:0}
+.mobile-bench-slot{min-width:0;padding:3px 5px;border:1px solid #45615c;background:#172e30;color:#e8e2cd;text-align:left;font:12px/1.1 system-ui;overflow:hidden}
+.mobile-bench-slot strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobile-bench-slot canvas{display:block;height:43px;width:auto;max-width:100%;margin:auto}
+.mobile-bench-slot.selected{border-color:#dab975}
+.mobile-bench-slot.empty{opacity:.5}
+.compact-stage .access{position:absolute;top:100dvh;left:0;width:100%}
+.compact-stage .info-icon{top:5%;width:38px;height:38px}
 .access{padding:16px 20px 28px;background:#13272a;border-top:2px solid #dab975}
 .access summary{cursor:pointer;min-height:44px;padding:8px 0;font-weight:700;color:#f1d694}
 .access h1{font:1.4rem Georgia,serif;margin:0 0 8px}.access h2{font-size:1.1rem;margin:14px 0 4px}.access p{margin:8px 0 14px}
@@ -27,7 +58,7 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 #controls button{min-height:44px;padding:8px 12px;background:#1c393b;color:#f0ebdc;border:1px solid #78918a;border-radius:5px;text-align:left;font:inherit;cursor:pointer}
 #controls button[aria-pressed="true"]{border-color:#dab975;background:#3c4334}
 #controls button:focus-visible,.skip:focus-visible,.access summary:focus-visible,canvas:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
-@media(max-width:700px),(pointer:coarse) and (hover:none){main{width:100%}.visual-board canvas{min-width:720px}.info-popover:not([hidden]){display:block;position:absolute;z-index:3;top:calc(13% + 52px);left:8px;right:8px;max-height:calc(87% - 60px);overflow:auto;padding:14px;background:#102529f5;border:1px solid #dab975;box-shadow:0 8px 30px #071316c9}.info-popover h2{margin:0 0 8px;color:#f1d694;font:1.25rem Georgia,serif}.info-popover p{margin:6px 0 12px}.info-popover button{display:block;width:100%;min-height:44px;margin:5px 0;padding:7px 10px;text-align:left;background:#1c393b;color:#f0ebdc;border:1px solid #78918a;border-radius:5px;font:inherit}.info-popover button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}.info-popover .info-label{margin:12px 0 5px;color:#dab975;font-size:.8rem;letter-spacing:.1em}.quick-actions{display:flex;position:sticky;top:0;z-index:4;gap:8px;padding:9px 12px;background:#102529ee;border-top:1px solid #78918a}.quick-actions button{min-height:44px;flex:1;border:1px solid #dab975;border-radius:5px;background:#1c393b;color:#f0ebdc;font:inherit}.quick-actions button.primary{background:#dab975;color:#0b171a;font-weight:700}.quick-actions button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}.access{padding:14px}#controls{grid-template-columns:1fr 1fr}}
+@media(max-width:700px),(pointer:coarse) and (hover:none){main{width:100%}.visual-board #game{min-width:720px}.info-popover:not([hidden]){display:block;position:absolute;z-index:3;top:calc(13% + 52px);left:8px;right:8px;max-height:calc(87% - 60px);overflow:auto;padding:14px;background:#102529f5;border:1px solid #dab975;box-shadow:0 8px 30px #071316c9}.info-popover h2{margin:0 0 8px;color:#f1d694;font:1.25rem Georgia,serif}.info-popover p{margin:6px 0 12px}.info-popover button{display:block;width:100%;min-height:44px;margin:5px 0;padding:7px 10px;text-align:left;background:#1c393b;color:#f0ebdc;border:1px solid #78918a}.info-popover button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}.info-popover .info-label{margin:12px 0 5px;color:#dab975;font-size:.8rem;letter-spacing:.1em}.quick-actions{display:flex;position:sticky;top:0;z-index:4;gap:8px;padding:9px 12px;background:#102529ee;border-top:1px solid #78918a}.quick-actions button{min-height:44px;flex:1;border:1px solid #dab975;border-radius:5px;background:#1c393b;color:#f0ebdc;font:inherit}.quick-actions button.primary{background:#dab975;color:#0b171a;font-weight:700}.quick-actions button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}.access{padding:14px}#controls{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){#controls{grid-template-columns:1fr}}
 </style>
 <script data-ab="harness">// The one seeded-PRNG construction every $alea implementation must share:
@@ -73,7 +104,7 @@ function sfc32(a, b, c, d) {
 }
 
 const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const hash=xmur3(seed),rand=sfc32(hash(),hash(),hash(),hash());window.$alea={seed,rand,random:rand,features:traits=>{window.AB_TRAITS=traits;},ready:()=>{document.documentElement.dataset.ready='true';}};</script>
-</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div class="visual-board" aria-label="Scrollable visual battlefield"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="Lil Guys visual battlefield. Use the game controls below for the same actions with a keyboard or screen reader."></canvas><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary>Game controls and details</summary><h1 id="controls-heading">Lil Guys game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Play Lil Guys in landscape mode. Rotate your phone to continue.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
+</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="Lil Guys visual battlefield. Use the game controls below for the same actions with a keyboard or screen reader."></canvas><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><div class="mobile-bench-grid"></div></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary>Game controls and details</summary><h1 id="controls-heading">Lil Guys game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Play Lil Guys in landscape mode. Rotate your phone to continue.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
 <script data-ab="game">(function(root){const catalog={
   "factions": {
     "ember": {
@@ -6439,9 +6470,24 @@ const query=new URLSearchParams(location.search),matchMode=query.get('mode')==='
 const requestedBoardMode=query.get('boardMode'),boardMode=Object.hasOwn(ABMatch.BOARD_MODES,requestedBoardMode)?requestedBoardMode:null;
 let match=null,chestSelected=false,saveStatus='',partyData=null,partyPending=false,partyConnected=false;
 const matchSaveKey=boardMode?'lil-guys-v2:local-match:board-mode:rectangular:'+boardMode+':'+token.seed:'lil-guys-v2:local-match:'+token.seed;
-// The shop covers the arena during preparation instead of lengthening the page.
+// The preparation shop docks below the arena while keeping board hits live.
 if(matchMode||partyMode)canvas.height=1000;
 let game=AB.createGame(token),selected=null,selectedTrait=null,hover=null,hits=[],message='Choose a champion from your bench, then a tile on your side.',tab='arena',rosterPage=0,codexMode='overview',codexFaction='ember',codexHero=null,codexClassMode='bonuses',factionPage=0,factionPlan=false,showAllTraits=false,shopVisible=matchMode||partyMode,shopPreviewIndex=0,traitsOpen=false,detailsOpen=false,unreadTraits=false,unreadDetails=false,traitSignature=null,detailSignature=null,paused=false,raf=0,lastTick=0,drag=null,suppressDragClick=false;
+const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse) and (hover: none)');
+const visualBoard=document.querySelector('.visual-board');
+let mobileView=shopVisible?'shop':'board',mobilePanelKey='';
+function setMobileView(view){
+  if(view==='shop'&&match&&(match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated))view='board';
+  mobileView=view;visualBoard.dataset.mobileView=view;
+  document.querySelectorAll('#mobile-stage-nav button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.view===view));button.disabled=button.dataset.view==='shop'&&(!match||match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated);});
+  const pan=view==='board'?(shopVisible&&match?.phase==='preparation'?120:220):0,scale=canvas.clientWidth/1440;
+  visualBoard.style.setProperty('--mobile-pan',`${Math.round(pan*scale)}px`);
+}
+function syncStageLayout(){document.querySelector('main').classList.toggle('compact-stage',mobileStageMedia.matches);setMobileView(mobileView);}
+mobileStageMedia.addEventListener('change',syncStageLayout);
+addEventListener('resize',syncStageLayout);
+document.querySelectorAll('#mobile-stage-nav button').forEach(button=>button.addEventListener('click',()=>{markPlayerAction();if(button.dataset.view==='shop'&&!shopVisible)shopVisible=true;setMobileView(button.dataset.view);draw();}));
+syncStageLayout();
 const IDLE_HINT_MS=30_000; // Player-selected preparation inactivity threshold.
 const tipsSettingKey='lil-guys-v2:automatic-tips';
 let hintVisible=false,idleHintTimer=null,tipsEnabled=true;
@@ -6512,11 +6558,11 @@ function chestTerms(){return partyMode?partyData.chestPreview:ABMatch.chestPrevi
 function heroStock(id){return partyMode?partyData.heroSupply?.[id]||null:ABMatch.heroSupply(match,id);}
 function poolInfo(){return partyMode?partyData.pool||null:ABMatch.poolSummary(match);}
 function partyCommand(type,args={}){if(!partyMode)return false;if(partyData?.spectating){say('You are watching this team. Only its commander can change the formation.');draw();return true;}if(!match||partyPending||!partyConnected){say(partyPending?'Waiting for the server to acknowledge your previous action.':'Reconnecting. Your last acknowledged formation is shown.');draw();return true;}if(match.phase!=='preparation'||partyData.eliminated){say('Preparation has closed. This action was not sent.');draw();return true;}partyPending=true;say('Sending '+type+'… waiting for server acknowledgement.');parent.postMessage({type:'party-command',command:{type,...args}},location.origin);draw();return true;}
-if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating;shopPreviewIndex=0;hintVisible=false;restartIdleHint();}if(next.spectating)shopVisible=false;partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
+if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();}if(next.spectating){shopVisible=false;setMobileView('board');}partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
 function say(s){message=s;document.getElementById('announcement').textContent=s;}
 function preparationOpen(){return tab==='arena'&&!document.hidden&&(match?match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating:game.phase==='planning');}
 function nextStepHint(){
-if(match&&shopVisible){const offer=match.shops.player[shopPreviewIndex];return offer&&match.players.player.gold>=AB.heroById(offer.heroId).cost?{text:'Choose a hero to preview, then recruit it. Hide the shop to arrange your team.',target:'shop-preview-'+shopPreviewIndex}:{text:'Hide the shop to arrange your team, or refresh offers if you have gold.',target:'shop-toggle'};}
+if(match&&shopVisible){const offer=match.shops.player[shopPreviewIndex];return offer&&match.players.player.gold>=AB.heroById(offer.heroId).cost?{text:'Preview an offer, recruit it, then place it directly on the visible board.',target:'shop-preview-'+shopPreviewIndex}:{text:'Refresh offers or place reserves on the visible board.',target:'shop-toggle'};}
 if(selected&&selectedUnit()&&!game.opponents.some(u=>u.id===selected))return{text:'Choose a friendly space, or drag the hero there. Drop on a hero to swap; drop on Shop to sell.',target:hits.find(h=>h.id.startsWith('tile-'))?.id};
 if(game.bench.length&&game.field.length<game.playerLevel)return{text:'Drag a reserve onto a friendly board space, or select it and choose a space.',target:'bench-'+game.bench[0].id};
 if(match&&chestTerms().enabled&&!match.chests.player)return{text:'Place your treasure chest in your territory before combat.',target:'place-chest'};
@@ -6528,7 +6574,7 @@ return game.field.length?{text:'Your team is set. Begin battle when you are read
 function restartIdleHint(){clearTimeout(idleHintTimer);idleHintTimer=null;if(!tipsEnabled||!preparationOpen())return;idleHintTimer=setTimeout(()=>{idleHintTimer=null;if(!preparationOpen()||!tipsEnabled)return;hintVisible=true;const tip=nextStepHint();document.getElementById('announcement').textContent='Help tip: '+tip.text;draw();},IDLE_HINT_MS);}
 function markPlayerAction(){hintVisible=false;restartIdleHint();}
 function toggleHelp(){hintVisible=!hintVisible;if(hintVisible){const tip=nextStepHint();document.getElementById('announcement').textContent='Help tip: '+tip.text;}draw();}
-function drawHelpTip(){if(!hintVisible||!preparationOpen())return;const tip=nextStepHint();rect(48,632,232,100,'#253c38',C.gold);text('NEXT STEP',62,656,11,C.gold);wrap(tip.text,62,681,202,12,C.cream,17);const target=hits.find(h=>h.id===tip.target);if(target){ctx.save();ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(target.x-3,target.y-3,target.w+6,target.h+6);ctx.restore();}}
+function drawHelpTip(){if(!hintVisible||!preparationOpen())return;const tip=nextStepHint(),y=shopVisible?130:632;rect(48,y,232,100,'#253c38',C.gold);text('NEXT STEP',62,y+24,11,C.gold);wrap(tip.text,62,y+49,202,12,C.cream,17);const target=hits.find(h=>h.id===tip.target);if(target){ctx.save();ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(target.x-3,target.y-3,target.w+6,target.h+6);ctx.restore();}}
 function updateInfoIcons(){
 const synergies=AB.synergies(game.field),nextTraits=JSON.stringify([...synergies.factions,...synergies.classes].filter(value=>value.count>0).map(value=>[value.id,value.count,value.current?.count]));
 if(traitSignature!==null&&nextTraits!==traitSignature&&!traitsOpen)unreadTraits=true;
@@ -6537,13 +6583,13 @@ const unit=selectedUnit(),nextDetails=unit?`${unit.id}:${unit.heroId}:${unit.lev
 if(detailSignature!==null&&nextDetails!==detailSignature){if(!nextDetails)unreadDetails=false;else if(!detailsOpen)unreadDetails=true;}
 detailSignature=nextDetails;
 for(const [id,open,unread,label]of [['traits-icon',traitsOpen,unreadTraits,'team traits'],['details-icon',detailsOpen,unreadDetails,'champion details']]){
-const icon=document.getElementById(id);icon.hidden=tab!=='arena'||!!(match&&shopVisible&&match.phase==='preparation');icon.classList.toggle('unread',unread&&!open);icon.setAttribute('aria-expanded',String(open));icon.setAttribute('aria-label',`${open?'Hide':'Show'} ${label}${unread&&!open?' — updated':''}`);
+const icon=document.getElementById(id);icon.hidden=tab!=='arena'||(document.querySelector('main').classList.contains('compact-stage')&&mobileView!=='board');icon.classList.toggle('unread',unread&&!open);icon.setAttribute('aria-expanded',String(open));icon.setAttribute('aria-label',`${open?'Hide':'Show'} ${label}${unread&&!open?' — updated':''}`);
 }
 }
 document.getElementById('traits-icon').addEventListener('click',()=>{markPlayerAction();traitsOpen=!traitsOpen;if(traitsOpen){unreadTraits=false;if(compactControls.matches)detailsOpen=false;}draw();});
 document.getElementById('details-icon').addEventListener('click',()=>{markPlayerAction();detailsOpen=!detailsOpen;if(detailsOpen){unreadDetails=false;if(compactControls.matches)traitsOpen=false;}draw();});
 function renderInfoPopovers(){
-const visible=compactControls.matches&&tab==='arena'&&!(match&&shopVisible&&match.phase==='preparation');
+const visible=compactControls.matches&&tab==='arena'&&(!document.querySelector('main').classList.contains('compact-stage')||mobileView==='board');
 const traits=document.getElementById('traits-panel'),details=document.getElementById('details-panel');
 traits.hidden=!visible||!traitsOpen;details.hidden=!visible||!detailsOpen;
 if(!traits.hidden){
@@ -6587,18 +6633,18 @@ if(r.ok){clearSelection();persistMatch();}
 say(r.ok?`${hero(s).name} ${ally?'swapped into the formation':'placed'} at ${coordinate(col,row)}. ${game.field.length}/${game.playerLevel} units fielded. Choose another champion.`:r.reason);draw();
 }
 function recall(){if(!selected)return;if(partyCommand('recall',{unitId:selected}))return;const r=match?ABMatch.recall(match,selected):AB.recall(game,selected);if(r.ok){clearSelection();persistMatch();}say(r.ok?'Champion returned to the bench. Choose another champion.':r.reason);draw();}
-function begin(){if(partyMode&&!partyData?.readyOnly){say('Combat starts when the shared preparation timer ends.');draw();return;}if(partyCommand('ready',{value:!partyData?.ready}))return;if(matchMode&&!match)return;const r=match?ABMatch.beginCombat(match):AB.startBattle(game);if(!r.ok){say(r.reason);draw();return;}game=match?.game||game;persistMatch();clearSelection();tab='arena';paused=false;lastTick=0;say(match?'Round '+match.roundNumber+' underway. Heroes fight automatically; commander damage and rewards settle when combat ends.':'Battle underway. Your formation fights automatically.');draw();schedule();}
+function begin(){if(partyMode&&!partyData?.readyOnly){say('Combat starts when the shared preparation timer ends.');draw();return;}if(partyCommand('ready',{value:!partyData?.ready}))return;if(matchMode&&!match)return;const r=match?ABMatch.beginCombat(match):AB.startBattle(game);if(!r.ok){say(r.reason);draw();return;}game=match?.game||game;shopVisible=false;setMobileView('board');persistMatch();clearSelection();tab='arena';paused=false;lastTick=0;say(match?'Round '+match.roundNumber+' underway. Heroes fight automatically; commander damage and rewards settle when combat ends.':'Battle underway. Your formation fights automatically.');draw();schedule();}
 function reset(){if(partyMode){say('Party combat is controlled by the server.');draw();return;}if(match){say('A match combat cannot be rewound. Finish this combat, then continue to the next preparation.');draw();return;}cancelAnimationFrame(raf);raf=0;AB.resetBattle(game);clearSelection();paused=false;lastTick=0;say('Formation restored. Select any champion to reposition it.');draw();}
 function combine(g){if(partyCommand('combine',{heroId:g.heroId,stars:g.level}))return;const r=match?ABMatch.combine(match,g.heroId,g.level):AB.combine(game,g.heroId,g.level);if(r.ok){selected=r.unit.id;persistMatch();say(`${hero(r.unit).name} evolved to ${r.unit.level} stars.`);}else say(r.reason);draw();}
 function schedule(){if(partyMode)return;if(!raf&&game.phase==='battle'&&!paused)raf=requestAnimationFrame(tick);}
 function tick(t){raf=0;if(game.phase!=='battle'||paused)return;if(lastTick)advance(t-lastTick);lastTick=t;draw();schedule();}
 function advance(ms){if(partyMode){draw();return;}if(game.phase==='battle'&&!paused){if(match){ABMatch.step(match,ms/1000);game=match.game;}else AB.step(game,ms/1000);if(game.phase==='finished'){persistMatch();say(match?roundMessage():game.result==='victory'?'Victory. Your formation held the field.':game.result==='defeat'?'Defeat. Try a different formation.':'Both armies fell. Try a different formation.');lastTick=0;}draw();}}
 function roundMessage(){if(match.phase==='finished')return match.players.player.hp<=0?'Match lost. Your commander has fallen.':match.players.enemy.hp<=0?'Match won. The rival commander has fallen.':'Match complete.';const receipt=match.lastReceipt,damage=receipt?.health.appliedDamage||0,xp=receipt?.xp.player.xpGranted||0,gold=receipt?.treasure.payouts.find(p=>p.playerId==='player')?.gold||0;return (game.result==='victory'?'Round won. ':game.result==='defeat'?'Round lost. ':'Round drawn. ')+`${game.result==='defeat'?'Your commander':game.result==='victory'?'Rival commander':'Commanders'} −${damage} HP · +${xp} XP · treasure +${gold}g${receipt?.zoneGold?.player?' · zones +'+receipt.zoneGold.player+'g':''}. Next preparation adds income.`;}
-function nextRound(){if(partyMode)return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.nextRound(match);if(!r.ok){say(r.reason);draw();return;}game=match.game;persistMatch();clearSelection();shopVisible=true;shopPreviewIndex=0;hintVisible=false;restartIdleHint();paused=false;lastTick=0;say(`Round ${match.roundNumber}. +${match.lastIncome.player.baseIncome} base gold + ${match.lastIncome.player.interest} interest. Your army and commander progress carry forward.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:'')+(match.roundNumber>=5&&!match.chests.player?' Place your treasure in friendly territory.':''));draw();}
+function nextRound(){if(partyMode)return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.nextRound(match);if(!r.ok){say(r.reason);draw();return;}game=match.game;persistMatch();clearSelection();shopVisible=true;shopPreviewIndex=0;setMobileView('shop');hintVisible=false;restartIdleHint();paused=false;lastTick=0;say(`Round ${match.roundNumber}. +${match.lastIncome.player.baseIncome} base gold + ${match.lastIncome.player.interest} interest. Your army and commander progress carry forward.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:'')+(match.roundNumber>=5&&!match.chests.player?' Place your treasure in friendly territory.':''));draw();}
 function buyXP(){if(partyCommand('buyXP'))return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.buyXP(match);game=match.game;if(r.ok)persistMatch();say(r.ok?`Bought 4 XP for 4 gold. Commander level ${game.playerLevel}; ${game.playerLevel} field slots.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:''):r.reason);draw();}
 function selectChest(){if(!match||match.phase!=='preparation'||match.roundNumber<5)return;const was=chestSelected;clearSelection();chestSelected=!was;say(chestSelected?'Treasure selected. Click a friendly tile to place it; it can share a hero’s starting tile.':'Treasure deselected.');draw();}
-function startMatch(){if(partyMode)return {ok:false,reason:'Start a room from the Party lobby.'};try{const next=ABMatch.createMatch({token,...(boardMode?{boardMode}:{})});cancelAnimationFrame(raf);raf=0;match=next;game=match.game;clearSelection();paused=false;lastTick=0;tab='arena';shopVisible=true;shopPreviewIndex=0;persistMatch();say('Round 1. Buy a 1-gold hero from the shop below, then place it on a friendly tile.');draw();return {ok:true};}catch(error){say(error.message);return {ok:false,reason:error.message};}}
-function buyShop(index){if(partyCommand('buy',{index})){if(partyPending){shopVisible=false;draw();}return;}if(!match)return;const r=ABMatch.buyShop(match,index);game=match.game;if(r.ok){persistMatch();clearSelection();if(r.unit)selected=r.unit.id;shopVisible=false;say(r.upgrades?.length?hero(r.unit).name+' combined into '+r.unit.level+' stars.':r.unit?hero(r.unit).name+' recruited and selected. Click a friendly tile to field this hero.':'Hero recruited. Select the reserve, then a friendly tile.');}else say(r.reason);draw();}
+function startMatch(){if(partyMode)return {ok:false,reason:'Start a room from the Party lobby.'};try{const next=ABMatch.createMatch({token,...(boardMode?{boardMode}:{})});cancelAnimationFrame(raf);raf=0;match=next;game=match.game;clearSelection();paused=false;lastTick=0;tab='arena';shopVisible=true;shopPreviewIndex=0;setMobileView('shop');persistMatch();say('Round 1. Buy a 1-gold hero from the shop below, then place it on a friendly tile.');draw();return {ok:true};}catch(error){say(error.message);return {ok:false,reason:error.message};}}
+function buyShop(index){if(partyCommand('buy',{index}))return;if(!match)return;const r=ABMatch.buyShop(match,index);game=match.game;if(r.ok){persistMatch();clearSelection();if(r.unit)selected=r.unit.id;setMobileView('board');say(r.upgrades?.length?hero(r.unit).name+' combined into '+r.unit.level+' stars.':r.unit?hero(r.unit).name+' recruited and selected. Click a friendly tile to field this hero.':'Hero recruited. Select the reserve, then a friendly tile.');}else say(r.reason);draw();}
 function sellUnit(unitId){if(!match||!unitId)return;if(partyCommand('sell',{unitId}))return;const r=ABMatch.sellHero(match,unitId);game=match.game;if(r.ok){clearSelection();persistMatch();say(hero(r.unit).name+' sold for '+r.goldReceived+' gold.');}else say(r.reason);draw();}
 function sellHero(){sellUnit(selected);}
 function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();say(r.ok?'Shop refreshed for 2 gold.'+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
@@ -6606,7 +6652,7 @@ function visibleChests(){if(!match||match.roundNumber<5)return [];if(game.battle
 function drawChests(g){for(const chest of visibleChests()){const anchor=g.at(chest.col,chest.row),p={x:anchor.x+g.tw*.5,y:anchor.y+g.th*.75},enemy=chest.side==='enemy',active=chest.status==='active',color=enemy?C.red:C.gold;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.ellipse(anchor.x,anchor.y,6,3,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=active?1:.4;ctx.shadowColor='#0008';ctx.shadowBlur=12;ctx.shadowOffsetY=5;poly([[p.x-22,p.y-8],[p.x,p.y+4],[p.x+22,p.y-8],[p.x,p.y-20]],'#be9553',color);poly([[p.x-22,p.y-8],[p.x-22,p.y-26],[p.x,p.y-14],[p.x,p.y+4]],'#795c35',color);poly([[p.x,p.y-14],[p.x+22,p.y-26],[p.x+22,p.y-8],[p.x,p.y+4]],'#a37a42',color);poly([[p.x-22,p.y-26],[p.x,p.y-38],[p.x+22,p.y-26],[p.x,p.y-14]],'#caa268',color);rect(p.x-3,p.y-19,6,9,'#f5d69b');ctx.shadowBlur=0;ctx.shadowOffsetY=0;rect(p.x-36,p.y-71,72,29,'#102124',color);rect(p.x-25,p.y-49,50,5,'#091616');rect(p.x-25,p.y-49,chest.maxHp?50*Math.max(0,chest.hp/chest.maxHp):0,5,color);text(chest.maxHp?Math.ceil(chest.hp)+' HP':'FIELD A HERO',p.x,p.y-56,10,color,'sans-serif','center');if(chestSelected&&!enemy){ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y+1,30,14,0,0,Math.PI*2);ctx.stroke();}ctx.restore();if(game.phase==='planning'&&!enemy)hit('player-chest',p.x-36,p.y-71,72,79,selectChest,'Select your treasure chest');}}
 function chestInspector(){const preview=chestTerms(),chest=preview.chests.find(c=>c.side==='player');text('YOUR TREASURE',1172,174,12,C.gold);text(chest?.col!==null&&chest?.col!==undefined?'Treasure at '+coordinate(chest.col,chest.row):'Protect the bonus.',1172,210,25,C.cream,'Georgia');wrap('Click a friendly tile to place your chest. It takes no hero slot and may share a starting tile with a hero.',1172,249,220,14);text(preview.goldPerChest+' GOLD PER CHEST',1172,350,15,C.gold);text(preview.expiresAtSeconds+' SECOND WINDOW',1172,381,12,C.muted);if(chest?.maxHp){text(number(chest.maxHp)+' MAX HP',1172,431,20,C.cream);wrap('Based on the roster’s base 1-star HP average and your highest fielded hero’s HP rank. Armor breaks HP ties.',1172,465,220,13);}wrap('Heroes target the nearest enemy hero or chest. A defeated chest pays its capturer; an intact chest pays its owner when combat ends.',1172,565,220,13,C.muted,20);button('chest-deselect','Deselect · Esc',1172,697,220,37,deselect);}
 
-function grid(){const b=game.board,dx=1080/b.rows,dy=390/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:417+(c-(b.columns-1)/2)*dy})};}
+function grid(){const b=game.board,dx=1080/b.rows,dy=(shopVisible&&match?.phase==='preparation'?300:390)/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:(shopVisible&&match?.phase==='preparation'?328:417)+(c-(b.columns-1)/2)*dy})};}
 function unitFacing(u){const target=(game.battle?.units||[]).find(t=>t.id===u.targetId&&t.alive!==false);if(target&&Math.abs(target.row-u.row)>1e-6)return target.row<u.row?'right':'left';const move=u.lastMove;if(move&&Math.abs(u.row-move.from.row)>1e-6)return u.row<move.from.row?'right':'left';return u.side==='enemy'?'left':'right';}
 
 function zoneSnapshot(){return game.battle?.zoneDefense||game.zoneDefense;}
@@ -6702,40 +6748,51 @@ function partyCommandBar(){line(300,661,1138,661);text('ROUND '+match.roundNumbe
 function resourceHeader(label){const p=match.players.player,progress=p.progression; text(label+' · ROUND '+match.roundNumber,432,31,11,C.gold);text('GOLD',432,53,10,C.muted);text(p.gold+'g',432,88,30,C.gold,'Georgia');text('XP',555,53,10,C.muted);text(progress.level<10?progress.xpIntoLevel+' / '+progress.xpCosts[progress.level-1]:'MAX',555,84,22,C.cream,'Georgia');button('xp-add','+',710,51,43,37,buyXP,false,match.phase==='preparation'&&p.gold>=4&&progress.level<10,23,'Buy 4 commander XP for 4 gold');text((partyData?.spectating?'WATCHING':'YOU')+' '+p.hp+' HP · RIVAL '+match.players.enemy.hp+' HP',432,105,11,C.teal);}
 function matchHeader(){if(partyMode){partyHeader();return;}resourceHeader('LOCAL PRACTICE');if(saveStatus==='unavailable')text('Browser storage unavailable',765,105,10,C.gold);}
 function partyHeader(){resourceHeader(partyData?.roomType==='duel'?'DUEL':partyData?.roomType==='tournament'?'TOURNAMENT':'PARTY');if(partyPending||!partyConnected)text(partyPending?'Action pending':'Reconnecting',765,105,10,C.gold);}
+function offerTraitChanges(h){
+  const before=AB.synergies(game.field),after=AB.synergies([...game.field,{heroId:h.id}]);
+  return traitIcons(h).filter(icon=>icon.kind!=='independent').map(icon=>{
+    const kind=icon.kind==='faction'?'factions':'classes';
+    const prior=before[kind].find(item=>item.id===icon.id),next=after[kind].find(item=>item.id===icon.id);
+    if(next.count===prior.count)return{name:icon.name,count:next.count,detail:'Already fielded',activated:false,adds:false};
+    const activated=(next.current?.count||0)>(prior.current?.count||0);
+    return{name:icon.name,count:next.count,detail:activated?`BONUS AT ${next.current.count}`:next.next?`${next.remaining} more to ${next.next.count}`:'All bonuses active',activated,adds:true};
+  });
+}
 function shop(){
 if(!shopVisible||match.phase!=='preparation'||partyData?.eliminated)return;
 const offers=match.shops.player,selectedOffer=offers[shopPreviewIndex],preview=selectedOffer?AB.heroById(selectedOffer.heroId):null;
-rect(110,130,1220,530,'#071316dd');hit('shop-backdrop',110,130,1220,530,()=>{},'Shop backdrop',false);
-rect(317,147,804,493,'#11272a',C.gold);
-text('THE SHOP',339,185,23,C.cream,'Georgia');
-text('◇ Faction   ○ Class',530,184,10,C.muted);
+rect(48,528,1344,228,'#102529f5',C.gold);
+text('SHOP',64,555,21,C.cream,'Georgia');
 const p=match.players.player,progress=p.progression;
-text('GOLD '+p.gold+'g',339,214,16,C.gold);text('LEVEL '+progress.level,463,214,13,C.cream);text('XP '+(progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'),558,214,13,C.cream);text('FIELD '+game.field.length+'/'+game.playerLevel,678,214,13,C.teal);text('BENCH '+game.bench.length+'/10',805,214,13,game.bench.length===10?C.gold:C.teal);
-button('shop-reroll','Refresh · 2g',820,166,136,37,rerollShop,false,match.players.player.gold>=2,12);
-button('shop-buy-xp','+4 XP · 4g',970,166,132,37,buyXP,false,p.gold>=4&&progress.level<10,12,'Buy 4 commander XP for 4 gold');
+text(`${p.gold}g · LV ${progress.level} · XP ${progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'} · FIELD ${game.field.length}/${game.playerLevel} · BENCH ${game.bench.length}/10`,174,553,13,C.gold);
+button('shop-reroll','Refresh · 2g',570,535,132,29,rerollShop,false,p.gold>=2,12);
+button('shop-buy-xp','+4 XP · 4g',710,535,120,29,buyXP,false,p.gold>=4&&progress.level<10,12,'Buy 4 commander XP for 4 gold');
+const canStart=game.field.length>0&&(!chestTerms().enabled||!!match.chests.player);
+if(partyMode){if(partyData.readyOnly)button('battle',partyData.ready?'Ready ✓ · undo':'Ready for combat',840,535,184,29,begin,true,true,12);else text('Combat begins when the timer ends',1024,554,11,C.muted,'sans-serif','right');}
+else button('battle','Begin round →',840,535,184,29,begin,true,canStart,12);
 for(let i=0;i<4;i++){
-const x=339+(i%2)*189,y=230+Math.floor(i/2)*184,w=176,cardH=178,offer=offers[i],h=offer?AB.heroById(offer.heroId):null;
+const x=64+i*177,y=572,w=166,cardH=172,offer=offers[i],h=offer?AB.heroById(offer.heroId):null;
 rect(x,y,w,cardH,'#182e30',i===shopPreviewIndex?C.gold:h?tierColor(h.cost):C.line);
-if(!h){text('NO OFFER',x+w/2,y+90,12,C.muted,'sans-serif','center');continue;}
-ABArt.drawUnit(ctx,x+88,y+123,65,{heroId:h.id,level:1},h,{maxWidth:116});
-text(fitText(h.name,w-20,17),x+10,y+28,17,C.cream,'Georgia');
-text(h.cost+' GOLD · 1 STAR',x+10,y+48,11,tierColor(h.cost));
-traitBadges(h,x+88,y+61,22,5);
-ratingBars(h.id,1,x+10,y+126,10,1);
-text(fitText(h.faction?faction(h.faction).name:'Independent',w-20,10),x+10,y+174,10,C.muted);
-const scores=ratings(h.id,1);hit('shop-preview-'+i,x,y,w,cardH,()=>{shopPreviewIndex=i;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();},`Preview ${h.name}, ${h.cost} gold, shop offer ${i+1}. ${traitNames(h)}. ${ratingDescription(scores)}`);
+if(!h){text('NO OFFER',x+w/2,y+91,12,C.muted,'sans-serif','center');continue;}
+text(fitText(h.name,w-16,16),x+8,y+22,16,C.cream,'Georgia');
+text(h.cost+' GOLD · 1 STAR',x+8,y+40,10,tierColor(h.cost));
+traitBadges(h,x+84,y+56,19,3);
+const changes=offerTraitChanges(h),gain=changes.find(change=>change.activated)||changes.find(change=>change.adds);
+if(gain){rect(x+7,y+69,w-14,20,gain.activated?'#72572a':'#214239');text(fitText(`${gain.activated?'✦ BONUS':'↑ '+gain.count} ${gain.name} · ${gain.detail}`,w-20,10),x+12,y+83,10,gain.activated?'#ffe29b':C.teal);}
+ABArt.drawUnit(ctx,x+129,y+156,64,{heroId:h.id,level:1},h,{maxWidth:72});
+ratingBars(h.id,1,x+8,y+101,5,1);
+const scores=ratings(h.id,1);hit('shop-preview-'+i,x,y,w,cardH,()=>{shopPreviewIndex=i;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();},`Preview ${h.name}, ${h.cost} gold, shop offer ${i+1}. ${traitNames(h)}. ${changes.map(change=>`${change.name}: ${change.detail}`).join('; ')}. ${ratingDescription(scores)}`);
 }
-rect(726,230,376,354,'#0e2023',C.line);
+rect(772,572,411,172,'#0e2023',C.line);
 if(preview){
-const stock=heroStock(preview.id),cl=klass(preview.class),base=AB.deriveStats({heroId:preview.id,level:1},AB.synergies([]));
-text('HERO PREVIEW',747,257,11,C.gold);text(fitText(preview.name,338,26),747,292,26,C.cream,'Georgia');
-text(`${preview.cost} GOLD · ${preview.faction?faction(preview.faction).name:'Independent'} · ${cl.name}`,747,316,11,tierColor(preview.cost));
-ABArt.drawUnit(ctx,918,457,137,{heroId:preview.id,level:1},preview,{detail:true,maxWidth:182});
-text(preview.ability.name,747,483,17,C.gold,'Georgia');wrap(preview.ability.description,747,505,332,12,C.cream,17);
-text(`HP ${Math.round(base.maxHp||base.hp)} · ${magicUser(preview)?'ABILITY':'ATTACK'} ${Math.round(magicUser(preview)?base.abilityScore:base.attack)} · ARMOR ${Math.round(base.armor)}`,747,563,11,C.muted);
-if(stock)text(`COPIES: YOU ${stock.playerOwned} · ${partyMode?'OTHERS':'RIVAL'} ${stock.enemyOwned} / ${stock.total}`,747,580,10,C.muted);
-button('shop-buy-'+shopPreviewIndex,'Recruit '+preview.name+' · '+preview.cost+'g',726,594,376,37,()=>buyShop(shopPreviewIndex),true,true,12,`Recruit ${preview.name}, ${preview.cost} gold, shop offer ${shopPreviewIndex+1}`);
-}else text('Choose an available hero.',747,292,17,C.muted,'Georgia');
+const changes=offerTraitChanges(preview),stock=heroStock(preview.id);
+text('PREVIEW · '+fitText(preview.name,285,20),784,594,20,C.cream,'Georgia');
+text(`${preview.cost}g · ${preview.faction?faction(preview.faction).name:'Independent'} · ${klass(preview.class).name}`,784,612,11,tierColor(preview.cost));
+text(fitText(preview.ability.name+' — '+preview.ability.description,388,11),784,634,11,C.cream);
+changes.forEach((change,i)=>text(fitText(`${change.activated?'✦ ':change.adds?'↑ ':'· '}${change.name}: ${change.detail}`,388,11),784,653+i*18,11,change.activated?'#ffe29b':change.adds?C.teal:C.muted));
+if(stock)text(`Copies: you ${stock.playerOwned} · ${partyMode?'others':'rival'} ${stock.enemyOwned} / ${stock.total}`,784,728,10,C.muted);
+button('shop-buy-'+shopPreviewIndex,'Recruit · '+preview.cost+'g',1193,627,183,49,()=>buyShop(shopPreviewIndex),true,p.gold>=preview.cost,14,`Recruit ${preview.name}, ${preview.cost} gold, shop offer ${shopPreviewIndex+1}`);
+}else text('Choose an available hero.',784,610,17,C.muted,'Georgia');
 }
 function heroCard(h,x,y,w=434,height=294){
 rect(x,y,w,height,hover==='hero-art-'+h.id?'#1c3435':'#14282a',hover==='hero-art-'+h.id?C.gold:'#314645');const u={id:h.id,heroId:h.id,level:1},roles=roleLabels(h),cl=klass(h.class);
@@ -6847,22 +6904,22 @@ text(partyMode?partyData?.spectating?'W A T C H I N G   L I V E':partyData?.room
 text('Lil Guys',48,87,40,C.cream,'Georgia');
 if(match)matchHeader();else text(matchMode?'A MATCH. A WAR TABLE.':'A TOKEN. A WAR TABLE.',432,84,11,C.muted);
 button('tips-toggle',tipsEnabled?'Tips on':'Tips off',210,47,84,39,()=>{tipsEnabled=!tipsEnabled;try{localStorage.setItem(tipsSettingKey,tipsEnabled?'on':'off');}catch{}hintVisible=false;restartIdleHint();say(tipsEnabled?'Automatic help tips are on.':'Automatic help tips are off. Open ? for help anytime.');draw();},false,true,11,tipsEnabled?'Turn automatic help tips off':'Turn automatic help tips on');
-if(match&&match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating)button('shop-toggle',drag?.active?`SELL · ${dragSellValue()}g`:shopVisible?'Hide shop':'Open shop',300,47,120,39,()=>{if(!shopVisible){traitsOpen=false;detailsOpen=false;}shopVisible=!shopVisible;draw();},false,true,12,shopVisible?'Hide shop to view battlefield':'Open shop offers. Drag a hero here to sell it.');
+if(match&&match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating)button('shop-toggle',drag?.active?`SELL · ${dragSellValue()}g`:shopVisible?'Hide shop':'Open shop',300,47,120,39,()=>{if(!shopVisible){traitsOpen=false;detailsOpen=false;}shopVisible=!shopVisible;setMobileView(shopVisible?'shop':'board');draw();},false,true,12,shopVisible?'Hide shop to view battlefield':'Open shop offers. Drag a hero here to sell it.');
 button('arena-tab','Arena',830,47,102,39,()=>{tab='arena';hintVisible=false;restartIdleHint();draw();},tab==='arena');
 button('roster-tab','Codex',945,47,102,39,()=>{tab='roster';traitsOpen=false;detailsOpen=false;hintVisible=false;restartIdleHint();draw();},tab==='roster');
 button('help-tip','?',1055,47,35,39,toggleHelp,false,preparationOpen(),19,'Show or hide the next-step help tip');
 text('COMMANDER LEVEL',1100,53,10,C.muted);text(String(game.playerLevel),1100,86,32,C.cream,'Georgia');text('FIELD',1392,48,10,C.muted,'sans-serif','right');text(`${game.field.length} / ${game.playerLevel}`,1392,79,28,C.gold,'Georgia','right');text(`BENCH  ${game.bench.length} / 10`,1392,103,12,game.bench.length===10?C.gold:C.teal,'sans-serif','right');line(48,116,1392,116);
 if(tab==='roster')roster();
 else{
-stoneBoard();commandBar();bench();
+stoneBoard();if(!shopVisible||match?.phase!=='preparation')commandBar();bench();
 if(hoveredFieldUnit)fieldRatingTooltip(hoveredFieldUnit);
 if(traitsOpen&&!compactControls.matches){rect(32,130,256,620,'#102529',C.line);hit('traits-panel-shield',32,130,256,620,()=>{},'Traits panel',false);synergyPanel();}
 if(detailsOpen&&!compactControls.matches){rect(1154,130,254,630,'#102529',C.line);hit('details-panel-shield',1154,130,254,630,()=>{},'Details panel',false);inspector();}
-if(match&&shopVisible&&match.phase==='preparation'){hits=hits.filter(h=>['shop-toggle','help-tip','tips-toggle','xp-add'].includes(h.id)||h.id.startsWith('bench-'));shop();}
+if(match&&shopVisible&&match.phase==='preparation')shop();
 drawHelpTip();
 drawDrag();
 }
-updateInfoIcons();renderInfoPopovers();updateAccess();
+updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);renderMobilePanels();
 }
 
 let accessKey='';
@@ -6873,14 +6930,51 @@ function updateAccess(){const key=[tab,codexMode,codexFaction,factionPage,factio
 const root=document.getElementById('controls'),focused=document.activeElement?.dataset?.actionId,focusedIndex=[...root.children].findIndex(button=>button.dataset.actionId===focused),old=new Map([...root.children].map(button=>[button.dataset.actionId,button]));
 for(const h of [...hits].filter(h=>h.access!==false).sort((a,b)=>accessibleOrder(a)-accessibleOrder(b))){let b=old.get(h.id);if(!b){b=document.createElement('button');b.type='button';b.dataset.actionId=h.id;}old.delete(h.id);b.textContent=h.label;b.onfocus=()=>{if(/^shop-(buy|preview)-\d+$/.test(h.id)){const offer=match?.shops.player[Number(h.id.split('-')[2])];if(offer)document.getElementById('details').textContent=accessibleHero(AB.heroById(offer.heroId));}};b.onblur=()=>{document.getElementById('details').textContent=accessibleDetails();};if(/^shop-(buy|preview)-\d+$/.test(h.id))b.setAttribute('aria-describedby','details');else b.removeAttribute('aria-describedby');if(h.id==='tips-toggle')b.setAttribute('aria-pressed',String(tipsEnabled));else if(h.id==='traits-toggle')b.setAttribute('aria-pressed',String(showAllTraits));else if(/^(bench-|field-|enemy-)/.test(h.id))b.setAttribute('aria-pressed',String(h.id===`bench-${selected}`||h.id===`field-${selected}`||h.id===`enemy-${selected}`));else b.removeAttribute('aria-pressed');b.onclick=event=>{if(h.id!=='help-tip')markPlayerAction();if(h.id.startsWith('tile-')&&selected){const occupant=game.field.find(u=>u.col===Number(h.id.split('-')[1])&&u.row===Number(h.id.split('-')[2]));h.fn(occupant&&occupant.id!==selected?{shiftKey:true}:event);}else h.fn(event);};root.appendChild(b);}
 for(const stale of old.values())stale.remove();if(focused&&document.activeElement?.dataset?.actionId!==focused){const next=[...root.children].find(button=>button.dataset.actionId===focused)||root.children[Math.min(focusedIndex,root.children.length-1)];next?.focus({preventScroll:true});}updateQuickActions();}
-function updateQuickActions(){const root=document.getElementById('quick-actions'),ids=match&&shopVisible?['shop-toggle',`shop-buy-${shopPreviewIndex}`,'shop-buy-xp']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}}
+function updateQuickActions(){const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),ids=match&&shopVisible&&match.phase==='preparation'?['shop-toggle',`shop-buy-${shopPreviewIndex}`,'shop-reroll','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];root.replaceChildren();for(const id of ids){if(compact&&id==='shop-toggle')continue;const action=hits.find(h=>h.id===id);if(!action)continue;const button=document.createElement('button');button.type='button';button.textContent=id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':action.label;button.classList.toggle('primary',id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id));button.addEventListener('click',()=>{markPlayerAction();action.fn();});root.appendChild(button);}}
+function miniUnit(h,level,width,height){
+  const picture=document.createElement('canvas');picture.width=width;picture.height=height;picture.setAttribute('aria-hidden','true');
+  ABArt.drawUnit(picture.getContext('2d'),width/2,height-3,Math.min(width*.7,height*.78),{heroId:h.id,level},h,{maxWidth:width-8});
+  return picture;
+}
+function renderMobilePanels(){
+  if(!document.querySelector('main').classList.contains('compact-stage'))return;
+  const progress=match?.players.player.progression;
+  document.getElementById('mobile-resource').textContent=match?`${match.players.player.gold}g  ·  LV ${progress.level}  ·  XP ${progress.level<10?progress.xpIntoLevel+'/'+progress.xpCosts[progress.level-1]:'MAX'}  ·  FIELD ${game.field.length}/${game.playerLevel}  ·  BENCH ${game.bench.length}/10`:`LV ${game.playerLevel}  ·  FIELD ${game.field.length}/${game.playerLevel}  ·  BENCH ${game.bench.length}/10`;
+  if(mobileView==='shop'&&match?.phase!=='preparation')setMobileView('board');
+  const offers=match?.shops?.player||[],key=JSON.stringify([match?.roundNumber,match?.phase,match?.players.player.gold,offers.map(offer=>offer?.heroId),shopPreviewIndex,game.field.map(unit=>[unit.heroId,unit.level]),game.bench.map(unit=>[unit.id,unit.heroId,unit.level]),selected]);
+  if(key===mobilePanelKey)return;mobilePanelKey=key;
+  const shopRoot=document.querySelector('.mobile-shop-offers'),benchRoot=document.querySelector('.mobile-bench-grid'),focusedOffer=document.activeElement?.classList.contains('mobile-offer')?[...shopRoot.children].indexOf(document.activeElement):-1;shopRoot.replaceChildren();benchRoot.replaceChildren();
+  document.querySelector('.mobile-shop-status').textContent=match?`ROUND ${match.roundNumber} · ${match.players.player.gold} GOLD · ${game.bench.length}/10 BENCH`:'No shop in this mode';
+  offers.forEach((offer,index)=>{
+    const h=offer&&AB.heroById(offer.heroId),card=document.createElement('button');card.type='button';card.className='mobile-offer'+(index===shopPreviewIndex?' selected':'');
+    if(!h){card.textContent='No offer';card.disabled=true;}else{
+      const name=document.createElement('strong');name.textContent=h.name;card.append(name);
+      const cost=document.createElement('span');cost.textContent=`${h.cost}g · ${faction(h.faction).name}`;card.append(cost);
+      card.append(miniUnit(h,1,95,62));
+      const traits=document.createElement('span');traits.textContent=traitIcons(h).map(icon=>icon.name).join(' · ');card.append(traits);
+      const change=offerTraitChanges(h).find(item=>item.activated)||offerTraitChanges(h).find(item=>item.adds),gain=document.createElement('span');gain.className='gain';gain.textContent=change?`${change.activated?'✦ Bonus':'↑ '+change.count} ${change.name}`:'Already fielded';card.append(gain);
+      const score=ratings(h.id,1),stats=document.createElement('span');stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;card.append(stats);
+      card.setAttribute('aria-label',`Preview ${h.name}. ${h.cost} gold. ${traitNames(h)}. ${change?.detail||'Already fielded'}. ${ratingDescription(score)}`);
+      card.onclick=()=>{markPlayerAction();shopPreviewIndex=index;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();};
+    }
+    shopRoot.append(card);
+  });
+  const preview=offers[shopPreviewIndex]&&AB.heroById(offers[shopPreviewIndex].heroId);
+  document.querySelector('.mobile-shop-preview').textContent=preview?`${preview.ability.name}: ${preview.ability.description}`:'Choose a hero to preview.';
+  for(let index=0;index<10;index++){
+    const u=game.bench[index],slot=document.createElement('button');slot.type='button';slot.className='mobile-bench-slot'+(u?.id===selected?' selected':'')+(u?'':' empty');
+    if(u){const h=hero(u),title=document.createElement('strong');title.textContent=`${h.name} · ${'★'.repeat(u.level)}`;slot.append(title,miniUnit(h,u.level,78,49));const stats=document.createElement('span'),score=ratings(h.id,u.level);stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;slot.append(stats);slot.setAttribute('aria-label',`Select ${h.name}, ${u.level} stars, from bench. ${ratingDescription(score)}`);slot.onclick=()=>{markPlayerAction();if(selected!==u.id)select(u.id);setMobileView('board');draw();};}
+    else{slot.textContent=`Empty ${index+1}`;slot.disabled=true;}
+    benchRoot.append(slot);
+  }
+  if(focusedOffer>=0)shopRoot.children[focusedOffer]?.focus({preventScroll:true});
+}
 function locate(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*1440/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 function findHit(p){return [...hits].reverse().find(h=>h.diamond?(Math.abs(p.x-h.diamond.x)/h.diamond.tw+Math.abs(p.y-h.diamond.y)/h.diamond.th<=1):(p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h));}
 function dragSellValue(){const u=drag&&[...game.bench,...game.field].find(v=>v.id===drag.unitId);return u?u&&hero(u).cost*3**(u.level-1):0;}
 function dragTarget(p){
 if(!drag?.active)return null;
-if(match&&((p.x>=300&&p.x<=420&&p.y>=47&&p.y<=86)||(shopVisible&&p.x>=110&&p.x<=1330&&p.y>=130&&p.y<=660)))return{kind:'sell'};
-if(shopVisible)return null;
+if(match&&((p.x>=300&&p.x<=420&&p.y>=47&&p.y<=86)||(shopVisible&&p.x>=48&&p.x<=1392&&p.y>=528&&p.y<=756)))return{kind:'sell'};
 const over=findHit(p);
 if(over?.id.startsWith('field-')){const u=game.field.find(v=>'field-'+v.id===over.id);if(u)return{kind:'tile',col:u.col,row:u.row,occupant:u};}
 const tiles=hits.filter(h=>h.id.startsWith('tile-')&&p.x>=h.x&&p.x<=h.x+h.w&&p.y>=h.y&&p.y<=h.y+h.h);
@@ -6888,7 +6982,7 @@ if(!tiles.length)return null;
 const g=grid(),tile=tiles.map(h=>{const [,col,row]=h.id.split('-'),at=g.at(+col,+row);return{col:+col,row:+row,distance:(at.x-p.x)**2+(at.y-p.y)**2};}).sort((a,b)=>a.distance-b.distance)[0];
 return{kind:'tile',col:tile.col,row:tile.row,occupant:game.field.find(u=>u.col===tile.col&&u.row===tile.row)||null};
 }
-function drawDrag(){if(!drag?.active)return;const u=[...game.bench,...game.field].find(v=>v.id===drag.unitId);if(!u)return;const p=drag.point,target=dragTarget(p);ctx.save();if(target?.kind==='tile'){const at=grid().at(target.col,target.row);ctx.strokeStyle=C.gold;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(at.x,at.y,28,15,0,0,Math.PI*2);ctx.stroke();}else if(target?.kind==='sell'){ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(shopVisible?317:300,shopVisible?147:47,shopVisible?804:120,shopVisible?493:39);}ctx.globalAlpha=.84;ABArt.drawUnit(ctx,p.x,p.y+24,82,u,hero(u),{selected:true});ctx.globalAlpha=1;text(target?.kind==='sell'?`SELL +${dragSellValue()}g`:target?.kind==='tile'&&target.occupant?'SWAP · '+coordinate(target.col,target.row):target?.kind==='tile'?'PLACE · '+coordinate(target.col,target.row):'DRAG TO TILE OR SHOP',Math.min(p.x+28,1210),Math.max(30,p.y-65),12,C.gold);ctx.restore();}
+function drawDrag(){if(!drag?.active)return;const u=[...game.bench,...game.field].find(v=>v.id===drag.unitId);if(!u)return;const p=drag.point,target=dragTarget(p);ctx.save();if(target?.kind==='tile'){const at=grid().at(target.col,target.row);ctx.strokeStyle=C.gold;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(at.x,at.y,28,15,0,0,Math.PI*2);ctx.stroke();}else if(target?.kind==='sell'){ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(shopVisible?48:300,shopVisible?528:47,shopVisible?1344:120,shopVisible?228:39);}ctx.globalAlpha=.84;ABArt.drawUnit(ctx,p.x,p.y+24,82,u,hero(u),{selected:true});ctx.globalAlpha=1;text(target?.kind==='sell'?`SELL +${dragSellValue()}g`:target?.kind==='tile'&&target.occupant?'SWAP · '+coordinate(target.col,target.row):target?.kind==='tile'?'PLACE · '+coordinate(target.col,target.row):'DRAG TO TILE OR SHOP',Math.min(p.x+28,1210),Math.max(30,p.y-65),12,C.gold);ctx.restore();}
 function dropUnit(unitId,target){if(target.kind==='sell'){sellUnit(unitId);return;}const u=[...game.bench,...game.field].find(v=>v.id===unitId);if(!u)return;const displaced=target.occupant?.id!==unitId?target.occupant:null;if(target.occupant?.id===unitId){selected=unitId;draw();return;}if(partyMode){selected=displaced?.id||null;selectedTrait=null;chestSelected=false;partyCommand('deploy',{unitId,col:target.col,row:target.row});return;}const r=match?ABMatch.deploy(match,unitId,target.col,target.row):AB.deploy(game,unitId,target.col,target.row);game=match?.game||game;if(r.ok){selected=displaced?.id||null;selectedTrait=null;chestSelected=false;persistMatch();say(`${hero(u).name} placed at ${coordinate(target.col,target.row)}.${displaced?' '+hero(displaced).name+' is selected; place it next.':''}`);}else say(r.reason);draw();}
 canvas.addEventListener('pointerdown',e=>{suppressDragClick=false;if(e.button!==0||tab!=='arena'||game.phase!=='planning'||match&&match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyPending||partyMode&&!partyConnected)return;const p=locate(e),h=findHit(p);pointerAt=p;if(!h||!(/^(bench|field)-/.test(h.id)))return;drag={pointerId:e.pointerId,unitId:h.id.slice(h.id.indexOf('-')+1),source:h,point:p,active:false};canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove',e=>{const p=locate(e);pointerAt=p;if(drag?.pointerId===e.pointerId){drag.point=p;const s=drag.source;if(!drag.active&&(p.x<s.x||p.x>s.x+s.w||p.y<s.y||p.y>s.y+s.h))drag.active=true;if(drag.active){e.preventDefault();const target=dragTarget(p);hover=target?.kind==='tile'?`tile-${target.col}-${target.row}`:target?.kind==='sell'?'shop-toggle':null;canvas.style.cursor=target?'grabbing':'grab';draw();return;}}const h=findHit(p);if(hover!==h?.id){hover=h?.id;canvas.style.cursor=h?'pointer':'default';draw();}});

@@ -12210,3 +12210,13 @@
 **Why it mattered**: The new identity symbols were visible but the heading became harder to read during the central gameplay action.
 
 **Rule**: After adding above-unit overlays, inspect a populated board at its nearest header edge. Reserve a separate header line for arena labels, and verify the tooltip and badge placement in the embedded wtfOS canvas as well as the standalone game.
+
+---
+
+## 2026-10-23 - Shared game layouts must be checked inside room overlays
+
+**What happened**: The new shop dock worked in standalone practice, but its first Ready button position sat behind an open room Chat drawer. A phone portrait renderer also applied the battlefield canvas crop to smaller hero portraits until the CSS targeted `#game` specifically.
+
+**Why it mattered**: The same game renderer has different visible bounds inside a hosted room and on a landscape phone. Canvas hit regions can exist while a parent overlay intercepts clicks; broad canvas selectors can silently affect secondary art canvases.
+
+**Rule**: After changing shared arena geometry, exercise its primary action through the hosted room with optional drawers open, and inspect phone Shop, Board, Bench and combat screenshots. Scope battlefield layout rules to the battlefield canvas and verify its hit coordinates against the actually visible viewport.
