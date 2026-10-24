@@ -7,10 +7,10 @@
   'use strict';
   if (typeof module !== 'undefined' && module.exports) module.exports = factory(
     require('../../source/engine.js'), require('./match.cjs'), require('./progression.cjs'), require('./income.cjs'),
-    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('./party-schedule.cjs'), require('../../source/zone-policy.js'));
+    require('./commander-health.cjs'), require('./treasure.cjs'), require('./chest-health.cjs'), require('./shop-pool.cjs'), require('./party-schedule.cjs'), require('../../source/zone-policy.js'), require('./items.cjs'));
   else root.ABParty = factory(root.AB, root.ABMatch, root.ABProgression, root.ABIncome, root.ABCommanderHealth,
-    root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABPartySchedule, root.ABZonePolicy);
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Match, Progression, Income, Health, Treasure, ChestHealth, ShopPool, Schedule, ZonePolicy) {
+    root.ABTreasure, root.ABChestHealth, root.ABShopPool, root.ABPartySchedule, root.ABZonePolicy, root.ABItems);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Engine, Match, Progression, Income, Health, Treasure, ChestHealth, ShopPool, Schedule, ZonePolicy, Items) {
   'use strict';
   const RULES = Object.freeze({ playerCount: 8, duelPlayerCount: 2, startingGold: 1, startingHP: 100, shopSize: 4, benchCapacity: 10, rerollCost: 2 });
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -20,6 +20,8 @@
   const guarded = action => { try { return action(); } catch (error) { return { ok: false, reason: error.message }; } };
   const identity = value => typeof value === 'string' && value.trim().length > 0;
   const roundId = state => state.matchId + ':round:' + state.roundNumber;
+  const itemsOn = state => state.itemRulesVersion === 1;
+  const itemRandom = (state, label) => Engine.makeRandom(state.seed + ':items:' + label);
   const alive = state => state.players.filter(player => player.hp > 0);
   const playerFor = (state, id) => { const player = state.players.find(player => player.playerId === id); demand(player, 'Unknown party player.'); return player; };
   const holders = state => state.players.flatMap(player => [...player.field, ...player.bench, ...player.shop.filter(Boolean)]);
@@ -45,7 +47,7 @@
     if (next.columns <= old.columns && next.rows <= old.rows) return;
     demand(next.columns >= old.columns && next.rows >= old.rows, 'Party geometry cannot shrink.');
     const dx = Math.floor(next.columns / 2) - Math.floor(old.columns / 2), dy = next.playerStartRow - old.playerStartRow;
-    for (const player of state.players) for (const unit of [...player.field, ...(player.chest ? [player.chest] : [])]) { unit.col += dx; unit.row += dy; }
+    for (const player of state.players) for (const unit of [...player.field, ...(player.chest ? [player.chest] : []), ...(player.itemChest ? [player.itemChest] : [])]) { unit.col += dx; unit.row += dy; }
     state.board = next;
     syncZones(state);
   }
@@ -91,13 +93,25 @@
     state.clock = Schedule.createClock({ roundNumber: state.roundNumber, preparationSeconds: state.preparationSeconds,
       openedAtMs: atMs, playerIds: alive(state).map(player => player.playerId), earlyStart: state.earlyStart });
     state.deadlineAtMs = state.clock.deadlineAtMs; state.combats = []; state.pairings = [];
-    for (const player of state.players) player.ready = false;
+    for (const player of state.players) { player.ready = false; if (itemsOn(state)) player.itemShop = null; }
     drawAll(state);
     for (const player of alive(state)) {
       if (state.roundNumber >= 5 && !player.chest) {
         const random = Engine.makeRandom(state.seed + ':party-chest:' + player.playerId);
         const cell = Math.floor(random() * state.board.columns * state.board.halfRows);
         player.chest = { col: cell % state.board.columns, row: state.board.playerStartRow + Math.floor(cell / state.board.columns) };
+      }
+      if (itemsOn(state)) player.itemShop = Items.itemShopRound(state.roundNumber)
+        ? { ...Items.shop({ random: itemRandom(state, 'shop:' + state.roundNumber + ':' + player.playerId) }), open: true }
+        : null;
+      if (itemsOn(state)) {
+        player.itemChest = null;
+        if (Items.itemChestRound(state.roundNumber)) {
+          const random = itemRandom(state, 'chest:' + state.roundNumber + ':' + player.playerId);
+          player.itemChest = { col: Math.floor(random() * state.board.columns), row: state.board.rows - 1 - Math.floor(random() * 2) };
+          if (player.itemChest.col === player.chest?.col && player.itemChest.row === player.chest?.row)
+            player.itemChest.col = (player.itemChest.col + 1) % state.board.columns;
+        }
       }
     }
   }
@@ -108,7 +122,9 @@
     const earlyStart = options.preparationSeconds === null;
     demand(options.earlyStart === undefined || options.earlyStart === earlyStart, 'Only untimed rooms start when everyone is ready.');
     demand(options.oddPlayerPolicy === 'round-ai', 'An unmatched commander faces the round AI.');
+    demand(options.itemRulesVersion === undefined || options.itemRulesVersion === 1, 'Unknown item rules version.');
     const state = { schemaVersion: 1, matchId: options.matchId, seed: options.seed, boardMode: options.boardMode,
+      ...(options.itemRulesVersion === 1 ? { itemRulesVersion: 1, itemReceipts: [] } : {}),
       board: Match.boardForLevel(options.boardMode, 1), preparationSeconds: options.preparationSeconds,
       earlyStart, oddPlayerPolicy: options.oddPlayerPolicy, roundNumber: 1, phase: 'preparation',
       openedAtMs: options.openedAtMs, deadlineAtMs: null, lastAdvancedAtMs: options.openedAtMs, revision: 0,
@@ -117,16 +133,22 @@
         return { playerId: input.playerId, name: input.name, isAI: input.isAI, hp: RULES.startingHP, gold: RULES.startingGold,
           progression: Progression.createProgression({ matchId: options.matchId, playerId: input.playerId, xpCosts: [...Progression.COMMANDER_LEVEL_COSTS] }),
           income: Income.createLedger({ matchId: options.matchId, playerId: input.playerId }), field: [], bench: [], shop: [], shopDraw: 0,
-          mergeSerial: 0, chest: null, ready: false, eliminatedRound: null };
+          mergeSerial: 0, chest: null, ready: false, eliminatedRound: null,
+          ...(options.itemRulesVersion === 1 ? { items: [], itemShop: null, itemChest: null, winStreak: 0, lossStreak: 0, pendingComponentChoices: 0 } : {}) };
       }), pairings: [], combats: [], receipts: [], shopReceipts: [], actions: [], winnerId: null, lastRecycling: null };
     openPreparation(state, options.openedAtMs); validate(state); return state;
   }
   function buy(state, player, index) {
+    demand(!itemsOn(state) || !player.itemShop?.open, 'Choose one item or pass the item shop before recruiting heroes.');
     demand(Number.isInteger(index) && index >= 0 && index < RULES.shopSize, 'Choose a shop slot.');
     const offer = player.shop[index]; demand(offer, 'That shop slot is empty.'); demand(player.gold >= offer.cost, 'Not enough gold.');
     const game = armyGame(state, player), unit = { id: offer.id + ':unit', heroId: offer.heroId, level: 1, lotIds: [...offer.lotIds] };
     game.bench.push(unit); const upgrades = []; let group;
-    while ((group = Engine.mergeGroups(game).find(group => group.heroId === offer.heroId))) upgrades.push(required(Engine.combine(game, group.heroId, group.level)).unit.level);
+    while ((group = Engine.mergeGroups(game).find(group => group.heroId === offer.heroId))) {
+      const combined = required(Engine.combine(game, group.heroId, group.level));
+      if (itemsOn(state)) player.items.push(...(combined.overflowItemIds || []));
+      upgrades.push(combined.unit.level);
+    }
     demand(game.bench.length <= RULES.benchCapacity, 'Make room on the ten-slot bench.');
     const receipt = { kind: 'purchase', playerId: player.playerId, roundNumber: state.roundNumber, offer: clone(offer), goldSpent: offer.cost, goldReceived: 0 };
     player.gold -= offer.cost; player.shop[index] = null; commitArmy(player, game); state.shopReceipts.push(receipt);
@@ -137,6 +159,7 @@
     const unit = [...player.field, ...player.bench].find(unit => unit.id === unitId); demand(unit, 'Choose an owned hero.');
     const goldReceived = saleValue(unit); demand(safe(player.gold + goldReceived), 'Gold exceeds exact numeric representation.');
     player.field = player.field.filter(unit => unit.id !== unitId); player.bench = player.bench.filter(unit => unit.id !== unitId); player.gold += goldReceived;
+    if (itemsOn(state)) player.items.push(...(unit.itemIds || []));
     const receipt = { kind: 'sale', playerId: player.playerId, roundNumber: state.roundNumber, unit: clone(unit), goldSpent: 0, goldReceived };
     state.shopReceipts.push(receipt); return { receipt };
   }
@@ -147,9 +170,57 @@
     if (action.roundNumber !== undefined) demand(action.roundNumber === state.roundNumber, 'This command belongs to another round.');
     const player = playerFor(state, action.playerId); demand(player.hp > 0, 'Eliminated commanders cannot change their armies.');
     let result = {};
-    if (action.type === 'buy') result = buy(state, player, action.index);
+    if (['buyItem', 'passItemShop', 'chooseComponent', 'equipItem', 'unequipItem'].includes(action.type)) {
+      demand(itemsOn(state), 'This room uses its original rules without items.');
+      if (action.type === 'buyItem') {
+        const item = Items.item(action.itemId), offer = player.itemShop;
+        demand(offer?.open, 'This round has no open item shop.');
+        demand(item && (Items.isComponent(action.itemId) || offer.completedId === action.itemId), 'This item is not offered.');
+        const price = Items.isComponent(action.itemId) ? Items.COMPONENT_PRICE : Items.COMPLETED_PRICE;
+        demand(player.gold >= price, 'Not enough gold for this item.');
+        player.gold -= price; player.items.push(action.itemId); offer.open = false;
+        const receipt = { kind: 'item-purchase', playerId: player.playerId, roundNumber: state.roundNumber,
+          itemId: action.itemId, goldSpent: price, goldReceived: 0 };
+        state.itemReceipts.push(receipt); result.receipt = receipt;
+      } else if (action.type === 'passItemShop') {
+        demand(player.itemShop?.open, 'The item shop is closed.'); player.itemShop.open = false;
+      } else if (action.type === 'chooseComponent') {
+        demand(player.pendingComponentChoices > 0 && Items.isComponent(action.itemId), 'Choose an owed component.');
+        player.pendingComponentChoices--; player.items.push(action.itemId);
+        state.itemReceipts.push({ kind: 'chest-choice', playerId: player.playerId, roundNumber: state.roundNumber, itemId: action.itemId, goldSpent: 0, goldReceived: 0 });
+      } else {
+        const unit = [...player.field, ...player.bench].find(unit => unit.id === action.unitId);
+        demand(unit, 'Choose an owned hero.');
+        unit.itemIds ||= [];
+        if (action.type === 'equipItem') {
+          const inventoryIndex = player.items.indexOf(action.itemId);
+          demand(inventoryIndex >= 0, 'You do not hold that item.');
+          demand(!unit.itemIds.includes('lucky-grips+lucky-grips'), 'Trickster Mitts already occupy every item slot.');
+          const componentIndex = Items.isComponent(action.itemId)
+            ? unit.itemIds.findIndex(id => Items.isComponent(id)) : -1;
+          if (componentIndex >= 0) {
+            const combined = Items.recipe(unit.itemIds[componentIndex], action.itemId);
+            demand(combined, 'These components do not combine.'); unit.itemIds[componentIndex] = combined.id;
+            result.combinedItemId = combined.id;
+          } else {
+            demand(unit.itemIds.length < 3, 'A hero can carry three completed item slots.'); unit.itemIds.push(action.itemId);
+          }
+          player.items.splice(inventoryIndex, 1);
+          if (unit.itemIds.includes('lucky-grips+lucky-grips')) {
+            player.items.push(...unit.itemIds.filter(id => id !== 'lucky-grips+lucky-grips'));
+            unit.itemIds = ['lucky-grips+lucky-grips'];
+          }
+        } else {
+          const equippedIndex = unit.itemIds.indexOf(action.itemId);
+          demand(equippedIndex >= 0, 'That item is not on this hero.');
+          player.items.push(unit.itemIds.splice(equippedIndex, 1)[0]);
+        }
+      }
+    }
+    else if (action.type === 'buy') result = buy(state, player, action.index);
     else if (action.type === 'sell') result = sell(state, player, action.unitId);
     else if (action.type === 'reroll') {
+      demand(!itemsOn(state) || !player.itemShop?.open, 'Choose one item or pass the item shop before refreshing heroes.');
       demand(player.gold >= RULES.rerollCost, 'Refreshing costs two gold.'); refreshShop(state, player); player.gold -= RULES.rerollCost;
       const receipt = { kind: 'reroll', playerId: player.playerId, roundNumber: state.roundNumber, goldSpent: RULES.rerollCost, goldReceived: 0 };
       state.shopReceipts.push(receipt); result.receipt = receipt;
@@ -161,10 +232,21 @@
       const game = armyGame(state, player);
       if (action.type === 'deploy') required(Engine.deploy(game, action.unitId, action.col, action.row));
       else if (action.type === 'recall') required(Engine.recall(game, action.unitId));
-      else required(Engine.combine(game, action.heroId, action.stars));
+      else {
+        const combined = required(Engine.combine(game, action.heroId, action.stars));
+        if (itemsOn(state)) player.items.push(...(combined.overflowItemIds || []));
+      }
       commitArmy(player, game);
     } else if (action.type === 'moveChest') {
-      demand(state.roundNumber >= 5, 'Treasure begins in round five.'); position(state.board, action.col, action.row); player.chest = { col: action.col, row: action.row };
+      demand(state.roundNumber >= 5, 'Treasure begins in round five.'); position(state.board, action.col, action.row);
+      demand(!player.itemChest || player.itemChest.col !== action.col || player.itemChest.row !== action.row, 'Keep the gold and item chests on separate spaces.');
+      player.chest = { col: action.col, row: action.row };
+    } else if (action.type === 'moveItemChest') {
+      demand(itemsOn(state) && Items.itemChestRound(state.roundNumber) && player.itemChest, 'The item chest appears every ten battles.');
+      position(state.board, action.col, action.row);
+      demand(action.row >= state.board.rows - 2, 'Place the item chest in your two back rows.');
+      demand(!player.chest || player.chest.col !== action.col || player.chest.row !== action.row, 'Keep the gold and item chests on separate spaces.');
+      player.itemChest = { col: action.col, row: action.row };
     } else if (action.type === 'ready') {
       demand(typeof action.value === 'boolean', 'Ready must be true or false.'); state.clock = Schedule.setReady(state.clock, player.playerId, action.value, atMs); player.ready = action.value;
     } else throw new Error('Unknown party command.');
@@ -183,6 +265,20 @@
   function prepareAI(state, playerId, atMs = state.lastAdvancedAtMs) {
     return guarded(() => {
       const player = playerFor(state, playerId); demand(player.isAI && player.hp > 0, 'Choose an active AI commander.');
+      if (itemsOn(state)) {
+        while (playerFor(state, playerId).pendingComponentChoices > 0) {
+          const random = itemRandom(state, 'ai-choice:' + state.roundNumber + ':' + playerId + ':' + playerFor(state, playerId).pendingComponentChoices);
+          required(command(state, { type: 'chooseComponent', playerId,
+            itemId: Items.componentIds[Math.floor(random() * Items.componentIds.length)] }, atMs));
+        }
+        const shopper = playerFor(state, playerId);
+        if (shopper.itemShop?.open) {
+          const offer = shopper.itemShop.completedId && shopper.gold >= Items.COMPLETED_PRICE
+            ? shopper.itemShop.completedId : shopper.gold >= Items.COMPONENT_PRICE
+              ? Items.componentIds[Math.floor(itemRandom(state, 'ai-shop:' + state.roundNumber + ':' + playerId)() * Items.componentIds.length)] : null;
+          required(command(state, offer ? { type: 'buyItem', playerId, itemId: offer } : { type: 'passItemShop', playerId }, atMs));
+        }
+      }
       const deployNext = () => {
         const current = playerFor(state, playerId);
         while (current.bench.length && current.field.length < current.progression.fieldCapacity) {
@@ -195,6 +291,17 @@
       deployNext();
       for (let index = 0; index < RULES.shopSize; index++) { const current = playerFor(state, playerId), offer = current.shop[index];
         if (offer && offer.cost <= current.gold) { const bought = command(state, { type: 'buy', playerId, index }, atMs); if (bought.ok) deployNext(); }
+      }
+      if (itemsOn(state)) {
+        while (playerFor(state, playerId).items.length) {
+          const current = playerFor(state, playerId);
+          const candidate = [...current.field, ...current.bench]
+            .filter(unit => !unit.itemIds?.includes('lucky-grips+lucky-grips') && (unit.itemIds?.length || 0) < 3)
+            .sort((a, b) => Engine.heroById(b.heroId).cost - Engine.heroById(a.heroId).cost || b.level - a.level || a.id.localeCompare(b.id))[0];
+          if (!candidate) break;
+          const itemId = current.items[0];
+          required(command(state, { type: 'equipItem', playerId, unitId: candidate.id, itemId }, atMs));
+        }
       }
       required(command(state, { type: 'ready', playerId, value: true }, atMs)); return { ok: true };
     });
@@ -240,24 +347,40 @@
       const random = Engine.makeRandom(virtual.seed + ':chest'), cell = Math.floor(random() * state.board.columns * state.board.halfRows);
       npc.chest = { col: cell % state.board.columns, row: state.board.playerStartRow + Math.floor(cell / state.board.columns) };
     }
+    if (itemsOn(state) && Items.itemChestRound(state.roundNumber)) {
+      const random = itemRandom(state, 'round-ai-chest:' + pair.playerId + ':' + state.roundNumber);
+      npc.itemChest = { col: Math.floor(random() * state.board.columns), row: state.board.rows - 1 - Math.floor(random() * 2) };
+      if (npc.itemChest.col === npc.chest?.col && npc.itemChest.row === npc.chest?.row)
+        npc.itemChest.col = (npc.itemChest.col + 1) % state.board.columns;
+    }
     return npc;
   }
   function chestConfig(state, pair, game, npc) {
     if (state.roundNumber < 5) return { roundNumber: state.roundNumber, chests: [] };
-    return { roundNumber: state.roundNumber, chests: ['player', 'enemy'].map(side => {
+    const chests = ['player', 'enemy'].map(side => {
       const player = side === 'enemy' && npc ? npc : playerFor(state, side === 'player' ? pair.playerId : pair.enemyId), units = side === 'player' ? game.field : game.opponents;
       const health = units.length ? ChestHealth.calculateChestHealth(reference, units.map(unit => unit.heroId)) : null;
       const chest = player.chest;
       return { id: pair.id + ':chest:' + side, side, col: side === 'player' ? chest.col : state.board.columns - 1 - chest.col,
         row: side === 'player' ? chest.row : state.board.rows - 1 - chest.row, maxHp: health?.maxHp ?? null };
-    }) };
+    });
+    if (itemsOn(state) && Items.itemChestRound(state.roundNumber)) for (const side of ['player', 'enemy']) {
+      const player = side === 'enemy' && npc ? npc : playerFor(state, side === 'player' ? pair.playerId : pair.enemyId);
+      const chest = player.itemChest || player.chest;
+      chests.push({ id: pair.id + ':item-chest:' + side, kind: 'item', side,
+        col: side === 'player' ? chest.col : state.board.columns - 1 - chest.col,
+        row: side === 'player' ? chest.row : state.board.rows - 1 - chest.row,
+        maxHp: chests.find(entry => entry.side === side).maxHp });
+    }
+    return { roundNumber: state.roundNumber, ...(itemsOn(state) ? { itemRulesVersion: 1 } : {}), chests };
   }
   function makeCombat(state, pair) {
     const npc = pair.isRoundAI ? createRoundAI(state, pair) : null;
     const a = playerFor(state, pair.playerId), b = npc || playerFor(state, pair.enemyId), combatSeed = state.seed + ':' + roundId(state) + ':' + pair.id;
     const token = { version: 5, config: { ...Engine.DEFAULT_CONFIG, benchCapacity: RULES.benchCapacity }, playerLevel: a.progression.level,
       board: clone(state.board), bench: [], opponents: [], battleSeed: combatSeed };
-    const game = Engine.createGame(token); game.field = clone(a.field).map(unit => ({ ...unit, id: 'player:' + unit.id }));
+    const game = Engine.createGame(token); if (itemsOn(state)) game.itemRulesVersion = 1;
+    game.field = clone(a.field).map(unit => ({ ...unit, id: 'player:' + unit.id }));
     if (state.boardMode === 'zone-defense') game.zoneDefense = clone(state.zoneDefense);
     game.opponents = clone(b.field).map(unit => ({ ...unit, id: 'enemy:' + unit.id, col: state.board.columns - 1 - unit.col, row: state.board.rows - 1 - unit.row }));
     const config = chestConfig(state, pair, game, npc), initial = clone(game);
@@ -286,9 +409,13 @@
     const damage = survivors.reduce((sum, unit) => sum + unit.damage, 0), combatId = roundId(state) + ':' + pair.id;
     const treasure = required(Treasure.settleRound(Treasure.createLedger({ matchId: state.matchId, playerIds: [sideId('player'), sideId('enemy')] }), {
       matchId: state.matchId, roundId: roundId(state), roundNumber: state.roundNumber, combatId, expectedRevision: 0, status: 'completed',
-      combatEndedAtSeconds: game.battle.elapsed, chests: combat.config.chests.map(chest => ({ chestId: chest.id, ownerId: sideId(chest.side) })),
-      verifiedDefeats: game.battle.events.filter(event => event.type === 'treasure-defeated').map(event => ({ chestId: event.chestId,
+      combatEndedAtSeconds: game.battle.elapsed, chests: combat.config.chests.filter(chest => chest.kind !== 'item').map(chest => ({ chestId: chest.id, ownerId: sideId(chest.side) })),
+      verifiedDefeats: game.battle.events.filter(event => event.type === 'treasure-defeated' && !combat.config.chests.some(chest => chest.id === event.chestId && chest.kind === 'item')).map(event => ({ chestId: event.chestId,
         captorPlayerId: sideId(event.captorSide), defeatedAtSeconds: event.defeatedAtSeconds })) })).receipt;
+    const itemChestCaptures = itemsOn(state) ? game.battle.events.filter(event => event.type === 'treasure-defeated' &&
+      combat.config.chests.some(chest => chest.id === event.chestId && chest.kind === 'item') &&
+      event.defeatedAtSeconds < state.roundNumber * 15 && event.defeatedAtSeconds <= game.battle.elapsed)
+      .map(event => ({ chestId: event.chestId, captorPlayerId: sideId(event.captorSide) })) : [];
     const zoneGoldEvents = game.battle.events.filter(event => event.type === 'zone-gold');
     demand(state.boardMode === 'zone-defense' || !zoneGoldEvents.length, 'Zone gold belongs only to Zone Defense.');
     const zoneGold = state.boardMode === 'zone-defense' ? ZonePolicy.goldPayouts(game.zoneDefense, zoneGoldEvents) : { player: 0, enemy: 0 };
@@ -302,6 +429,7 @@
         treasureGold: treasure.payouts.find(payout => payout.playerId === player.playerId).gold };
     });
     return { pair: clone(pair), combatId, result: game.result, elapsedSeconds: game.battle.elapsed, survivors, treasure, awards,
+      ...(itemsOn(state) ? { itemChestCaptures } : {}),
       ...(state.boardMode === 'zone-defense' ? { zoneGoldEvents: clone(zoneGoldEvents) } : {}),
       replay: { initial: clone(combat.initial), config: clone(combat.config), instant: combat.instant, ticks: game.battle.tick, result: game.result } };
   }
@@ -311,7 +439,26 @@
     for (const award of awards) {
       const player = playerFor(state, award.playerId), goldAward = award.treasureGold + (award.zoneGold ?? 0); demand(safe(player.gold + goldAward), 'Gold exceeds exact numeric representation.');
       player.hp = award.hpAfter; player.gold += goldAward; player.progression = award.xp.state;
+      if (itemsOn(state)) {
+        const previousStreak = award.outcome === 'win' ? player.winStreak : player.lossStreak;
+        const drop = Items.reward({ outcome: award.outcome, previousStreak,
+          random: itemRandom(state, 'drop:' + state.roundNumber + ':' + player.playerId) });
+        if (drop.itemId) player.items.push(drop.itemId);
+        player.winStreak = award.outcome === 'win' ? previousStreak + 1 : 0;
+        player.lossStreak = award.outcome === 'loss' ? previousStreak + 1 : 0;
+        const itemReceipt = { kind: 'battle-drop', playerId: player.playerId, roundNumber: state.roundNumber,
+          outcome: award.outcome, priorStreak: previousStreak, chance: drop.chance, roll: drop.roll,
+          itemId: drop.itemId, goldSpent: 0, goldReceived: 0 };
+        state.itemReceipts.push(itemReceipt); award.itemDrop = drop.itemId;
+      }
       if (!player.hp) player.eliminatedRound = state.roundNumber;
+    }
+    if (itemsOn(state)) for (const result of results) for (const capture of result.itemChestCaptures) {
+      const captor = state.players.find(player => player.playerId === capture.captorPlayerId);
+      if (!captor) continue; // Round AI cannot own a competitive inventory.
+      captor.pendingComponentChoices++;
+      state.itemReceipts.push({ kind: 'item-chest-capture', playerId: captor.playerId, roundNumber: state.roundNumber,
+        chestId: capture.chestId, goldSpent: 0, goldReceived: 0 });
     }
     const receipt = { roundNumber: state.roundNumber, pairings: clone(state.pairings), startedAtMs: state.combatStartedAtMs,
       settledAtMs: atMs, results: results.map(result => ({ ...result, awards: result.awards.map(award => ({ ...award, xp: award.xp.receipt })) })) };
@@ -359,7 +506,8 @@
       hp: player.hp, gold: player.gold, level: player.progression.level, fieldCapacity: player.progression.fieldCapacity,
       xpIntoLevel: player.progression.xpIntoLevel, xpToNext: Progression.COMMANDER_LEVEL_COSTS[player.progression.level - 1] ?? null,
       totalEarnedXP: player.progression.totalEarnedXP, field: player.field.map(publicUnit), bench: player.bench.map(publicUnit),
-      ready: player.ready, chest: player.chest, chestMaxHp: player.field.length ? ChestHealth.calculateChestHealth(reference, player.field.map(unit => unit.heroId)).maxHp : null, eliminatedRound: player.eliminatedRound });
+      ready: player.ready, chest: player.chest, ...(itemsOn(state) ? { itemChest: player.itemChest } : {}), chestMaxHp: player.field.length ? ChestHealth.calculateChestHealth(reference, player.field.map(unit => unit.heroId)).maxHp : null, eliminatedRound: player.eliminatedRound,
+      ...(itemsOn(state) ? { itemCount: player.items.length, winStreak: player.winStreak, lossStreak: player.lossStreak } : {}) });
     const combat = state.combats.find(combat => combat.pair.playerId === playerId || (!combat.pair.isRoundAI && combat.pair.enemyId === playerId));
     const owned = state.players.flatMap(player => [...player.field, ...player.bench]);
     const supply = Engine.ROSTER.map(hero => ({ heroId: hero.id, total: state.shopPool.copiesByCost[hero.cost],
@@ -368,21 +516,24 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: terms.enabled, goldPerChest: terms.goldPerChest, expiresAtSeconds: terms.treasureWindowSeconds },
-      self: { ...publicPlayer(own), shop: own.shop.map(offer => offer ? publicUnit(offer) : null) }, supply, pairings: state.pairings,
+      self: { ...publicPlayer(own), shop: own.shop.map(offer => offer ? publicUnit(offer) : null),
+        ...(itemsOn(state) ? { items: own.items, itemShop: own.itemShop, pendingComponentChoices: own.pendingComponentChoices } : {}) }, supply, pairings: state.pairings,
       combat: combat ? { pair: combat.pair, enemyPlayer: combat.npc ? publicPlayer(combat.npc) : null, board: combat.game.board,
         ...(combat.game.zoneDefense ? { zoneDefense: combat.game.zoneDefense } : {}), phase: combat.game.phase, result: combat.game.result, battle } : null,
       lastRound: last ? { roundNumber: last.roundNumber, pairings: last.pairings, results: last.results.map(result => ({ pair: result.pair,
         result: result.result, elapsedSeconds: result.elapsedSeconds, awards: result.awards.map(award => ({ playerId: award.playerId,
           outcome: award.outcome, damage: award.damage, hpAfter: award.hpAfter, treasureGold: award.treasureGold,
-          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
+          ...(award.zoneGold !== undefined ? { zoneGold: award.zoneGold } : {}), ...(itemsOn(state) ? { itemDrop: award.itemDrop || null } : {}), xpGranted: award.xp.xpGranted })) })) } : null });
   }
   function validate(state) {
     demand(state && state.schemaVersion === 1 && identity(state.matchId) && identity(state.seed), 'Invalid party identity.');
     demand([RULES.duelPlayerCount, RULES.playerCount].includes(state.players.length) && new Set(state.players.map(player => player.playerId)).size === state.players.length, 'A room retains its original players.');
+    demand(state.itemRulesVersion === undefined || state.itemRulesVersion === 1, 'Invalid item rules version.');
+    if (itemsOn(state)) demand(Array.isArray(state.itemReceipts), 'Item receipts are required.');
     demand(state.shopPool.playerCount === state.players.length, 'Room supply must match its original player count.'); ShopPool.validate(state.shopPool, holders(state), Engine.ROSTER);
     demand(['preparation', 'combat', 'finished'].includes(state.phase) && safe(state.revision) && safe(state.roundNumber) && state.roundNumber > 0, 'Invalid party phase or round.');
     demand(state.earlyStart === (state.preparationSeconds === null) && state.oddPlayerPolicy === 'round-ai', 'Invalid party policies.');
@@ -402,10 +553,26 @@
       demand(JSON.stringify(player.progression.xpCosts) === JSON.stringify(Progression.COMMANDER_LEVEL_COSTS), 'Use the approved commander XP curve.');
       demand(player.bench.length <= RULES.benchCapacity && player.field.length <= player.progression.fieldCapacity && player.shop.length === RULES.shopSize, 'Army or shop capacity exceeded.');
       demand(safe(player.shopDraw) && safe(player.mergeSerial), 'Invalid army/shop counters.');
+      if (itemsOn(state)) {
+        demand(Array.isArray(player.items) && player.items.every(Items.isItem), 'Inventory contains an unknown item.');
+        demand(safe(player.winStreak) && safe(player.lossStreak) && !(player.winStreak && player.lossStreak)
+          && safe(player.pendingComponentChoices), 'Invalid item streak or pending choice.');
+        demand(player.itemShop === null || Items.itemShopRound(state.roundNumber) &&
+          Array.isArray(player.itemShop.componentIds) && JSON.stringify(player.itemShop.componentIds) === JSON.stringify(Items.componentIds) &&
+          (player.itemShop.completedId === null || Items.item(player.itemShop.completedId)?.kind === 'completed') &&
+          typeof player.itemShop.open === 'boolean', 'Invalid item shop.');
+      }
       for (const unit of [...player.field, ...player.bench]) { demand(identity(unit.id) && !unitIds.has(unit.id) && Engine.heroById(unit.heroId), 'Owned unit IDs must be unique.'); unitIds.add(unit.id); }
+      if (itemsOn(state)) for (const unit of [...player.field, ...player.bench]) demand(!unit.itemIds ||
+        Array.isArray(unit.itemIds) && unit.itemIds.length <= 3 && unit.itemIds.every(Items.isItem) &&
+        (!unit.itemIds.includes('lucky-grips+lucky-grips') || unit.itemIds.length === 1), 'Invalid equipped items.');
       for (const unit of player.field) position(state.board, unit.col, unit.row);
       demand(new Set(player.field.map(unit => unit.col + ':' + unit.row)).size === player.field.length, 'Starting hero cells must be distinct.');
       if (player.chest) position(state.board, player.chest.col, player.chest.row);
+      if (itemsOn(state) && player.itemChest) {
+        position(state.board, player.itemChest.col, player.itemChest.row);
+        demand(player.itemChest.row >= state.board.rows - 2, 'Item chest belongs in the two back rows.');
+      }
       for (const offer of player.shop.filter(Boolean)) demand(offer.level === 1 && Engine.heroById(offer.heroId).cost === offer.cost && (state.roundNumber !== 1 || offer.cost === 1), 'Invalid shop offer.');
       let hp = RULES.startingHP, treasureGold = 0, zoneGold = 0, combatCount = 0;
       for (const round of state.receipts) for (const result of round.results) for (const award of result.awards.filter(award => award.playerId === player.playerId)) {
@@ -414,7 +581,8 @@
       demand(hp === player.hp && player.progression.receipts.filter(receipt => receipt.kind === 'combat').length === combatCount, 'Combat progression or HP history differs.');
       const gold = RULES.startingGold + player.income.receipts.reduce((sum, receipt) => sum + Income.BASE_ROUND_INCOME + receipt.interest, 0) + treasureGold + zoneGold
         - player.progression.receipts.filter(receipt => receipt.kind === 'purchase').reduce((sum, receipt) => sum + receipt.goldSpent, 0)
-        + state.shopReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived - receipt.goldSpent, 0);
+        + state.shopReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldReceived - receipt.goldSpent, 0)
+        - (itemsOn(state) ? state.itemReceipts.filter(receipt => receipt.playerId === player.playerId).reduce((sum, receipt) => sum + receipt.goldSpent, 0) : 0);
       demand(gold === player.gold, 'Gold must follow income, treasure and transactions.');
     }
     for (const [index, receipt] of state.receipts.entries()) {

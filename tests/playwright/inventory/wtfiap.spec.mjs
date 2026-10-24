@@ -396,6 +396,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       const arena = await gameFrame(host, "#arena-frame");
       expect(await arena.evaluate(() => window.AB.ROSTER.find(hero => hero.id === "ember-vanguard")?.name)).toBe("Briq");
       expect((await gameState(arena)).projection).toBe("side");
+      await expect(arena.locator("#items-toggle")).toBeVisible();
+      await arena.locator("#items-toggle").click();
+      await expect(arena.locator("#items-panel")).toContainText("No items held yet");
       await expect(host.locator("#alive-count")).toContainText("2 alive");
     } finally { await guestContext.close(); }
   });

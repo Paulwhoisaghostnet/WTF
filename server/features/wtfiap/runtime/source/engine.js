@@ -21,6 +21,9 @@
   if (!CATALOG) throw new Error('Hero identity catalog is required.');
   const TERRAIN = typeof module !== 'undefined' && module.exports ? require('./terrain.js') : root.ABTerrain;
   const ZONES = typeof module !== 'undefined' && module.exports ? require('./zones.js') : root.ABZones;
+  const ITEMS = typeof module !== 'undefined' && module.exports ? require('../game/core/items.cjs') : root.ABItems;
+  const hasItem = (unit, id) => unit.itemIds?.includes(id) || false;
+  const itemValue = (id, key) => ITEMS.VALUES[id]?.[key] || 0;
   const clearSight = (game, a, b) => !game.board.terrain || TERRAIN.clearSight(game.board, a, b);
 
   const DEFAULT_CONFIG = Object.freeze({
@@ -340,7 +343,8 @@
       if (occupied >= 0) {
         const replaced = game.field[occupied];
         game.bench[fromBench] = { id: replaced.id, heroId: replaced.heroId, level: replaced.level,
-          ...(replaced.lotIds ? { lotIds: [...replaced.lotIds] } : {}) };
+          ...(replaced.lotIds ? { lotIds: [...replaced.lotIds] } : {}),
+          ...(replaced.itemIds ? { itemIds: [...replaced.itemIds] } : {}) };
         game.field[occupied] = { ...unit, col, row };
       } else {
         game.bench.splice(fromBench, 1);
@@ -357,7 +361,8 @@
     if (game.bench.length >= game.token.config.benchCapacity) return fail('Bench is full.');
     const unit = game.field.splice(index, 1)[0];
     game.bench.push({ id: unit.id, heroId: unit.heroId, level: unit.level,
-      ...(unit.lotIds ? { lotIds: [...unit.lotIds] } : {}) });
+      ...(unit.lotIds ? { lotIds: [...unit.lotIds] } : {}),
+      ...(unit.itemIds ? { itemIds: [...unit.itemIds] } : {}) });
     return { ok: true };
   }
 
@@ -386,11 +391,18 @@
     game.bench = game.bench.filter(unit => !ids.has(unit.id));
     const unit = { id: 'merge-' + (++game.mergeSerial), heroId, level: level + 1 };
     if (consumed.some(copy => copy.lotIds)) unit.lotIds = consumed.flatMap(copy => copy.lotIds || []);
+    const carriedItems = consumed.flatMap(copy => copy.itemIds || []);
+    const mitts = 'lucky-grips+lucky-grips';
+    const equippedItems = carriedItems.includes(mitts) ? [mitts] : carriedItems.slice(0, 3);
+    if (equippedItems.length) unit.itemIds = equippedItems;
     if (field.length) {
       Object.assign(unit, { col: field[0].col, row: field[0].row });
       game.field.push(unit);
     } else game.bench.push(unit);
-    return { ok: true, unit };
+    const overflowItemIds = carriedItems.includes(mitts)
+      ? carriedItems.filter((id, index) => id !== mitts || index !== carriedItems.indexOf(mitts))
+      : carriedItems.slice(3);
+    return { ok: true, unit, ...(overflowItemIds.length ? { overflowItemIds } : {}) };
   }
 
   function synergies(units) {
@@ -418,7 +430,7 @@
     const hp = hero.stats.hp * scale * (['verdant', 'gargoyle'].includes(hero.faction) ? 1 + faction * 0.18 : 1) * (1 + power('sentinel') * 0.18);
     const astralPower = hero.faction === 'astral' ? 1 + faction * 0.25 : 1;
     const speed = hero.stats.speed * (1 + (hero.faction === 'hollow' ? faction * 0.08 : 0));
-    return {
+    const result = {
       cost: hero.cost, maxHp: hp, hp,
       attack: hero.stats.attack * scale * (['ember', 'dune'].includes(hero.faction) ? 1 + faction * 0.12 : 1) * (1 + (power('duelist') + power('ranger')) * 0.12),
       speed, abilityScore: hero.stats.abilityScore * scale,
@@ -452,6 +464,31 @@
       openingShield: hero.faction === 'gargoyle' && faction ? hp * 0.18 : 0,
       factionPower: faction, factionComplete, classPower: role, classPowers
     };
+    if (unit.itemIds?.length) {
+      const itemStats = ITEMS.statsFor(unit.itemIds);
+      result.maxHp = result.hp = (result.maxHp + itemStats.health) * (1 + itemStats.healthRatio);
+      result.attack *= 1 + itemStats.attackRatio;
+      result.speed *= 1 + itemStats.speedRatio;
+      result.attackInterval = 1 / result.speed;
+      result.abilityRegen += itemStats.manaRegen;
+      result.armor += itemStats.armor;
+      result.magicResist = result.armor - itemStats.armor + itemStats.magicResist;
+      result.range += itemStats.range;
+      result.critChance = itemStats.critChance;
+      result.damageAmp = itemStats.damageAmp;
+      for (const key of ['spellPower', 'healingPower', 'shieldPower', 'buffPower', 'debuffPower'])
+        result[key] *= 1 + itemStats.abilityPower / 100;
+      if (hasItem(unit, 'mana-vial+veil-cloth')) {
+        if (CLASSES.find(entry => entry.id === hero.primaryClass)?.primaryArchetype === 'tank') {
+          result.armor += itemValue('mana-vial+veil-cloth', 'FrontlineResists');
+          result.magicResist += itemValue('mana-vial+veil-cloth', 'FrontlineResists');
+        } else {
+          result.attack *= 1 + itemValue('mana-vial+veil-cloth', 'BacklineADAP') / 100;
+          for (const key of ['spellPower', 'healingPower', 'shieldPower']) result[key] *= 1 + itemValue('mana-vial+veil-cloth', 'BacklineADAP') / 100;
+        }
+      }
+    }
+    return result;
   }
 
   // Stats with beneficial direction ↑. Resource thresholds, stars, cost, trait
@@ -469,7 +506,13 @@
     const alliedTraits = synergies(game.field), enemyTraits = synergies(game.opponents);
     const prepare = (unit, side, traits) => {
       const hero = heroById(unit.heroId);
-      return aliasAbilityPoints({
+      if (hasItem(unit, 'lucky-grips+lucky-grips')) {
+        const random = makeRandom((game.token.battleSeed || 'items') + ':trickster:' + unit.id);
+        const pool = ITEMS.RECIPES.filter(entry => entry.id !== 'lucky-grips+lucky-grips');
+        unit = { ...unit, itemIds: [unit.itemIds.find(id => id === 'lucky-grips+lucky-grips'),
+          pool[Math.floor(random() * pool.length)].id, pool[Math.floor(random() * pool.length)].id] };
+      }
+      const ready = aliasAbilityPoints({
         ...clone(unit), ...deriveStats(unit, traits), side, alive: true,
         radius: bodyProfile(unit).radius, bodyScale: bodyProfile(unit).scale,
         mana: 0, maxMana: hero.ability.manaCost ?? 3, cooldown: 0, attacks: 0, statuses: [], targetId: null, openingEffects: [],
@@ -479,6 +522,17 @@
         mimickedUnitId: null, mimickedHeroId: null,
         originCol: unit.col, originRow: unit.row, lastAction: null, lastMove: null, navigationTurn: null
       });
+      if (game.itemRulesVersion === 1) ready.critChance = .25 + (ready.critChance || 0);
+      if (unit.itemIds?.length) {
+        ready.itemRuntime = { elapsed: 0, triggered: [], attackStacks: 0, titanStacks: 0, critStacks: 0 };
+        if (hasItem(ready, 'mana-vial+iron-plate')) ready.mana += Math.min(ready.maxMana, itemValue('mana-vial+iron-plate', 'CombatStartMana') * ITEMS.MANA_SCALE);
+        if (hasItem(ready, 'spellglass+iron-plate')) ready.shield += ready.maxHp * itemValue('spellglass+iron-plate', 'ShieldSize') / 100;
+        if (hasItem(ready, 'forgeblade+veil-cloth')) ready.lifesteal += itemValue('forgeblade+veil-cloth', 'StatOmnivamp');
+        if (hasItem(ready, 'mana-vial+lucky-grips')) ready.lifesteal += itemValue('mana-vial+lucky-grips', 'StatOmnivamp_NotStatBar');
+        if (hasItem(ready, 'veil-cloth+lucky-grips')) ready.itemRuntime.ccImmuneUntil = itemValue('veil-cloth+lucky-grips', 'SpellShieldDuration');
+        if (hasItem(ready, 'mana-vial+lucky-grips')) ready.itemRuntime.handOfJustice = true;
+      }
+      return ready;
     };
     const units = [...game.field.map(unit => prepare(unit, 'player', alliedTraits)), ...game.opponents.map(unit => prepare(unit, 'enemy', enemyTraits))];
     // Native opening effects resolve before mimicry, exactly once. A Mime
@@ -517,20 +571,23 @@
     const enabled = config.roundNumber >= 5;
     const expiresAtSeconds = enabled ? config.roundNumber * 15 : null;
     if (enabled && !Number.isSafeInteger(expiresAtSeconds)) throw new Error('Treasure duration exceeds exact numeric representation.');
-    if (config.chests.length !== (enabled ? 2 : 0)) throw new Error('Place one chest per player from round five; earlier rounds have none.');
+    const itemRound = config.itemRulesVersion === 1 && config.roundNumber % 10 === 0;
+    if (config.chests.length !== (enabled ? itemRound ? 4 : 2 : 0)) throw new Error('Place one gold chest per player and a second item chest every ten rounds.');
     const ids = new Set([...game.field, ...game.opponents, ...game.bench].map(unit => unit.id)), sides = new Set();
     const objectives = config.chests.map(chest => {
       if (!chest || typeof chest.id !== 'string' || !chest.id.trim() || ids.has(chest.id)) throw new Error('Chest IDs must be distinct from every unit and chest.');
-      if (!['player', 'enemy'].includes(chest.side) || sides.has(chest.side)) throw new Error('Each side must own exactly one chest.');
+      const kind = chest.kind === 'item' ? 'item' : 'gold', key = kind + ':' + chest.side;
+      if (!['player', 'enemy'].includes(chest.side) || sides.has(key) || kind === 'item' && !itemRound) throw new Error('Each side must own one chest of each enabled kind.');
       const firstRow = chest.side === 'player' ? game.board.playerStartRow : 0;
       const endRow = chest.side === 'player' ? game.board.rows : game.board.halfRows;
       if (!Number.isInteger(chest.col) || chest.col < 0 || chest.col >= game.board.columns || !Number.isInteger(chest.row) || chest.row < firstRow || chest.row >= endRow) throw new Error('Place each chest in its owner’s deployment territory.');
+      if (kind === 'item' && (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1)) throw new Error('Item chests belong in the two back rows.');
       if (!Number.isFinite(chest.maxHp) || chest.maxHp <= 0) throw new Error('Chest maximum HP must be supplied explicitly and be positive.');
       const armor = chest.armor === undefined ? 0 : chest.armor;
       if (!Number.isFinite(armor) || armor < 0) throw new Error('Chest armor must be nonnegative; omit it for no armor.');
-      ids.add(chest.id); sides.add(chest.side);
+      ids.add(chest.id); sides.add(key);
       // Ground objectives do not consume a hero slot or invent a collision body.
-      return { id: chest.id, kind: 'treasure', side: chest.side, col: chest.col, row: chest.row,
+      return { id: chest.id, kind: 'treasure', ...(config.itemRulesVersion === 1 ? { rewardKind: kind } : {}), side: chest.side, col: chest.col, row: chest.row,
         maxHp: chest.maxHp, hp: chest.maxHp, armor, shield: 0, effectiveAttack: 0,
         statuses: [], status: 'active', defeatedAtSeconds: null, captorSide: null };
     });
@@ -718,9 +775,11 @@
     const strength = type => Math.max(0, ...unit.statuses.filter(status => status.type === type).map(status => status.magnitude));
     const previous = unit.effectiveAttackInterval;
     unit.effectiveAttack = unit.attack * (1 + strength('empower')) / (1 + strength('weakness'));
+    if (unit.itemRuntime) unit.effectiveAttack *= 1 + (unit.itemRuntime.attackRatio || 0);
     if (unit.zoneModifiers) unit.effectiveAttack *= 1 + unit.zoneModifiers.damage;
     unit.attackInterval = unit.speed > 0 ? 1 / unit.speed : Infinity;
     unit.effectiveSpeed = unit.speed * (1 + strength('haste')) / (1 + strength('slow'));
+    if (unit.itemRuntime) unit.effectiveSpeed *= 1 + (unit.itemRuntime.speedRatio || 0);
     if (unit.zoneModifiers) unit.effectiveSpeed *= 1 + unit.zoneModifiers.speed;
     unit.effectiveAttackInterval = unit.effectiveSpeed > 0 ? 1 / unit.effectiveSpeed : Infinity;
     if (previous && Number.isFinite(previous) && Number.isFinite(unit.cooldown) && unit.cooldown > 0) unit.cooldown *= unit.effectiveAttackInterval / previous;
@@ -800,17 +859,20 @@
     const objectives = (battle.objectives || []).filter(chest => chest.status === 'active');
     const hits = [], heals = [], shields = [], effects = [], manaGifts = [];
     function grantAbilityPoints(victim, amount, source, actor = victim, details = {}) {
+      if (hasItem(victim, 'mana-vial+veil-cloth')) amount *= 1 + itemValue('mana-vial+veil-cloth', 'ManaPercIncrease');
       const restored = Math.max(0, Math.min(amount, victim.maxMana - victim.mana));
       victim.mana += restored;
       if (restored > 0) emit({ type: 'mana', unitId: actor.id, targetId: victim.id, amount: restored, source, trigger: source, ...details });
     }
     function applyEffect({ actor, victim, status }) {
+      if (victim.itemRuntime?.ccImmuneUntil > battle.elapsed && ['slow', 'taunt'].includes(status.type)) return;
       victim.statuses = victim.statuses.filter(previous => previous.type !== status.type || previous.sourceId !== status.sourceId || (previous.channel || 'signature') !== (status.channel || 'signature'));
       victim.statuses.push(status); refreshEffectiveStats(victim);
       const type = status.type === 'taunt' ? 'taunt' : ['haste', 'empower'].includes(status.type) ? 'buff' : 'status';
       emit({ type, unitId: actor.id, targetId: victim.id, status: status.type, expiresAt: status.expiresAt, magnitude: status.magnitude, ...(status.factionId ? { factionId: status.factionId } : {}) });
     }
     function restore({ actor, victim, amount, factionId }) {
+      if (victim.statuses.some(status => status.type === 'wound')) amount *= 1 - Math.max(...victim.statuses.filter(status => status.type === 'wound').map(status => status.magnitude));
       const actual = Math.min(amount, victim.maxHp - victim.hp);
       victim.hp += actual;
       emit({ type: 'heal', unitId: actor.id, targetId: victim.id, amount: actual, rawAmount: amount, overheal: amount - actual, ...(factionId ? { factionId } : {}) });
@@ -824,7 +886,8 @@
       unit.statuses = unit.statuses.filter(status => {
         if (status.type === 'burn' && status.nextTick <= battle.elapsed + 1e-9 && status.nextTick <= status.expiresAt + 1e-9) {
           const source = battle.units.find(item => item.id === status.sourceId);
-          hits.push({ actor: source, victim: unit, amount: status.damage, ability: true, dot: true, factionId: status.factionId });
+          hits.push({ actor: source, victim: unit, amount: status.damage, ability: true, dot: true,
+            ...(status.channel === 'item' ? { trueDamage: true } : {}), factionId: status.factionId });
           status.nextTick += status.tickInterval;
         }
         const sourceDied = status.type === 'taunt' && !battle.units.some(item => item.id === status.sourceId && item.alive);
@@ -842,13 +905,38 @@
       }
     }
     const alive = battle.units.filter(unit => unit.alive);
+    for (const unit of alive.filter(unit => unit.itemRuntime)) {
+      const runtime = unit.itemRuntime, whole = Math.floor(battle.elapsed + GEOMETRY_EPSILON), previous = Math.floor(runtime.elapsed + GEOMETRY_EPSILON);
+      if (whole > previous) for (let second = previous + 1; second <= whole; second++) {
+        if (hasItem(unit, 'quickstring+spellglass')) runtime.speedRatio = (runtime.speedRatio || 0) + itemValue('quickstring+spellglass', 'AttackSpeedPerStack') / 100;
+        if (hasItem(unit, 'veil-cloth+lucky-grips')) runtime.speedRatio = (runtime.speedRatio || 0) + itemValue('veil-cloth+lucky-grips', 'ProcAttackSpeed');
+        if (hasItem(unit, 'spellglass+mana-vial') && second % itemValue('spellglass+mana-vial', 'IntervalSeconds') === 0)
+          runtime.abilityPowerRatio = (runtime.abilityPowerRatio || 0) + itemValue('spellglass+mana-vial', 'APPerInterval') / 100;
+        if (hasItem(unit, 'mana-vial+vital-sash')) {
+          const amount = Math.min(unit.maxHp - unit.hp, (unit.maxHp - unit.hp) * itemValue('mana-vial+vital-sash', 'MissingHealthHeal'));
+          if (amount > 0) restore({ actor: unit, victim: unit, amount });
+        }
+        if (hasItem(unit, 'veil-cloth+veil-cloth') && second % itemValue('veil-cloth+veil-cloth', 'HealthRegenInterval') === 0) {
+          const amount = Math.min(unit.maxHp - unit.hp, unit.maxHp * itemValue('veil-cloth+veil-cloth', 'PercentHealthDamage') / 100);
+          if (amount > 0) restore({ actor: unit, victim: unit, amount });
+        }
+      }
+      runtime.elapsed = battle.elapsed;
+      if (hasItem(unit, 'spellglass+iron-plate') && !runtime.triggered.includes('spellglass+iron-plate') &&
+        battle.elapsed >= itemValue('spellglass+iron-plate', 'ShieldDuration')) {
+        runtime.triggered.push('spellglass+iron-plate');
+        unit.shield = Math.max(0, unit.shield - unit.maxHp * itemValue('spellglass+iron-plate', 'ShieldSize') / 100);
+        runtime.abilityPowerRatio = (runtime.abilityPowerRatio || 0) + itemValue('spellglass+iron-plate', 'ShieldBonusAP') / 100;
+      }
+      refreshEffectiveStats(unit);
+    }
     const damageable = [...alive, ...objectives];
     // Choose targets and movement from one common snapshot. Movement is a
     // continuous process, independent of attack recovery. Once every body has
     // moved, both armies evaluate range from the same resulting positions.
     const actors = [...alive].sort(byId);
     const chooseEnemies = actor => {
-      let enemies = damageable.filter(unit => unit.side !== actor.side).sort((a, b) => distance(actor, a) - distance(actor, b) || byId(a, b));
+      let enemies = damageable.filter(unit => unit.side !== actor.side && !(unit.itemRuntime?.untargetableUntil > battle.elapsed)).sort((a, b) => distance(actor, a) - distance(actor, b) || byId(a, b));
       const taunt = actor.statuses.filter(status => status.type === 'taunt').sort((a, b) => b.appliedAt - a.appliedAt || (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0))[0];
       if (taunt) enemies = enemies.filter(enemy => enemy.id === taunt.sourceId);
       return enemies;
@@ -867,6 +955,29 @@
       actor.lastMove = { at: battle.elapsed, from, duration };
       actor.lastAction = { type: 'move', at: battle.elapsed, from, duration };
       emit({ type: 'move', unitId: actor.id, from, col: actor.col, row: actor.row });
+    }
+    if (Math.floor(battle.elapsed + GEOMETRY_EPSILON) > Math.floor(battle.elapsed - dt + GEOMETRY_EPSILON)) {
+      for (const holder of alive.filter(unit => unit.itemRuntime)) {
+        const nearby = alive.filter(unit => unit.side !== holder.side && distance(unit, holder) <= 2 + GEOMETRY_EPSILON);
+        if (hasItem(holder, 'spellglass+veil-cloth')) for (const enemy of nearby)
+          applyEffect({ actor: holder, victim: enemy, status: { type: 'shred', sourceId: holder.id,
+            appliedAt: battle.elapsed, expiresAt: battle.elapsed + 1, magnitude: itemValue('spellglass+veil-cloth', 'MRShred') / 100, channel: 'item-aura' } });
+        if (hasItem(holder, 'veil-cloth+vital-sash')) for (const enemy of nearby)
+          applyEffect({ actor: holder, victim: enemy, status: { type: 'sunder', sourceId: holder.id,
+            appliedAt: battle.elapsed, expiresAt: battle.elapsed + 1, magnitude: itemValue('veil-cloth+vital-sash', 'ARReductionAmount') / 100, channel: 'item-aura' } });
+        if (hasItem(holder, 'iron-plate+vital-sash') && Math.floor(battle.elapsed) % itemValue('iron-plate+vital-sash', 'ICD') === 0) {
+          const enemy = nearby.sort((a, b) => distance(holder, a) - distance(holder, b) || byId(a, b))[0];
+          if (enemy) {
+            const value = ITEMS.VALUES['iron-plate+vital-sash'];
+            applyEffect({ actor: holder, victim: enemy, status: { type: 'burn', sourceId: holder.id,
+              appliedAt: battle.elapsed, expiresAt: battle.elapsed + value.BurnDuration,
+              damage: enemy.maxHp * value.BurnPercent / 100, tickInterval: 1, nextTick: battle.elapsed + 1, channel: 'item' } });
+            applyEffect({ actor: holder, victim: enemy, status: { type: 'wound', sourceId: holder.id,
+              appliedAt: battle.elapsed, expiresAt: battle.elapsed + value.BurnDuration,
+              magnitude: value.GrievousWoundsPercent / 100, channel: 'item' } });
+          }
+        }
+      }
     }
     if (battle.zoneDefense) {
       refreshZoneBenefits(game, dt, true);
@@ -917,6 +1028,23 @@
         actor.cooldown = actor.effectiveAttackInterval;
         actor.lastAction = { type: 'attack', at: battle.elapsed, targetId: basicTarget.id };
         emit({ type: 'attack', unitId: actor.id, targetId: basicTarget.id, attackStyle: actor.normalAttack });
+        if (hasItem(actor, 'forgeblade+mana-vial')) grantAbilityPoints(actor, itemValue('forgeblade+mana-vial', 'FlatManaRestore') * ITEMS.MANA_SCALE, 'item-attack');
+        if (hasItem(actor, 'quickstring+vital-sash')) grantAbilityPoints(actor, itemValue('quickstring+vital-sash', 'BaseManaOnHit') * ITEMS.MANA_SCALE, 'item-attack');
+        if (hasItem(actor, 'quickstring+veil-cloth')) {
+          const cap = itemValue('quickstring+veil-cloth', 'MaxStacks');
+          actor.itemRuntime.attackStacks = Math.min(cap, actor.itemRuntime.attackStacks + 1);
+          actor.itemRuntime.attackRatio = actor.itemRuntime.attackStacks * itemValue('quickstring+veil-cloth', 'ADOnAttack');
+          if (actor.itemRuntime.attackStacks === cap) actor.itemRuntime.speedRatio = itemValue('quickstring+veil-cloth', 'ASCapstone');
+          refreshEffectiveStats(actor);
+        }
+        if (hasItem(actor, 'quickstring+iron-plate')) {
+          const cap = itemValue('quickstring+iron-plate', 'StackCap');
+          actor.itemRuntime.titanStacks = Math.min(cap, actor.itemRuntime.titanStacks + 1);
+          actor.itemRuntime.attackRatio = actor.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingAD');
+          actor.itemRuntime.abilityPowerRatio = actor.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingSP') / 100;
+          if (actor.itemRuntime.titanStacks === cap) actor.itemRuntime.damageAmp = itemValue('quickstring+iron-plate', 'StackedAmp');
+          refreshEffectiveStats(actor);
+        }
         hits.push({ actor, victim: basicTarget, amount: actor.effectiveAttack + actor.attacks, ability: false, basic: true, pressure: actor.attacks });
         if (actor.shatterDamage && basicTarget.statuses.some(status => status.type === 'slow')) hits.push({ actor, victim: basicTarget, amount: actor.shatterDamage, ability: false, factionId: 'rime', shatter: true });
         if (actor.chillStrength) effect(basicTarget, 'slow', actor.chillStrength, EFFECT_DURATION, { channel: 'faction', factionId: 'rime' });
@@ -928,11 +1056,18 @@
         const castTarget = target || resolvedActions.find(useful).victims[0];
         actor.lastAction = { type: 'ability', at: battle.elapsed, targetId: castTarget.id };
         emit({ type: 'ability', unitId: actor.id, name: actor.abilityName, abilityId: actor.abilityId, targetId: castTarget.id });
+        for (const holder of alive.filter(unit => unit.side !== actor.side && hasItem(unit, 'spellglass+veil-cloth') && distance(unit, actor) <= itemValue('spellglass+veil-cloth', 'HexRange'))) {
+          hits.push({ actor: holder, victim: actor, amount: actor.maxMana / ITEMS.MANA_SCALE * ITEMS.HEALTH_SCALE *
+            itemValue('spellglass+veil-cloth', 'ManaRatio') / 100, ability: true, itemId: 'spellglass+veil-cloth' });
+        }
+        const itemAbilityMultiplier = 1 + (actor.itemRuntime?.abilityPowerRatio || 0) +
+          (actor.itemRuntime?.handOfJustice && actor.hp / actor.maxHp > itemValue('mana-vial+lucky-grips', 'HealthThreshold')
+            ? itemValue('mana-vial+lucky-grips', 'AP_NotStatBar') / 100 : 0);
         for (const { action, victims } of resolvedActions) {
           for (const victim of victims) for (let repeat = 0; repeat < (action.repeat ?? 1); repeat++) {
-            if (action.type === 'hit') hits.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.spellPower + actor.fireDamage, ability: true });
-            else if (action.type === 'heal') heals.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.healingPower });
-            else if (action.type === 'shield') shields.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.shieldPower });
+            if (action.type === 'hit') hits.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.spellPower * itemAbilityMultiplier + actor.fireDamage, ability: true });
+            else if (action.type === 'heal') heals.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.healingPower * itemAbilityMultiplier });
+            else if (action.type === 'shield') shields.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.shieldPower * itemAbilityMultiplier });
             else if (action.type === 'status') {
               const potency = ['haste', 'empower'].includes(action.status) ? actor.buffPower : actor.debuffPower;
               effect(victim, action.status, action.magnitude * potency, action.duration ?? EFFECT_DURATION);
@@ -977,17 +1112,80 @@
     let pendingHits = hits;
     while (pendingHits.length) {
       const resolved = pendingHits.map(packet => {
-        const amount = packet.amount * (packet.ability && packet.actor.zoneModifiers ? 1 + packet.actor.zoneModifiers.damage : 1);
-        return { ...packet, amount, postArmor: amount * 100 / (100 + packet.victim.armor / (1 + packet.actor.armorPierce)) };
+        const { actor, victim } = packet;
+        if ((packet.basic || packet.ability) && victim.statuses) {
+          if (hasItem(actor, 'quickstring+lucky-grips')) applyEffect({ actor, victim, status: {
+            type: 'sunder', sourceId: actor.id, appliedAt: battle.elapsed,
+            expiresAt: battle.elapsed + itemValue('quickstring+lucky-grips', 'ArmorBreakDuration'),
+            magnitude: itemValue('quickstring+lucky-grips', 'ArmorReductionPercent') / 100, channel: 'item' } });
+          if (hasItem(actor, 'quickstring+mana-vial')) applyEffect({ actor, victim, status: {
+            type: 'shred', sourceId: actor.id, appliedAt: battle.elapsed,
+            expiresAt: battle.elapsed + itemValue('quickstring+mana-vial', 'MRShredDuration'),
+            magnitude: itemValue('quickstring+mana-vial', 'MRShred') / 100, channel: 'item' } });
+        }
+        let amount = packet.amount * (packet.ability && actor.zoneModifiers ? 1 + actor.zoneModifiers.damage : 1);
+        if (actor.itemRuntime) {
+          amount *= 1 + (actor.damageAmp || 0) + (actor.itemRuntime.damageAmp || 0);
+          if (hasItem(actor, 'forgeblade+quickstring') && victim.heroId && CLASSES.find(entry => entry.id === heroById(victim.heroId)?.primaryClass)?.primaryArchetype === 'tank')
+            amount *= 1 + itemValue('forgeblade+quickstring', 'DamageAmp');
+          if (packet.basic && actor.itemRuntime.handOfJustice && actor.hp / actor.maxHp > itemValue('mana-vial+lucky-grips', 'HealthThreshold'))
+            amount *= 1 + itemValue('mana-vial+lucky-grips', 'AD_NotStatBar');
+        }
+        const canCrit = packet.basic || packet.ability && hasItem(actor, 'spellglass+lucky-grips');
+        if (canCrit && actor.critChance > 0) {
+            const roll = makeRandom((game.token.battleSeed || 'items') + ':critical:' + battle.tick + ':' + actor.id + ':' + victim.id + ':' + (packet.pressure || 0))();
+            if (roll < Math.min(1, actor.critChance)) {
+              amount *= 1.4;
+              packet.critical = true;
+              if (actor.itemRuntime && hasItem(actor, 'vital-sash+lucky-grips')) actor.itemRuntime.damageAmp = Math.min(
+                itemValue('vital-sash+lucky-grips', 'MaxStacks') * itemValue('vital-sash+lucky-grips', 'BuffDamageAmp'),
+                (actor.itemRuntime.damageAmp || 0) + itemValue('vital-sash+lucky-grips', 'BuffDamageAmp'));
+              if (packet.basic && hasItem(actor, 'quickstring+vital-sash')) grantAbilityPoints(actor,
+                (itemValue('quickstring+vital-sash', 'ManaOnCrit') - itemValue('quickstring+vital-sash', 'BaseManaOnHit')) * ITEMS.MANA_SCALE, 'item-critical');
+            }
+        }
+        let armor = packet.ability && victim.magicResist !== undefined ? victim.magicResist : victim.armor;
+        if (hasItem(victim, 'iron-plate+veil-cloth')) armor +=
+          alive.filter(enemy => enemy.side !== victim.side && enemy.targetId === victim.id).length *
+          itemValue('iron-plate+veil-cloth', packet.ability ? 'MRPerEnemy' : 'ArmorPerEnemy');
+        if (hasItem(victim, 'veil-cloth+vital-sash') && battle.elapsed <= itemValue('veil-cloth+vital-sash', 'BonusResistDuration'))
+          armor += itemValue('veil-cloth+vital-sash', 'BonusResists');
+        const reduction = Math.max(0, ...victim.statuses.filter(status => status.type === (packet.ability ? 'shred' : 'sunder')).map(status => status.magnitude));
+        const resists = armor * (1 - reduction);
+        const durability = packet.basic && hasItem(victim, 'iron-plate+iron-plate') ? itemValue('iron-plate+iron-plate', 'AutoDamageReduction') : 0;
+        const steadfast = hasItem(victim, 'iron-plate+lucky-grips') ? victim.hp / victim.maxHp > itemValue('iron-plate+lucky-grips', 'ThresholdForEmpower')
+          ? itemValue('iron-plate+lucky-grips', 'EmpoweredDurability') : itemValue('iron-plate+lucky-grips', 'BaseDurability') : 0;
+        amount *= 1 - durability;
+        amount *= 1 - steadfast;
+        return { ...packet, amount, postArmor: packet.trueDamage ? amount : amount * 100 / (100 + resists / (1 + actor.armorPierce)) };
       });
       const totals = new Map();
       for (const packet of resolved) totals.set(packet.victim.id, (totals.get(packet.victim.id) || 0) + packet.postArmor);
       const pools = new Map();
       for (const victim of damageable) if (totals.has(victim.id)) {
         const total = totals.get(victim.id), absorbed = Math.min(victim.shield, total);
-        pools.set(victim.id, { total, absorbed, healthDamage: Math.min(Math.max(0, victim.hp), total - absorbed) });
-        victim.shield -= absorbed;
-        victim.hp -= total - absorbed;
+        if (victim.itemRuntime && victim.hp - (total - absorbed) <= victim.maxHp * .6) {
+          const trigger = (id, threshold, shieldRatio) => {
+            if (!hasItem(victim, id) || victim.itemRuntime.triggered.includes(id) || victim.hp - (total - absorbed) > victim.maxHp * threshold) return;
+            victim.itemRuntime.triggered.push(id);
+            const amount = victim.maxHp * shieldRatio;victim.shield += amount;
+            emit({ type: 'item-shield', unitId: victim.id, itemId: id, amount });
+          };
+          trigger('forgeblade+vital-sash', itemValue('forgeblade+vital-sash', 'HealthThreshold') / 100, itemValue('forgeblade+vital-sash', 'PercentHealthShield'));
+          trigger('forgeblade+veil-cloth', itemValue('forgeblade+veil-cloth', 'HealthThreshold') / 100, itemValue('forgeblade+veil-cloth', 'ShieldHealthPercent') / 100);
+          trigger('mana-vial+iron-plate', itemValue('mana-vial+iron-plate', 'HealthThreshold') / 100, itemValue('mana-vial+iron-plate', 'ShieldHealthPercent') / 100);
+          if (hasItem(victim, 'forgeblade+iron-plate') && !victim.itemRuntime.triggered.includes('forgeblade+iron-plate') && victim.hp - (total - absorbed) <= victim.maxHp * itemValue('forgeblade+iron-plate', 'HealthThreshold') / 100) {
+            victim.itemRuntime.triggered.push('forgeblade+iron-plate');
+            victim.itemRuntime.untargetableUntil = battle.elapsed + itemValue('forgeblade+iron-plate', 'StealthDuration');
+            victim.statuses = victim.statuses.filter(status => !['slow', 'weakness', 'burn', 'wound', 'sunder', 'shred', 'taunt'].includes(status.type));
+            const healed = (victim.maxHp - victim.hp) * itemValue('forgeblade+iron-plate', 'MissingHealthRestore');
+            victim.hp += healed; emit({ type: 'item-heal', unitId: victim.id, itemId: 'forgeblade+iron-plate', amount: healed });
+          }
+        }
+        const effectiveAbsorbed = Math.min(victim.shield, total);
+        pools.set(victim.id, { total, absorbed: effectiveAbsorbed, healthDamage: Math.min(Math.max(0, victim.hp), total - effectiveAbsorbed) });
+        victim.shield -= effectiveAbsorbed;
+        victim.hp -= total - effectiveAbsorbed;
       }
       pendingHits = [];
       for (const packet of resolved) {
@@ -998,7 +1196,39 @@
         // Lingering damage may outlive its source. Reflect only into this tick's
         // living snapshot; a source taking lethal damage this tick still qualifies.
         if (absorbed > 0 && victim.reflectionRatio && !reflected && alive.includes(actor)) pendingHits.push({ actor: victim, victim: actor, amount: absorbed * victim.reflectionRatio, reflected: true, factionId: 'iron' });
-        drained.set(actor.id, (drained.get(actor.id) || 0) + healthDamage * actor.lifesteal);
+        const justiceLifesteal = actor.itemRuntime?.handOfJustice && actor.hp / actor.maxHp <= itemValue('mana-vial+lucky-grips', 'HealthThreshold')
+          ? itemValue('mana-vial+lucky-grips', 'StatOmnivamp_NotStatBar') : 0;
+        drained.set(actor.id, (drained.get(actor.id) || 0) + healthDamage * (actor.lifesteal + justiceLifesteal));
+        if (healthDamage > 0 && hasItem(actor, 'forgeblade+spellglass')) {
+          const teammate = alive.filter(unit => unit.side === actor.side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || byId(a, b))[0];
+          if (teammate) restore({ actor, victim: teammate, amount: healthDamage * itemValue('forgeblade+spellglass', 'AllyHealing') });
+        }
+        if (!reflected && victim.itemRuntime && healthDamage + absorbed > 0 && hasItem(victim, 'quickstring+iron-plate')) {
+          const cap = itemValue('quickstring+iron-plate', 'StackCap');
+          victim.itemRuntime.titanStacks = Math.min(cap, victim.itemRuntime.titanStacks + 1);
+          victim.itemRuntime.attackRatio = victim.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingAD');
+          victim.itemRuntime.abilityPowerRatio = victim.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingSP') / 100;
+          if (victim.itemRuntime.titanStacks === cap) victim.itemRuntime.damageAmp = itemValue('quickstring+iron-plate', 'StackedAmp');
+          refreshEffectiveStats(victim);
+        }
+        if (basic && !reflected && hasItem(victim, 'iron-plate+iron-plate') &&
+          (victim.itemRuntime.lastThornAt === undefined || battle.elapsed - victim.itemRuntime.lastThornAt >= itemValue('iron-plate+iron-plate', 'ICD'))) {
+          victim.itemRuntime.lastThornAt = battle.elapsed;
+          for (const enemy of damageable.filter(unit => unit.side !== victim.side && distance(unit, victim) <= 1 + GEOMETRY_EPSILON))
+            pendingHits.push({ actor: victim, victim: enemy, amount: itemValue('iron-plate+iron-plate', '1StarAoEDamage') * ITEMS.HEALTH_SCALE, ability: true, reflected: true, itemId: 'iron-plate+iron-plate' });
+        }
+        if ((basic || ability) && !dot && !reflected && victim.statuses) {
+          const burnId = hasItem(actor, 'quickstring+quickstring') ? 'quickstring+quickstring'
+            : hasItem(actor, 'spellglass+vital-sash') ? 'spellglass+vital-sash' : null;
+          if (burnId) {
+            const value = ITEMS.VALUES[burnId], duration = value.BurnDuration || value.Duration;
+            applyEffect({ actor, victim, status: { type: 'burn', sourceId: actor.id, appliedAt: battle.elapsed,
+              expiresAt: battle.elapsed + duration, damage: victim.maxHp * value.BurnPercent / 100,
+              tickInterval: 1, nextTick: battle.elapsed + 1, channel: 'item' } });
+            applyEffect({ actor, victim, status: { type: 'wound', sourceId: actor.id, appliedAt: battle.elapsed,
+              expiresAt: battle.elapsed + duration, magnitude: (value.HealingReductionPct || value.GrievousWoundsPercent) / 100, channel: 'item' } });
+          }
+        }
         damageRecords.push({ actor, victim, ability, basic, dot, reflected, absorbed, healthDamage });
         emit({ type: reflected ? 'reflect-hit' : shatter ? 'shatter-hit' : dot ? 'dot-hit' : ability ? 'spell-hit' : 'hit', unitId: actor.id, targetId: victim.id,
           amount: actual, rawAmount: amount, postArmor, healthDamage, absorbed, pressure,

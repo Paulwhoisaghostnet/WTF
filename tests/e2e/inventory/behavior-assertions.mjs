@@ -18,6 +18,15 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     durableSideEffectAssertion: "The browser story checks a shop purchase changes gold and army ownership, then creates a real authority-backed room and reloads its URL to recover the same commander seat. Native invitation entry forwards room parameters to the Party frame. Route smoke alone is not room persistence proof.",
   },
   {
+    id: "wtfiap.item-economy-and-equipment",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "tests/playwright/inventory/wtfiap.spec.mjs; server/features/wtfiap/items.test.cjs",
+    verificationCommand: "node --test server/features/wtfiap/items.test.cjs && npm run build && npx playwright test tests/playwright/inventory/wtfiap.spec.mjs --grep 'two people can create and start'",
+    userVisibleAssertion: "A newly created Duel displays the Items control in the shared arena. Every fifth round offers exactly one five-gold component purchase or a separately rolled ten-gold completed item; every tenth round shows a second chest in each player's two back rows. Capturing an enemy item chest grants a component choice. Inventory and equipped items are visible to their owner, and equipment changes combat stats.",
+    durableSideEffectAssertion: "Authoritative match tests advance through round five, reject hero purchases until the item shop resolves, record the one item purchase, equip it, and restore the same item-enabled state and view from replay. The same tests prove 36 component pairings and the independent win/loss streak probability formulas. Existing rooms keep their original item-free version.",
+  },
+  {
     id: "wtfiap.spectator-and-private-chat",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

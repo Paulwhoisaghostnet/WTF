@@ -1475,7 +1475,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["OS Admin", "System Logs"],
     nativeSettings: ["desktop app availability", "Party room board mode and preparation timer", "Tournament accounting preview"],
     automationHandles: ["desktop.icon.opened", "desktop.window.opened"],
-    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery"],
   },
   {
     id: "arcade",

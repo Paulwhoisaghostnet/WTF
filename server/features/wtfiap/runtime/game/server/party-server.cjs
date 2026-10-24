@@ -53,7 +53,7 @@ function atomicJSON(filename, value) {
     throw error;
   }
 }
-function configuration(input) {
+function configuration(input, preserveItemVersion = false) {
   requireThat(input && Match.hasBoardMode(input.boardMode), 'Select a supported board mode.');
   requireThat(PREPARATION_SECONDS.includes(input.preparationSeconds), 'Choose a preparation timer of 2m, 5m, 10m or everyone ready.');
   const earlyStart = input.preparationSeconds === null;
@@ -63,8 +63,9 @@ function configuration(input) {
   requireThat(['duel', 'party', 'tournament'].includes(roomType), 'Choose a Duel, Party or Tournament room.');
   requireThat(!['config', 'currency', 'entryFee', 'entryAtomic', 'prizePercentages', 'shares', 'tournamentAccounting'].some(key => Object.hasOwn(input, key)),
     'Tournament money terms belong in the tournament configuration.');
+  requireThat(input.itemRulesVersion === undefined || input.itemRulesVersion === 1, 'Unknown item rules version.');
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
-    earlyStart, oddPlayerPolicy: 'round-ai' };
+    earlyStart, oddPlayerPolicy: 'round-ai', ...(!preserveItemVersion || input.itemRulesVersion === 1 ? { itemRulesVersion: 1 } : {}) };
   if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');
@@ -251,7 +252,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       prizePercentages: room.config.tournament.prizePercentages } } : {}),
       ...(room.config.duelWager ? { duelWager: {
         currency: room.config.duelWager.currency, entryFee: room.config.duelWager.entryFee,
-        ...(room.config.duelWager.network ? { network: room.config.duelWager.network } : {}) } } : {}) });
+        ...(room.config.duelWager.network ? { network: room.config.duelWager.network } : {}) } } : {}) }, true);
     requireThat(fingerprint(restoredConfig) === fingerprint(room.config), 'Persisted room configuration is not canonical.');
     if (room.fundingLock) {
       requireThat(hasWagerTerms(room) && room.players.length === roomCapacity(room) &&
@@ -306,6 +307,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       // Party.view contains a commander's private shop. A watcher gets the
       // same public board and combat, with no offers or actionable seat.
       base.self.shop = [null, null, null, null];
+      if (base.self.items) base.self.items = [];
+      if (base.self.itemShop) base.self.itemShop = null;
       base.supply = base.supply.map(stock => ({ ...stock, you: 0 }));
     }
     if (isTournament(room) && room.match && !room.terminalArchive) {

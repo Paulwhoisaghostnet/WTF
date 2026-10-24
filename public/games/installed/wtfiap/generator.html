@@ -19,6 +19,12 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .orientation-card{max-width:34rem}.orientation-mark{display:block;margin-bottom:10px;color:#dab975;font-size:4rem;line-height:1}.orientation-card h1{margin:0 0 10px;font:2rem Georgia,serif}.orientation-card h1:focus{outline:none}.orientation-card p{margin:0 0 18px}.orientation-card button{min-height:44px;padding:9px 18px;border:1px solid #dab975;border-radius:5px;background:#dab975;color:#0b171a;font:inherit;font-weight:700}.orientation-card button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
 .quick-actions{display:none}
 .mobile-stage-nav,.mobile-pane{display:none}
+.items-toggle{position:absolute;right:2.2%;top:19%;z-index:5;min-width:44px;min-height:44px;border:1px solid #dab975;border-radius:8px;background:#173034;color:#f1d694;font:700 19px system-ui;cursor:pointer}
+.items-panel{position:absolute;z-index:6;left:3%;right:3%;bottom:3%;max-height:85%;overflow:auto;padding:16px;border:2px solid #dab975;border-radius:10px;background:#102529f8;box-shadow:0 12px 40px #041014d9}
+.items-panel[hidden],.items-toggle[hidden]{display:none}
+.items-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.items-head h2{margin:0;font:24px Georgia,serif;color:#f1d694}.items-head button,.items-panel button,.items-panel select{min-height:40px;padding:7px 11px;border:1px solid #78918a;border-radius:5px;background:#1c393b;color:#f0ebdc;font:inherit}
+.items-panel button:disabled{opacity:.5}.items-panel button:focus-visible,.items-toggle:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
+.item-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:12px 0}.item-grid button{text-align:left}.item-grid button strong,.item-grid button small{display:block}.item-grid button strong{color:#f1d694}.item-panel-section{border-top:1px solid #45615c;margin-top:14px;padding-top:12px}.item-equip-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.item-equip-row select{max-width:220px}
 .compact-stage{width:100%;height:100dvh;display:flex;flex-direction:column}
 .compact-stage .quick-actions{display:flex;position:static;flex:none;gap:4px;padding:4px;background:#102529}
 .compact-stage .quick-actions button{flex:1;min-width:0;min-height:36px;padding:4px;font-size:12px}
@@ -108,8 +114,388 @@ function sfc32(a, b, c, d) {
 }
 
 const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const hash=xmur3(seed),rand=sfc32(hash(),hash(),hash(),hash());window.$alea={seed,rand,random:rand,features:traits=>{window.AB_TRAITS=traits;},ready:()=>{document.documentElement.dataset.ready='true';}};</script>
-</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum visual battlefield. Use the game controls below for the same actions with a keyboard or screen reader."></canvas><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><div class="mobile-bench-grid"></div></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary>Game controls and details</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Play coLILseum in landscape mode. Rotate your phone to continue.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
-<script data-ab="game">(function(root){const catalog={
+</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum visual battlefield. Use the game controls below for the same actions with a keyboard or screen reader."></canvas><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><div class="mobile-bench-grid"></div></section><button id="items-toggle" class="items-toggle" type="button" aria-controls="items-panel" aria-expanded="false" aria-label="Open items" title="Items" hidden>◇</button><section id="items-panel" class="items-panel" aria-label="Item shop and inventory" hidden></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary>Game controls and details</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Play coLILseum in landscape mode. Rotate your phone to continue.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
+<script data-ab="game">/* Numeric item values from Riot TFT client data via CommunityDragon, sampled 2026-10-24.
+ * Recipe and display names are authored for coLILseum. This is a pinned data
+ * snapshot; live patch drift must not silently change an in-progress match. */
+(function(root){
+  const values = Object.freeze({
+  "forgeblade+forgeblade": {
+    "AD": 0.55,
+    "BonusDamage": 0.1
+  },
+  "forgeblade+quickstring": {
+    "AD": 0.15,
+    "AP": 15.0,
+    "AS": 15.0,
+    "DamageAmp": 0.15
+  },
+  "forgeblade+spellglass": {
+    "AD": 0.2,
+    "AP": 20.0,
+    "AllyHealing": 0.2,
+    "ManaRegen": 1.0,
+    "Omnivamp": 18.0,
+    "StatOmnivamp": 0.15
+  },
+  "forgeblade+mana-vial": {
+    "AD": 0.15,
+    "AP": 15.0,
+    "FlatManaRestore": 5.0,
+    "ManaRegen": 1.0
+  },
+  "forgeblade+iron-plate": {
+    "AD": 0.1,
+    "AP": 10.0,
+    "AS": 15.0,
+    "Armor": 20.0,
+    "DamageReduction": 100.0,
+    "HealthThreshold": 60.0,
+    "MissingHealthRestore": 0.2,
+    "StealthDuration": 1.0
+  },
+  "forgeblade+veil-cloth": {
+    "AD": 0.15,
+    "AP": 15.0,
+    "HealthThreshold": 40.0,
+    "LifeSteal": 20.0,
+    "MagicResist": 20.0,
+    "ShieldDuration": 5.0,
+    "ShieldHealthPercent": 25.0,
+    "StatOmnivamp": 0.2
+  },
+  "forgeblade+vital-sash": {
+    "AD": 0.45,
+    "Health": 300.0,
+    "HealthThreshold": 60.0,
+    "PercentHealthShield": 0.4,
+    "ShieldDuration": 4.0
+  },
+  "forgeblade+lucky-grips": {
+    "AD": 0.35,
+    "CritChance": 35.0
+  },
+  "quickstring+quickstring": {
+    "AS": 45.0,
+    "BonusDamage": 0.06,
+    "BurnPercent": 1.0,
+    "Duration": 5.0,
+    "HealingReductionPct": 33.0,
+    "HexRangeIncrease": 1.0
+  },
+  "quickstring+spellglass": {
+    "AP": 10.0,
+    "AS": 10.0,
+    "AttackSpeedPerStack": 7.0
+  },
+  "quickstring+mana-vial": {
+    "AP": 35.0,
+    "AS": 15.0,
+    "MRShred": 30.0,
+    "MRShredDuration": 5.0,
+    "ManaRegen": 1.0
+  },
+  "quickstring+iron-plate": {
+    "AS": 10.0,
+    "Armor": 20.0,
+    "StackCap": 25.0,
+    "StackedAmp": 0.1,
+    "StackingAD": 0.02,
+    "StackingSP": 2.0
+  },
+  "quickstring+veil-cloth": {
+    "AD": 0.1,
+    "ADOnAttack": 0.035,
+    "AS": 10.0,
+    "ASCapstone": 0.15,
+    "MagicResist": 20.0,
+    "MaxStacks": 15.0
+  },
+  "quickstring+vital-sash": {
+    "AP": 15.0,
+    "AS": 10.0,
+    "BaseManaOnHit": 2,
+    "CritChance": 20.0,
+    "Health": 150.0,
+    "ManaOnCrit": 4.0
+  },
+  "quickstring+lucky-grips": {
+    "AD": 0.15,
+    "AS": 20.0,
+    "ArmorBreakDuration": 3.0,
+    "ArmorReductionPercent": 30.0,
+    "CritChance": 20.0
+  },
+  "spellglass+spellglass": {
+    "AP": 55.0,
+    "BonusDamage": 0.15
+  },
+  "spellglass+mana-vial": {
+    "AP": 30.0,
+    "APPerInterval": 20.0,
+    "IntervalSeconds": 5.0,
+    "ManaRegen": 1.0
+  },
+  "spellglass+iron-plate": {
+    "AP": 20.0,
+    "Armor": 20.0,
+    "Health": 100.0,
+    "ShieldBonusAP": 25.0,
+    "ShieldDuration": 8.0,
+    "ShieldSize": 25.0
+  },
+  "spellglass+veil-cloth": {
+    "AP": 15.0,
+    "Damage": 250.0,
+    "Health": 250.0,
+    "HexRange": 2.0,
+    "MRShred": 30.0,
+    "MagicResist": 35.0,
+    "ManaRatio": 150.0
+  },
+  "spellglass+vital-sash": {
+    "AP": 20.0,
+    "BurnDuration": 10.0,
+    "BurnPercent": 1.0,
+    "GrievousWoundsPercent": 33.0,
+    "Health": 150.0,
+    "ManaRegen": 1.0,
+    "MonsterCap": 100.0,
+    "TicksPerSecond": 1.0
+  },
+  "spellglass+lucky-grips": {
+    "AP": 35.0,
+    "CritChance": 35.0
+  },
+  "mana-vial+mana-vial": {
+    "AD": 0.15,
+    "AP": 15.0,
+    "ManaRegen": 5.0,
+    "ModifiedADAP": 0.1
+  },
+  "mana-vial+iron-plate": {
+    "Armor": 25.0,
+    "CombatStartMana": 20.0,
+    "HealthThreshold": 40.0,
+    "MagicResist": 25.0,
+    "ManaRegen": 1.0,
+    "ShieldDuration": 60.0,
+    "ShieldHealthPercent": 20.0,
+    "TriggerMana": 15.0
+  },
+  "mana-vial+veil-cloth": {
+    "BacklineADAP": 10.0,
+    "FrontlineResists": 30.0,
+    "MagicResist": 20.0,
+    "ManaPercIncrease": 0.15,
+    "ManaRegen": 3.0
+  },
+  "mana-vial+vital-sash": {
+    "HealTickRate": 1.0,
+    "Health": 300.0,
+    "ManaRegen": 2.0,
+    "MaxHeal": 250.0,
+    "MissingHealthHeal": 0.02
+  },
+  "mana-vial+lucky-grips": {
+    "AD_NotStatBar": 0.15,
+    "AP_NotStatBar": 15.0,
+    "CritChance": 20.0,
+    "HealthThreshold": 0.5,
+    "ManaRegen": 1.0,
+    "StatOmnivamp_NotStatBar": 0.12
+  },
+  "iron-plate+iron-plate": {
+    "1StarAoEDamage": 100.0,
+    "2StarAoEDamage": 100.0,
+    "3StarAoEDamage": 100.0,
+    "4StarAoEDamage": 100.0,
+    "Armor": 50.0,
+    "AutoDamageReduction": 0.05,
+    "ICD": 2.0,
+    "PercentMaxHP": 0.06
+  },
+  "iron-plate+veil-cloth": {
+    "Armor": 25.0,
+    "ArmorPerEnemy": 10.0,
+    "Health": 100.0,
+    "MRPerEnemy": 10.0,
+    "MagicResist": 25.0,
+    "SizeIncrease": 0.075
+  },
+  "iron-plate+vital-sash": {
+    "Armor": 20.0,
+    "BonusPercentHP": 0.08,
+    "BurnDuration": 10.0,
+    "BurnPercent": 1.0,
+    "GrievousWoundsPercent": 33.0,
+    "Health": 150.0,
+    "HexRange": 2.0,
+    "ICD": 2.0,
+    "MonsterCap": 100.0
+  },
+  "iron-plate+lucky-grips": {
+    "Armor": 20.0,
+    "BaseDurability": 0.05,
+    "CritChance": 20.0,
+    "EmpoweredDurability": 0.15,
+    "Health": 250.0,
+    "ThresholdForEmpower": 0.5
+  },
+  "veil-cloth+veil-cloth": {
+    "HealthRegenInterval": 2.0,
+    "ICD": 0.5,
+    "MagicResist": 60.0,
+    "PercentHealthDamage": 2.5,
+    "PercentMaxHP": 0.06
+  },
+  "veil-cloth+vital-sash": {
+    "ARReductionAmount": 30.0,
+    "BonusResistDuration": 15.0,
+    "BonusResists": 15.0,
+    "Health": 250.0,
+    "HexRange": 2.0,
+    "MagicResist": 20.0
+  },
+  "veil-cloth+lucky-grips": {
+    "AS": 15.0,
+    "CritChance": 20.0,
+    "MagicResist": 20.0,
+    "ProcAttackSpeed": 0.03,
+    "SpellShieldDuration": 18.0
+  },
+  "vital-sash+vital-sash": {
+    "BonusPercentHP": 0.18,
+    "Health": 500.0
+  },
+  "vital-sash+lucky-grips": {
+    "AS": 10.0,
+    "BuffDamageAmp": 0.05,
+    "CritChance": 20.0,
+    "Duration": 5.0,
+    "Health": 150.0,
+    "MaxStacks": 4.0
+  },
+  "lucky-grips+lucky-grips": {
+    "CritChance": 20.0,
+    "Health": 150.0
+  }
+});
+  if(typeof module!=="undefined"&&module.exports) module.exports=values;
+  else root.ABItemValues=values;
+})(typeof globalThis!=="undefined"?globalThis:this);
+
+/* coLILseum item economy. The eight component pairings follow the current
+ * TFT recipe grid; names and presentation belong to this game's cast.
+ * Randomness is seeded by the authoritative match, never by a browser.
+ */
+(function (root, factory) {
+  'use strict';
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory(require('./item-values.cjs'));
+  else root.ABItems = factory(root.ABItemValues);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (VALUES) {
+  'use strict';
+  // Pinned TFT Set 17's 64 fieldable 1–5-cost heroes average 839.84375 HP
+  // and 67.126984 mana. This game's 50 one-star heroes average 162.6656 HP
+  // and use a three-point cast budget. Preserve each flat item's share of a
+  // typical hero rather than importing raw TFT units into this combat scale.
+  const HEALTH_SCALE = 162.6656 / 839.84375;
+  const MANA_SCALE = 3 / 67.12698412698413;
+  const COMPONENTS = Object.freeze([
+    { id: 'forgeblade', name: 'Forgeblade', glyph: '⚔', stat: 'attack', amount: .10, description: 'Increases normal attack damage.' },
+    { id: 'quickstring', name: 'Quickstring', glyph: '➶', stat: 'speed', amount: .10, description: 'Increases attack and movement speed.' },
+    { id: 'spellglass', name: 'Spellglass', glyph: '✧', stat: 'abilityScore', amount: 10, description: 'Increases damaging, healing and shielding spell power.' },
+    { id: 'mana-vial', name: 'Mana Vial', glyph: '◈', stat: 'abilityRegen', amount: MANA_SCALE, description: 'Increases ability-point regeneration.' },
+    { id: 'iron-plate', name: 'Iron Plate', glyph: '⬡', stat: 'armor', amount: 20, description: 'Increases physical defense.' },
+    { id: 'veil-cloth', name: 'Veil Cloth', glyph: '◐', stat: 'magicResist', amount: 20, description: 'Increases magical defense.' },
+    { id: 'vital-sash', name: 'Vital Sash', glyph: '✚', stat: 'maxHp', amount: 150 * HEALTH_SCALE, description: 'Increases maximum health.' },
+    { id: 'lucky-grips', name: 'Lucky Grips', glyph: '✥', stat: 'critChance', amount: .20, description: 'Increases critical-hit chance.' }
+  ]);
+  // Upper triangle of the 8×8 recipe grid; order matches COMPONENTS.
+  const RECIPE_NAMES = Object.freeze([
+    ['Stillblade', 'Giantbreaker', 'Mender’s Fang', 'Soul Lance', 'Nightward', 'Blood Oath', 'Last Stand', 'True Edge'],
+    ['Tempo Loom', 'Rift Sight', 'Focus String', 'Titan Coil', 'Undertow', 'Surge Quiver', 'Piercing Whisper'],
+    ['Grand Sigil', 'Ascending Star', 'Crown Ward', 'Storm Prism', 'Blight Codex', 'Prism Glove'],
+    ['Deep Reserve', 'Oath Shield', 'Adaptive Mantle', 'Living Vessel', 'Fortune Hand'],
+    ['Thorn Bastion', 'Stone Mantle', 'Sun Mantle', 'Stonebound Heart'],
+    ['Wyrm Mantle', 'Dusk Veil', 'Mercury Step'],
+    ['Mountain Heart', 'Rally Grip'],
+    ['Trickster Mitts']
+  ]);
+  const RECIPE_EFFECTS = Object.freeze([
+    ['Increases attack and damage.', 'Deals extra damage to tanks.', 'Steals health and heals a wounded ally.', 'Basic attacks restore ability points.', 'At low health, briefly escapes targeting and heals.', 'Steals health and shields at low health.', 'Creates a shield at low health.', 'Raises critical-hit chance.'],
+    ['Attacks and abilities burn and wound enemies.', 'Gains stacking attack speed over time.', 'Damage shreds magic defense.', 'Builds attack and spell power by fighting.', 'Attacks build damage and speed.', 'Attacks restore ability points, especially on a critical hit.', 'Damage reduces enemy armor.'],
+    ['Raises spell power and damage.', 'Spell power grows during combat.', 'Starts shielded, then gains spell power.', 'Nearby enemies lose magic defense and take damage when casting.', 'Damage burns and wounds enemies.', 'Abilities can critically strike.'],
+    ['Raises attack, spell power and ability regeneration.', 'Starts with ability points and shields at low health.', 'Frontline gains defenses; backline gains damage.', 'Regenerates missing health over time.', 'Grants attack, spell power and health stealing.'],
+    ['Reduces basic attack damage and retaliates nearby.', 'Gains defenses for enemies targeting the holder.', 'Burns and wounds a nearby enemy repeatedly.', 'Reduces incoming damage, especially while healthy.'],
+    ['Restores health over time and resists magic.', 'Weakens armor of nearby enemies.', 'Starts protected from control and gains speed.'],
+    ['Greatly increases maximum health.', 'Critical strikes build damage.'],
+    ['Occupies all item slots and draws two completed items each combat.']
+  ]);
+  const RECIPES = Object.freeze(RECIPE_NAMES.flatMap((row, left) => row.map((name, offset) => {
+    const right = left + offset, a = COMPONENTS[left].id, b = COMPONENTS[right].id;
+    return Object.freeze({ id: a + '+' + b, name, description: RECIPE_EFFECTS[left][offset], components: [a, b], kind: 'completed' });
+  })));
+  const byId = Object.freeze(Object.fromEntries([...COMPONENTS, ...RECIPES].map(item => [item.id, item])));
+  const componentIds = Object.freeze(COMPONENTS.map(item => item.id));
+  const recipe = (a, b) => RECIPES.find(item => item.components.includes(a) && item.components.includes(b) &&
+    (a !== b || item.components[0] === item.components[1])) || null;
+  const isComponent = id => componentIds.includes(id);
+  const isItem = id => Boolean(byId[id]);
+  const item = id => byId[id] || null;
+  function statsFor(ids) {
+    const stats = { attackRatio: 0, speedRatio: 0, abilityPower: 0, manaRegen: 0,
+      armor: 0, magicResist: 0, health: 0, healthRatio: 0, critChance: 0, damageAmp: 0, range: 0 };
+    for (const id of ids || []) {
+      if (!isItem(id)) throw new Error('Unknown equipped item.');
+      const component = COMPONENTS.find(entry => entry.id === id);
+      if (component) {
+        if (component.stat === 'attack') stats.attackRatio += component.amount;
+        else if (component.stat === 'speed') stats.speedRatio += component.amount;
+        else if (component.stat === 'abilityScore') stats.abilityPower += component.amount;
+        else stats[component.stat === 'maxHp' ? 'health' : component.stat === 'abilityRegen' ? 'manaRegen' : component.stat] += component.amount;
+      } else {
+        const value = VALUES[id];
+        stats.attackRatio += value.AD || 0;
+        stats.attackRatio += (value.AD_NotStatBar || 0) + (value.ModifiedADAP || 0);
+        stats.speedRatio += (value.AS || 0) / 100;
+        stats.abilityPower += value.AP || 0;
+        stats.abilityPower += (value.AP_NotStatBar || 0) + (value.ModifiedADAP || 0) * 100;
+        stats.manaRegen += (value.ManaRegen || 0) * MANA_SCALE;
+        stats.armor += value.Armor || 0;
+        stats.magicResist += value.MagicResist || 0;
+        stats.health += (value.Health || 0) * HEALTH_SCALE;
+        stats.healthRatio += (value.BonusPercentHP || 0) + (value.PercentMaxHP || 0);
+        stats.critChance += (value.CritChance || 0) / 100;
+        stats.damageAmp += (value.BonusDamage || 0);
+        stats.range += value.HexRangeIncrease || 0;
+      }
+    }
+    return stats;
+  }
+  const itemShopRound = round => Number.isSafeInteger(round) && round > 0 && round % 5 === 0;
+  const itemChestRound = round => Number.isSafeInteger(round) && round > 0 && round % 10 === 0;
+  const dropChance = (outcome, previousStreak) => {
+    if (!Number.isSafeInteger(previousStreak) || previousStreak < 0) throw new Error('Use the prior consecutive result count.');
+    return outcome === 'win' ? Math.min(1, .25 + previousStreak * .01)
+      : outcome === 'loss' ? Math.min(1, .05 + previousStreak * .05) : 0;
+  };
+  function reward({ outcome, previousStreak, random }) {
+    if (typeof random !== 'function') throw new Error('An authoritative random stream is required.');
+    const chance = dropChance(outcome, previousStreak), roll = random();
+    if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('Random roll must be in [0, 1).');
+    return { chance, roll, itemId: roll < chance ? componentIds[Math.floor(random() * componentIds.length)] : null };
+  }
+  function shop({ random }) {
+    if (typeof random !== 'function') throw new Error('An authoritative random stream is required.');
+    const roll = random(), completed = roll < .05 ? RECIPES[Math.floor(random() * RECIPES.length)] : null;
+    return { componentIds: [...componentIds], completedId: completed?.id || null, completedRoll: roll };
+  }
+  return Object.freeze({ COMPONENTS, RECIPES, VALUES, HEALTH_SCALE, MANA_SCALE, componentIds, item, isItem, isComponent, recipe, statsFor,
+    itemShopRound, itemChestRound, dropChance, reward, shop, COMPONENT_PRICE: 5, COMPLETED_PRICE: 10 });
+});
+
+(function(root){const catalog={
   "factions": {
     "ember": {
       "lineage": "The Cookout",
@@ -2420,6 +2806,9 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
   if (!CATALOG) throw new Error('Hero identity catalog is required.');
   const TERRAIN = typeof module !== 'undefined' && module.exports ? require('./terrain.js') : root.ABTerrain;
   const ZONES = typeof module !== 'undefined' && module.exports ? require('./zones.js') : root.ABZones;
+  const ITEMS = typeof module !== 'undefined' && module.exports ? require('../game/core/items.cjs') : root.ABItems;
+  const hasItem = (unit, id) => unit.itemIds?.includes(id) || false;
+  const itemValue = (id, key) => ITEMS.VALUES[id]?.[key] || 0;
   const clearSight = (game, a, b) => !game.board.terrain || TERRAIN.clearSight(game.board, a, b);
 
   const DEFAULT_CONFIG = Object.freeze({
@@ -2739,7 +3128,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       if (occupied >= 0) {
         const replaced = game.field[occupied];
         game.bench[fromBench] = { id: replaced.id, heroId: replaced.heroId, level: replaced.level,
-          ...(replaced.lotIds ? { lotIds: [...replaced.lotIds] } : {}) };
+          ...(replaced.lotIds ? { lotIds: [...replaced.lotIds] } : {}),
+          ...(replaced.itemIds ? { itemIds: [...replaced.itemIds] } : {}) };
         game.field[occupied] = { ...unit, col, row };
       } else {
         game.bench.splice(fromBench, 1);
@@ -2756,7 +3146,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     if (game.bench.length >= game.token.config.benchCapacity) return fail('Bench is full.');
     const unit = game.field.splice(index, 1)[0];
     game.bench.push({ id: unit.id, heroId: unit.heroId, level: unit.level,
-      ...(unit.lotIds ? { lotIds: [...unit.lotIds] } : {}) });
+      ...(unit.lotIds ? { lotIds: [...unit.lotIds] } : {}),
+      ...(unit.itemIds ? { itemIds: [...unit.itemIds] } : {}) });
     return { ok: true };
   }
 
@@ -2785,11 +3176,18 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     game.bench = game.bench.filter(unit => !ids.has(unit.id));
     const unit = { id: 'merge-' + (++game.mergeSerial), heroId, level: level + 1 };
     if (consumed.some(copy => copy.lotIds)) unit.lotIds = consumed.flatMap(copy => copy.lotIds || []);
+    const carriedItems = consumed.flatMap(copy => copy.itemIds || []);
+    const mitts = 'lucky-grips+lucky-grips';
+    const equippedItems = carriedItems.includes(mitts) ? [mitts] : carriedItems.slice(0, 3);
+    if (equippedItems.length) unit.itemIds = equippedItems;
     if (field.length) {
       Object.assign(unit, { col: field[0].col, row: field[0].row });
       game.field.push(unit);
     } else game.bench.push(unit);
-    return { ok: true, unit };
+    const overflowItemIds = carriedItems.includes(mitts)
+      ? carriedItems.filter((id, index) => id !== mitts || index !== carriedItems.indexOf(mitts))
+      : carriedItems.slice(3);
+    return { ok: true, unit, ...(overflowItemIds.length ? { overflowItemIds } : {}) };
   }
 
   function synergies(units) {
@@ -2817,7 +3215,7 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const hp = hero.stats.hp * scale * (['verdant', 'gargoyle'].includes(hero.faction) ? 1 + faction * 0.18 : 1) * (1 + power('sentinel') * 0.18);
     const astralPower = hero.faction === 'astral' ? 1 + faction * 0.25 : 1;
     const speed = hero.stats.speed * (1 + (hero.faction === 'hollow' ? faction * 0.08 : 0));
-    return {
+    const result = {
       cost: hero.cost, maxHp: hp, hp,
       attack: hero.stats.attack * scale * (['ember', 'dune'].includes(hero.faction) ? 1 + faction * 0.12 : 1) * (1 + (power('duelist') + power('ranger')) * 0.12),
       speed, abilityScore: hero.stats.abilityScore * scale,
@@ -2851,6 +3249,31 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       openingShield: hero.faction === 'gargoyle' && faction ? hp * 0.18 : 0,
       factionPower: faction, factionComplete, classPower: role, classPowers
     };
+    if (unit.itemIds?.length) {
+      const itemStats = ITEMS.statsFor(unit.itemIds);
+      result.maxHp = result.hp = (result.maxHp + itemStats.health) * (1 + itemStats.healthRatio);
+      result.attack *= 1 + itemStats.attackRatio;
+      result.speed *= 1 + itemStats.speedRatio;
+      result.attackInterval = 1 / result.speed;
+      result.abilityRegen += itemStats.manaRegen;
+      result.armor += itemStats.armor;
+      result.magicResist = result.armor - itemStats.armor + itemStats.magicResist;
+      result.range += itemStats.range;
+      result.critChance = itemStats.critChance;
+      result.damageAmp = itemStats.damageAmp;
+      for (const key of ['spellPower', 'healingPower', 'shieldPower', 'buffPower', 'debuffPower'])
+        result[key] *= 1 + itemStats.abilityPower / 100;
+      if (hasItem(unit, 'mana-vial+veil-cloth')) {
+        if (CLASSES.find(entry => entry.id === hero.primaryClass)?.primaryArchetype === 'tank') {
+          result.armor += itemValue('mana-vial+veil-cloth', 'FrontlineResists');
+          result.magicResist += itemValue('mana-vial+veil-cloth', 'FrontlineResists');
+        } else {
+          result.attack *= 1 + itemValue('mana-vial+veil-cloth', 'BacklineADAP') / 100;
+          for (const key of ['spellPower', 'healingPower', 'shieldPower']) result[key] *= 1 + itemValue('mana-vial+veil-cloth', 'BacklineADAP') / 100;
+        }
+      }
+    }
+    return result;
   }
 
   // Stats with beneficial direction ↑. Resource thresholds, stars, cost, trait
@@ -2868,7 +3291,13 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const alliedTraits = synergies(game.field), enemyTraits = synergies(game.opponents);
     const prepare = (unit, side, traits) => {
       const hero = heroById(unit.heroId);
-      return aliasAbilityPoints({
+      if (hasItem(unit, 'lucky-grips+lucky-grips')) {
+        const random = makeRandom((game.token.battleSeed || 'items') + ':trickster:' + unit.id);
+        const pool = ITEMS.RECIPES.filter(entry => entry.id !== 'lucky-grips+lucky-grips');
+        unit = { ...unit, itemIds: [unit.itemIds.find(id => id === 'lucky-grips+lucky-grips'),
+          pool[Math.floor(random() * pool.length)].id, pool[Math.floor(random() * pool.length)].id] };
+      }
+      const ready = aliasAbilityPoints({
         ...clone(unit), ...deriveStats(unit, traits), side, alive: true,
         radius: bodyProfile(unit).radius, bodyScale: bodyProfile(unit).scale,
         mana: 0, maxMana: hero.ability.manaCost ?? 3, cooldown: 0, attacks: 0, statuses: [], targetId: null, openingEffects: [],
@@ -2878,6 +3307,17 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
         mimickedUnitId: null, mimickedHeroId: null,
         originCol: unit.col, originRow: unit.row, lastAction: null, lastMove: null, navigationTurn: null
       });
+      if (game.itemRulesVersion === 1) ready.critChance = .25 + (ready.critChance || 0);
+      if (unit.itemIds?.length) {
+        ready.itemRuntime = { elapsed: 0, triggered: [], attackStacks: 0, titanStacks: 0, critStacks: 0 };
+        if (hasItem(ready, 'mana-vial+iron-plate')) ready.mana += Math.min(ready.maxMana, itemValue('mana-vial+iron-plate', 'CombatStartMana') * ITEMS.MANA_SCALE);
+        if (hasItem(ready, 'spellglass+iron-plate')) ready.shield += ready.maxHp * itemValue('spellglass+iron-plate', 'ShieldSize') / 100;
+        if (hasItem(ready, 'forgeblade+veil-cloth')) ready.lifesteal += itemValue('forgeblade+veil-cloth', 'StatOmnivamp');
+        if (hasItem(ready, 'mana-vial+lucky-grips')) ready.lifesteal += itemValue('mana-vial+lucky-grips', 'StatOmnivamp_NotStatBar');
+        if (hasItem(ready, 'veil-cloth+lucky-grips')) ready.itemRuntime.ccImmuneUntil = itemValue('veil-cloth+lucky-grips', 'SpellShieldDuration');
+        if (hasItem(ready, 'mana-vial+lucky-grips')) ready.itemRuntime.handOfJustice = true;
+      }
+      return ready;
     };
     const units = [...game.field.map(unit => prepare(unit, 'player', alliedTraits)), ...game.opponents.map(unit => prepare(unit, 'enemy', enemyTraits))];
     // Native opening effects resolve before mimicry, exactly once. A Mime
@@ -2916,20 +3356,23 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const enabled = config.roundNumber >= 5;
     const expiresAtSeconds = enabled ? config.roundNumber * 15 : null;
     if (enabled && !Number.isSafeInteger(expiresAtSeconds)) throw new Error('Treasure duration exceeds exact numeric representation.');
-    if (config.chests.length !== (enabled ? 2 : 0)) throw new Error('Place one chest per player from round five; earlier rounds have none.');
+    const itemRound = config.itemRulesVersion === 1 && config.roundNumber % 10 === 0;
+    if (config.chests.length !== (enabled ? itemRound ? 4 : 2 : 0)) throw new Error('Place one gold chest per player and a second item chest every ten rounds.');
     const ids = new Set([...game.field, ...game.opponents, ...game.bench].map(unit => unit.id)), sides = new Set();
     const objectives = config.chests.map(chest => {
       if (!chest || typeof chest.id !== 'string' || !chest.id.trim() || ids.has(chest.id)) throw new Error('Chest IDs must be distinct from every unit and chest.');
-      if (!['player', 'enemy'].includes(chest.side) || sides.has(chest.side)) throw new Error('Each side must own exactly one chest.');
+      const kind = chest.kind === 'item' ? 'item' : 'gold', key = kind + ':' + chest.side;
+      if (!['player', 'enemy'].includes(chest.side) || sides.has(key) || kind === 'item' && !itemRound) throw new Error('Each side must own one chest of each enabled kind.');
       const firstRow = chest.side === 'player' ? game.board.playerStartRow : 0;
       const endRow = chest.side === 'player' ? game.board.rows : game.board.halfRows;
       if (!Number.isInteger(chest.col) || chest.col < 0 || chest.col >= game.board.columns || !Number.isInteger(chest.row) || chest.row < firstRow || chest.row >= endRow) throw new Error('Place each chest in its owner’s deployment territory.');
+      if (kind === 'item' && (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1)) throw new Error('Item chests belong in the two back rows.');
       if (!Number.isFinite(chest.maxHp) || chest.maxHp <= 0) throw new Error('Chest maximum HP must be supplied explicitly and be positive.');
       const armor = chest.armor === undefined ? 0 : chest.armor;
       if (!Number.isFinite(armor) || armor < 0) throw new Error('Chest armor must be nonnegative; omit it for no armor.');
-      ids.add(chest.id); sides.add(chest.side);
+      ids.add(chest.id); sides.add(key);
       // Ground objectives do not consume a hero slot or invent a collision body.
-      return { id: chest.id, kind: 'treasure', side: chest.side, col: chest.col, row: chest.row,
+      return { id: chest.id, kind: 'treasure', ...(config.itemRulesVersion === 1 ? { rewardKind: kind } : {}), side: chest.side, col: chest.col, row: chest.row,
         maxHp: chest.maxHp, hp: chest.maxHp, armor, shield: 0, effectiveAttack: 0,
         statuses: [], status: 'active', defeatedAtSeconds: null, captorSide: null };
     });
@@ -3117,9 +3560,11 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const strength = type => Math.max(0, ...unit.statuses.filter(status => status.type === type).map(status => status.magnitude));
     const previous = unit.effectiveAttackInterval;
     unit.effectiveAttack = unit.attack * (1 + strength('empower')) / (1 + strength('weakness'));
+    if (unit.itemRuntime) unit.effectiveAttack *= 1 + (unit.itemRuntime.attackRatio || 0);
     if (unit.zoneModifiers) unit.effectiveAttack *= 1 + unit.zoneModifiers.damage;
     unit.attackInterval = unit.speed > 0 ? 1 / unit.speed : Infinity;
     unit.effectiveSpeed = unit.speed * (1 + strength('haste')) / (1 + strength('slow'));
+    if (unit.itemRuntime) unit.effectiveSpeed *= 1 + (unit.itemRuntime.speedRatio || 0);
     if (unit.zoneModifiers) unit.effectiveSpeed *= 1 + unit.zoneModifiers.speed;
     unit.effectiveAttackInterval = unit.effectiveSpeed > 0 ? 1 / unit.effectiveSpeed : Infinity;
     if (previous && Number.isFinite(previous) && Number.isFinite(unit.cooldown) && unit.cooldown > 0) unit.cooldown *= unit.effectiveAttackInterval / previous;
@@ -3199,17 +3644,20 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     const objectives = (battle.objectives || []).filter(chest => chest.status === 'active');
     const hits = [], heals = [], shields = [], effects = [], manaGifts = [];
     function grantAbilityPoints(victim, amount, source, actor = victim, details = {}) {
+      if (hasItem(victim, 'mana-vial+veil-cloth')) amount *= 1 + itemValue('mana-vial+veil-cloth', 'ManaPercIncrease');
       const restored = Math.max(0, Math.min(amount, victim.maxMana - victim.mana));
       victim.mana += restored;
       if (restored > 0) emit({ type: 'mana', unitId: actor.id, targetId: victim.id, amount: restored, source, trigger: source, ...details });
     }
     function applyEffect({ actor, victim, status }) {
+      if (victim.itemRuntime?.ccImmuneUntil > battle.elapsed && ['slow', 'taunt'].includes(status.type)) return;
       victim.statuses = victim.statuses.filter(previous => previous.type !== status.type || previous.sourceId !== status.sourceId || (previous.channel || 'signature') !== (status.channel || 'signature'));
       victim.statuses.push(status); refreshEffectiveStats(victim);
       const type = status.type === 'taunt' ? 'taunt' : ['haste', 'empower'].includes(status.type) ? 'buff' : 'status';
       emit({ type, unitId: actor.id, targetId: victim.id, status: status.type, expiresAt: status.expiresAt, magnitude: status.magnitude, ...(status.factionId ? { factionId: status.factionId } : {}) });
     }
     function restore({ actor, victim, amount, factionId }) {
+      if (victim.statuses.some(status => status.type === 'wound')) amount *= 1 - Math.max(...victim.statuses.filter(status => status.type === 'wound').map(status => status.magnitude));
       const actual = Math.min(amount, victim.maxHp - victim.hp);
       victim.hp += actual;
       emit({ type: 'heal', unitId: actor.id, targetId: victim.id, amount: actual, rawAmount: amount, overheal: amount - actual, ...(factionId ? { factionId } : {}) });
@@ -3223,7 +3671,8 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       unit.statuses = unit.statuses.filter(status => {
         if (status.type === 'burn' && status.nextTick <= battle.elapsed + 1e-9 && status.nextTick <= status.expiresAt + 1e-9) {
           const source = battle.units.find(item => item.id === status.sourceId);
-          hits.push({ actor: source, victim: unit, amount: status.damage, ability: true, dot: true, factionId: status.factionId });
+          hits.push({ actor: source, victim: unit, amount: status.damage, ability: true, dot: true,
+            ...(status.channel === 'item' ? { trueDamage: true } : {}), factionId: status.factionId });
           status.nextTick += status.tickInterval;
         }
         const sourceDied = status.type === 'taunt' && !battle.units.some(item => item.id === status.sourceId && item.alive);
@@ -3241,13 +3690,38 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       }
     }
     const alive = battle.units.filter(unit => unit.alive);
+    for (const unit of alive.filter(unit => unit.itemRuntime)) {
+      const runtime = unit.itemRuntime, whole = Math.floor(battle.elapsed + GEOMETRY_EPSILON), previous = Math.floor(runtime.elapsed + GEOMETRY_EPSILON);
+      if (whole > previous) for (let second = previous + 1; second <= whole; second++) {
+        if (hasItem(unit, 'quickstring+spellglass')) runtime.speedRatio = (runtime.speedRatio || 0) + itemValue('quickstring+spellglass', 'AttackSpeedPerStack') / 100;
+        if (hasItem(unit, 'veil-cloth+lucky-grips')) runtime.speedRatio = (runtime.speedRatio || 0) + itemValue('veil-cloth+lucky-grips', 'ProcAttackSpeed');
+        if (hasItem(unit, 'spellglass+mana-vial') && second % itemValue('spellglass+mana-vial', 'IntervalSeconds') === 0)
+          runtime.abilityPowerRatio = (runtime.abilityPowerRatio || 0) + itemValue('spellglass+mana-vial', 'APPerInterval') / 100;
+        if (hasItem(unit, 'mana-vial+vital-sash')) {
+          const amount = Math.min(unit.maxHp - unit.hp, (unit.maxHp - unit.hp) * itemValue('mana-vial+vital-sash', 'MissingHealthHeal'));
+          if (amount > 0) restore({ actor: unit, victim: unit, amount });
+        }
+        if (hasItem(unit, 'veil-cloth+veil-cloth') && second % itemValue('veil-cloth+veil-cloth', 'HealthRegenInterval') === 0) {
+          const amount = Math.min(unit.maxHp - unit.hp, unit.maxHp * itemValue('veil-cloth+veil-cloth', 'PercentHealthDamage') / 100);
+          if (amount > 0) restore({ actor: unit, victim: unit, amount });
+        }
+      }
+      runtime.elapsed = battle.elapsed;
+      if (hasItem(unit, 'spellglass+iron-plate') && !runtime.triggered.includes('spellglass+iron-plate') &&
+        battle.elapsed >= itemValue('spellglass+iron-plate', 'ShieldDuration')) {
+        runtime.triggered.push('spellglass+iron-plate');
+        unit.shield = Math.max(0, unit.shield - unit.maxHp * itemValue('spellglass+iron-plate', 'ShieldSize') / 100);
+        runtime.abilityPowerRatio = (runtime.abilityPowerRatio || 0) + itemValue('spellglass+iron-plate', 'ShieldBonusAP') / 100;
+      }
+      refreshEffectiveStats(unit);
+    }
     const damageable = [...alive, ...objectives];
     // Choose targets and movement from one common snapshot. Movement is a
     // continuous process, independent of attack recovery. Once every body has
     // moved, both armies evaluate range from the same resulting positions.
     const actors = [...alive].sort(byId);
     const chooseEnemies = actor => {
-      let enemies = damageable.filter(unit => unit.side !== actor.side).sort((a, b) => distance(actor, a) - distance(actor, b) || byId(a, b));
+      let enemies = damageable.filter(unit => unit.side !== actor.side && !(unit.itemRuntime?.untargetableUntil > battle.elapsed)).sort((a, b) => distance(actor, a) - distance(actor, b) || byId(a, b));
       const taunt = actor.statuses.filter(status => status.type === 'taunt').sort((a, b) => b.appliedAt - a.appliedAt || (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0))[0];
       if (taunt) enemies = enemies.filter(enemy => enemy.id === taunt.sourceId);
       return enemies;
@@ -3266,6 +3740,29 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
       actor.lastMove = { at: battle.elapsed, from, duration };
       actor.lastAction = { type: 'move', at: battle.elapsed, from, duration };
       emit({ type: 'move', unitId: actor.id, from, col: actor.col, row: actor.row });
+    }
+    if (Math.floor(battle.elapsed + GEOMETRY_EPSILON) > Math.floor(battle.elapsed - dt + GEOMETRY_EPSILON)) {
+      for (const holder of alive.filter(unit => unit.itemRuntime)) {
+        const nearby = alive.filter(unit => unit.side !== holder.side && distance(unit, holder) <= 2 + GEOMETRY_EPSILON);
+        if (hasItem(holder, 'spellglass+veil-cloth')) for (const enemy of nearby)
+          applyEffect({ actor: holder, victim: enemy, status: { type: 'shred', sourceId: holder.id,
+            appliedAt: battle.elapsed, expiresAt: battle.elapsed + 1, magnitude: itemValue('spellglass+veil-cloth', 'MRShred') / 100, channel: 'item-aura' } });
+        if (hasItem(holder, 'veil-cloth+vital-sash')) for (const enemy of nearby)
+          applyEffect({ actor: holder, victim: enemy, status: { type: 'sunder', sourceId: holder.id,
+            appliedAt: battle.elapsed, expiresAt: battle.elapsed + 1, magnitude: itemValue('veil-cloth+vital-sash', 'ARReductionAmount') / 100, channel: 'item-aura' } });
+        if (hasItem(holder, 'iron-plate+vital-sash') && Math.floor(battle.elapsed) % itemValue('iron-plate+vital-sash', 'ICD') === 0) {
+          const enemy = nearby.sort((a, b) => distance(holder, a) - distance(holder, b) || byId(a, b))[0];
+          if (enemy) {
+            const value = ITEMS.VALUES['iron-plate+vital-sash'];
+            applyEffect({ actor: holder, victim: enemy, status: { type: 'burn', sourceId: holder.id,
+              appliedAt: battle.elapsed, expiresAt: battle.elapsed + value.BurnDuration,
+              damage: enemy.maxHp * value.BurnPercent / 100, tickInterval: 1, nextTick: battle.elapsed + 1, channel: 'item' } });
+            applyEffect({ actor: holder, victim: enemy, status: { type: 'wound', sourceId: holder.id,
+              appliedAt: battle.elapsed, expiresAt: battle.elapsed + value.BurnDuration,
+              magnitude: value.GrievousWoundsPercent / 100, channel: 'item' } });
+          }
+        }
+      }
     }
     if (battle.zoneDefense) {
       refreshZoneBenefits(game, dt, true);
@@ -3316,6 +3813,23 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
         actor.cooldown = actor.effectiveAttackInterval;
         actor.lastAction = { type: 'attack', at: battle.elapsed, targetId: basicTarget.id };
         emit({ type: 'attack', unitId: actor.id, targetId: basicTarget.id, attackStyle: actor.normalAttack });
+        if (hasItem(actor, 'forgeblade+mana-vial')) grantAbilityPoints(actor, itemValue('forgeblade+mana-vial', 'FlatManaRestore') * ITEMS.MANA_SCALE, 'item-attack');
+        if (hasItem(actor, 'quickstring+vital-sash')) grantAbilityPoints(actor, itemValue('quickstring+vital-sash', 'BaseManaOnHit') * ITEMS.MANA_SCALE, 'item-attack');
+        if (hasItem(actor, 'quickstring+veil-cloth')) {
+          const cap = itemValue('quickstring+veil-cloth', 'MaxStacks');
+          actor.itemRuntime.attackStacks = Math.min(cap, actor.itemRuntime.attackStacks + 1);
+          actor.itemRuntime.attackRatio = actor.itemRuntime.attackStacks * itemValue('quickstring+veil-cloth', 'ADOnAttack');
+          if (actor.itemRuntime.attackStacks === cap) actor.itemRuntime.speedRatio = itemValue('quickstring+veil-cloth', 'ASCapstone');
+          refreshEffectiveStats(actor);
+        }
+        if (hasItem(actor, 'quickstring+iron-plate')) {
+          const cap = itemValue('quickstring+iron-plate', 'StackCap');
+          actor.itemRuntime.titanStacks = Math.min(cap, actor.itemRuntime.titanStacks + 1);
+          actor.itemRuntime.attackRatio = actor.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingAD');
+          actor.itemRuntime.abilityPowerRatio = actor.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingSP') / 100;
+          if (actor.itemRuntime.titanStacks === cap) actor.itemRuntime.damageAmp = itemValue('quickstring+iron-plate', 'StackedAmp');
+          refreshEffectiveStats(actor);
+        }
         hits.push({ actor, victim: basicTarget, amount: actor.effectiveAttack + actor.attacks, ability: false, basic: true, pressure: actor.attacks });
         if (actor.shatterDamage && basicTarget.statuses.some(status => status.type === 'slow')) hits.push({ actor, victim: basicTarget, amount: actor.shatterDamage, ability: false, factionId: 'rime', shatter: true });
         if (actor.chillStrength) effect(basicTarget, 'slow', actor.chillStrength, EFFECT_DURATION, { channel: 'faction', factionId: 'rime' });
@@ -3327,11 +3841,18 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
         const castTarget = target || resolvedActions.find(useful).victims[0];
         actor.lastAction = { type: 'ability', at: battle.elapsed, targetId: castTarget.id };
         emit({ type: 'ability', unitId: actor.id, name: actor.abilityName, abilityId: actor.abilityId, targetId: castTarget.id });
+        for (const holder of alive.filter(unit => unit.side !== actor.side && hasItem(unit, 'spellglass+veil-cloth') && distance(unit, actor) <= itemValue('spellglass+veil-cloth', 'HexRange'))) {
+          hits.push({ actor: holder, victim: actor, amount: actor.maxMana / ITEMS.MANA_SCALE * ITEMS.HEALTH_SCALE *
+            itemValue('spellglass+veil-cloth', 'ManaRatio') / 100, ability: true, itemId: 'spellglass+veil-cloth' });
+        }
+        const itemAbilityMultiplier = 1 + (actor.itemRuntime?.abilityPowerRatio || 0) +
+          (actor.itemRuntime?.handOfJustice && actor.hp / actor.maxHp > itemValue('mana-vial+lucky-grips', 'HealthThreshold')
+            ? itemValue('mana-vial+lucky-grips', 'AP_NotStatBar') / 100 : 0);
         for (const { action, victims } of resolvedActions) {
           for (const victim of victims) for (let repeat = 0; repeat < (action.repeat ?? 1); repeat++) {
-            if (action.type === 'hit') hits.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.spellPower + actor.fireDamage, ability: true });
-            else if (action.type === 'heal') heals.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.healingPower });
-            else if (action.type === 'shield') shields.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.shieldPower });
+            if (action.type === 'hit') hits.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.spellPower * itemAbilityMultiplier + actor.fireDamage, ability: true });
+            else if (action.type === 'heal') heals.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.healingPower * itemAbilityMultiplier });
+            else if (action.type === 'shield') shields.push({ actor, victim, amount: actor.abilityScore * action.factor * actor.shieldPower * itemAbilityMultiplier });
             else if (action.type === 'status') {
               const potency = ['haste', 'empower'].includes(action.status) ? actor.buffPower : actor.debuffPower;
               effect(victim, action.status, action.magnitude * potency, action.duration ?? EFFECT_DURATION);
@@ -3376,17 +3897,80 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
     let pendingHits = hits;
     while (pendingHits.length) {
       const resolved = pendingHits.map(packet => {
-        const amount = packet.amount * (packet.ability && packet.actor.zoneModifiers ? 1 + packet.actor.zoneModifiers.damage : 1);
-        return { ...packet, amount, postArmor: amount * 100 / (100 + packet.victim.armor / (1 + packet.actor.armorPierce)) };
+        const { actor, victim } = packet;
+        if ((packet.basic || packet.ability) && victim.statuses) {
+          if (hasItem(actor, 'quickstring+lucky-grips')) applyEffect({ actor, victim, status: {
+            type: 'sunder', sourceId: actor.id, appliedAt: battle.elapsed,
+            expiresAt: battle.elapsed + itemValue('quickstring+lucky-grips', 'ArmorBreakDuration'),
+            magnitude: itemValue('quickstring+lucky-grips', 'ArmorReductionPercent') / 100, channel: 'item' } });
+          if (hasItem(actor, 'quickstring+mana-vial')) applyEffect({ actor, victim, status: {
+            type: 'shred', sourceId: actor.id, appliedAt: battle.elapsed,
+            expiresAt: battle.elapsed + itemValue('quickstring+mana-vial', 'MRShredDuration'),
+            magnitude: itemValue('quickstring+mana-vial', 'MRShred') / 100, channel: 'item' } });
+        }
+        let amount = packet.amount * (packet.ability && actor.zoneModifiers ? 1 + actor.zoneModifiers.damage : 1);
+        if (actor.itemRuntime) {
+          amount *= 1 + (actor.damageAmp || 0) + (actor.itemRuntime.damageAmp || 0);
+          if (hasItem(actor, 'forgeblade+quickstring') && victim.heroId && CLASSES.find(entry => entry.id === heroById(victim.heroId)?.primaryClass)?.primaryArchetype === 'tank')
+            amount *= 1 + itemValue('forgeblade+quickstring', 'DamageAmp');
+          if (packet.basic && actor.itemRuntime.handOfJustice && actor.hp / actor.maxHp > itemValue('mana-vial+lucky-grips', 'HealthThreshold'))
+            amount *= 1 + itemValue('mana-vial+lucky-grips', 'AD_NotStatBar');
+        }
+        const canCrit = packet.basic || packet.ability && hasItem(actor, 'spellglass+lucky-grips');
+        if (canCrit && actor.critChance > 0) {
+            const roll = makeRandom((game.token.battleSeed || 'items') + ':critical:' + battle.tick + ':' + actor.id + ':' + victim.id + ':' + (packet.pressure || 0))();
+            if (roll < Math.min(1, actor.critChance)) {
+              amount *= 1.4;
+              packet.critical = true;
+              if (actor.itemRuntime && hasItem(actor, 'vital-sash+lucky-grips')) actor.itemRuntime.damageAmp = Math.min(
+                itemValue('vital-sash+lucky-grips', 'MaxStacks') * itemValue('vital-sash+lucky-grips', 'BuffDamageAmp'),
+                (actor.itemRuntime.damageAmp || 0) + itemValue('vital-sash+lucky-grips', 'BuffDamageAmp'));
+              if (packet.basic && hasItem(actor, 'quickstring+vital-sash')) grantAbilityPoints(actor,
+                (itemValue('quickstring+vital-sash', 'ManaOnCrit') - itemValue('quickstring+vital-sash', 'BaseManaOnHit')) * ITEMS.MANA_SCALE, 'item-critical');
+            }
+        }
+        let armor = packet.ability && victim.magicResist !== undefined ? victim.magicResist : victim.armor;
+        if (hasItem(victim, 'iron-plate+veil-cloth')) armor +=
+          alive.filter(enemy => enemy.side !== victim.side && enemy.targetId === victim.id).length *
+          itemValue('iron-plate+veil-cloth', packet.ability ? 'MRPerEnemy' : 'ArmorPerEnemy');
+        if (hasItem(victim, 'veil-cloth+vital-sash') && battle.elapsed <= itemValue('veil-cloth+vital-sash', 'BonusResistDuration'))
+          armor += itemValue('veil-cloth+vital-sash', 'BonusResists');
+        const reduction = Math.max(0, ...victim.statuses.filter(status => status.type === (packet.ability ? 'shred' : 'sunder')).map(status => status.magnitude));
+        const resists = armor * (1 - reduction);
+        const durability = packet.basic && hasItem(victim, 'iron-plate+iron-plate') ? itemValue('iron-plate+iron-plate', 'AutoDamageReduction') : 0;
+        const steadfast = hasItem(victim, 'iron-plate+lucky-grips') ? victim.hp / victim.maxHp > itemValue('iron-plate+lucky-grips', 'ThresholdForEmpower')
+          ? itemValue('iron-plate+lucky-grips', 'EmpoweredDurability') : itemValue('iron-plate+lucky-grips', 'BaseDurability') : 0;
+        amount *= 1 - durability;
+        amount *= 1 - steadfast;
+        return { ...packet, amount, postArmor: packet.trueDamage ? amount : amount * 100 / (100 + resists / (1 + actor.armorPierce)) };
       });
       const totals = new Map();
       for (const packet of resolved) totals.set(packet.victim.id, (totals.get(packet.victim.id) || 0) + packet.postArmor);
       const pools = new Map();
       for (const victim of damageable) if (totals.has(victim.id)) {
         const total = totals.get(victim.id), absorbed = Math.min(victim.shield, total);
-        pools.set(victim.id, { total, absorbed, healthDamage: Math.min(Math.max(0, victim.hp), total - absorbed) });
-        victim.shield -= absorbed;
-        victim.hp -= total - absorbed;
+        if (victim.itemRuntime && victim.hp - (total - absorbed) <= victim.maxHp * .6) {
+          const trigger = (id, threshold, shieldRatio) => {
+            if (!hasItem(victim, id) || victim.itemRuntime.triggered.includes(id) || victim.hp - (total - absorbed) > victim.maxHp * threshold) return;
+            victim.itemRuntime.triggered.push(id);
+            const amount = victim.maxHp * shieldRatio;victim.shield += amount;
+            emit({ type: 'item-shield', unitId: victim.id, itemId: id, amount });
+          };
+          trigger('forgeblade+vital-sash', itemValue('forgeblade+vital-sash', 'HealthThreshold') / 100, itemValue('forgeblade+vital-sash', 'PercentHealthShield'));
+          trigger('forgeblade+veil-cloth', itemValue('forgeblade+veil-cloth', 'HealthThreshold') / 100, itemValue('forgeblade+veil-cloth', 'ShieldHealthPercent') / 100);
+          trigger('mana-vial+iron-plate', itemValue('mana-vial+iron-plate', 'HealthThreshold') / 100, itemValue('mana-vial+iron-plate', 'ShieldHealthPercent') / 100);
+          if (hasItem(victim, 'forgeblade+iron-plate') && !victim.itemRuntime.triggered.includes('forgeblade+iron-plate') && victim.hp - (total - absorbed) <= victim.maxHp * itemValue('forgeblade+iron-plate', 'HealthThreshold') / 100) {
+            victim.itemRuntime.triggered.push('forgeblade+iron-plate');
+            victim.itemRuntime.untargetableUntil = battle.elapsed + itemValue('forgeblade+iron-plate', 'StealthDuration');
+            victim.statuses = victim.statuses.filter(status => !['slow', 'weakness', 'burn', 'wound', 'sunder', 'shred', 'taunt'].includes(status.type));
+            const healed = (victim.maxHp - victim.hp) * itemValue('forgeblade+iron-plate', 'MissingHealthRestore');
+            victim.hp += healed; emit({ type: 'item-heal', unitId: victim.id, itemId: 'forgeblade+iron-plate', amount: healed });
+          }
+        }
+        const effectiveAbsorbed = Math.min(victim.shield, total);
+        pools.set(victim.id, { total, absorbed: effectiveAbsorbed, healthDamage: Math.min(Math.max(0, victim.hp), total - effectiveAbsorbed) });
+        victim.shield -= effectiveAbsorbed;
+        victim.hp -= total - effectiveAbsorbed;
       }
       pendingHits = [];
       for (const packet of resolved) {
@@ -3397,7 +3981,39 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
         // Lingering damage may outlive its source. Reflect only into this tick's
         // living snapshot; a source taking lethal damage this tick still qualifies.
         if (absorbed > 0 && victim.reflectionRatio && !reflected && alive.includes(actor)) pendingHits.push({ actor: victim, victim: actor, amount: absorbed * victim.reflectionRatio, reflected: true, factionId: 'iron' });
-        drained.set(actor.id, (drained.get(actor.id) || 0) + healthDamage * actor.lifesteal);
+        const justiceLifesteal = actor.itemRuntime?.handOfJustice && actor.hp / actor.maxHp <= itemValue('mana-vial+lucky-grips', 'HealthThreshold')
+          ? itemValue('mana-vial+lucky-grips', 'StatOmnivamp_NotStatBar') : 0;
+        drained.set(actor.id, (drained.get(actor.id) || 0) + healthDamage * (actor.lifesteal + justiceLifesteal));
+        if (healthDamage > 0 && hasItem(actor, 'forgeblade+spellglass')) {
+          const teammate = alive.filter(unit => unit.side === actor.side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || byId(a, b))[0];
+          if (teammate) restore({ actor, victim: teammate, amount: healthDamage * itemValue('forgeblade+spellglass', 'AllyHealing') });
+        }
+        if (!reflected && victim.itemRuntime && healthDamage + absorbed > 0 && hasItem(victim, 'quickstring+iron-plate')) {
+          const cap = itemValue('quickstring+iron-plate', 'StackCap');
+          victim.itemRuntime.titanStacks = Math.min(cap, victim.itemRuntime.titanStacks + 1);
+          victim.itemRuntime.attackRatio = victim.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingAD');
+          victim.itemRuntime.abilityPowerRatio = victim.itemRuntime.titanStacks * itemValue('quickstring+iron-plate', 'StackingSP') / 100;
+          if (victim.itemRuntime.titanStacks === cap) victim.itemRuntime.damageAmp = itemValue('quickstring+iron-plate', 'StackedAmp');
+          refreshEffectiveStats(victim);
+        }
+        if (basic && !reflected && hasItem(victim, 'iron-plate+iron-plate') &&
+          (victim.itemRuntime.lastThornAt === undefined || battle.elapsed - victim.itemRuntime.lastThornAt >= itemValue('iron-plate+iron-plate', 'ICD'))) {
+          victim.itemRuntime.lastThornAt = battle.elapsed;
+          for (const enemy of damageable.filter(unit => unit.side !== victim.side && distance(unit, victim) <= 1 + GEOMETRY_EPSILON))
+            pendingHits.push({ actor: victim, victim: enemy, amount: itemValue('iron-plate+iron-plate', '1StarAoEDamage') * ITEMS.HEALTH_SCALE, ability: true, reflected: true, itemId: 'iron-plate+iron-plate' });
+        }
+        if ((basic || ability) && !dot && !reflected && victim.statuses) {
+          const burnId = hasItem(actor, 'quickstring+quickstring') ? 'quickstring+quickstring'
+            : hasItem(actor, 'spellglass+vital-sash') ? 'spellglass+vital-sash' : null;
+          if (burnId) {
+            const value = ITEMS.VALUES[burnId], duration = value.BurnDuration || value.Duration;
+            applyEffect({ actor, victim, status: { type: 'burn', sourceId: actor.id, appliedAt: battle.elapsed,
+              expiresAt: battle.elapsed + duration, damage: victim.maxHp * value.BurnPercent / 100,
+              tickInterval: 1, nextTick: battle.elapsed + 1, channel: 'item' } });
+            applyEffect({ actor, victim, status: { type: 'wound', sourceId: actor.id, appliedAt: battle.elapsed,
+              expiresAt: battle.elapsed + duration, magnitude: (value.HealingReductionPct || value.GrievousWoundsPercent) / 100, channel: 'item' } });
+          }
+        }
         damageRecords.push({ actor, victim, ability, basic, dot, reflected, absorbed, healthDamage });
         emit({ type: reflected ? 'reflect-hit' : shatter ? 'shatter-hit' : dot ? 'dot-hit' : ability ? 'spell-hit' : 'hit', unitId: actor.id, targetId: victim.id,
           amount: actual, rawAmount: amount, postArmor, healthDamage, absorbed, pressure,
@@ -6472,7 +7088,7 @@ syncMobileOrientation();
 const token=AB.generate(alea.rand||alea.random,{...AB.DEFAULT_CONFIG,seed:alea.seed});
 const query=new URLSearchParams(location.search),matchMode=query.get('mode')==='match',partyMode=query.get('mode')==='party';
 const requestedBoardMode=query.get('boardMode'),boardMode=Object.hasOwn(ABMatch.BOARD_MODES,requestedBoardMode)?requestedBoardMode:null;
-let match=null,chestSelected=false,saveStatus='',partyData=null,partyPending=false,partyConnected=false;
+let match=null,chestSelected=false,itemChestSelected=false,saveStatus='',partyData=null,partyPending=false,partyConnected=false,itemsOpen=false,itemTargetId=null,itemSelectedId=null,itemPanelKey='';
 const matchSaveKey=boardMode?'lil-guys-v2:local-match:board-mode:rectangular:'+boardMode+':'+token.seed:'lil-guys-v2:local-match:'+token.seed;
 // The preparation shop docks below the arena while keeping board hits live.
 if(matchMode||partyMode)canvas.height=1000;
@@ -6481,9 +7097,9 @@ const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse
 const visualBoard=document.querySelector('.visual-board');
 let mobileView=shopVisible?'shop':'board',mobilePanelKey='';
 function setMobileView(view){
-  if(view==='shop'&&match&&(match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated))view='board';
+  if(view==='shop'&&match&&(match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open))view='board';
   mobileView=view;visualBoard.dataset.mobileView=view;
-  document.querySelectorAll('#mobile-stage-nav button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.view===view));button.disabled=button.dataset.view==='shop'&&(!match||match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated);});
+  document.querySelectorAll('#mobile-stage-nav button').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.view===view));button.disabled=button.dataset.view==='shop'&&(!match||match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyData?.itemShop?.open);});
   const pan=view==='board'?(shopVisible&&match?.phase==='preparation'?120:220):0,scale=canvas.clientWidth/1440;
   visualBoard.style.setProperty('--mobile-pan',`${Math.round(pan*scale)}px`);
 }
@@ -6523,11 +7139,12 @@ function traitBadges(h,centerX,y,size=23,gap=5){
   icons.forEach((icon,i)=>{const x=start+i*step;ctx.save();ctx.shadowColor='#061013aa';ctx.shadowBlur=5;ctx.fillStyle='#102124';ctx.strokeStyle=icon.color;ctx.lineWidth=1.6;ctx.beginPath();if(icon.kind==='faction'){ctx.moveTo(x,y-size*.55);ctx.lineTo(x+size*.55,y);ctx.lineTo(x,y+size*.55);ctx.lineTo(x-size*.55,y);ctx.closePath();}else ctx.arc(x,y,size*.55,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();ABArt.drawEmblem(ctx,x,y,size*.72,icon.id,icon.color);});
 }
 function fieldRatingTooltip(entry){
-  if(!entry)return;const{u,h,p}=entry,icons=traitIcons(h),w=206,hh=108,x=Math.max(12,Math.min(1440-w-12,p.x+(u.side==='enemy'?-w-34:34))),y=Math.max(130,Math.min(790-hh,p.y+17));
+  if(!entry)return;const{u,h,p}=entry,icons=traitIcons(h),w=206,hh=u.itemIds?.length?132:108,x=Math.max(12,Math.min(1440-w-12,p.x+(u.side==='enemy'?-w-34:34))),y=Math.max(130,Math.min(790-hh,p.y+17));
   ctx.save();ctx.shadowColor='#020c0ddd';ctx.shadowBlur=16;rect(x,y,w,hh,'#0b1d20f2',C.gold);ctx.restore();
   text(fitText(h.name,w-76,14),x+10,y+20,14,C.cream,'Georgia');text(`${u.level}★ · ${h.cost}g`,x+w-10,y+20,10,C.gold,'sans-serif','right');
   text(fitText(`${icons[0].kind==='faction'?'◇':'◯'} ${icons[0].name} · ${icons.slice(1).map(icon=>icon.name).join(' / ')}`,w-20,10),x+10,y+37,10,C.muted);
   ratingBars(h.id,u.level,x+10,y+48,10,1);
+  if(u.itemIds?.length)text(fitText(u.itemIds.map(id=>ABItems.item(id)?.name||id).join(' · '),w-20,10),x+10,y+119,10,C.gold);
 }
 const archetype=id=>AB.ARCHETYPES?.find(x=>x.id===id),roleName=id=>id==='executioner'?'Executioner':archetype(id)?.name||'None';
 const roleLabels=h=>{const cl=klass(h.class);return h.id==='mime'?{primary:'Independent',secondary:'No archetype',style:'Copies ally'}:{primary:'Primary: '+roleName(cl.primaryArchetype),secondary:'Secondary: '+roleName(cl.secondaryArchetype),style:cl.stats?.normalAttack==='spellburst'?'Ranged spellburst':cl.combatStyle==='melee'?'Melee':'Ranged'};};
@@ -6562,7 +7179,7 @@ function chestTerms(){return partyMode?partyData.chestPreview:ABMatch.chestPrevi
 function heroStock(id){return partyMode?partyData.heroSupply?.[id]||null:ABMatch.heroSupply(match,id);}
 function poolInfo(){return partyMode?partyData.pool||null:ABMatch.poolSummary(match);}
 function partyCommand(type,args={}){if(!partyMode)return false;if(partyData?.spectating){say('You are watching this team. Only its commander can change the formation.');draw();return true;}if(!match||partyPending||!partyConnected){say(partyPending?'Waiting for the server to acknowledge your previous action.':'Reconnecting. Your last acknowledged formation is shown.');draw();return true;}if(match.phase!=='preparation'||partyData.eliminated){say('Preparation has closed. This action was not sent.');draw();return true;}partyPending=true;say('Sending '+type+'… waiting for server acknowledgement.');parent.postMessage({type:'party-command',command:{type,...args}},location.origin);draw();return true;}
-if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();}if(next.spectating){shopVisible=false;setMobileView('board');}partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
+if(partyMode)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;const data=event.data;if(data?.type==='party-view'&&data.render?.match){const next=data.render,changed=match?.roundNumber!==next.match.roundNumber||match?.phase!==next.match.phase,focusChanged=partyData?.watchingName!==next.watchingName,itemShopClosed=partyData?.itemShop?.open&&!next.itemShop?.open;partyData=next;match=next.match;game=match.game;if(changed){shopVisible=match.phase==='preparation'&&!next.eliminated&&!next.spectating&&!next.itemShop?.open;shopPreviewIndex=0;setMobileView(shopVisible?'shop':'board');hintVisible=false;restartIdleHint();}if(next.itemShop?.open||next.pendingComponentChoices){itemsOpen=true;shopVisible=false;setMobileView('board');}else if(itemShopClosed){itemsOpen=false;shopVisible=true;setMobileView('shop');}if(next.spectating){shopVisible=false;setMobileView('board');}partyPending=!!data.pending;partyConnected=!!data.connected;paused=false;if(changed||focusChanged)clearSelection();if(selected&&!selectedUnit())clearSelection();if(data.message)say(data.message);else if(changed||focusChanged)say(next.message||'The server has updated the round.');if(artReady)draw();}else if(data?.type==='party-status'){partyPending=!!data.pending;partyConnected=!!data.connected;if(data.message)say(data.message);if(artReady)draw();}});
 function say(s){message=s;document.getElementById('announcement').textContent=s;}
 function preparationOpen(){return tab==='arena'&&!document.hidden&&(match?match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating:game.phase==='planning');}
 function nextStepHint(){
@@ -6616,17 +7233,18 @@ if(details.dataset.signature!==signature){details.dataset.signature=signature;de
 }
 }
 function selectedUnit(){return [...(game.phase!=='planning'?game.battle?.units||[]:[]),...game.bench,...game.field,...game.opponents].find(u=>u.id===selected);}
-function clearSelection(){selected=null;selectedTrait=null;hover=null;chestSelected=false;drag=null;}
+function clearSelection(){selected=null;selectedTrait=null;hover=null;chestSelected=false;itemChestSelected=false;drag=null;}
 function deselect(){clearSelection();say('Selection cleared. Choose a champion to plan your formation.');draw();}
 function select(id){
 if(selected===id){deselect();return;}
-chestSelected=false;selectedTrait=null;selected=id;const u=selectedUnit();
+chestSelected=false;itemChestSelected=false;selectedTrait=null;selected=id;const u=selectedUnit();
 if(!u){deselect();return;}
 say(`${hero(u).name} selected. ${partyData?.spectating?'Inspect this hero’s stats and abilities.':game.phase!=='planning'?'Live combat stats and active effects.':game.opponents.some(e=>e.id===id)?'Opponent formation is fixed.':'Choose a friendly tile, or drag this hero there. Drop on another hero to swap, or on Shop to sell.'}`);draw();
 }
 function actDeploy(col,row,event){
 if(game.phase!=='planning'||((matchMode||partyMode)&&!match))return;
 if(chestSelected){if(partyCommand('moveChest',{col,row}))return;const r=ABMatch.moveChest(match,'player',col,row);if(r.ok){clearSelection();persistMatch();}say(r.ok?'Treasure placed at '+coordinate(col,row)+'. This position carries into later rounds.':r.reason);draw();return;}
+if(itemChestSelected){if(partyCommand('moveItemChest',{col,row})){itemChestSelected=false;return;}say('The item chest is available in new multiplayer rooms every ten battles.');draw();return;}
 const s=selectedUnit(),ally=game.field.find(u=>u.col===col&&u.row===row);
 // Unit selection takes precedence over placement unless a swap is explicit.
 if(ally&&(!event?.shiftKey||ally.id===selected)){select(ally.id);return;}
@@ -6647,13 +7265,14 @@ function roundMessage(){if(match.phase==='finished')return match.players.player.
 function nextRound(){if(partyMode)return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.nextRound(match);if(!r.ok){say(r.reason);draw();return;}game=match.game;persistMatch();clearSelection();shopVisible=true;shopPreviewIndex=0;setMobileView('shop');hintVisible=false;restartIdleHint();paused=false;lastTick=0;say(`Round ${match.roundNumber}. +${match.lastIncome.player.baseIncome} base gold + ${match.lastIncome.player.interest} interest. Your army and commander progress carry forward.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:'')+(match.roundNumber>=5&&!match.chests.player?' Place your treasure in friendly territory.':''));draw();}
 function buyXP(){if(partyCommand('buyXP'))return;if(!match)return;const oldBoard=game.board.columns+'×'+game.board.rows,r=ABMatch.buyXP(match);game=match.game;if(r.ok)persistMatch();say(r.ok?`Bought 4 XP for 4 gold. Commander level ${game.playerLevel}; ${game.playerLevel} field slots.`+(game.board.columns+'×'+game.board.rows!==oldBoard?` Board expanded to ${game.board.columns}×${game.board.rows}.`:''):r.reason);draw();}
 function selectChest(){if(!match||match.phase!=='preparation'||match.roundNumber<5)return;const was=chestSelected;clearSelection();chestSelected=!was;say(chestSelected?'Treasure selected. Click a friendly tile to place it; it can share a hero’s starting tile.':'Treasure deselected.');draw();}
+function selectItemChest(){if(!partyMode||!partyData?.itemChest||match.phase!=='preparation')return;const was=itemChestSelected;clearSelection();itemChestSelected=!was;say(itemChestSelected?'Item chest selected. Place it in one of your two back rows.':'Item chest deselected.');draw();}
 function startMatch(){if(partyMode)return {ok:false,reason:'Start a room from the Party lobby.'};try{const next=ABMatch.createMatch({token,...(boardMode?{boardMode}:{})});cancelAnimationFrame(raf);raf=0;match=next;game=match.game;clearSelection();paused=false;lastTick=0;tab='arena';shopVisible=true;shopPreviewIndex=0;setMobileView('shop');persistMatch();say('Round 1. Buy a 1-gold hero from the shop below, then place it on a friendly tile.');draw();return {ok:true};}catch(error){say(error.message);return {ok:false,reason:error.message};}}
 function buyShop(index){if(partyCommand('buy',{index}))return;if(!match)return;const r=ABMatch.buyShop(match,index);game=match.game;if(r.ok){persistMatch();clearSelection();if(r.unit)selected=r.unit.id;setMobileView('board');say(r.upgrades?.length?hero(r.unit).name+' combined into '+r.unit.level+' stars.':r.unit?hero(r.unit).name+' recruited and selected. Click a friendly tile to field this hero.':'Hero recruited. Select the reserve, then a friendly tile.');}else say(r.reason);draw();}
 function sellUnit(unitId){if(!match||!unitId)return;if(partyCommand('sell',{unitId}))return;const r=ABMatch.sellHero(match,unitId);game=match.game;if(r.ok){clearSelection();persistMatch();say(hero(r.unit).name+' sold for '+r.goldReceived+' gold.');}else say(r.reason);draw();}
 function sellHero(){sellUnit(selected);}
 function rerollShop(){if(partyCommand('reroll'))return;if(!match)return;const r=ABMatch.rerollShop(match);game=match.game;if(r.ok)persistMatch();say(r.ok?'Shop refreshed for 2 gold.'+(match.shopPool?' Unbought copies returned to the shared pool.':' All offers are 1-star heroes.'):r.reason);draw();}
-function visibleChests(){if(!match||match.roundNumber<5)return [];if(game.battle)return game.battle.objectives||[];return chestTerms().chests.filter(c=>c.col!==null&&c.row!==null).map(c=>({...c,hp:c.maxHp,status:'active'}));}
-function drawChests(g){for(const chest of visibleChests()){const anchor=g.at(chest.col,chest.row),p={x:anchor.x+g.tw*.5,y:anchor.y+g.th*.75},enemy=chest.side==='enemy',active=chest.status==='active',color=enemy?C.red:C.gold;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.ellipse(anchor.x,anchor.y,6,3,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=active?1:.4;ctx.shadowColor='#0008';ctx.shadowBlur=12;ctx.shadowOffsetY=5;poly([[p.x-22,p.y-8],[p.x,p.y+4],[p.x+22,p.y-8],[p.x,p.y-20]],'#be9553',color);poly([[p.x-22,p.y-8],[p.x-22,p.y-26],[p.x,p.y-14],[p.x,p.y+4]],'#795c35',color);poly([[p.x,p.y-14],[p.x+22,p.y-26],[p.x+22,p.y-8],[p.x,p.y+4]],'#a37a42',color);poly([[p.x-22,p.y-26],[p.x,p.y-38],[p.x+22,p.y-26],[p.x,p.y-14]],'#caa268',color);rect(p.x-3,p.y-19,6,9,'#f5d69b');ctx.shadowBlur=0;ctx.shadowOffsetY=0;rect(p.x-36,p.y-71,72,29,'#102124',color);rect(p.x-25,p.y-49,50,5,'#091616');rect(p.x-25,p.y-49,chest.maxHp?50*Math.max(0,chest.hp/chest.maxHp):0,5,color);text(chest.maxHp?Math.ceil(chest.hp)+' HP':'FIELD A HERO',p.x,p.y-56,10,color,'sans-serif','center');if(chestSelected&&!enemy){ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y+1,30,14,0,0,Math.PI*2);ctx.stroke();}ctx.restore();if(game.phase==='planning'&&!enemy)hit('player-chest',p.x-36,p.y-71,72,79,selectChest,'Select your treasure chest');}}
+function visibleChests(){if(!match||match.roundNumber<5)return [];if(game.battle)return game.battle.objectives||[];const gold=chestTerms().chests.filter(c=>c.col!==null&&c.row!==null).map(c=>({...c,hp:c.maxHp,status:'active'}));if(partyData?.itemChest){gold.push({id:'item-chest-player',rewardKind:'item',side:'player',...partyData.itemChest,maxHp:gold.find(c=>c.side==='player')?.maxHp,hp:gold.find(c=>c.side==='player')?.maxHp,status:'active'});if(partyData.enemyItemChest)gold.push({id:'item-chest-enemy',rewardKind:'item',side:'enemy',...partyData.enemyItemChest,maxHp:gold.find(c=>c.side==='enemy')?.maxHp,hp:gold.find(c=>c.side==='enemy')?.maxHp,status:'active'});}return gold;}
+function drawChests(g){for(const chest of visibleChests()){const anchor=g.at(chest.col,chest.row),p={x:anchor.x+g.tw*.5,y:anchor.y+g.th*.75},enemy=chest.side==='enemy',active=chest.status==='active',color=chest.rewardKind==='item'?'#c9a8f0':enemy?C.red:C.gold;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.ellipse(anchor.x,anchor.y,6,3,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=active?1:.4;ctx.shadowColor='#0008';ctx.shadowBlur=12;ctx.shadowOffsetY=5;poly([[p.x-22,p.y-8],[p.x,p.y+4],[p.x+22,p.y-8],[p.x,p.y-20]],'#be9553',color);poly([[p.x-22,p.y-8],[p.x-22,p.y-26],[p.x,p.y-14],[p.x,p.y+4]],'#795c35',color);poly([[p.x,p.y-14],[p.x+22,p.y-26],[p.x+22,p.y-8],[p.x,p.y+4]],'#a37a42',color);poly([[p.x-22,p.y-26],[p.x,p.y-38],[p.x+22,p.y-26],[p.x,p.y-14]],'#caa268',color);rect(p.x-3,p.y-19,6,9,'#f5d69b');ctx.shadowBlur=0;ctx.shadowOffsetY=0;rect(p.x-36,p.y-71,72,29,'#102124',color);rect(p.x-25,p.y-49,50,5,'#091616');rect(p.x-25,p.y-49,chest.maxHp?50*Math.max(0,chest.hp/chest.maxHp):0,5,color);text(chest.rewardKind==='item'?'ITEM CHEST':chest.maxHp?Math.ceil(chest.hp)+' HP':'FIELD A HERO',p.x,p.y-56,10,color,'sans-serif','center');if((chest.rewardKind==='item'?itemChestSelected:chestSelected)&&!enemy){ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(p.x,p.y+1,30,14,0,0,Math.PI*2);ctx.stroke();}ctx.restore();if(game.phase==='planning'&&!enemy)hit(chest.rewardKind==='item'?'player-item-chest':'player-chest',p.x-36,p.y-71,72,79,chest.rewardKind==='item'?selectItemChest:selectChest,chest.rewardKind==='item'?'Select your item chest':'Select your treasure chest');}}
 function chestInspector(){const preview=chestTerms(),chest=preview.chests.find(c=>c.side==='player');text('YOUR TREASURE',1172,174,12,C.gold);text(chest?.col!==null&&chest?.col!==undefined?'Treasure at '+coordinate(chest.col,chest.row):'Protect the bonus.',1172,210,25,C.cream,'Georgia');wrap('Click a friendly tile to place your chest. It takes no hero slot and may share a starting tile with a hero.',1172,249,220,14);text(preview.goldPerChest+' GOLD PER CHEST',1172,350,15,C.gold);text(preview.expiresAtSeconds+' SECOND WINDOW',1172,381,12,C.muted);if(chest?.maxHp){text(number(chest.maxHp)+' MAX HP',1172,431,20,C.cream);wrap('Based on the roster’s base 1-star HP average and your highest fielded hero’s HP rank. Armor breaks HP ties.',1172,465,220,13);}wrap('Heroes target the nearest enemy hero or chest. A defeated chest pays its capturer; an intact chest pays its owner when combat ends.',1172,565,220,13,C.muted,20);button('chest-deselect','Deselect · Esc',1172,697,220,37,deselect);}
 
 function grid(){const b=game.board,dx=1080/b.rows,dy=(shopVisible&&match?.phase==='preparation'?300:390)/b.columns;return {tw:dx/2,th:dy/2,at:(c,r)=>({x:720-((r-(b.rows-1)/2)*dx),y:(shopVisible&&match?.phase==='preparation'?328:417)+(c-(b.columns-1)/2)*dy})};}
@@ -6680,7 +7299,7 @@ text(partyMode?fitText(partyData.opponentLabel||'OPPOSING COMPANY',300,11):'OPPO
 if(match){const mode=boardInfo();text(mode.name.toUpperCase()+' · '+b.columns+'×'+b.rows,1260,163,11,C.gold,'sans-serif','right');}
 const units=game.phase==='planning'?[...game.opponents.map(u=>({...u,side:'enemy'})),...game.field.map(u=>({...u,side:'player'}))]:(game.battle?.units||[]);
 for(const u of [...units].sort((a,b)=>g.at(a.col,a.row).y-g.at(b.col,b.row).y)){if(u.alive===false)continue;const p=g.at(u.col,u.row),h=hero(u),sz=Math.min(100,th*1.65),metrics=ABArtSprites.measureUnit(sz,u,h);const action=u.lastAction,age=game.battle?game.battle.elapsed-(action?.at||0):1,move=u.lastMove,moveAge=game.battle?game.battle.elapsed+(game.battle.accumulator||0)-(move?.at||0):1;if(move&&moveAge<move.duration){const from=g.at(move.from.col,move.from.row),t=Math.min(1,Math.max(0,moveAge/move.duration));p.x=from.x+(p.x-from.x)*t;p.y=from.y+(p.y-from.y)*t;}const ev=action&&age<.3&&action.type!=='move';ABArt.drawUnit(ctx,p.x,p.y+th*.15,sz,u,h,{enemy:u.side==='enemy',flip:unitFacing(u)==='right',selected:u.id===selected,pose:ev?'attack':'idle'});const visualTop=p.y+th*.15-metrics.visualHeight,hitWidth=Math.max(tw*.7,metrics.visualWidth);
-traitBadges(h,p.x,visualTop-31,Math.min(21,th*.43),3);
+traitBadges(h,p.x,visualTop-31,Math.min(21,th*.43),3);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),p.x,visualTop-47,13,'#f1d694','sans-serif','center');
 if(pointerAt&&pointerAt.x>=p.x-hitWidth/2&&pointerAt.x<=p.x+hitWidth/2&&pointerAt.y>=visualTop&&pointerAt.y<=visualTop+metrics.visualHeight+th*.2)hoveredFieldUnit={u,h,p};
 if(game.phase!=='planning'){if(u.temporary){ctx.save();ctx.strokeStyle='#c7b5ef';ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(p.x,p.y,sz*.33,sz*.14,0,0,Math.PI*2);ctx.stroke();ctx.restore();}let ratio=Math.max(0,u.hp/u.maxHp);rect(p.x-24,visualTop-9,48,5,'#091616');rect(p.x-24,visualTop-9,48*ratio,5,u.side==='enemy'?C.red:C.teal);rect(p.x-24,visualTop-3,48*Math.min(1,abilityPoints(u)/maxAbilityPoints(u,h)),2,'#b5a0db');const labels=statusLabels(u);if(labels.length)text(labels.join(' · '),p.x,visualTop-16,9,C.gold,'sans-serif','center');hit('combat-unit-'+u.id,p.x-hitWidth/2,visualTop,hitWidth,metrics.visualHeight+th*.2,()=>select(u.id),`Inspect ${h.name} combat status. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}
 else{text('★'.repeat(u.level),p.x,visualTop-9,13,u.side==='enemy'?C.red:C.gold,'sans-serif','center');}
@@ -6741,7 +7360,7 @@ const labels=statusLabels(live);if(labels.length)text(fitText(labels.join(' · '
 if(game.phase==='planning'&&game.field.some(v=>v.id===u.id))button('recall','Return to bench',1172,708,match?105:220,27,recall,false,true,match?10:12);
 if(match?.phase==='preparation'&&[...game.field,...game.bench].some(v=>v.id===u.id))button('sell-hero','Sell · '+ABMatch.saleValue(u)+'g',1287,708,105,27,sellHero,false,true,12);
 }
-function bench(){text('THE RESERVES',48,770,12,C.muted);text('◇ Faction   ○ Class',192,770,10,C.muted);text(`${game.bench.length} / 10`,1392,770,12,C.muted,'sans-serif','right');for(let i=0;i<10;i++){const x=48+i*135,w=128,u=game.bench[i];rect(x,793,w,190,u?'#172b2d':'#102124',u?.id===selected?C.gold:'#2a4142');if(!u){text(String(i+1).padStart(2,'0'),x+w/2,874,16,'#3d5653','Georgia','center');continue;}const h=hero(u),f=faction(h.faction);rect(x,793,w,3,f.color||C.teal);text('★'.repeat(u.level),x+10,816,12,C.gold);text(h.cost+'g',x+w-10,816,12,tierColor(h.cost),'sans-serif','right');ABArt.drawUnit(ctx,x+64,897,60,u,h,{selected:false});traitBadges(h,x+64,831,20,4);text(fitText(h.name,w-16,13),x+8,910,13,C.cream);text(h.id==='mime'?'Independent':klass(h.class).name,x+8,930,11,C.muted);ratingBars(u.heroId,u.level,x+8,941,6,1);hit('bench-'+u.id,x,793,w,190,()=>select(u.id),`Select ${h.name}, ${u.level} stars. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}}
+function bench(){text('THE RESERVES',48,770,12,C.muted);text('◇ Faction   ○ Class',192,770,10,C.muted);text(`${game.bench.length} / 10`,1392,770,12,C.muted,'sans-serif','right');for(let i=0;i<10;i++){const x=48+i*135,w=128,u=game.bench[i];rect(x,793,w,190,u?'#172b2d':'#102124',u?.id===selected?C.gold:'#2a4142');if(!u){text(String(i+1).padStart(2,'0'),x+w/2,874,16,'#3d5653','Georgia','center');continue;}const h=hero(u),f=faction(h.faction);rect(x,793,w,3,f.color||C.teal);text('★'.repeat(u.level),x+10,816,12,C.gold);text(h.cost+'g',x+w-10,816,12,tierColor(h.cost),'sans-serif','right');ABArt.drawUnit(ctx,x+64,897,60,u,h,{selected:false});traitBadges(h,x+64,831,20,4);if(u.itemIds?.length)text(u.itemIds.map(id=>ABItems.item(id)?.glyph||'✦').join(' '),x+64,853,12,C.gold,'sans-serif','center');text(fitText(h.name,w-16,13),x+8,910,13,C.cream);text(h.id==='mime'?'Independent':klass(h.class).name,x+8,930,11,C.muted);ratingBars(u.heroId,u.level,x+8,941,6,1);hit('bench-'+u.id,x,793,w,190,()=>select(u.id),`Select ${h.name}, ${u.level} stars. ${traitNames(h)}. ${ratingDescription(ratings(u.heroId,u.level))}`);}}
 function commandBar(){if(match){matchCommandBar();return;}line(300,653,1138,653);const phase=game.phase==='planning'?'PREPARATION':game.phase==='battle'?(paused?'PAUSED':'IN COMBAT'):(game.result==='victory'?'VICTORY':game.result==='defeat'?'DEFEAT':'DRAW');text(phase,311,682,11,game.result==='victory'?C.gold:C.teal);wrap(message,311,707,420,13,C.muted,18);if(game.phase==='planning'){button('battle','Begin battle  →',948,678,190,52,begin,true,game.field.length>0);const groups=AB.mergeGroups(game);const chosen=selectedUnit();const group=groups.find(g=>g.heroId===chosen?.heroId&&g.level===chosen?.level)||groups[0];if(group)button('combine','Combine ×3  ↑',758,678,176,52,()=>combine(group),false,true);else text(`${game.field.length} / ${game.playerLevel} fielded`,920,708,15,C.cream,'sans-serif','right');if(selected)button('deselect','Deselect · Esc',948,737,190,26,deselect,false,true,12);}else{button('replan','Replan formation',948,678,190,52,reset,true);if(game.phase==='battle')button('pause',paused?'Resume':'Pause',788,678,146,52,()=>{paused=!paused;lastTick=0;persistMatch();draw();schedule();});else text('Same token. New tactics.',927,708,13,C.muted,'sans-serif','right');}}
 function matchCommandBar(){if(partyMode){partyCommandBar();return;}line(300,661,1138,661);const phase=match.phase==='preparation'?'PREPARATION':match.phase==='combat'?(paused?'PAUSED':'IN COMBAT'):match.phase==='finished'?'MATCH COMPLETE':game.result==='victory'?'ROUND WON':game.result==='defeat'?'ROUND LOST':'ROUND DRAWN';text(`ROUND ${match.roundNumber} · ${phase}`,311,683,11,C.teal);wrap(message,311,706,425,12,C.muted,17);
 if(match.phase==='preparation'){const terms=chestTerms(),canStart=game.field.length>0&&(!terms.enabled||!!match.chests.player);button('battle','Begin round  →',948,678,190,52,begin,true,canStart);button('buy-xp','Buy 4 XP · 4g',758,678,176,32,buyXP,false,match.players.player.gold>=4&&game.playerLevel<10,13);if(terms.enabled)button('place-chest',chestSelected?'Treasure selected':match.chests.player?'Move treasure':'Place treasure',758,718,176,32,selectChest,chestSelected,true,13);else text('Treasure begins round 5',846,742,11,C.muted,'sans-serif','center');const chosen=selectedUnit(),groups=AB.mergeGroups(game),group=groups.find(g=>g.heroId===chosen?.heroId&&g.level===chosen?.level)||groups[0];if(group)button('combine','Combine ×3  ↑',948,737,190,26,()=>combine(group),false,true,12);else if(selected||chestSelected)button('deselect','Deselect · Esc',948,737,190,26,deselect,false,true,12);}
@@ -6909,7 +7528,7 @@ text(partyMode?partyData?.spectating?'W A T C H I N G   L I V E':partyData?.room
 text('coLILseum',48,87,28,C.cream,'Georgia');
 if(match)matchHeader();else text(matchMode?'A MATCH. A WAR TABLE.':'A TOKEN. A WAR TABLE.',432,84,11,C.muted);
 button('tips-toggle',tipsEnabled?'Tips on':'Tips off',210,47,84,39,()=>{tipsEnabled=!tipsEnabled;try{localStorage.setItem(tipsSettingKey,tipsEnabled?'on':'off');}catch{}hintVisible=false;restartIdleHint();say(tipsEnabled?'Automatic help tips are on.':'Automatic help tips are off. Open ? for help anytime.');draw();},false,true,11,tipsEnabled?'Turn automatic help tips off':'Turn automatic help tips on');
-if(match&&match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating)button('shop-toggle',drag?.active?`SELL · ${dragSellValue()}g`:shopVisible?'Hide shop':'Open shop',300,47,120,39,()=>{if(!shopVisible){traitsOpen=false;detailsOpen=false;}shopVisible=!shopVisible;setMobileView(shopVisible?'shop':'board');draw();},false,true,12,shopVisible?'Hide shop to view battlefield':'Open shop offers. Drag a hero here to sell it.');
+if(match&&match.phase==='preparation'&&!partyData?.eliminated&&!partyData?.spectating)button('shop-toggle',drag?.active?`SELL · ${dragSellValue()}g`:shopVisible?'Hide shop':'Open shop',300,47,120,39,()=>{if(!shopVisible){traitsOpen=false;detailsOpen=false;}shopVisible=!shopVisible;setMobileView(shopVisible?'shop':'board');draw();},false,!partyData?.itemShop?.open,12,partyData?.itemShop?.open?'Choose or pass the component shop first':shopVisible?'Hide shop to view battlefield':'Open shop offers. Drag a hero here to sell it.');
 button('arena-tab','Arena',830,47,102,39,()=>{tab='arena';hintVisible=false;restartIdleHint();draw();},tab==='arena');
 button('roster-tab','Codex',945,47,102,39,()=>{tab='roster';traitsOpen=false;detailsOpen=false;hintVisible=false;restartIdleHint();draw();},tab==='roster');
 button('help-tip','?',1055,47,35,39,toggleHelp,false,preparationOpen(),19,'Show or hide the next-step help tip');
@@ -6924,7 +7543,46 @@ if(match&&shopVisible&&match.phase==='preparation')shop();
 drawHelpTip();
 drawDrag();
 }
-updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);renderMobilePanels();
+updateInfoIcons();renderInfoPopovers();updateAccess();setMobileView(mobileView);renderMobilePanels();renderItems();
+}
+
+document.getElementById('items-toggle').addEventListener('click',()=>{itemsOpen=!itemsOpen;renderItems(true);});
+function renderItems(force=false){
+  const toggle=document.getElementById('items-toggle'),panel=document.getElementById('items-panel'),enabled=partyMode&&partyData?.itemRulesVersion===1;
+  toggle.hidden=!enabled;
+  if(!enabled){panel.hidden=true;return;}
+  toggle.textContent='◇ '+partyData.items.length+(partyData.pendingComponentChoices?' !':'');
+  toggle.setAttribute('aria-expanded',String(itemsOpen));
+  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} items; ${partyData.items.length} in inventory${partyData.pendingComponentChoices?`; ${partyData.pendingComponentChoices} component choices waiting`:''}`);
+  panel.hidden=!itemsOpen;
+  if(!itemsOpen)return;
+  const inventory=partyData.items||[],shop=partyData.itemShop,components=partyData.itemCatalog.components,
+    selectedUnitId=[...game.field,...game.bench].some(unit=>unit.id===itemTargetId)?itemTargetId:selected&&[...game.field,...game.bench].some(unit=>unit.id===selected)?selected:[...game.field,...game.bench][0]?.id||null;
+  itemTargetId=selectedUnitId;
+  const key=JSON.stringify([partyPending,partyConnected,match?.phase,match?.players.player.gold,shop,inventory,partyData.pendingComponentChoices,itemTargetId,itemSelectedId,game.field.map(unit=>[unit.id,unit.itemIds]),game.bench.map(unit=>[unit.id,unit.itemIds])]);
+  if(!force&&key===itemPanelKey)return;itemPanelKey=key;
+  panel.replaceChildren();
+  const heading=document.createElement('div');heading.className='items-head';
+  const title=document.createElement('h2');title.textContent=shop?.open?'Component shop · choose one':partyData.pendingComponentChoices?'Choose your captured chest reward':'Items';
+  const close=document.createElement('button');close.type='button';close.textContent='Close ×';close.onclick=()=>{itemsOpen=false;renderItems(true);};heading.append(title,close);panel.append(heading);
+  const summary=document.createElement('p');summary.textContent=`${match.players.player.gold} gold · ${inventory.length} items held · equip up to 3 items per hero`;panel.append(summary);
+  if(partyData.itemChest&&match.phase==='preparation'&&!partyData.spectating){const place=document.createElement('button');place.type='button';place.textContent='Place item chest · back two rows';place.onclick=()=>{itemsOpen=false;selectItemChest();renderItems(true);};panel.append(place);}
+  const locked=partyPending||!partyConnected||partyData.eliminated||partyData.spectating||match.phase!=='preparation';
+  function makeItemButton(itemId,action,price){
+    const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';
+    const name=document.createElement('strong');name.textContent=(info?.glyph||'✦')+' '+info.name;
+    const detail=document.createElement('small');detail.textContent=price===undefined?'Choose this component':price+' gold';
+    const effect=document.createElement('small');effect.textContent=info.description;button.title=info.description;
+    button.append(name,detail,effect);button.disabled=locked||price!==undefined&&match.players.player.gold<price;
+    button.onclick=()=>{markPlayerAction();partyCommand(action,{itemId});};return button;
+  }
+  if(partyData.pendingComponentChoices){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent=`Captured chest: choose ${partyData.pendingComponentChoices} component${partyData.pendingComponentChoices===1?'':'s'}`;const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'chooseComponent')));block.append(h,grid);panel.append(block);}
+  if(shop?.open){const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='One purchase before the hero shop returns';const grid=document.createElement('div');grid.className='item-grid';components.forEach(component=>grid.append(makeItemButton(component.id,'buyItem',5)));if(shop.completedId)grid.append(makeItemButton(shop.completedId,'buyItem',10));const pass=document.createElement('button');pass.type='button';pass.textContent='Pass · open hero shop';pass.disabled=locked;pass.onclick=()=>{markPlayerAction();partyCommand('passItemShop');};block.append(h,grid,pass);panel.append(block);}
+  const block=document.createElement('section');block.className='item-panel-section';const h=document.createElement('h3');h.textContent='Inventory and equipment';block.append(h);
+  const grid=document.createElement('div');grid.className='item-grid';inventory.forEach((itemId,index)=>{const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name;button.title=info.description;button.setAttribute('aria-pressed',String(itemSelectedId===index));button.onclick=()=>{itemSelectedId=index;renderItems(true);};grid.append(button);});if(!inventory.length)grid.textContent='No items held yet. Battles and item shops can grant components.';block.append(grid);
+  if(inventory.length){const selectedItem=ABItems.item(inventory[Number.isInteger(itemSelectedId)&&itemSelectedId<inventory.length?itemSelectedId:0]);const effect=document.createElement('p');effect.textContent=selectedItem.name+': '+selectedItem.description;block.append(effect);}
+  const equip=document.createElement('div');equip.className='item-equip-row';const label=document.createElement('label');label.textContent='Equip hero ';const select=document.createElement('select');select.setAttribute('aria-label','Hero to equip');for(const unit of [...game.field,...game.bench]){const option=document.createElement('option');option.value=unit.id;option.textContent=hero(unit).name+' '+unit.level+'★ · '+(unit.itemIds?.length||0)+'/3 items';select.append(option);}select.value=itemTargetId||'';select.onchange=()=>{itemTargetId=select.value;renderItems(true);};label.append(select);equip.append(label);const equipButton=document.createElement('button');equipButton.type='button';equipButton.textContent='Equip selected item';equipButton.disabled=locked||!inventory.length||!itemTargetId;equipButton.onclick=()=>{markPlayerAction();partyCommand('equipItem',{unitId:itemTargetId,itemId:inventory[Number.isInteger(itemSelectedId)&&itemSelectedId<inventory.length?itemSelectedId:0]});};equip.append(equipButton);block.append(equip);
+  const unit=[...game.field,...game.bench].find(entry=>entry.id===itemTargetId);if(unit?.itemIds?.length){const slots=document.createElement('div');slots.className='item-grid';for(const itemId of unit.itemIds){const info=ABItems.item(itemId),button=document.createElement('button');button.type='button';button.textContent=(info?.glyph||'✦')+' '+info.name+' · Remove';button.disabled=locked;button.onclick=()=>{markPlayerAction();partyCommand('unequipItem',{unitId:unit.id,itemId});};slots.append(button);}block.append(slots);}panel.append(block);
 }
 
 let accessKey='';

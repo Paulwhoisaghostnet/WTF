@@ -11,6 +11,13 @@ const hashValue = value => crypto.createHash('sha256').update(stable(value)).dig
 // can continue those frozen rooms. Any later rules hash must prove its own
 // compatibility before inheriting them.
 const compatiblePinnedRules = Object.freeze({
+  // The item release opts in only new rooms. The older room config omits
+  // itemRulesVersion; its serialized state and public views match the prior
+  // runtime through complete combats, and configuration preserves that omission.
+  '4415776d4b0db7a07f3346bdf0c4014c68808060d32e974bbf7703ba47ac8d73': Object.freeze([
+    '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd',
+    '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
+  ]),
   '81cc9dff78f5c2342f035238bbdbfdbbcf0ec110805b9f1b0ac3c29e3b2352bd': Object.freeze([
     '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669',
   ]),

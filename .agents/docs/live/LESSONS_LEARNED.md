@@ -12306,3 +12306,11 @@
 **Correction and proof**: The wallet guard now checks entry plus the pinned house fee for the exact host seat and entry only for the guest. A duel Stake wager action binds the linked wallet, records each player's intent, opens escrow after both intents, and waits for the finalized chain room before offering the wallet deposit. Focused service and wallet tests pass. The live room directory reads only public, sanitized summaries from durable room state, with win/loss counts derived from combat receipts; it does not expose private sessions, shops, whispers or wallet bindings.
 
 **Rule**: Fee disclosure and the exact wallet operation validator must share the same seat-aware amount. A room directory is a read-only public projection, not a serialized game state or escrow record.
+
+## 2026-10-24 — Version new item rooms without rewriting old room configs
+
+**What happened**: The new coLILseum item rule was initially added unconditionally to room configuration normalization. That would have made persisted item-free lobbies fail their canonical-config check on restore. AI commanders also reached the fifth-round item shop without resolving it, so their hero purchases were blocked.
+
+**Correction and proof**: New room creation enables item rules, while canonical validation preserves an old room's missing version field. A comparison against the previous packaged runtime produced identical serialized state, receipts and both player views through ten legacy combats. AI preparation now buys or passes its item offer, equips held items, and then shops for heroes; an item-enabled AI test reaches round five and completes preparation. Hosted item, authority and funding tests pass.
+
+**Rule**: Optional game rules must be fixed at room creation and absent from old room state on restore. AI preparation must resolve every blocking shop phase introduced for human players.
