@@ -292,6 +292,44 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("all equipment has distinct art and the item dock keeps the arena visible", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/generator.html?mode=match&seed=item-art-desktop");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+    expect(await page.evaluate(() => {
+      const ids=ABItemArt.ids();
+      AB_MATCH().players.player.items.push('forgeblade','forgeblade+spellglass');
+      AB_UI.draw();
+      return {count:ids.length,unique:new Set(ids.map(id=>ABItemArt.svg(id))).size};
+    })).toEqual({count:44,unique:44});
+    await page.locator('#items-toggle').click();
+    await expect(page.locator('#items-panel .item-art')).toHaveCount(2);
+    expect(await page.evaluate(() => {
+      const board=document.querySelector('.visual-board').getBoundingClientRect();
+      const dock=document.querySelector('#items-panel').getBoundingClientRect();
+      return board.width>0&&dock.width>0&&board.right<=dock.left&&document.documentElement.scrollWidth<=innerWidth;
+    })).toBe(true);
+    await page.locator('#items-panel .items-head button').click();
+    const context=await browser.newContext({baseURL:test.info().project.use.baseURL,viewport:{width:568,height:320},isMobile:true,hasTouch:true});
+    try{
+      const phone=await context.newPage();
+      await phone.goto('/games/installed/wtfiap/generator.html?mode=match&seed=item-art-phone');
+      await phone.waitForFunction(() => document.documentElement.dataset.ready === 'true' && window.AB_MATCH());
+      await phone.evaluate(() => {AB_UI.buyShop(0);AB_MATCH().players.player.items.push('forgeblade','forgeblade+spellglass');AB_MATCH().players.player.fortuneShop=null;AB_UI.draw();});
+      await phone.locator('#items-toggle').click();
+      await expect(phone.locator('#items-panel .item-art')).toHaveCount(2);
+      expect(await phone.evaluate(() => {
+        const board=document.querySelector('.arena-viewport').getBoundingClientRect();
+        const dock=document.querySelector('#items-panel').getBoundingClientRect();
+        const icons=[...document.querySelectorAll('#items-panel .item-art')].map(element=>element.getBoundingClientRect());
+        return board.width>0&&dock.width<innerWidth&&icons.every(icon=>icon.top>=dock.top&&icon.bottom<=dock.bottom);
+      })).toBe(true);
+      await phone.locator('#items-panel .item-option').filter({hasText:'Forgeblade'}).click();
+      await phone.getByRole('button',{name:'Equip selected item'}).click();
+      await expect(phone.locator('#mobile-bench .mobile-bench-items .item-art')).toHaveCount(1);
+      expect(await phone.evaluate(() => AB_GAME().bench[0].itemIds)).toContain('forgeblade');
+    }finally{await context.close();}
+  });
+
   test("new Duel rooms let a player place Cherub during preparation", async ({ page, browser }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });

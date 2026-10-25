@@ -636,6 +636,7 @@ Total: **679** · Open: **2** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 535 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 535 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 535 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
+| WTF-BB-713 | Verified | Codex coLILseum item icons and adaptive arena | 2026-10-25 | coLILseum / equipment UX | P2 | 8 | 602 | 2 | 3 | 0 | Completed items shared a fallback glyph and the item panel covered the arena on touch |
 | WTF-BB-712 | Verified | Codex coLILseum preparation guidance | 2026-10-25 | coLILseum / preparation UX | P2 | 8 | 602 | 2 | 3 | 0 | Bench and objective placement actions are hard to find during preparation |
 | WTF-BB-711 | Verified | Codex Cherub and item chest placement correction | 2026-10-24 | coLILseum / objective placement | P2 | 8 | 602 | 2 | 3 | 0 | Cherub could not be moved and tenth-round item chest used the back rows |
 | WTF-BB-706 | Verified | Codex coLILseum room lifecycle | 2026-10-24 | Game lobby / room lifecycle | P2 | 8 | 602 | 2 | 3 | 0 | Completed and abandoned coLILseum rooms crowd the public lobby |
@@ -14099,6 +14100,18 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.
   - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.
+
+### WTF-BB-713 - Completed equipment lacked distinct icons and Items took over the arena
+
+- Category: coLILseum / equipment UX
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex coLILseum item icons and adaptive arena
+- Last touched: 2026-10-25
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence: All 36 completed recipes used the same fallback star glyph. The compact Items panel occupied the full viewport, hiding board, shop, and reserves during equipment decisions.
+- Correction: Give every component and recipe a distinct original vector sigil; draw equipped art on units and use the same symbols in offers and inventory. Dock Items beside the desktop arena and use a compact in-arena strip on landscape touch.
+- Verification: Source build and 43 core tests pass. Browser check finds 44 unique SVGs, proves the desktop dock and narrow landscape phone keep the board visible, and equips an item to a hero on phone. The hosted item-shop purchase story passes in isolation on a fresh harness. Inventory coverage passes. The broad platform inventory run was started and stopped after 27 passing unrelated tests because the changed game surface had already been covered by its 27-story suite; its one server-round timeout under a simultaneous TypeScript check passed on an isolated rerun. Production verification follows the normal deploy.
 
 ### WTF-BB-712 - Bench and objective placement actions are hard to find during preparation
 
