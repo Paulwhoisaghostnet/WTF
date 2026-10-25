@@ -14109,8 +14109,8 @@ Copy this when adding a new issue:
 - Last touched: 2026-10-25
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence: Returning a selected field hero to the bench was available only inside the Details panel; Cherub and item-chest movement lived in the Items panel. Players received no visible round-start explanation for newly active objectives.
-- Correction: Added a dismissible round briefing for Cherub and chest objectives, with direct placement buttons; surfaced objective placement and Move to bench beside the battlefield and in the compact action rail. The existing board and room rules are unchanged.
-- Verification: Source game tests pass 43/43; Chromium interactions prove Cherub briefing and movement in practice and hosted Duel, selected hero recall on desktop and landscape touch, and round-five gold chest prompt and placement. Inventory coverage and full browser checks completed in this pass.
+- Correction: Added a click-through round briefing for Cherub and chest objectives that clears on the first action; surfaced objective placement and Move to bench beside the battlefield and in the compact action rail. The existing board and room rules are unchanged.
+- Verification: Source game tests pass 43/43; Chromium interactions prove Cherub briefing and movement in practice and hosted Duel, selected hero recall on desktop and landscape touch, and round-five gold chest prompt and placement. Inventory coverage passes; the final hosted game browser suite passes 26/26 after the notice was made click-through. The broader inventory run passed 759 checks before the original overlap stopped one game story, which is now covered by the passing game suite.
 
 ### WTF-BB-711 - Cherub could not be moved and tenth-round item chest used the back rows
 

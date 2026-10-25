@@ -171,9 +171,9 @@ body{background:#071416}
 .phase-cue-enter{animation:phase-arrive .45s ease-out}
 @keyframes phase-arrive{from{opacity:.35;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
 .round-briefing[hidden]{display:none}
-.round-briefing{position:absolute;z-index:8;top:18%;left:50%;width:min(440px,calc(100% - 32px));padding:12px 14px;border:1px solid #e3c47e;border-radius:9px;background:#10292cef;color:#e8e2cd;box-shadow:0 16px 38px #000b;transform:translateX(-50%);font:13px/1.4 system-ui}
-.round-briefing-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.round-briefing strong{color:#ffe1a0;letter-spacing:.06em}.round-briefing p{margin:8px 0}.round-briefing-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.round-briefing button{min-height:40px;padding:7px 11px;border:1px solid #b99d65;border-radius:5px;background:#24423c;color:#fff0c9;font:700 12px system-ui;cursor:pointer}.round-briefing button.primary{background:#dab975;color:#102124}.round-briefing button:focus-visible{outline:3px solid #f5d487;outline-offset:2px}
-.compact-stage .round-briefing{top:6px;left:8px;right:8px;width:auto;max-height:calc(100% - 14px);overflow:auto;transform:none;font-size:11px}.compact-stage .round-briefing p{margin:5px 0}.compact-stage .round-briefing button{min-height:44px}
+.round-briefing{position:absolute;z-index:8;top:18%;left:50%;width:min(440px,calc(100% - 32px));padding:12px 14px;border:1px solid #e3c47e;border-radius:9px;background:#10292cef;color:#e8e2cd;box-shadow:0 16px 38px #000b;transform:translateX(-50%);font:13px/1.4 system-ui;pointer-events:none}
+.round-briefing strong{color:#ffe1a0;letter-spacing:.06em}.round-briefing p{margin:8px 0}
+.compact-stage .round-briefing{top:6px;left:8px;right:8px;width:auto;max-height:calc(100% - 14px);overflow:auto;transform:none;font-size:11px}.compact-stage .round-briefing p{margin:5px 0}
 .compact-stage:not(.portrait-play) .mobile-stage-nav{display:flex;justify-content:flex-end}
 .compact-stage:not(.portrait-play) .mobile-stage-nav button[data-view]{display:none}
 .compact-stage:not(.portrait-play) .visual-board{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,36%);grid-template-rows:minmax(0,1fr) 64px;gap:0;container-type:size}
@@ -7723,31 +7723,26 @@ function focusObjective(kind){
 }
 function roundBriefing(){
   if(!match||match.phase!=='preparation'||partyData?.eliminated||partyData?.spectating)return null;
-  const notes=[],actions=[],cherubVersion=partyMode?partyData?.cherubRulesVersion:match.cherubRulesVersion;
+  const notes=[],cherubVersion=partyMode?partyData?.cherubRulesVersion:match.cherubRulesVersion;
   if([1,2].includes(cherubVersion)){
     notes.push((match.roundNumber===1?'Cherub has joined your side.':'Cherub returns this round.')+' It cannot attack. If the enemy defeats it, that commander gains a random component. '+(cherubVersion===2?'Choose a friendly tile to position it.':'This room keeps Cherub at its fixed starting position.'));
-    if(cherubVersion===2)actions.push({kind:'cherub',label:'Move Cherub'});
   }
   if(chestTerms().enabled){
     notes.push((match.chests.player?'Your gold chest is on the board.':'Place your gold chest before combat.')+' Enemy heroes can attack it; capturing the rival chest earns both chest bonuses.');
-    actions.push({kind:'treasure',label:match.chests.player?'Move treasure':'Place treasure'});
   }
   if(partyMode&&partyData?.itemChest){
     const rows=partyData.itemChestPlacementVersion===2?'front':'back';
     notes.push('An item chest is available this round. Position it in your '+rows+' two rows. If the enemy destroys it, they choose a component.');
-    actions.push({kind:'item-chest',label:'Move item chest'});
   }
-  return notes.length?{key:match.roundNumber+'|'+(partyData?.watchingName||''),notes,actions}:null;
+  return notes.length?{key:match.roundNumber+'|'+(partyData?.watchingName||''),notes}:null;
 }
 function renderRoundBriefing(){
   const panel=document.getElementById('round-briefing'),info=roundBriefing();
   if(!info){panel.hidden=true;return;}
   if(briefingKey!==info.key){briefingKey=info.key;briefingVisible=true;panel.replaceChildren();
     const head=document.createElement('div');head.className='round-briefing-head';
-    const title=document.createElement('strong');title.textContent='ROUND '+match.roundNumber+' · OBJECTIVES';
-    const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='Close ×';dismiss.setAttribute('aria-label','Dismiss round objectives');dismiss.onclick=()=>{briefingVisible=false;panel.hidden=true;renderMobileHint();};head.append(title,dismiss);panel.append(head);
+    const title=document.createElement('strong');title.textContent='ROUND '+match.roundNumber+' · OBJECTIVES';head.append(title);panel.append(head);
     for(const note of info.notes){const line=document.createElement('p');line.textContent=note;panel.append(line);}
-    if(info.actions.length){const row=document.createElement('div');row.className='round-briefing-actions';for(const action of info.actions){const button=document.createElement('button');button.type='button';button.textContent=action.label;button.classList.toggle('primary',action.kind==='treasure'&&!match.chests.player);button.onclick=()=>{markPlayerAction();focusObjective(action.kind);};row.append(button);}panel.append(row);}
   }
   panel.hidden=!briefingVisible;
 }
@@ -7766,7 +7761,7 @@ if(match)return{text:'Your team is set. Begin the round when you are ready.',tar
 return game.field.length?{text:'Your team is set. Begin battle when you are ready.',target:'battle'}:{text:'Select a reserve, then place it on a friendly board space.',target:'bench-'+game.bench[0]?.id};
 }
 function restartIdleHint(){clearTimeout(idleHintTimer);idleHintTimer=null;if(!tipsEnabled||!preparationOpen())return;idleHintTimer=setTimeout(()=>{idleHintTimer=null;if(!preparationOpen()||!tipsEnabled)return;hintVisible=true;const tip=nextStepHint();document.getElementById('announcement').textContent='Help tip: '+tip.text;draw();},IDLE_HINT_MS);}
-function markPlayerAction(){hintVisible=false;restartIdleHint();}
+function markPlayerAction(){hintVisible=false;if(briefingVisible){briefingVisible=false;document.getElementById('round-briefing').hidden=true;}restartIdleHint();}
 function toggleHelp(){hintVisible=!hintVisible;if(hintVisible){const tip=nextStepHint();document.getElementById('announcement').textContent='Help tip: '+tip.text;}draw();}
 function drawHelpTip(){if(!hintVisible||!preparationOpen())return;const tip=nextStepHint(),y=shopVisible?130:632;rect(48,y,232,100,'#253c38',C.gold);text('NEXT STEP',62,y+24,11,C.gold);wrap(tip.text,62,y+49,202,12,C.cream,17);const target=hits.find(h=>h.id===tip.target);if(target){ctx.save();ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(target.x-3,target.y-3,target.w+6,target.h+6);ctx.restore();}}
 document.getElementById('mobile-hint-dismiss').addEventListener('click',()=>{markPlayerAction();draw();});
@@ -8391,7 +8386,7 @@ function updateQuickActions(){
     const heroPreview=compact&&/^shop-buy-\d+$/.test(id);
     const button=document.createElement('button');button.type='button';
     button.textContent=heroPreview?'Hero details':id==='recall-prominent'?'Move to bench':id.startsWith('objective-')?objectiveActions().find(entry=>entry.id===id)?.label||action.label:id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-fortunes'?'✧ Fortunes':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
-    button.setAttribute('aria-label',action.label);
+    button.setAttribute('aria-label',id==='shop-toggle'?button.textContent:action.label);
     button.classList.toggle('primary',!heroPreview&&(id==='recall-prominent'||id==='objective-treasure'&&!match.chests.player||id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id)));
     button.addEventListener('click',()=>{markPlayerAction();if(heroPreview)openMobileHeroPreview(shopPreviewIndex,button);else action.fn();});
     root.appendChild(button);
