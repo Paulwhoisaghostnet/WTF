@@ -74,7 +74,8 @@ function atomicJSON(filename, value) {
 function configuration(input, preserveItemVersion = false) {
   const features = input?.rulesPreset === undefined ? null : roomFeatures(input);
   if (features) {
-    const versions = { balanceVersion: 1, itemRulesVersion: features.items ? 1 : undefined,
+    const versions = { balanceVersion: 1, shopOddsVersion: preserveItemVersion ? input.shopOddsVersion : 1,
+      itemRulesVersion: features.items ? 1 : undefined,
       cherubRulesVersion: features.cherub ? preserveItemVersion && input.cherubRulesVersion === 1 ? 1 : 2 : undefined,
       itemChestPlacementVersion: features.items ? preserveItemVersion ? input.itemChestPlacementVersion : 2 : undefined,
       shopLockRulesVersion: features.shopHold ? 1 : undefined, encounterRulesVersion: features.supplyEncounters ? 1 : undefined,
@@ -103,6 +104,7 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.cherubRulesVersion === undefined || [1, 2].includes(input.cherubRulesVersion) && input.itemRulesVersion === 1, 'Cherub requires the item system.');
   requireThat(input.itemChestPlacementVersion === undefined || input.itemChestPlacementVersion === 2 && input.itemRulesVersion === 1, 'Front-row item chests require the item system.');
   requireThat(input.balanceVersion === undefined || input.balanceVersion === 1, 'Unknown hero balance version.');
+  requireThat(input.shopOddsVersion === undefined || input.shopOddsVersion === 1, 'Unknown shop odds version.');
   requireThat(input.shopLockRulesVersion === undefined || input.shopLockRulesVersion === 1, 'Unknown shop lock rules version.');
   requireThat(input.encounterRulesVersion === undefined || input.encounterRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown encounter rules version.');
   requireThat(input.draftRulesVersion === undefined || input.draftRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown shared draft rules version.');
@@ -117,6 +119,7 @@ function configuration(input, preserveItemVersion = false) {
     ...(versionOn('cherubRulesVersion') ? { cherubRulesVersion: input.cherubRulesVersion === 1 && preserveItemVersion ? 1 : 2 } : {}),
     ...(versionOn('itemRulesVersion') && (!preserveItemVersion || input.itemChestPlacementVersion === 2) ? { itemChestPlacementVersion: 2 } : {}),
     ...(versionOn('balanceVersion') ? { balanceVersion: 1 } : {}),
+    ...(versionOn('shopOddsVersion') ? { shopOddsVersion: 1 } : {}),
     ...(versionOn('shopLockRulesVersion') ? { shopLockRulesVersion: 1 } : {}),
     ...(versionOn('encounterRulesVersion') ? { encounterRulesVersion: 1 } : {}),
     ...(versionOn('draftRulesVersion') ? { draftRulesVersion: 1 } : {}),
@@ -147,7 +150,7 @@ function configuration(input, preserveItemVersion = false) {
   return config;
 }
 function immutableTerms(input) {
-  requireThat(!['roomType', 'tournament', 'duelWager', 'allowAI', 'tournamentAccounting', 'config', 'currency', 'entryFee', 'entryAtomic',
+  requireThat(!['roomType', 'tournament', 'duelWager', 'allowAI', 'tournamentAccounting', 'config', 'currency', 'entryFee', 'entryAtomic', 'shopOddsVersion',
     'prizePercentages', 'shares', 'mode', 'fundingStatus', 'collectedAtomic'].some(key => Object.hasOwn(input, key)),
   'Room type and tournament terms are fixed when the room is created.');
 }

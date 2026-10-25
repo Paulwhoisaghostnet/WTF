@@ -118,6 +118,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(await game.evaluate(() => window.AB.FACTIONS.map(faction => faction.name))).toContain("The Cookout");
     expect(await game.evaluate(() => window.AB.ROSTER.length)).toBe(50);
     expect((await gameState(game)).match.players.player.gold).toBe(1);
+    expect((await gameState(game)).shop.odds.map(tier => Math.round(tier.probability * 100))).toEqual([100, 0, 0, 0, 0]);
     expect((await gameState(game)).shop.visible).toBe(true);
     expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id.startsWith("tile-")))).toBe(true);
     expect(await game.evaluate(() => window.AB_UI.hitRegions().some(hit => hit.id === "shop-buy-0"))).toBe(true);
@@ -247,6 +248,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     try {
       await page.goto("/games/installed/wtfiap/generator.html?seed=phone-lineup&mode=match&boardMode=standard");
       await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+      await expect(page.locator('.mobile-shop-summary')).toContainText('LV 1 BASE ODDS · COST 1–5: 100.0 / 0.0 / 0.0 / 0.0 / 0.0%');
       await page.evaluate(() => {
         const id = window.AB_MATCH().shops.player[0].heroId;
         localStorage.setItem("colilseum:lineups:v1", JSON.stringify({ plans: [{ id: "phone-plan", name: "Phone plan", heroIds: [id] }], activeId: "phone-plan" }));

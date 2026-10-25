@@ -185,7 +185,7 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 2, fortunePricingVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 2, fortunePricingVersion: 1, balanceVersion: 1, shopOddsVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
       chests: { player: null, enemy: null }, cherubs: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
@@ -240,7 +240,8 @@
     // Old unbought offers are released for this draw. Other shops stay reserved.
     let available = ShopPool.available(match.shopPool, poolHolders(match, [side]));
     const offers = Array.from({ length: RULES.shopSize }, (_, index) => {
-      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (match.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
+      const odds = match.shopOddsVersion === 1 ? Engine.shopCostOdds(match.players[side].progression.level) : Engine.SPAWN_RARITY.costs;
+      const tiers = odds.filter(tier => tier.weight > 0 && (match.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
         .map(tier => match.fortuneRulesVersion === 1 ? { ...tier, weight: Fortunes.tierWeight(tier.weight, tier.cost, match.players[side].blessings, match.players[side].curses) } : tier);
       if (!tiers.length) return null;
       let cost = tiers[0].cost;
@@ -712,6 +713,7 @@
       checkPosition(side, match.cherubs[side].col, match.cherubs[side].row, match.game.board);
     }
     demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
+    demand(match.shopOddsVersion === undefined || match.shopOddsVersion === 1, 'Unknown practice shop odds version.');
     demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion), 'Unknown practice encounter rules version.');
     demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion), 'Unknown practice draft rules version.');
     demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion) && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');

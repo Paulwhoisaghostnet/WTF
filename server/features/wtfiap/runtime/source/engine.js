@@ -245,6 +245,22 @@
     costs: probabilityRows(Object.entries(HEROES_BY_COST).map(([cost, heroes]) => ({ cost: Number(cost), weight: COST_WEIGHTS[cost - 1], heroCount: heroes.length }))),
     stars: probabilityRows(STAR_WEIGHTS.map((weight, index) => ({ level: index + 1, weight })))
   });
+  // New-room shop odds use the approved ten commander levels and five cost
+  // tiers. A four-step binomial progression shifts the center toward premium
+  // tiers as the commander levels; the existing threefold tier rarity remains
+  // as a prior. Level seven is close to TFT's published 14.8 level-seven
+  // spread, while our four-offer shop, pool, and full curve stay distinct.
+  // Missing shopOddsVersion on a saved room keeps SPAWN_RARITY costs unchanged.
+  function shopCostOdds(level) {
+    if (!Number.isInteger(level) || level < DEFAULT_CONFIG.playerLevelMin || level > DEFAULT_CONFIG.playerLevelMax)
+      throw new Error('Shop odds require a commander level from 1 to 10.');
+    const ascended = level - 1, remaining = DEFAULT_CONFIG.playerLevelMax + 1 - level;
+    const combinations = [1, 4, 6, 4, 1];
+    return probabilityRows(SPAWN_RARITY.costs.map((tier, index) => ({
+      ...tier,
+      weight: combinations[index] * ascended ** index * remaining ** (4 - index) * 3 ** (4 - index)
+    })));
+  }
   const heroById = id => HEROES[id];
   const distance = (a, b) => Math.hypot(a.col - b.col, a.row - b.row);
   // The existing foot shadow occupies half a tile. Stars grow that physical
@@ -1370,7 +1386,7 @@
     return game;
   }
 
-  const AB = { DEFAULT_CONFIG, ABILITY_PROFILES, SPAWN_RARITY, spawnOdds, ARCHETYPES, FACTIONS, CLASSES, ROSTER, heroById, makeRandom, generate, createGame, deploy, recall, mergeGroups, combine, synergies, deriveStats, cherubMaxHp, cherubObjectives, bodyProfile, MOVE_SPEED, MIME_STATS, previewCombatUnits, startBattle, step, resetBattle, FIXED_STEP };
+  const AB = { DEFAULT_CONFIG, ABILITY_PROFILES, SPAWN_RARITY, shopCostOdds, spawnOdds, ARCHETYPES, FACTIONS, CLASSES, ROSTER, heroById, makeRandom, generate, createGame, deploy, recall, mergeGroups, combine, synergies, deriveStats, cherubMaxHp, cherubObjectives, bodyProfile, MOVE_SPEED, MIME_STATS, previewCombatUnits, startBattle, step, resetBattle, FIXED_STEP };
   if (typeof module !== 'undefined' && module.exports) module.exports = AB;
   root.AB = AB;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

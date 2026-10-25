@@ -12579,3 +12579,27 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: The coLILseum equipment entry was written directly into the rendered bug-bounty board. The CI check regenerated the board from `docs/reference/bug-bounty-records.json` and rejected the stale output.
 
 **Rule**: Add or update the canonical JSON record, recalculate derived ranks when a new record changes the score distribution, run `npm run bounty:board`, and run `npm run bounty:board:check` before committing the generated Markdown.
+
+## 2026-10-25 — Shop progression needs versioned odds and a paired match check
+
+**What happened**: The four-offer coLILseum shop kept the same 81/27/9/3/1 cost weights at every commander level. Leveling added field slots but left most cost-three-through-five heroes difficult to see, even late in a match. A first paired tournament harness imported another worker-capable study module, whose worker sent an unrelated `done` message before the intended paired result.
+
+**Rule**: Pin a new shop distribution to fresh rooms and preserve the earlier odds whenever the version is absent from a funded room. Prove old two-seat and eight-seat serialized state and public-view transcripts before accepting the new rules hash. For simulations, isolate worker message protocols and assert the shape of completed results before recording metrics; compare the same seeds and AI policy on both sides of a balance decision.
+
+## 2026-10-25 — Shop odds and AI purchasing must be tested together
+
+**What happened**: Level-sensitive offers made stronger heroes visible, but the AI shopper still bought shop slots in order, kept a full low-cost bench, and saved hundreds of gold instead of buying XP. Its fielded teams became weaker even as the offers improved. A later study using the old item-chest placement rule also failed validation when the new AI leveled far enough to expand the board while a rear-row chest was present.
+
+**Rule**: Measure actual offers separately from final AI teams. Pin an improved AI policy only to new rooms, retain old-room replay exactly, and test that AI sells weak copies, buys XP, and fields stronger offers. Match the study's versioned objective-placement rules to the shipping room configuration, and disclose any rule difference when comparing older simulations.
+
+## 2026-10-25 — Tournament studies must checkpoint outside long-lived worker heaps
+
+**What happened**: A 1,000-tournament follow-up accumulated match state in long-lived worker threads. Eight workers exhausted V8 memory after most seeds; smaller worker batches saved their completed results but the coordinator still retained released heaps near completion.
+
+**Rule**: Seal deterministic seed batches to separate files and run each remaining batch in its own child process. Validate each batch's exact seed indices before aggregation, then compare one accelerated result with the authoritative match. Run timed browser stories after the study, because simulator load can create unrelated deadline failures.
+
+## 2026-10-25 — Do not activate a shop AI revision from offer metrics alone
+
+**What happened**: A trial AI shopper spent saved gold and used higher-cost offers, but seed 886 formed an iron-vanguard shield stalemate. Its two teams still had six living heroes after 100 combat seconds; one vanguard had accumulated over 15,000 shield against roughly 300 maximum HP, and a full tournament run consumed multiple gigabytes without finishing.
+
+**Rule**: Keep the requested level-sensitive shop odds separate from the experimental AI policy. Do not activate the AI policy or change existing funded combat rules until shield-heavy match termination and resulting team balance are demonstrated. The odds-only 1,000-seed study completed and is the release evidence for this shop change.

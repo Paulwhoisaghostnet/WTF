@@ -81,7 +81,8 @@
       ...(other === player ? [] : other.shop.filter(Boolean))]));
     const random = Engine.makeRandom(state.seed + ':party-shop:' + player.playerId + ':' + state.roundNumber + ':' + draw);
     const offers = Array.from({ length: RULES.shopSize }, (_, index) => {
-      const tiers = Engine.SPAWN_RARITY.costs.filter(tier => (state.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
+      const odds = state.shopOddsVersion === 1 ? Engine.shopCostOdds(player.progression.level) : Engine.SPAWN_RARITY.costs;
+      const tiers = odds.filter(tier => tier.weight > 0 && (state.roundNumber > 1 || tier.cost === 1) && available.some(lot => lot.cost === tier.cost))
         .map(tier => fortunesOn(state) ? { ...tier, weight: Fortunes.tierWeight(tier.weight, tier.cost, player.blessings, player.curses) } : tier);
       if (!tiers.length) return null;
       let cost = 1;
@@ -155,6 +156,7 @@
     demand(options.cherubRulesVersion === undefined || [1, 2].includes(options.cherubRulesVersion) && options.itemRulesVersion === 1, 'Cherub rewards require item rules.');
     demand(options.itemChestPlacementVersion === undefined || options.itemChestPlacementVersion === 2 && options.itemRulesVersion === 1, 'Front-row item chests require item rules.');
     demand(options.balanceVersion === undefined || options.balanceVersion === 1, 'Unknown hero balance version.');
+    demand(options.shopOddsVersion === undefined || options.shopOddsVersion === 1, 'Unknown shop odds version.');
     demand(options.shopLockRulesVersion === undefined || options.shopLockRulesVersion === 1, 'Unknown shop lock rules version.');
     demand(options.encounterRulesVersion === undefined || options.encounterRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown encounter rules version.');
     demand(options.draftRulesVersion === undefined || options.draftRulesVersion === 1 && options.itemRulesVersion === 1, 'Unknown shared draft rules version.');
@@ -172,6 +174,7 @@
       ...([1, 2].includes(options.cherubRulesVersion) ? { cherubRulesVersion: options.cherubRulesVersion } : {}),
       ...(options.itemChestPlacementVersion === 2 ? { itemChestPlacementVersion: 2 } : {}),
       ...(options.balanceVersion === 1 ? { balanceVersion: 1 } : {}),
+      ...(options.shopOddsVersion === 1 ? { shopOddsVersion: 1 } : {}),
       ...(options.shopLockRulesVersion === 1 ? { shopLockRulesVersion: 1 } : {}),
       ...(options.encounterRulesVersion === 1 ? { encounterRulesVersion: 1 } : {}),
       ...(options.draftRulesVersion === 1 ? { draftRulesVersion: 1, draft: null } : {}),
@@ -751,7 +754,7 @@
     const last = state.receipts.at(-1), terms = Treasure.calculateRoundTerms(state.roundNumber);
     const battle = combat ? { ...combat.game.battle, units: combat.game.battle.units.map(publicUnit) } : null;
     return clone({ schemaVersion: state.schemaVersion, matchId: state.matchId, revision: state.revision, roundNumber: state.roundNumber,
-      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(state.itemChestPlacementVersion === 2 ? { itemChestPlacementVersion: 2 } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: state.cherubRulesVersion } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(fortunesOn(state) ? { fortuneRulesVersion: 1, ...(state.fortunePricingVersion === 1 ? { fortunePricingVersion: 1 } : {}) } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
+      phase: state.phase, boardMode: state.boardMode, board: state.board, ...(itemsOn(state) ? { itemRulesVersion: 1, itemCatalog: { components: Items.COMPONENTS, recipes: Items.RECIPES } } : {}), ...(state.itemChestPlacementVersion === 2 ? { itemChestPlacementVersion: 2 } : {}), ...(cherubsOn(state) ? { cherubRulesVersion: state.cherubRulesVersion } : {}), ...(balanceOn(state) ? { balanceVersion: 1 } : {}), ...(state.shopOddsVersion === 1 ? { shopOddsVersion: 1 } : {}), ...(shopLockOn(state) ? { shopLockRulesVersion: 1 } : {}), ...(encountersOn(state) ? { encounterRulesVersion: 1, encounterRound: encounterRound(state) } : {}), ...(draftOn(state) ? { draftRulesVersion: 1, draft: state.draft ? { availableIds: state.draft.availableIds, picked: state.draft.pickedPlayerIds.includes(playerId) } : null } : {}), ...(plansOn(state) ? { planRulesVersion: 1 } : {}), ...(fortunesOn(state) ? { fortuneRulesVersion: 1, ...(state.fortunePricingVersion === 1 ? { fortunePricingVersion: 1 } : {}) } : {}), ...(state.zoneDefense ? { zoneDefense: state.zoneDefense } : {}), selfId: playerId, preparationSeconds: state.preparationSeconds,
       earlyStart: state.earlyStart, oddPlayerPolicy: state.oddPlayerPolicy, openedAtMs: state.openedAtMs, deadlineAtMs: state.deadlineAtMs,
       serverTimeMs: state.lastAdvancedAtMs, winnerId: state.winnerId, players: state.players.map(publicPlayer),
       treasure: { enabled: treasureOn(state) && terms.enabled, goldPerChest: treasureOn(state) ? terms.goldPerChest : 0, expiresAtSeconds: treasureOn(state) ? terms.treasureWindowSeconds : null },
@@ -773,6 +776,7 @@
     demand(state.cherubRulesVersion === undefined || [1, 2].includes(state.cherubRulesVersion) && itemsOn(state), 'Invalid Cherub rules version.');
     demand(state.itemChestPlacementVersion === undefined || state.itemChestPlacementVersion === 2 && itemsOn(state), 'Invalid item chest placement version.');
     demand(state.balanceVersion === undefined || state.balanceVersion === 1, 'Invalid hero balance version.');
+    demand(state.shopOddsVersion === undefined || state.shopOddsVersion === 1, 'Invalid shop odds version.');
     demand(state.shopLockRulesVersion === undefined || state.shopLockRulesVersion === 1, 'Invalid shop lock rules version.');
     demand(state.encounterRulesVersion === undefined || state.encounterRulesVersion === 1 && itemsOn(state), 'Invalid encounter rules version.');
     demand(state.draftRulesVersion === undefined || state.draftRulesVersion === 1 && itemsOn(state), 'Invalid shared draft rules version.');
