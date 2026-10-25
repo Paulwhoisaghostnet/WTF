@@ -89,3 +89,26 @@ test('hosted tenth-round chest capture records a chosen component reward', () =>
   assert.equal(state.players[0].pendingComponentChoices, 0);
   assert.ok(state.players[0].items.includes('spellglass'));
 });
+
+test('new rooms spawn and accept item chests in the owner front rows', () => {
+  const state = Party.createMatch({ matchId: 'front-chest-room', seed: 'compat-ten', boardMode: 'standard',
+    preparationSeconds: null, oddPlayerPolicy: 'round-ai', openedAtMs: 0, itemRulesVersion: 1,
+    itemChestPlacementVersion: 2, players: [{ playerId: 'a', name: 'A', isAI: true },
+      { playerId: 'b', name: 'B', isAI: true }] });
+  let atMs = 0;
+  while (state.roundNumber < 10 && state.phase !== 'finished') {
+    for (const player of state.players.filter(entry => entry.hp > 0)) must(Party.prepareAI(state, player.playerId, atMs));
+    must(Party.advance(state, atMs));
+    while (state.phase === 'combat') { atMs += 1000; must(Party.advance(state, atMs)); }
+  }
+  assert.equal(state.roundNumber, 10);
+  for (const player of state.players) {
+    assert.ok(player.itemChest.row >= state.board.playerStartRow);
+    assert.ok(player.itemChest.row < state.board.playerStartRow + 2);
+    assert.equal(Party.command(state, { type: 'moveItemChest', playerId: player.playerId,
+      col: 0, row: 0 }, atMs).ok, false);
+    must(Party.command(state, { type: 'moveItemChest', playerId: player.playerId,
+      col: (player.chest.col + 1) % state.board.columns, row: state.board.playerStartRow }, atMs));
+  }
+  assert.equal(Party.validate(Party.restore(Party.serialize(state))), true);
+});

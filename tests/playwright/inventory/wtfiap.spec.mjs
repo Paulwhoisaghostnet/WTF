@@ -265,6 +265,10 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     const ready = await gameState(page);
     expect(ready.cherubs).toHaveLength(2);
     expect(ready.cherubs.every(cherub => cherub.hp === cherub.maxHp)).toBe(true);
+    await hit(page, page, "player-cherub");
+    await hit(page, page, `tile-0-${ready.board.playerStartRow}`);
+    await expect.poll(async () => (await gameState(page)).cherubs.find(cherub => cherub.side === "player")?.row)
+      .toBe(ready.board.playerStartRow);
     await page.locator("#game").screenshot({ path: test.info().outputPath("cherub-preparation.png") });
     const unitId = await buyAndDeploy(page, page);
     await hit(page, page, "battle");
@@ -280,6 +284,43 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(page.locator("#items-panel")).toContainText("Equip selected item");
     await page.locator("#items-panel button").filter({ hasText: "Equip selected item" }).click();
     expect((await gameState(page)).field.find(unit => unit.id === unitId)?.itemIds).toContain(reward.itemId);
+    expect(errors).toEqual([]);
+  });
+
+  test("new Duel rooms let a player place Cherub during preparation", async ({ page, browser }) => {
+    const errors = []; page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#create-name").fill("Cherub host");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toBeEmpty();
+    const code = await page.locator("#invite-code").inputValue();
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
+      await guest.goto(new URL(`/colilseum/${code}`, page.url()).href, { waitUntil: "domcontentloaded" });
+      const guestRoom = await hostFrame(guest);
+      await guestRoom.locator("#join-name").fill("Cherub guest");
+      await guestRoom.locator("#join-room").click();
+      await expect(guestRoom.locator("#alive-count")).toContainText("2 / 2 seats");
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#start-room").click();
+      const arena = await gameFrame(page, "#arena-frame");
+      const before = await gameState(arena);
+      expect(before.cherubs).toHaveLength(2);
+      await hit(page, arena, "player-cherub");
+      await hit(page, arena, `tile-0-${before.board.rows - 1}`);
+      await expect.poll(async () => (await gameState(arena)).cherubs.find(cherub => cherub.side === "player")?.row)
+        .toBe(before.board.rows - 1);
+      const lobby = (await (await page.request.get(`/api/wtfiap/party/rooms/${code}/lobby`)).json()).view;
+      expect(lobby.config.cherubRulesVersion).toBe(2);
+      expect(lobby.config.itemChestPlacementVersion).toBe(2);
+      await page.reload();
+      const reloaded = await gameFrame(page, "#arena-frame");
+      await expect.poll(async () => (await gameState(reloaded)).cherubs.find(cherub => cherub.side === "player")?.row)
+        .toBe(before.board.rows - 1);
+    } finally { await guestContext.close(); }
     expect(errors).toEqual([]);
   });
 
@@ -876,7 +917,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       const arena = await gameFrame(page, "#arena-frame");
       await expect(arena.locator("#items-toggle")).toBeVisible();
       await arena.locator("#items-toggle").click();
-      await expect(arena.locator("#items-panel")).toContainText("Blessings & curses");
+      await expect(arena.locator("#items-panel")).toContainText(/blessings (?:&|and) curses/i);
       await expect(arena.locator("#items-panel")).not.toContainText("Inventory and equipment");
       expect((await gameState(arena)).match.players.player.gold).toBe(1);
     } finally { await guestContext.close(); }
