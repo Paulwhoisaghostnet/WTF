@@ -12555,3 +12555,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Players had no way to protect or expose Cherub strategically, and the item chest rule rewarded a safer position than requested. Changing these rules globally would alter active funded matches.
 
 **Rule**: Pin objective-placement behavior per new room. Keep prior rooms on their serialized rules; verify a new placement through the client command bridge, server save/reload, and combat projection. When testing a reward, place the objective where a deterministic combat can reach it. Compare old and new runtimes through the affected later round before declaring funded-room compatibility.
+
+## 2026-10-24 — Optional shop tests must accept the active offer surface
+
+**What happened**: One CI browser run opened a blessings-only room during an optional fortune-shop draw. The test expected the inventory panel's idle “Blessings & curses” heading, while the valid fortune offer replaced that heading with “permanent blessings and curses.” The same commit passed a separate full run when that random offer did not appear.
+
+**Rule**: Assert the player-facing mechanic across its valid randomized surfaces, or pin the draw when the exact surface matters. Do not make a passing gameplay test depend on an unseeded optional offer remaining closed.

@@ -917,7 +917,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       const arena = await gameFrame(page, "#arena-frame");
       await expect(arena.locator("#items-toggle")).toBeVisible();
       await arena.locator("#items-toggle").click();
-      await expect(arena.locator("#items-panel")).toContainText("Blessings & curses");
+      await expect(arena.locator("#items-panel")).toContainText(/blessings (?:&|and) curses/i);
       await expect(arena.locator("#items-panel")).not.toContainText("Inventory and equipment");
       expect((await gameState(arena)).match.players.player.gold).toBe(1);
     } finally { await guestContext.close(); }
