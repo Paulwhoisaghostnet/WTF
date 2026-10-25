@@ -265,11 +265,14 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     const ready = await gameState(page);
     expect(ready.cherubs).toHaveLength(2);
     expect(ready.cherubs.every(cherub => cherub.hp === cherub.maxHp)).toBe(true);
-    await hit(page, page, "player-cherub");
+    await expect(page.locator("#round-briefing")).toContainText("Cherub has joined your side");
+    await expect(page.locator("#round-briefing")).toContainText("Choose a friendly tile");
+    await page.locator("#round-briefing").getByRole("button", { name: "Move Cherub" }).click();
     await hit(page, page, `tile-0-${ready.board.playerStartRow}`);
     await expect.poll(async () => (await gameState(page)).cherubs.find(cherub => cherub.side === "player")?.row)
       .toBe(ready.board.playerStartRow);
     await page.locator("#game").screenshot({ path: test.info().outputPath("cherub-preparation.png") });
+    await hit(page, page, "shop-toggle");
     const unitId = await buyAndDeploy(page, page);
     await hit(page, page, "battle");
     await page.evaluate(() => window.advanceTime(30000));
@@ -309,7 +312,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       const arena = await gameFrame(page, "#arena-frame");
       const before = await gameState(arena);
       expect(before.cherubs).toHaveLength(2);
-      await hit(page, arena, "player-cherub");
+      await expect(arena.locator("#round-briefing")).toContainText("Cherub has joined your side");
+      await arena.locator("#round-briefing").getByRole("button", { name: "Move Cherub" }).click();
       await hit(page, arena, `tile-0-${before.board.rows - 1}`);
       await expect.poll(async () => (await gameState(arena)).cherubs.find(cherub => cherub.side === "player")?.row)
         .toBe(before.board.rows - 1);
@@ -322,6 +326,45 @@ test.describe("interaction inventory - WTFIAP native game", () => {
         .toBe(before.board.rows - 1);
     } finally { await guestContext.close(); }
     expect(errors).toEqual([]);
+  });
+
+  test("selected heroes and new objectives expose preparation actions beside the board", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/generator.html?seed=prep-guidance&mode=match&boardMode=standard");
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+    await page.locator("#round-briefing").getByRole("button", { name: "Dismiss round objectives" }).click();
+    await hit(page, page, "shop-buy-0");
+    const unitId = (await gameState(page)).bench[0].id;
+    await hit(page, page, `tile-0-${(await gameState(page)).board.playerStartRow}`);
+    await hit(page, page, `field-${unitId}`);
+    expect(await page.evaluate(() => window.AB_UI.hitRegions().some(region => region.id === "recall-prominent"))).toBe(true);
+    await hit(page, page, "recall-prominent");
+    expect((await gameState(page)).field).toHaveLength(0);
+    expect((await gameState(page)).bench).toHaveLength(1);
+
+    // The round-five rendering check isolates the objective prompt from combat balance.
+    await page.evaluate(() => { window.AB_MATCH().roundNumber = 5; window.AB_UI.draw(); });
+    await expect(page.locator("#round-briefing")).toContainText("Place your gold chest before combat");
+    expect(await page.evaluate(() => window.AB_UI.hitRegions().some(region => region.id === "objective-treasure"))).toBe(true);
+    await page.locator("#round-briefing").getByRole("button", { name: "Place treasure" }).click();
+    await hit(page, page, `tile-0-${(await gameState(page)).board.playerStartRow}`);
+    expect((await gameState(page)).match.chests.player).toEqual({ col: 0, row: (await gameState(page)).board.playerStartRow });
+
+    const mobileContext = await browser.newContext({ viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true });
+    try {
+      const mobile = await mobileContext.newPage();
+      await mobile.goto("/games/installed/wtfiap/generator.html?seed=prep-guidance-mobile&mode=match&boardMode=standard");
+      await mobile.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_UI);
+      await mobile.locator("#round-briefing").getByRole("button", { name: "Dismiss round objectives" }).click();
+      await mobile.locator(".mobile-offer-buy").first().click();
+      const mobileUnitId = (await gameState(mobile)).bench[0].id;
+      await hit(mobile, mobile, `tile-0-${(await gameState(mobile)).board.playerStartRow}`);
+      if ((await gameState(mobile)).selected !== mobileUnitId) await hit(mobile, mobile, `field-${mobileUnitId}`);
+      const quickActions = mobile.locator("#quick-actions");
+      await expect(quickActions.getByText("Move to bench", { exact: true })).toBeVisible();
+      await expect(quickActions.getByText("Move Cherub", { exact: true })).toBeVisible();
+      await quickActions.getByText("Move to bench", { exact: true }).click();
+      expect((await gameState(mobile)).field).toHaveLength(0);
+    } finally { await mobileContext.close(); }
   });
 
   test("a seeded optional fortune draw opens the same shop controls on desktop and landscape phone", async ({ page }) => {

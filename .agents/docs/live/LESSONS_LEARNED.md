@@ -12561,3 +12561,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: One CI browser run opened a blessings-only room during an optional fortune-shop draw. The test expected the inventory panel's idle “Blessings & curses” heading, while the valid fortune offer replaced that heading with “permanent blessings and curses.” The same commit passed a separate full run when that random offer did not appear.
 
 **Rule**: Assert the player-facing mechanic across its valid randomized surfaces, or pin the draw when the exact surface matters. Do not make a passing gameplay test depend on an unseeded optional offer remaining closed.
+
+## 2026-10-25 — Preparation actions belong beside the arena and must follow the active layout
+
+**What happened**: A field hero's Return to bench button was hidden inside Details, while Cherub and item-chest placement lived inside Items. A new round added objectives without explaining them at the point where the player had to act. The first browser check also tried to buy from the shop immediately after choosing Move Cherub, even though objective placement intentionally hides the shop. A desktop browser resized to phone dimensions did not activate the coarse-pointer compact layout.
+
+**Rule**: Put selected-unit and round-objective actions in the arena's visible preparation controls, and explain a newly active objective with a short, dismissible prompt and direct action. Test desktop and a real touch context separately; follow the actual interaction sequence when a placement action changes shop visibility. Keep these prompts and controls in the shared game renderer so practice and hosted rooms stay aligned.
