@@ -12573,3 +12573,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: Completed coLILseum items all fell back to the same glyph, and the touch Items panel filled the viewport. The first narrow-screen icon check also drew a seeded optional fortune offer above inventory, so a layout assertion that assumed inventory was first reported hidden icons even though the item artwork was present.
 
 **Rule**: Keep one catalog-driven original icon source for components, completed recipes, offers, inventory, field, and bench. Dock equipment beside the desktop arena and in a bounded touch panel; prove the board remains visible and a real equip action still works. When measuring inventory visibility, pin or clear independent optional shop offers in the fixture instead of relying on a random seed. Run long hosted combat stories without CPU-heavy checks in parallel, because their server-driven round deadlines can time out under load without a gameplay regression.
+
+## 2026-10-25 — Bug bounty entries must be added to the canonical JSON
+
+**What happened**: The coLILseum equipment entry was written directly into the rendered bug-bounty board. The CI check regenerated the board from `docs/reference/bug-bounty-records.json` and rejected the stale output.
+
+**Rule**: Add or update the canonical JSON record, recalculate derived ranks when a new record changes the score distribution, run `npm run bounty:board`, and run `npm run bounty:board:check` before committing the generated Markdown.
