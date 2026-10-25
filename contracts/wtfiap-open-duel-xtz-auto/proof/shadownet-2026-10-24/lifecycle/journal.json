@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 1,
+  "network": "shadownet",
+  "contract": "KT1R1i4Ay96Eib8nsSs4GaY2vvVnvdaAMPu8",
+  "scriptHash": "ff8046cf0feca9d027acd111bb2cf656e142a8fd5765a2e711585dd5cb041181",
+  "roomIds": {
+    "cancel": "e4174876629fd000a2c2397e4bc4f9292e50ca14a53d92c93f5c48ac4cec4cb8",
+    "settle": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+  },
+  "operations": {
+    "cancel/create": {
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "create_offer",
+      "amount": "510000",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "e4174876629fd000a2c2397e4bc4f9292e50ca14a53d92c93f5c48ac4cec4cb8"
+          },
+          {
+            "prim": "Pair",
+            "args": [
+              {
+                "bytes": "321be8c67578a6ab953df844c871d58b78c876b99620fc12166903ed2b17fa8a"
+              },
+              {
+                "prim": "Pair",
+                "args": [
+                  {
+                    "bytes": "b467e6fc1a52c18fad091f97af327931ca902272516e7089dd72ebafff0bb095"
+                  },
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      {
+                        "bytes": "4c166c7ad9a473da62935f1487b755288072712ae2daad57c1dc37f695517db1"
+                      },
+                      {
+                        "prim": "Pair",
+                        "args": [
+                          {
+                            "string": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+                          },
+                          {
+                            "int": "10000"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626422,
+      "estimate": {
+        "fee": "988",
+        "gas": "4917",
+        "storage": "367",
+        "burn": "91750",
+        "balance": "8314194"
+      },
+      "operationHash": "ongqkDXzfRwrVPDSGU6muKjFFUDfC4FM4cBR4SFZfYzf2VbP32h",
+      "inclusion": {
+        "blockHash": "BM9eyP2Lh3jacnvodbfp1wG4GgP32ZrGxQrH7236fomDjiah77d",
+        "level": 5626423
+      }
+    },
+    "cancel/cancel": {
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "cancel_offer",
+      "amount": "0",
+      "parameters": {
+        "bytes": "e4174876629fd000a2c2397e4bc4f9292e50ca14a53d92c93f5c48ac4cec4cb8"
+      },
+      "status": "applied",
+      "preparedLevel": 5626425,
+      "estimate": {
+        "fee": "698",
+        "gas": "3699",
+        "storage": "0",
+        "burn": "0",
+        "balance": "7716456"
+      },
+      "operationHash": "opNHFcdHHRpUp6eroT9gWihHHsqSEYudgzibN1rUhCCgvMpZ2pF",
+      "inclusion": {
+        "blockHash": "BKiNJBePoYvGJ2iY6byk4UeS2VvceZpHAKNU3Gc5hm4CF9CNenx",
+        "level": 5626427
+      }
+    },
+    "settle/create": {
+      "actor": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+      "entrypoint": "create_offer",
+      "amount": "510000",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+          },
+          {
+            "prim": "Pair",
+            "args": [
+              {
+                "bytes": "c922155818cdd5e8dbce1deb70270dd66e846762a6ed4fea60ea414ad92f2008"
+              },
+              {
+                "prim": "Pair",
+                "args": [
+                  {
+                    "bytes": "ae782471bb27e0c7240dc20e9310f727f8bbcbddd5fd7a154a500aabada696c5"
+                  },
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      {
+                        "bytes": "f84f3e37bc6ff2bd198bca589576823bc32ff763629eb08ab8fc95d33bbd09b0"
+                      },
+                      {
+                        "prim": "Pair",
+                        "args": [
+                          {
+                            "string": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+                          },
+                          {
+                            "int": "10000"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626430,
+      "estimate": {
+        "fee": "612",
+        "gas": "1152",
+        "storage": "338",
+        "burn": "84500",
+        "balance": "8225758"
+      },
+      "operationHash": "oo6UbwxA7z679Kyt8AdCjJ1aPzMKD5nQmFRbYhysBZYD7hTBW2L",
+      "inclusion": {
+        "blockHash": "BM6egr3ooCvMGDfng2ShqK6QsYmJGrDnd8rv1vz9wtGQuck1caA",
+        "level": 5626431
+      }
+    },
+    "settle/authorize": {
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "authorize_guest",
+      "amount": "0",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+          },
+          {
+            "string": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626433,
+      "estimate": {
+        "fee": "518",
+        "gas": "1432",
+        "storage": "87",
+        "burn": "21750",
+        "balance": "837259"
+      },
+      "operationHash": "ooCdfCLrwLS1uQopxYAw4Eprntz3qSVA38jq5xYpWZ6KzMsQiha",
+      "inclusion": {
+        "blockHash": "BMTDkobdKWocj4MWJy2BMyEzdt1mvjH1yWb7BRx53ZwGfH9VDPt",
+        "level": 5626435
+      }
+    },
+    "settle/accept": {
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "accept_offer",
+      "amount": "10000",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+          },
+          {
+            "bytes": "c922155818cdd5e8dbce1deb70270dd66e846762a6ed4fea60ea414ad92f2008"
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626437,
+      "estimate": {
+        "fee": "578",
+        "gas": "2094",
+        "storage": "101",
+        "burn": "25250",
+        "balance": "819991"
+      },
+      "operationHash": "onsm3t4doWqRUzF8Zp57oPAo5xCb8FoQAqhdLEk9LXXWraYD7qL",
+      "inclusion": {
+        "blockHash": "BMZ7XdUUFXizQmsgUcNkrvDhFABB4ZDrBwojdNYCcZpQx3Pn4LQ",
+        "level": 5626439
+      }
+    },
+    "settle/start": {
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "start_room",
+      "amount": "0",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+          },
+          {
+            "prim": "Pair",
+            "args": [
+              {
+                "bytes": "c922155818cdd5e8dbce1deb70270dd66e846762a6ed4fea60ea414ad92f2008"
+              },
+              {
+                "bytes": "a198f4dc9e5157695d5289b08db625a33b0d89813ff378ee5ea2b750dc858eb2"
+              }
+            ]
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626441,
+      "estimate": {
+        "fee": "569",
+        "gas": "1645",
+        "storage": "57",
+        "burn": "14250",
+        "balance": "789163"
+      },
+      "operationHash": "ooY47ofaAKbAeyX57KZ3wPAvtWVQCKgj4an34fW6a1PQRPjBmay",
+      "inclusion": {
+        "blockHash": "BL9aQE1U4KoufWXNb5cWUoxNee3vPvV6D73VY8QHpHEogra1qta",
+        "level": 5626443
+      }
+    },
+    "settle/finalize": {
+      "actor": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+      "entrypoint": "finalize_room",
+      "amount": "0",
+      "parameters": {
+        "prim": "Pair",
+        "args": [
+          {
+            "bytes": "fdc1622b876db6617c91363624fb49f66cc278fe4d411f11a3e35d8a5c4056e5"
+          },
+          {
+            "prim": "Pair",
+            "args": [
+              {
+                "bytes": "a198f4dc9e5157695d5289b08db625a33b0d89813ff378ee5ea2b750dc858eb2"
+              },
+              {
+                "prim": "Pair",
+                "args": [
+                  {
+                    "bytes": "40c9f0faf6fe81382e22d94d64648bb01ab98ec33289189796985d669fd3fde2"
+                  },
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      {
+                        "bytes": "22f2a4f676210d104e85b512e3b0b91ea21b268d0f574c8f04eb6ec90b770b41"
+                      },
+                      [
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "string": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ"
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "1"
+                                },
+                                {
+                                  "int": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            {
+                              "string": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM"
+                            },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                {
+                                  "int": "2"
+                                },
+                                {
+                                  "int": "1"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "status": "applied",
+      "preparedLevel": 5626445,
+      "estimate": {
+        "fee": "1187",
+        "gas": "6357",
+        "storage": "238",
+        "burn": "59500",
+        "balance": "779344"
+      },
+      "operationHash": "opQ34MRxaTn7aEVhn1H68DXPbyDngGe5ANkEf5mcw9hTNbe7LBc",
+      "inclusion": {
+        "blockHash": "BL4GmnVr9eUaBjraTiMucmobhu813A2EXzmiR7Rc5X6ayPfa3tZ",
+        "level": 5626447
+      }
+    }
+  }
+}

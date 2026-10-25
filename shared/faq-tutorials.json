@@ -40,7 +40,7 @@
     "steps": [
       "Sign in as TommyTezos and open the Stuffs menu.",
       "Close and reopen Stuffs so the menu gesture is easy to recognize.",
-      "Choose Play, Create, Shop, Events, or Talk for a guided destination.",
+      "Choose Games, Create, Shop, Events, or Talk for a guided destination.",
       "Use menu search when you already know the tool name.",
       "Open Applications to see the wider catalog and availability state."
     ],
@@ -48,7 +48,7 @@
     "spokenSteps": [
       "Hi, I'm Tommy. Today I'm gonna show you how I find stuff in wtfOS.",
       "First, I click Stuffs down here. I open it, close it, and open it again so you can see exactly where it is.",
-      "These big choices take me straight to Play, Create, Shop, Events, or Talk.",
+      "These big choices take me straight to Games, Create, Shop, Events, or Talk.",
       "If I already know an app's name, I type it into search.",
       "Applications shows me the whole catalog and which tools are ready for me."
     ]

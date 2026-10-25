@@ -1,6 +1,8 @@
 # WTFIAP-v0.01 escrow readiness
 
-New XTZ wager rooms target **Tezos Shadownet**. New WTF wager rooms target a separately configured **Tezos Mainnet** lane. The revised escrow has been originated and verified on both networks. Existing funded rooms retain their pinned network, contract and payout format. Mainnet player deposits and settlement still require a live wallet proof.
+New XTZ wager rooms target **Tezos Shadownet** or **Tezos Mainnet** according to the selected room network. New WTF wager rooms target a separately configured **Tezos Mainnet** lane. The revised escrow has been originated and verified on both networks. Existing funded rooms retain their pinned network, contract and payout format. Mainnet player deposits and settlement still require a live wallet proof.
+
+Automatic XTZ Duel payout uses a separate open-seat escrow version. Its finalized `finalize_room` transaction pays the 0.5 XTZ house fee to the pinned treasury and the two-entry pot to the winner; a true tie returns each entry. A paid receipt remains readable on-chain, and the version has no `claim` entrypoint. Shadownet `KT1R1i4Ay96Eib8nsSs4GaY2vvVnvdaAMPu8` passed an applied cancellation and full funded-duel lifecycle, including observed internal transfers in the settlement operation. Mainnet `KT19iYfWcMHjtJjSa1j5GMst6juzmbtqmW5N` was originated in operation `onjs3JiUgXBfRBM59Pe9gdJwWnyQRkXvUsViAWLYCmodw3qB25E`; read-only chain verification matched the approved script identity `ff8046cf0feca9d027acd111bb2cf656e142a8fd5765a2e711585dd5cb041181`. The configured `reward-disburser` paid its origination. These contract proofs do not establish a live Mainnet player-funded duel. New-room payout mode must be switched with its matching contract and signer allowlist; old claim-based rooms stay pinned to their earlier contracts and retain wallet claim actions. [Version and proofs](../../contracts/wtfiap-open-duel-xtz-auto/README.md).
 
 ## Approved economics and recovery
 

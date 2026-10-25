@@ -12501,3 +12501,47 @@
 **Why it mattered**: The safety check correctly prevented an unproved replacement, but left an active wagered game on the old client. The two storage protocols need the same deploy gate.
 
 **Rule**: Snapshot both escrow tables under the existing advisory lock. For a version-3 game lock, require the open-duel record and compare room, terms, rules, match, network, and contract commitments before replacement. Never treat a missing record as permission to deploy.
+
+## 2026-10-24 - Prize claims need RPC failover before the wallet submission
+
+**What happened**: A settled Mainnet XTZ Duel exposed an unclaimed 10 XTZ prize, but Claim prize failed when the browser fetched the escrow entrypoints from the primary Octez RPC. The primary intermittently returned 503 while the configured Mainnet fallback served the same contract and claim state.
+
+**Why it mattered**: Settlement and prize custody were sound, yet a browser read failure blocked the winner from requesting their own wallet transaction.
+
+**Rule**: For wallet claims, retry only preflight and contract preparation reads across the configured same-network RPC endpoints. Verify the expected account and chain ID on the selected endpoint immediately before signing. Keep the actual wallet submission outside the failover loop so a network error cannot cause a duplicate payout request.
+
+## 2026-10-24 - Fresh advisories can block an unrelated emergency release
+
+**What happened**: The coLILseum claim repair passed focused tests, but GitHub Quality Gates stopped at the production dependency audit before reaching typecheck or build. Newly flagged body-parser, multer, and transitive ATProto Zod versions were already in the application lockfile.
+
+**Why it mattered**: The emergency claim fix could not use the normal production deployment while the security gate failed. Forcing npm audit's suggested ATProto downgrade would have changed the social API instead of addressing the vulnerable parser versions.
+
+**Rule**: Inspect the exact locked package graph and advisory fix ranges, update compatible leaves, and run clean-install audit plus affected runtime, typecheck, and build proofs. A lockfile refresh can also select a newer build tool with incompatible optional imports, so preserve the last working Vite version when the update only needs runtime parser patches. Keep a security-gated deployment on the normal path; do not bypass the audit for an unrelated urgent fix.
+
+## 2026-10-24 - Release fixtures must track the current packaged path and label
+
+**What happened**: The aggregate test gate found two old assertions after coLILseum's packaging and menu updates. A funding manifest test selected the old party-server source path, and the FAQ tutorial kept "Play" in its step text while its narration and current Stuffs menu said "Games".
+
+**Rule**: Assert the canonical packaged destination when a source file can be renamed during vendoring, and keep tutorial steps, spoken text, and the visible menu label aligned in the same change.
+
+## 2026-10-24 - Full hosted-round browser stories need a measured CI deadline
+
+**What happened**: The item-shop browser story advanced through four authoritative hosted rounds before checking the component purchase. It passed locally in 43 seconds but exceeded the standard 60-second per-test timeout in CI; the other 781 inventory stories passed.
+
+**Rule**: Retain the full hosted purchase path, and mark this measured slow story with Playwright's built-in `test.slow()` deadline rather than weakening the combat or purchase assertions. Review the duration again if the game loop changes.
+
+## 2026-10-24 - Automatic wager payout requires a versioned escrow, not a client-side claim shortcut
+
+**What happened**: A completed XTZ Duel settled into a winner-owned on-chain claim, so the player still had to open a separate funding screen and sign a claim transaction. A browser RPC outage could also interrupt that final step.
+
+**Why it mattered**: The game already knew the authoritative winner and paid for a referee settlement, but the room still appeared to require another player action before the prize moved.
+
+**Rule**: For new direct-payout rooms, settle the prize and house fee in the same atomic `finalize_room` operation, then show the paid receipt without a Claim button. Pin each room's contract, script identity, payout mode, and terms so older claim-based rooms remain usable after the active deployment rotates. Prove actual internal XTZ transfers on Shadownet and do not infer Mainnet player-payment success from contract origination alone.
+
+## 2026-10-24 - Landscape play should keep the action surfaces in one arena
+
+**What happened**: The touch layout used exclusive Board, Shop, and Bench views even though the shared canvas already supported buying while the formation stayed visible. A first combined-layout pass put the phase badge over top-row combat status, overlapped portrait shop cards, and briefly hid the touch utility icons with the retired view bar.
+
+**Rule**: Keep the same battlefield renderer for desktop, practice, and hosted rooms; dock the four shop offers and reserve strip beside it where the viewport permits. Put the phase cue in the touch utility rail and preserve Items, Controls, Traits, and Details there. After vendoring a changed game generator, rebuild the host before running the browser fixture so tests exercise the packaged bytes, not an older `dist/public` copy.
+
+When shop and board are visible together, contextual help must prioritize a selected or newly purchased bench hero over another purchase. Reserve “Open Board” wording for the portrait view, where the board is actually hidden.

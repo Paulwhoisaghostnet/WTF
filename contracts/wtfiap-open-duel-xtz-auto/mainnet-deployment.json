@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "status": "applied",
+  "escrowContract": "KT19iYfWcMHjtJjSa1j5GMst6juzmbtqmW5N",
+  "operationHash": "onjs3JiUgXBfRBM59Pe9gdJwWnyQRkXvUsViAWLYCmodw3qB25E",
+  "inclusion": {
+    "level": 15517777,
+    "blockHash": "BMaYffkAVapGcsN2UiWhjrqgiSnG421cMfxyQZZbCoG6AwQSzCF"
+  },
+  "finalized": {
+    "level": 15517777,
+    "blockHash": "BMaYffkAVapGcsN2UiWhjrqgiSnG421cMfxyQZZbCoG6AwQSzCF"
+  },
+  "canonicalTypedScriptSha256": "ff8046cf0feca9d027acd111bb2cf656e142a8fd5765a2e711585dd5cb041181",
+  "artifactSha256": "464217eff9dcb41eb0154b3cc8a27cca4b01d695d66b92079708086db3ba5569",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "referee": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "houseFeeMutez": "500000",
+  "entryQuantumMutez": "10000",
+  "payoutMode": "automatic",
+  "proofJournal": "proof/mainnet-2026-10-24/origination.json"
+}

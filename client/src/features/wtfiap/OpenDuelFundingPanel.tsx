@@ -20,6 +20,7 @@ const Surface = styled.section`
 type View = { roomCode:string; status:string; network:'mainnet'|'shadownet'; chainId:string; escrowContract:string;
   terms:{entryAtomic:string;currency:'XTZ'}; houseFeeAtomic:string; treasuryAddress:string; depositedCount:number;
   chainStatus:string|null; potAtomic:string; authorized:boolean; authorizationPending:boolean; guestDepositVerified:boolean;
+  payoutMode:'automatic'|'claim'; paidOutAtomic:string;
   guestSeatReady:boolean; self:{isHost:boolean;canBind:boolean;walletAddress:string|null;playerId:string|null;
   payout:{amount:string;claimed:boolean}|null;actions:Partial<Record<'deposit'|'refund'|'claim',FundingWalletAction>>};
   config:{enabled:boolean;reason:string|null}; };
@@ -110,7 +111,7 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
   return <Surface aria-label="Open-seat duel wager" aria-busy={busy}>
     <h2>Stake a Duel wager</h2>
     <p><strong>{network}</strong> · Creator stakes {total} XTZ (entry {entry} + 0.5 house fee). The challenger stakes {entry} XTZ. The winner receives both entries.</p>
-    <p>The creator can fund now and leave this room open. The first verified challenger deposit claims the seat. Your wallet pays network transaction and storage fees separately.</p>
+    <p>The creator can fund now and leave this room open. The first verified challenger deposit claims the seat. {view?.payoutMode==='automatic'?'The game pays the winner automatically when the match settles.':'This room uses winner-claimed escrow payouts.'} Your wallet pays network transaction and storage fees separately.</p>
     {view?.config.reason&&!view.config.enabled&&<p className="status">{view.config.reason}</p>}
     <div className="actions">
       {view?.self.canBind&&!pending&&<button className="primary" disabled={busy} onClick={()=>void action(stake)}>Stake wager</button>}
@@ -129,6 +130,10 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
       <dt>Escrow</dt><dd><code>{view.escrowContract}</code></dd><dt>Status</dt><dd>{view.status}</dd>
       <dt>Verified deposits</dt><dd>{view.depositedCount} of 2</dd><dt>Prize pot</dt><dd>{formatFundingAmount(view.potAtomic,6)} XTZ</dd>
       <dt>House fee</dt><dd>0.5 XTZ, separate from the prize; refundable before combat and on a technical void.</dd>
+      <dt>Payout</dt><dd>{view.payoutMode==='automatic'?view.chainStatus==='settled'?
+        `${formatFundingAmount(view.paidOutAtomic,6)} XTZ paid automatically on settlement.`:
+        'Automatic on verified match settlement.':
+        view.chainStatus==='settled'?'Winner claims from escrow.':'Winner claims after settlement.'}</dd>
       <dt>Treasury</dt><dd><code>{view.treasuryAddress}</code></dd></dl>}
     {pending&&<p className="status" role="status">Wallet operation submitted: <code>{pending.opHash}</code>. Verification is pending; no second payment is needed.</p>}
     {view&&!view.self.isHost&&!view.chainStatus&&<p className="status">Waiting for the creator to stake this wager. Return with the room link to claim its open seat.</p>}

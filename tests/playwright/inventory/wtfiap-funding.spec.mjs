@@ -59,6 +59,26 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(panel).toContainText("The creator can fund now and leave this room open");
   });
 
+  test("automatic duel settlement shows the paid prize without a claim action", async ({ page }) => {
+    const roomCode = "77777777-7777-4777-8777-777777777777";
+    const room = {
+      roomCode, status: "settled", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1JTYi7i1AbwUZE1Ki6zzdhJFQCW86vUaFt",
+      terms: { currency: "XTZ", entryAtomic: "1000000" }, houseFeeAtomic: "500000",
+      treasuryAddress: "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt", depositedCount: 2,
+      chainStatus: "settled", potAtomic: "2000000", payoutMode: "automatic", paidOutAtomic: "2000000",
+      authorized: false, authorizationPending: false, guestDepositVerified: true, guestSeatReady: false,
+      self: { isHost: true, canBind: false, walletAddress: "tz1FixtureHost", playerId: "creator",
+        payout: { amount: "2000000", claimed: true }, actions: {} },
+      config: { enabled: true, reason: null },
+    };
+    await page.route(`**/api/wtfiap/open-duel/rooms/${roomCode}`, route => route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
+    await expect(panel).toContainText("2 XTZ paid automatically on settlement");
+    await expect(panel.getByRole("button", { name: "Claim prize" })).toHaveCount(0);
+  });
+
   test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/colilseum?mode=duel", { waitUntil: "domcontentloaded" });

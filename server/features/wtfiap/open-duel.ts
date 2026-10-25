@@ -9,23 +9,28 @@ import { NETWORKS } from './funding-contract';
 
 type Network = 'mainnet' | 'shadownet';
 type Config = { enabled: boolean; network: Network; chainId: (typeof NETWORKS)[Network]['chainId']; rpc: string; contract: string; scriptHash: string;
-  referee: string; walletId: string; treasury: string; reason?: string };
+  referee: string; walletId: string; treasury: string; payoutMode?: 0 | 1; reason?: string };
 type Candidate = { userId: string; wallet: string; name: string; authorizeHash?: string };
 type OpenRecord = { schemaVersion: 2; roomCode: string; roomId: string; termsHash: string; rulesHash: string;
   seedCommitment: string; matchId: string; entryAtomic: string; host: { userId: string; playerId: string; wallet: string };
   candidates: Candidate[]; network: Network; contract: string; scriptHash: string; referee: string; walletId: string;
-  treasury: string; createHash?: string; startHash?: string; startDepositCounter?: string;
+  treasury: string; payoutMode?: 0 | 1; createHash?: string; startHash?: string; startDepositCounter?: string;
   finalHash?: string; voidHash?: string;
   voidEvidence?: { reasonHash: string; evidenceHash: string }; guestWallet?: string; status: string; error?: string };
 type Chain = { status: 'funding' | 'active' | 'settled' | 'voided' | 'cancelled'; host: string; guest: string | null;
   termsHash: string; rulesHash: string; seedCommitment: string; referee: string; entryAtomic: string;
-  held: string; feeHeld: string; deposited: string; refunded: string; paid: string[];
+  held: string; feeHeld: string; deposited: string; refunded: string; paid: string[]; payoutMode?: 0 | 1; paidOut?: string;
   voidReasonHash: string | null; voidEvidenceHash: string | null;
   claims: Record<string, { amount: string; claimed: boolean }> };
 const isAddress = (value: string) => /^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(value);
 const nat = (value: any) => String(value?.toFixed ? value.toFixed() : value);
 const opt = (value: any): string | null => value == null || value.None !== undefined ? null : String(value.Some ?? value);
 const fee = 500000n; // Owner-approved 0.5 XTZ on both Tezos networks.
+// Canonical typed Michelson hashes of the reviewed v1 claim and v2 direct-payout artifacts.
+const approvedScriptHashes = {
+  0: 'fa075804205228a3ecc4dbf08ba23fb39a1041bf16d57d4981b68f364652f899',
+  1: 'ff8046cf0feca9d027acd111bb2cf656e142a8fd5765a2e711585dd5cb041181',
+} as const;
 const runtimeRulesHash: () => string = createRequire(path.resolve('package.json'))(
   path.resolve('server/features/wtfiap/rules.cjs')).getRuntimeRulesHash;
 
@@ -35,10 +40,13 @@ export function openDuelConfigs(env: NodeJS.ProcessEnv = process.env): Record<Ne
     const read = (key: string) => env[prefix + key] || '';
     const contract = read('CONTRACT'), scriptHash = read('SCRIPT_HASH'), referee = read('REFEREE_ADDRESS');
     const treasury = read('TREASURY_ADDRESS'), walletId = read('REFEREE_WALLET_ID');
+    const payoutSetting = read('PAYOUT_MODE');
+    const payoutMode: 0 | 1 = payoutSetting === 'auto' ? 1 : 0;
     const enabled = read('ENABLED') === '1' && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(contract) &&
-      /^[a-f0-9]{64}$/.test(scriptHash) && isAddress(referee) && isAddress(treasury) && !!walletId;
+      scriptHash === approvedScriptHashes[payoutMode] && isAddress(referee) && isAddress(treasury) && !!walletId &&
+      ['', 'claim', 'auto'].includes(payoutSetting);
     return { enabled, network, chainId: NETWORKS[network].chainId, rpc: read('RPC_URL') || NETWORKS[network].rpc,
-      contract, scriptHash, referee, treasury, walletId,
+      contract, scriptHash, referee, treasury, walletId, payoutMode,
       ...(!enabled ? { reason: `Open-seat ${network} XTZ escrow is not deployed and verified.` } : {}) };
   };
   return { mainnet: build('mainnet'), shadownet: build('shadownet') };
@@ -73,9 +81,8 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
   async function chain(record: OpenRecord): Promise<{ room: Chain | null; authorized: Set<string> }> {
     if (adapters?.readChain) return adapters.readChain(record);
     const config = configs[record.network];
-    demand(!config.enabled || config.contract === record.contract && config.scriptHash === record.scriptHash &&
-      config.referee === record.referee && config.treasury === record.treasury,
-    'The active escrow configuration differs from this room’s pinned deployment.', 503);
+    // The room pins its contract and script. Rotating the active deployment must
+    // never strand an existing claim-based wager or its open challenger seat.
     let error: unknown;
     for (const rpc of [config.rpc, ...(config.rpc.replace(/\/$/, '') === NETWORKS[config.network].rpc.replace(/\/$/, '') ? [NETWORKS[config.network].fallback] : [])]) {
       try {
@@ -92,7 +99,8 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
         const status = ['funding', 'active', 'settled', 'voided', 'cancelled'][Number(nat(raw.status))] as Chain['status'];
         demand(status && String(raw.host) === record.host.wallet && String(raw.terms_hash) === record.termsHash &&
           String(raw.rules_hash) === record.rulesHash && String(raw.seed_commitment) === record.seedCommitment &&
-          String(raw.referee) === record.referee && nat(raw.entry_amount) === record.entryAtomic,
+          String(raw.referee) === record.referee && nat(raw.entry_amount) === record.entryAtomic &&
+          Number(nat(raw.payout_mode)) === (record.payoutMode ?? 0),
         'On-chain offer does not match the immutable room terms.');
         const guest = opt(raw.guest);
         const claims: Chain['claims'] = {};
@@ -108,7 +116,8 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
           rulesHash: String(raw.rules_hash), seedCommitment: String(raw.seed_commitment), referee: String(raw.referee),
           entryAtomic: nat(raw.entry_amount), held: nat(raw.held), feeHeld: nat(raw.fee_held),
           deposited: nat(raw.deposited), refunded: nat(raw.refunded),
-          paid: [...raw.paid].map(String), voidReasonHash: opt(raw.void_reason_hash),
+          paid: [...raw.paid].map(String), payoutMode: Number(nat(raw.payout_mode)) as 0 | 1,
+          paidOut: nat(raw.paid_out), voidReasonHash: opt(raw.void_reason_hash),
           voidEvidenceHash: opt(raw.void_evidence_hash), claims }, authorized };
       } catch (cause) { error = cause; }
     }
@@ -132,17 +141,21 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
     demand(config?.enabled, config?.reason || 'Choose a supported Tezos network.', 503);
     return mutate(code, async saved => {
       if (saved) { demand(saved.host.userId === userId && saved.host.wallet === wallet, 'The wager creator wallet is already fixed.'); return { record: saved, value: saved }; }
-      const roomId = commitment({ version: 'wtfiap-open-duel-v1', network, contract: config.contract, roomCode: code });
-      const termsHash = commitment({ version: 'wtfiap-open-duel-terms-v1', roomId, terms,
-        hostWallet: wallet, feeMutez: fee.toString(), treasury: config.treasury });
+      const payoutMode = config.payoutMode ?? 0;
+      const roomId = commitment({ version: payoutMode === 1 ? 'wtfiap-open-duel-v2' : 'wtfiap-open-duel-v1',
+        network, contract: config.contract, roomCode: code });
+      const termsHash = commitment({ version: payoutMode === 1 ? 'wtfiap-open-duel-terms-v2' : 'wtfiap-open-duel-terms-v1',
+        roomId, terms, hostWallet: wallet, feeMutez: fee.toString(), treasury: config.treasury,
+        ...(payoutMode === 1 ? { payoutMode: 'automatic' } : {}) });
       const rulesHash = runtimeRulesHash();
-      const matchId = commitment({ version: 'wtfiap-open-duel-match-v1', roomId, roomCode: code });
+      const matchId = commitment({ version: payoutMode === 1 ? 'wtfiap-open-duel-match-v2' : 'wtfiap-open-duel-match-v1',
+        roomId, roomCode: code });
       const offered = game.offer(code, { roomId, termsHash, rulesHash, matchId, network, escrowContract: config.contract });
       const record: OpenRecord = { schemaVersion: 2, roomCode: code, roomId, termsHash, rulesHash,
         seedCommitment: offered.offer.seedCommitment, matchId, entryAtomic: terms.entryAtomic,
         host: { userId, playerId: room.hostPlayerId, wallet }, candidates: [], network,
         contract: config.contract, scriptHash: config.scriptHash, referee: config.referee,
-        walletId: config.walletId, treasury: config.treasury, status: 'prepared' };
+        walletId: config.walletId, treasury: config.treasury, payoutMode, status: 'prepared' };
       return { record, value: record };
     });
   }
@@ -234,7 +247,8 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
           player: idByWallet.get(playerId), rank: String(group.placeFrom), group_size: String(group.playerIds.length) })));
         demand(ranks.length === 2 && ranks.every((rank: any) => rank.player), 'Completed duel ranks must identify both funded wallets.');
         const params = { room_id: record.roomId, match_id: record.matchId, transcript_hash: result.receiptsHash,
-          result_hash: commitment({ version: 'wtfiap-open-duel-result-v1', roomId: record.roomId, groups: result.groups,
+          result_hash: commitment({ version: record.payoutMode === 1 ? 'wtfiap-open-duel-result-v2' : 'wtfiap-open-duel-result-v1',
+            roomId: record.roomId, groups: result.groups,
             transcriptHash: result.receiptsHash, ranks }), ranks };
         const opHash = await signer(record, 'finalize_room', params);
         await mutate(code, async current => { demand(current, 'Offer disappeared.'); current.finalHash ||= opHash;
@@ -251,7 +265,10 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
     const record = await read(code), room = game.inspect(code), terms = room.config?.duelWager;
     demand(room.config?.roomType === 'duel' && terms?.currency === 'XTZ' && room.config.openSeatEscrowVersion === 1,
       'This room uses the prior duel rules.', 400);
-    const config = configs[terms.network as Network];
+    const activeConfig = configs[terms.network as Network];
+    const config = record ? { ...activeConfig, contract: record.contract, scriptHash: record.scriptHash,
+      referee: record.referee, treasury: record.treasury, walletId: record.walletId,
+      payoutMode: record.payoutMode ?? 0, enabled: true } : activeConfig;
     const observed = record ? await chain(record) : { room: null, authorized: new Set<string>() };
     const self = record && userId === record.host.userId ? record.host : null;
     const candidate = record?.candidates.find(item => item.userId === userId);
@@ -280,7 +297,10 @@ export function createOpenDuelService({ pool, game, linkedWallet, configs = open
       houseFeeAtomic: fee.toString(), treasuryAddress: config?.treasury, roomId: record?.roomId || null,
       termsHash: record?.termsHash || null, chainStatus: chainRoom?.status || null,
       depositedCount: chainRoom?.paid.length || 0, payingEntrants: 2,
-      potAtomic: chainRoom?.held || '0', roster: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
+      potAtomic: chainRoom?.status === 'settled' ?
+        (BigInt(chainRoom.deposited) - BigInt(chainRoom.refunded)).toString() : chainRoom?.held || '0',
+      payoutMode: record?.payoutMode === 1 ? 'automatic' : 'claim',
+      paidOutAtomic: chainRoom?.paidOut || '0',
       self: { playerId: room.players.find(p => p.accountId === userId)?.playerId || null,
         isHost: Boolean(userId && room.players[0]?.accountId === userId),
         walletAddress: wallet, canBind: Boolean(userId && !wallet && config?.enabled &&
