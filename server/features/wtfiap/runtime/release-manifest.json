@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "f3e2f94544d32c5fb50cf99c1b813816fa5ffb24be7bf038176bbbb2e02f24c5",
+  "generatorSha256": "9d2bc988f1f49746facd411a5d1b24dd28e633be9d8b97459b7720ec1bb07fd1",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -12,16 +12,16 @@
     {
       "path": "public/games/installed/wtfiap/index.html",
       "sourcePath": "dist/index.html",
-      "sourceSha256": "bb017711474640580b06bd63b427a85e0b5308e15dca06a9c6e1bc102e9c9046",
-      "sha256": "bb017711474640580b06bd63b427a85e0b5308e15dca06a9c6e1bc102e9c9046",
-      "bytes": 4194
+      "sourceSha256": "733e41a980cce2ab428550b611df46619b31018c25d165e00481c87d0345e282",
+      "sha256": "733e41a980cce2ab428550b611df46619b31018c25d165e00481c87d0345e282",
+      "bytes": 4228
     },
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "f3e2f94544d32c5fb50cf99c1b813816fa5ffb24be7bf038176bbbb2e02f24c5",
-      "sha256": "f3e2f94544d32c5fb50cf99c1b813816fa5ffb24be7bf038176bbbb2e02f24c5",
-      "bytes": 12936604
+      "sourceSha256": "9d2bc988f1f49746facd411a5d1b24dd28e633be9d8b97459b7720ec1bb07fd1",
+      "sha256": "9d2bc988f1f49746facd411a5d1b24dd28e633be9d8b97459b7720ec1bb07fd1",
+      "bytes": 12945815
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
@@ -425,9 +425,9 @@
     {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "654c37788b71b021c8b15fd77fb547ea65bef737589ae354fc49c23849c3057d",
-      "sha256": "b227cd918aadb7d3681df736075920115722f43cf195ef2f8598c4df7c515e9d",
-      "bytes": 636065
+      "sourceSha256": "b81b4e4cc25d36c02776894ef391731af9b61138cdd58d94279ad504c620b4f1",
+      "sha256": "51e18f207a0b56df586966d133b94943df203343f7b32dd8d57be34fde76761a",
+      "bytes": 636149
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",

@@ -79,6 +79,7 @@ button,a{transition:background .18s ease,border-color .18s ease,transform .18s e
 button:hover:not(:disabled),a:hover{border-color:var(--gold)}
 button.primary:hover:not(:disabled){background:#edce8e;transform:translateY(-1px)}
 @media(max-width:800px){.welcome-hero{grid-template-columns:1fr;min-height:0}.cast-stage{display:none}.forms{gap:10px}}
+@media(any-pointer:coarse){body>header,body.in-match .room-head{padding-left:60px}}
 @media(prefers-reduced-motion:reduce){.table-card,button,a{transition:none}.table-card:hover,button.primary:hover:not(:disabled){transform:none}}
 </style></head><body>
 <header><div><a class="brand" href="party.html">coLILseum</a> <span class="muted">/ Lobby</span></div><nav><span id="connection" class="connection">Create or join a room</span><a href="index.html">Practice</a></nav></header>

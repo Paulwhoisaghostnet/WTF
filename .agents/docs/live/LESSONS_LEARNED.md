@@ -12609,3 +12609,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: The shop-odds release passed local game, browser, build, TypeScript, and release-boundary checks, then the independent main Quality Gates job stopped at `env:inventory:check`. The new shop-odds test increased scanned source files from 2,524 to 2,525 even though the variable count stayed at 1,280.
 
 **Rule**: Run `npm run env:inventory:check` after adding any scanned source or test file. If stale, regenerate `docs/reference/environment-variables.md` in the same release and require the replacement main Quality Gates job to pass.
+
+## 2026-10-25 — Touch cards need stable DOM during focus and room-sized layout checks
+
+**What happened**: On an iPad, the compact bench had no pointer drag, the selected-unit Sell action and rating bars were hidden behind other views, and short embedded windows reduced shop art to tiny icons. Entering the game iframe fired a focus listener that rebuilt shop cards between pointer down and release, swallowing the first preview tap.
+
+**Rule**: Keep the same arena interaction controls in Practice and hosted rooms, and test the hosted iframe at tablet dimensions with real touch events. A focus or storage refresh should rebuild cards only when its underlying data changed. Let a short shop pane scroll its cards while preserving readable hero art and direct Buy, preview, and selected-unit Sell controls.

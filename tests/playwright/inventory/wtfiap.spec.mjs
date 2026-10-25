@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
 
 const surface = (page) => page.locator('[data-wtfiap-surface="true"]:visible');
 
@@ -95,6 +95,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(icon).toContainText("coLILseum");
     await icon.dblclick();
     await expect(surface(page)).toHaveAttribute("aria-label", "coLILseum");
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(surface(page).getByRole("link", { name: "Home" })).toBeVisible();
     await expect(surface(page).getByRole("link", { name: "Lobby" })).toBeVisible();
     await expect(surface(page).getByRole("link", { name: "Learn" })).toBeVisible();
@@ -153,6 +154,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await popup.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_GAME);
     await expect(popup).toHaveURL(/\/games\/installed\/wtfiap\/generator\.html\?/);
     await popup.close();
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await surface(page).getByRole("link", { name: "Lobby" }).click();
     const returnedLobby = await hostFrame(page);
     await expect(returnedLobby.locator("#room-browser-title")).toHaveText("Find your next match");
@@ -248,7 +250,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     try {
       await page.goto("/games/installed/wtfiap/generator.html?seed=phone-lineup&mode=match&boardMode=standard");
       await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
-      await expect(page.locator('.mobile-shop-summary')).toContainText('LV 1 BASE ODDS · COST 1–5: 100.0 / 0.0 / 0.0 / 0.0 / 0.0%');
+      await expect(page.locator('.mobile-shop-summary')).toContainText('SHOP · 4 offers');
+      await expect(page.locator('.mobile-shop-summary')).toHaveAttribute('title', /LV 1 BASE ODDS · COST 1–5: 100\.0 \/ 0\.0 \/ 0\.0 \/ 0\.0 \/ 0\.0%/);
       await page.evaluate(() => {
         const id = window.AB_MATCH().shops.player[0].heroId;
         localStorage.setItem("colilseum:lineups:v1", JSON.stringify({ plans: [{ id: "phone-plan", name: "Phone plan", heroIds: [id] }], activeId: "phone-plan" }));
@@ -586,6 +589,53 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     } finally { await context.close(); }
   });
 
+  test("iPad touch controls expose large recruits, ratings, hero details, placement, and selling", async ({ browser }) => {
+    const context = await browser.newContext({ ...devices["iPad Pro 11 landscape"], baseURL: test.info().project.use.baseURL });
+    const page = await context.newPage(), errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    try {
+      await page.goto("/colilseum?mode=practice", { waitUntil: "domcontentloaded" });
+      await expect(surface(page).getByRole("button", { name: "Open game menu" })).toBeVisible();
+      await expect(surface(page).getByRole("link", { name: "Practice" })).toHaveCount(0);
+      const host = await hostFrame(page), game = await gameFrame(host, "#frame");
+      await expect(game.locator(".mobile-offer")).toHaveCount(4);
+      await expect(game.locator(".mobile-offer .mobile-rating-bars")).toHaveCount(4);
+      expect(await game.locator(".mobile-offer .mobile-rating-row").count()).toBe(12);
+      expect(await game.locator(".mobile-offer canvas").first().evaluate(canvas => canvas.getBoundingClientRect().height)).toBeGreaterThan(90);
+      await expect(game.getByRole("button", { name: "Show champion details" })).toBeVisible();
+      await expect(game.getByRole("button", { name: "Open equipment" }).locator("svg")).toBeVisible();
+      await game.locator(".mobile-offer-preview").first().click();
+      await expect(game.locator("#mobile-hero-dialog")).toBeVisible();
+      await game.getByRole("button", { name: "Close hero preview" }).click();
+      await game.locator(".mobile-offer-buy").first().click();
+      await expect(game.locator(".mobile-bench-slot:not(.empty) .mobile-rating-bars")).toHaveCount(1);
+      const start = await game.locator(".mobile-bench-slot:not(.empty)").boundingBox();
+      const tile = await game.evaluate(() => {
+        const tile = AB_UI.hitRegions().find(hit => hit.id === `tile-0-${AB_GAME().board.rows - 1}`);
+        return { x: tile.x + tile.w / 2, y: tile.y + tile.h / 2 };
+      });
+      const canvas = await game.locator("#game").boundingBox();
+      const target = { x: canvas.x + tile.x * canvas.width / 1440, y: canvas.y + tile.y * canvas.height / 1000 };
+      const session = await context.newCDPSession(page);
+      const touch = async (type, x, y) => session.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y, id: 1 }] });
+      await touch("touchStart", start.x + start.width / 2, start.y + start.height / 2);
+      await touch("touchMove", target.x, target.y);
+      await touch("touchEnd", target.x, target.y);
+      await expect.poll(async () => (await gameState(game)).field.length).toBe(1);
+      await game.getByRole("button", { name: "Show champion details" }).click();
+      await expect(game.locator("#details-panel")).toBeVisible();
+      await game.locator("body").press("Escape");
+      await hit(page, game, `field-${(await gameState(game)).field[0].id}`);
+      await expect(game.locator("#quick-actions button").filter({ hasText: "Sell" })).toBeVisible();
+      await game.locator("#quick-actions button").filter({ hasText: "Sell" }).click();
+      expect((await gameState(game)).field).toHaveLength(0);
+      expect((await gameState(game)).match.players.player.gold).toBe(1);
+      await surface(page).getByRole("button", { name: "Open game menu" }).click();
+      await expect(surface(page).getByRole("link", { name: "Practice" })).toBeVisible();
+      expect(errors).toEqual([]);
+    } finally { await context.close(); }
+  });
+
   test("shared arena drags, swaps and sells heroes with star-aware shop and bench ratings", async ({ page }) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -743,6 +793,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     }).toBe(true);
     await page.screenshot({ path: test.info().outputPath("stuffs-play.png"), fullPage: true });
     await menuEntry.click();
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(surface(page).getByRole("link", { name: "Lobby", exact: true })).toBeVisible();
     const welcome = await hostFrame(page);
     await welcome.locator("#skip").click();

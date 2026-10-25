@@ -187,7 +187,6 @@ body{background:#071416}
 .compact-stage:not(.portrait-play) .mobile-bench-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:1fr;gap:3px}
 .compact-stage:not(.portrait-play) .mobile-bench-slot{padding:2px 4px;font-size:10px}
 .compact-stage:not(.portrait-play) .mobile-bench-slot canvas{height:28px}
-.compact-stage:not(.portrait-play) .mobile-bench-slot span{display:none}
 .compact-stage:not(.portrait-play) .mobile-shop-offers{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:3px;min-height:0}
 .compact-stage:not(.portrait-play) .mobile-offer{padding:2px 4px;min-height:0}
 .compact-stage:not(.portrait-play) .mobile-offer-preview{display:grid;grid-template-columns:minmax(0,1fr) 36px;align-items:center;gap:2px;min-height:0;overflow:hidden}
@@ -233,6 +232,44 @@ main.items-docked:not(.compact-stage) .item-grid{grid-template-columns:repeat(au
 .compact-stage:not(.portrait-play) .items-panel .item-panel-section:has(.item-equip-row)>.item-grid .item-option{flex:0 0 64px;min-height:54px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .portrait-play.compact-stage .items-panel{position:absolute;z-index:10;inset:auto 6px 6px;max-height:min(45dvh,350px);padding:10px;overflow:auto}
 @media(max-height:420px){.compact-stage:not(.portrait-play) .items-panel .item-panel-section{margin-top:6px;padding-top:6px}.compact-stage:not(.portrait-play) .items-panel p{margin:4px 0}}
+/* Touch arena: full-size recruits, visible ratings, compact actions, and a usable reserve strip. */
+.compact-stage .quick-actions{justify-content:flex-end;min-height:44px;overflow-x:auto}
+.compact-stage .quick-actions button{flex:0 0 auto;min-width:44px;min-height:44px;padding:4px 10px}
+.compact-stage:not(.portrait-play) .visual-board{grid-template-rows:minmax(0,1fr) 108px}
+.compact-stage:not(.portrait-play) .arena-viewport #game,.compact-stage:not(.portrait-play) .visual-board[data-mobile-view="board"] #game{width:126%;max-width:none;margin-left:-12%;transform:translateY(4%)}
+.compact-stage:not(.portrait-play) .visual-board #mobile-bench{min-height:108px}
+.compact-stage:not(.portrait-play) .mobile-bench-grid{overflow-x:auto;grid-template-columns:repeat(10,minmax(108px,1fr));scrollbar-width:thin}
+.compact-stage:not(.portrait-play) .mobile-bench-slot{padding:2px 4px;touch-action:none}
+.compact-stage:not(.portrait-play) .mobile-bench-slot canvas{height:43px}
+.compact-stage:not(.portrait-play) .mobile-bench-slot .mobile-rating-bars{display:grid}
+.mobile-bench-slot.dragging{border-color:#f3d28b;background:#3a473a}
+.mobile-rating-bars{display:grid;width:100%;gap:1px;pointer-events:none}
+.mobile-rating-row{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:3px;min-width:0;height:10px}
+.mobile-rating-label{font:700 8px/1 system-ui;letter-spacing:.02em;color:#d7e1d7}
+.mobile-rating-points{display:flex;gap:1px;min-width:0;height:6px}
+.mobile-rating-points i{flex:1;min-width:1px;border-radius:1px;background:#3b4d4d}
+.mobile-rating-row.attack .filled{background:#d66f69}.mobile-rating-row.magic .filled{background:#b48fe1}.mobile-rating-row.defense .filled{background:#75ade3}.mobile-rating-row.speed .filled{background:#7bc495}
+.compact-stage:not(.portrait-play) .mobile-shop-offers{grid-template-rows:none;grid-auto-rows:max-content;overflow-y:auto;align-content:start}
+.compact-stage:not(.portrait-play) .mobile-offer{min-height:0;padding:5px 7px;overflow:hidden}
+.compact-stage:not(.portrait-play) .mobile-offer-preview{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-height:0;overflow:hidden}
+.mobile-offer-head{display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;min-width:0}
+.mobile-offer-info{flex:none;color:#f3d28b;font-size:18px;line-height:1}
+.compact-stage:not(.portrait-play) .mobile-offer-preview strong{font-size:13px}
+.compact-stage:not(.portrait-play) .mobile-offer-preview canvas{display:block;flex:none;align-self:center;width:auto;min-width:0;max-width:100%;height:clamp(96px,25cqh,140px)}
+.compact-stage:not(.portrait-play) .mobile-offer-cost{display:block;flex:none;color:#f3d28b;font-size:11px;font-weight:700}
+.compact-stage:not(.portrait-play) .mobile-offer .mobile-rating-bars{display:grid;flex:none}
+.compact-stage:not(.portrait-play) .mobile-offer .gain,.compact-stage:not(.portrait-play) .mobile-offer-traits{display:none}
+.compact-stage:not(.portrait-play) .mobile-offer-buy{min-height:44px}
+.compact-stage .info-popover:not([hidden]){display:block;position:absolute;z-index:9;top:52px;right:6px;left:auto;width:min(360px,calc(100% - 12px));max-height:calc(100% - 58px);overflow:auto;padding:12px;background:#102529f5;border:1px solid #dab975;box-shadow:0 8px 30px #071316c9}
+.compact-stage .info-popover h2{margin:0 0 8px;color:#f1d694;font:1.25rem Georgia,serif}
+.compact-stage .info-popover button{display:block;width:100%;min-height:44px;margin:5px 0;padding:7px 10px;text-align:left;background:#1c393b;color:#f0ebdc;border:1px solid #78918a}
+.compact-stage .items-toggle{display:flex;align-items:center;justify-content:center;gap:3px}
+.items-toggle .necklace-icon{display:inline-block;width:25px;height:25px;vertical-align:middle}
+.items-toggle .necklace-icon svg{display:block;width:100%;height:100%}
+.items-toggle .items-count{font:700 12px/1 system-ui}
+.compact-stage:not(.portrait-play) .mobile-stage-nav .phase-cue{padding-right:4px}
+@media(max-height:500px) and (any-pointer:coarse){.compact-stage:not(.portrait-play) .visual-board{grid-template-rows:minmax(0,1fr) 91px}.compact-stage:not(.portrait-play) .visual-board #mobile-bench{min-height:91px}.compact-stage:not(.portrait-play) .mobile-bench-slot canvas{height:28px}.compact-stage:not(.portrait-play) .mobile-offer{min-height:168px}.compact-stage:not(.portrait-play) .arena-viewport #game,.compact-stage:not(.portrait-play) .visual-board[data-mobile-view="board"] #game{transform:translateY(-13%)}}
+@media(max-height:500px) and (any-pointer:coarse){.compact-stage:not(.portrait-play) .visual-board[data-shop-visible="false"] .arena-viewport #game{width:80%;margin-inline:auto;transform:translateY(-10%)}}
 </style>
 <script data-ab="harness">// The one seeded-PRNG construction every $alea implementation must share:
 // isolate/index.html, provider/render.mts, and the starter templates under
@@ -277,7 +314,7 @@ function sfc32(a, b, c, d) {
 }
 
 const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const hash=xmur3(seed),rand=sfc32(hash(),hash(),hash(),hash());window.$alea={seed,rand,random:rand,features:traits=>{window.AB_TRAITS=traits;},ready:()=>{document.documentElement.dataset.ready='true';}};</script>
-</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><div class="arena-viewport"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum battlefield. Select a hero and tap a friendly tile, or open Controls for named actions with a keyboard or screen reader."></canvas></div><output id="phase-cue" class="phase-cue" aria-live="off"><strong></strong><span></span></output><section id="round-briefing" class="round-briefing" aria-label="Round objectives" aria-live="polite" hidden></section><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"><span class="mobile-shop-summary"></span><button id="lineup-open-mobile" type="button">★ Lineups</button></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><div id="mobile-hint" class="mobile-hint" hidden><span id="mobile-hint-text"></span><button id="mobile-hint-dismiss" type="button" aria-label="Dismiss help tip">×</button></div><dialog id="mobile-hero-dialog" aria-labelledby="mobile-hero-title" aria-describedby="mobile-hero-description"><div class="mobile-hero-dialog-head"><div><p id="mobile-hero-cost"></p><h2 id="mobile-hero-title"></h2></div><button id="mobile-hero-close" type="button" aria-label="Close hero preview">×</button></div><div id="mobile-hero-art" aria-hidden="true"></div><p id="mobile-hero-role"></p><p id="mobile-hero-description"></p><p id="mobile-hero-ratings"></p><button id="mobile-hero-buy" type="button"></button></dialog><dialog id="lineup-dialog" aria-labelledby="lineup-title"><div class="lineup-head"><h2 id="lineup-title">Choose a lineup</h2><button id="lineup-close" type="button" aria-label="Close lineups">×</button></div><p>Heroes on your active lineup glow gold when they appear in your shop.</p><div id="lineup-options"></div><a href="team-builder.html" target="_blank" rel="noopener">Open Team Builder in a new tab</a></dialog><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><h2 class="mobile-bench-heading">Reserves</h2><div class="mobile-bench-grid"></div></section><button id="items-toggle" class="items-toggle" type="button" aria-controls="items-panel" aria-expanded="false" aria-label="Open items" title="Items" hidden>◇</button><section id="items-panel" class="items-panel" aria-label="Item shop and inventory" hidden></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary aria-label="Game controls and details">Controls</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Landscape gives you a larger board. Rotate your phone, or use the compact controls if you cannot rotate.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><button id="portrait-continue" type="button">Continue in portrait</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
+</head><body><a class="skip" href="#accessible-controls">Skip to game controls</a><main><div id="quick-actions" class="quick-actions" aria-label="Current turn actions"></div><div id="mobile-resource" class="mobile-resource" aria-live="polite"></div><nav id="mobile-stage-nav" class="mobile-stage-nav" aria-label="Game views"><button type="button" data-view="board" aria-pressed="false">Board</button><button type="button" data-view="shop" aria-pressed="false">Shop</button><button type="button" data-view="bench" aria-pressed="false">Bench</button></nav><div class="visual-board" aria-label="Visual battlefield and game views"><div class="arena-viewport"><canvas id="game" width="1440" height="1000" tabindex="0" role="img" aria-describedby="description" aria-label="coLILseum battlefield. Select a hero and tap a friendly tile, or open Controls for named actions with a keyboard or screen reader."></canvas></div><output id="phase-cue" class="phase-cue" aria-live="off"><strong></strong><span></span></output><section id="round-briefing" class="round-briefing" aria-label="Round objectives" aria-live="polite" hidden></section><section id="mobile-shop" class="mobile-pane" aria-label="Hero shop"><div class="mobile-shop-status"><span class="mobile-shop-summary"></span><button id="lineup-open-mobile" type="button">★ Lineups</button></div><div class="mobile-shop-offers"></div><div class="mobile-shop-preview"></div></section><div id="mobile-hint" class="mobile-hint" hidden><span id="mobile-hint-text"></span><button id="mobile-hint-dismiss" type="button" aria-label="Dismiss help tip">×</button></div><dialog id="mobile-hero-dialog" aria-labelledby="mobile-hero-title" aria-describedby="mobile-hero-description"><div class="mobile-hero-dialog-head"><div><p id="mobile-hero-cost"></p><h2 id="mobile-hero-title"></h2></div><button id="mobile-hero-close" type="button" aria-label="Close hero preview">×</button></div><div id="mobile-hero-art" aria-hidden="true"></div><p id="mobile-hero-role"></p><p id="mobile-hero-description"></p><p id="mobile-hero-ratings"></p><button id="mobile-hero-buy" type="button"></button></dialog><dialog id="lineup-dialog" aria-labelledby="lineup-title"><div class="lineup-head"><h2 id="lineup-title">Choose a lineup</h2><button id="lineup-close" type="button" aria-label="Close lineups">×</button></div><p>Heroes on your active lineup glow gold when they appear in your shop.</p><div id="lineup-options"></div><a href="team-builder.html" target="_blank" rel="noopener">Open Team Builder in a new tab</a></dialog><section id="mobile-bench" class="mobile-pane" aria-label="Bench"><h2 class="mobile-bench-heading">Reserves</h2><div class="mobile-bench-grid"></div></section><button id="items-toggle" class="items-toggle" type="button" aria-controls="items-panel" aria-expanded="false" aria-label="Open equipment" title="Equipment" hidden><span class="necklace-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 6c0 10 4.5 17 11 18 6.5-1 11-8 11-18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="7" cy="12" r="2" fill="currentColor"/><circle cx="10" cy="18" r="2" fill="currentColor"/><circle cx="22" cy="18" r="2" fill="currentColor"/><circle cx="25" cy="12" r="2" fill="currentColor"/><path d="m16 20 4 5-4 5-4-5 4-5Z" fill="#dab975" stroke="currentColor" stroke-width="1.4"/></svg></span><span class="items-count">0</span></button><section id="items-panel" class="items-panel" aria-label="Item shop and inventory" hidden></section><button id="traits-icon" class="info-icon" type="button" aria-controls="traits-panel" aria-label="Show team traits" aria-expanded="false" title="Team traits" hidden>✦</button><button id="details-icon" class="info-icon" type="button" aria-controls="details-panel" aria-label="Show champion details" aria-expanded="false" title="Champion details" hidden>ⓘ</button><section id="traits-panel" class="info-popover" aria-label="Team traits" hidden></section><section id="details-panel" class="info-popover" aria-label="Champion details" hidden></section></div><output id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></output><details id="accessible-controls" class="access"><summary aria-label="Game controls and details">Controls</summary><h1 id="controls-heading">coLILseum game controls</h1><p id="description"></p><section aria-labelledby="details-heading"><h2 id="details-heading">Selected details</h2><p id="details">Select a hero or trait to read its details here.</p></section><p>Select a hero, then choose a named board space. Drag heroes onto friendly spaces; dropping one on an occupied space swaps them. Drag a hero onto Shop to sell it. The board also supports tapping. Escape clears the selection.</p><div id="controls" aria-label="Available game actions"></div></details></main><div id="orientation-prompt" class="orientation-prompt" role="dialog" aria-modal="true" aria-labelledby="orientation-title" hidden><div class="orientation-card"><span class="orientation-mark" aria-hidden="true">↻</span><h1 id="orientation-title">Turn your device sideways</h1><p>Landscape gives you a larger board. Rotate your phone, or use the compact controls if you cannot rotate.</p><button id="landscape-lock" type="button" hidden>Enter landscape fullscreen</button><button id="portrait-continue" type="button">Continue in portrait</button><p id="orientation-status" role="status" aria-live="polite"></p></div></div>
 <script data-ab="game">/* Numeric item values from Riot TFT client data via CommunityDragon, sampled 2026-10-24.
  * Recipe and display names are authored for coLILseum. This is a pinned data
  * snapshot; live patch drift must not silently change an in-progress match. */
@@ -7635,8 +7672,8 @@ root.ABCombatFX=api;
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),alea=window.$alea;
 const cherubSprite=new Image();cherubSprite.src=window.AB_SPRITE_DATA?.cherub?.src||'';cherubSprite.onload=()=>draw();
 document.querySelector('.skip').addEventListener('click',()=>{const controls=document.getElementById('accessible-controls');controls.open=true;controls.querySelector('summary').focus();});
-const portraitPhone=matchMedia('(orientation: portrait) and (pointer: coarse) and (hover: none)');
-const compactControls=matchMedia('(max-width:700px), (pointer: coarse) and (hover: none)');
+const portraitPhone=matchMedia('(orientation: portrait) and (any-pointer: coarse)');
+const compactControls=matchMedia('(max-width:700px), (any-pointer: coarse)');
 const orientationPrompt=document.getElementById('orientation-prompt'),landscapeLock=document.getElementById('landscape-lock');
 let portraitOverride=false;
 function syncMobileOrientation(){
@@ -7664,7 +7701,7 @@ const matchSaveKey=boardMode?'lil-guys-v2:local-match:board-mode:rectangular:'+b
 if(matchMode||partyMode)canvas.height=1000;
 let game=AB.createGame(token),selected=null,selectedTrait=null,hover=null,hits=[],message='Choose a champion from your bench, then a tile on your side.',tab='arena',rosterPage=0,codexMode='overview',codexFaction='ember',codexHero=null,codexClassMode='bonuses',factionPage=0,factionPlan=false,showAllTraits=false,shopVisible=matchMode||partyMode,shopPreviewIndex=0,traitsOpen=false,detailsOpen=false,unreadTraits=false,unreadDetails=false,traitSignature=null,detailSignature=null,paused=false,raf=0,lastTick=0,drag=null,suppressDragClick=false;
 game.balanceVersion=1;
-const mobileStageMedia=matchMedia('(orientation: landscape) and (pointer: coarse) and (hover: none)');
+const mobileStageMedia=matchMedia('(orientation: landscape) and (any-pointer: coarse)');
 const visualBoard=document.querySelector('.visual-board');
 let mobileView=shopVisible?'shop':'board',mobilePanelKey='',mobileResourceKey='';
 let phaseCueKey='';
@@ -7672,7 +7709,7 @@ let briefingKey='',briefingVisible=false;
 const mobileHeroDialog=document.getElementById('mobile-hero-dialog');
 const LINEUP_KEY='colilseum:lineups:v1';let activeLineup={name:'',ids:new Set()},lineupRevision=0;
 function readActiveLineup(){try{const data=JSON.parse(localStorage.getItem(LINEUP_KEY)),plan=data?.plans?.find(p=>p.id===data.activeId);return{name:String(plan?.name||''),ids:new Set((plan?.heroIds||[]).filter(id=>typeof id==='string'))};}catch{return{name:'',ids:new Set()};}}
-function refreshActiveLineup(){activeLineup=readActiveLineup();lineupRevision++;mobilePanelKey='';if(artReady)draw();}
+function refreshActiveLineup(){const next=readActiveLineup();if(next.name===activeLineup.name&&next.ids.size===activeLineup.ids.size&&[...next.ids].every(id=>activeLineup.ids.has(id)))return;activeLineup=next;lineupRevision++;mobilePanelKey='';if(artReady)draw();}
 addEventListener('storage',event=>{if(event.key===LINEUP_KEY)refreshActiveLineup();});addEventListener('focus',refreshActiveLineup);
 activeLineup=readActiveLineup();
 const lineupDialog=document.getElementById('lineup-dialog');let lineupDialogOrigin=null;
@@ -7710,6 +7747,18 @@ function abilityOutput(h,s){const actions=(h.ability.actions||[]).filter(action=
 const ratingTables=[undefined,1].map(balanceVersion=>{const stats=AB.ROSTER.flatMap(h=>[1,2,3].map(level=>{const s=AB.deriveStats({heroId:h.id,level,balanceVersion},AB.synergies([]));return{heroId:h.id,level,attack:s.attack,magic:abilityOutput(h,s),defense:s.maxHp*(1+s.armor/100),speed:s.speed};}));const bounds=Object.fromEntries(['attack','magic','defense','speed'].map(key=>{const samples=key==='magic'?stats.filter(s=>magicUser(AB.heroById(s.heroId))):stats;return[key,{min:Math.min(...samples.map(s=>s[key])),max:Math.max(...samples.map(s=>s[key]))}];}));return{stats,bounds};});
 const ratingScore=(key,value,bounds)=>{const {min,max}=bounds[key];return max===min?10:1+Math.round(9*(value-min)/(max-min));};
 const ratings=(heroId,level)=>{const{stats,bounds}=ratingTables[game.balanceVersion===1?1:0],s=stats.find(v=>v.heroId===heroId&&v.level===level);if(!s)return null;const key=magicUser(AB.heroById(heroId))?'magic':'attack';return{[key]:ratingScore(key,s[key],bounds),defense:ratingScore('defense',s.defense,bounds),speed:ratingScore('speed',s.speed,bounds)};};
+function mobileRatingBars(heroId,level){
+  const scores=ratings(heroId,level),group=document.createElement('span');group.className='mobile-rating-bars';
+  group.setAttribute('aria-label',ratingDescription(scores));
+  for(const key of [scores.magic===undefined?'attack':'magic','defense','speed']){
+    const row=document.createElement('span');row.className='mobile-rating-row '+key;
+    const label=document.createElement('span');label.className='mobile-rating-label';label.textContent=key==='attack'?'ATK':key==='magic'?'MAG':key==='defense'?'DEF':'SPD';
+    const points=document.createElement('span');points.className='mobile-rating-points';
+    for(let index=0;index<10;index++){const point=document.createElement('i');point.className=index<scores[key]?'filled':'';points.append(point);}
+    row.append(label,points);group.append(row);
+  }
+  return group;
+}
 const ratingDescription=score=>`${score.magic===undefined?'Attack':'Magic'} ${score.attack??score.magic} of 10, defense ${score.defense} of 10, speed ${score.speed} of 10`;
 const ratingRows={attack:['ATK','#ef8178'],magic:['MAG','#bd91e9'],defense:['DEF','#82bde9'],speed:['SPD','#a5d983']};
 function ratingBars(heroId,level,x,y,segmentWidth,gap){const score=ratings(heroId,level);if(!score)return;const keys=[score.magic===undefined?'attack':'magic','defense','speed'];for(let row=0;row<keys.length;row++){const key=keys[row],[label,color]=ratingRows[key],top=y+row*13;text(label+' '+score[key],x,top+8,9,color);for(let point=0;point<10;point++)rect(x+44+point*(segmentWidth+gap),top+2,segmentWidth,7,point<score[key]?color:'#34484a');}}
@@ -7853,13 +7902,13 @@ const unit=selectedUnit(),nextDetails=unit?`${unit.id}:${unit.heroId}:${unit.lev
 if(detailSignature!==null&&nextDetails!==detailSignature){if(!nextDetails)unreadDetails=false;else if(!detailsOpen)unreadDetails=true;}
 detailSignature=nextDetails;
 for(const [id,open,unread,label]of [['traits-icon',traitsOpen,unreadTraits,'team traits'],['details-icon',detailsOpen,unreadDetails,'champion details']]){
-const icon=document.getElementById(id);icon.hidden=tab!=='arena'||(document.querySelector('main').classList.contains('compact-stage')&&mobileView!=='board');icon.classList.toggle('unread',unread&&!open);icon.setAttribute('aria-expanded',String(open));icon.setAttribute('aria-label',`${open?'Hide':'Show'} ${label}${unread&&!open?' — updated':''}`);
+const icon=document.getElementById(id),main=document.querySelector('main'),portrait=main.classList.contains('portrait-play');icon.hidden=tab!=='arena'||portrait&&mobileView!=='board';icon.classList.toggle('unread',unread&&!open);icon.setAttribute('aria-expanded',String(open));icon.setAttribute('aria-label',`${open?'Hide':'Show'} ${label}${unread&&!open?' — updated':''}`);
 }
 }
 document.getElementById('traits-icon').addEventListener('click',()=>{markPlayerAction();traitsOpen=!traitsOpen;if(traitsOpen){unreadTraits=false;if(compactControls.matches)detailsOpen=false;tutorialEvent('traits');}draw();});
 document.getElementById('details-icon').addEventListener('click',()=>{markPlayerAction();detailsOpen=!detailsOpen;if(detailsOpen){unreadDetails=false;if(compactControls.matches)traitsOpen=false;tutorialEvent('details');}draw();});
 function renderInfoPopovers(){
-const visible=compactControls.matches&&tab==='arena'&&(!document.querySelector('main').classList.contains('compact-stage')||mobileView==='board');
+const visible=compactControls.matches&&tab==='arena'&&(!document.querySelector('main').classList.contains('portrait-play')||mobileView==='board');
 const traits=document.getElementById('traits-panel'),details=document.getElementById('details-panel');
 traits.hidden=!visible||!traitsOpen;details.hidden=!visible||!detailsOpen;
 if(!traits.hidden){
@@ -8337,8 +8386,10 @@ if(!artReady)return;
 hits=[];
 if(partyMode&&!match){artNotice('coLILseum','Waiting for the room’s server snapshot…');return;}
 renderPhaseCue();
+const combinedTouch=document.querySelector('main').classList.contains('compact-stage')&&!document.querySelector('main').classList.contains('portrait-play');
 rect(0,0,1440,canvas.height,C.ink);
 const bg=ctx.createRadialGradient(720,395,40,720,395,740);bg.addColorStop(0,'#183435');bg.addColorStop(1,'#0b171a');ctx.fillStyle=bg;ctx.fillRect(105,116,1230,540);
+if(combinedTouch){ctx.save();ctx.globalAlpha=0;}
 text(partyMode?partyData?.spectating?'W A T C H I N G   L I V E':partyData?.roomType==='duel'?'O N E   O N   O N E   D U E L':'E I G H T   P L A Y E R   P A R T Y':matchMode?'L O C A L   P R A C T I C E':'A L E A T O R Y   D E M O',48,40,11,C.gold);
 text('coLILseum',48,87,28,C.cream,'Georgia');
 if(match)matchHeader();else text(matchMode?'A MATCH. A WAR TABLE.':'A TOKEN. A WAR TABLE.',432,84,11,C.muted);
@@ -8348,9 +8399,10 @@ button('arena-tab','Arena',830,47,102,39,()=>{tab='arena';hintVisible=false;rest
 button('roster-tab','Codex',945,47,102,39,()=>{tab='roster';traitsOpen=false;detailsOpen=false;hintVisible=false;restartIdleHint();draw();},tab==='roster');
 button('help-tip','?',1055,47,35,39,toggleHelp,false,preparationOpen(),19,'Show or hide the next-step help tip');
 text('COMMANDER LEVEL',1100,53,10,C.muted);text(String(game.playerLevel),1100,86,32,C.cream,'Georgia');text('FIELD',1392,48,10,C.muted,'sans-serif','right');text(`${game.field.length} / ${game.playerLevel}`,1392,79,28,C.gold,'Georgia','right');text(`BENCH  ${game.bench.length} / 10`,1392,103,12,game.bench.length===10?C.gold:C.teal,'sans-serif','right');line(48,116,1392,116);
+if(combinedTouch)ctx.restore();
 if(tab==='roster')roster();
 else{
-stoneBoard();drawTacticalActions();if(!shopVisible||match?.phase!=='preparation'||document.querySelector('main').classList.contains('compact-stage')&&mobileView==='board')commandBar();bench();
+stoneBoard();drawTacticalActions();if(!combinedTouch&&(!shopVisible||match?.phase!=='preparation'||document.querySelector('main').classList.contains('compact-stage')&&mobileView==='board'))commandBar();if(!combinedTouch)bench();
 if(hoveredFieldUnit)fieldRatingTooltip(hoveredFieldUnit);
 if(traitsOpen&&!compactControls.matches){rect(32,130,256,620,'#102529',C.line);hit('traits-panel-shield',32,130,256,620,()=>{},'Traits panel',false);synergyPanel();}
 if(detailsOpen&&!compactControls.matches){rect(1154,130,254,630,'#102529',C.line);hit('details-panel-shield',1154,130,254,630,()=>{},'Details panel',false);inspector();}
@@ -8369,9 +8421,9 @@ function renderItems(force=false){
   const itemAction=(type,args)=>{if(partyMode)return partyCommand(type,args);const r=type==='equipItem'?ABMatch.equipItem(match,args.unitId,args.itemId):ABMatch.unequipItem(match,args.unitId,args.itemId);if(r.ok)persistMatch();say(r.ok?(type==='equipItem'?'Item equipped.':'Item returned to inventory.'):r.reason);draw();return r.ok;};
   toggle.hidden=!enabled;
   if(!enabled){panel.hidden=true;return;}
-  toggle.textContent=(partyMode&&partyData?.itemRulesVersion!==1?'✧':'◇')+' '+(itemView.items.length+(itemView.mirrorTickets?.length||0))+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked||fortuneAvailable()?' !':'');
+  toggle.querySelector('.items-count').textContent=String(itemView.items.length+(itemView.mirrorTickets?.length||0))+(itemView.pendingComponentChoices||itemView.pendingPlan||itemView.draft&&!itemView.draft.picked||fortuneAvailable()?' !':'');
   toggle.setAttribute('aria-expanded',String(itemsOpen));
-  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} ${partyMode&&partyData?.itemRulesVersion!==1?'blessings and curses':'items'}; ${itemView.items.length} in inventory; ${itemView.mirrorTickets?.length||0} Mirror Tickets${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}${fortuneAvailable()?'; optional fortune shop available':''}`);
+  toggle.setAttribute('aria-label',`${itemsOpen?'Close':'Open'} ${partyMode&&partyData?.itemRulesVersion!==1?'blessings and curses':'equipment'}; ${itemView.items.length} in inventory; ${itemView.mirrorTickets?.length||0} Mirror Tickets${itemView.pendingComponentChoices?`; ${itemView.pendingComponentChoices} component choices waiting`:''}${fortuneAvailable()?'; optional fortune shop available':''}`);
   panel.hidden=!itemsOpen;
   document.querySelector('main').classList.toggle('items-docked',itemsOpen&&!document.querySelector('main').classList.contains('compact-stage'));
   if(!itemsOpen)return;
@@ -8461,16 +8513,24 @@ function updateQuickActions(){
   const root=document.getElementById('quick-actions'),compact=document.querySelector('main').classList.contains('compact-stage'),shopping=match&&shopVisible&&match.phase==='preparation';
   const combined=compact&&!document.querySelector('main').classList.contains('portrait-play');
   const unit=selectedUnit(),selectedField=unit&&game.field.some(entry=>entry.id===unit.id);
-  const context=compact&&game.phase==='planning'?[...(selectedField?['recall-prominent']:[]),...objectiveActions().map(action=>action.id)]:[];
+  const owned=unit&&[...game.field,...game.bench].some(entry=>entry.id===unit.id);
+  const context=compact&&game.phase==='planning'?[...(selectedField?['recall-prominent']:[]),...(owned&&match?.phase==='preparation'?['sell-hero']:[]),...objectiveActions().map(action=>action.id)]:[];
   const standard=combined?shopping?['shop-toggle','shop-reroll','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan']:compact&&mobileView!=='shop'?['battle','next-round','pause','new-match','replan']:shopping?[`shop-buy-${shopPreviewIndex}`,'shop-reroll',fortuneAvailable()?'shop-fortunes':'shop-lock','shop-buy-xp','battle']:['shop-toggle','battle','next-round','pause','new-match','replan'];
   const ids=[...new Set([...context,...standard])];
   root.replaceChildren();
   for(const id of ids){
     if(compact&&!combined&&id==='shop-toggle')continue;
-    const action=hits.find(h=>h.id===id);if(!action)continue;
+    const fallback=combined?{
+      battle:game.phase==='planning'&&game.field.length>0&&(!chestTerms().enabled||!!match?.chests?.player)&&(!partyMode||partyData?.readyOnly)?{label:partyMode?(partyData?.ready?'Ready ✓ · undo':'Ready for combat'):'Begin round →',fn:begin}:null,
+      'next-round':match?.phase==='round-result'?{label:'Next round →',fn:nextRound}:null,
+      pause:game.phase==='battle'&&!partyMode?{label:paused?'Resume':'Pause',fn:()=>{paused=!paused;lastTick=0;persistMatch();draw();schedule();}}:null,
+      'new-match':match?.phase==='finished'&&!partyMode?{label:'New practice match',fn:startMatch}:null,
+      replan:!match&&game.phase==='finished'?{label:'Replan formation',fn:reset}:null,
+    }[id]:null;
+    const action=id==='sell-hero'&&owned?{label:`Sell ${hero(unit).name} · ${ABMatch.saleValue(unit)}g`,fn:sellHero}:hits.find(h=>h.id===id)||fallback;if(!action)continue;
     const heroPreview=compact&&/^shop-buy-\d+$/.test(id);
     const button=document.createElement('button');button.type='button';
-    button.textContent=heroPreview?'Hero details':id==='recall-prominent'?'Move to bench':id.startsWith('objective-')?objectiveActions().find(entry=>entry.id===id)?.label||action.label:id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-fortunes'?'✧ Fortunes':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
+    button.textContent=heroPreview?'Hero details':id==='recall-prominent'?'Move to bench':id==='sell-hero'?`Sell · ${ABMatch.saleValue(unit)}g`:id.startsWith('objective-')?objectiveActions().find(entry=>entry.id===id)?.label||action.label:id.startsWith('shop-buy-')&&id!=='shop-buy-xp'?'Recruit preview':id==='shop-lock'?match.players.player.shopLocked?'Release hold':'Hold offers':id==='shop-fortunes'?'✧ Fortunes':id==='shop-toggle'?shopVisible?'Hide shop':'Shop':id==='shop-place-chest'?'Place treasure':action.label;
     button.setAttribute('aria-label',id==='shop-toggle'?button.textContent:action.label);
     button.classList.toggle('primary',!heroPreview&&(id==='recall-prominent'||id==='objective-treasure'&&!match.chests.player||id.startsWith('shop-buy-')&&id!=='shop-buy-xp'||['battle','next-round','new-match'].includes(id)));
     button.addEventListener('click',()=>{markPlayerAction();if(heroPreview)openMobileHeroPreview(shopPreviewIndex,button);else action.fn();});
@@ -8515,17 +8575,18 @@ function renderMobilePanels(){
   if(key===mobilePanelKey)return;mobilePanelKey=key;
   const shopRoot=document.querySelector('.mobile-shop-offers'),benchRoot=document.querySelector('.mobile-bench-grid'),focusedCard=document.activeElement?.closest('.mobile-offer'),focusedOffer=focusedCard?[...shopRoot.children].indexOf(focusedCard):-1,focusedBuy=document.activeElement?.classList.contains('mobile-offer-buy');shopRoot.replaceChildren();benchRoot.replaceChildren();
   const combined=document.querySelector('main').classList.contains('compact-stage')&&!document.querySelector('main').classList.contains('portrait-play');
-  document.querySelector('.mobile-shop-summary').textContent=match?`${combined?'':`ROUND ${match.roundNumber} · `}${offers.filter(Boolean).length} OFFERS · ${shopOddsLabel()}${match.players.player.shopLocked?' · SHOP HELD':''}${fortuneAvailable()?' · ✧ FORTUNES AVAILABLE':''}`:'No shop in this mode';
+  const shopSummary=document.querySelector('.mobile-shop-summary');shopSummary.textContent=match?`${combined?'SHOP · ':`ROUND ${match.roundNumber} · `}${offers.filter(Boolean).length} offers${match.players.player.shopLocked?' · HELD':''}${fortuneAvailable()?' · ✧ FORTUNES':''}${combined?'':' · '+shopOddsLabel()}`:'No shop in this mode';shopSummary.title=match?shopOddsLabel():'';
   offers.forEach((offer,index)=>{
     const h=offer&&AB.heroById(offer.heroId),card=document.createElement('div');card.className='mobile-offer'+(index===shopPreviewIndex?' selected':'')+(h&&activeLineup.ids.has(h.id)?' planned':'');
     if(!h){card.textContent='No offer';}else{
       const previewButton=document.createElement('button');previewButton.type='button';previewButton.className='mobile-offer-preview';
-      const name=document.createElement('strong');name.textContent=h.name+(activeLineup.ids.has(h.id)?' ★':'');previewButton.append(name);
-      const cost=document.createElement('span');cost.className='mobile-offer-cost';cost.textContent=`${h.cost}g · ${faction(h.faction).name}`;previewButton.append(cost);
-      previewButton.append(miniUnit(h,1,95,62));
-      const traits=document.createElement('span');traits.className='mobile-offer-traits';traits.textContent=traitIcons(h).map(icon=>icon.name).join(' · ');previewButton.append(traits);
-      const change=offerTraitChanges(h).find(item=>item.activated)||offerTraitChanges(h).find(item=>item.adds),gain=document.createElement('span');gain.className='gain';gain.textContent=change?`${change.activated?'✦ Bonus':'↑ '+change.count} ${change.name}`:'Already fielded';previewButton.append(gain);
-      const score=ratings(h.id,1),stats=document.createElement('span');stats.className='mobile-offer-stats';stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;previewButton.append(stats);
+      const head=document.createElement('span');head.className='mobile-offer-head';
+      const name=document.createElement('strong');name.textContent=h.name+(activeLineup.ids.has(h.id)?' ★':'');
+      const info=document.createElement('span');info.className='mobile-offer-info';info.textContent='ⓘ';info.setAttribute('aria-hidden','true');head.append(name,info);previewButton.append(head);
+      previewButton.append(miniUnit(h,1,180,160));
+      const cost=document.createElement('span');cost.className='mobile-offer-cost';cost.textContent=`${h.cost} gold · 1★`;previewButton.append(cost);
+      const change=offerTraitChanges(h).find(item=>item.activated)||offerTraitChanges(h).find(item=>item.adds),score=ratings(h.id,1);
+      previewButton.append(mobileRatingBars(h.id,1));
       previewButton.setAttribute('aria-label',`Preview ${h.name}${activeLineup.ids.has(h.id)?', on your active lineup':''}. ${h.cost} gold. ${traitNames(h)}. ${change?.detail||'Already fielded'}. ${ratingDescription(score)}. ${h.ability.name}.`);
       previewButton.onclick=()=>{markPlayerAction();shopPreviewIndex=index;say('Previewing '+h.name+'. '+h.ability.name+'.');draw();openMobileHeroPreview(index,shopRoot.children[index]?.querySelector('.mobile-offer-preview'));};
       const buyButton=document.createElement('button');buyButton.type='button';buyButton.className='mobile-offer-buy';buyButton.textContent=`Buy · ${h.cost}g`;buyButton.setAttribute('aria-label',`Buy ${h.name} for ${h.cost} gold from shop offer ${index+1}`);buyButton.disabled=match.players.player.gold<h.cost||partyMode&&(!partyConnected||partyPending||partyData?.eliminated||partyData?.spectating);buyButton.onclick=()=>{markPlayerAction();buyShop(index);};
@@ -8537,7 +8598,7 @@ function renderMobilePanels(){
   document.querySelector('.mobile-shop-preview').textContent=preview?`${preview.ability.name}: ${preview.ability.description}`:'Choose a hero to preview.';
   for(let index=0;index<10;index++){
     const u=game.bench[index],slot=document.createElement('button');slot.type='button';slot.className='mobile-bench-slot'+(u?.id===selected?' selected':'')+(u?'':' empty');
-    if(u){const h=hero(u),title=document.createElement('strong');title.textContent=h.name;slot.append(title,miniUnit(h,u.level,78,49));if(u.itemIds?.length){const equipped=document.createElement('span');equipped.className='mobile-bench-items';for(const id of u.itemIds)equipped.append(ABItemArt.element(id));slot.append(equipped);}const stats=document.createElement('span'),score=ratings(h.id,u.level);stats.textContent=`${score.magic===undefined?'ATK':'MAG'} ${score.attack??score.magic} · DEF ${score.defense} · SPD ${score.speed}`;slot.append(stats);slot.setAttribute('aria-label',`Select ${h.name}, ${u.level} stars, from bench. ${u.itemIds?.length?'Equipped: '+u.itemIds.map(id=>ABItems.item(id)?.name).join(', ')+'. ':''}${ratingDescription(score)}`);slot.onclick=()=>{markPlayerAction();if(selected!==u.id)select(u.id);setMobileView('board');draw();};}
+    if(u){const h=hero(u),title=document.createElement('strong');title.textContent=h.name;slot.append(title,miniUnit(h,u.level,100,72));if(u.itemIds?.length){const equipped=document.createElement('span');equipped.className='mobile-bench-items';for(const id of u.itemIds)equipped.append(ABItemArt.element(id));slot.append(equipped);}const score=ratings(h.id,u.level);slot.append(mobileRatingBars(h.id,u.level));slot.setAttribute('aria-label',`Select ${h.name}, ${u.level} stars, from bench. Drag onto the board to place, or select then use Sell. ${u.itemIds?.length?'Equipped: '+u.itemIds.map(id=>ABItems.item(id)?.name).join(', ')+'. ':''}${ratingDescription(score)}`);slot.onclick=()=>{if(suppressDragClick){suppressDragClick=false;return;}markPlayerAction();if(selected!==u.id)select(u.id);setMobileView('board');draw();};bindBenchDrag(slot,u.id);}
     else{slot.textContent=`Empty ${index+1}`;slot.disabled=true;}
     benchRoot.append(slot);
   }
@@ -8556,11 +8617,36 @@ if(!tiles.length)return null;
 const g=grid(),tile=tiles.map(h=>{const [,col,row]=h.id.split('-'),at=g.at(+col,+row);return{col:+col,row:+row,distance:(at.x-p.x)**2+(at.y-p.y)**2};}).sort((a,b)=>a.distance-b.distance)[0];
 return{kind:'tile',col:tile.col,row:tile.row,occupant:game.field.find(u=>u.col===tile.col&&u.row===tile.row)||null};
 }
+function screenDragTarget(event){
+  const shop=document.getElementById('mobile-shop'),rect=shop.getBoundingClientRect();
+  if(match&&shopVisible&&getComputedStyle(shop).display!=='none'&&event.clientX>=rect.left&&event.clientX<=rect.right&&event.clientY>=rect.top&&event.clientY<=rect.bottom)return{kind:'sell'};
+  return dragTarget(locate(event));
+}
+function bindBenchDrag(slot,unitId){
+  slot.addEventListener('pointerdown',event=>{
+    if(event.button!==0||game.phase!=='planning'||match?.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyPending||partyMode&&!partyConnected)return;
+    drag={pointerId:event.pointerId,unitId,screenSource:slot.getBoundingClientRect(),point:locate(event),active:false};
+    slot.setPointerCapture(event.pointerId);
+  });
+  slot.addEventListener('pointermove',event=>{
+    if(drag?.pointerId!==event.pointerId||drag.unitId!==unitId)return;
+    const source=drag.screenSource;
+    if(!drag.active&&(event.clientX<source.left||event.clientX>source.right||event.clientY<source.top||event.clientY>source.bottom))drag.active=true;
+    if(drag.active){event.preventDefault();drag.point=locate(event);slot.classList.add('dragging');const target=screenDragTarget(event);hover=target?.kind==='tile'?`tile-${target.col}-${target.row}`:target?.kind==='sell'?'shop-toggle':null;draw();}
+  });
+  slot.addEventListener('pointerup',event=>{
+    if(drag?.pointerId!==event.pointerId||drag.unitId!==unitId)return;
+    const active=drag.active,target=active?screenDragTarget(event):null;drag=null;slot.classList.remove('dragging');
+    if(slot.hasPointerCapture(event.pointerId))slot.releasePointerCapture(event.pointerId);
+    if(active){suppressDragClick=true;markPlayerAction();if(target)dropUnit(unitId,target);else{say('Drop a hero on a friendly tile, or on the shop to sell it.');draw();}}
+  });
+  slot.addEventListener('pointercancel',event=>{if(drag?.pointerId===event.pointerId){drag=null;slot.classList.remove('dragging');draw();}});
+}
 function drawDrag(){if(!drag?.active)return;const u=[...game.bench,...game.field].find(v=>v.id===drag.unitId);if(!u)return;const p=drag.point,target=dragTarget(p);ctx.save();if(target?.kind==='tile'){const at=grid().at(target.col,target.row);ctx.strokeStyle=C.gold;ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(at.x,at.y,28,15,0,0,Math.PI*2);ctx.stroke();}else if(target?.kind==='sell'){ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.strokeRect(shopVisible?48:300,shopVisible?528:47,shopVisible?1344:120,shopVisible?228:39);}ctx.globalAlpha=.84;ABArt.drawUnit(ctx,p.x,p.y+24,82,u,hero(u),{selected:true});ctx.globalAlpha=1;text(target?.kind==='sell'?`SELL +${dragSellValue()}g`:target?.kind==='tile'&&target.occupant?'SWAP · '+coordinate(target.col,target.row):target?.kind==='tile'?'PLACE · '+coordinate(target.col,target.row):'DRAG TO TILE OR SHOP',Math.min(p.x+28,1210),Math.max(30,p.y-65),12,C.gold);ctx.restore();}
 function dropUnit(unitId,target){if(target.kind==='sell'){sellUnit(unitId);return;}const u=[...game.bench,...game.field].find(v=>v.id===unitId);if(!u)return;const displaced=target.occupant?.id!==unitId?target.occupant:null;if(target.occupant?.id===unitId){selected=unitId;draw();return;}if(partyMode){selected=displaced?.id||null;selectedTrait=null;chestSelected=false;partyCommand('deploy',{unitId,col:target.col,row:target.row});return;}const r=match?ABMatch.deploy(match,unitId,target.col,target.row):AB.deploy(game,unitId,target.col,target.row);game=match?.game||game;if(r.ok){selected=displaced?.id||null;selectedTrait=null;chestSelected=false;persistMatch();say(`${hero(u).name} placed at ${coordinate(target.col,target.row)}.${displaced?' '+hero(displaced).name+' is selected; place it next.':''}`);tutorialEvent('deploy');}else say(r.reason);draw();}
 canvas.addEventListener('pointerdown',e=>{suppressDragClick=false;if(e.button!==0||tab!=='arena'||game.phase!=='planning'||match&&match.phase!=='preparation'||partyData?.spectating||partyData?.eliminated||partyPending||partyMode&&!partyConnected)return;const p=locate(e),h=findHit(p);pointerAt=p;if(!h||!(/^(bench|field)-/.test(h.id)))return;drag={pointerId:e.pointerId,unitId:h.id.slice(h.id.indexOf('-')+1),source:h,point:p,active:false};canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{const p=locate(e);pointerAt=p;if(drag?.pointerId===e.pointerId){drag.point=p;const s=drag.source;if(!drag.active&&(p.x<s.x||p.x>s.x+s.w||p.y<s.y||p.y>s.y+s.h))drag.active=true;if(drag.active){e.preventDefault();const target=dragTarget(p);hover=target?.kind==='tile'?`tile-${target.col}-${target.row}`:target?.kind==='sell'?'shop-toggle':null;canvas.style.cursor=target?'grabbing':'grab';draw();return;}}const h=findHit(p);if(hover!==h?.id){hover=h?.id;canvas.style.cursor=h?'pointer':'default';draw();}});
-canvas.addEventListener('pointerup',e=>{if(drag?.pointerId!==e.pointerId)return;const active=drag.active,unitId=drag.unitId,target=active?dragTarget(locate(e)):null;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(active){suppressDragClick=true;markPlayerAction();if(target)dropUnit(unitId,target);else{say('Drop a hero on a friendly tile to place it, or on Shop to sell it.');draw();}}});
+canvas.addEventListener('pointermove',e=>{const p=locate(e);pointerAt=p;if(drag?.pointerId===e.pointerId){drag.point=p;const s=drag.source;if(!drag.active&&(p.x<s.x||p.x>s.x+s.w||p.y<s.y||p.y>s.y+s.h))drag.active=true;if(drag.active){e.preventDefault();const target=screenDragTarget(e);hover=target?.kind==='tile'?`tile-${target.col}-${target.row}`:target?.kind==='sell'?'shop-toggle':null;canvas.style.cursor=target?'grabbing':'grab';draw();return;}}const h=findHit(p);if(hover!==h?.id){hover=h?.id;canvas.style.cursor=h?'pointer':'default';draw();}});
+canvas.addEventListener('pointerup',e=>{if(drag?.pointerId!==e.pointerId)return;const active=drag.active,unitId=drag.unitId,target=active?screenDragTarget(e):null;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(active){suppressDragClick=true;markPlayerAction();if(target)dropUnit(unitId,target);else{say('Drop a hero on a friendly tile to place it, or on Shop to sell it.');draw();}}});
 canvas.addEventListener('pointercancel',e=>{if(drag?.pointerId===e.pointerId){drag=null;draw();}});
 canvas.addEventListener('pointerleave',()=>{if(!drag?.active){hover=null;pointerAt=null;draw();}});canvas.addEventListener('click',e=>{if(suppressDragClick){suppressDragClick=false;return;}const h=findHit(locate(e));if(h?.id!=='help-tip')markPlayerAction();if(h)h.fn(e);else if(tab==='arena'&&(selected||selectedTrait||chestSelected||itemChestSelected||cherubSelected))deselect();});
 addEventListener('keydown',e=>{
