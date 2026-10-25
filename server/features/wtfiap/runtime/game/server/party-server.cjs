@@ -74,7 +74,9 @@ function atomicJSON(filename, value) {
 function configuration(input, preserveItemVersion = false) {
   const features = input?.rulesPreset === undefined ? null : roomFeatures(input);
   if (features) {
-    const versions = { balanceVersion: 1, itemRulesVersion: features.items ? 1 : undefined, cherubRulesVersion: features.cherub ? 1 : undefined,
+    const versions = { balanceVersion: 1, itemRulesVersion: features.items ? 1 : undefined,
+      cherubRulesVersion: features.cherub ? preserveItemVersion && input.cherubRulesVersion === 1 ? 1 : 2 : undefined,
+      itemChestPlacementVersion: features.items ? preserveItemVersion ? input.itemChestPlacementVersion : 2 : undefined,
       shopLockRulesVersion: features.shopHold ? 1 : undefined, encounterRulesVersion: features.supplyEncounters ? 1 : undefined,
       draftRulesVersion: features.sharedDraft ? 1 : undefined, planRulesVersion: features.battlePlans ? 1 : undefined,
       fortuneRulesVersion: features.blessings || features.curses ? 1 : undefined,
@@ -98,7 +100,8 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(!['config', 'currency', 'entryFee', 'entryAtomic', 'prizePercentages', 'shares', 'tournamentAccounting'].some(key => Object.hasOwn(input, key)),
     'Tournament money terms belong in the tournament configuration.');
   requireThat(input.itemRulesVersion === undefined || input.itemRulesVersion === 1, 'Unknown item rules version.');
-  requireThat(input.cherubRulesVersion === undefined || input.cherubRulesVersion === 1 && input.itemRulesVersion === 1, 'Cherub requires the item system.');
+  requireThat(input.cherubRulesVersion === undefined || [1, 2].includes(input.cherubRulesVersion) && input.itemRulesVersion === 1, 'Cherub requires the item system.');
+  requireThat(input.itemChestPlacementVersion === undefined || input.itemChestPlacementVersion === 2 && input.itemRulesVersion === 1, 'Front-row item chests require the item system.');
   requireThat(input.balanceVersion === undefined || input.balanceVersion === 1, 'Unknown hero balance version.');
   requireThat(input.shopLockRulesVersion === undefined || input.shopLockRulesVersion === 1, 'Unknown shop lock rules version.');
   requireThat(input.encounterRulesVersion === undefined || input.encounterRulesVersion === 1 && input.itemRulesVersion === 1, 'Unknown encounter rules version.');
@@ -107,11 +110,12 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.fortuneRulesVersion === undefined || input.fortuneRulesVersion === 1, 'Unknown fortune shop rules version.');
   requireThat(input.fortunePricingVersion === undefined || input.fortunePricingVersion === 1 && input.fortuneRulesVersion === 1,
     'Unknown fortune pricing version.');
-  const versionOn = key => features ? input[key] === 1 : !preserveItemVersion || input[key] === 1;
+  const versionOn = key => features ? input[key] !== undefined : !preserveItemVersion || input[key] !== undefined;
   const config = { boardMode: input.boardMode, preparationSeconds: input.preparationSeconds,
     ...(input.openSeatEscrowVersion === 1 ? { openSeatEscrowVersion: 1 } : {}),
     earlyStart, oddPlayerPolicy: 'round-ai', ...(versionOn('itemRulesVersion') ? { itemRulesVersion: 1 } : {}),
-    ...(versionOn('cherubRulesVersion') ? { cherubRulesVersion: 1 } : {}),
+    ...(versionOn('cherubRulesVersion') ? { cherubRulesVersion: input.cherubRulesVersion === 1 && preserveItemVersion ? 1 : 2 } : {}),
+    ...(versionOn('itemRulesVersion') && (!preserveItemVersion || input.itemChestPlacementVersion === 2) ? { itemChestPlacementVersion: 2 } : {}),
     ...(versionOn('balanceVersion') ? { balanceVersion: 1 } : {}),
     ...(versionOn('shopLockRulesVersion') ? { shopLockRulesVersion: 1 } : {}),
     ...(versionOn('encounterRulesVersion') ? { encounterRulesVersion: 1 } : {}),

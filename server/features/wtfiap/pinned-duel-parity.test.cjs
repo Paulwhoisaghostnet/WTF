@@ -43,3 +43,24 @@ test('creator-first runtime preserves the deployed funded-room rules', () => {
     assert.equal(digest.digest('hex'), reference[key], `deployed transcript changed for ${key}`);
   }
 });
+
+test('a pinned Cherub v1 room replays through its tenth-round item chest unchanged', () => {
+  const state = Party.createMatch({ matchId: 'compat-ten', seed: 'compat-ten', boardMode: 'standard',
+    preparationSeconds: null, oddPlayerPolicy: 'round-ai', openedAtMs: 0,
+    itemRulesVersion: 1, cherubRulesVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1,
+    encounterRulesVersion: 1, draftRulesVersion: 1, planRulesVersion: 1,
+    fortuneRulesVersion: 1, fortunePricingVersion: 1,
+    players: [{ playerId: 'a', name: 'A', isAI: true }, { playerId: 'b', name: 'B', isAI: true }] });
+  const digest = crypto.createHash('sha256');
+  const capture = () => { digest.update(Party.serialize(state)); digest.update(JSON.stringify(Party.view(state, 'a'))); };
+  capture(); let atMs = 0;
+  while (state.phase !== 'finished' && state.roundNumber <= 10) {
+    for (const player of state.players.filter(entry => entry.hp > 0)) {
+      must(Party.prepareAI(state, player.playerId, atMs)); capture();
+    }
+    must(Party.advance(state, atMs)); capture();
+    while (state.phase === 'combat') { atMs += 1000; must(Party.advance(state, atMs)); capture(); }
+  }
+  assert.equal(state.roundNumber, 11);
+  assert.equal(digest.digest('hex'), '460bcffb852771428fa0e57965445141613232b9bb09a9b539d318f937e78ac4');
+});

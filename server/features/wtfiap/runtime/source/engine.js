@@ -593,11 +593,12 @@
     const expiresAtSeconds = enabled ? config.roundNumber * 15 : null;
     if (enabled && !Number.isSafeInteger(expiresAtSeconds)) throw new Error('Treasure duration exceeds exact numeric representation.');
     const itemRound = config.itemRulesVersion === 1 && config.roundNumber % 10 === 0;
+    if (config.itemChestPlacementVersion !== undefined && config.itemChestPlacementVersion !== 2) throw new Error('Unknown item chest placement version.');
     if (config.chests.length !== (enabled ? itemRound ? 4 : 2 : 0)) throw new Error('Place one gold chest per player and a second item chest every ten rounds.');
     const ids = new Set([...game.field, ...game.opponents, ...game.bench].map(unit => unit.id)), sides = new Set();
-    const cherubs = config.cherubRulesVersion === 1 ? config.cherubs : [];
-    if (config.cherubRulesVersion !== undefined && config.cherubRulesVersion !== 1) throw new Error('Unknown Cherub rules version.');
-    if (config.cherubRulesVersion === 1 && (!Array.isArray(cherubs) || cherubs.length !== 2 || new Set(cherubs.map(entry => entry.side)).size !== 2)) throw new Error('Place one Cherub on each side.');
+    const cherubs = [1, 2].includes(config.cherubRulesVersion) ? config.cherubs : [];
+    if (config.cherubRulesVersion !== undefined && ![1, 2].includes(config.cherubRulesVersion)) throw new Error('Unknown Cherub rules version.');
+    if ([1, 2].includes(config.cherubRulesVersion) && (!Array.isArray(cherubs) || cherubs.length !== 2 || new Set(cherubs.map(entry => entry.side)).size !== 2)) throw new Error('Place one Cherub on each side.');
     if (config.cherubRulesVersion === undefined && config.cherubs !== undefined) throw new Error('Cherub objectives require their rules version.');
     const objectives = [...config.chests, ...cherubs.map(entry => ({ ...entry, kind: 'cherub' }))].map(chest => {
       if (!chest || typeof chest.id !== 'string' || !chest.id.trim() || ids.has(chest.id)) throw new Error('Chest IDs must be distinct from every unit and chest.');
@@ -606,8 +607,11 @@
       const firstRow = chest.side === 'player' ? game.board.playerStartRow : 0;
       const endRow = chest.side === 'player' ? game.board.rows : game.board.halfRows;
       if (!Number.isInteger(chest.col) || chest.col < 0 || chest.col >= game.board.columns || !Number.isInteger(chest.row) || chest.row < firstRow || chest.row >= endRow) throw new Error('Place each chest in its owner’s deployment territory.');
-      if (kind === 'item' && (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1)) throw new Error('Item chests belong in the two back rows.');
-      if (kind === 'cherub' && (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1) || chest.maxHp !== cherubMaxHp(game.balanceVersion))) throw new Error('Cherub uses the roster-derived low HP and front-center position.');
+      if (kind === 'item' && (config.itemChestPlacementVersion === 2
+        ? (chest.side === 'player' ? chest.row >= game.board.playerStartRow + Math.min(2, game.board.halfRows) : chest.row < game.board.halfRows - Math.min(2, game.board.halfRows))
+        : (chest.side === 'player' ? chest.row < game.board.rows - 2 : chest.row > 1))) throw new Error(config.itemChestPlacementVersion === 2 ? 'Item chests belong in the two front rows.' : 'Item chests belong in the two back rows.');
+      if (kind === 'cherub' && (chest.maxHp !== cherubMaxHp(game.balanceVersion) || config.cherubRulesVersion === 1 &&
+        (chest.col !== Math.floor((game.board.columns - 1) / 2) || chest.row !== (chest.side === 'player' ? game.board.playerStartRow : game.board.halfRows - 1)))) throw new Error('Cherub uses roster-derived low HP and the allowed starting position.');
       if (!Number.isFinite(chest.maxHp) || chest.maxHp <= 0) throw new Error('Chest maximum HP must be supplied explicitly and be positive.');
       const armor = chest.armor === undefined ? 0 : chest.armor;
       if (!Number.isFinite(armor) || armor < 0) throw new Error('Chest armor must be nonnegative; omit it for no armor.');

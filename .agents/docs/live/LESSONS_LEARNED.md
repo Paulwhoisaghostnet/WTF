@@ -12545,3 +12545,13 @@
 **Rule**: Keep the same battlefield renderer for desktop, practice, and hosted rooms; dock the four shop offers and reserve strip beside it where the viewport permits. Put the phase cue in the touch utility rail and preserve Items, Controls, Traits, and Details there. After vendoring a changed game generator, rebuild the host before running the browser fixture so tests exercise the packaged bytes, not an older `dist/public` copy.
 
 When shop and board are visible together, contextual help must prioritize a selected or newly purchased bench hero over another purchase. Reserve “Open Board” wording for the portrait view, where the board is actually hidden.
+
+---
+
+## 2026-10-24 — Objective positions need a room version and a visible preparation control
+
+**What happened**: coLILseum's Cherub was generated at the front center for every combat, with no owner placement command. The later item chest spawned, validated, and was labeled for the back two rows even though the intended risk position was the front two rows. A browser regression initially moved Cherub to the back and then assumed the enemy would still defeat it, conflating placement control with reward probability.
+
+**Why it mattered**: Players had no way to protect or expose Cherub strategically, and the item chest rule rewarded a safer position than requested. Changing these rules globally would alter active funded matches.
+
+**Rule**: Pin objective-placement behavior per new room. Keep prior rooms on their serialized rules; verify a new placement through the client command bridge, server save/reload, and combat projection. When testing a reward, place the objective where a deterministic combat can reach it. Compare old and new runtimes through the affected later round before declaring funded-room compatibility.

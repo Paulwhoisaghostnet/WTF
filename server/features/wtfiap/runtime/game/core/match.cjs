@@ -117,7 +117,7 @@
     for (const side of SIDES) {
       const rowOffset = side === 'player' ? nextBoard.playerStartRow - oldBoard.playerStartRow : nextBoard.halfRows - oldBoard.halfRows;
       const units = side === 'player' ? match.game.field : match.game.opponents;
-      for (const unit of [...units, ...(match.chests[side] ? [match.chests[side]] : [])]) { unit.col += columnOffset; unit.row += rowOffset; }
+      for (const unit of [...units, ...(match.chests[side] ? [match.chests[side]] : []), ...(match.cherubs?.[side] ? [match.cherubs[side]] : [])]) { unit.col += columnOffset; unit.row += rowOffset; }
     }
     match.game.board = nextBoard;
   }
@@ -185,13 +185,16 @@
     const matchId = options.matchId === undefined ? 'practice:' + String(token.battleSeed ?? token.seed) : options.matchId;
     demand(typeof matchId === 'string' && matchId.trim(), 'Match ID must be a nonempty string.');
     demand(ShopPool, 'Load the shared shop-pool module before creating a match.');
-    const match = { schemaVersion: 2, cherubRulesVersion: 1, fortunePricingVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
+    const match = { schemaVersion: 2, cherubRulesVersion: 2, fortunePricingVersion: 1, balanceVersion: 1, shopLockRulesVersion: 1, encounterRulesVersion: 1, draftRulesVersion: 1, draft: null, planRulesVersion: 1, planReceipts: [], fortuneRulesVersion: 1, fortuneReceipts: [], shopPool: ShopPool.create(Engine.ROSTER), matchId, startingGold: RULES.startingGold, roundNumber: 1, phase: 'preparation',
       game: Engine.createGame(token), players: {}, enemyPool: [], shops: { player: [], enemy: [] },
       shopDraws: { player: 0, enemy: 0 }, shopReceipts: [], enemyMergeSerial: 0,
-      chests: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
+      chests: { player: null, enemy: null }, cherubs: { player: null, enemy: null }, health: Health.createMatch({ matchId, playerIds: SIDES, startingHP: Health.COMMANDER_STARTING_HP }),
       treasure: Treasure.createLedger({ matchId, playerIds: SIDES }), receipts: [], lastReceipt: null, lastIncome: null, winnerSide: null };
     if (options.boardMode !== undefined) { match.boardMode = options.boardMode; match.game.board = boardForLevel(options.boardMode, 1); }
     match.game.itemRulesVersion = 1;
+    const startBoard = match.game.board;
+    match.cherubs = { player: { col: Math.floor((startBoard.columns - 1) / 2), row: startBoard.playerStartRow },
+      enemy: { col: Math.floor((startBoard.columns - 1) / 2), row: startBoard.halfRows - 1 } };
     match.game.balanceVersion = 1;
     match.game.bench = []; match.game.opponents = [];
     for (const side of SIDES) match.players[side] = { gold: RULES.startingGold, hp: Health.COMMANDER_STARTING_HP, items: [], shopLocked: false, pendingPlan: false, freeRerolls: 0, plans: [], blessings: [], curses: [], fortuneShop: null, mirrorTickets: [], winStreak: 0, lossStreak: 0,
@@ -327,7 +330,7 @@
       commander.gold -= offer.cost; match.shops[side][index] = null;
       if (side === 'player') {
         match.game.field = next.game.field; match.game.bench = next.game.bench; match.game.mergeSerial = next.game.mergeSerial;
-        if (match.cherubRulesVersion === 1) commander.items.push(...next.overflowItems);
+        if ([1, 2].includes(match.cherubRulesVersion)) commander.items.push(...next.overflowItems);
       } else { match.enemyPool = next.pool; match.enemyMergeSerial = next.serial; fieldAI(match); }
       grantMirrorTickets(match, side, next.upgrades);
       match.shopReceipts.push({ kind: 'purchase', side, roundNumber: match.roundNumber, offer: clone(offer), goldBefore: before, goldSpent: offer.cost, goldAfter: commander.gold });
@@ -349,7 +352,7 @@
       if (side === 'player') {
         match.game.field = match.game.field.filter(value => value.id !== unitId);
         match.game.bench = match.game.bench.filter(value => value.id !== unitId);
-        if (match.cherubRulesVersion === 1) commander.items.push(...(unit.itemIds || []));
+        if ([1, 2].includes(match.cherubRulesVersion)) commander.items.push(...(unit.itemIds || []));
       } else { match.enemyPool = match.enemyPool.filter(value => value.id !== unitId); fieldAI(match); }
       commander.gold += goldReceived;
       const receipt = { kind: 'sale', side, roundNumber: match.roundNumber, unit: clone(unit), goldBefore: before,
@@ -494,6 +497,14 @@
       checkPosition(side, col, row, match.game.board); match.chests[side] = { col, row }; return { ok: true };
     });
   }
+  function moveCherub(match, side, col, row) {
+    return guarded(() => {
+      demand(preparation(match) && match.cherubRulesVersion === 2, 'Move Cherub during preparation.');
+      checkPosition(side, col, row, match.game.board);
+      match.cherubs[side] = { col, row };
+      return { ok: true };
+    });
+  }
   function beginCombat(match) {
     return guarded(() => {
       demand(preparation(match), 'This round is not awaiting combat.'); validateInventory(match);
@@ -506,7 +517,7 @@
       demand(preview.chests.every(chest => chest.col !== null && chest.row !== null), 'Place your treasure chest before starting this round.');
       demand(preview.chests.every(chest => chest.maxHp !== null), 'Field a hero to determine treasure health.');
       required(Engine.startBattle(match.game, { roundNumber: match.roundNumber,
-        ...(match.cherubRulesVersion === 1 ? { cherubRulesVersion: 1, cherubs: Engine.cherubObjectives(match.game, combatId(match)) } : {}),
+        ...([1, 2].includes(match.cherubRulesVersion) ? { cherubRulesVersion: match.cherubRulesVersion, cherubs: Engine.cherubObjectives(match.game, combatId(match)).map(cherub => match.cherubRulesVersion === 2 ? { ...cherub, ...match.cherubs[cherub.side] } : cherub) } : {}),
         chests: preview.chests.map(({ id, side, col, row, maxHp }) => ({ id, side, col, row, maxHp })) }));
       match.phase = 'combat'; if (match.game.phase === 'finished') settleCombat(match);
       return { ok: true };
@@ -543,7 +554,7 @@
       balances[side] = match.players[side].gold + paidTreasure + zoneGold[side];
       demand(safeGold(balances[side]), 'Gold balance exceeds exact numeric representation.');
     }
-    const cherubRewards = match.cherubRulesVersion === 1 ? game.battle.events.filter(event => event.type === 'cherub-defeated').map(event => {
+    const cherubRewards = [1, 2].includes(match.cherubRulesVersion) ? game.battle.events.filter(event => event.type === 'cherub-defeated').map(event => {
       const random = Engine.makeRandom(String(game.token.battleSeed ?? game.token.seed) + ':cherub:' + match.roundNumber + ':' + event.cherubId + ':' + event.captorSide);
       return { cherubId: event.cherubId, side: event.captorSide,
         itemId: Items.componentIds[Math.floor(random() * Items.componentIds.length)] };
@@ -577,7 +588,7 @@
     if (encounterReward) match.players.player.items.push(encounterReward);
     const receipt = { roundNumber: match.roundNumber, roundId: common.roundId, combatId: common.combatId, result, winnerSide,
       combatEndedAtSeconds: game.battle.elapsed, health: health.receipt, treasure: treasure.receipt,
-      ...(match.cherubRulesVersion === 1 ? { cherubRewards } : {}),
+      ...([1, 2].includes(match.cherubRulesVersion) ? { cherubRewards } : {}),
       ...(match.fortuneRulesVersion === 1 ? { fortuneGold, fortuneDrops } : {}),
       ...(encounterRound ? { encounterReward } : {}),
       ...(match.boardMode === 'zone-defense' ? { zoneGold, zoneGoldEvents: clone(zoneGoldEvents) } : {}),
@@ -663,13 +674,13 @@
   function combine(match, heroId, stars) {
     if (!preparation(match)) return fail('Combine heroes during round preparation.');
     const result = Engine.combine(match.game, heroId, stars);
-    if (result.ok && match.cherubRulesVersion === 1) match.players.player.items.push(...(result.overflowItemIds || []));
+    if (result.ok && [1, 2].includes(match.cherubRulesVersion)) match.players.player.items.push(...(result.overflowItemIds || []));
     if (result.ok) grantMirrorTickets(match, 'player', [{ heroId, level: result.unit.level, unitId: result.unit.id }]);
     return result;
   }
   function equipItem(match, unitId, itemId) {
     return guarded(() => {
-      demand(preparation(match) && match.cherubRulesVersion === 1, 'Equip items during preparation in a Cherub match.');
+      demand(preparation(match) && [1, 2].includes(match.cherubRulesVersion), 'Equip items during preparation in a Cherub match.');
       const unit = [...match.game.field, ...match.game.bench].find(entry => entry.id === unitId), items = match.players.player.items;
       demand(unit && Items.isItem(itemId) && items.includes(itemId), 'Choose an owned hero and an item in your inventory.');
       unit.itemIds ||= [];
@@ -684,7 +695,7 @@
   }
   function unequipItem(match, unitId, itemId) {
     return guarded(() => {
-      demand(preparation(match) && match.cherubRulesVersion === 1, 'Remove items during preparation.');
+      demand(preparation(match) && [1, 2].includes(match.cherubRulesVersion), 'Remove items during preparation.');
       const unit = [...match.game.field, ...match.game.bench].find(entry => entry.id === unitId);
       demand(unit?.itemIds?.includes(itemId), 'That item is not on this hero.');
       unit.itemIds.splice(unit.itemIds.indexOf(itemId), 1); match.players.player.items.push(itemId);
@@ -695,12 +706,16 @@
     demand(match && [1, 2].includes(match.schemaVersion) && typeof match.matchId === 'string' && match.matchId.trim(), 'Invalid practice-match schema or identity.');
     demand(match.startingGold === RULES.startingGold && Number.isSafeInteger(match.roundNumber) && match.roundNumber >= 1, 'Invalid starting gold or round number.');
     demand(['preparation', 'combat', 'round-result', 'finished'].includes(match.phase), 'Invalid match phase.');
-    demand(match.cherubRulesVersion === undefined || match.cherubRulesVersion === 1, 'Unknown practice Cherub rules version.');
+    demand(match.cherubRulesVersion === undefined || [1, 2].includes(match.cherubRulesVersion), 'Unknown practice Cherub rules version.');
+    if (match.cherubRulesVersion === 2) for (const side of SIDES) {
+      demand(match.cherubs?.[side], 'Cherub placement is missing.');
+      checkPosition(side, match.cherubs[side].col, match.cherubs[side].row, match.game.board);
+    }
     demand(match.balanceVersion === undefined || match.balanceVersion === 1 && match.game.balanceVersion === 1, 'Unknown practice hero balance version.');
-    demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice encounter rules version.');
-    demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && match.cherubRulesVersion === 1, 'Unknown practice draft rules version.');
-    demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
-    demand(match.fortuneRulesVersion === undefined || match.fortuneRulesVersion === 1 && match.cherubRulesVersion === 1 && Array.isArray(match.fortuneReceipts), 'Unknown practice fortune rules version.');
+    demand(match.encounterRulesVersion === undefined || match.encounterRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion), 'Unknown practice encounter rules version.');
+    demand(match.draftRulesVersion === undefined || match.draftRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion), 'Unknown practice draft rules version.');
+    demand(match.planRulesVersion === undefined || match.planRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion) && Array.isArray(match.planReceipts), 'Unknown practice battle plan rules version.');
+    demand(match.fortuneRulesVersion === undefined || match.fortuneRulesVersion === 1 && [1, 2].includes(match.cherubRulesVersion) && Array.isArray(match.fortuneReceipts), 'Unknown practice fortune rules version.');
     demand(match.fortunePricingVersion === undefined || match.fortunePricingVersion === 1 && match.fortuneRulesVersion === 1,
       'Unknown practice fortune pricing version.');
     if (match.draftRulesVersion === 1) demand(match.draft === null || match.roundNumber % 4 === 0 &&
@@ -727,8 +742,8 @@
           (offer.curseId === null || Fortunes.get(offer.curseId)?.kind === 'curse'), 'Invalid optional fortune shop.');
       }
       if (match.shopLockRulesVersion === 1) demand(typeof commander.shopLocked === 'boolean', 'Invalid practice shop lock.');
-      if (match.cherubRulesVersion === 1) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
-      if (match.cherubRulesVersion === 1 && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
+      if ([1, 2].includes(match.cherubRulesVersion)) demand(Array.isArray(commander.items) && commander.items.every(Items.isItem), 'Invalid Cherub item inventory.');
+      if ([1, 2].includes(match.cherubRulesVersion) && side === 'player') for (const unit of [...match.game.field, ...match.game.bench])
         demand(!unit.itemIds || Array.isArray(unit.itemIds) && unit.itemIds.length <= 3 && unit.itemIds.every(Items.isItem), 'Invalid equipped item.');
       demand(safeGold(commander.gold) && commander.hp === match.health.players.find(player => player.playerId === side).hp, 'Commander gold or carried HP is invalid.');
       for (const ledger of [commander.progression, commander.income]) demand(ledger.matchId === match.matchId && ledger.playerId === side, 'Commander ledgers belong to another match or side.');
@@ -801,6 +816,9 @@
       match.game.phase = 'planning'; match.game.result = null;
       const preview = chestPreview(match);
       required(Engine.startBattle(match.game, { roundNumber: match.roundNumber,
+        ...([1, 2].includes(match.cherubRulesVersion) ? { cherubRulesVersion: match.cherubRulesVersion,
+          cherubs: Engine.cherubObjectives(match.game, combatId(match)).map(cherub => match.cherubRulesVersion === 2
+            ? { ...cherub, ...match.cherubs[cherub.side] } : cherub) } : {}),
         chests: preview.chests.map(({ id, side, col, row, maxHp }) => ({ id, side, col, row, maxHp })) }));
       // Replaying exact engine ticks restores AP getter aliases, live statuses,
       // events and target state. It never invokes this adapter's award path.
@@ -828,5 +846,5 @@
     });
   }
   return Object.freeze({ RULES, BOARD_MODES, hasBoardMode, boardForLevel, boardModeInfo, validateBoard, createMatch, beginCombat, step, nextRound, buyXP, buyShop, sellHero, saleValue, rerollShop, buyFortune, useMirrorTicket, setShopLocked, draftPick, choosePlan, moveChest, chestPreview,
-    deploy, recall, combine, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
+    deploy, recall, combine, moveCherub, equipItem, unequipItem, validate, serialize, restore, upgradeLegacy, poolSummary, heroSupply, reference });
 });
