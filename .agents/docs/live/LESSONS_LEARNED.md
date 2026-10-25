@@ -12603,3 +12603,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: A trial AI shopper spent saved gold and used higher-cost offers, but seed 886 formed an iron-vanguard shield stalemate. Its two teams still had six living heroes after 100 combat seconds; one vanguard had accumulated over 15,000 shield against roughly 300 maximum HP, and a full tournament run consumed multiple gigabytes without finishing.
 
 **Rule**: Keep the requested level-sensitive shop odds separate from the experimental AI policy. Do not activate the AI policy or change existing funded combat rules until shield-heavy match termination and resulting team balance are demonstrated. The odds-only 1,000-seed study completed and is the release evidence for this shop change.
+
+## 2026-10-25 — New test files change the generated environment inventory
+
+**What happened**: The shop-odds release passed local game, browser, build, TypeScript, and release-boundary checks, then the independent main Quality Gates job stopped at `env:inventory:check`. The new shop-odds test increased scanned source files from 2,524 to 2,525 even though the variable count stayed at 1,280.
+
+**Rule**: Run `npm run env:inventory:check` after adding any scanned source or test file. If stale, regenerate `docs/reference/environment-variables.md` in the same release and require the replacement main Quality Gates job to pass.
