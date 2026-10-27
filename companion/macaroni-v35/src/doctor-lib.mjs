@@ -36,6 +36,47 @@ async function secureFile(filePath, minimumBytes) {
   };
 }
 
+function remediationFor(name, message, config) {
+  switch (name) {
+    case "configuration":
+      return "Operator: Review environment variables or companion config; resolve configuration errors.";
+    case "private-directories":
+      return `Operator: Ensure data directory (${config.dataDir}) and private directories exist with secure permissions (chmod 0700).`;
+    case "master-key-custody":
+      return `Operator: Generate a secure 32-byte master key file at ${config.masterKeyFile} and restrict permissions: chmod 0600 ${config.masterKeyFile}`;
+    case "finalizer-key-custody":
+      return `Operator: Provide the finalizer Tezos private key in ${config.signerKeyFile} and restrict permissions: chmod 0600 ${config.signerKeyFile}`;
+    case "admin-token-custody":
+      return `Operator: Generate a secure admin token (>= 32 chars) at ${config.adminTokenFile} and restrict permissions: chmod 0600 ${config.adminTokenFile}`;
+    case "sqlite-operation-journal":
+      return `Operator: Ensure SQLite journal at ${config.journalPath} can be opened and written.`;
+    case "reviewed-contract-artifact":
+      return `Operator: Restore or re-sync the reviewed Macaroni contract JSON at ${config.abiPath}.`;
+    case "reviewed-storage-template":
+      return `Operator: Restore or re-sync the reviewed Macaroni storage template at ${config.storagePath}.`;
+    case "compiled-pack-hash-fixture":
+      return `Operator: Verify the contract template fixture at ${config.templatePath} is intact and exposes its measured startup funding policy.`;
+    case "encrypted-entropy-recovery":
+      return "Operator: Entropy recovery self-test failed. Verify master key integrity and file system permissions.";
+    case "tezos-rpc-and-finalizer":
+      if (message && message.includes("not revealed")) {
+        return "Operator: Reveal the finalizer account on Tezos by sending a small transaction from that address.";
+      }
+      if (message && (message.includes("mutez") || message.includes("startup requires"))) {
+        return "Operator: Fund the finalizer account on Tezos to meet the measured startup funding policy.";
+      }
+      return `Operator: Verify TEZOS_RPC_URL (${config.rpcUrl}) is reachable and responsive to the companion.`;
+    case "tzkt-reconciliation-index":
+      return `Operator: Verify TZKT_INDEXER_URL (${config.indexerUrl}) is reachable and returning chain head information.`;
+    case "objkt-duplicate-cid-index":
+      return `Operator: Verify OBJKT_API_URL (${config.duplicateCheckUrl}) is reachable, or configure DUPLICATE_CHECK_MODE=private_full_scan.`;
+    case "car-publish-and-public-retrieval":
+      return "Operator: Verify IPFS pinning provider credentials and public gateway retrieval.";
+    default:
+      return null;
+  }
+}
+
 export async function runDoctor(options = {}) {
   const loaded = options.config
     ? { config: options.config, errors: options.configErrors || [] }
@@ -43,7 +84,18 @@ export async function runDoctor(options = {}) {
   const { config, errors } = loaded;
   const checks = [];
   let measuredFundingPolicy = null;
-  const add = (name, ok, detail = null, extra = {}) => checks.push({ name, ok, ...(detail ? { detail } : {}), ...extra });
+  const add = (name, ok, detail = null, extra = {}) => {
+    const role = extra.role || "operator";
+    const remediation = !ok ? (extra.remediation || remediationFor(name, typeof detail === "string" ? detail : (Array.isArray(detail) ? detail.join("; ") : null), config)) : null;
+    checks.push({
+      name,
+      ok,
+      role,
+      ...(detail ? { detail } : {}),
+      ...(remediation ? { remediation } : {}),
+      ...extra,
+    });
+  };
   const attempt = async (name, callback) => {
     try {
       const detail = await callback();
@@ -203,10 +255,19 @@ export async function runDoctor(options = {}) {
   }
 
   const ready = checks.every((check) => check.ok);
+  const remediations = checks
+    .filter((check) => !check.ok && check.remediation)
+    .map((check) => ({
+      check: check.name,
+      role: check.role || "operator",
+      remediation: check.remediation,
+      detail: check.detail || null,
+    }));
   return {
     schema: "pasta.macaroni-companion-doctor.v1",
     ready,
     config: publicConfig(config),
     checks,
+    ...(remediations.length > 0 ? { remediations } : {}),
   };
 }

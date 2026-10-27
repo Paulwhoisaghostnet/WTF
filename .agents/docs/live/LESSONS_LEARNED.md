@@ -11399,3 +11399,19 @@
 **Why it mattered**: Tests asserting internal test hooks race against module evaluation if the fixture does not synchronize on the hook itself. When CI runners experience load, asynchronous module execution delays cause intermittent hook-not-found errors.
 
 **Rule**: In browser adapter test fixtures that inject custom test hooks or global APIs into deferred or module scripts via route interception, always explicitly wait for the hook's presence (`page.waitForFunction(() => Boolean(window.__hookName))`) before returning the mounted page fixture to the test runner.
+
+---
+
+## 2026-10-27 — Macaroni single-flight precondition branch expiry, stuck-work operator reconciliation, and port 47835 process isolation
+
+**What happened**: Multiple reliability and boundary defects were identified during the Macaroni V3.5 release assessment:
+1. In `companion/macaroni-v35/src/adapters/tezos-watcher.mjs`, when evaluating prepared operations (`preparedSettlementStatus`, `preparedArmStatus`), detecting an on-chain precondition change (`fifo_cursor_changed`, `arm_precondition_changed`) prematurely marked the operation status as terminal `'failed'`. If the transaction had already been signed and injected into a mempool, premature failure released single-flight worker protection before the operation's 64-block branch TTL expired, risking dual settlement attempts.
+2. Operator recovery for stuck `manual_review` claims required raw SQLite journal manipulation without an authenticated inspection or safe reconciliation endpoint that verified on-chain absence and branch expiry before requeueing.
+3. Running Pasta Suite Desktop and standalone Macaroni simultaneously on loopback caused port 47835 collisions where Pasta Suite proxied admin requests with its bearer token to an alien Macaroni process without mutual identity verification.
+4. Desktop `POST /export` lacked strict request origin validation and staged writes directly to the export root rather than using an atomic temp-directory replacement.
+5. Companion doctor errors lacked actionable operator remediation steps and role classification.
+
+**Why it mattered**: Prematurely marking signed transactions failed violates Tezos single-flight safety guarantees, potentially submitting duplicate state changes or double-spending reserves. Unauthenticated local port sharing leaks admin credentials across distinct applications. Lack of actionable doctor diagnostics delays operator incident resolution during live drops.
+
+**Rule**: Never release worker locks or mark preconditions terminally failed until branch TTL expiry (~64 blocks) and dual RPC/indexer canonical absence proofs confirm the signed bytes cannot be mined. Expose authenticated operator inspection and safe reconciliation APIs (`GET /stuck-work`, `POST /stuck-work/:id/reconcile`) that enforce branch TTL and mempool absence before requeueing. Enforce instance digest handshakes before transmitting admin credentials on shared local ports. Restrict desktop export routes with strict Host/Origin/Sec-Fetch-Site checks and atomic directory swapping. Doctor diagnostics must classify failure roles (operator vs creator) and output concrete remediation steps.
+

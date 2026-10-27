@@ -18,6 +18,8 @@ const ROUTES = Object.freeze([
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/contract$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/contract` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/creator-actions/next$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/creator-actions/next` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/creator-actions/close$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/creator-actions/close` },
+  { method: "GET", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/stuck-work$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/stuck-work` },
+  { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/stuck-work/([0-9]+)/reconcile$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/stuck-work/${match[2]}/reconcile` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/creator-attempts/([0-9]+)/(prompt-started|prompt-aborted|rejected|submitted|reconcile)$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/creator-attempts/${match[2]}/${match[3].toLowerCase()}` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/(preflight|observe-activation|wake)$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/${match[2].toLowerCase()}` },
 ]);
@@ -310,11 +312,23 @@ class DesktopCompanionAdapter {
 
   async probe() {
     const configuration = await this.configuration();
+    const token = await this.adminToken(configuration);
+    const expectedInstanceDigest = sha256(`macaroni-instance:${sha256(token)}`).slice(0, 16);
+
     const health = await localJsonRequest({ port: configuration.port, method: "GET", pathname: "/health" });
-    if (health.statusCode !== 200 || health.body?.schema !== "pasta.macaroni-companion-health.v1" || health.body?.fulfillmentReady !== true) {
+    if (health.statusCode !== 200 || health.body?.schema !== "pasta.macaroni-companion-health.v1") {
+      return { ready: false, code: "companion_not_running", reason: "Companion service is not responding on port " + configuration.port };
+    }
+    if (health.body?.instanceDigest && health.body.instanceDigest !== expectedInstanceDigest) {
+      return {
+        ready: false,
+        code: "companion_port_conflict",
+        reason: `Another Companion instance is already running on port ${configuration.port} with a different runtime root. Close the other Macaroni/Suite application before continuing.`,
+      };
+    }
+    if (health.body?.fulfillmentReady !== true) {
       return { ready: false, code: "companion_doctor_not_ready", reason: "Companion is running, but its safety checks have not all passed." };
     }
-    const token = await this.adminToken(configuration);
     const admin = await localJsonRequest({ port: configuration.port, method: "GET", pathname: "/v1/admin/readiness", adminToken: token });
     if (admin.statusCode !== 200 || admin.body?.schema !== "pasta.macaroni-companion-admin-readiness.v1" || admin.body?.ready !== true) {
       return { ready: false, code: "companion_admin_probe_failed", reason: "Companion is healthy, but the private Studio adapter could not authenticate." };

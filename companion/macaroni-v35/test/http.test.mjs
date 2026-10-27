@@ -128,6 +128,12 @@ test("admin API exposes stuck manual_review work items for operator inspection",
     projectService: {
       adminProject: () => ({ ok: true }),
       journal,
+      reconcileStuckWork: async (dropRef, workId) => ({
+        status: "resumed_safe_retry",
+        workId: Number(workId),
+        dropRef,
+        message: "Operator reconciled parked work item",
+      }),
     },
     watcher: {},
     runtime: { wake: async () => undefined },
@@ -146,4 +152,19 @@ test("admin API exposes stuck manual_review work items for operator inspection",
   assert.equal(data.stuckItems.length, 1);
   assert.equal(data.stuckItems[0].state, "manual_review");
   assert.equal(data.stuckItems[0].lastError, "Simulated ambiguous precondition failure");
+
+  const healthRes = await fetch(`http://127.0.0.1:${address.port}/health`);
+  assert.equal(healthRes.status, 200);
+  const healthData = await healthRes.json();
+  assert.ok(healthData.instanceDigest);
+  assert.equal(healthData.instanceDigest.length, 16);
+
+  const reconcileRes = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/stuck-work/1/reconcile`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(reconcileRes.status, 200);
+  const reconcileData = await reconcileRes.json();
+  assert.equal(reconcileData.status, "resumed_safe_retry");
+  assert.equal(reconcileData.workId, 1);
 });

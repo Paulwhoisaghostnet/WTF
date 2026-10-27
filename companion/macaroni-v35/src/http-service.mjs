@@ -92,6 +92,7 @@ export async function createCompanionHttpServer({
 }) {
   const adminToken = (await readFile(config.adminTokenFile, "utf8")).trim();
   const expectedAdminDigest = tokenDigest(adminToken);
+  const instanceDigest = createHash("sha256").update(`macaroni-instance:${adminToken}`).digest("hex").slice(0, 16);
   const allowedOrigins = new Set(config.allowedOrigins);
 
   return http.createServer(async (request, response) => {
@@ -124,6 +125,7 @@ export async function createCompanionHttpServer({
           fulfillmentReady: doctor.ready,
           state: doctor.ready ? "ready" : "setup_required",
           network: config.network,
+          instanceDigest,
         }, origin);
         return;
       }
@@ -167,6 +169,14 @@ export async function createCompanionHttpServer({
           dropRef,
           stuckItems,
         }, origin);
+        return;
+      }
+
+      match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)\/stuck-work\/([0-9]+)\/reconcile$/);
+      if (request.method === "POST" && match) {
+        const dropRef = decoded(match, 1);
+        const workId = decoded(match, 2);
+        writeJson(response, 200, await projectService.reconcileStuckWork(dropRef, workId), origin);
         return;
       }
 

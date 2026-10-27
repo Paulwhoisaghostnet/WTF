@@ -174,6 +174,49 @@ test("active mempool presence prevents replacement", async () => {
   assert.equal(result.state, "mempool");
 });
 
+test("fifo_cursor_changed waits for branch expiry before permitting replacement", async () => {
+  const { watcher } = watcherFixture({
+    branchLevel: 190,
+    ttl: 120,
+    storage: {
+      next_claim_to_settle: 1,
+      claim_token: { get: () => null },
+    },
+  });
+  const result = await watcher.preparedSettlementStatus({
+    project,
+    claimId: 0,
+    operationHash: OPERATION,
+    managerCounter: "5",
+    branch: "BLockHash",
+    branchLevel: 190,
+  });
+  assert.equal(result.state, "wait_for_branch_expiry");
+  assert.equal(result.reason, "fifo_cursor_changed_before_branch_expiry");
+});
+
+test("arm_precondition_changed waits for branch expiry before permitting replacement", async () => {
+  const { watcher } = watcherFixture({
+    branchLevel: 190,
+    ttl: 120,
+    storage: {
+      setup_finalized: true,
+      sale_activated: true,
+      sale_permanently_closed: false,
+      claims_created: 0,
+    },
+  });
+  const result = await watcher.preparedArmStatus({
+    project,
+    operationHash: OPERATION,
+    managerCounter: "5",
+    branch: "BLockHash",
+    branchLevel: 190,
+  });
+  assert.equal(result.state, "wait_for_branch_expiry");
+  assert.equal(result.reason, "arm_precondition_changed_before_branch_expiry");
+});
+
 test("private duplicate scan never sends target CIDs to Objkt", async () => {
   const bodies = [];
   const watcher = new TezosWatcher({

@@ -671,7 +671,17 @@ export class TezosWatcher {
     ]);
     if (observedToken != null) return { state: "claim_already_settled" };
     if (asSafeNat(storage.next_claim_to_settle, "next_claim_to_settle") !== claimId) {
-      return { state: "fifo_cursor_changed" };
+      const expiry = await this.branchExpiryEvidence({ branch, branchLevel });
+      if (!expiry.expired) {
+        return { state: "wait_for_branch_expiry", reason: "fifo_cursor_changed_before_branch_expiry", ...expiry };
+      }
+      const canonicalInclusionLevel = await this.canonicalOperationLevel(
+        operationHash,
+        expiry.branchLevel + 1,
+        Math.min(expiry.headLevel, expiry.branchLevel + expiry.maxOperationsTtl + 1),
+      );
+      if (canonicalInclusionLevel != null) return { state: "chain_included", canonicalInclusionLevel };
+      return { state: "fifo_cursor_changed", reason: "fifo_cursor_changed_and_branch_expired_absent", ...expiry };
     }
     const chainCounter = BigInt(signerAccount.counter || "0");
     return this.replacementEvidence({ operationHash, branch, branchLevel, managerCounter, chainCounter, rejected: pool.state === "rejected" });
@@ -698,7 +708,17 @@ export class TezosWatcher {
     }
     if (storage.setup_finalized !== true || storage.sale_activated !== false
       || storage.sale_permanently_closed !== false || asSafeNat(storage.claims_created, "claims_created") !== 0) {
-      return { state: "arm_precondition_changed" };
+      const expiry = await this.branchExpiryEvidence({ branch, branchLevel });
+      if (!expiry.expired) {
+        return { state: "wait_for_branch_expiry", reason: "arm_precondition_changed_before_branch_expiry", ...expiry };
+      }
+      const canonicalInclusionLevel = await this.canonicalOperationLevel(
+        operationHash,
+        expiry.branchLevel + 1,
+        Math.min(expiry.headLevel, expiry.branchLevel + expiry.maxOperationsTtl + 1),
+      );
+      if (canonicalInclusionLevel != null) return { state: "chain_included", canonicalInclusionLevel };
+      return { state: "arm_precondition_changed", reason: "arm_precondition_changed_and_branch_expired_absent", ...expiry };
     }
     const chainCounter = BigInt(signerAccount.counter || "0");
     return this.replacementEvidence({ operationHash, branch, branchLevel, managerCounter, chainCounter, rejected: pool.state === "rejected" });
