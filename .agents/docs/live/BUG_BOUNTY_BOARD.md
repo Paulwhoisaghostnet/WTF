@@ -638,7 +638,7 @@ Total: **683** · Open: **3** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 535 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 535 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 535 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
-| WTF-BB-716 | Verified | Codex coLILseum iPad controls and responsive arena | 2026-10-25 | coLILseum / mobile gameplay UX | P2 | 8 | 604 | 2 | 3 | 0 | iPad gameplay hid selling, stat bars and hero details while touch drag and first preview tap failed |
+| WTF-BB-716 | Verified | Codex coLILseum iPad controls and responsive arena | 2026-10-26 | coLILseum / mobile gameplay UX | P2 | 8 | 604 | 2 | 3 | 0 | iPad gameplay hid selling, stat bars and hero details while touch drag and first preview tap failed |
 | WTF-BB-713 | Verified | Codex coLILseum item icons and adaptive arena | 2026-10-25 | coLILseum / equipment UX | P2 | 8 | 604 | 2 | 3 | 0 | Completed equipment lacked distinct icons and Items took over the arena |
 | WTF-BB-712 | Verified | Codex coLILseum preparation guidance | 2026-10-25 | coLILseum / preparation UX | P2 | 8 | 604 | 2 | 3 | 0 | Bench and objective placement actions are hard to find during preparation |
 | WTF-BB-711 | Verified | Codex Cherub and item chest placement correction | 2026-10-24 | coLILseum / objective placement | P2 | 8 | 604 | 2 | 3 | 0 | Cherub could not be moved and tenth-round item chest used the back rows |
@@ -14136,7 +14136,7 @@ Copy this when adding a new issue:
 - Priority: P2
 - Status: Verified
 - Owner/Session: Codex coLILseum iPad controls and responsive arena
-- Last touched: 2026-10-25
+- Last touched: 2026-10-26
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
   - A Chrome iPad-sized hosted game showed a large navigation strip, tiny recruits in a compressed 2×2 shop, no visible bench rating bars or selected Sell action, and no touch bench drag.
@@ -14147,6 +14147,10 @@ Copy this when adding a new issue:
 - Verification (2026-10-25):
   - Hosted iPad Playwright story used actual CDP touch drag to place a hero and confirmed preview, ratings, selected Sell refund, details, equipment icon, and menu.
   - Source and host builds, host vendor manifest, TypeScript, environment inventory, and E2E inventory coverage passed. The game interaction suite passed 25 of 28 on the first pass; all three affected regressions passed focused rechecks after corrections.
+- Follow-up from the current iPad match:
+  - Controls occupied a separate row from gold/level/XP/field/bench, reducing battlefield height; the 5x5 board view also appeared cropped with the shop hidden. The equipment glyph read as a decorative snitch.
+- Follow-up correction: Co-located actions and resources in one responsive top rail, assigned the remaining flexible height to the arena, adjusted board scale for shop-visible and shop-hidden states, and replaced the ambiguous equipment mark with an anvil SVG.
+- Follow-up verification (2026-10-26): Source and host builds pass; built host-route Playwright iPad touch and landscape shop/bench stories pass (2/2); E2E inventory coverage and bounty-board consistency pass.
 
 ### WTF-BB-713 - Completed equipment lacked distinct icons and Items took over the arena
 

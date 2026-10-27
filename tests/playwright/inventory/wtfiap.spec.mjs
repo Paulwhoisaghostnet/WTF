@@ -526,6 +526,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       expect(await phone.evaluate(async () => { let changes=0;const rail=document.getElementById('mobile-resource'),observer=new MutationObserver(records=>changes+=records.length);observer.observe(rail,{childList:true,subtree:true,characterData:true});AB_UI.draw();AB_UI.draw();await Promise.resolve();observer.disconnect();return changes; })).toBe(0);
       await expect(phone.locator('#mobile-stage-nav #items-toggle')).toBeVisible();
       await expect(phone.locator('#mobile-stage-nav #accessible-controls')).toBeVisible();
+      expect(await phone.locator('#quick-actions').evaluate(element => element.parentElement)).toBe(await phone.locator('#mobile-resource').evaluate(element => element.parentElement));
+      expect(await phone.evaluate(() => Math.abs(document.querySelector('#quick-actions').getBoundingClientRect().top - document.querySelector('#mobile-resource').getBoundingClientRect().top))).toBeLessThan(1);
       expect(await phone.evaluate(() => {
         const buy = [...document.querySelectorAll('.mobile-offer-buy')].at(-1).getBoundingClientRect();
         const controls = document.querySelector('.access summary').getBoundingClientRect();
@@ -603,7 +605,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       expect(await game.locator(".mobile-offer .mobile-rating-row").count()).toBe(12);
       expect(await game.locator(".mobile-offer canvas").first().evaluate(canvas => canvas.getBoundingClientRect().height)).toBeGreaterThan(90);
       await expect(game.getByRole("button", { name: "Show champion details" })).toBeVisible();
-      await expect(game.getByRole("button", { name: "Open equipment" }).locator("svg")).toBeVisible();
+      await expect(game.locator("#items-toggle .anvil-icon svg")).toHaveCount(1);
       await game.locator(".mobile-offer-preview").first().click();
       await expect(game.locator("#mobile-hero-dialog")).toBeVisible();
       await game.getByRole("button", { name: "Close hero preview" }).click();

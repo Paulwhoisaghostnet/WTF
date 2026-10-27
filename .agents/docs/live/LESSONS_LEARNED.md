@@ -12615,3 +12615,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: On an iPad, the compact bench had no pointer drag, the selected-unit Sell action and rating bars were hidden behind other views, and short embedded windows reduced shop art to tiny icons. Entering the game iframe fired a focus listener that rebuilt shop cards between pointer down and release, swallowing the first preview tap.
 
 **Rule**: Keep the same arena interaction controls in Practice and hosted rooms, and test the hosted iframe at tablet dimensions with real touch events. A focus or storage refresh should rebuild cards only when its underlying data changed. Let a short shop pane scroll its cards while preserving readable hero art and direct Buy, preview, and selected-unit Sell controls.
+
+## 2026-10-26 - Compact game controls must share the same layout row
+
+**What happened**: The compact game shell rendered player resources and turn actions as separate flex children. The status bar and actions each looked reasonable alone, but together they consumed a full extra row and reduced the board viewport. The production app serves the vendored game through the host build output, so testing only the game package without rebuilding the host exercised stale assets.
+
+**Why it mattered**: A layout fix can look correct in the source package while the actual embedded game still serves old markup or styles. On iPad, that hid part of the battlefield and made the screen feel crowded.
+
+**Rule**: Place status and action controls in one measured compact grid row, verify through the host's built static game route, and refresh host output before browser checks. Keep the arena as the remaining flexible viewport; treat the equipment toggle as a clearly named tool icon, not an ambiguous decorative symbol.
