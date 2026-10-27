@@ -1,6 +1,6 @@
 "use strict";
 
-const { createHash, randomBytes } = require("node:crypto");
+const { createHash, createHmac, randomBytes, timingSafeEqual } = require("node:crypto");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const http = require("node:http");
@@ -12,6 +12,8 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const ROUTES = Object.freeze([
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects$`), upstream: () => "/v1/admin/projects" },
   { method: "GET", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}` },
+  { method: "GET", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/attention$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/attention` },
+  { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/attention/([0-9]+)/retry$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/attention/${match[2]}/retry` },
   { method: "PUT", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/uploads/(${UUID})$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/uploads/${match[2]}` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/tokens/([0-9]+)$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/tokens/${match[2]}` },
   { method: "POST", local: new RegExp(`^${COMPANION_PREFIX}/projects/(${UUID})/public-contract-metadata$`, "i"), upstream: (match) => `/v1/admin/projects/${match[1]}/public-contract-metadata` },
@@ -183,12 +185,13 @@ function localJsonRequest({ port, method, pathname, adminToken = "" }) {
 }
 
 class DesktopCompanionAdapter {
-  constructor({ companionRoot, runtimeRoot, studioOrigin, managementUrl, launchChild }) {
+  constructor({ companionRoot, runtimeRoot, studioOrigin, managementUrl, launchChild, alphaShadownetOnly = false }) {
     this.companionRoot = companionRoot;
     this.runtimeRoot = runtimeRoot;
     this.studioOrigin = studioOrigin;
     this.managementUrl = managementUrl;
     this.launchChild = launchChild;
+    this.alphaShadownetOnly = alphaShadownetOnly;
     this.envPath = path.join(runtimeRoot, ".env");
     this.child = null;
     this.childWasReady = false;
@@ -241,6 +244,9 @@ class DesktopCompanionAdapter {
   async configuration() {
     const source = await fsp.readFile(this.envPath, "utf8");
     const env = parseEnvFile(source);
+    if (this.alphaShadownetOnly && (env.MACARONI_COMPANION_NETWORK || "shadownet") !== "shadownet") {
+      throw new Error("This Pasta Suite alpha supports only Tezos Shadownet Companion projects");
+    }
     const port = Number(env.MACARONI_COMPANION_PORT || 47835);
     if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error("Companion port is invalid");
     if ((env.MACARONI_COMPANION_HOST || "127.0.0.1") !== "127.0.0.1") {
@@ -310,11 +316,35 @@ class DesktopCompanionAdapter {
 
   async probe() {
     const configuration = await this.configuration();
+    const token = await this.adminToken(configuration);
+    const challenge = randomBytes(32).toString("hex");
+    let identity;
+    try {
+      identity = await localJsonRequest({
+        port: configuration.port,
+        method: "GET",
+        pathname: `/identity?challenge=${challenge}`,
+      });
+    } catch (error) {
+      if (error?.code && error.code !== "invalid_json_response") throw error;
+      return { ready: false, code: "companion_identity_mismatch", reason: "The configured Companion port returned an invalid identity response. Close that service or select a free Companion port before retrying." };
+    }
+    const expectedProof = createHmac("sha256", token)
+      .update(`pasta.macaroni-companion-identity.v1:${challenge}`).digest();
+    const proof = identity.body?.proof;
+    const actualProof = typeof proof === "string" && /^[0-9a-f]{64}$/.test(proof)
+      ? Buffer.from(proof, "hex") : Buffer.alloc(0);
+    if (identity.statusCode !== 200
+      || identity.body?.schema !== "pasta.macaroni-companion-identity.v1"
+      || identity.body?.challenge !== challenge
+      || actualProof.length !== expectedProof.length
+      || !timingSafeEqual(actualProof, expectedProof)) {
+      return { ready: false, code: "companion_identity_mismatch", reason: "The configured Companion port belongs to another service. Close it or select a free Companion port before retrying." };
+    }
     const health = await localJsonRequest({ port: configuration.port, method: "GET", pathname: "/health" });
     if (health.statusCode !== 200 || health.body?.schema !== "pasta.macaroni-companion-health.v1" || health.body?.fulfillmentReady !== true) {
       return { ready: false, code: "companion_doctor_not_ready", reason: "Companion is running, but its safety checks have not all passed." };
     }
-    const token = await this.adminToken(configuration);
     const admin = await localJsonRequest({ port: configuration.port, method: "GET", pathname: "/v1/admin/readiness", adminToken: token });
     if (admin.statusCode !== 200 || admin.body?.schema !== "pasta.macaroni-companion-admin-readiness.v1" || admin.body?.ready !== true) {
       return { ready: false, code: "companion_admin_probe_failed", reason: "Companion is healthy, but the private Studio adapter could not authenticate." };
@@ -409,7 +439,7 @@ class DesktopCompanionAdapter {
   async kickstart() {
     try {
       const probe = await this.probe();
-      if (probe.ready) return;
+      if (probe.ready || ["companion_identity_mismatch", "companion_doctor_not_ready"].includes(probe.code)) return;
     } catch {
       // An unavailable service is the expected first-install state.
     }

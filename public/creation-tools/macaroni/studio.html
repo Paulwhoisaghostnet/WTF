@@ -102,6 +102,17 @@
       </div>
       <p class="muted native-companion-result" id="nativeCompanionActionStatus" role="status" aria-live="polite">Your configuration and private worker data stay on this device.</p>
     </div>
+    <div class="native-companion-setup" id="nativeCompanionAttention" aria-labelledby="nativeCompanionAttentionTitle" hidden>
+      <div class="spread">
+        <div>
+          <span class="eyebrow">Local finalizer recovery</span>
+          <h3 id="nativeCompanionAttentionTitle">Claims needing attention</h3>
+        </div>
+        <button class="btn ghost small" id="btnCheckCompanionAttention" type="button">Inspect claims</button>
+      </div>
+      <p class="muted">Inspect the exact signed attempt before retrying. An unresolved signature keeps the finalizer locked across projects. A retry is offered only when the local Companion verifies the same bytes, finalized failure, or canonical expiry and absence.</p>
+      <div id="nativeCompanionAttentionList" aria-live="polite">Choose Inspect claims to check local work and chain status.</div>
+    </div>
   </section>
 
   <section class="panel requirements-card" id="hostingCostRecovery" aria-labelledby="hostingCostHeading">

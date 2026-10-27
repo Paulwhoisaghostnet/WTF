@@ -11357,3 +11357,23 @@
 **Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
 
 **Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.
+
+---
+
+## 2026-10-27 — A changed precondition does not resolve a signed finalizer operation
+
+**What happened**: The Companion classified a changed FIFO cursor or arm precondition as a failed signed attempt before proving canonical absence. That released the journal's signer-wide single-flight guard even though the exact signed bytes could still be in a mempool or later block. The desktop adapter also trusted a lookalike loopback health response before sending its admin token to the configured port.
+
+**Why it mattered**: A second finalizer signature could be issued while the first remained unresolved, and another local process could receive the private admin token. A parked `manual_review` work item had no supported way for an operator to inspect its exact attempt and safely retry.
+
+**Rule**: Keep an unresolved signed attempt in a guarded journal state until finalized exact-operation or branch-expiry plus canonical-absence evidence resolves it. Expose only redacted attempt identity and chain status to the operator; requeue only when the same bytes or a proven-safe linked replacement can run, including a successor after a finalized exact failure. Prove loopback service identity with a fresh challenge before any admin-token request, and require exact Origin/Host on local write routes. Test installed-source copies and browser recovery controls, since source-level tests alone cannot establish a packaged alpha boundary.
+
+---
+
+## 2026-10-27 — Keep inventory selectors aligned with current creator entry copy
+
+**What happened**: The broad inventory run timed out in the cobwebsaints to Macaroni handoff. The test searched for an `Open Studio` link while Macaroni's actual entry link had already changed to `Create a secure drop`. It also tried to use a compatibility selector inside collapsed Advanced options without explicitly selecting that profile and asserted obsolete reveal copy.
+
+**Why it mattered**: The stale selector hid downstream handoff assertions and made a broad test failure look like an alpha regression.
+
+**Rule**: When creator entry copy or profile flow changes, update domain-owned inventory selectors and assertions to the current accessible UI, perform the explicit profile choice, and rerun the affected browser story. Use the failing page snapshot to distinguish stale test expectations from an absent interaction.

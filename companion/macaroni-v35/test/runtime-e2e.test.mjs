@@ -20,6 +20,111 @@ const CREATOR = "tz1fextP23D6Ph2zeGTP8EwkP5Y8TufeFCHA";
 const BUYER = "tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU";
 const TREASURY = "tz1M9CMEtsXm3QxA7FmMU2Qh7xzsuGXVbcDr";
 
+test("operator recovery holds a changed-precondition signature and retries only after chain evidence", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "macaroni-v35-attention-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const journal = openJournal(path.join(directory, "journal.sqlite"));
+  t.after(() => journal.close());
+  journal.createProject({
+    dropRef: DROP_REF,
+    network: "shadownet",
+    creator: CREATOR,
+    administrator: CREATOR,
+    treasury: TREASURY,
+    physicalSupply: 1,
+    assetStrategy: "pin_on_claim",
+    releasePolicy: { kind: "immediate" },
+    fulfillmentSubsidyMutez: 1000,
+    entropyHead: "a".repeat(64),
+    entropyLength: 1,
+    entropyKeyringPath: "/private/entropy.enc",
+    signerAddress: CREATOR,
+  });
+  journal.attachContract(DROP_REF, CONTRACT);
+  journal.setProjectState(DROP_REF, "active");
+  const work = journal.enqueue({ dropRef: DROP_REF, claimRef: "0", workType: "settle_claim", semanticKey: "0:settle_claims_v35", payload: { claimId: 0 } });
+  journal.createReadyAttempt({
+    workItemId: work.id,
+    requestId: `${DROP_REF}:settle`,
+    intentIdentity: { claimId: 0 },
+    expectedPostcondition: { claimId: 0 },
+    network: "shadownet",
+    signer: CREATOR,
+    target: CONTRACT,
+    entrypoint: "settle_claims_v35",
+    amountMutez: 0,
+  });
+  journal.persistSigned({
+    workItemId: work.id,
+    operationHash: "operation-immutable",
+    signedBytesPath: "/private/signed.enc",
+    signedBytesSha256: "b".repeat(64),
+    branch: "BMbranch",
+    branchLevel: 100,
+    managerCounter: "7",
+  });
+  let chainState = "fifo_cursor_changed";
+  const runtime = new CompanionFulfillmentRuntime({
+    config: { workerOwner: "attention-test" },
+    journal,
+    watcher: { preparedSettlementStatus: async () => ({ state: chainState }) },
+    projectService: null,
+    blockTimingMs: 1000,
+  });
+  runtime.wake = async () => {};
+  await runtime.ensureExactAttemptInjected({
+    work,
+    project: journal.getProject(DROP_REF),
+    operationRef: "claim-0",
+    prepare: async () => { throw new Error("A persisted signature must never be replaced here"); },
+    status: async () => ({ state: chainState }),
+  });
+  const unresolved = (await runtime.attentionStatus(DROP_REF))[0];
+  assert.equal(unresolved.chainState, "fifo_cursor_changed");
+  assert.equal(unresolved.retrySafe, false);
+  assert.equal((await runtime.retryAttention(DROP_REF, work.id)).accepted, false);
+  assert.equal(journal.getWork(work.id).state, "manual_review");
+  assert.equal(journal.getOperationForWork(work.id).operation_intent_state, "signed");
+  chainState = "chain_included";
+  assert.equal((await runtime.retryAttention(DROP_REF, work.id)).accepted, true);
+  assert.equal(journal.getWork(work.id).state, "retry_wait");
+  assert.equal(journal.getOperationForWork(work.id).operation_hash, "operation-immutable");
+  journal.reconcileOperation(work.id, "failed", {
+    reason: "operation_failed", operationHash: "operation-immutable", level: 120, finalizedAtHeadLevel: 122,
+  });
+  journal.manualReviewWork(work.id, "operation_failed");
+  const finalizedFailure = (await runtime.attentionStatus(DROP_REF))[0];
+  assert.equal(finalizedFailure.chainState, "failed");
+  assert.equal(finalizedFailure.retrySafe, true);
+  assert.equal((await runtime.retryAttention(DROP_REF, work.id)).accepted, true);
+});
+
+test("unfunded pre-sign settlement parks with a safe setup diagnostic instead of retrying forever", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "macaroni-v35-setup-blocker-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const journal = openJournal(path.join(directory, "journal.sqlite"));
+  t.after(() => journal.close());
+  journal.createProject({
+    dropRef: DROP_REF, network: "shadownet", creator: CREATOR, administrator: CREATOR,
+    treasury: TREASURY, physicalSupply: 1, assetStrategy: "pin_on_claim",
+    releasePolicy: { kind: "immediate" }, fulfillmentSubsidyMutez: 1000,
+    entropyHead: "a".repeat(64), entropyLength: 1,
+    entropyKeyringPath: "/private/entropy.enc", signerAddress: CREATOR,
+  });
+  journal.attachContract(DROP_REF, CONTRACT);
+  journal.setProjectState(DROP_REF, "active");
+  const work = journal.enqueue({ dropRef: DROP_REF, claimRef: "0", workType: "settle_claim", semanticKey: "0:settle_claims_v35", payload: { claimId: 0 } });
+  const runtime = new CompanionFulfillmentRuntime({
+    config: { workerOwner: "setup-blocker" }, journal, watcher: {}, projectService: null, blockTimingMs: 1000,
+  });
+  runtime.scanProject = async () => {};
+  runtime.processWork = async () => { throw new Error("Finalizer wallet has 0 mutez but this operation requires 1000 mutez"); };
+  await runtime.tickOnce();
+  assert.equal(journal.getWork(work.id).state, "manual_review");
+  assert.equal((await runtime.attentionStatus(DROP_REF))[0].diagnostic, "finalizer_funding_or_reveal");
+  assert.equal((await runtime.attentionStatus(DROP_REF))[0].retrySafe, true);
+});
+
 function signedResult(label, branchLevel, counter) {
   const signedBytes = Buffer.from(`signed-${label}`).toString("hex");
   return {

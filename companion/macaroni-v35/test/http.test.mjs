@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -43,12 +44,25 @@ test("HTTP service enforces exact CORS, bearer admin auth, and secret-free respo
     doctor: { ready: true },
     projectService,
     watcher: {},
-    runtime: { wake: async () => undefined },
+    runtime: {
+      wake: async () => undefined,
+      attentionStatus: async () => [{ id: 7, chainState: "fifo_cursor_changed", retrySafe: false }],
+      retryAttention: async () => ({ accepted: false, code: "signed_attempt_unresolved" }),
+    },
     logger: { error: () => undefined },
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}`;
+
+  const challenge = "a".repeat(64);
+  const identity = await fetch(`${base}/identity?challenge=${challenge}`);
+  assert.equal(identity.status, 200);
+  assert.deepEqual(await identity.json(), {
+    schema: "pasta.macaroni-companion-identity.v1",
+    challenge,
+    proof: createHmac("sha256", token).update(`pasta.macaroni-companion-identity.v1:${challenge}`).digest("hex"),
+  });
 
   const denied = await fetch(`${base}/v1/public/projects/drop/status`, { headers: { origin: "https://attacker.test" } });
   assert.equal(denied.status, 403);
@@ -89,6 +103,16 @@ test("HTTP service enforces exact CORS, bearer admin auth, and secret-free respo
       collectorOrigin: "https://drop.test",
     },
   });
+
+  const attentionUnauthorized = await fetch(`${base}/v1/admin/projects/drop/attention`);
+  assert.equal(attentionUnauthorized.status, 401);
+  const attention = await fetch(`${base}/v1/admin/projects/drop/attention`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(attention.status, 200);
+  assert.equal((await attention.json()).items[0].chainState, "fifo_cursor_changed");
+  const retryBlocked = await fetch(`${base}/v1/admin/projects/drop/attention/7/retry`, {
+    method: "POST", headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal(retryBlocked.status, 409);
 
   const publicStatus = await fetch(`${base}/v1/public/projects/drop/status`, { headers: { origin: "https://drop.test" } });
   assert.equal(publicStatus.status, 200);

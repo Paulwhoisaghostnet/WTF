@@ -1677,6 +1677,9 @@ function nativeCompanionNextStep(readiness) {
   if (code === "companion_network_mismatch") {
     return "Open the config folder and make the Companion network match this drop, then choose Check again.";
   }
+  if (code === "companion_identity_mismatch") {
+    return "Another process owns the configured Companion port. Close that process or choose a free port in the private config, then choose Check again.";
+  }
   if (code === "companion_unreachable") {
     return "Open the setup guide and config folder, correct the local service setup, then choose Check again.";
   }
@@ -1691,6 +1694,9 @@ function renderNativeCompanionSetup() {
   if (!card) return;
   const visible = IS_NATIVE_APP && isSecureV35Profile() && state.infrastructure.kind === "companion";
   card.hidden = !visible;
+  const attention = $("nativeCompanionAttention");
+  if (attention) attention.hidden = !visible || state.infrastructure.readiness?.ready !== true
+    || !isCompanionProjectId(state.infrastructure.privateInventory?.projectId);
   if (!visible) return;
   const readiness = state.infrastructure.readiness || {};
   const ready = readiness.ready === true;
@@ -1704,6 +1710,68 @@ function renderNativeCompanionSetup() {
   $("btnOpenCompanionSetupGuide").disabled = typeof bridge.openCompanionSetupGuide !== "function";
   $("btnOpenCompanionConfigFolder").disabled = typeof bridge.openCompanionConfigFolder !== "function";
   $("btnCheckCompanionAgain").textContent = ready ? "Check readiness again" : "Check again";
+}
+
+async function inspectNativeCompanionAttention() {
+  const list = $("nativeCompanionAttentionList");
+  const dropRef = state.infrastructure.privateInventory?.projectId;
+  if (!isCompanionProjectId(dropRef)) {
+    list.textContent = "Register this Companion project before inspecting its claim work.";
+    return;
+  }
+  list.textContent = "Checking the local journal and chain…";
+  try {
+    const response = await secureCompanionFetch(`/projects/${encodeURIComponent(dropRef)}/attention`);
+    const body = await response.json();
+    if (!response.ok || body.schema !== "pasta.macaroni-companion-attention.v1") {
+      throw new Error(body.message || "Companion attention status is unavailable");
+    }
+    window.dispatchEvent(new CustomEvent("pasta-protocol", { detail: {
+      type: "macaroni.companion.attention.viewed", app: "macaroni", count: body.items.length,
+    } }));
+    list.replaceChildren();
+    if (!body.items.length) {
+      list.textContent = "No claim or finalizer work is parked for manual review.";
+      return;
+    }
+    for (const item of body.items) {
+      const card = document.createElement("div");
+      card.className = "notice warn";
+      const detail = document.createElement("p");
+      const diagnosis = {
+        contract_reserve_changed: "Contract fulfillment reserve needs funding or preflight correction.",
+        finalizer_funding_or_reveal: "Finalizer account must be revealed and funded before signing.",
+        fee_cap_exceeded: "Estimated settlement cost exceeds the configured subsidy; review funding policy before retrying.",
+      }[item.diagnostic] || "";
+      detail.textContent = `${item.workType === "settle_claim" ? `Claim ${item.claimId}` : "Fulfillment arm"} · chain: ${item.chainState} · attempt ${item.attemptNumber}${item.operationHash ? ` · ${item.operationHash}` : ""}${diagnosis ? ` · ${diagnosis}` : ""}`;
+      card.appendChild(detail);
+      if (item.retrySafe) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn ghost small";
+        button.textContent = "Retry verified work";
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try {
+            const retry = await secureCompanionFetch(`/projects/${encodeURIComponent(dropRef)}/attention/${item.id}/retry`, { method: "POST" });
+            const result = await retry.json();
+            if (!retry.ok || result.accepted !== true) throw new Error(result.item?.chainState || result.code || "Recovery is still blocked");
+            window.dispatchEvent(new CustomEvent("pasta-protocol", { detail: {
+              type: "macaroni.companion.attention.retry_requested", app: "macaroni", workType: item.workType,
+            } }));
+            await inspectNativeCompanionAttention();
+          } catch (error) {
+            detail.textContent = `Retry blocked: ${error.message || String(error)}. Inspect again before taking another action.`;
+            button.disabled = false;
+          }
+        });
+        card.appendChild(button);
+      }
+      list.appendChild(card);
+    }
+  } catch (error) {
+    list.textContent = `Attention status is unavailable: ${error.message || String(error)}`;
+  }
 }
 
 async function runNativeCompanionSetupAction(action) {
@@ -6013,6 +6081,7 @@ $("btnShowCompanionOption").addEventListener("click", () => {
 $("btnOpenCompanionSetupGuide").addEventListener("click", () => runNativeCompanionSetupAction("guide"));
 $("btnOpenCompanionConfigFolder").addEventListener("click", () => runNativeCompanionSetupAction("config"));
 $("btnCheckCompanionAgain").addEventListener("click", checkNativeCompanionAgain);
+$("btnCheckCompanionAttention").addEventListener("click", inspectNativeCompanionAttention);
 $("requestManagedAccess").addEventListener("click", async () => {
   const requestText = String(managedMacaroniCapability?.managed?.denial?.requestText || "").trim();
   if (!requestText || !navigator.clipboard?.writeText) return;
