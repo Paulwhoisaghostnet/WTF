@@ -123,6 +123,22 @@ test("unfunded pre-sign settlement parks with a safe setup diagnostic instead of
   assert.equal(journal.getWork(work.id).state, "manual_review");
   assert.equal((await runtime.attentionStatus(DROP_REF))[0].diagnostic, "finalizer_funding_or_reveal");
   assert.equal((await runtime.attentionStatus(DROP_REF))[0].retrySafe, true);
+
+  const artwork = journal.enqueue({ dropRef: DROP_REF, claimRef: "0", workType: "publish_artifact_car", semanticKey: "0:publish_artifact", payload: { claimId: 0 } });
+  runtime.processWork = async () => { throw new Error("CAR provider failed with HTTP 401"); };
+  await runtime.tickOnce();
+  assert.equal(journal.getWork(artwork.id).state, "manual_review");
+  const authorization = (await runtime.attentionStatus(DROP_REF, artwork.id))[0];
+  assert.equal(authorization.diagnostic, "pinning_authorization");
+  assert.equal(JSON.stringify(authorization).includes("CAR provider failed"), false);
+
+  const metadata = journal.enqueue({ dropRef: DROP_REF, claimRef: "0", workType: "publish_metadata_car", semanticKey: "0:publish_metadata", payload: { claimId: 0 } });
+  runtime.processWork = async () => { throw new Error("Public IPFS gateways could not retrieve the committed CID"); };
+  await runtime.tickOnce();
+  assert.equal(journal.getWork(metadata.id).state, "retry_wait");
+  const retrying = (await runtime.attentionStatus(DROP_REF, metadata.id))[0];
+  assert.equal(retrying.diagnostic, "pinning_retrying");
+  assert.equal(retrying.retrySafe, false);
 });
 
 function signedResult(label, branchLevel, counter) {

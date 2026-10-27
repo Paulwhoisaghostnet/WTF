@@ -11377,3 +11377,15 @@
 **Why it mattered**: The stale selector hid downstream handoff assertions and made a broad test failure look like an alpha regression.
 
 **Rule**: When creator entry copy or profile flow changes, update domain-owned inventory selectors and assertions to the current accessible UI, perform the explicit profile choice, and rerun the affected browser story. Use the failing page snapshot to distinguish stale test expectations from an absent interaction.
+
+---
+
+## 2026-10-27 — Publication retries need a visible state without an arbitrary cap
+
+**What happened**: A broken pinner could leave Macaroni publication work retrying on each block interval while the operator panel listed only parked signed work. A failed provider credential or CAR-root mismatch would therefore repeat with no useful correction path.
+
+**Why it mattered**: An NFT could be settled while its assigned media remained unpublished, with the creator unable to see whether the pinner was still retrying or needed configuration repair.
+
+**Rule**: Park deterministic authorization, configuration, and CAR-integrity failures with a safe diagnostic and operator retry after correction. Show transient publication retries without exposing raw provider errors or inventing a retry-count threshold.
+
+**Verification note**: The first browser rerun served an older `dist/public` and therefore failed against stale Studio copy. Rebuild the root app before browser assertions when static creation-tool files change; the rebuilt Macaroni story passed.

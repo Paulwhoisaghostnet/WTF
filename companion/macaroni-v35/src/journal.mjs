@@ -1032,8 +1032,10 @@ export function openJournal(filePath) {
   }
 
   function listAttentionWork(dropRef) {
-    return db.prepare(`SELECT id, drop_ref, claim_ref, work_type, state, last_error, updated_at
-      FROM work_items WHERE drop_ref=? AND state='manual_review' ORDER BY id`).all(dropRef);
+    return db.prepare(`SELECT id, drop_ref, claim_ref, work_type, state, last_error, attempt_count, next_attempt_at, updated_at
+      FROM work_items WHERE drop_ref=? AND (state='manual_review'
+      OR (state='retry_wait' AND work_type IN ('publish_artifact_car','publish_metadata_car')
+        AND last_error IS NOT NULL)) ORDER BY id`).all(dropRef);
   }
 
   function completeWork(id) {

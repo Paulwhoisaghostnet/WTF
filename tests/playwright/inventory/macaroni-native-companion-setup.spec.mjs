@@ -103,7 +103,9 @@ test.describe("interaction inventory — Macaroni native Companion setup", () =>
       checks += 1;
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
         schema: "pasta.macaroni-companion-attention.v1",
-        items: checks >= 3 ? [] : [{ id: 7, claimId: 0, workType: "settle_claim", state: "manual_review",
+        items: checks === 3 ? [] : checks > 3 ? [{ id: 8, claimId: 0, workType: "publish_artifact_car", state: "retry_wait",
+          attemptNumber: 2, operationHash: null, chainState: "publication_retrying", diagnostic: "pinning_retrying",
+          retrySafe: false }] : [{ id: 7, claimId: 0, workType: "settle_claim", state: "manual_review",
           attemptNumber: 1, operationHash: "operation-immutable", chainState: checks === 1 ? "fifo_cursor_changed" : "chain_included",
           retrySafe: checks !== 1 }],
       }) });
@@ -122,7 +124,11 @@ test.describe("interaction inventory — Macaroni native Companion setup", () =>
     await page.locator("#btnCheckCompanionAttention").click();
     await expect(panel).toContainText("chain_included");
     await panel.getByRole("button", { name: "Retry verified work" }).click();
-    await expect(panel).toContainText("No claim or finalizer work is parked");
+    await expect(panel).toContainText("No claim or publication work currently needs attention");
+    await page.locator("#btnCheckCompanionAttention").click();
+    await expect(panel).toContainText("artwork publication");
+    await expect(panel).toContainText("Publication is retrying automatically");
+    await expect(panel.getByRole("button", { name: "Retry verified work" })).toHaveCount(0);
     await expect(panel).not.toContainText("signedBytesPath");
   });
 });
