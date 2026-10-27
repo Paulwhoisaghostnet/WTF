@@ -12761,3 +12761,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Rule**: Park deterministic authorization, configuration, and CAR-integrity failures with a safe diagnostic and operator retry after correction. Show transient publication retries without exposing raw provider errors or inventing a retry-count threshold.
 
 **Verification note**: The first browser rerun served an older `dist/public` and therefore failed against stale Studio copy. Rebuild the root app before browser assertions when static creation-tool files change; the rebuilt Macaroni story passed.
+
+---
+
+## 2026-10-27 — Apply release boundaries to every installer that embeds the worker
+
+**What happened**: Suite hardening was tested while standalone Macaroni still copied Companion through a broad directory denylist, accepted local export writes without the exact installed Origin and Host, and exposed Mainnet in its alpha UI.
+
+**Why it mattered**: The same Companion runtime was distributed through two installers, so protecting only Suite left a second alpha path with a weaker boundary.
+
+**Rule**: When a shared worker is packaged by more than one shell, verify the same source allowlist, network gate, local write boundary, and artifact smoke for each shipping shell before alpha handoff.
