@@ -13,6 +13,13 @@ function setupBlockerCode(error) {
     return "finalizer_funding_or_reveal";
   }
   if (/Estimated .* cost .* exceeds .* fulfillment subsidy/.test(message)) return "fee_cap_exceeded";
+  if (/(?:CAR provider|Kubo CAR import|Kubo recursive pin verification) failed with HTTP (?:401|403)/.test(message)) {
+    return "pinning_authorization";
+  }
+  if (/CAR root does not match|did not acknowledge the precommitted CAR root|returned a root that differs from the commitment/.test(message)) {
+    return "pinning_integrity";
+  }
+  if (/No CAR-capable pinning adapter is configured/.test(message)) return "pinning_configuration";
   return null;
 }
 
@@ -47,6 +54,14 @@ export class CompanionFulfillmentRuntime {
     const rows = this.journal.listAttentionWork(dropRef);
     const selected = workId == null ? rows : rows.filter((row) => row.id === workId);
     return Promise.all(selected.map(async (row) => {
+      if (row.state === "retry_wait" && ["publish_artifact_car", "publish_metadata_car"].includes(row.work_type)) {
+        return {
+          id: row.id, claimId: Number(row.claim_ref), workType: row.work_type, state: row.state,
+          updatedAt: row.updated_at, nextAttemptAt: row.next_attempt_at, attemptNumber: row.attempt_count,
+          operationHash: null, signedAttemptState: null, diagnostic: "pinning_retrying",
+          chainState: "publication_retrying", retrySafe: false,
+        };
+      }
       const operation = this.journal.getOperationForWork(row.id);
       let chainState = "not_signed";
       if (operation?.signed_attempt_id) {
@@ -79,7 +94,7 @@ export class CompanionFulfillmentRuntime {
         state: row.state,
         updatedAt: row.updated_at,
         operationHash: operation?.operation_hash || null,
-        attemptNumber: operation?.attempt_number || 0,
+        attemptNumber: operation?.attempt_number || row.attempt_count || 0,
         signedAttemptState: operation?.signed_attempt_state || null,
         diagnostic: row.last_error?.startsWith("setup_blocked:") ? row.last_error.slice("setup_blocked:".length) : null,
         chainState,
@@ -95,7 +110,7 @@ export class CompanionFulfillmentRuntime {
     if (!status) return null;
     if (status.length !== 1) return { accepted: false, code: "attention_work_not_found" };
     const item = status[0];
-    if (!item.retrySafe) return { accepted: false, code: "signed_attempt_unresolved", item };
+    if (!item.retrySafe) return { accepted: false, code: item.state === "retry_wait" ? "publication_already_retrying" : "signed_attempt_unresolved", item };
     this.journal.retryWork(workId, Date.now(), "Operator requested a chain-checked recovery");
     await this.wake();
     return { accepted: true, item: (await this.attentionStatus(dropRef, workId))?.[0] || null };
@@ -726,9 +741,10 @@ export class CompanionFulfillmentRuntime {
       try {
         await this.processWork(work);
       } catch (error) {
-        const blocker = ["arm_fulfillment", "settle_claim"].includes(work.work_type)
-          && !this.journal.getOperationForWork(work.id)?.signed_attempt_id
-          ? setupBlockerCode(error) : null;
+        const preSignWork = ["arm_fulfillment", "settle_claim"].includes(work.work_type)
+          && !this.journal.getOperationForWork(work.id)?.signed_attempt_id;
+        const publicationWork = ["publish_artifact_car", "publish_metadata_car"].includes(work.work_type);
+        const blocker = preSignWork || publicationWork ? setupBlockerCode(error) : null;
         if (blocker) this.journal.manualReviewWork(work.id, `setup_blocked:${blocker}`);
         else this.journal.retryWork(work.id, Date.now() + this.blockTimingMs, errorMessage(error));
       }

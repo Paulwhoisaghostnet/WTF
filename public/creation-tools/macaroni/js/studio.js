@@ -1731,7 +1731,7 @@ async function inspectNativeCompanionAttention() {
     } }));
     list.replaceChildren();
     if (!body.items.length) {
-      list.textContent = "No claim or finalizer work is parked for manual review.";
+      list.textContent = "No claim or publication work currently needs attention.";
       return;
     }
     for (const item of body.items) {
@@ -1742,8 +1742,16 @@ async function inspectNativeCompanionAttention() {
         contract_reserve_changed: "Contract fulfillment reserve needs funding or preflight correction.",
         finalizer_funding_or_reveal: "Finalizer account must be revealed and funded before signing.",
         fee_cap_exceeded: "Estimated settlement cost exceeds the configured subsidy; review funding policy before retrying.",
+        pinning_authorization: "The pinner rejected authorization. Correct its credentials before retrying.",
+        pinning_integrity: "The pinner returned a CAR root that does not match the commitment. Inspect the provider and committed files before retrying.",
+        pinning_configuration: "No CAR-capable pinner is configured. Set up a provider before retrying.",
+        pinning_retrying: "Publication is retrying automatically. Check the pinner and public gateway if this persists.",
       }[item.diagnostic] || "";
-      detail.textContent = `${item.workType === "settle_claim" ? `Claim ${item.claimId}` : "Fulfillment arm"} · chain: ${item.chainState} · attempt ${item.attemptNumber}${item.operationHash ? ` · ${item.operationHash}` : ""}${diagnosis ? ` · ${diagnosis}` : ""}`;
+      const workLabel = item.workType === "settle_claim" ? `Claim ${item.claimId} settlement`
+        : item.workType === "publish_artifact_car" ? `Claim ${item.claimId} artwork publication`
+          : item.workType === "publish_metadata_car" ? `Claim ${item.claimId} metadata publication`
+            : "Fulfillment arm";
+      detail.textContent = `${workLabel} · ${item.chainState} · attempt ${item.attemptNumber}${item.operationHash ? ` · ${item.operationHash}` : ""}${diagnosis ? ` · ${diagnosis}` : ""}`;
       card.appendChild(detail);
       if (item.retrySafe) {
         const button = document.createElement("button");
