@@ -1021,6 +1021,9 @@ async function openStudio(
   await page.goto(`${server.origin}/creation-tools/ravioli/index.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => Boolean((window as any).MD && (window as any).TZ?.MichelsonMap));
   await installPastaUiLiveBrowserProxy(page, server, "UI-MOCK");
+  if (options.exposeRecoveryInternals) {
+    await page.waitForFunction(() => Boolean((window as any).__ravioliRecoveryTest));
+  }
   return { browser, context, page, monitor };
 }
 

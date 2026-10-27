@@ -1637,7 +1637,7 @@ test.describe("interaction inventory — Pasta Protocol publishing", () => {
 
   test("Gnocchi publishes timed, forever, and limited editions into one collection while Rotini avoids creator pre-minting", async ({ page, request }) => {
     await setHarnessRole(request, "admin");
-    const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+    const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==", "base64");
 
     await page.goto("/tools/gnocchi?network=shadownet", { waitUntil: "domcontentloaded" });
     await expect(page.locator('iframe[title="Gnocchi"]')).toBeVisible();

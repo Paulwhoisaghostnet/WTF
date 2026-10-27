@@ -10,7 +10,7 @@ on:
 jobs:
   app-quality:
     name: Unit / Audit / Typecheck / Build / Inventory
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -99,7 +99,7 @@ jobs:
 
   contracts-v1_2:
     name: SmartPy V1.2 Contracts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5

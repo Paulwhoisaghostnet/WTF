@@ -133,6 +133,8 @@ test("desktop bootstrap creates private local custody config without auto-accept
 test("desktop route map is an exact method-and-path allowlist", () => {
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects`), "/v1/admin/projects");
   assert.equal(routeFor("GET", `${COMPANION_PREFIX}/projects/${dropRef}`), `/v1/admin/projects/${dropRef}`);
+  assert.equal(routeFor("GET", `${COMPANION_PREFIX}/projects/${dropRef}/stuck-work`), `/v1/admin/projects/${dropRef}/stuck-work`);
+  assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/stuck-work/12/reconcile`), `/v1/admin/projects/${dropRef}/stuck-work/12/reconcile`);
   assert.equal(routeFor("PUT", `${COMPANION_PREFIX}/projects/${dropRef}/uploads/${uploadId}`), `/v1/admin/projects/${dropRef}/uploads/${uploadId}`);
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/tokens/12`), `/v1/admin/projects/${dropRef}/tokens/12`);
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/public-contract-metadata`), `/v1/admin/projects/${dropRef}/public-contract-metadata`);
@@ -279,4 +281,25 @@ test("unchanged failed startup stays fail-closed instead of creating a restart l
   assert.equal(readiness.studioApiReady, false);
   assert.equal(readiness.code, "companion_setup_required");
   assert.equal(launches, 1);
+});
+
+test("desktop adapter detects port conflict when a foreign Companion is on port 47835", async (t) => {
+  const { adapter } = await configuredRuntime(t, (req, res) => {
+    if (req.url === "/health") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({
+        schema: "pasta.macaroni-companion-health.v1",
+        fulfillmentReady: true,
+        instanceDigest: "foreign_digest123",
+      }));
+      return;
+    }
+    res.writeHead(500);
+    res.end();
+  });
+
+  const readiness = await adapter.readiness();
+  assert.equal(readiness.studioApiReady, false);
+  assert.equal(readiness.code, "companion_port_conflict");
+  assert.ok(readiness.reason.includes("Close the other Macaroni/Suite application"));
 });

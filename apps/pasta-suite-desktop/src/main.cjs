@@ -220,19 +220,34 @@ async function copyDropAsset(rel, outRoot) {
 
 async function exportMacaroniSite(req, res) {
   try {
+    const expectedHost = new URL(baseUrl).host;
+    const requestHost = String(req.headers.host || "");
+    const requestOrigin = String(req.headers.origin || "");
+    const secFetchSite = String(req.headers["sec-fetch-site"] || "");
+
+    if (requestHost !== expectedHost || requestOrigin !== new URL(baseUrl).origin) {
+      return sendJson(res, 403, { ok: false, error: "Export is accepted only from this installed Studio window." });
+    }
+    if (secFetchSite && !["same-origin", "same-site", "none"].includes(secFetchSite)) {
+      return sendJson(res, 403, { ok: false, error: "Cross-site export request is prohibited." });
+    }
+
     const payload = await readJsonBody(req, 2 * 1024 * 1024);
     const config = typeof payload.config === "string" ? payload.config : "";
     if (!config.trim()) return sendJson(res, 400, { ok: false, error: "Missing drop config" });
 
     const outRoot = path.join(app.getPath("documents"), "Pasta Suite", "macaroni-site");
-    await fsp.rm(outRoot, { recursive: true, force: true });
-    await fsp.mkdir(outRoot, { recursive: true });
-    await fsp.copyFile(path.join(macaroniRoot(), "drop.html"), path.join(outRoot, "index.html"));
-    await fsp.writeFile(path.join(outRoot, "drop.config.js"), config, "utf8");
+    const stagingDir = path.join(app.getPath("documents"), "Pasta Suite", `.macaroni-site-export-${Date.now()}`);
+    await fsp.mkdir(stagingDir, { recursive: true });
+    await fsp.copyFile(path.join(macaroniRoot(), "drop.html"), path.join(stagingDir, "index.html"));
+    await fsp.writeFile(path.join(stagingDir, "drop.config.js"), config, "utf8");
     for (const rel of ["css/theme.css", "js/common.js", "js/drop.js", "js/octez-wallet.js", "vendor/tezos.js", "vendor/octez-connect.js"]) {
-      await copyDropAsset(rel, outRoot);
+      await copyDropAsset(rel, stagingDir);
     }
-    await fsp.copyFile(path.join(companionRoot(), "templates", "pasta-service.json"), path.join(outRoot, "pasta-service.json"));
+    await fsp.copyFile(path.join(companionRoot(), "templates", "pasta-service.json"), path.join(stagingDir, "pasta-service.json"));
+
+    await fsp.rm(outRoot, { recursive: true, force: true });
+    await fsp.rename(stagingDir, outRoot);
     return sendJson(res, 200, { ok: true, path: outRoot });
   } catch (err) {
     return sendJson(res, 500, { ok: false, error: err.message || "Export failed" });

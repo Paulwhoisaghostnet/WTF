@@ -1047,6 +1047,12 @@ export function openJournal(filePath) {
       .run(String(error || "manual review required"), Date.now(), id);
   }
 
+  function requeueWork(id, reason = null) {
+    db.prepare("UPDATE work_items SET state='queued', next_attempt_at=?, lease_owner=NULL, lease_expires_at=NULL, last_error=?, updated_at=? WHERE id=?")
+      .run(Date.now(), reason ? String(reason) : null, Date.now(), id);
+    return getWork(id);
+  }
+
   function retireObsoleteOperationWork(id, evidence) {
     assertPublicJournalPayload(evidence, "obsoleteEvidence");
     return transaction(db, () => {
@@ -1212,8 +1218,57 @@ export function openJournal(filePath) {
     return { project, confirmed: Number(counts.confirmed), secured: Number(counts.secured || 0), ready: Number(counts.ready || 0), attention: Number(work.attention) };
   }
 
+  function listManualReviewWork(dropRef) {
+    const rows = db.prepare(`SELECT id, drop_ref, claim_ref, work_type, state, last_error, payload_json, created_at, updated_at
+      FROM work_items WHERE drop_ref=? AND state='manual_review' ORDER BY id ASC`).all(dropRef);
+    return rows.map((r) => {
+      const op = db.prepare(`SELECT oj.id AS journal_id, oj.state AS journal_state,
+        soa.id AS attempt_id, soa.attempt_number, soa.operation_hash, soa.state AS attempt_state,
+        soa.injected_at, soa.reconciliation_json
+        FROM operation_journal oj
+        LEFT JOIN signed_operation_attempts soa ON soa.operation_journal_id=oj.id
+        WHERE oj.work_item_id=?
+        ORDER BY soa.attempt_number DESC LIMIT 1`).get(r.id);
+      let claim = null;
+      if (r.claim_ref != null) {
+        claim = db.prepare("SELECT claim_id, state, buyer, recipient, settlement_operation_hash, last_error FROM purchase_claims WHERE drop_ref=? AND claim_id=?")
+          .get(r.drop_ref, r.claim_ref);
+      }
+      return {
+        id: r.id,
+        dropRef: r.drop_ref,
+        claimRef: r.claim_ref,
+        workType: r.work_type,
+        state: r.state,
+        lastError: r.last_error,
+        payload: JSON.parse(r.payload_json || "{}"),
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        operation: op ? {
+          journalId: op.journal_id,
+          journalState: op.journal_state,
+          attemptNumber: op.attempt_number,
+          operationHash: op.operation_hash,
+          attemptState: op.attempt_state,
+          injectedAt: op.injected_at,
+          reconciliation: op.reconciliation_json ? JSON.parse(op.reconciliation_json) : null,
+        } : null,
+        claim: claim ? {
+          claimId: claim.claim_id,
+          state: claim.state,
+          buyer: claim.buyer,
+          recipient: claim.recipient,
+          settlementOperationHash: claim.settlement_operation_hash,
+          lastError: claim.last_error,
+        } : null,
+      };
+    });
+  }
+
   return {
     db,
+    listManualReviewWork,
+    requeueWork,
     createProject,
     getProject,
     listRunnableProjects,

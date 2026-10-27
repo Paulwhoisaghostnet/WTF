@@ -93,7 +93,7 @@ Total: **636** · Open: **22** · Claimed: **41** · In Progress: **14** · Bloc
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 369 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 369 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
-| WTF-BB-662 | In Progress | Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff | 2026-09-02 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 38 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
+| WTF-BB-662 | In Progress | Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff; operator recovery and desktop isolation hardening | 2026-10-27 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 38 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-298 | In Progress | Codex public API/MCP pass | 2026-06-21 | API / app gates and information disclosure | P1 | 14 | 126 | 3 | 4 | 3 | Disabled app APIs still serve public data and CRP status leaks internal topology; claimed for an additive `/api/v1` bearer-authenticated facade that honors app gates and redacts discovery without changing legacy internal routing |
@@ -1954,8 +1954,8 @@ Total: **636** · Open: **22** · Claimed: **41** · In Progress: **14** · Bloc
 - Category: Macaroni / predictable allocation and mutable sale inventory
 - Priority: P0
 - Status: In Progress
-- Owner/Session: Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff
-- Last touched: 2026-09-02
+- Owner/Session: Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff; operator recovery and desktop isolation hardening
+- Last touched: 2026-10-27
 - Score: C4 + F5 + S3 + P0(5) = 17
 - Evidence:
   - V3 selected each slot with `draw = (sp.level + minted) mod remaining`. All inputs were public, so a collector could target any remaining slot by selecting a favorable future level.
@@ -1986,6 +1986,12 @@ Total: **636** · Open: **22** · Claimed: **41** · In Progress: **14** · Bloc
 - Review handoff correction (2026-10-06):
   - The source is preserved on codex/pasta-review-handoff for independent review, not production promotion. Historical installed-smoke wording above overstates its evidence: packaged receipts check first-run UI and Check again completion, not a real doctor-to-ready transition or a funded end-to-end lifecycle. Browser readiness stories use mocked responses.
   - The September assessment identifies unresolved operator recovery, signed-attempt reconciliation and shared Companion port issues. This handoff does not close them; status remains In Progress. See pasta-protocol/KNOWN_ISSUES.md for reviewer boundaries.
+- Operator recovery, single-flight safety, and desktop isolation correction (2026-10-27):
+  - Implemented single-flight worker protection in `tezos-watcher.mjs`: `fifo_cursor_changed` and `arm_precondition_changed` now hold locks and return `wait_for_branch_expiry` until the 64-block TTL expires and dual mempool/indexer canonical absence is proved.
+  - Added authenticated operator stuck-work inspection (`GET /v1/admin/projects/:dropRef/stuck-work`) and safe reconciliation (`POST /v1/admin/projects/:dropRef/stuck-work/:id/reconcile`) that verifies on-chain inclusion or branch TTL expiry before resolving applied or requeueing.
+  - Resolved port 47835 coexistence via instance-digest handshakes in desktop adapter probe before transmitting admin tokens; hardened desktop `POST /export` with strict Host/Origin/Sec-Fetch-Site validation and atomic temp staging.
+  - Added operator role classification and actionable remediation diagnostics to `doctor-lib.mjs`.
+  - Verification: 57/57 companion tests passing, 6/6 desktop policy checks passing, 2,591/2,591 repo unit tests passing, and 244/244 inventory coverage complete.
 
 ### WTF-BB-422 - UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified
 

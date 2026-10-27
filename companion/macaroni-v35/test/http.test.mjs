@@ -99,3 +99,86 @@ test("HTTP service enforces exact CORS, bearer admin auth, and secret-free respo
   assert.equal(blockedLeak.status, 500);
   assert.equal(JSON.stringify(await blockedLeak.json()).includes("must-not-leak"), false);
 });
+
+test("admin API exposes stuck manual_review work items for operator inspection", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "macaroni-stuck-http-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const token = "local-admin-token-with-more-than-32-bytes";
+  await writeFile(path.join(root, "admin.token"), token, { mode: 0o600 });
+  const journal = {
+    listManualReviewWork: (dropRef) => [
+      {
+        id: 1,
+        dropRef,
+        workType: "settle_claim",
+        state: "manual_review",
+        lastError: "Simulated ambiguous precondition failure",
+        payload: { claimId: 1 },
+      },
+    ],
+  };
+
+  const server = await createCompanionHttpServer({
+    config: {
+      adminTokenFile: path.join(root, "admin.token"),
+      allowedOrigins: ["http://127.0.0.1:30770"],
+      network: "shadownet",
+    },
+    doctor: { ready: true },
+    projectService: {
+      adminProject: () => ({ ok: true }),
+      journal,
+      reconcileStuckWork: async (dropRef, workId) => ({
+        status: "resumed_safe_retry",
+        workId: Number(workId),
+        dropRef,
+        message: "Operator reconciled parked work item",
+      }),
+    },
+    watcher: {},
+    runtime: { wake: async () => undefined },
+    logger: { error: () => undefined },
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const address = server.address();
+  const res = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/stuck-work`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.dropRef, "stuck-drop");
+  assert.equal(data.stuckItems.length, 1);
+  assert.equal(data.stuckItems[0].state, "manual_review");
+  assert.equal(data.stuckItems[0].lastError, "Simulated ambiguous precondition failure");
+
+  const healthRes = await fetch(`http://127.0.0.1:${address.port}/health`);
+  assert.equal(healthRes.status, 200);
+  const healthData = await healthRes.json();
+  assert.ok(healthData.instanceDigest);
+  assert.equal(healthData.instanceDigest.length, 16);
+
+  const reconcileRes = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/stuck-work/1/reconcile`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(reconcileRes.status, 200);
+  const reconcileData = await reconcileRes.json();
+  assert.equal(reconcileData.status, "resumed_safe_retry");
+  assert.equal(reconcileData.workId, 1);
+
+  // Oversized payload rejection test
+  const hugePayload = JSON.stringify({ huge: "x".repeat(11 * 1024 * 1024) });
+  const oversizedRes = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/tokens/1`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: hugePayload,
+  });
+  assert.equal(oversizedRes.status, 413);
+  const oversizedData = await oversizedRes.json();
+  assert.equal(oversizedData.error, "payload_too_large");
+});

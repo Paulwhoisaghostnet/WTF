@@ -776,6 +776,16 @@ async function installStudioRoutes(context: BrowserContext): Promise<void> {
   await context.route("**/api/profile/social", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
   await context.route("**/api/macaroni/installers", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"installers":[]}' }));
   await context.route("**/export", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":false,"error":"test ZIP fallback"}' }));
+  await context.route("**/api/macaroni/v35/capabilities*", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      schema: "wtfos.macaroni-v35-capabilities.v1",
+      network: "shadownet",
+      authenticated: false,
+      managed: { allowed: false },
+    }),
+  }));
 }
 
 async function waitForText(page: Page, selector: string, text: string, timeout = 30_000): Promise<void> {

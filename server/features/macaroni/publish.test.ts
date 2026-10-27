@@ -151,19 +151,24 @@ test("Macaroni publish preserves V2 edition and minter royalty config fields", (
   assert.deepEqual(safe.tokenSummary, {
     tokenCount: 2,
     editionCount: 5,
-    hasMultiEdition: true,
+    hasMultiEditions: true,
   });
   assert.equal((safe.tokens as Array<Record<string, unknown>>)[0].quantity, 3);
   assert.deepEqual(safe.reveal, {
     mode: "delayed",
     delayDays: 7,
+    policy: "",
+    at: "",
+    allocationChangesAtDisplay: false,
     placeholderPool: [
       { cid: "bafyplaceholder1", uri: "ipfs://bafyplaceholder1", name: "Placeholder 1" },
       { cid: "bafyplaceholder2", uri: "ipfs://bafyplaceholder2", name: "Placeholder 2" },
     ],
+    serviceUrl: "",
   });
   assert.deepEqual(safe.minterRoyalties, {
     enabled: true,
+    decimals: 0,
     bps: 500,
     percent: 5,
     mode: "rolling_pool",

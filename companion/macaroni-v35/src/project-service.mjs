@@ -895,4 +895,126 @@ export class CompanionProjectService {
       }[claim.state] || "Fulfillment is continuing.",
     };
   }
+
+  listManualReviewWork(dropRef) {
+    requireProject(this.journal, dropRef);
+    return this.journal.listManualReviewWork(dropRef);
+  }
+
+  async reconcileStuckWork(dropRef, workId) {
+    const project = requireProject(this.journal, dropRef);
+    const workIdNum = Number(workId);
+    if (!Number.isSafeInteger(workIdNum) || workIdNum <= 0) {
+      throw new CompanionServiceError("invalid_work_id", "Work ID must be a positive integer");
+    }
+    const work = this.journal.getWork(workIdNum);
+    if (!work || work.drop_ref !== dropRef) {
+      throw new CompanionServiceError("work_item_not_found", "Work item was not found", 404);
+    }
+    if (work.state !== "manual_review") {
+      throw new CompanionServiceError("work_not_parked", "Only work items parked in manual_review can be reconciled", 409);
+    }
+
+    const attempt = this.journal.getOperationForWork(work.id);
+    if (!attempt || !attempt.operation_hash) {
+      this.journal.requeueWork(work.id, "operator_requeued_unsigned_work");
+      if (work.claim_ref != null) {
+        this.journal.setClaimState(dropRef, work.claim_ref, "confirmed", { error: null });
+      }
+      return {
+        status: "resumed_ready",
+        workId: work.id,
+        workType: work.work_type,
+        action: "requeued",
+        message: "Unsigned work item was requeued for worker execution.",
+      };
+    }
+
+    let status;
+    if (work.work_type === "arm_fulfillment") {
+      status = await this.watcher.preparedArmStatus({
+        project,
+        operationHash: attempt.operation_hash,
+        managerCounter: attempt.manager_counter,
+        branch: attempt.branch,
+        branchLevel: attempt.branch_level,
+      });
+    } else {
+      const claimId = work.claim_ref != null ? work.claim_ref : (work.payload?.claimId ?? 0);
+      status = await this.watcher.preparedSettlementStatus({
+        project,
+        claimId,
+        operationHash: attempt.operation_hash,
+        managerCounter: attempt.manager_counter,
+        branch: attempt.branch,
+        branchLevel: attempt.branch_level,
+      });
+    }
+
+    if (["chain_included", "indexed"].includes(status.state)) {
+      this.journal.reconcileOperation(work.id, "applied", {
+        inclusionLevel: status.canonicalInclusionLevel || null,
+        reconciledBy: "operator_audit",
+      });
+      if (work.work_type === "settle_claim") {
+        this.journal.setClaimState(dropRef, work.claim_ref, "artwork_secured", { operationHash: attempt.operation_hash });
+        this.journal.completeWork(work.id);
+        this.journal.enqueue({
+          dropRef,
+          claimRef: work.claim_ref,
+          workType: "publish_car",
+          semanticKey: `publish-artifact:${work.claim_ref}`,
+          payload: { dropRef, claimId: work.claim_ref, kind: "artifact" },
+        });
+      } else if (work.work_type === "arm_fulfillment") {
+        this.journal.completeWork(work.id);
+      }
+      return {
+        status: "resolved_applied",
+        workId: work.id,
+        operationHash: attempt.operation_hash,
+        message: "Signed operation was proven applied on-chain. Work item marked complete.",
+      };
+    }
+
+    if (status.state === "safe_to_replace_expired" || status.reason?.includes("expired_absent")) {
+      this.journal.expireSignedAttempt(work.id, {
+        reason: status.reason || "operator_reconciled_expired_absent",
+        priorAttemptNumber: attempt.attempt_number,
+        branchLevel: status.branchLevel,
+        headLevel: status.headLevel,
+        maxOperationsTtl: status.maxOperationsTtl,
+      });
+      this.journal.requeueWork(work.id, "operator_requeued_expired_absent");
+      if (work.claim_ref != null) {
+        this.journal.setClaimState(dropRef, work.claim_ref, "confirmed", { error: null });
+      }
+      return {
+        status: "resumed_safe_retry",
+        workId: work.id,
+        priorAttemptNumber: attempt.attempt_number,
+        priorOperationHash: attempt.operation_hash,
+        message: "Prior signed operation was proven expired and absent. Work item requeued for a fresh signed attempt.",
+      };
+    }
+
+    if (status.state === "safe_to_retire_closed") {
+      this.journal.retireObsoleteOperationWork(work.id, {
+        reason: status.reason || "closed_sale_and_expired_absent",
+      });
+      return {
+        status: "retired_closed",
+        workId: work.id,
+        message: "Work item was retired cleanly for closed sale.",
+      };
+    }
+
+    return {
+      status: "awaiting_finality_or_ttl",
+      workId: work.id,
+      operationHash: attempt.operation_hash,
+      state: status.state,
+      reason: status.reason || "Operation is still within its branch TTL window or present in mempool. Cannot safely retry until TTL expires or finality is reached.",
+    };
+  }
 }

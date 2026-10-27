@@ -11357,3 +11357,61 @@
 **Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
 
 **Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.
+
+
+---
+
+## 2026-10-12 — Companion admin routing must delegate through service contracts and verify sandboxed socket lifecycle
+
+**What happened**: The new Macaroni V3.5 stuck-work endpoint `/v1/admin/projects/:dropRef/stuck-work` directly referenced an unimported, unprovided `journal` identifier inside `createCompanionHttpServer`, throwing a 500 ReferenceError instead of querying the journal. Concurrently, Rotini's interactive artifact generator required standard `ALEATORY-001` ambient `$alea` context and canvas pixel preflight to prevent deploying empty generative templates.
+
+**Why it mattered**: An admin inspection endpoint that crashes on unhandled service references leaves operators unable to diagnose manual-review items during a live drop. Similarly, interactive generator artifacts that omit standard parameter and ready-state hooks break marketplace interoperability and collector render guarantees.
+
+**Rule**: Always expose journal and datastore queries through the owning service class (`CompanionProjectService`) and test the HTTP adapter against that contract. All exported interactive generative artifacts must provide the standard `$alea` runtime context (`version: 2`, `standard: "ALEATORY-001"`, `ready()`), and generator preflight must reject blank or solid black canvas draws before on-chain commitment.
+
+
+---
+
+## 2026-10-13 — Test-environment path hygiene, browser script module loading, and test-harness modal orchestration
+
+**What happened**: Multiple Quality Gate failures occurred across unit, policy, and UI-live suites: (1) `multer({ dest })` eagerly created directory `/mnt/wtf-data/uploads-staging/...` at module evaluation time, failing with `EACCES: permission denied` in unprivileged CI containers; (2) Rotini Studio referenced an ES module without `type="module"`, throwing browser `SyntaxError: Unexpected token 'export'`; (3) Macaroni Studio introduced a modal `<dialog id="transactionReviewDialog">` before wallet transactions, which blocked Playwright UI-live automation that expected synchronous progression from `#btnDeploy` to origination; (4) Desktop package policy tests failed in fresh checkouts because gitignored Electron desktop setup assets were not prepared before the aggregate unit test pass; and (5) Assertion drift occurred in Macaroni publish (`hasMultiEditions`), IPFS gateway default domain updates (`ipfs.fileship.xyz`), and section renumbering in TV boot backfill.
+
+**Why it mattered**: Import-time side effects break test harnesses before route assertions can run. Unhandled UI review dialogs hang headless browser flows indefinitely. Unprepared transient assets cause fresh-checkout CI runs to fail despite code correctness.
+
+**Rule**: Always defer storage directory creation to request time with lazy disk storage and respect `WTF_DATA_DIR` / `WTF_DATA_ROOT`. In browser adapter test fixtures, always hook modal review confirmation dialogs (`transactionReviewDialog`) so automated tests can authorize simulated wallet submissions. Unit test runners must ensure fresh-checkout prerequisites (like desktop asset preparation) are satisfied before executing policy suites.
+
+---
+
+## 2026-10-13 — OpenSSL test fixture cross-platform file handling, collapsed UI profile switching, and generative canvas preflight fixtures
+
+**What happened**: Five inventory Playwright tests failed in CI during route smoke: (1) `macaroni-v35-static-collector.spec.mjs` failed in OpenSSL key/cert generation because `-keyout /dev/stdout -out /dev/stdout` caused concurrent write conflicts on Linux; (2) `cobwebsaints-account.spec.mjs` failed trying to click link "Open Studio" (now labeled "Create a secure drop") and select `#contractVersion` without expanding collapsed `<details id="advancedOptions">` or clicking `#btnUseCompatibilityProfile`; (3) `gamma-wtfos.spec.mjs` failed clicking Porcupin setup button whose label shifted from "Own-node setup" to "Connect Porcupin"; (4) `pasta-protocol-publishing.spec.mjs` failed Rotini project publish because test fixture image was a 1x1 solid black pixel, triggering the new ALEATORY-001 blank/solid-black canvas preflight check; and (5) `domain-interoperability.spec.mjs` pasta publishing suite loop timed out after 60s under heavy CI runner load across 8 full-page navigations and 68 event handle posts.
+
+**Why it mattered**: Test fixtures using Linux-incompatible stdout redirection or obsolete UI selectors/copy fail quality gates despite runtime code correctness. Rigorous preflight guards (like canvas emptiness checks) intentionally reject invalid or solid black generator templates, requiring realistic test fixtures.
+
+**Rule**: Always use temporary files (`mkdtempSync`) for OpenSSL certificate/key generation in test fixtures rather than concurrent `/dev/stdout` redirection. When creation tool settings reside in collapsed details disclosure panels or require profile application buttons, tests must expand details panels and trigger activation buttons. Test image fixtures for generative creation tools must supply visible, non-black colored pixels to satisfy canvas preflight assertions. Compute workflow timeout budgets with adequate headroom for high-density CI test runs.
+
+---
+
+## 2026-10-13 — Injected test hooks in deferred module scripts require explicit readiness synchronization
+
+**What happened**: `scripts/pasta-protocol/shadownet-ravioli-ui-live.test.ts` failed in CI with `page.evaluate: Error: recovery canonicalization test hook was not installed`. The fixture injected `window.__ravioliRecoveryTest` by appending it to `creation-tools/ravioli/js/studio.js` via Playwright route interception. However, `studio.js` is loaded as an ES module (`<script type="module">`), which executes deferred after HTML parsing. `openStudio` waited only for synchronous script globals (`window.MD` and `window.TZ`), occasionally returning before the deferred module finished evaluation under CI resource contention.
+
+**Why it mattered**: Tests asserting internal test hooks race against module evaluation if the fixture does not synchronize on the hook itself. When CI runners experience load, asynchronous module execution delays cause intermittent hook-not-found errors.
+
+**Rule**: In browser adapter test fixtures that inject custom test hooks or global APIs into deferred or module scripts via route interception, always explicitly wait for the hook's presence (`page.waitForFunction(() => Boolean(window.__hookName))`) before returning the mounted page fixture to the test runner.
+
+---
+
+## 2026-10-27 — Macaroni single-flight precondition branch expiry, stuck-work operator reconciliation, and port 47835 process isolation
+
+**What happened**: Multiple reliability and boundary defects were identified during the Macaroni V3.5 release assessment:
+1. In `companion/macaroni-v35/src/adapters/tezos-watcher.mjs`, when evaluating prepared operations (`preparedSettlementStatus`, `preparedArmStatus`), detecting an on-chain precondition change (`fifo_cursor_changed`, `arm_precondition_changed`) prematurely marked the operation status as terminal `'failed'`. If the transaction had already been signed and injected into a mempool, premature failure released single-flight worker protection before the operation's 64-block branch TTL expired, risking dual settlement attempts.
+2. Operator recovery for stuck `manual_review` claims required raw SQLite journal manipulation without an authenticated inspection or safe reconciliation endpoint that verified on-chain absence and branch expiry before requeueing.
+3. Running Pasta Suite Desktop and standalone Macaroni simultaneously on loopback caused port 47835 collisions where Pasta Suite proxied admin requests with its bearer token to an alien Macaroni process without mutual identity verification.
+4. Desktop `POST /export` lacked strict request origin validation and staged writes directly to the export root rather than using an atomic temp-directory replacement.
+5. Companion doctor errors lacked actionable operator remediation steps and role classification.
+
+**Why it mattered**: Prematurely marking signed transactions failed violates Tezos single-flight safety guarantees, potentially submitting duplicate state changes or double-spending reserves. Unauthenticated local port sharing leaks admin credentials across distinct applications. Lack of actionable doctor diagnostics delays operator incident resolution during live drops.
+
+**Rule**: Never release worker locks or mark preconditions terminally failed until branch TTL expiry (~64 blocks) and dual RPC/indexer canonical absence proofs confirm the signed bytes cannot be mined. Expose authenticated operator inspection and safe reconciliation APIs (`GET /stuck-work`, `POST /stuck-work/:id/reconcile`) that enforce branch TTL and mempool absence before requeueing. Enforce instance digest handshakes before transmitting admin credentials on shared local ports. Restrict desktop export routes with strict Host/Origin/Sec-Fetch-Site checks and atomic directory swapping. Doctor diagnostics must classify failure roles (operator vs creator) and output concrete remediation steps.
+

@@ -46,6 +46,8 @@ All paths in the left column are relative to the Studio origin.
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/contract` | same suffix under `/v1/admin` (recovery only) |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-actions/next` | same suffix under `/v1/admin` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-actions/close` | same suffix under `/v1/admin` |
+| `GET /api/macaroni/v35/companion/projects/{dropRef}/stuck-work` | same suffix under `/v1/admin` |
+| `POST /api/macaroni/v35/companion/projects/{dropRef}/stuck-work/{workId}/reconcile` | same suffix under `/v1/admin` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-attempts/{attemptId}/prompt-started` | same suffix under `/v1/admin` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-attempts/{attemptId}/prompt-aborted` | same suffix under `/v1/admin` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-attempts/{attemptId}/rejected` | same suffix under `/v1/admin` |
@@ -294,6 +296,60 @@ If the renderer dies immediately after `.send()` starts, requesting `next` does 
 After setup finalization and reserve funding, `next` proves the exact public HTTPS status URL, contract/network identity, and collector CORS origin before it starts Companion preflight and returns `waiting_for_companion_fulfillment_arm`. No creator signature is needed while the dedicated finalizer performs the durable `arm_fulfillment` handshake. Continue calling `next`; only after the finalized on-chain arm and a fresh public-endpoint proof will it return the exact `activate_sale` action.
 
 Permanent close is server-authored and independent of the saved plan. Call `POST /api/macaroni/v35/companion/projects/{dropRef}/creator-actions/close` with `{}`. Before origination this abandons the local draft. After origination it returns an exact `close_sale` wallet action through the same attempt/submission/reconciliation flow. Closing is irreversible; existing claims still settle and the contract sweeps only after all created claims are settled.
+
+## 7. Operator inspection and stuck-work reconciliation
+
+Parked fulfillment work items and claims in `manual_review` can be inspected and safely reconciled by the operator without editing SQLite.
+
+### Inspect parked work
+
+`GET /api/macaroni/v35/companion/projects/{dropRef}/stuck-work` returns:
+
+```json
+{
+  "dropRef": "uuid",
+  "stuckItems": [
+    {
+      "id": 1,
+      "dropRef": "uuid",
+      "claimRef": 0,
+      "workType": "settle_claim",
+      "state": "manual_review",
+      "lastError": "Persisted signed operation cannot proceed safely: ...",
+      "payload": { "claimId": 0 },
+      "createdAt": 1729000000000,
+      "updatedAt": 1729000010000,
+      "operation": {
+        "journalId": 1,
+        "journalState": "failed",
+        "attemptNumber": 1,
+        "operationHash": "o...",
+        "attemptState": "failed",
+        "injectedAt": 1729000005000,
+        "reconciliation": { "reason": "..." }
+      },
+      "claim": {
+        "claimId": 0,
+        "state": "attention_required",
+        "buyer": "tz1...",
+        "recipient": "tz1...",
+        "settlementOperationHash": null,
+        "lastError": "..."
+      }
+    }
+  ]
+}
+```
+
+### Reconcile parked work
+
+`POST /api/macaroni/v35/companion/projects/{dropRef}/stuck-work/{workId}/reconcile`
+
+Safely reconciles a parked work item against on-chain reality without deleting history:
+- If the signed operation is verified as applied on-chain (`chain_included`), the work item is completed and CAR publication is queued.
+- If the signed operation is proven absent from canonical blocks after protocol branch TTL expiry (`safe_to_replace_expired`), the old attempt is expired with absence evidence and the work item is requeued for a fresh signed attempt with identical allocation intent.
+- If the operation is still within its branch TTL window or present in the mempool, reconciliation refuses to retry prematurely and returns `awaiting_finality_or_ttl`.
+- If the operation was never signed, the work item is safely requeued.
 
 ## Admin project document
 
