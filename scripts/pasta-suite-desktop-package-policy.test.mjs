@@ -225,6 +225,28 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   ]);
 });
 
+test("alpha package includes CH-EASE and blocks Mainnet in every bundled publisher toolkit", () => {
+  const bundleRoot = "apps/pasta-suite-desktop/pasta";
+  const manifest = JSON.parse(readFileSync(`${bundleRoot}/suite-manifest.json`, "utf8"));
+  assert.equal(manifest.network, "shadownet");
+  for (const id of ["ch-ease", "macaroni", "spaghetti"]) {
+    assert.equal(manifest.tools.find((tool) => tool.id === id)?.alphaStatus, "supported");
+  }
+  for (const id of ["gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
+    assert.equal(manifest.tools.find((tool) => tool.id === id)?.alphaStatus, "preview");
+  }
+  const suiteIndex = readFileSync(`${bundleRoot}/index.html`, "utf8");
+  assert.match(suiteIndex, /const ALPHA_SHADOWNET_ONLY = true/);
+  assert.doesNotMatch(suiteIndex, /<option value="mainnet">Mainnet<\/option>/);
+  const chease = readFileSync(`${bundleRoot}/creation-tools/ch-ease/js/studio.js`, "utf8");
+  assert.match(chease, /network: "shadownet"/);
+  for (const id of ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
+    const common = readFileSync(`${bundleRoot}/creation-tools/${id}/js/common.js`, "utf8");
+    assert.match(common, /if \(networkKey !== "shadownet"\) throw new Error\("This Pasta Suite alpha supports only Tezos Shadownet"\)/);
+  }
+  assert.match(companionAdapterSource, /alphaShadownetOnly/);
+});
+
 test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
   assert.match(mainSource, /http\.createServer/);
   assert.match(mainSource, /listenOnStableOrigin\(nextServer, PRODUCT_NAME\)/);
@@ -258,11 +280,14 @@ test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS AP
   assert.match(mainSource, /contextIsolation: true/);
   assert.match(mainSource, /sandbox: true/);
   assert.match(mainSource, /setWindowOpenHandler/);
-  assert.match(mainSource, /if \(baseUrl && value\.startsWith\(baseUrl\)\) return true/);
+  assert.match(mainSource, /isSameOrigin\(value, baseUrl\)/);
+  assert.match(mainSource, /if \(isSuiteUrl\(value\)\) return true/);
+  assert.match(mainSource, /\.\.\.\(local \? \{ preload: path\.join\(__dirname, "preload\.cjs"\) \} : \{\}\)/);
+  assert.match(mainSource, /if \(\["POST", "PUT", "PATCH", "DELETE"\]\.includes\(req\.method\) && !trustedMutation\(req\)\)/);
   assert.equal(
     (mainSource.match(/preload: path\.join\(__dirname, "preload\.cjs"\)/g) || []).length,
     2,
-    "the main window and every allowed Pasta tool child must receive the native preload",
+    "the main window and local tool children receive the native preload; external wallet windows do not",
   );
   assert.match(prepareSource, /window\.open\(card\.dataset\.entry/);
   assert.match(preloadSource, /PASTA_SUITE_DESKTOP/);

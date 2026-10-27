@@ -79,4 +79,50 @@ test.describe("interaction inventory — Macaroni native Companion setup", () =>
     await expect(page.locator("#nativeCompanionActionStatus")).toContainText("creation and launch steps are unlocked");
     expect(readinessRequests).toBe(2);
   });
+
+  test("shows chain-checked operator recovery without exposing private journal data", async ({ page }) => {
+    const dropRef = "4b576a3e-e443-4c6e-b9e3-97c889502cc4";
+    await page.addInitScript((id) => {
+      window.MACARONI_DESKTOP = { native: true, version: "3.5-test" };
+      localStorage.setItem("macaroni.studio.v1", JSON.stringify({
+        network: "shadownet",
+        drop: { profileId: "macaroni-secure-v35" },
+        infrastructure: { kind: "companion", manuallySelected: true, privateInventory: { projectId: id } },
+      }));
+    }, dropRef);
+    await page.route("**/api/macaroni/v35/companion/readiness", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        schema: "wtfos.macaroni-v35-companion-readiness.v1", ready: true, studioApiReady: true,
+        code: "ready", network: "shadownet", assetStrategies: ["pin_on_claim"],
+        publicCollectorReady: false, publicCollectorCode: "companion_public_endpoint_unverified",
+        publicCollectorReason: "Public endpoint is not configured.",
+      }),
+    }));
+    let checks = 0;
+    await page.route(`**/api/macaroni/v35/companion/projects/${dropRef}/attention`, (route) => {
+      checks += 1;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        schema: "pasta.macaroni-companion-attention.v1",
+        items: checks >= 3 ? [] : [{ id: 7, claimId: 0, workType: "settle_claim", state: "manual_review",
+          attemptNumber: 1, operationHash: "operation-immutable", chainState: checks === 1 ? "fifo_cursor_changed" : "chain_included",
+          retrySafe: checks !== 1 }],
+      }) });
+    });
+    await page.route(`**/api/macaroni/v35/companion/projects/${dropRef}/attention/7/retry`, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        schema: "pasta.macaroni-companion-attention-retry.v1", accepted: true, item: null,
+      }),
+    }));
+    await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
+    const panel = page.locator("#nativeCompanionAttention");
+    await expect(panel).toBeVisible();
+    await page.locator("#btnCheckCompanionAttention").click();
+    await expect(panel).toContainText("fifo_cursor_changed");
+    await expect(panel.getByRole("button", { name: "Retry verified work" })).toHaveCount(0);
+    await page.locator("#btnCheckCompanionAttention").click();
+    await expect(panel).toContainText("chain_included");
+    await panel.getByRole("button", { name: "Retry verified work" }).click();
+    await expect(panel).toContainText("No claim or finalizer work is parked");
+    await expect(panel).not.toContainText("signedBytesPath");
+  });
 });

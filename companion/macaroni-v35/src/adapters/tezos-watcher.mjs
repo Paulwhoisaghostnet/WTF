@@ -845,13 +845,18 @@ export class TezosWatcher {
     const matching = rows.filter((row) => address(row.target) === project.contract_address
       && address(row.sender) === this.signerAddress
       && row.parameter?.entrypoint === "settle_claims_v35");
-    if (matching.length !== 1) return { status: "failed", reason: "exact_operation_identity_mismatch" };
+    if (matching.length !== 1) return { status: "attention_required", reason: "exact_operation_identity_mismatch" };
     const head = await this.toolkit.rpc.getBlockHeader();
     if (!Number.isSafeInteger(Number(matching[0].level)) || Number(head.level) < Number(matching[0].level) + 2) {
       return { status: "pending", reason: "waiting_for_tenderbake_finality" };
     }
     if (matching[0].status !== "applied") {
-      return { status: "failed", reason: `operation_${matching[0].status || "not_applied"}` };
+      return {
+        status: "terminal_failed",
+        reason: `operation_${matching[0].status || "not_applied"}`,
+        level: Number(matching[0].level),
+        finalizedAtHeadLevel: Number(head.level),
+      };
     }
     const storage = await this.contractStorage(project.contract_address);
     const [observedToken, observedDigest, tokenMetadata] = await Promise.all([
@@ -881,7 +886,7 @@ export class TezosWatcher {
     const matching = rows.filter((row) => address(row.target) === project.contract_address
       && address(row.sender) === this.signerAddress
       && row.parameter?.entrypoint === "arm_fulfillment");
-    if (matching.length !== 1) return { status: "failed", reason: "exact_operation_identity_mismatch" };
+    if (matching.length !== 1) return { status: "attention_required", reason: "exact_operation_identity_mismatch" };
     const head = await this.toolkit.rpc.getBlockHeader();
     if (!Number.isSafeInteger(Number(matching[0].level)) || Number(head.level) < Number(matching[0].level) + 2) {
       return { status: "pending", reason: "waiting_for_tenderbake_finality" };
@@ -891,7 +896,7 @@ export class TezosWatcher {
         status: "terminal_failed",
         reason: `operation_${matching[0].status || "not_applied"}`,
         transactionId: matching[0].id,
-        level: matching[0].level,
+        level: Number(matching[0].level),
         finalizedAtHeadLevel: Number(head.level),
         confirmations: Number(head.level) - Number(matching[0].level) + 1,
       };

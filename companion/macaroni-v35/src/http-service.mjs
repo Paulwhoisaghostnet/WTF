@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { CompanionServiceError } from "./project-service.mjs";
@@ -117,6 +117,19 @@ export async function createCompanionHttpServer({
 
     try {
       const url = new URL(request.url || "/", "http://companion.invalid");
+      if (request.method === "GET" && url.pathname === "/identity") {
+        const challenge = url.searchParams.get("challenge") || "";
+        if (!/^[0-9a-f]{64}$/.test(challenge)) {
+          writeJson(response, 400, { error: "invalid_challenge", message: "A fresh identity challenge is required" }, origin);
+          return;
+        }
+        writeJson(response, 200, {
+          schema: "pasta.macaroni-companion-identity.v1",
+          challenge,
+          proof: createHmac("sha256", adminToken).update(`pasta.macaroni-companion-identity.v1:${challenge}`).digest("hex"),
+        }, origin);
+        return;
+      }
       if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/status")) {
         writeJson(response, doctor.ready ? 200 : 503, {
           schema: "pasta.macaroni-companion-health.v1",
@@ -154,6 +167,22 @@ export async function createCompanionHttpServer({
       let match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)$/);
       if (request.method === "GET" && match) {
         writeJson(response, 200, projectService.adminProject(decoded(match, 1)), origin);
+        return;
+      }
+
+      match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)\/attention$/);
+      if (request.method === "GET" && match) {
+        const items = await runtime.attentionStatus(decoded(match, 1));
+        if (!items) throw new CompanionServiceError("project_not_found", "Macaroni project was not found", 404);
+        writeJson(response, 200, { schema: "pasta.macaroni-companion-attention.v1", items }, origin);
+        return;
+      }
+
+      match = url.pathname.match(/^\/v1\/admin\/projects\/([^/]+)\/attention\/([0-9]+)\/retry$/);
+      if (request.method === "POST" && match) {
+        const result = await runtime.retryAttention(decoded(match, 1), Number(match[2]));
+        if (!result) throw new CompanionServiceError("project_not_found", "Macaroni project was not found", 404);
+        writeJson(response, result.accepted ? 200 : 409, { schema: "pasta.macaroni-companion-attention-retry.v1", ...result }, origin);
         return;
       }
 

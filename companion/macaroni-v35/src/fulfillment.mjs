@@ -6,6 +6,29 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function setupBlockerCode(error) {
+  const message = errorMessage(error);
+  if (/Fulfillment reserve changed after preflight/.test(message)) return "contract_reserve_changed";
+  if (/Finalizer readiness changed after preflight|Finalizer account must be revealed|Finalizer wallet has .* mutez but this operation requires/.test(message)) {
+    return "finalizer_funding_or_reveal";
+  }
+  if (/Estimated .* cost .* exceeds .* fulfillment subsidy/.test(message)) return "fee_cap_exceeded";
+  return null;
+}
+
+function finalizedFailureEvidence(operation) {
+  if (operation?.signed_attempt_state !== "failed") return false;
+  try {
+    const evidence = JSON.parse(operation.reconciliation_json || "{}");
+    return evidence.operationHash === operation.operation_hash
+      && Number.isSafeInteger(evidence.level)
+      && Number.isSafeInteger(evidence.finalizedAtHeadLevel)
+      && evidence.finalizedAtHeadLevel >= evidence.level + 2;
+  } catch {
+    return false;
+  }
+}
+
 export class CompanionFulfillmentRuntime {
   constructor({ config, journal, watcher, projectService, blockTimingMs }) {
     this.config = config;
@@ -16,6 +39,66 @@ export class CompanionFulfillmentRuntime {
     this.running = false;
     this.timer = null;
     this.activeTick = null;
+  }
+
+  async attentionStatus(dropRef, workId = null) {
+    const project = this.journal.getProject(dropRef);
+    if (!project) return null;
+    const rows = this.journal.listAttentionWork(dropRef);
+    const selected = workId == null ? rows : rows.filter((row) => row.id === workId);
+    return Promise.all(selected.map(async (row) => {
+      const operation = this.journal.getOperationForWork(row.id);
+      let chainState = "not_signed";
+      if (operation?.signed_attempt_id) {
+        if (["applied", "failed", "expired"].includes(operation.signed_attempt_state)) {
+          chainState = operation.signed_attempt_state;
+        } else {
+          try {
+            const input = {
+              project,
+              operationHash: operation.operation_hash,
+              managerCounter: operation.manager_counter,
+              branch: operation.branch,
+              branchLevel: operation.branch_level,
+            };
+            const status = row.work_type === "arm_fulfillment"
+              ? await this.watcher.preparedArmStatus(input)
+              : row.work_type === "settle_claim"
+                ? await this.watcher.preparedSettlementStatus({ ...input, claimId: Number(row.claim_ref) })
+                : { state: "unsupported_work_type" };
+            chainState = status.state;
+          } catch {
+            chainState = "chain_status_unavailable";
+          }
+        }
+      }
+      return {
+        id: row.id,
+        claimId: row.claim_ref == null ? null : Number(row.claim_ref),
+        workType: row.work_type,
+        state: row.state,
+        updatedAt: row.updated_at,
+        operationHash: operation?.operation_hash || null,
+        attemptNumber: operation?.attempt_number || 0,
+        signedAttemptState: operation?.signed_attempt_state || null,
+        diagnostic: row.last_error?.startsWith("setup_blocked:") ? row.last_error.slice("setup_blocked:".length) : null,
+        chainState,
+        retrySafe: chainState === "not_signed" || finalizedFailureEvidence(operation) || [
+          "safe_to_inject_exact_bytes", "mempool", "indexed", "chain_included", "safe_to_replace_expired",
+        ].includes(chainState),
+      };
+    }));
+  }
+
+  async retryAttention(dropRef, workId) {
+    const status = await this.attentionStatus(dropRef, workId);
+    if (!status) return null;
+    if (status.length !== 1) return { accepted: false, code: "attention_work_not_found" };
+    const item = status[0];
+    if (!item.retrySafe) return { accepted: false, code: "signed_attempt_unresolved", item };
+    this.journal.retryWork(workId, Date.now(), "Operator requested a chain-checked recovery");
+    await this.wake();
+    return { accepted: true, item: (await this.attentionStatus(dropRef, workId))?.[0] || null };
   }
 
   enqueueClaimWorkflow(project, claim, eligibleAt) {
@@ -242,7 +325,7 @@ export class CompanionFulfillmentRuntime {
 
   async ensureExactAttemptInjected({ work, project, operationRef, prepare, status }) {
     let attempt = this.journal.getOperationForWork(work.id);
-    if (!attempt?.signed_attempt_id || attempt.signed_attempt_state === "expired") {
+    if (!attempt?.signed_attempt_id || ["expired", "failed"].includes(attempt.signed_attempt_state)) {
       attempt = await this.persistPreparedAttempt({ work, project, operationRef, prepare });
     }
 
@@ -263,7 +346,7 @@ export class CompanionFulfillmentRuntime {
       }
     }
 
-    if (!attempt.injected_at) {
+    if (preparedStatus.state === "safe_to_inject_exact_bytes" || !attempt.injected_at) {
       if (preparedStatus.state === "safe_to_inject_exact_bytes") {
         const signedBytes = await this.projectService.loadSignedOperation({
           signedBytesPath: attempt.signed_bytes_path,
@@ -286,7 +369,9 @@ export class CompanionFulfillmentRuntime {
         return null;
       } else {
         const reason = `Persisted signed operation cannot proceed safely: ${preparedStatus.state}`;
-        this.journal.reconcileOperation(work.id, "failed", { reason: preparedStatus.state });
+        // A changed precondition is not evidence that the exact signed bytes
+        // failed or expired. Keep the signed intent's single-flight guard until
+        // canonical reconciliation proves an irreversible outcome.
         this.journal.manualReviewWork(work.id, reason);
         return null;
       }
@@ -365,7 +450,7 @@ export class CompanionFulfillmentRuntime {
           return;
         }
         if (reconciliation.status === "terminal_failed") {
-          this.journal.reconcileOperation(work.id, "failed", reconciliation);
+          this.journal.reconcileOperation(work.id, "failed", { ...reconciliation, operationHash: attempt.operation_hash });
           this.journal.retireObsoleteOperationWork(work.id, {
             reason: "sale_permanently_closed_after_final_failed_arm",
             operationHash: attempt.operation_hash,
@@ -421,9 +506,13 @@ export class CompanionFulfillmentRuntime {
       this.journal.retryWork(work.id, Date.now() + this.blockTimingMs, reconciliation.reason);
       return;
     }
-    if (reconciliation.status !== "applied") {
-      this.journal.reconcileOperation(work.id, "failed", { reason: reconciliation.reason });
+    if (reconciliation.status === "terminal_failed") {
+      this.journal.reconcileOperation(work.id, "failed", { ...reconciliation, operationHash: attempt.operation_hash });
       this.journal.manualReviewWork(work.id, reconciliation.reason);
+      return;
+    }
+    if (reconciliation.status !== "applied") {
+      this.journal.manualReviewWork(work.id, reconciliation.reason || "Exact arm operation needs review");
       return;
     }
     this.journal.reconcileOperation(work.id, "applied", {
@@ -539,9 +628,14 @@ export class CompanionFulfillmentRuntime {
       this.journal.retryWork(work.id, Date.now() + this.blockTimingMs, reconciliation.reason);
       return;
     }
-    if (reconciliation.status !== "applied") {
-      this.journal.reconcileOperation(work.id, "failed", { reason: reconciliation.reason });
+    if (reconciliation.status === "terminal_failed") {
+      this.journal.reconcileOperation(work.id, "failed", { ...reconciliation, operationHash: attempt.operation_hash });
       this.journal.manualReviewWork(work.id, reconciliation.reason);
+      this.journal.setClaimState(project.drop_ref, claimId, "attention_required", { error: reconciliation.reason });
+      return;
+    }
+    if (reconciliation.status !== "applied") {
+      this.journal.manualReviewWork(work.id, reconciliation.reason || "Exact settlement operation needs review");
       this.journal.setClaimState(project.drop_ref, claimId, "attention_required", { error: reconciliation.reason });
       return;
     }
@@ -632,7 +726,11 @@ export class CompanionFulfillmentRuntime {
       try {
         await this.processWork(work);
       } catch (error) {
-        this.journal.retryWork(work.id, Date.now() + this.blockTimingMs, errorMessage(error));
+        const blocker = ["arm_fulfillment", "settle_claim"].includes(work.work_type)
+          && !this.journal.getOperationForWork(work.id)?.signed_attempt_id
+          ? setupBlockerCode(error) : null;
+        if (blocker) this.journal.manualReviewWork(work.id, `setup_blocked:${blocker}`);
+        else this.journal.retryWork(work.id, Date.now() + this.blockTimingMs, errorMessage(error));
       }
     }
     for (const project of this.journal.listRunnableProjects()) {

@@ -1031,6 +1031,11 @@ export function openJournal(filePath) {
     return row ? { ...row, payload: json(row.payload_json) } : null;
   }
 
+  function listAttentionWork(dropRef) {
+    return db.prepare(`SELECT id, drop_ref, claim_ref, work_type, state, last_error, updated_at
+      FROM work_items WHERE drop_ref=? AND state='manual_review' ORDER BY id`).all(dropRef);
+  }
+
   function completeWork(id) {
     db.prepare("UPDATE work_items SET state='completed', lease_owner=NULL, lease_expires_at=NULL, last_error=NULL, updated_at=? WHERE id=?")
       .run(Date.now(), id);
@@ -1120,7 +1125,13 @@ export function openJournal(filePath) {
     return transaction(db, () => {
       const attempt = getOperationForWork(input.workItemId);
       if (!attempt) throw new Error("Ready operation intent was not persisted");
-      if (attempt.signed_attempt_id && attempt.signed_attempt_state !== "expired") {
+      const priorFailure = attempt.signed_attempt_state === "failed"
+        ? json(attempt.reconciliation_json) : null;
+      const finalizedFailure = priorFailure?.operationHash === attempt.operation_hash
+        && Number.isSafeInteger(priorFailure.level)
+        && Number.isSafeInteger(priorFailure.finalizedAtHeadLevel)
+        && priorFailure.finalizedAtHeadLevel >= priorFailure.level + 2;
+      if (attempt.signed_attempt_id && attempt.signed_attempt_state !== "expired" && !finalizedFailure) {
         if (attempt.operation_hash === input.operationHash
           && attempt.signed_bytes_path === input.signedBytesPath
           && attempt.signed_bytes_sha256 === input.signedBytesSha256
@@ -1193,6 +1204,12 @@ export function openJournal(filePath) {
     const now = Date.now();
     const operation = getOperationForWork(workItemId);
     if (!operation?.signed_attempt_id) throw new Error("Signed operation attempt is missing");
+    if (state === "failed" && (evidence.operationHash !== operation.operation_hash
+      || !Number.isSafeInteger(evidence.level)
+      || !Number.isSafeInteger(evidence.finalizedAtHeadLevel)
+      || evidence.finalizedAtHeadLevel < evidence.level + 2)) {
+      throw new Error("A failed signed attempt requires finalized exact-operation evidence");
+    }
     db.prepare("UPDATE signed_operation_attempts SET state=?, reconciliation_json=?, updated_at=? WHERE id=?")
       .run(state, canonical(evidence), now, operation.signed_attempt_id);
     db.prepare("UPDATE operation_journal SET state=?, reconciliation_json=?, updated_at=? WHERE work_item_id=?")
@@ -1261,6 +1278,7 @@ export function openJournal(filePath) {
     leaseNext,
     getWork,
     getWorkByKey,
+    listAttentionWork,
     completeWork,
     retryWork,
     manualReviewWork,
