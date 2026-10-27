@@ -70,6 +70,7 @@ test("Macaroni desktop runtime serves local assets and blocks wtfOS hosted APIs"
   assert.match(prepareSource, /contract\/macaroni-v35\.contract\.json/);
   assert.match(prepareSource, /companion\/macaroni-v35/);
   assert.match(prepareSource, /companionExcludedTopLevel/);
+  assert.match(prepareSource, /trackedCompanionFiles/);
   assert.match(prepareSource, /"node_modules", "data", "secrets", "\.env"/);
   for (const excluded of ["node_modules", "data", "secrets", ".env"]) {
     assert.equal(existsSync(`apps/macaroni-desktop/companion/macaroni-v35/${excluded}`), false);
@@ -79,6 +80,10 @@ test("Macaroni desktop runtime serves local assets and blocks wtfOS hosted APIs"
   assert.match(mainSource, /pasta-service\.json/);
   assert.match(mainSource, /utilityProcess\.fork/);
   assert.match(mainSource, /startCompanionAdapter/);
+  assert.match(mainSource, /alphaShadownetOnly: app\.getVersion\(\)\.includes\("-alpha\."\)/);
+  assert.match(mainSource, /isTrustedMutation\(req\.headers, baseUrl\)/);
+  assert.match(mainSource, /isSameOrigin\(navigationUrl, baseUrl\)/);
+  assert.match(readFileSync("apps/macaroni-desktop/macaroni/js/common.js", "utf8"), /This Macaroni alpha supports only Tezos Shadownet/);
   assert.match(mainSource, /app\.getPath\("userData"\), "macaroni-v35-companion"/);
   assert.match(mainSource, /companionAdapter\.proxy/);
   assert.match(mainSource, /ipcMain\.handle\(COMPANION_SETUP_IPC_CHANNEL/);

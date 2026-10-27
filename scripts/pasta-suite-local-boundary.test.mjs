@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import boundary from "../apps/pasta-suite-desktop/src/local-boundary.cjs";
+import macaroniBoundary from "../apps/macaroni-desktop/src/local-boundary.cjs";
 
 const origin = "http://127.0.0.1:30770";
 
@@ -22,4 +23,13 @@ test("external popup URL tricks never inherit the Suite preload", () => {
     "https://shadownet.kukai.app/",
     "about:blank",
   ]) assert.equal(boundary.isSameOrigin(url, origin), false);
+});
+
+test("standalone Macaroni applies the same exact local write and navigation boundary", () => {
+  const standaloneOrigin = "http://127.0.0.1:30771";
+  assert.equal(macaroniBoundary.isTrustedMutation({ host: "127.0.0.1:30771", origin: standaloneOrigin }, standaloneOrigin), true);
+  assert.equal(macaroniBoundary.isTrustedMutation({ host: "localhost:30771", origin: standaloneOrigin }, standaloneOrigin), false);
+  assert.equal(macaroniBoundary.isTrustedMutation({ host: "127.0.0.1:30771", origin: `${standaloneOrigin}.attacker.example` }, standaloneOrigin), false);
+  assert.equal(macaroniBoundary.isSameOrigin(`${standaloneOrigin}/studio.html`, standaloneOrigin), true);
+  assert.equal(macaroniBoundary.isSameOrigin(`${standaloneOrigin}@attacker.example/`, standaloneOrigin), false);
 });
