@@ -167,4 +167,18 @@ test("admin API exposes stuck manual_review work items for operator inspection",
   const reconcileData = await reconcileRes.json();
   assert.equal(reconcileData.status, "resumed_safe_retry");
   assert.equal(reconcileData.workId, 1);
+
+  // Oversized payload rejection test
+  const hugePayload = JSON.stringify({ huge: "x".repeat(11 * 1024 * 1024) });
+  const oversizedRes = await fetch(`http://127.0.0.1:${address.port}/v1/admin/projects/stuck-drop/tokens/1`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: hugePayload,
+  });
+  assert.equal(oversizedRes.status, 413);
+  const oversizedData = await oversizedRes.json();
+  assert.equal(oversizedData.error, "payload_too_large");
 });

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { CompanionServiceError } from "./project-service.mjs";
 
 const OPERATION_HASH = /^o[1-9A-HJ-NP-Za-km-z]{50}$/;
+const MAX_JSON_BODY_BYTES = 10 * 1024 * 1024; // 10 MB max payload size
 
 function tokenDigest(value) {
   return createHash("sha256").update(value).digest();
@@ -60,15 +61,23 @@ function writeJson(response, statusCode, payload, origin = null) {
   response.end(JSON.stringify(payload));
 }
 
-async function readJson(request) {
+async function readJson(request, maxBytes = MAX_JSON_BODY_BYTES) {
   const chunks = [];
-  for await (const chunk of request) chunks.push(Buffer.from(chunk));
+  let totalBytes = 0;
+  for await (const chunk of request) {
+    totalBytes += chunk.byteLength || chunk.length;
+    if (totalBytes > maxBytes) {
+      throw new CompanionServiceError("payload_too_large", "Request payload exceeds maximum allowed size", 413);
+    }
+    chunks.push(Buffer.from(chunk));
+  }
   if (chunks.length === 0) return {};
   try {
     const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("object required");
     return parsed;
-  } catch {
+  } catch (error) {
+    if (error instanceof CompanionServiceError) throw error;
     throw new CompanionServiceError("invalid_json", "Request body must be a JSON object");
   }
 }
