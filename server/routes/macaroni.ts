@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Router, type NextFunction, type Request, type Response } from "express";
@@ -455,8 +455,16 @@ const tokenPreviewUpload = multer({
   },
 });
 
+const v35PrivateAssetUploadDirectory = path.join(MEDIA_STAGING_DIR, "macaroni-v35-private-upload");
 const v35PrivateAssetUpload = multer({
-  dest: path.join(MEDIA_STAGING_DIR, "macaroni-v35-private-upload"),
+  storage: multer.diskStorage({
+    destination(_request, _file, callback) {
+      void mkdir(v35PrivateAssetUploadDirectory, { recursive: true }).then(
+        () => callback(null, v35PrivateAssetUploadDirectory),
+        (error) => callback(error instanceof Error ? error : new Error(String(error)), v35PrivateAssetUploadDirectory),
+      );
+    },
+  }),
   limits: {
     fileSize: macaroniIpfsMaxBytes(),
     files: 3,

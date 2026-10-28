@@ -7628,7 +7628,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
     );
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
 
-    await ipfsSurface.getByRole("button", { name: "Own-node setup" }).click();
+    await ipfsSurface.getByRole("button", { name: "Connect Porcupin" }).click();
     await expect(page).toHaveURL(/\/gamma\/apps\/porcupin-setup$/);
     await expectGammaRouteReady(page, "/apps/porcupin-setup");
     ipfsSurface = page.locator('[data-gamma-application-content] [data-ipfs-pinning-surface="manager"]');

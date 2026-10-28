@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { InMemorySigner } from "@taquito/signer";
 import { MichelCodecPacker, TezosToolkit } from "@taquito/taquito";
 import { encodeOpHash } from "@taquito/utils";
-import { allocationDigest, asSafeNat, hashEntropyLink, normalizedHex, timestampMs } from "../protocol.mjs";
+import { allocationDigest, asSafeNat, hashEntropyLink, normalizedHex, orderedMichelsonCodeSections, timestampMs } from "../protocol.mjs";
 
 const KT1 = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
 const OPERATION = /^o[1-9A-HJ-NP-Za-km-z]{50}$/;
@@ -328,8 +328,8 @@ export class TezosWatcher {
       readFile(this.abiPath, "utf8").then(JSON.parse),
     ]);
     if (!Array.isArray(artifact) || !Array.isArray(onchain?.code)) throw new Error("Could not compare V3.5 contract code");
-    const expected = digest(artifact);
-    const observed = digest(onchain.code);
+    const expected = digest(orderedMichelsonCodeSections(artifact));
+    const observed = digest(orderedMichelsonCodeSections(onchain.code));
     if (expected !== observed) throw new Error("Attached contract code does not match the reviewed V3.5 artifact");
     return { expected, observed };
   }
@@ -728,6 +728,17 @@ export class TezosWatcher {
     return operationRows(await response.json());
   }
 
+  async canonicalCreatorOperationRows(operationHash, inclusionLevel) {
+    if (!OPERATION.test(operationHash) || !Number.isSafeInteger(inclusionLevel) || inclusionLevel < 0) {
+      throw new Error("Creator operation has no valid canonical inclusion identity");
+    }
+    const blockHash = await this.toolkit.rpc.getBlockHash({ block: String(inclusionLevel) });
+    const response = await this.fetch(`${this.rpcUrl}/chains/main/blocks/${encodeURIComponent(blockHash)}/operations`);
+    if (!response.ok) throw new Error(`RPC canonical creator operation lookup failed with HTTP ${response.status}`);
+    return creatorRowsFromOperationGroups(await response.json(), inclusionLevel)
+      .filter((row) => row.hash === operationHash);
+  }
+
   async creatorSubmissionStatus(attempt) {
     const rows = attempt.entrypoint === "origination"
       ? await this.exactOrigination(attempt.operation_hash)
@@ -736,8 +747,14 @@ export class TezosWatcher {
     if (rows.length > 0) {
       const levels = rows.map((row) => Number(row.level)).filter(Number.isSafeInteger);
       const inclusionLevel = levels.length ? Math.min(...levels) : null;
+      if (inclusionLevel != null && headLevel >= inclusionLevel + 2) {
+        const canonicalRows = await this.canonicalCreatorOperationRows(attempt.operation_hash, inclusionLevel);
+        return canonicalRows.length > 0
+          ? { state: "indexed_final", rows: canonicalRows, inclusionLevel, headLevel }
+          : { state: "canonical_inclusion_not_indexed", rows: [], inclusionLevel, headLevel };
+      }
       return {
-        state: inclusionLevel != null && headLevel >= inclusionLevel + 2 ? "indexed_final" : "indexed_waiting_finality",
+        state: "indexed_waiting_finality",
         rows,
         inclusionLevel,
         headLevel,
@@ -781,7 +798,16 @@ export class TezosWatcher {
     url.searchParams.set("micheline", "2");
     const response = await this.fetch(url);
     if (!response.ok) throw new Error(`TzKT hashless creator-intent lookup failed with HTTP ${response.status}`);
-    return { finalized, rows: operationRows(await response.json()) };
+    const indexedRows = operationRows(await response.json());
+    const identities = new Set(indexedRows
+      .filter((row) => OPERATION.test(row.hash || "") && Number.isSafeInteger(Number(row.level)) && Number(row.level) <= finalized.level)
+      .map((row) => `${row.level}:${row.hash}`));
+    const rows = [];
+    for (const identity of identities) {
+      const [level, hash] = identity.split(":");
+      rows.push(...await this.canonicalCreatorOperationRows(hash, Number(level)));
+    }
+    return { finalized, rows };
   }
 
   async hashlessCreatorIntentWindow(attempt) {
@@ -1003,7 +1029,14 @@ export class TezosWatcher {
     const matches = [];
     const seenMatches = new Set();
     let cursor = "-1";
+    // The live Objkt Shadownet endpoint returned 429 after roughly 40 pages
+    // when queried without spacing. One request per second is below that
+    // observed burst rate; a 429 pauses at the same cursor before retrying.
+    const pageSpacingMs = 1_000;
+    let nextRequestAt = 0;
     while (true) {
+      const waitMs = nextRequestAt - Date.now();
+      if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
       const response = await this.fetch(this.duplicateCheckUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1011,6 +1044,14 @@ export class TezosWatcher {
         // until the public index is exhausted, and target CIDs are never sent.
         body: JSON.stringify({ query, variables: { cursor, pageSize: 1000 } }),
       });
+      nextRequestAt = Date.now() + pageSpacingMs;
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(response.headers.get("retry-after"));
+        if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+          nextRequestAt = Date.now() + Math.max(pageSpacingMs, retryAfterSeconds * 1_000);
+        }
+        continue;
+      }
       const payload = await response.json().catch(() => null);
       const page = payload?.data?.token;
       if (!response.ok || payload?.errors || !Array.isArray(page)) {

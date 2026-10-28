@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { MichelsonMap } from "@taquito/michelson-encoder";
 
 import { CompanionCreatorSetup } from "../src/creator-setup.mjs";
 import { openJournal } from "../src/journal.mjs";
@@ -57,9 +58,10 @@ async function fixture(t) {
   });
   let candidates = [];
   let promptExpired = false;
+  let finalizedCreatorKeyLevel = 98;
   const watcher = {
     currentHeadLevel: async () => 100,
-    creatorManagerKeyAtFinalized: async () => ({ level: 98, blockHash: "B98", observedHeadLevel: 100, key: `edpk${"2".repeat(50)}` }),
+    creatorManagerKeyAtFinalized: async () => ({ level: finalizedCreatorKeyLevel, blockHash: `B${finalizedCreatorKeyLevel}`, observedHeadLevel: finalizedCreatorKeyLevel + 2, key: `edpk${"2".repeat(50)}` }),
     estimateCreatorOrigination: async () => ({
       source: "live_tezos_rpc_estimate",
       gasLimit: 1,
@@ -112,8 +114,72 @@ async function fixture(t) {
     plan,
     setCandidates: (rows) => { candidates = rows; },
     setPromptExpired: (value) => { promptExpired = value; },
+    setFinalizedCreatorKeyLevel: (value) => { finalizedCreatorKeyLevel = value; },
   };
 }
+
+test("creator-key reveal remains complete when the finalized head advances", async (t) => {
+  const { setup, plan, setFinalizedCreatorKeyLevel } = await fixture(t);
+  const issued = await setup.getNext(DROP, { plan });
+  assert.equal(issued.action.step, "originate_contract");
+  setup.reject(DROP, issued.action.attemptId, "No wallet send occurred", true);
+  setFinalizedCreatorKeyLevel(104);
+  const retried = await setup.getNext(DROP, {});
+  assert.equal(retried.state, "awaiting_signature");
+  assert.equal(retried.action.step, "originate_contract");
+  assert.equal(retried.action.intentDigest, issued.action.intentDigest);
+});
+
+test("a completed on-chain creator reveal is accepted without changing its stable intent", async (t) => {
+  const { journal, setup, plan } = await fixture(t);
+  journal.completeCreatorStep({
+    dropRef: DROP, stepKey: "reveal_creator_key", network: "shadownet", signer: CREATOR,
+    expectedPostcondition: { managerKeyRevealed: true },
+  });
+  const issued = await setup.getNext(DROP, { plan });
+  assert.equal(issued.state, "awaiting_signature");
+  assert.equal(issued.action.step, "originate_contract");
+  assert.deepEqual(journal.creatorStep(DROP, "reveal_creator_key").expectedPostcondition, { managerKeyRevealed: true });
+});
+
+test("final batch milestones remain resumable after reconciliation records its immutable batch index", async (t) => {
+  const { journal, setup } = await fixture(t);
+  const project = journal.getProject(DROP);
+  for (const [stepKey, tally] of [
+    ["inventory_declared", { tokenRows: 1 }],
+    ["inventory_complete", { physicalSlots: 1 }],
+    ["allowlist_complete", { rows: 1 }],
+  ]) {
+    journal.completeCreatorStep({
+      dropRef: DROP, stepKey, network: "shadownet", signer: CREATOR,
+      expectedPostcondition: { finalBatch: 0 },
+    });
+    const batch = [{ state: "complete", final_batch: 1, batch_index: 0 }];
+    assert.equal(setup.completeMilestone(project, stepKey, tally, batch).state, "complete");
+    assert.deepEqual(journal.creatorStep(DROP, stepKey).expectedPostcondition, { finalBatch: 0 });
+    assert.throws(() => setup.completeMilestone(project, stepKey, tally, [{ ...batch[0], batch_index: 1 }]), /conflicts with finalized inventory/);
+  }
+});
+
+test("applied stage postconditions use decoded map keys, Tezos seconds, and exact sale terms", async (t) => {
+  const { journal, setup } = await fixture(t);
+  const project = journal.getProject(DROP);
+  const stages = new MichelsonMap();
+  stages.set("0", {
+    start: "2026-10-28T00:04:55.000Z", price: "160000",
+    use_allowlist: false, max_per_wallet: { Some: "1" },
+  });
+  setup.watcher.contractStorageAt = async () => ({ stages });
+  const attempt = {
+    entrypoint: "set_stages",
+    parameters: { wallet: [{ stage: 0, start: "2026-10-28T00:04:55.631Z", price_mutez: 160000, use_allowlist: false, max_per_wallet: 1 }] },
+  };
+  assert.equal(await setup.postcondition(project, attempt, "Bfinal"), true);
+  stages.set("0", { ...stages.get("0"), price: "160001" });
+  assert.equal(await setup.postcondition(project, attempt, "Bfinal"), false);
+  stages.set("0", { ...stages.get("0"), price: "160000", max_per_wallet: { Some: "2" } });
+  assert.equal(await setup.postcondition(project, attempt, "Bfinal"), false);
+});
 
 test("creator intent survives renderer death and hashlessly recovers exact finalized origination", async (t) => {
   const { journal, setup, plan, setCandidates } = await fixture(t);
@@ -146,6 +212,60 @@ test("creator intent survives renderer death and hashlessly recovers exact final
   assert.equal(recovered.action.operationHash, OPERATION);
   assert.equal(journal.getProject(DROP).contract_address, CONTRACT);
   assert.equal(journal.db.prepare("SELECT COUNT(*) AS count FROM creator_operation_attempts").get().count, 1);
+});
+
+test("a finalized origination uses exact raw Micheline after top-level section reordering", async (t) => {
+  const { journal, setup, plan, setCandidates } = await fixture(t);
+  setup.buildOrigination = async () => ({
+    code: [{ prim: "storage", args: [{ prim: "nat" }] }, { prim: "parameter", args: [{ prim: "unit" }] }, { prim: "code", args: [[]] }],
+    storage: { int: "0" },
+    codeDigest: "3".repeat(64),
+    storageDigest: "4".repeat(64),
+    abiVersion: "macaroni-secure-claim-v3.5",
+    finalizer: FINALIZER,
+    contractMetadataUri: "ipfs://bafy-public-contract-metadata",
+  });
+  const issued = await setup.getNext(DROP, { plan });
+  await setup.promptStarted(DROP, issued.action.attemptId, issued.action.requestId);
+  await setup.submitted(DROP, issued.action.attemptId, OPERATION);
+  setCandidates([{
+    hash: OPERATION,
+    status: "applied",
+    sender: { address: CREATOR },
+    contractBalance: 0,
+    code: [issued.action.parameters.code[1], issued.action.parameters.code[0], issued.action.parameters.code[2]],
+    storage: issued.action.parameters.storage,
+    originatedContract: { address: CONTRACT },
+    level: 100,
+  }]);
+  const attempt = journal.creatorAttempt(issued.action.attemptId);
+  const canonical = {
+    status: "applied", sender: { address: CREATOR }, contractBalance: 0,
+    code: [issued.action.parameters.code[1], issued.action.parameters.code[0], issued.action.parameters.code[2]],
+    storage: issued.action.parameters.storage, originatedContract: { address: CONTRACT }, level: 100,
+  };
+  assert.equal(setup.matchingCreatorRows(attempt, [{ ...canonical, code: [{ prim: "parameter", args: [{ prim: "nat" }] }, ...canonical.code.slice(1)] }], { appliedOnly: true, finalizedLevel: 102 }).length, 0);
+  assert.equal(setup.matchingCreatorRows(attempt, [{ ...canonical, storage: { int: "1" } }], { appliedOnly: true, finalizedLevel: 102 }).length, 0);
+  const recovered = await setup.reconcile(DROP, issued.action.attemptId);
+  assert.equal(recovered.state, "applied");
+  assert.equal(journal.getProject(DROP).contract_address, CONTRACT);
+  assert.equal(journal.db.prepare("SELECT COUNT(*) AS count FROM creator_operation_attempts").get().count, 1);
+});
+
+test("a historical normalized-indexer false failure is repaired only by exact canonical proof", async (t) => {
+  const { journal, setup, plan, setCandidates } = await fixture(t);
+  const issued = await setup.getNext(DROP, { plan });
+  await setup.promptStarted(DROP, issued.action.attemptId, issued.action.requestId);
+  await setup.submitted(DROP, issued.action.attemptId, OPERATION);
+  const falseFailure = "Final origination does not match the exact signer, code, storage, amount, or derived KT1";
+  journal.reconcileCreatorAttempt(DROP, issued.action.attemptId, "failed", { applied: false, reason: falseFailure }, falseFailure);
+  setCandidates([{
+    hash: OPERATION, status: "applied", sender: { address: CREATOR }, contractBalance: 0,
+    code: issued.action.parameters.code, storage: issued.action.parameters.storage,
+    originatedContract: { address: CONTRACT }, level: 100,
+  }]);
+  assert.equal((await setup.reconcile(DROP, issued.action.attemptId)).state, "applied");
+  assert.equal(journal.getProject(DROP).contract_address, CONTRACT);
 });
 
 test("creator actions accept the exact protocol boundary, reject one byte over, and split large batches", async (t) => {

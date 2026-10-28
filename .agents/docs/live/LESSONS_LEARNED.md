@@ -12771,3 +12771,43 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The same Companion runtime was distributed through two installers, so protecting only Suite left a second alpha path with a weaker boundary.
 
 **Rule**: When a shared worker is packaged by more than one shell, verify the same source allowlist, network gate, local write boundary, and artifact smoke for each shipping shell before alpha handoff.
+
+---
+
+## 2026-10-27 — Alpha review branches need current dependency and inventory gates
+
+**What happened**: The Pasta alpha PR targeted an older review branch whose root lockfile failed the production audit before CI reached TypeScript or browser coverage. The broad local inventory then passed 717 of 718 stories but timed out at a Gamma IPFS test that still clicked the retired `Own-node setup` label; the current action is `Connect Porcupin` and opens the same route. The generated environment inventory also lagged the added test sources. A local TypeScript invocation hit Node's default 4 GB heap ceiling before producing diagnostics.
+
+**Why it mattered**: A clean alpha implementation could not obtain an honest green quality signal while an inherited dependency graph, a stale cross-domain selector, generated metadata, and a smaller local compiler heap obscured the actual result.
+
+**Rule**: When a feature PR starts from an older review base, audit its exact root lockfile and apply patched compatible dependencies without dropping branch-specific packages. Diagnose broad browser failures from the failing page snapshot and current accessible control, then rerun the affected story and full gate. Regenerate source-scanned inventories after test changes. Run TypeScript with the repository CI heap setting and distinguish heap exhaustion from compiler errors.
+
+---
+
+## 2026-10-27 — Rehearse current Studio review steps and defer upload directories until use
+
+**What happened**: The Macaroni UI-live fixture still selected Legacy contracts through a collapsed control, omitted the current capabilities response, expected pinning to enable deploy without a checklist refresh, lacked read-only origination estimates, and waited through new transaction review dialogs without approving them. After the Multer security update, `dest` created the production private-upload directory while the route module loaded; local API and health tests failed before receiving a request. Other unit assertions expected a retired IPFS gateway and metadata shape.
+
+**Why it mattered**: A stale fixture could falsely portray a functioning creator flow as blocked. Eager creation of a production mount path made route registration depend on host filesystem permissions, hiding both genuine and unrelated test results.
+
+**Rule**: Run the actual Studio UI against the current workflow, including explicit compatibility acknowledgement, read-only estimates, and each wallet review. Refresh launch readiness after pin success. Create private-upload directories when handling uploads, not at module import, and derive test gateway expectations from the shared gateway policy.
+
+---
+
+## 2026-10-27 — Reconcile creator setup from canonical chain values and immutable milestones
+
+**What happened**: An installed Macaroni V3.5 alpha on Shadownet applied contract origination, token declaration, edition-slot loading, and sale-stage setup. The Companion falsely failed origination after comparing TzKT-normalized JSON to the authored Micheline; a repeated creator-key check conflicted with its previously saved finalized level; final-batch reconciliation and the next-action check wrote incompatible milestone digests; and stage reconciliation looked up a numeric key in a decoded `MichelsonMap` whose keys were strings and compared millisecond plan timestamps to Tezos second timestamps.
+
+**Why it mattered**: Real creator transactions succeeded on-chain while the setup journal refused to advance. Blindly retrying those signatures could duplicate or conflict with irreversible contract operations.
+
+**Rule**: Re-read exact finalized operations from canonical Tezos RPC, compare reviewed code after only protocol-invariant top-level section ordering, and verify the resulting storage at a finalized block. Record a logical milestone once; subsequent checks must accept the same complete evidence and reject conflicting evidence. For Tezos storage, use decoded map key types and chain timestamp precision, and verify all sale terms. Recover a known false failure only against its existing operation hash and only when no newer attempt exists; never resubmit it to repair a journal discrepancy.
+
+---
+
+## 2026-10-27 — Pace privacy-preserving public index scans
+
+**What happened**: The installed Macaroni V3.5 alpha reached activation, but its public-only Objkt duplicate-CID scan made back-to-back GraphQL page requests. The Shadownet endpoint served 500 rows per request even when asked for 1,000 and returned HTTP 429 with an HTML body after roughly 40 rapid pages, so the preflight stopped as unavailable.
+
+**Why it mattered**: The fail-closed gate correctly prevented activation, but the default private full-scan path could not finish against the live provider under its observed rate limit.
+
+**Rule**: Preserve the private-CID boundary by paging public index rows locally. Pace requests below the measured provider burst and retry a 429 at the same cursor, honoring Retry-After when present. Treat other malformed or failed responses as unavailable rather than pretending the index was exhausted.
