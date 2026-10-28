@@ -11357,3 +11357,13 @@
 **Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
 
 **Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.
+
+---
+
+## 2026-10-27 — Correct reviewed claims in the mergeable document
+
+**What happened**: PR #38's review response remained mergeable as a file even after discussion comments identified false guarantees about Rotini storage and costs, payout fallback, marketplace support, and Macaroni recovery. A later implementation PR addressed several defects, but comments alone would have left the original claims in the repository if PR #38 merged.
+
+**Why it mattered**: A reviewer or future implementer could treat the merged document as an approved implementation plan despite corrections existing only in the conversation. Its historical snapshot and the later alpha candidate also needed separate evidence labels.
+
+**Rule**: Before merging a review or design document, reconcile its assertions with the exact reviewed source and later verified changes in the document itself. Keep proposals conditional, identify the target commit, and distinguish source findings, implementation evidence, and remaining release work. Re-run the PR against its actual integration base rather than attributing another PR's green checks to it.

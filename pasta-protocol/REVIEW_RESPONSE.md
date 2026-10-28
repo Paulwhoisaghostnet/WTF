@@ -1,112 +1,66 @@
-# Pasta Protocol Review & Engineering Handoff Response
+# Pasta Protocol review response and technical disposition
 
-**To:** Paul (@Paulwhoisaghostnet)  
-**From:** skllz (@skullzarmy)  
-**Review Target:** `pasta-review-2026-10-06` (commit [`b351cccd4b1b5958ab668f2fad22d089672946c4`](https://github.com/Paulwhoisaghostnet/WTF/commit/b351cccd4b1b5958ab668f2fad22d089672946c4))  
-**Package:** `Pasta-Suite-1.0.1-alpha.1-mac-universal.dmg` / `.zip`  
-**Environment:** macOS (Apple Silicon & Intel Universal), Shadownet review lane  
+**Original review:** skllz (@skullzarmy), against [`b351cccd`](https://github.com/Paulwhoisaghostnet/WTF/commit/b351cccd4b1b5958ab668f2fad22d089672946c4) and the `pasta-review-2026-10-06` unsigned macOS review package
 
----
+**Technical correction:** Nimrod, 2026-10-27, incorporating the discussion in [PR #38](https://github.com/Paulwhoisaghostnet/WTF/pull/38) and the separate implementation in [draft PR #48](https://github.com/Paulwhoisaghostnet/WTF/pull/48)
 
-Paul,
+This document records useful observations and candidate Aleatory patterns without treating a proposal as a verified Pasta implementation. The review target above is a historical snapshot. PR #48 contains later alpha corrections and evidence; neither PR is a production or Mainnet signoff.
 
-I’ve gone through your notes, the review hub in `pasta-protocol/`, the release manifest, and the V3.5 documentation. The packaging hygiene, single-installer Colander experience, and the fail-closed custody model in Macaroni V3.5 are massive leaps forward from the earlier alpha states.
+## Desktop and Macaroni observations
 
-Below is my direct review pass on the desktop suite and Macaroni setup, followed by a set of concrete, battle-tested solutions drawn from the work we’ve been doing on **Aleatory** that directly resolve the open blockers you called out in `KNOWN_ISSUES.md`.
+- **Colander and suite navigation:** The review package exposed Colander and eight tools (including CH-EASE) in one native shell, and the reviewed project drafts survived ordinary restart. Navigation is evidence of reachability, not an end-to-end publishing proof for every tool.
+- **Network boundary:** The October review package still exposed Mainnet while its instructions asked reviewers to use Shadownet. PR #48 enforces Shadownet-only alpha setup in the Suite and standalone Macaroni. Any public candidate needs its UI, Companion, documentation, and contract/network identity to agree.
+- **Companion port:** Suite and standalone Macaroni default to `127.0.0.1:47835` but have different private runtime roots. PR #48 adds an occupied-port diagnostic and a fresh HMAC identity challenge before the Suite forwards its admin token. Running both still requires deliberately separate ports; a health-response shape alone is not identity proof.
+- **First-run custody:** Macaroni V3.5 correctly begins locked. A real setup needs a dedicated revealed/funded finalizer, correct Shadownet RPC and indexer, private state and backup, exact content publishing and public retrieval, and a public HTTPS/CORS arrangement for remote collectors. The fixed amounts in the original review should not be treated as universal funding requirements; the actual contract reserve, signer liquidity, fee plus storage burn, and subsidy must be checked for the chosen project and network. PR #48 proves one installed local-loopback, funded Shadownet path; it does not prove a remotely hosted collector or public managed service.
 
----
+## Aleatory ideas and the Pasta boundaries they would change
 
-## Part 1: Suite Walkthrough & UX Observations
+### Rotini and `ALEATORY-001`
 
-### 1. Colander & General Suite Navigation
-* **Hub & Routing:** Colander booting on `http://127.0.0.1:30770` with all eight tools accessible inside one native shell works seamlessly. Moving from Colander → CH-EASE → Publisher tools is intuitive, and project drafts persist cleanly across app restarts.
-* **Network Guardrails:** While the notes specify Shadownet-only, the network switcher still exposes Mainnet across the tools. I recommend injecting a prominent warning banner or defaulting the desktop environment variable strictly to Shadownet for alpha builds so test keys aren’t accidentally exposed on Mainnet.
-* **Port Conflict:** As noted in your warnings, running standalone Macaroni alongside Pasta Suite causes an unhandled port collision on `47835`. Since Pasta Suite now bundles everything, we should have the shell detect whether `47835` is already bound and display an explicit error modal rather than failing silently.
+The reviewed Rotini path is a dependency-free canvas layer compositor. It pins layers and a JSON generator manifest to IPFS and registers a generator URI; it does **not** inline p5.js into contract storage. Therefore the original `~900 KB` diagnosis and projected `<15 KB`/`~3.5 ꜩ` savings are not measurements of this Pasta artifact. Any cost claim needs an exact candidate build, operation estimate, and network context.
 
-### 2. Macaroni V3.5 First-Run Experience
-* **Fail-Closed State:** Verified that Secure Blind Mint properly remains locked on a fresh install. This is the correct security posture.
-* **Doctor Friction:** The sequence required to satisfy the Companion doctor (RPC disclosures, HTTPS reverse proxy, CORS, finalizer funding floor of `~756,263 mutez`, and private IPFS pinning) is technically rigorous, but a solo creator will find it daunting without interactive CLI tooling or an automated local Docker helper. The error explanations in the UI when the doctor fails are accurate, but they would benefit from actionable inline remediation links.
+Declared libraries, typed parameters, a completion signal, and an isolated script runtime could form a useful **additive script-authoring mode**. They need a versioned manifest, dependency integrity policy, script capability boundary, deterministic input/output tests, and a verified capture lifecycle. If artist-authored scripts run, the proposed isolated origin and sandbox must be implemented and tested; declarations alone do not create that isolation.
 
----
+Full Aleatory lifecycle adoption is a separate contract and product decision. Aleatory's immediate token ownership with pending metadata and provider publication changes when ownership exists and who may complete publication. Current Rotini uses reserve/render/finalize, and Ravioli's Rotini adapter depends on its reservation, minting, release, and deterministic-context behavior. A replacement must preserve those guarantees or explicitly version and migrate them. A mint-operation-hash seed is reproducible but can admit offline grinding; it is not by itself an unbiased randomness guarantee, nor does it remove every failure or recovery state.
 
-## Part 2: Addressing the Open Blockers with Aleatory Standards
+Interface tags are compatibility declarations, not a guarantee that Objkt, Teia, or any other marketplace will index and trade the resulting contract on day one. Check actual contract support, metadata, listing rules, and a real transaction before advertising an integration.
 
-You specifically flagged several unresolved findings in `KNOWN_ISSUES.md`: the unverified state of the wider suite (Rotini in particular), unhandled `manual_review` recovery in Macaroni, and risks around split payouts. We’ve already spent the last few weeks solving these exact challenges in Aleatory (`skullzarmy/aleatory`). 
+### Collaboration attribution and payout splits
 
-Here is how we should apply those solutions directly to Pasta Protocol:
+Aleatory's separate confirmation of public co-creator attribution is a useful consent pattern. Being paid and being named as a creator are distinct decisions. Pasta should apply it only where the actual contract and product want that behavior.
 
-### 1. Rotini: Full Standard Adherence to `ALEATORY-001`
+The earlier proposed “probe and route a reverting payee's share to the administrator so mint always succeeds” guarantee is too strong. An entrypoint-type probe can detect a missing or incompatible destination; a compatible contract can still fail during execution and revert the operation. A pre-origination simulation is useful evidence for the simulated state, not a guarantee about every later payout. The originally stated maximum of eight payees was not established for Pasta; any bound must come from its real contract and measured operation costs.
 
-Rotini has historically suffered from contract bloat, reservation timeouts, zero-mutez transfer bugs, and canvas capture edge cases. Instead of maintaining a separate, bespoke generative engine in Rotini, **Rotini should adopt the `ALEATORY-001` standard in full.**
+Before adding splits, decide who is owed each share, rounding, how a rejecting recipient's claim is preserved or refunded, whether a withdrawal model is needed, and who is authorized to change terms. Redirecting another person's entitlement to an administrator is an economic policy requiring explicit consent, not an automatic safety fix. Verify the relevant payment paths separately for each supported contract.
 
-* **Declared Libraries (`<meta name="alea:library" content="package@version">`):**
-  * *The Problem:* Inlining `p5.js` (~900 KB) bloats contract storage and blows past the 32 KB Tezos operation cap.
-  * *The Fix:* Rotini projects declare dependencies via meta tags. The runtime injects hash-verified libraries into the rendering harness. This shrinks the on-chain generator contract to **`<15 KB`** and drops creator origination costs to `~3.5 ꜩ`.
-* **Static Parameter Extraction (`alea:params`):**
-  * Up to 5 typed artist parameters parsed statically via AST without executing untrusted JavaScript on the studio origin.
-* **Single-Op Deterministic Minting:**
-  * Seed = mint operation hash. The piece is a pure function `f(code, seed, params)`. This completely eliminates Rotini’s fragile multi-step reservation contracts and timing race conditions.
-* **Sandboxed Rendering Boundary:**
-  * Untrusted artist scripts render in a sandboxed iframe on an isolated origin with zero network access, protecting local desktop tokens, keys, and session storage.
-* **Completion Signal (`$alea.ready()`):**
-  * The generator explicitly signals when rendering is complete, preventing blank covers or half-drawn canvas captures.
-* **Ecosystem Interoperability:**
-  * Rotini declaring `interfaces: ["TZIP-012", "TZIP-016", "ALEATORY-001"]` means generators created in Pasta Suite will be immediately indexable and tradeable across Aleatory, Objkt, and Teia from day one.
+### Macaroni parked work and signed-operation recovery
 
----
+The October review identified an operator visibility gap: `manual_review` work could park without a supported inspection/recovery flow. Aleatory's stuck-work and heartbeat patterns are useful references for classifying temporary dependency outages and operator-action states. A universal retry cap or fixed exponential schedule should not be copied without a concrete workload and protocol reason.
 
-### 2. Safe Collaborations & Splits (The Aleatory PR #143 Pattern)
+The critical safety boundary is the exact signed attempt. A timeout, restart, or changed FIFO/arm precondition cannot establish that the signed bytes failed on-chain. The signer-wide guard must remain until exact inclusion/finalized failure or protocol-derived branch expiry plus canonical absence allows a linked replacement with the same committed allocation. An operator action must not reroll or create an overlapping settlement. PR #48 implements bearer-protected attention/list/retry routes, native Studio recovery controls, and those chain-evidence checks. The [Companion backup/recovery contract](../companion/macaroni-v35/BACKUP_RECOVERY.md) remains the source for retained signed bytes and private state.
 
-Across Spaghetti, Gnocchi, Rotini, and Macaroni, revenue splits introduce critical vulnerabilities: an unpayable `KT1` recipient can brick the entire mint operation, and deployers can spoof co-authorship.
+### Studio preflight and read resilience
 
-We should port Aleatory’s collaboration pattern (from PR #143):
-1. **Probe-and-Route-to-Admin Fallback:**
-   * In on-chain mint splits (`collab.shares`, max 8 recipients), the contract probes each recipient. If an address reverts or cannot receive tez, **its share plus any division remainder automatically routes to the contract administrator.** The mint always succeeds; the edition never bricks.
-2. **Attribution vs. Money Separation:**
-   * Being named in `collab.shares` pays out immediately from mint #1.
-   * However, appearing in the public TZIP-21 `creators` metadata array requires an explicit `accept_collaboration()` on-chain call (`collab.confirmed`). This prevents deployers from riding the reputation of artists who never consented.
-3. **Pre-Origination Payable Simulation:**
-   * CH-EASE and studio deploy forms must dry-run every `KT1` recipient via `run_operation` to ensure its `default` entrypoint accepts plain transfers before allowing origination.
+Preview and validate the actual output before an irreversible wallet step. A missing capture, incomplete frame, absent declared dependency, or failed finish signal is a meaningful error for a script mode. A blanket “black image is invalid” rule would reject intentional artwork; capture health and artistic content must be distinguished. An acknowledgement can explain permanence, but must not be treated as proof the renderer or contract is correct.
 
----
+Coalesce duplicate reads where this improves observed RPC/indexer load. A last-known-good cache may keep a **clearly marked stale display** visible during an outage. Purchases, contract binding, custody changes, finalizer recovery, and new signing still require fresh evidence from their workflow. A stale cache must not make an unavailable dependency look ready or invite a collector to purchase again while their first operation is unresolved.
 
-### 3. Resolving the Macaroni V3.5 `manual_review` Recovery Blocker
+## Unbundled infrastructure providers
 
-Your primary blocker in Macaroni V3.5 is:
-> *"manual_review work has no supported operator list/inspect/recovery route. Some failure paths retry indefinitely."*
+A publisher should be able to self-run, use a private/allowlisted operator, buy specialist services, or combine these choices. An all-purpose provider remains a valid convenience bundle. Access policy (public versus private provider) and capability (pinning versus storage versus signing) are independent axes.
 
-Aleatory’s provider service (`provider/stuck.mts`, `provider/retry.mts`, `provider/heartbeat.ts`) solves this exact architecture:
-* **Heartbeat & Stuck Detection:** Differentiate between transient network drops and terminal precondition failures.
-* **Bounded Exponential Backoff:** End the indefinite retry loop by capping retry attempts and recording a terminal stalled state.
-* **Operator Rescue Endpoint:** Add `GET /v1/admin/projects/{dropRef}/stuck-claims` and a guarded `POST .../reconcile` route to the Companion Admin API. This gives operators a safe, cryptographically validated inspection and recovery path without manually hacking the SQLite journal.
+The [detailed proposal in PR #38](https://github.com/Paulwhoisaghostnet/WTF/pull/38#issuecomment-6161094527) maps private asset and CID/manifest custody, public pinning, gateways, media preparation, rendering, RPC/observation, durable execution, scoped signing, public APIs, hosting, backup, and monitoring to each Pasta tool. Start with concrete capability and agreement schemas and local reference adapters. Each offer needs its actual network/version, pricing unit, duration, permissions, completion evidence, and exit/recovery process. A pinning-only service needs no renderer or finalizer key. A private allowlist does not encrypt assets, and a CID proves content identity rather than retention. Native multi-provider payment or authorization may require a versioned contract change; metadata descriptions do not confer it on an existing collection.
 
----
+## Release disposition and next steps
 
-## Part 4: Studio Preflight Guardrails & Canvas Verification
+PR #48 corrects the alpha Macaroni recovery and desktop boundaries above. Its funded installed-app proof covers one paid, immediate-release, single-edition Shadownet drop using an explicit same-device loopback collector. Its clean-source Universal macOS packages pass installed-artifact smoke and the integrated quality workflow passes, but the local packages are unsigned/unnotarized. Remote HTTPS/CORS, other sale modes, larger workload evidence, backup/restore and operator migration rehearsal, production managed configuration, and Mainnet remain outside that proof. The [current known-issues record](KNOWN_ISSUES.md) distinguishes these boundaries.
 
-From our recent studio releases in Aleatory (`3e68c13`, `5656c6b`, `984ed85`):
-* **Black/Empty Canvas Detector:** Intercept cover capture and read pixel buffers. If an image is blank (e.g., missing WebGL `preserveDrawingBuffer: true`), block the publish flow before bad metadata is pinned.
-* **Preflight Modal:** Enforce determinism, finish signal emission, and network isolation checks as a hard gate before the wallet origination prompt.
-* **Permanent Action Acknowledgement:** Explicit checkbox requiring the creator to confirm: *"I have verified the cover image and understand it cannot be changed after deploy."*
+Recommended sequence:
 
----
+1. Integrate and review the concrete alpha corrections in PR #48 on the review branch; keep the release labeled as a controlled Shadownet alpha.
+2. Choose the exact supported tool/mode/platform matrix. Prove each advertised complete user outcome against its matching source and contract artifacts, including the retained Ravioli/Rotini/Gnocchi proof and payment/recovery findings. Keep unverified tools visibly preview or unavailable.
+3. Exercise the remotely hosted collector, backup/restore and custody handoff, service capacity/funding, public status, and failure recovery for any managed Macaroni offer. Prepare signed/notarized packages for public macOS distribution and verify the exact distributed bytes.
+4. Specify specialist provider offers and local/self-run adapters in parallel, without making a full marketplace or a Rotini lifecycle migration a prerequisite for a narrower verified release.
+5. Promote to Mainnet and production only after the supported release candidate, its operational dependencies, contracts, installed artifacts, and public site pass their applicable end-to-end and recovery checks.
 
-## Part 5: Indexer Resilience & Caching (The `LastGood` Pattern)
-
-Past Pasta Protocol test sessions revealed that Colander and exported static sites frequently stalled or displayed empty states when public Shadownet RPCs or TzKT indexers lagged.
-
-### The Solution:
-Adopt Aleatory's multi-tiered caching and graceful degradation model (`ea33c16`, `201b8ba`, `17ad55f`):
-* **In-Flight Promise Coalescing:** De-duplicate identical RPC/TzKT calls made across concurrent component renders.
-* **`LastGood` State Container:** When an indexer query fails or times out, serve the last verified cached state alongside a non-blocking background retry indicator (`ReadFailed`), preventing blank screens or hard error boundaries.
-* **Portable Export Hardening:** Ship the `LastGood` stale-while-revalidate pattern directly inside the standalone exported collector sites.
-
----
-
-## Next Steps
-
-1. **Rotini Spec Alignment:** I can draft the SmartPy updates to bring Rotini into 100% compliance with `ALEATORY-001`.
-2. **Macaroni Stuck Queue:** I can map Aleatory's `stuck.mts` logic directly into `companion/macaroni-v35/src/fulfillment.mjs` to close the `manual_review` bounty.
-3. **Collab Split Module:** We can extract the probe-and-route split logic into a shared SmartPy library across the suite.
-
-Let me know which of these three you’d like me to wire up first.
+The detailed [production-readiness issue list](https://github.com/Paulwhoisaghostnet/WTF/pull/38#issuecomment-6207562076) and [subsequent implementation handoff](https://github.com/Paulwhoisaghostnet/WTF/pull/38#issuecomment-6460063149) provide the per-tool and release evidence behind this disposition.
