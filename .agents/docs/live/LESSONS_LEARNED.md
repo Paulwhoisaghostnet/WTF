@@ -12821,3 +12821,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Local Mac results were green, but the required GitHub quality job could not reach its unit, typecheck, build, and inventory checks because the runner image changed underneath it.
 
 **Rule**: Pin browser-bearing CI jobs to an OS version supported by the repository's installed Playwright release. Read the exact failed CI step before changing application code for a red quality job.
+
+---
+
+## 2026-10-27 — Prepare copied desktop sources before parity tests in CI
+
+**What happened**: The GitHub quality job reached unit tests on the supported Ubuntu runner, but four tests failed because a fresh checkout lacked generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` copies. The local checkout had those files from earlier desktop packaging, so local unit tests passed.
+
+**Why it mattered**: The unit job depended on ignored build outputs that were not created in its own workflow, hiding a CI-only failure behind a green local suite.
+
+**Rule**: If a test asserts packaged desktop parity, run the application's existing asset preparation script in that test job before the suite. Keep source allowlist and package policy enforcement in the preparation step.

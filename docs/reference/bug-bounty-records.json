@@ -11099,6 +11099,21 @@
       "securityDanger": 0,
       "title": "Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner",
       "body": "- Evidence:\n  - Both PR #48 quality jobs pass the root production audit, supply-chain, public-release, Docker-context, environment, and bounty gates but fail at `npx playwright install --with-deps chromium`. GitHub's ubuntu-latest runner now identifies as ubuntu26.04-x64; Playwright 1.59.1 says it does not support Chromium there.\n- Likely correction:\n  - Pin the browser-bearing quality job to an Ubuntu release supported by this repository's installed Playwright version, then rerun the PR quality job.\n- Verification idea:\n  - The PR quality job installs Chromium and completes unit, typecheck, build, inventory, and link gates on the pinned runner.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-676; current main uses that ID for a separate finding."
+    },
+    {
+      "id": "WTF-BB-731",
+      "status": "Claimed",
+      "owner": "Codex Pasta alpha remaining release gates",
+      "lastTouched": "2026-10-27",
+      "category": "CI / desktop unit fixture preparation",
+      "priority": "P1",
+      "points": 8,
+      "rank": 577,
+      "complexity": 1,
+      "functionalityDanger": 3,
+      "securityDanger": 0,
+      "title": "Quality job runs desktop parity tests before copying generated desktop assets",
+      "body": "- Evidence:\n  - After the Playwright runner fix, PR #48 quality CI reached aggregate unit tests and failed four tests because `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` were absent in a fresh checkout. The same tests passed locally after the installer preparation scripts had generated those directories.\n- Likely correction:\n  - Run the existing Macaroni and Suite `prepare` scripts before aggregate unit tests, preserving the established Git-tracked source allowlist.\n- Verification idea:\n  - The quality job executes both prepare steps and completes its aggregate unit suite, then typecheck, build, inventory, and link gates.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-677; current main uses that ID for a separate finding."
     }
   ]
 }
