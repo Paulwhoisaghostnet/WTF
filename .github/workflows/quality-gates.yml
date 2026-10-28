@@ -10,7 +10,8 @@ on:
 jobs:
   app-quality:
     name: Unit / Audit / Typecheck / Build / Inventory
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 cannot install Chromium on the ubuntu26.04 latest image.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5

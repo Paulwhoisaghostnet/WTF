@@ -11084,6 +11084,21 @@
       "securityDanger": 1,
       "title": "Privacy-preserving Objkt full scan hits a live 429 rate limit and blocks sale activation",
       "body": "- Evidence:\n  - Installed alpha reached sale activation after applied origination, inventory, stages, setup lock, and reserve funding. The duplicate-CID preflight returned `duplicate_check_unavailable`.\n  - The configured Objkt Shadownet GraphQL endpoint serves only 500 rows even when 1,000 are requested and returns HTTP 429 with an HTML body after about 40 pages in a rapid full scan. The current scanner makes back-to-back requests and treats the first 429 as terminal.\n- Likely correction:\n  - Pace the public-only scan based on the observed provider rate limit and honor Retry-After on 429 while preserving the private-CID boundary; never send target CIDs in GraphQL variables.\n- Verification idea:\n  - Fixture a 429 between pages and prove the scan resumes at the same cursor with no target CID in requests; then complete the live installed preflight and activate the sale.\n- Verification (2026-10-27): The unit fixture proves an HTTP 429 resumes at the same public cursor without transmitting private target CIDs. The installed Companion completed the live Shadownet Objkt scan, armed fulfillment, activated the sale, and settled a funded buyer claim to nft_ready. The scan took roughly ten minutes; larger-index performance remains an operational limitation.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch record WTF-BB-675; current main already used that ID for a separate finding."
+    },
+    {
+      "id": "WTF-BB-730",
+      "status": "Claimed",
+      "owner": "Codex Pasta alpha remaining release gates",
+      "lastTouched": "2026-10-27",
+      "category": "CI / Playwright runner compatibility",
+      "priority": "P1",
+      "points": 8,
+      "rank": 577,
+      "complexity": 1,
+      "functionalityDanger": 3,
+      "securityDanger": 0,
+      "title": "Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner",
+      "body": "- Evidence:\n  - Both PR #48 quality jobs pass the root production audit, supply-chain, public-release, Docker-context, environment, and bounty gates but fail at `npx playwright install --with-deps chromium`. GitHub's ubuntu-latest runner now identifies as ubuntu26.04-x64; Playwright 1.59.1 says it does not support Chromium there.\n- Likely correction:\n  - Pin the browser-bearing quality job to an Ubuntu release supported by this repository's installed Playwright version, then rerun the PR quality job.\n- Verification idea:\n  - The PR quality job installs Chromium and completes unit, typecheck, build, inventory, and link gates on the pinned runner.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-676; current main uses that ID for a separate finding."
     }
   ]
 }
