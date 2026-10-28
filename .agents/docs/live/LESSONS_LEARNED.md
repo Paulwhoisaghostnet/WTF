@@ -12623,3 +12623,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A layout fix can look correct in the source package while the actual embedded game still serves old markup or styles. On iPad, that hid part of the battlefield and made the screen feel crowded.
 
 **Rule**: Place status and action controls in one measured compact grid row, verify through the host's built static game route, and refresh host output before browser checks. Keep the arena as the remaining flexible viewport; treat the equipment toggle as a clearly named tool icon, not an ambiguous decorative symbol.
+
+## 2026-10-28 — Security follow-ups must bind findings to the deployed source and library
+
+**What happened**: A security recheck initially reused an older Electron baseline from prior work. Fresh main and published asset evidence showed 43.8.3, and inspecting its build linkage showed Chromium supplies Brotli with the security correction despite older Node/Brotli version strings. The separate signer still loaded its own old Zod even though the main app was patched.
+
+**Rule**: Freeze the audited live commit, match published artifacts to runtime receipts, and inspect actual independent service dependencies. Resolve native-library linkage and vendor backports before assigning a CVE from a version string. Keep newly indexed advisories and newly discovered older gaps distinct from new disclosures, and never use a Debian fixed revision to infer Ubuntu status.

@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-28T04:03:16.871828+00:00",
+  "scope": "Read-only validation of existing live package evidence supplied by parent; no new live probes or mutations.",
+  "installedPackage": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+  "liveServiceEvidence": "Parent confirmed active Dovecot IMAP+LMTP and public25/587/993. Delivery plus later IMAP parsing matches the advisory path. SMTP25/587 are delivery context, not asserted to be Dovecot listeners.",
+  "cve": "CVE-2026-27852",
+  "publishedPublic": "2026-08-28",
+  "vendorInitialRelease": "2026-08-26",
+  "classification": "Older disclosure, newly relevant confirmed package exposure; availability risk.",
+  "vendorAffectedCommunityRange": ">=2.3.0 <2.4.5",
+  "vendorFixedCommunity": "2.4.5",
+  "vendorFixedPro": [
+    "2.3.22.2",
+    "3.0.7",
+    "3.1.6"
+  ],
+  "debian": {
+    "bookwormCurrentListed": "1:2.3.19.1+dfsg1-2.1+deb12u6",
+    "bookwormCurrentStatus": "vulnerable",
+    "bookwormFixedFloor": null,
+    "trixieFixedFloor": "1:2.4.1+dfsg1-6+deb13u7",
+    "unstableFixedFloor": "1:2.4.5+dfsg1-1",
+    "advisory": "DSA-6526-1"
+  },
+  "prerequisite": "Attacker can deliver mail to a user; message headers contain very many email addresses or MIME parameters, and Dovecot later parses it over IMAP. No attacker mailbox credentials required by this CVE.",
+  "impact": "Memory exhaustion terminates the IMAP process, denying service for the affected user; this CVE is not a demonstrated remote-code-execution issue.",
+  "vendorExploitStatus": "Vendor advisory reports no publicly available exploits known; no fresh exploitation validation was performed.",
+  "priorityJudgment": "Lead confirmed operational exposures because an active mail service and public mail delivery match the unauthenticated message-input path. Keep separate from new-this-week announcements and from condition-dependent desktop API issues.",
+  "remediationCaveat": "Updating to bookworm deb12u6 alone does not close this CVE according to the current Debian tracker. Need a vendor-supported package carrying the complete fix, or an explicitly verified backport; do not silently treat Dovecot Pro2.3.22.2 as a Debian CE package floor.",
+  "sources": [
+    "https://documentation.open-xchange.com/dovecot/security/advisories/html/2026/oxdc-adv-2026-0003.html#cve-2026-27852-dos-by-sending-mail-with-bad-header",
+    "https://documentation.open-xchange.com/dovecot/security/advisories/csaf/2026/oxdc-adv-2026-0003.json",
+    "https://security-tracker.debian.org/tracker/CVE-2026-27852"
+  ]
+}

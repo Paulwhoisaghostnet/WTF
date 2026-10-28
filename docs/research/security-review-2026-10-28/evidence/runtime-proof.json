@@ -1,0 +1,431 @@
+{
+  "schema": "wtfos.security.runtime-proof.v1",
+  "reviewDate": "2026-10-27 America/New_York (collection continued into October28 UTC)",
+  "assembledAt": "2026-10-28T04:02:52.101702+00:00",
+  "method": "Read-only SSH through existing project wrapper; selected Docker/runtime/package configuration reads; public health requests; current GitHub release metadata compared with retained October22 installer runtime attestations. Assembled from already-fetched evidence. No environment dumps, secret values, account addresses, or mutations included.",
+  "auditTimestamps": {
+    "mainRuntime": "2026-10-28T03:56:07.695364+00:00",
+    "atRuntime": "2026-10-28T03:56:11.459671+00:00",
+    "atSupplement": "2026-10-28T03:57:51.660543+00:00",
+    "mailConfiguration": "2026-10-28T03:59:00.152753+00:00",
+    "publicHealth": "2026-10-28T03:58:44.516343+00:00",
+    "desktopComparison": "2026-10-28T03:58:44.520120+00:00"
+  },
+  "relay": {
+    "container": "wtf-app-wtfos-atproto-relay-1",
+    "imageId": "sha256:c85010e668ee9323d4b171391d1181ad4e55ffce706b795424c68d756052ba37",
+    "startedAt": "2026-10-22T19:58:28.14040131Z",
+    "binary": "/relay",
+    "proofMethod": "Go build information embedded in the deployed /relay executable, read with strings; paired with running container image ID.",
+    "goVersion": "go1.26.10",
+    "module": [
+      "github.com/bluesky-social/indigo",
+      "v0.0.0-20260529183052-5368f55344e0",
+      ""
+    ],
+    "revision": "5368f55344e0b5e203ab4d9501e1ddebd9983ad7",
+    "modified": "false"
+  },
+  "caddy": [
+    {
+      "host": "main",
+      "container": "wtf-app-caddy-1",
+      "imageId": "sha256:c60d8dde6ce078c4bf489e172b15ed4ebab37b3d24d0a03485c7823bc1703935",
+      "goVersion": "go1.26.10",
+      "caddyModule": "v2.11.7"
+    },
+    {
+      "host": "at",
+      "container": "wtfos-edge-caddy",
+      "imageId": "sha256:c0d4fc9f0ea31ec05e076f666d9f268df2ccc9812b9a3a08d6f97e852b3e437b",
+      "goVersion": "go1.26.10",
+      "caddyModule": "v2.11.7"
+    }
+  ],
+  "node": [
+    {
+      "host": "main",
+      "container": "wtf-app-app-1",
+      "imageId": "sha256:3a3250a64360da05b6ea19410ec3369447de9d2f24be3f378754a75d1acb9a61",
+      "node": "22.23.4",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-plc-1",
+      "imageId": "sha256:3f9836d53aa00880ba3d251156f26af845a7f0ba34c7998c0efe8e89970a54d3",
+      "node": "22.23.4",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-social-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-users-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-private-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-os-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-ops-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-media-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-commerce-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-tezos-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-pds-arcade-1",
+      "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+      "node": "24.22.1",
+      "execPath": "/usr/local/bin/node"
+    }
+  ],
+  "postgres": [
+    {
+      "host": "main",
+      "container": "wtf-app-postgres-1",
+      "imageId": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "serverVersion": "16.14",
+      "clientVersion": "psql (PostgreSQL) 16.14",
+      "proofMethod": "SHOW server_version via local psql; psql --version"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-relay-db-1",
+      "imageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "serverVersion": "16.14",
+      "clientVersion": "psql (PostgreSQL) 16.14",
+      "proofMethod": "SHOW server_version via local psql; psql --version"
+    },
+    {
+      "host": "at",
+      "container": "wtf-app-wtfos-plc-db-1",
+      "imageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "serverVersion": "16.14",
+      "clientVersion": "psql (PostgreSQL) 16.14",
+      "proofMethod": "SHOW server_version via local psql; psql --version"
+    }
+  ],
+  "mail": {
+    "container": "wtfos-mailserver",
+    "imageRef": "ghcr.io/docker-mailserver/docker-mailserver:latest",
+    "imageId": "sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a",
+    "imageVersion": "v15.1.0",
+    "startedAt": "2026-09-27T12:31:55.676549879Z",
+    "installedPackages": {
+      "dovecot-auth-lua": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-core": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-fts-xapian-1.9": "1.9",
+      "dovecot-fts-xapian-1.9-dbgsym": "1.9",
+      "dovecot-imapd": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-ldap": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-lmtpd": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-managesieved": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-pop3d": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "dovecot-sieve": "1:2.3.19.1+dfsg1-2.1+deb12u1",
+      "postfix": "3.7.11-0+deb12u1",
+      "postfix-ldap": "3.7.11-0+deb12u1",
+      "postfix-mta-sts-resolver": "1.1.2-1.1",
+      "postfix-pcre": "3.7.11-0+deb12u1",
+      "postfix-policyd-spf-python": "3.0.4-2",
+      "curl": "7.88.1-10+deb12u12",
+      "libbrotli1": "1.0.9-2+b6",
+      "libcurl4": "7.88.1-10+deb12u12",
+      "libssl3": "3.0.17-1~deb12u2",
+      "openssl": "3.0.17-1~deb12u2",
+      "redis-server": "5:7.0.15-1~deb12u5",
+      "redis-tools": "5:7.0.15-1~deb12u5"
+    },
+    "runtimeVersions": {
+      "postfix": "3.7.11",
+      "dovecot": "2.3.19.1 (9b53102964)",
+      "openssl": "OpenSSL 3.0.17 1 Jul 2025 (Library: OpenSSL 3.0.17 1 Jul 2025)"
+    },
+    "selectedDovecotConfiguration": {
+      "protocols": " imap lmtp",
+      "mail_max_userip_connections": "10"
+    },
+    "selectedPostfixConfiguration": {
+      "virtual_transport": "lmtp:unix:/var/run/dovecot/lmtp",
+      "mailbox_transport": ""
+    },
+    "publicPortBindings": {
+      "25/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "25"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "25"
+        }
+      ],
+      "587/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "587"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "587"
+        }
+      ],
+      "993/tcp": [
+        {
+          "HostIp": "0.0.0.0",
+          "HostPort": "993"
+        },
+        {
+          "HostIp": "::",
+          "HostPort": "993"
+        }
+      ]
+    },
+    "brotliCaveat": "Mail curl links libbrotlidec/libbrotlicommon. smtpd and dovecot ldd output did not show them; no active AT-host process mapping showed libbrotli at observation time. This does not establish an attacker-controlled decoder path.",
+    "redisInstalledButNotObservedRunning": true
+  },
+  "publicHealth": {
+    "client": "curl",
+    "checks": [
+      {
+        "url": "https://wtfos.app/api/health",
+        "status": 200,
+        "body": {
+          "status": "alive",
+          "ok": true,
+          "service": "wtf-gameshow-api",
+          "version": {
+            "packageVersion": "1.0.0",
+            "commitRef": "0b7b02b2"
+          },
+          "timestamp": "2026-10-28T03:58:43.787Z"
+        }
+      },
+      {
+        "url": "https://wtfos.app/api/health/ready",
+        "status": 200,
+        "body": {
+          "status": "ready",
+          "ok": true,
+          "service": "wtf-gameshow-api",
+          "version": {
+            "packageVersion": "1.0.0",
+            "commitRef": "0b7b02b2",
+            "nodeEnv": "production"
+          },
+          "checks": {
+            "db": true,
+            "chain": true,
+            "jobs": true,
+            "jobIssues": 0
+          },
+          "timestamp": "2026-10-28T03:58:43.941Z"
+        }
+      },
+      {
+        "url": "https://plc.wtfos.me/_health",
+        "status": 200,
+        "body": {
+          "version": "0.0.0"
+        }
+      },
+      {
+        "url": "https://relay.wtfos.me/xrpc/_health",
+        "status": 200,
+        "body": {
+          "status": "ok"
+        }
+      }
+    ]
+  },
+  "desktop": {
+    "allMatch": true,
+    "applicationCount": 9,
+    "platformAssetCount": 27,
+    "publishedRuntimeFromOctober22Attestation": {
+      "electron": "43.8.3",
+      "node": "24.22.0",
+      "chrome": "150.0.7871.250"
+    },
+    "method": "Read public installer values from running app container only; compare current GitHub release asset IDs, sizes, SHA256 digests with October22 published and CI runtime receipts. No binary re-execution today.",
+    "applications": [
+      {
+        "app": "pasta-suite",
+        "tag": "pasta-suite-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666971862,
+          666971861,
+          666971865
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "ch-ease",
+        "tag": "ch-ease-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666933127,
+          666933131,
+          666933129
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "macaroni",
+        "tag": "macaroni-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666965490,
+          666965587,
+          666965493
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "spaghetti",
+        "tag": "spaghetti-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666953288,
+          666953294,
+          666953291
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "gnocchi",
+        "tag": "gnocchi-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666950922,
+          666950923,
+          666950921
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "ravioli",
+        "tag": "ravioli-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666951771,
+          666951768,
+          666951774
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "rotini",
+        "tag": "rotini-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666957546,
+          666957549,
+          666957552
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "penne",
+        "tag": "penne-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666971944,
+          666971943,
+          666971949
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      },
+      {
+        "app": "lasagna",
+        "tag": "lasagna-desktop-v1.0.1-alpha.2",
+        "activeVersion": "1.0.1-alpha.2",
+        "releaseIdUnchanged": true,
+        "assetIds": [
+          666957318,
+          666957323,
+          666957321
+        ],
+        "allAssetIdsSizesAndDigestsMatch": true,
+        "allActiveUrlsAndChecksumsMatch": true
+      }
+    ]
+  },
+  "signer": {
+    "zod": {
+      "/opt/wtf-operator-signer/node_modules/zod/package.json": "4.3.6",
+      "/opt/wtf-operator-signer/package-lock.json": "4.3.6"
+    },
+    "bundle": {
+      "path": "/opt/wtf-operator-signer/dist/index.cjs",
+      "sha256": "7d3e88ca8ebcf8972c28677e3c8c67ed948aa06237747a295f3bcbbb62a49b4c",
+      "size": 45813
+    },
+    "scope": "Separate active native Unix-socket service; Node22.23.4. Local dependency deployment differs from patched root-app Zod4.6.7."
+  }
+}

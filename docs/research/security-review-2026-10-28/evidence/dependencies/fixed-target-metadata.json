@@ -1,0 +1,83 @@
+[
+  {
+    "name": "qs",
+    "version": "6.16.1",
+    "exists": true,
+    "published": "2026-10-14T22:06:17.002Z",
+    "engines": {
+      "node": ">=0.6"
+    },
+    "latest": "6.17.0"
+  },
+  {
+    "name": "zod",
+    "version": "4.6.6",
+    "exists": true,
+    "published": "2026-10-11T16:18:23.878Z",
+    "latest": "4.6.7"
+  },
+  {
+    "name": "zod",
+    "version": "4.6.7",
+    "exists": true,
+    "published": "2026-10-12T16:29:37.778Z",
+    "latest": "4.6.7"
+  },
+  {
+    "name": "fast-uri",
+    "version": "3.1.9",
+    "exists": true,
+    "published": "2026-10-19T23:05:26.357Z",
+    "latest": "4.2.3"
+  },
+  {
+    "name": "vite",
+    "version": "8.1.6",
+    "exists": true,
+    "published": "2026-10-06T04:51:51.393Z",
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "latest": "8.3.5"
+  },
+  {
+    "name": "vite",
+    "version": "8.3.5",
+    "exists": true,
+    "published": "2026-10-21T06:38:54.907Z",
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "latest": "8.3.5"
+  },
+  {
+    "name": "next",
+    "version": "15.5.28",
+    "exists": true,
+    "published": "2026-10-14T17:36:08.917Z",
+    "engines": {
+      "node": "^18.18.0 || ^19.8.0 || >= 20.0.0"
+    },
+    "latest": "16.4.3"
+  },
+  {
+    "name": "esbuild",
+    "version": "0.28.1",
+    "exists": true,
+    "published": "2026-06-11T22:47:05.085Z",
+    "engines": {
+      "node": ">=18"
+    },
+    "latest": "0.28.2"
+  },
+  {
+    "name": "sharp",
+    "version": "0.35.5",
+    "exists": true,
+    "published": "2026-09-27T13:46:24.509Z",
+    "engines": {
+      "node": ">=20.9.0"
+    },
+    "latest": "0.35.5"
+  }
+]

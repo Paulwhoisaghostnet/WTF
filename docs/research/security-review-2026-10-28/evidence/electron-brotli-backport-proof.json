@@ -1,0 +1,81 @@
+{
+  "checkedAt": "2026-10-28T03:59:21.126597+00:00",
+  "issue": "CVE-2026-111497",
+  "upstreamSecurityRelease": "https://github.com/google/brotli/releases/tag/v1.2.1",
+  "upstreamFixDiff": "https://github.com/google/brotli/compare/v1.2.0...v1.2.1",
+  "electronBuildSource": "https://raw.githubusercontent.com/electron/electron/v43.8.3/patches/node/build_add_gn_build_files.patch",
+  "linkage": "Electron GN build removes Node deps/brotli and links Chromium third_party/brotli dec/enc.",
+  "finding": "Electron43.8.3, the current audited main source, and new43.8.4/44.10.0/45.1.0 Chromium decoder sources are byte-identical and contain permanent block-switch error propagation from the upstream security fix. Version strings1.2.0 and Node24.22.0 alone do not establish CVE-2026-111497 exposure. This is source evidence, not a malicious-input exploit test.",
+  "versions": [
+    {
+      "electron": "v43.8.3",
+      "node": "v24.22.0",
+      "chromium": "150.0.7871.250",
+      "depsSource": "https://raw.githubusercontent.com/electron/electron/v43.8.3/DEPS",
+      "brotliDecoderSource": "https://raw.githubusercontent.com/chromium/chromium/150.0.7871.250/third_party/brotli/dec/decode.c",
+      "decoderSha256": "d48bc54c60553238d50db2fcd606522efd447d33a37d6a2d5c2ea1ece22067c3",
+      "chromiumBrotliLinkageProven": true,
+      "upstreamSecurityFixChecks": {
+        "typedBlockResult": true,
+        "invalidBlockReturnsError": true,
+        "statusMacro": true,
+        "CommandStatusPropagation": true,
+        "DistanceStatusPropagation": true,
+        "LiteralStatusPropagation": true
+      }
+    },
+    {
+      "electron": "v43.8.4",
+      "node": "v24.22.1",
+      "chromium": "150.0.7871.250",
+      "depsSource": "https://github.com/electron/electron/blob/v43.8.4/DEPS",
+      "brotliDecoderSource": "https://raw.githubusercontent.com/chromium/chromium/150.0.7871.250/third_party/brotli/dec/decode.c",
+      "decoderSha256": "d48bc54c60553238d50db2fcd606522efd447d33a37d6a2d5c2ea1ece22067c3",
+      "upstreamSecurityFixChecks": {
+        "typedBlockResult": true,
+        "invalidBlockReturnsError": true,
+        "statusMacro": true,
+        "CommandStatusPropagation": true,
+        "DistanceStatusPropagation": true,
+        "LiteralStatusPropagation": true
+      }
+    },
+    {
+      "electron": "v44.10.0",
+      "node": "v24.22.1",
+      "chromium": "152.0.7977.169",
+      "depsSource": "https://github.com/electron/electron/blob/v44.10.0/DEPS",
+      "brotliDecoderSource": "https://raw.githubusercontent.com/chromium/chromium/152.0.7977.169/third_party/brotli/dec/decode.c",
+      "decoderSha256": "d48bc54c60553238d50db2fcd606522efd447d33a37d6a2d5c2ea1ece22067c3",
+      "upstreamSecurityFixChecks": {
+        "typedBlockResult": true,
+        "invalidBlockReturnsError": true,
+        "statusMacro": true,
+        "CommandStatusPropagation": true,
+        "DistanceStatusPropagation": true,
+        "LiteralStatusPropagation": true
+      }
+    },
+    {
+      "electron": "v45.1.0",
+      "node": "v24.22.1",
+      "chromium": "156.0.8078.49",
+      "depsSource": "https://github.com/electron/electron/blob/v45.1.0/DEPS",
+      "brotliDecoderSource": "https://raw.githubusercontent.com/chromium/chromium/156.0.8078.49/third_party/brotli/dec/decode.c",
+      "decoderSha256": "d48bc54c60553238d50db2fcd606522efd447d33a37d6a2d5c2ea1ece22067c3",
+      "upstreamSecurityFixChecks": {
+        "typedBlockResult": true,
+        "invalidBlockReturnsError": true,
+        "statusMacro": true,
+        "CommandStatusPropagation": true,
+        "DistanceStatusPropagation": true,
+        "LiteralStatusPropagation": true
+      }
+    }
+  ],
+  "currentAuditedSource": {
+    "commit": "0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4",
+    "worktree": "/Users/joshuafarnworth/.codex/worktrees/october-security-remediation/WTF",
+    "electron": "43.8.3"
+  }
+}
