@@ -1,0 +1,38 @@
+{
+  "before": {
+    "capturedAt": "2026-10-28T04:30:10.978Z",
+    "active": "active",
+    "pid": "2800553",
+    "node": "v22.23.4",
+    "zod": "4.3.6",
+    "taquito": "24.3.0",
+    "bundleSha256": "7d3e88ca8ebcf8972c28677e3c8c67ed948aa06237747a295f3bcbbb62a49b4c",
+    "walletCount": 7,
+    "walletsSha256": "e75b4bf73381ed52b569454bec87d931ca40b70ea1df64ba4de299941fc50da9",
+    "keyringConfigured": true,
+    "authorizedHealth": true,
+    "invalidToken": "INVALID_AUTH",
+    "socketMode": "660",
+    "chainWrites": 0
+  },
+  "after": {
+    "capturedAt": "2026-10-28T04:30:11.497Z",
+    "active": "active",
+    "pid": "2484839",
+    "node": "v22.23.4",
+    "zod": "4.6.7",
+    "taquito": "24.3.0",
+    "bundleSha256": "7d3e88ca8ebcf8972c28677e3c8c67ed948aa06237747a295f3bcbbb62a49b4c",
+    "walletCount": 7,
+    "walletsSha256": "e75b4bf73381ed52b569454bec87d931ca40b70ea1df64ba4de299941fc50da9",
+    "keyringConfigured": true,
+    "authorizedHealth": true,
+    "invalidToken": "INVALID_AUTH",
+    "socketMode": "660",
+    "chainWrites": 0
+  },
+  "unchangedDependencyVersionsExceptZod": true,
+  "gracefulStop": true,
+  "rollbackDirectory": "/opt/wtf-operator-signer-pre-security-20261028",
+  "chainWrites": 0
+}

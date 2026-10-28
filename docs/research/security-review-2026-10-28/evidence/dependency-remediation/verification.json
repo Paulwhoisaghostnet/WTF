@@ -1,0 +1,84 @@
+{
+  "node": "22.23.4",
+  "sourceLockChanges": {
+    "package-lock.json": {
+      "changes": [
+        {
+          "path": "node_modules/@playwright/test",
+          "before": "1.59.1",
+          "after": "1.64.1"
+        },
+        {
+          "path": "node_modules/playwright",
+          "before": "1.59.1",
+          "after": "1.64.1"
+        },
+        {
+          "path": "node_modules/playwright-core",
+          "before": "1.59.1",
+          "after": "1.64.1"
+        },
+        {
+          "path": "node_modules/qs",
+          "before": "6.16.0",
+          "after": "6.16.1"
+        }
+      ],
+      "removed": [
+        "node_modules/playwright/node_modules/fsevents"
+      ]
+    },
+    "extensions/wtf-operator-signer/package-lock.json": {
+      "changes": [
+        {
+          "path": "node_modules/zod",
+          "before": "4.3.6",
+          "after": "4.6.7"
+        }
+      ],
+      "removed": []
+    }
+  },
+  "noDependencyDowngrades": true,
+  "rootCleanInstall": "passed",
+  "signerCleanInstall": "passed",
+  "rootBuild": "passed",
+  "rootTypecheck": "passed using existing CI NODE_OPTIONS=--max-old-space-size=6144; default local heap exhausted",
+  "signerUnitTests": {
+    "passed": 20,
+    "failed": 0
+  },
+  "signerTypecheck": "passed",
+  "signerBuild": "passed",
+  "actualExternalZodRegression": {
+    "before": {
+      "version": "4.3.6",
+      "exitCode": 1,
+      "observedEntrantReads": 3
+    },
+    "after": {
+      "version": "4.6.7",
+      "exitCode": 0,
+      "observedEntrantReads": 0,
+      "policyTestsPassed": 6
+    }
+  },
+  "deploymentScope": "Source preserves pre-existing Taquito25.0.0. Staged deployed graph preserves live Taquito24.3.0 and exact existing bundle; only Zod4.3.6\u21924.6.7 changes. No unpublished Taquito major or signer application changes are promoted with this leaf security fix.",
+  "status": "signer live verified; main qs activation pending",
+  "playwrightUpgrade": {
+    "version": "1.64.1",
+    "reason": "Actual GitHub Ubuntu26.04 runner fails browser installation with1.59.1; official support introduced in1.61. Only three Playwright packages upgraded, obsolete nested fsevents removed by upstream dependency graph.",
+    "source": "https://github.com/microsoft/playwright/issues/40117",
+    "verification": "16/16 built-host funding/mobile/iPad stories passed under Playwright1.64.1 / Chromium156",
+    "browserInstall": "passed Chromium156.0.8078.4 and matching headless shell"
+  },
+  "signerProductionProof": "signer-activation.json",
+  "aggregateUnitTests": {
+    "passed": 2678,
+    "failed": 0,
+    "skipped": 21,
+    "durationMs": 112823.85375,
+    "node": "22.23.4",
+    "playwright": "1.64.1"
+  }
+}

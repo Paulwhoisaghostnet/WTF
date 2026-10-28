@@ -1,0 +1,63 @@
+{
+  "bounty": "WTF-BB-722",
+  "recordedAt": "2026-10-28T04:28:22.767225+00:00",
+  "canonicalSourceProject": "lil-guys-autobattler",
+  "sourceBaselineVerified": {
+    "generatorSha256": "5e4409bb1ccf0b2f9f06d8c586d1d3c97c2f0f1db95df6651d809aa095beef74",
+    "allBuildSourceHashesMatched": true,
+    "allVendoredSourceHashesMatched": true
+  },
+  "newGeneratorSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
+  "reproduction": {
+    "test": "tests/playwright/inventory/wtfiap.spec.mjs:376 selected heroes and new objectives expose preparation actions beside the board",
+    "touchViewport": {
+      "width": 568,
+      "height": 320
+    },
+    "beforeResult": "Owning story times out on real Move to bench click; Playwright trace reports #mobile-resource intercepts pointer events.",
+    "actionRailLeft": 238.5625,
+    "firstActionLeft": 132.515625,
+    "resourceGridColumns": "0px 0px 0px 0px 0px 228.562px"
+  },
+  "diagnosticProof": {
+    "method": "Temporary in-page styles on unchanged built-host artifact, before editing source.",
+    "patchedActionLeft": 242.5625,
+    "realClickFieldCount": 0,
+    "realClickBenchCount": 1
+  },
+  "correction": "Start-align the landscape action scroll container so overflow is reachable on its right; remove the obsolete sixth resource-grid track after controls became sibling grid items.",
+  "regression": "Owning story checks metrics do not overlap and first action lies within its rail; retains real click and resulting field state assertion.",
+  "interactionInventory": "Existing Practice and room progression row now records separate resource columns and reachable landscape action scrolling; the existing handle is unchanged. Inventory coverage passes for 259 rows and 995 handles.",
+  "verification": {
+    "vendorManifestAndModuleTest": {
+      "passed": 1,
+      "failed": 0
+    },
+    "builtHostStory": {
+      "ok": true,
+      "passed": 16,
+      "failed": 0,
+      "seconds": 32.7,
+      "playwright": "1.64.1",
+      "browser": "Chromium156",
+      "scope": [
+        "All 12 WTFIAP funding safety tests",
+        "Selected heroes and new objectives, including the real mobile recall click",
+        "Seeded fortune controls on desktop and mobile",
+        "Landscape phone board, shop and bench",
+        "iPad touch hero details, placement and selling"
+      ],
+      "command": "playwright test tests/playwright/inventory/wtfiap.spec.mjs tests/playwright/inventory/wtfiap-funding.spec.mjs --project=chromium --grep \"WTFIAP funding safety|selected heroes and new objectives|landscape phone keeps shop and bench|iPad touch controls|a seeded optional fortune\""
+    },
+    "hostBuild": {
+      "ok": true,
+      "node": "22.23.4"
+    },
+    "inventoryCoverage": {
+      "ok": true,
+      "rows": 259,
+      "handles": 995
+    }
+  },
+  "verifiedAt": "2026-10-28T04:31:50.144304+00:00"
+}

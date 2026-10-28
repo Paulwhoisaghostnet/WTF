@@ -570,7 +570,7 @@ Variables: **1284**. Source files scanned: **2527**.
 | `RCLONE_CONFIG_PATH` | operations | deploy-ops | none | no | no explicit validation found | active | 3 (scripts/backup-database.sh, scripts/backup-manifest.sh, scripts/storage-health-check.sh) |
 | `REGISTRAR_ADDRESS` | extensions/wtf-domain-bot | package-runtime | none | no | no explicit validation found | active | 1 (extensions/wtf-domain-bot/.env.example) |
 | `RELAY_HOST` | operations | deploy-ops | none; smtp.resend.com | no | no explicit validation found | active | 2 (infra/wtfos-mail/.env.example, infra/wtfos-mail/docker-compose.yml) |
-| `RELAY_PORT` | operations | deploy-ops | 465; 587 | no | no explicit validation found | active | 2 (infra/wtfos-mail/.env.example, infra/wtfos-mail/docker-compose.yml) |
+| `RELAY_PORT` | operations | deploy-ops | 587 | no | no explicit validation found | active | 2 (infra/wtfos-mail/.env.example, infra/wtfos-mail/docker-compose.yml) |
 | `RELAY_USER` | operations | deploy-ops | resend | no | no explicit validation found | active | 2 (infra/wtfos-mail/.env.example, infra/wtfos-mail/docker-compose.yml) |
 | `REMOTE` | extensions/wtf-operator-signer | package-runtime | none | no | no explicit validation found | active | 1 (extensions/wtf-operator-signer/deploy/server-deploy.sh) |
 | `REMOTE_BASE` | operations | deploy-ops | none | no | no explicit validation found | active | 2 (scripts/backup-database.sh, scripts/backup-manifest.sh) |

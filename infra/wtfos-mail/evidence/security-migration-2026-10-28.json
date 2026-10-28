@@ -1,0 +1,281 @@
+{
+  "checkedAt": "2026-10-28T04:19:29.176374+00:00",
+  "candidateImageId": "sha256:a5e7561f7475b6f1d84ccfd9de4ef71755fe959fb58b6b1dc0b9bb34c39b47ab",
+  "baseImageDigest": "sha256:d0fe7668defe157aad57ea31b1707ad1e2fb57d7a91bdf17cbdf876549946c86",
+  "dmsRelease": "v16.0.1",
+  "packages": {
+    "ca-certificates": "20250419+deb13u1",
+    "dovecot-core": "1:2.4.1+dfsg1-6+deb13u7",
+    "dovecot-imapd": "1:2.4.1+dfsg1-6+deb13u7",
+    "dovecot-lmtpd": "1:2.4.1+dfsg1-6+deb13u7",
+    "libbrotli1": "1.1.0-2+deb13u1",
+    "libssl3t64": "3.5.7-1~deb13u3",
+    "openssl": "3.5.7-1~deb13u3",
+    "postfix": "3.10.13-0+deb13u1"
+  },
+  "publicPorts": [],
+  "internalNetwork": true,
+  "backup": {
+    "createdAt": "2026-10-28T04:11:53.590206+00:00",
+    "backupDir": "/opt/platform/backups/mail-security-20261028T041153Z",
+    "archive": "/opt/platform/backups/mail-security-20261028T041153Z/mail-backup.tar.gz",
+    "archiveBytes": 861886,
+    "archiveSha256": "034681b379c6a47334cf19846c8c43341eb0b323d80221c2bcef78a0931c39c3",
+    "dataFiles": 13,
+    "dataStableDuringCopy": true,
+    "snapshotType": "online rehearsal backup; final stopped-service backup required before activation",
+    "sourceImageId": "sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a",
+    "offHostCopyVerified": true
+  },
+  "protocolSend": {
+    "certificateHostnameVerified": "mail.wtfos.me",
+    "inbound": {
+      "accepted": true,
+      "tlsVersion": "TLSv1.3"
+    },
+    "phase": "send",
+    "submission": {
+      "accepted": true,
+      "tlsVersion": "TLSv1.3"
+    },
+    "unauthenticatedRelayDenied": 554
+  },
+  "protocolReadBeforeRestart": {
+    "certificateHostnameVerified": "mail.wtfos.me",
+    "messages": {
+      "inbound": {
+        "lmtpReceivedHeader": true,
+        "sha256": "8e144465beed50c9cc4a9516933548fffe71a56551af16f80686b766e4fb1f68",
+        "uid": "3"
+      },
+      "submission": {
+        "lmtpReceivedHeader": true,
+        "sha256": "416702bb236f8a5031ef23fcdaa8ac3b21f8374a0f28109b55281c2a81ef487d",
+        "uid": "4"
+      }
+    },
+    "phase": "read",
+    "tlsVersion": "TLSv1.3",
+    "uidValidity": "1793160995"
+  },
+  "protocolReadAfterRestart": {
+    "certificateHostnameVerified": "mail.wtfos.me",
+    "messages": {
+      "inbound": {
+        "lmtpReceivedHeader": true,
+        "sha256": "8e144465beed50c9cc4a9516933548fffe71a56551af16f80686b766e4fb1f68",
+        "uid": "3"
+      },
+      "submission": {
+        "lmtpReceivedHeader": true,
+        "sha256": "416702bb236f8a5031ef23fcdaa8ac3b21f8374a0f28109b55281c2a81ef487d",
+        "uid": "4"
+      }
+    },
+    "phase": "read",
+    "tlsVersion": "TLSv1.3",
+    "uidValidity": "1793160995"
+  },
+  "persistence": {
+    "checkedAt": "2026-10-28T04:17:39.383695+00:00",
+    "restartPreservedMessageBytesAndUids": true,
+    "originalDataFiles": 13,
+    "originalDataFilesUnchanged": 13,
+    "health": "healthy"
+  },
+  "productionReplaced": true,
+  "sourcePolicyTests": {
+    "passed": 7,
+    "failed": 0,
+    "command": "node --test infra/wtfos-mail/tests/security-policy.test.mjs scripts/supply-chain-policy.test.mjs"
+  },
+  "sources": [
+    "https://security-tracker.debian.org/tracker/CVE-2026-27852",
+    "https://security-tracker.debian.org/tracker/CVE-2026-111497",
+    "https://security-tracker.debian.org/tracker/source-package/openssl",
+    "https://security-tracker.debian.org/tracker/source-package/ca-certificates",
+    "https://github.com/docker-mailserver/docker-mailserver/releases/tag/v16.0.0",
+    "https://github.com/docker-mailserver/docker-mailserver/releases/tag/v16.0.1",
+    "https://doc.dovecot.org/2.4.1/installation/upgrade/2.3-to-2.4.html"
+  ],
+  "coldBackup": {
+    "createdAt": "2026-10-28T04:21:22.313373+00:00",
+    "snapshotType": "stopped-service cold backup",
+    "backupDir": "/opt/platform/backups/mail-cold-20261028T042122Z",
+    "archive": "/opt/platform/backups/mail-cold-20261028T042122Z/mail-backup.tar.gz",
+    "archiveBytes": 861916,
+    "archiveSha256": "e9816bf5301b4f2c5baa36e2246a61e18e537930408fdf60fe1bd53833ea848e",
+    "dataFiles": 13,
+    "sourceImageId": "sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a",
+    "queueBeforeStop": 0,
+    "queueAfterStop": {
+      "active": 0,
+      "deferred": 0,
+      "hold": 0,
+      "incoming": 0,
+      "maildrop": 0,
+      "corrupt": 0
+    },
+    "containerExitCode": 137,
+    "productionStopped": true,
+    "offHostCopyVerified": true
+  },
+  "cutover": {
+    "startedAt": "2026-10-28T04:22:42.696291+00:00",
+    "imageId": "sha256:a5e7561f7475b6f1d84ccfd9de4ef71755fe959fb58b6b1dc0b9bb34c39b47ab",
+    "composeImageName": "mail-mailserver",
+    "newVolumes": {
+      "data": "mail_mail-data-dovecot24",
+      "state": "mail_mail-state-dovecot24",
+      "logs": "mail_mail-logs-dovecot24"
+    },
+    "configPath": "/opt/platform/mail/config-dovecot24",
+    "originalDataFilesCopiedAndVerified": 13,
+    "accountFileSha256": "ab55ae067100feb89347e1800f32ad1becb0ed36e3c0e985f0b1523b1f9fb0b4",
+    "originalAccounts": 4,
+    "existingEnvironmentOverridesPreserved": true,
+    "originalVolumesRetained": true,
+    "oldImageRetained": "sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a",
+    "coldBackupSha256": "e9816bf5301b4f2c5baa36e2246a61e18e537930408fdf60fe1bd53833ea848e"
+  },
+  "liveRuntime": {
+    "checkedAt": "2026-10-28T04:23:47.333700+00:00",
+    "imageId": "sha256:a5e7561f7475b6f1d84ccfd9de4ef71755fe959fb58b6b1dc0b9bb34c39b47ab",
+    "health": "healthy",
+    "dmsRelease": "v16.0.1",
+    "packages": {
+      "ca-certificates": "20250419+deb13u1",
+      "dovecot-core": "1:2.4.1+dfsg1-6+deb13u7",
+      "dovecot-imapd": "1:2.4.1+dfsg1-6+deb13u7",
+      "dovecot-lmtpd": "1:2.4.1+dfsg1-6+deb13u7",
+      "libbrotli1": "1.1.0-2+deb13u1",
+      "libssl3t64": "3.5.7-1~deb13u3",
+      "openssl": "3.5.7-1~deb13u3",
+      "postfix": "3.10.13-0+deb13u1"
+    },
+    "originalFilesUnchangedInNewAndRollbackVolumes": 13,
+    "queueMessages": 0,
+    "publicPorts": [
+      "25/tcp",
+      "587/tcp",
+      "993/tcp"
+    ],
+    "protocols": "lmtp imap"
+  },
+  "cleanup": {
+    "checkedAt": "2026-10-28T04:26:14.839113+00:00",
+    "probeAccountAndMailRemoved": true,
+    "originalAccountFileRestoredExactly": true,
+    "originalAccountCount": 4,
+    "originalAccountFileSha256": "ab55ae067100feb89347e1800f32ad1becb0ed36e3c0e985f0b1523b1f9fb0b4",
+    "originalMailFilesPreserved": 13,
+    "queueMessages": 0
+  },
+  "publicProtocol": {
+    "send": {
+      "certificateHostnameVerified": "mail.wtfos.me",
+      "inbound": {
+        "accepted": true,
+        "tlsVersion": "TLSv1.3"
+      },
+      "phase": "send",
+      "submission": {
+        "accepted": true,
+        "tlsVersion": "TLSv1.3"
+      },
+      "unauthenticatedRelayDenied": 554
+    },
+    "read": {
+      "certificateHostnameVerified": "mail.wtfos.me",
+      "messages": {
+        "inbound": {
+          "lmtpReceivedHeader": true,
+          "sha256": "5758add26c603f27275f661d2d9eeccac1c083c9f22588c44b2f6616ee32ffb5",
+          "uid": "1"
+        },
+        "submission": {
+          "lmtpReceivedHeader": true,
+          "sha256": "76b01be40369a080bf194949b0074d09c117fa4ba276afb022317648e64a1502",
+          "uid": "2"
+        }
+      },
+      "phase": "read",
+      "tlsVersion": "TLSv1.3",
+      "uidValidity": "1793161420"
+    },
+    "removedProbe": {
+      "removedProbeAuthenticationDenied": true,
+      "publicTlsVerified": true
+    }
+  },
+  "sourceFiles": {
+    "Dockerfile": "533aacff046085e2dd1179661345de02a24512f217f9f469cf5798640430fef1",
+    "docker-compose.yml": "aab77bbcec8048a7e73b98e387f30b5058dbf7bf72033b3f4872ba43ae70729e",
+    ".dockerignore": "08bb7a70af4ae5a9c15226f499f2e76055ebd521550f87eb102a1316cdb9df38",
+    "tests/protocol_probe.py": "17d7e39bece003b46242d4c3b9680e91f9bc7027df3ee837b18e093adc3d4cc2"
+  },
+  "relayConnectivity": {
+    "existing465": {
+      "checkedAt": "2026-10-28T04:27:52.482234+00:00",
+      "host": "smtp.resend.com",
+      "port": 465,
+      "timeoutAuthority": "actual Postfix smtp_connect_timeout=30s",
+      "checks": {
+        "previousDms15": [
+          {
+            "address": "54.205.195.44",
+            "status": "TimeoutError",
+            "elapsedSeconds": 30.03
+          },
+          {
+            "address": "54.157.71.137",
+            "status": "TimeoutError",
+            "elapsedSeconds": 30.03
+          }
+        ],
+        "patchedDms16": [
+          {
+            "address": "54.205.195.44",
+            "status": "TimeoutError",
+            "elapsedSeconds": 30.03
+          },
+          {
+            "address": "54.157.71.137",
+            "status": "TimeoutError",
+            "elapsedSeconds": 30.01
+          }
+        ]
+      },
+      "messageSent": false
+    },
+    "vendor587": {
+      "checkedAt": "2026-10-28T04:27:32.845772+00:00",
+      "host": "smtp.resend.com",
+      "port": 587,
+      "source": "https://resend.com/docs/send-with-smtp",
+      "timeoutAuthority": "actual Postfix smtp_connect_timeout=30s",
+      "checks": {
+        "previousDms15": {
+          "status": "connected",
+          "starttlsCode": 220,
+          "tlsVersion": "TLSv1.3",
+          "certificateVerified": true,
+          "messageSent": false
+        },
+        "patchedDms16": {
+          "status": "connected",
+          "starttlsCode": 220,
+          "tlsVersion": "TLSv1.3",
+          "certificateVerified": true,
+          "messageSent": false
+        }
+      },
+      "productionRelayConfigurationChanged": false
+    },
+    "liveTlsSettings": {
+      "smtp_tls_wrappermode": "no",
+      "smtp_tls_security_level": "encrypt"
+    },
+    "conclusion": "Both old and patched images time out on the unchanged configured port465 before TLS; both verify STARTTLS on587. Production relay configuration remains unchanged pending coordinated correction."
+  }
+}

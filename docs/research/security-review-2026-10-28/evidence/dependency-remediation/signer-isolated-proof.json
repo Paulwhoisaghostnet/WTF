@@ -1,0 +1,12 @@
+{
+  "candidate": "/opt/wtf-operator-signer-security-20261028",
+  "bundle": "unchanged production bundle",
+  "zod": "4.6.7",
+  "health": "passed, empty isolated keyring",
+  "invalidToken": "INVALID_AUTH",
+  "oversizedEntrants": "BAD_BODY",
+  "healthAfterRejection": "passed",
+  "socketMode": "0o660",
+  "productionService": "untouched",
+  "chainWrites": 0
+}

@@ -1,0 +1,190 @@
+{
+  "bounty": "WTF-BB-718",
+  "preparedAt": "2026-10-28T04:22:12.557658+00:00",
+  "state": "All 3 backups, copied-data 16.14\u219216.15 checks, patched amcheck proofs, and 16.15\u219216.14 rollback rehearsals pass. Production activation remains pending the coordinated release.",
+  "source": "https://www.postgresql.org/docs/release/16.15/",
+  "migrationApplicability": {
+    "sameMajor": "16.14\u219216.15; vendor does not require dump/restore. Physical backup/restore rehearsal is performed for rollback proof.",
+    "extensions": "All three production clusters have only plpgsql; pgcrypto cipher cleanup and btree_gist/ltree reindex conditions are absent.",
+    "replication": "All three use wal_level=replica; no logical slots, subscriptions, replication connections or shared preload libraries. Patched default pgoutput/test_decoding allowlist suffices.",
+    "roles": "Each cluster has one login/superuser/replication role, unchanged by this patch.",
+    "invalidIndexes": 0,
+    "customTablespaces": 0
+  },
+  "images": {
+    "main": "postgres:16.15-alpine3.24@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab",
+    "at": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00"
+  },
+  "policyVerification": {
+    "command": "node --test scripts/supply-chain-policy.test.mjs scripts/deploy-dry-run-policy.test.mjs scripts/production-migrations-policy.test.mjs",
+    "passed": 24,
+    "failed": 0
+  },
+  "rehearsals": [
+    {
+      "time": "2026-10-28T04:21:59.489786+00:00",
+      "stage": "rollback-rehearsal-complete",
+      "role": "main",
+      "database": "main",
+      "sourceContainerId": "4f5c8d9effb0d73b7dbb6027d55202b203756e013b3755ca23b2256572a3765b",
+      "sourceImageId": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "sourceStartedAt": "2026-07-15T23:33:19.611610142Z",
+      "sourceVersion": "16.14",
+      "targetImage": "postgres:16.15-alpine3.24@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab",
+      "targetImageId": "sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab",
+      "targetVersion": "postgres (PostgreSQL) 16.15",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/main/basebackup",
+      "backupStartedAt": "2026-10-28T04:11:26.555660+00:00",
+      "backupCompletedAt": "2026-10-28T04:19:01.231840+00:00",
+      "manifestSha256": "6b7a43b0cb0bf8a55d65e2496e6cee85a8d3eaf96e4f4ab51379f169d3589b17",
+      "backupVerification": "backup successfully verified",
+      "baselineVersion": "16.14",
+      "baselineSnapshot": {
+        "userTableCount": 235,
+        "totalRows": 10766953,
+        "rowCountsSha256": "85cfc0e968b9b6adc2adfc61be5e005ab95a1a33ac9c2fc375f9fa6ad5ba53a9",
+        "catalogSha256": "e3055c9aa26eadaf3cd5136f3d296833a9e4543c35b043868a7ba69d4c05f1a2",
+        "sequenceStateSha256": "995b1586205be6149a75a5280253e9571a02cc2a95dfdc88c03e56eaf099e538"
+      },
+      "rehearsalVersion": "16.15",
+      "rehearsalSnapshot": {
+        "userTableCount": 235,
+        "totalRows": 10766953,
+        "rowCountsSha256": "85cfc0e968b9b6adc2adfc61be5e005ab95a1a33ac9c2fc375f9fa6ad5ba53a9",
+        "catalogSha256": "e3055c9aa26eadaf3cd5136f3d296833a9e4543c35b043868a7ba69d4c05f1a2",
+        "sequenceStateSha256": "995b1586205be6149a75a5280253e9571a02cc2a95dfdc88c03e56eaf099e538"
+      },
+      "outputPluginLibraries": "pgoutput, test_decoding",
+      "amcheck": {
+        "ok": true,
+        "output": ""
+      },
+      "productionUnchanged": true,
+      "finishedAt": "2026-10-28T04:21:32.187623+00:00",
+      "backupOwnerMode": {
+        "uid": 70,
+        "gid": 70,
+        "mode": "0o700",
+        "protectedParentMode": "0o700"
+      },
+      "rollback": "Original production data directory and old image retained. Protected verified online physical backup is never booted; rehearsal used only its separate copy. Before production swap take fresh final checkpoint/backup; use old image on unchanged-volume rollback only within same-major compatibility after review, otherwise restore protected pre-window backup to a separate directory. Do not discard writes made after backup.",
+      "rollbackRehearsal": {
+        "version": "16.14",
+        "snapshotMatchesOriginal": true,
+        "network": "none",
+        "productionVolumeMounted": false,
+        "completedAt": "2026-10-28T04:21:59.294471+00:00"
+      }
+    },
+    {
+      "time": "2026-10-28T04:13:34.840325+00:00",
+      "stage": "rollback-rehearsal-complete",
+      "role": "at",
+      "database": "plc",
+      "sourceContainerId": "523be2a4adf423857773cfc4b39cd5f69495b66e4406390be3289e9ece462356",
+      "sourceImageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "sourceStartedAt": "2026-09-24T22:55:27.824905292Z",
+      "sourceVersion": "16.14",
+      "targetImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "targetImageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "targetVersion": "postgres (PostgreSQL) 16.15",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/plc/basebackup",
+      "backupStartedAt": "2026-10-28T04:11:19.558831+00:00",
+      "backupCompletedAt": "2026-10-28T04:11:20.110971+00:00",
+      "manifestSha256": "6198781d014a774c5ce829e17f97056c831abe2db8f7288cc5a2108f9a387c8a",
+      "backupVerification": "backup successfully verified",
+      "baselineVersion": "16.14",
+      "baselineSnapshot": {
+        "userTableCount": 5,
+        "totalRows": 15,
+        "rowCountsSha256": "b27a8611934d6f5fd4cd90660e053f494c678cbfec1016f0fe7e4fe748de8237",
+        "catalogSha256": "5839c683cb25c640b64e9cfe0fa92246b7e6b435024b3b586c467f181c7685e9",
+        "sequenceStateSha256": "c4504fcf81ee1e1b1d664fe89185a59c8286afd0bbea3029baaea754b4fa1aee"
+      },
+      "rehearsalVersion": "16.15",
+      "rehearsalSnapshot": {
+        "userTableCount": 5,
+        "totalRows": 15,
+        "rowCountsSha256": "b27a8611934d6f5fd4cd90660e053f494c678cbfec1016f0fe7e4fe748de8237",
+        "catalogSha256": "5839c683cb25c640b64e9cfe0fa92246b7e6b435024b3b586c467f181c7685e9",
+        "sequenceStateSha256": "c4504fcf81ee1e1b1d664fe89185a59c8286afd0bbea3029baaea754b4fa1aee"
+      },
+      "outputPluginLibraries": "pgoutput, test_decoding",
+      "amcheck": {
+        "ok": true,
+        "output": ""
+      },
+      "productionUnchanged": true,
+      "finishedAt": "2026-10-28T04:11:24.342405+00:00",
+      "backupOwnerMode": {
+        "uid": 70,
+        "gid": 70,
+        "mode": "0o700",
+        "protectedParentMode": "0o700"
+      },
+      "rollback": "Original production data directory and old image retained. Protected verified online physical backup is never booted; rehearsal used only its separate copy. Before production swap take fresh final checkpoint/backup; use old image on unchanged-volume rollback only within same-major compatibility after review, otherwise restore protected pre-window backup to a separate directory. Do not discard writes made after backup.",
+      "rollbackRehearsal": {
+        "version": "16.14",
+        "snapshotMatchesOriginal": true,
+        "network": "none",
+        "productionVolumeMounted": false,
+        "completedAt": "2026-10-28T04:13:34.735053+00:00"
+      }
+    },
+    {
+      "time": "2026-10-28T04:13:36.021122+00:00",
+      "stage": "rollback-rehearsal-complete",
+      "role": "at",
+      "database": "relay",
+      "sourceContainerId": "4a7dd7f2568329311af96f5869d99befb1311b3a9bbe26374d2375fcc7aeb8a0",
+      "sourceImageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "sourceStartedAt": "2026-09-24T22:55:27.773963171Z",
+      "sourceVersion": "16.14",
+      "targetImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "targetImageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "targetVersion": "postgres (PostgreSQL) 16.15",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/relay/basebackup",
+      "backupStartedAt": "2026-10-28T04:11:25.178937+00:00",
+      "backupCompletedAt": "2026-10-28T04:11:26.312027+00:00",
+      "manifestSha256": "3102750c69a42dbbf8b27b9f287002dcd6e6af5288ab3355f05002086c873d86",
+      "backupVerification": "backup successfully verified",
+      "baselineVersion": "16.14",
+      "baselineSnapshot": {
+        "userTableCount": 5,
+        "totalRows": 242,
+        "rowCountsSha256": "18041c901bdd6268be591e6cd893507dade68194e72dd896f261f2e843b0c56f",
+        "catalogSha256": "87afb114aa8d5fe02eec32ac5e7a846bcead80c761b7157b7ac7f1c15f745721",
+        "sequenceStateSha256": "0ba875473f32a9c7297b4606b61899dec1cbbfdc9d8ff8612083dd890126e9a2"
+      },
+      "rehearsalVersion": "16.15",
+      "rehearsalSnapshot": {
+        "userTableCount": 5,
+        "totalRows": 242,
+        "rowCountsSha256": "18041c901bdd6268be591e6cd893507dade68194e72dd896f261f2e843b0c56f",
+        "catalogSha256": "87afb114aa8d5fe02eec32ac5e7a846bcead80c761b7157b7ac7f1c15f745721",
+        "sequenceStateSha256": "0ba875473f32a9c7297b4606b61899dec1cbbfdc9d8ff8612083dd890126e9a2"
+      },
+      "outputPluginLibraries": "pgoutput, test_decoding",
+      "amcheck": {
+        "ok": true,
+        "output": ""
+      },
+      "productionUnchanged": true,
+      "finishedAt": "2026-10-28T04:11:30.512271+00:00",
+      "backupOwnerMode": {
+        "uid": 70,
+        "gid": 70,
+        "mode": "0o700",
+        "protectedParentMode": "0o700"
+      },
+      "rollback": "Original production data directory and old image retained. Protected verified online physical backup is never booted; rehearsal used only its separate copy. Before production swap take fresh final checkpoint/backup; use old image on unchanged-volume rollback only within same-major compatibility after review, otherwise restore protected pre-window backup to a separate directory. Do not discard writes made after backup.",
+      "rollbackRehearsal": {
+        "version": "16.14",
+        "snapshotMatchesOriginal": true,
+        "network": "none",
+        "productionVolumeMounted": false,
+        "completedAt": "2026-10-28T04:13:35.913055+00:00"
+      }
+    }
+  ]
+}

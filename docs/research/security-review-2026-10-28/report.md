@@ -1,5 +1,7 @@
 # WTF security recheck — October 27–28, 2026
 
+The original review below is historical. See [remediation and deployment evidence](remediation.md) for the subsequently authorized fixes and current activation status.
+
 The earlier Node/Go and main production dependency fixes remain deployed. The fresh review identifies an exposed mail-service DoS, older PostgreSQL security debt on three running servers, and an unpatched Zod installation in the separate operator signer. Electron now publishes a compatible patch release containing Node's October fixes. Newly indexed `qs` and desktop `fast-uri` findings have narrower or build-only prerequisites.
 
 **Review contract:** recheck announcements since October 22 against current source, dependency locks, published desktop artifacts and actual deployed runtimes; identify concrete correction targets and distinguish new disclosures, older gaps, preserved fixes and unmatched prerequisites. This pass performs review and records findings, not implementation or deployment.
