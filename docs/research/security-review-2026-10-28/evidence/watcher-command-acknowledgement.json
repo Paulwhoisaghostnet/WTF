@@ -1,0 +1,71 @@
+{
+  "bounty": "WTF-BB-722",
+  "verifiedAt": "2026-10-28T05:15:37.669184+00:00",
+  "source": "tests/playwright/inventory/wtfiap.spec.mjs",
+  "sourceSha256": "c931d2e0370a4ff29beca64851c32af39334a505577072d9ca33dbeaf293ef1a",
+  "story": "watchers follow the shared arena and room chat keeps whispers private",
+  "ciFailure": {
+    "runId": 40633470625,
+    "sourceCommit": "703538f07199f1b83333c0e4b446c37dd589f97d",
+    "line": 1224,
+    "expected": "combat",
+    "received": "preparation",
+    "existingPollTimeoutMs": 10000
+  },
+  "diagnosis": "The real canvas click posts the ready command asynchronously. The fixture changed its shared account identity to the guest before the host command reached the authoritative server, which correctly rejected it with 403. The watcher accurately remained in preparation.",
+  "correction": "After the real host click, poll authoritative host party ready=true and pending=false before switching the shared harness account. No production logic, timeout, privacy/recovery assertion, guest click, or combat/units assertion changed.",
+  "controlledHeldRequest": {
+    "method": "The same diagnostic hook holds the host ready HTTP request on a promise and releases it on the first subsequent gameState observation. Before the fix that observation is the watcher combat poll after the actor switch. After the fix it is the host acknowledgement poll before the switch. No fixed delay, force click, or mocked response is used; the real room authority answers both requests.",
+    "before": {
+      "commandResponses": [
+        {
+          "status": 403,
+          "ok": false,
+          "reason": "Sign in to the account that owns this commander."
+        }
+      ],
+      "host": {
+        "phase": "preparation",
+        "pending": true,
+        "ready": false,
+        "message": "Action not yet acknowledged. Sign in to the account that owns this commander. Reconnect to retry the same action safely."
+      },
+      "watcher": {
+        "phase": "preparation",
+        "connected": true
+      }
+    },
+    "after": {
+      "commandResponses": [
+        {
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "host": {
+        "phase": "combat",
+        "pending": false,
+        "ready": true,
+        "message": "Action accepted by the server."
+      },
+      "watcher": {
+        "phase": "combat",
+        "connected": true
+      }
+    },
+    "beforeResult": "Failed at the existing combat assertion after all privacy and recovery checks.",
+    "afterResult": "Passed the complete owning story, including live combat units.",
+    "afterStorySeconds": 13.5
+  },
+  "normalFocusedRun": {
+    "passed": 1,
+    "failed": 0,
+    "storySeconds": 7.2,
+    "playwright": "1.64.1",
+    "browser": "Chromium 156",
+    "command": "playwright test tests/playwright/inventory/wtfiap.spec.mjs --project=chromium --grep \"watchers follow the shared arena\"",
+    "isolation": "Each run used a distinct OS-assigned HARNESS_PORT and separate output directory."
+  },
+  "interactionInventory": "No interaction, route, handle or production behavior changed; existing owning browser story now waits for its actual durable ready effect.",
+  "diffCheck": "pass"
+}

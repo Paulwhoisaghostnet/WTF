@@ -638,5 +638,5 @@
       "screenshotPath": null
     }
   },
-  "releaseStatus": "All nine alpha.3 releases published at3a8439fb; all27 native platform jobs and36 installed-format proofs passed. Verified63-key configuration staged; normal main deployment/authenticated manifest activation remains pending. See desktop-release-receipt.md."
+  "releaseStatus": "All nine alpha.3 releases published at 3a8439fb; all 27 native platform jobs and 36 installed-format proofs passed. The 63 verified installer settings were loaded by successful normal main deployment 40635387419 at 9a442adcfb9e7a6138882736988e60a40bd90eb0; all nine authenticated manifests, nine anonymous 401 gates and 27 public asset ranges passed. See desktop-release-receipt.md and desktop-live-installer-checks.json."
 }

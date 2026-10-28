@@ -12679,3 +12679,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Observer code can fail after the actual mutation succeeds. Treating a final logging exception as a migration failure creates avoidable service churn, even when rollback preserves the data.
 
 **Rule**: Exercise logging with the actual stage/record shapes before production execution. Keep final observer emission outside the mutation rollback boundary; preserve the failed attempt and rollback receipt. Verify restored data and health, retain fresh backups, then retry only the corrected operation. Database version strings alone do not establish migration or rollback safety.
+
+---
+
+## 2026-10-28 - Browser upgrades expose invalid origins and asynchronous fixture identity changes
+
+**What happened**: Chromium156 enforced HSTS for synthetic `.app` subdomains, upgrading the inventory tests' HTTP URLs to HTTPS against an HTTP-only harness. A separate multi-actor room story changed its shared simulated identity before the host's ready request was acknowledged, producing a deterministic403 under a held request.
+
+**Why it mattered**: Neither failure required weakening browser security or changing production gameplay. The first fixture contradicted production's HTTPS origin; the second allowed test identity mutation to race a valid user command. Privacy assertions passed before the later combat assertion failed.
+
+**Rule**: Use the real HTTPS browser origin with a narrowly scoped proxy to the local harness; keep redirect handling explicit and never disable HSTS or certificate protections to hide a fixture mismatch. In fixtures sharing one actor identity, await authoritative command acknowledgement before switching users, especially after iframe postMessage or canvas actions. Preserve actual clicks, privacy/recovery assertions and existing timeouts, and reproduce the race with a controlled request boundary rather than an arbitrary sleep.
+
+---
+
+## 2026-10-28 - Verification clients must distinguish their own access from service health
+
+**What happened**: Python's default urllib client was denied by the edge while curl and the existing Node installer verifiers reached the same healthy public endpoint. The unprivileged deploy user also could not execute root-owned native services' `/proc/<pid>/exe` for runtime proof.
+
+**Why it mattered**: A client-policy or inspection-permission failure is not evidence that the deployed application is broken, and changing service permissions or bypassing transport protections would weaken the proof.
+
+**Rule**: Diagnose the failing layer, retain certificate checks, use the established permitted public client, and use narrowly scoped read-only privilege for actual process inspection. Preserve sanitized evidence; do not alter service configuration merely to make an observer succeed.

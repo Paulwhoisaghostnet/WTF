@@ -1,0 +1,35 @@
+{
+  "releaseCommit": "9a442adcfb9e7a6138882736988e60a40bd90eb0",
+  "deployRun": 40635387419,
+  "deployUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40635387419",
+  "deployConclusion": "success",
+  "normalProductionPath": true,
+  "migrationRunnerPassed": true,
+  "fundedRoomCompatibilityGuardPassed": true,
+  "existingMigrationsSkipped": 135,
+  "newMigrationsApplied": 0,
+  "publicSmoke": "public-production-smoke.json",
+  "mainRuntime": "main-live-runtime.json",
+  "atRuntime": "postgres-upgrade/activation.json",
+  "desktopManifests": "desktop-live-installer-checks.json",
+  "broadQualityInventory": {
+    "run": 40633470625,
+    "passed": 785,
+    "failed": 3,
+    "durationMinutes": 23.0,
+    "failures": [
+      "Beta subdomain SSL protocol error",
+      "Gamma subdomain SSL protocol error",
+      "Watcher combat phase after final guest click"
+    ],
+    "correction": {
+      "focusedPassed": 3,
+      "focusedFailed": 0,
+      "subdomainProof": "subdomain-https-fixtures.json",
+      "watcherProof": "watcher-command-acknowledgement.json",
+      "productionCodeChanged": false,
+      "aggregateGate": "The normal main Quality workflow runs on the final test/evidence promotion."
+    }
+  },
+  "outboundDns": "user-deferred under WTF-BB-723"
+}

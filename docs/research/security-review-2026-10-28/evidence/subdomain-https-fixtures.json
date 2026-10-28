@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-10-28T05:16:16.786610+00:00",
+  "before": {
+    "passed": 0,
+    "failed": 2,
+    "harnessPort": 52390,
+    "traceRedirects": [
+      {
+        "requestUrl": "http://gamma.wtfos.app:52390/gallery",
+        "status": 307,
+        "redirectReason": "HSTS",
+        "redirectUrl": "https://gamma.wtfos.app:52390/gallery",
+        "browserUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36"
+      },
+      {
+        "requestUrl": "http://beta.wtfos.app:52390/gallery",
+        "status": 307,
+        "redirectReason": "HSTS",
+        "redirectUrl": "https://beta.wtfos.app:52390/gallery",
+        "browserUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36"
+      }
+    ],
+    "log": "/tmp/wtf-beta-gamma-security-20261028/before.log"
+  },
+  "after": {
+    "passed": 2,
+    "failed": 0,
+    "harnessPort": 52729,
+    "log": "/tmp/wtf-beta-gamma-security-20261028/final.log",
+    "proxyRedirectFollowingDisabled": true
+  },
+  "change": "Scoped HTTPS-origin route interception proxies each production subdomain to the HTTP local harness, preserving the Host header and all original shell/navigation assertions.",
+  "productionOrDependencyChanges": false,
+  "browserSecurityBypassAdded": false,
+  "sourceFiles": {
+    "tests/playwright/inventory/beta-wtfos.spec.mjs": "671ec848b60b26b486245f1b5f6c6111c03414c9c951cfbf970590cea5d5947c",
+    "tests/playwright/inventory/gamma-wtfos.spec.mjs": "ce544562e8c42077b3320292e5cfef4fcdc4d901537e9392d75e399053393ce8"
+  }
+}

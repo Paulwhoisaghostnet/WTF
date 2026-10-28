@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Blocked: **3** · Fixed: **121** · Verified: **498** · Archived: **4**
+Total: **690** · Open: **4** · Claimed: **41** · In Progress: **15** · Blocked: **3** · Fixed: **121** · Verified: **502** · Archived: **4**
 
 ## Canonical Board
 
@@ -72,12 +72,8 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 190 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 190 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 281 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-718 | Claimed | Codex October 28 security full send | 2026-10-28 | Infrastructure / PostgreSQL security | P1 | 15 | 93 | 3 | 4 | 4 | All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes |
-| WTF-BB-720 | Claimed | Codex October 28 security full send | 2026-10-28 | Desktop / newly published Electron Node fixes | P1 | 12 | 281 | 2 | 3 | 3 | Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3 |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 387 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 387 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-722 | Claimed | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 656 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
-| WTF-BB-721 | Claimed | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 686 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 129 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
@@ -305,6 +301,7 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 | WTF-BB-261 | Verified | Codex Macaroni live snapshot pass | - | Macaroni / user-site runtime compatibility | P0 | 9 | 539 | 1 | 2 | 1 | Published Macaroni snapshots keep stale inline runtime |
 | WTF-BB-259 | Verified | Codex Macaroni owned-mints/share pass | - | Macaroni / generated mint page UX | P0 | 9 | 539 | 1 | 2 | 1 | Macaroni owned-mints copy and social sharing feel mechanical |
 | WTF-BB-258 | Verified | Codex Macaroni stage copy pass | - | Macaroni / generated mint page UX | P0 | 9 | 539 | 1 | 2 | 1 | Single-stage Macaroni drops imply extra sale stages |
+| WTF-BB-718 | Verified | Codex October 28 security full send | 2026-10-28 | Infrastructure / PostgreSQL security | P1 | 15 | 93 | 3 | 4 | 4 | All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes |
 | WTF-BB-717 | Verified | Codex October 28 security full send | 2026-10-28 | Mail / Dovecot and image security | P1 | 15 | 93 | 4 | 4 | 3 | Public mail runs Dovecot affected by crafted-header denial of service |
 | WTF-BB-688 | Verified | Codex October security remediation | 2026-10-22 | Runtime / October 2026 Node and Undici security advisories | P1 | 15 | 93 | 3 | 4 | 4 | Live-source Node image and AT service runtimes predate October security fixes |
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
@@ -407,6 +404,7 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 | WTF-BB-053 | Verified | Codex canonical TV broken-clip recovery | 2026-09-02 | TV microapp / reliability | P1 | 13 | 190 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 190 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 190 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
+| WTF-BB-720 | Verified | Codex October 28 security full send | 2026-10-28 | Desktop / newly published Electron Node fixes | P1 | 12 | 281 | 2 | 3 | 3 | Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3 |
 | WTF-BB-692 | Verified | Codex October security remediation | 2026-10-22 | Release / stale dependency lock regression | P1 | 12 | 281 | 2 | 3 | 3 | Dirty root lock would restore security-sensitive dependency versions older than live |
 | WTF-BB-690 | Verified | Codex October security remediation | 2026-10-22 | Relay / Go certificate verification | P1 | 12 | 281 | 2 | 3 | 3 | Relay builder uses Go 1.26.5 before compromised-intermediate distrust fix |
 | WTF-BB-673 | Verified | Codex FileShip recovery integration pass | 2026-09-05 | Media / IPFS preview and artifact recovery | P1 | 12 | 281 | 3 | 4 | 1 | Live previews and downloadable artifacts bypass shared FileShip recovery |
@@ -681,6 +679,7 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 608 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 608 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 608 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
+| WTF-BB-722 | Verified | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 656 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
 | WTF-BB-589 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Frontend security / tabnabbing link safety | P2 | 7 | 656 | 1 | 2 | 1 | Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes |
 | WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 656 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
 | WTF-BB-562 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Beta wtfOS / route catalog ownership | P2 | 7 | 656 | 1 | 3 | 0 | Dashboard is the unique session-owned Beta replacement for retired Hoard, with route, access, stage, persona, relationship, and browser coverage green |
@@ -711,6 +710,7 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 387 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 656 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 679 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 686 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 686 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 686 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 686 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
@@ -1604,39 +1604,6 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
 
-### WTF-BB-718 - All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes
-
-- Category: Infrastructure / PostgreSQL security
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C3 + F4 + S4 + P1(4) = 15
-- Evidence: Direct SHOW server_version and executable checks report 16.14 on the main, PLC and relay databases. PostgreSQL 16.15 was released August 13 with security fixes including SQL-function memory corruption and privilege issues; this is older security debt newly identified here. Main/PLC are internal and relay binds to loopback; anonymous public SQL exposure was not established.
-- Correction direction: update each deployment to a verified PostgreSQL 16.15 image without changing the major version. Review logical-decoding/configuration, pgcrypto and relevant extension/index cleanup notes; do not blindly rotate the tag.
-- Verification idea: preserve and verify backups, inspect all three actual server versions after replacement, and exercise main/PLC/relay persistence and health.
-- Score: existing P1(4)+C3/F4/S4=15; coordinated persistent-service patch, core data availability and authenticated database memory-corruption consequence.
-- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
-
-- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
-
-### WTF-BB-720 - Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3
-
-- Category: Desktop / newly published Electron Node fixes
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C2 + F3 + S3 + P1(4) = 12
-- Evidence: Fresh release IDs/sizes/SHA256 and active installer settings match all nine alpha.2 products and 27 previously verified platform artifacts with Electron 43.8.3/Node 24.22.0. Electron 43.8.4 published October 27; a checksum-verified official macOS arm64 binary reports Node 24.22.1, c-ares 1.34.9 and Undici 7.30.1. Prior upstream publication blocker is resolved.
-- Scope correction: current Electron already links Chromium Brotli containing the CVE-2026-111497 fix. Its older version strings alone are not vulnerability proof. Other Node DNS/TLS/connection reuse and Electron FSA/ASAR fixes motivate updating; app-specific exploit prerequisites remain conditional.
-- Correction direction: patch 43.8.3 to 43.8.4, preserve electron-builder 26.15.3 and the tested global-agent override, rebuild/test/publish the nine products and activate matching downloads.
-- Verification idea: all supported platform/installed-format checks, runtime versions, storage-preserving relaunch, checksums and live installer manifests. Source changes alone do not update published or customer-installed binaries.
-- Score: existing P1(4)+C2/F3/S3=12; compatible runtime patch across distributed installers, compatibility impact and conditional client security exposure.
-- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
-
-- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
-
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
 - Category: Desktop OS / retired app cleanup
@@ -1672,40 +1639,6 @@ Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-722 - Funding menu fixtures and overlapping mobile controls block security release validation
-
-- Category: E2E / release inventory compatibility
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C2 + F2 + S0 + P2(3) = 7
-- Evidence: Existing main Quality run 40438367482 failed funding inventory stories waiting for a Lobby link. A fresh built-host local run reproduces the 60-second timeout at wtfiap-funding.spec.mjs:7; current WtfIap.tsx renders that link only after Open game menu. The owning gameplay story already follows this interaction.
-- Correction direction: Update the funding fixture navigation to use the existing menu, preserving all funded-flow assertions and real app behavior. Investigate the separately reported mobile quick-action assertion against the current accessible controls before changing it.
-- Verification idea: Reproduce the failing story, run affected funding/mobile stories on the built host, then require the release Quality run to pass. No gameplay or wallet behavior change is requested.
-- Score: existing P2(3)+C1/F2/S0=6; localized fixture correction needed to prove the authorized security release.
-
-- Further reproduced evidence: the current funding menu also hides Room funding until opened; absence assertions must inspect the opened menu to remain meaningful. The mobile preparation test trace shows the actual #mobile-resource element intercepting Move to bench clicks in the compact top rail. A minimal layout repair is needed; force-clicking would conceal a real blocked interaction.
-- Updated score: existing P2(3)+C2/F2/S0=7 for fixture navigation plus the reproduced compact-layout interaction defect.
-
-- Additional release gate failure reproduced in Quality40631464460: ubuntu-latest now resolves Ubuntu26.04, unsupported by installed Playwright1.59.1. Official Playwright support landed in1.61; current stable1.64.1 supports this platform. Upgrade the three Playwright packages together to1.64.1 without downgrading the runner or any dependency.
-
-### WTF-BB-721 - New qs and desktop fast-uri advisory matches have compatible leaf patches
-
-- Category: Dependencies / conditional and build-only leaf advisories
-- Priority: P3
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C1 + F1 + S1 + P3(2) = 5
-- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.
-- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.
-- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.
-- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.
-- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
-
-- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
@@ -6723,6 +6656,24 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
 
+### WTF-BB-718 - All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes
+
+- Category: Infrastructure / PostgreSQL security
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C3 + F4 + S4 + P1(4) = 15
+- Evidence: Direct SHOW server_version and executable checks report 16.14 on the main, PLC and relay databases. PostgreSQL 16.15 was released August 13 with security fixes including SQL-function memory corruption and privilege issues; this is older security debt newly identified here. Main/PLC are internal and relay binds to loopback; anonymous public SQL exposure was not established.
+- Correction direction: update each deployment to a verified PostgreSQL 16.15 image without changing the major version. Review logical-decoding/configuration, pgcrypto and relevant extension/index cleanup notes; do not blindly rotate the tag.
+- Verification idea: preserve and verify backups, inspect all three actual server versions after replacement, and exercise main/PLC/relay persistence and health.
+- Score: existing P1(4)+C3/F4/S4=15; coordinated persistent-service patch, core data availability and authenticated database memory-corruption consequence.
+- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
+
+- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
+
+- Verified 2026-10-28: All three actual PostgreSQL servers and clients report 16.15. Main deployment 40635387419 succeeded at 9a442adc, ran the existing migration runner and funded-room compatibility guard, and public readiness reports database, chain and jobs healthy. All original data mounts are unchanged. Copied-cluster upgrade, index and rollback tests passed; protected verified physical backups are retained. Evidence: docs/research/security-review-2026-10-28/evidence/main-live-runtime.json and evidence/postgres-upgrade/activation.json.
+
 ### WTF-BB-717 - Public mail runs Dovecot affected by crafted-header denial of service
 
 - Category: Mail / Dovecot and image security
@@ -9107,6 +9058,25 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Six focused crypto tests pass: both domains reject session-only production configuration, allow the documented development fallback, and prove dedicated-key precedence. Fourteen focused deploy-policy checks require the dedicated secrets before replacement.
   - The correction is an ancestor of deployed `47319133`; self-deploy run 33630052693 passed the production secret preflight, build, migrations, replacement, and exact-commit readiness. Public health reported `47319133`. A successful deploy could not have crossed this fail-closed boundary without the dedicated production values. WTF-BB-019 is Verified.
+
+### WTF-BB-720 - Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3
+
+- Category: Desktop / newly published Electron Node fixes
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C2 + F3 + S3 + P1(4) = 12
+- Evidence: Fresh release IDs/sizes/SHA256 and active installer settings match all nine alpha.2 products and 27 previously verified platform artifacts with Electron 43.8.3/Node 24.22.0. Electron 43.8.4 published October 27; a checksum-verified official macOS arm64 binary reports Node 24.22.1, c-ares 1.34.9 and Undici 7.30.1. Prior upstream publication blocker is resolved.
+- Scope correction: current Electron already links Chromium Brotli containing the CVE-2026-111497 fix. Its older version strings alone are not vulnerability proof. Other Node DNS/TLS/connection reuse and Electron FSA/ASAR fixes motivate updating; app-specific exploit prerequisites remain conditional.
+- Correction direction: patch 43.8.3 to 43.8.4, preserve electron-builder 26.15.3 and the tested global-agent override, rebuild/test/publish the nine products and activate matching downloads.
+- Verification idea: all supported platform/installed-format checks, runtime versions, storage-preserving relaunch, checksums and live installer manifests. Source changes alone do not update published or customer-installed binaries.
+- Score: existing P1(4)+C2/F3/S3=12; compatible runtime patch across distributed installers, compatibility impact and conditional client security exposure.
+- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
+
+- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
+
+- Verified 2026-10-28: All nine new 1.0.1-alpha.3 releases published from tested source 3a8439fb. All 27 native platform jobs and 36 installed-format proofs passed with Electron 43.8.4 / Node 24.22.1, clean provenance and storage relaunch. An independently downloaded published ZIP passed checksum, runtime, assets and persistence checks. Main deployment 40635387419 at 9a442adc loaded all 63 verified settings; all nine authenticated manifests, nine anonymous 401 responses and 27 public asset checks passed. Alpha.2 remains available; customer installations need the alpha.3 update. Evidence: docs/research/security-review-2026-10-28/evidence/desktop-live-installer-checks.json.
 
 ### WTF-BB-692 - Dirty root lock would restore security-sensitive dependency versions older than live
 
@@ -14990,6 +14960,28 @@ Copy this when adding a new issue:
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
 
+### WTF-BB-722 - Funding menu fixtures and overlapping mobile controls block security release validation
+
+- Category: E2E / release inventory compatibility
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence: Existing main Quality run 40438367482 failed funding inventory stories waiting for a Lobby link. A fresh built-host local run reproduces the 60-second timeout at wtfiap-funding.spec.mjs:7; current WtfIap.tsx renders that link only after Open game menu. The owning gameplay story already follows this interaction.
+- Correction direction: Update the funding fixture navigation to use the existing menu, preserving all funded-flow assertions and real app behavior. Investigate the separately reported mobile quick-action assertion against the current accessible controls before changing it.
+- Verification idea: Reproduce the failing story, run affected funding/mobile stories on the built host, then require the release Quality run to pass. No gameplay or wallet behavior change is requested.
+- Score: existing P2(3)+C1/F2/S0=6; localized fixture correction needed to prove the authorized security release.
+
+- Further reproduced evidence: the current funding menu also hides Room funding until opened; absence assertions must inspect the opened menu to remain meaningful. The mobile preparation test trace shows the actual #mobile-resource element intercepting Move to bench clicks in the compact top rail. A minimal layout repair is needed; force-clicking would conceal a real blocked interaction.
+- Updated score: existing P2(3)+C2/F2/S0=7 for fixture navigation plus the reproduced compact-layout interaction defect.
+
+- Additional release gate failure reproduced in Quality40631464460: ubuntu-latest now resolves Ubuntu26.04, unsupported by installed Playwright1.59.1. Official Playwright support landed in1.61; current stable1.64.1 supports this platform. Upgrade the three Playwright packages together to1.64.1 without downgrading the runner or any dependency.
+
+- Full Quality evidence (40633470625): 785 inventory tests passed; three failed. Beta/Gamma local subdomain fixtures hit ERR_SSL_PROTOCOL_ERROR under Chromium156 at HTTP .app origins. The watcher/chat story passed its privacy assertions but failed to observe combat after the final guest click (preparation remained). Reproduce and fix those owning fixtures/interaction paths before closing release validation; no timeout increase or forced click is assumed. The duplicate main Quality run on unchanged code was canceled after these failures became known.
+
+- Verified 2026-10-28: all three remaining inventory failures have before/after proof. Both subdomain traces show HSTS307 before ERR_SSL_PROTOCOL_ERROR; scoped HTTPS-origin proxying to the local HTTP harness passes both original tests without browser security bypasses. A controlled held host-ready request reproduces the watcher fixture race (403 and preparation); awaiting authoritative ready=true/pending=false before switching the shared actor yields200 and combat. The normal story also passes. All privacy/recovery/click/state assertions and timeouts are retained. These final changes affect only the three owning test files. Evidence: docs/research/security-review-2026-10-28/evidence/subdomain-https-fixtures.json and watcher-command-acknowledgement.json. The normal main Quality workflow will run the complete aggregate gate for this promotion.
+
 ### WTF-BB-589 - Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes
 
 - Category: Frontend security / tabnabbing link safety
@@ -15607,6 +15599,24 @@ Copy this when adding a new issue:
   - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9, after shrinking the themed toolbar from 46px to a capped 36px row.
   - `npm run test:e2e:inventory` ran after the fix; WTF LIVE passed inside the full suite and the suite ended 294/295 because `/trade-boards` hit a transient `dist/public/index.html` 404 resource read unrelated to WTF LIVE. The exact failed route then passed with `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Trade boards/barter"`.
   - `git diff --check` passed.
+
+### WTF-BB-721 - New qs and desktop fast-uri advisory matches have compatible leaf patches
+
+- Category: Dependencies / conditional and build-only leaf advisories
+- Priority: P3
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C1 + F1 + S1 + P3(2) = 5
+- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.
+- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.
+- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.
+- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.
+- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
+
+- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
+
+- Verified 2026-10-28: Deployed main qs 6.16.1 and all nine desktop fast-uri 3.1.9 versions are verified. Root/signer production audits and all 18 desktop full/production audits return zero findings. Express HTTP form/prototype handling and the qs advisory conversion fixture pass. No package was downgraded; newer production fixes and electron-builder 26.15.3 / global-agent 4.1.3 are retained, and roarr/sprintf-js remain absent. Evidence: docs/research/security-review-2026-10-28/evidence/dependency-remediation-independent-review.json and main-live-runtime.json.
 
 ### WTF-BB-672 - Profile picture picker bypassed FileShip and had no alternate gateway recovery
 

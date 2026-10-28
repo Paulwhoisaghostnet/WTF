@@ -64,7 +64,7 @@
     }
   },
   "deploymentScope": "Source preserves pre-existing Taquito25.0.0. Staged deployed graph preserves live Taquito24.3.0 and exact existing bundle; only Zod4.3.6\u21924.6.7 changes. No unpublished Taquito major or signer application changes are promoted with this leaf security fix.",
-  "status": "signer live verified; main qs activation pending",
+  "status": "live verified at9a442adc",
   "playwrightUpgrade": {
     "version": "1.64.1",
     "reason": "Actual GitHub Ubuntu26.04 runner fails browser installation with1.59.1; official support introduced in1.61. Only three Playwright packages upgraded, obsolete nested fsevents removed by upstream dependency graph.",
@@ -84,5 +84,6 @@
   "cleanCheckoutMetadataFailures": {
     "cause": "Environment inventory included an untracked infra evidence JSON and an unstaged relay example; local dirty-tree checks differed from committed source.",
     "correction": "Stage all scanned files and freeze source before generation; tracked/all source counts2528/2528; clean CI703538f0 passed inventory and browser installation."
-  }
+  },
+  "mainProductionProof": "../main-live-runtime.json"
 }

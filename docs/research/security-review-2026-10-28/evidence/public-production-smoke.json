@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-28T05:06:41.173Z",
+  "expectedCommit": "9a442adcfb9e7a6138882736988e60a40bd90eb0",
+  "health": {
+    "status": "ready",
+    "ok": true,
+    "service": "wtf-gameshow-api",
+    "version": {
+      "packageVersion": "1.0.0",
+      "commitRef": "9a442adc",
+      "nodeEnv": "production"
+    },
+    "checks": {
+      "db": true,
+      "chain": true,
+      "jobs": true,
+      "jobIssues": 0
+    },
+    "timestamp": "2026-10-28T05:06:36.902Z"
+  },
+  "home": {
+    "status": 200,
+    "title": "wtfOS"
+  },
+  "login": {
+    "status": 200,
+    "title": "Sign in - wtfOS",
+    "usernameVisible": true,
+    "passwordVisible": true
+  },
+  "generatorSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
+  "pageErrors": [],
+  "readOnly": true
+}

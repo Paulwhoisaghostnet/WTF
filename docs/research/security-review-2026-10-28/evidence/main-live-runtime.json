@@ -1,0 +1,175 @@
+{
+  "schema": "wtfos.security.post-deploy-main-runtime.v1",
+  "capturedAt": "2026-10-28T05:07:27.124248+00:00",
+  "expectedCommit": "9a442adcfb9e7a6138882736988e60a40bd90eb0",
+  "method": "Read-only authorized SSH wrapper; filtered Docker metadata; actual Node/package files; PostgreSQL SHOW server_version and client binary; Caddy build information; native systemd MainPID executables. No environment, secret, wallet, or account dumps.",
+  "publicReadyBefore": {
+    "status": "ready",
+    "ok": true,
+    "service": "wtf-gameshow-api",
+    "version": {
+      "packageVersion": "1.0.0",
+      "commitRef": "9a442adc",
+      "nodeEnv": "production"
+    },
+    "checks": {
+      "db": true,
+      "chain": true,
+      "jobs": true,
+      "jobIssues": 0
+    },
+    "timestamp": "2026-10-28T05:07:27.185Z"
+  },
+  "app": {
+    "container": "wtf-app-app-1",
+    "containerId": "9167661dc3d35f9d40ffa36bb85399c037c78b51232b41293d20d60041872a43",
+    "imageId": "sha256:128e54540d227b34f66a5ff107e42bbea78418cd229d96466653654f6c92edbd",
+    "startedAt": "2026-10-28T05:04:09.079638756Z",
+    "running": true,
+    "restartCount": 0,
+    "health": "healthy",
+    "runtime": {
+      "node": "22.23.4",
+      "bundledUndici": "6.29.1",
+      "execPath": "/usr/local/bin/node",
+      "installed": {
+        "qs": {
+          "name": "qs",
+          "version": "6.16.1",
+          "packagePath": "/app/node_modules/qs/package.json"
+        },
+        "@modelcontextprotocol/sdk": {
+          "name": "@modelcontextprotocol/sdk",
+          "version": "1.32.0",
+          "packagePath": "/app/node_modules/@modelcontextprotocol/sdk/package.json"
+        },
+        "body-parser": {
+          "name": "body-parser",
+          "version": "2.4.0",
+          "packagePath": "/app/node_modules/body-parser/package.json"
+        },
+        "multer": {
+          "name": "multer",
+          "version": "2.5.0",
+          "packagePath": "/app/node_modules/multer/package.json"
+        },
+        "zod": {
+          "name": "zod",
+          "version": "4.6.7",
+          "packagePath": "/app/node_modules/zod/package.json"
+        },
+        "hono": {
+          "name": "hono",
+          "version": "4.13.11",
+          "packagePath": "/app/node_modules/hono/package.json"
+        },
+        "undici_v6": {
+          "name": "undici",
+          "version": "6.29.1",
+          "packagePath": "/app/node_modules/undici_v6/package.json"
+        },
+        "undici_v7": {
+          "name": "undici",
+          "version": "7.30.1",
+          "packagePath": "/app/node_modules/undici_v7/package.json"
+        },
+        "undici_v8": {
+          "name": "undici",
+          "version": "8.12.3",
+          "packagePath": "/app/node_modules/undici_v8/package.json"
+        }
+      }
+    }
+  },
+  "postgres": {
+    "container": "wtf-app-postgres-1",
+    "containerId": "494488e91b9e71be264befff080a67f4537b626d9ee47423f5e34c06bbeeeb7c",
+    "imageId": "sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab",
+    "startedAt": "2026-10-28T05:03:35.004094203Z",
+    "running": true,
+    "restartCount": 0,
+    "health": "healthy",
+    "serverVersion": "16.15",
+    "clientVersion": "psql (PostgreSQL) 16.15",
+    "dataMount": [
+      {
+        "Type": "bind",
+        "Source": "/mnt/wtf-data/postgres",
+        "Destination": "/var/lib/postgresql/data",
+        "RW": true
+      }
+    ],
+    "dataMountMatchesMeasuredBeforeUpgrade": true,
+    "baselineContainerId": "4f5c8d9effb0d73b7dbb6027d55202b203756e013b3755ca23b2256572a3765b",
+    "baselineImageId": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"
+  },
+  "caddy": {
+    "container": "wtf-app-caddy-1",
+    "containerId": "9e9cec62e8b83a45fc6df43ed85547caccbb8fa957ce9e6d0bd7f6f78772345b",
+    "imageId": "sha256:dd9486dd5bba451c0f00a5a16a6aff34294b5e6582001bd5d3ee315cfc4fe514",
+    "startedAt": "2026-10-28T05:04:09.207269975Z",
+    "running": true,
+    "restartCount": 0,
+    "runtimeBuildLines": [
+      "go\tgo1.26.10",
+      "path\tgithub.com/caddyserver/caddy/v2/cmd/caddy",
+      "mod\tgithub.com/caddyserver/caddy/v2\tv2.11.7\th1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4="
+    ]
+  },
+  "nativeServices": [
+    {
+      "unit": "kiln.service",
+      "MainPID": "3146753",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running",
+      "runningExecutable": "/usr/bin/node",
+      "nodeVersionFromRunningExecutable": "v22.23.4"
+    },
+    {
+      "unit": "wtf-aleatory-provider.service",
+      "MainPID": "3147215",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running",
+      "runningExecutable": "/usr/bin/node",
+      "nodeVersionFromRunningExecutable": "v22.23.4"
+    },
+    {
+      "unit": "wtf-operator-signer.service",
+      "MainPID": "2484839",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running",
+      "runningExecutable": "/usr/bin/node",
+      "nodeVersionFromRunningExecutable": "v22.23.4",
+      "installedZod": "4.6.7",
+      "bundleSha256": "7d3e88ca8ebcf8972c28677e3c8c67ed948aa06237747a295f3bcbbb62a49b4c",
+      "priorAuthorizedHealthAndWalletPreservationProof": "dependency-remediation/signer-activation.json",
+      "walletReadsOrChainWritesThisCheck": 0
+    }
+  ],
+  "publicReadyAfter": {
+    "status": "ready",
+    "ok": true,
+    "service": "wtf-gameshow-api",
+    "version": {
+      "packageVersion": "1.0.0",
+      "commitRef": "9a442adc",
+      "nodeEnv": "production"
+    },
+    "checks": {
+      "db": true,
+      "chain": true,
+      "jobs": true,
+      "jobIssues": 0
+    },
+    "timestamp": "2026-10-28T05:07:27.569Z"
+  },
+  "completedAt": "2026-10-28T05:07:27.576314+00:00",
+  "normalDeployment": {
+    "workflowRunId": 40635387419,
+    "conclusion": "success",
+    "source": "Parent observed normal Hetzner deployment completion before this check."
+  }
+}

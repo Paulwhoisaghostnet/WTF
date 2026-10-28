@@ -1219,6 +1219,8 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await buyAndDeploy(guest, guestArena);
       expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
       await hit(page, hostArena, "battle");
+      // The harness shares one account identity: acknowledge this command before switching actors.
+      await expect.poll(async () => (await gameState(hostArena)).party).toMatchObject({ ready: true, pending: false });
       expect((await guest.request.post("/__test/state", { data: { userRole: "contestant" } })).ok()).toBeTruthy();
       await hit(guest, guestArena, "battle");
       await expect.poll(async () => (await gameState(recoveredArena)).match.phase).toBe("combat");

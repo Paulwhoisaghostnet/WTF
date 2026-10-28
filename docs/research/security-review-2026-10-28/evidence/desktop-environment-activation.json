@@ -39,5 +39,15 @@
   "backupMode": "0o600",
   "containerRecreated": false,
   "serviceRestarted": false,
-  "activation": "Environment staged only; normal main deployment must load it."
+  "activation": "Loaded by successful normal main deployment; all nine authenticated production installer manifests verified alpha.3.",
+  "stagingActionScope": "containerRecreated and serviceRestarted describe only the earlier environment-file staging action.",
+  "normalDeployment": {
+    "runId": 40635387419,
+    "url": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40635387419",
+    "commit": "9a442adcfb9e7a6138882736988e60a40bd90eb0",
+    "status": "success",
+    "observedPublicCommit": "9a442adc",
+    "verifiedAt": "2026-10-28T05:07:02.779600+00:00",
+    "manifestReceipt": "desktop-live-installer-checks.json"
+  }
 }

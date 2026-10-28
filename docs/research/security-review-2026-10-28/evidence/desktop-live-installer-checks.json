@@ -1,0 +1,156 @@
+{
+  "checkedAt": "2026-10-28T05:07:02.779600+00:00",
+  "baseUrl": "https://wtfos.app",
+  "expectedInstallerVersion": "1.0.1-alpha.3",
+  "expectedCommit": "9a442adcfb9e7a6138882736988e60a40bd90eb0",
+  "observedHealthCommit": "9a442adc",
+  "authenticated": true,
+  "authMethod": "Existing production actor session; no account or role changes",
+  "downloadRangeChecks": true,
+  "healthStatus": 200,
+  "healthTransport": "curl; Python default user agent was rejected by Cloudflare browser signature rule before application access",
+  "results": [
+    {
+      "app": "pasta-suite",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release pasta-suite-desktop-v1.0.1-alpha.3 exposes expected suite assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest enumerates bundled Pasta app surfaces",
+        "authenticated manifest matches Pasta Suite Desktop 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.775052+00:00"
+    },
+    {
+      "app": "ch-ease",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release ch-ease-desktop-v1.0.1-alpha.3 exposes expected CH-EASE assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches CH-EASE Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.454622+00:00"
+    },
+    {
+      "app": "macaroni",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release macaroni-desktop-v1.0.1-alpha.3 exposes expected Macaroni assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Macaroni Desktop 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.486070+00:00"
+    },
+    {
+      "app": "spaghetti",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release spaghetti-desktop-v1.0.1-alpha.3 exposes expected Spaghetti assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Spaghetti Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.507430+00:00"
+    },
+    {
+      "app": "gnocchi",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release gnocchi-desktop-v1.0.1-alpha.3 exposes expected Gnocchi assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Gnocchi Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.503779+00:00"
+    },
+    {
+      "app": "ravioli",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release ravioli-desktop-v1.0.1-alpha.3 exposes expected Ravioli assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Ravioli Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.480465+00:00"
+    },
+    {
+      "app": "rotini",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release rotini-desktop-v1.0.1-alpha.3 exposes expected Rotini assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Rotini Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.480409+00:00"
+    },
+    {
+      "app": "penne",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release penne-desktop-v1.0.1-alpha.3 exposes expected Penne assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Penne Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.779182+00:00"
+    },
+    {
+      "app": "lasagna",
+      "exitCode": 0,
+      "checks": [
+        "unauthenticated manifest returns 401",
+        "GitHub release lasagna-desktop-v1.0.1-alpha.3 exposes expected Lasagna assets",
+        "macos release asset accepts byte-range download",
+        "windows release asset accepts byte-range download",
+        "raspberry-pi release asset accepts byte-range download",
+        "using supplied cookie for authenticated manifest probe",
+        "authenticated manifest matches Lasagna Studio 1.0.1-alpha.3"
+      ],
+      "errors": [],
+      "checkedAt": "2026-10-28T05:07:02.536320+00:00"
+    }
+  ],
+  "deploymentRun": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40635387419",
+  "counts": {
+    "authenticatedManifestsPassed": 9,
+    "unauthenticated401ChecksPassed": 9,
+    "publicAssetRangeChecksPassed": 27
+  }
+}

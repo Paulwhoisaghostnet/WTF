@@ -1327,14 +1327,28 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       args: ["--host-resolver-rules=MAP gamma.wtfos.app 127.0.0.1"],
     });
     const context = await browser.newContext({
-      baseURL: `http://gamma.wtfos.app:${port}`,
+      baseURL: `https://gamma.wtfos.app:${port}`,
       viewport: { width: 1280, height: 800 },
+    });
+    // .app is HSTS-preloaded. Keep the real HTTPS browser origin while serving
+    // this fixture through the HTTP-only local harness, with its Host intact.
+    await context.route(`https://gamma.wtfos.app:${port}/**`, async (route) => {
+      const target = new URL(route.request().url());
+      const host = target.host;
+      target.protocol = "http:";
+      target.hostname = "127.0.0.1";
+      const response = await route.fetch({
+        url: target.href,
+        headers: { ...route.request().headers(), host },
+        maxRedirects: 0, // Return redirects to the browser; never proxy to another host.
+      });
+      await route.fulfill({ response });
     });
     const page = await context.newPage();
 
     try {
       await page.goto("/gallery", { waitUntil: "domcontentloaded" });
-      await expect(page).toHaveURL(new RegExp(`^http://gamma\\.wtfos\\.app:${port}/gallery$`));
+      await expect(page).toHaveURL(new RegExp(`^https://gamma\\.wtfos\\.app:${port}/gallery$`));
       await expectGammaRouteReady(page, "/gallery");
       await expect(page.locator("[data-gamma-application-content]")).toBeVisible();
       await expect(page.locator("[data-gamma-ux-switcher]").getByRole("link", { name: "Classic" })).toHaveAttribute(
@@ -1343,7 +1357,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
       );
 
       await page.locator('[data-gamma-side-rail] [data-gamma-launch="/leaderboard"]').click();
-      await expect(page).toHaveURL(new RegExp(`^http://gamma\\.wtfos\\.app:${port}/leaderboard$`));
+      await expect(page).toHaveURL(new RegExp(`^https://gamma\\.wtfos\\.app:${port}/leaderboard$`));
       await expectGammaRouteReady(page, "/leaderboard");
       await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
     } finally {
