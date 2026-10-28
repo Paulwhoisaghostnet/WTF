@@ -1,0 +1,100 @@
+{
+  "checkedAt": "2026-10-28T04:37:26.614045+00:00",
+  "finding": "WTF-BB-723",
+  "providerDomain": {
+    "object": "domain",
+    "id": "9e470ac2-6757-4608-867c-a5fe3d38c3cb",
+    "name": "wtfos.me",
+    "created_at": "2026-10-28 04:36:26.842625+00",
+    "status": "not_started",
+    "capabilities": {
+      "sending": "enabled",
+      "receiving": "disabled"
+    },
+    "records": [
+      {
+        "record": "DKIM",
+        "name": "resend._domainkey",
+        "value": "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDYb/h/eSVLfp2r/DMmgu6oQEZTgYPu8F8HFng7XvJBgqHW5LpPrAm/VvJ4QyL6OM5rm8Rqgv5caUAqB/swf6hWeLt7nVsm5JJIY0tMNFzhnCcIfP8EbR4L8kKXsq1pOa+Uc0XoSuT2Z7BbkCMuYyGwGRpmNQjFr8Uhkpy+AaDX0QIDAQAB",
+        "type": "TXT",
+        "status": "not_started",
+        "ttl": "Auto"
+      },
+      {
+        "record": "SPF",
+        "name": "send",
+        "type": "MX",
+        "ttl": "Auto",
+        "status": "not_started",
+        "value": "feedback-smtp.us-east-1.amazonses.com",
+        "priority": 10
+      },
+      {
+        "record": "SPF",
+        "name": "send",
+        "value": "v=spf1 include:amazonses.com ~all",
+        "type": "TXT",
+        "ttl": "Auto",
+        "status": "not_started"
+      },
+      {
+        "record": "SPF",
+        "name": "rsend",
+        "value": "send.forge.rmta.net",
+        "type": "CNAME",
+        "status": "not_started",
+        "ttl": "Auto"
+      }
+    ],
+    "region": "us-east-1"
+  },
+  "authoritativeDnsBefore": {
+    "checkedAt": "2026-10-28T04:35:24.851272+00:00",
+    "nameservers": [
+      "ns63.domaincontrol.com.",
+      "ns64.domaincontrol.com."
+    ],
+    "records": {
+      "wtfos.me": {
+        "MX": "wtfos.me.\t\t3600\tIN\tMX\t10 mail.wtfos.me.\n",
+        "TXT": "wtfos.me.\t\t3600\tIN\tTXT\t\"v=spf1 mx a:mail.wtfos.me ~all\"\n"
+      },
+      "send.wtfos.me": {
+        "MX": "",
+        "TXT": ""
+      },
+      "resend._domainkey.wtfos.me": {
+        "TXT": ""
+      },
+      "rsend.wtfos.me": {
+        "CNAME": ""
+      }
+    }
+  },
+  "dnsChanged": false,
+  "inboundApexMxPreserved": true,
+  "apexSpfPreserved": true,
+  "accessBlocker": "GoDaddy API credentials absent from existing project/host configuration; existing Chrome session redirects to sign-in. User sign-in or existing credential-file path needed.",
+  "verificationStatus": "not_started; exact provider records ready but not published",
+  "controlledExternalMessageAccepted": false,
+  "probeCleanup": {
+    "checkedAt": "2026-10-28T04:34:16.027818+00:00",
+    "relayProbeAccountAndMailRemoved": true,
+    "originalAccountFileRestoredExactly": true,
+    "originalAccountCount": 4,
+    "originalAccountFileSha256": "ab55ae067100feb89347e1800f32ad1becb0ed36e3c0e985f0b1523b1f9fb0b4",
+    "originalMailFilesPreserved": 13,
+    "queueMessages": 0,
+    "health": "healthy",
+    "providerDomainCount": 0,
+    "providerHasMore": false,
+    "relayDataResponse": 550,
+    "providerReason": "wtfos.me domain is not verified",
+    "externalMessageAccepted": false
+  },
+  "sources": [
+    "https://resend.com/docs/api-reference/domains/create-domain",
+    "https://resend.com/docs/api-reference/domains/verify-domain",
+    "https://resend.com/docs/send-with-smtp"
+  ]
+}

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Blocked: **3** · Fixed: **121** · Verified: **496** · Archived: **4**
+Total: **690** · Open: **4** · Claimed: **45** · In Progress: **15** · Blocked: **3** · Fixed: **121** · Verified: **498** · Archived: **4**
 
 ## Canonical Board
 
@@ -31,6 +31,7 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | WTF-BB-715 | Open | Unassigned | 2026-10-25 | coLILseum / AI shopping | P2 | 9 | 539 | 3 | 3 | 0 | AI commanders hoard gold and cheap copies instead of recruiting premium offers |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 539 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
+| WTF-BB-723 | Open | User-deferred DNS verification | 2026-10-28 | Mail / outbound relay configuration | P2 | 8 | 608 | 2 | 3 | 0 | Existing mail sender domain is absent from the configured outbound relay account |
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 608 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-500 | Claimed | Codex Ravioli v3 contract hardening | - | Pasta Protocol / buyer funds and fulfillment solvency | P0 | 20 | 1 | 5 | 5 | 5 | Ravioli released blind-sale proceeds before child delivery |
 | WTF-BB-545 | Claimed | Codex Ravioli authenticated post-event-86 correction | - | Pasta Protocol / Ravioli recovery plan and proof finality | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli's post-event-86 plan and terminal model cannot complete truthfully |
@@ -72,12 +73,9 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 190 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 281 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-718 | Claimed | Codex October 28 security full send | 2026-10-28 | Infrastructure / PostgreSQL security | P1 | 15 | 93 | 3 | 4 | 4 | All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes |
-| WTF-BB-717 | Claimed | Codex October 28 security full send | 2026-10-28 | Mail / Dovecot and image security | P1 | 15 | 93 | 4 | 4 | 3 | Public mail runs Dovecot affected by crafted-header denial of service |
 | WTF-BB-720 | Claimed | Codex October 28 security full send | 2026-10-28 | Desktop / newly published Electron Node fixes | P1 | 12 | 281 | 2 | 3 | 3 | Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3 |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 387 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 387 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-719 | Claimed | Codex October 28 security full send | 2026-10-28 | Operator signer / independent runtime dependencies | P2 | 10 | 475 | 2 | 3 | 2 | Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app |
-| WTF-BB-723 | Claimed | Codex October 28 security full send | 2026-10-28 | Mail / outbound relay configuration | P2 | 8 | 608 | 2 | 3 | 0 | Existing mail sender domain is absent from the configured outbound relay account |
 | WTF-BB-722 | Claimed | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 656 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
 | WTF-BB-721 | Claimed | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 686 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
@@ -307,6 +305,7 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 | WTF-BB-261 | Verified | Codex Macaroni live snapshot pass | - | Macaroni / user-site runtime compatibility | P0 | 9 | 539 | 1 | 2 | 1 | Published Macaroni snapshots keep stale inline runtime |
 | WTF-BB-259 | Verified | Codex Macaroni owned-mints/share pass | - | Macaroni / generated mint page UX | P0 | 9 | 539 | 1 | 2 | 1 | Macaroni owned-mints copy and social sharing feel mechanical |
 | WTF-BB-258 | Verified | Codex Macaroni stage copy pass | - | Macaroni / generated mint page UX | P0 | 9 | 539 | 1 | 2 | 1 | Single-stage Macaroni drops imply extra sale stages |
+| WTF-BB-717 | Verified | Codex October 28 security full send | 2026-10-28 | Mail / Dovecot and image security | P1 | 15 | 93 | 4 | 4 | 3 | Public mail runs Dovecot affected by crafted-header denial of service |
 | WTF-BB-688 | Verified | Codex October security remediation | 2026-10-22 | Runtime / October 2026 Node and Undici security advisories | P1 | 15 | 93 | 3 | 4 | 4 | Live-source Node image and AT service runtimes predate October security fixes |
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 93 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 93 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
@@ -600,6 +599,7 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 | WTF-BB-081 | Verified | Codex wallet auth proof binding | 2026-09-01 | Authentication / Tezos wallet proof | P2 | 11 | 387 | 3 | 3 | 2 | Wallet-login proof is not bound to the submitted wallet address |
 | WTF-BB-061 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Runtime / API scaling | P2 | 11 | 387 | 2 | 3 | 3 | TzKT response cache stores arbitrary pagination/address combinations indefinitely |
 | WTF-BB-032 | Verified | Codex W repair pass | 2026-05-24 | Data safety / input validation | P2 | 11 | 387 | 3 | 4 | 1 | Unowned media IDs are accepted for W post/DM flows |
+| WTF-BB-719 | Verified | Codex October 28 security full send | 2026-10-28 | Operator signer / independent runtime dependencies | P2 | 10 | 475 | 2 | 3 | 2 | Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app |
 | WTF-BB-669 | Verified | Codex TommyTezos guide-media correction | 2026-09-02 | FAQ media / instructional clarity | P2 | 10 | 475 | 3 | 4 | 0 | FAQ videos speak production prompts and fail to perform as TommyTezos lessons |
 | WTF-BB-515 | Verified | Codex Púca’s Fortune integration | - | Arcade / cartridge packaging | P2 | 10 | 475 | 2 | 3 | 2 | Cartridge manifest regeneration dropped static Arcade games |
 | WTF-BB-512 | Verified | Codex wtfOS contract release | - | Casino / wallet integration | P2 | 10 | 475 | 2 | 3 | 2 | Casino browser encoded a scalar entrypoint as a record |
@@ -745,6 +745,21 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 - Last touched: 2026-07-18
 - Score: C3 + F3 + S0 + P2(3) = 9
 - Legacy evidence: this issue was listed in the historical summary without a corresponding detailed record.
+
+### WTF-BB-723 - Existing mail sender domain is absent from the configured outbound relay account
+
+- Category: Mail / outbound relay configuration
+- Priority: P2
+- Status: Open
+- Owner/Session: User-deferred DNS verification
+- Last touched: 2026-10-28
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence: After correcting the pre-existing unreachable465 route to vendor-supported STARTTLS587, Resend authenticates235 but rejects a controlled owned-mailbox send550 becausewtfos.me is not verified. GET /domains using the unchanged existing relay credentials returns an empty complete list. All four pre-existing mail accounts and postmaster usewtfos.me, with no sender rewrite configured; the probe is representative. No message was accepted externally.
+- Correction direction: Configure the existing normal sender domain in the same provider account, retrieve its exact verification records, inspect authoritative DNS, add only required records preserving inbound MX and unrelated data, then verify provider status and a controlled owned-mailbox roundtrip. Existing project credentials only; no new purchase/account.
+- Verification: Preserve the four original accounts and13messagefiles, prove authenticatedrelay→ownedmailboxbodyhash, remove probe account/messages, confirm emptyqueue and healthy public mail. Record any inaccessible DNS ownership requirement explicitly.
+- Score: existing P2(3)+C2/F3/S0=8; existing mail availability failure, narrowly scoped provider/DNS configuration with no established security exploit.
+
+- User decision2026-10-28: Leave DNS verification pending. Existing Resend account now haswtfos.me configured, statusnot_started; exact4DNSrecords saved ininfra/wtfos-mail/evidence/resend-domain-2026-10-28.json. No DNSchanges; inboundapexMX/SPFunchanged. No authenticatedGoDaddy session/APIcredentials available. Outbound remainsprovider-blocked; noexternaltestmessageaccepted. Alltemporaryprobeaccounts/messagesremoved andmailhealthy. No furtherDNSwork is authorized in thispass.
 
 ### WTF-BB-238 - Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run
 
@@ -1605,25 +1620,6 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
 
 - Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
 
-### WTF-BB-717 - Public mail runs Dovecot affected by crafted-header denial of service
-
-- Category: Mail / Dovecot and image security
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C4 + F4 + S3 + P1(4) = 15
-- Evidence: Actual DockerMailserver 15.1.0 image runs Dovecot 1:2.3.19.1+dfsg1-2.1+deb12u1. IMAP/LMTP are active, Postfix delivers via Dovecot LMTP, and ports 25/587/993 bind publicly. CVE-2026-27852 was publicly disclosed August 28; sending crafted mail followed by IMAP header parsing can exhaust memory and terminate the affected user process. This is DoS, not demonstrated RCE.
-- Additional image debt: installed Debian Brotli 1.0.9-2+b6 is below fixed 1.0.9-2+deb12u1; curl links it but attacker-controlled decode reachability was not proved. OpenSSL 3.0.17 also predates supported updates.
-- Correction direction: verify a replacement image with Dovecot CE 2.4.5 or the Debian trixie backport 1:2.4.1+dfsg1-6+deb13u7 and updated OS packages. Debian bookworm deb12u6 remains vulnerable; do not assume apt refresh or a newer DockerMailserver tag alone fixes this.
-- Verification idea: preserve mail data and validate migration/configuration, SMTP delivery, IMAP retrieval, TLS and actual installed package revisions.
-- Score: existing P1(4)+C4/F4/S3=15; image/config migration, mail availability consequence, externally deliverable DoS.
-- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
-
-- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
-
-- Related live migration verification finding (claimed before correction): configured outbound smtp.resend.com:465 times out from both exact old and patched images to both resolved IPv4 addresses. Both images verify STARTTLS/TLS1.3 on vendor-supported587. Existing smtp_tls_wrappermode=no with smtp_tls_security_level=encrypt matches587. Correct only RELAY_PORT to587, preserve credentials and allother configuration, verify relay authentication and controlled owned-mailbox roundtrip then remove probes. This is a pre-existing outbound path failure, not a migration regression.
-
 ### WTF-BB-720 - Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3
 
 - Category: Desktop / newly published Electron Node fixes
@@ -1676,35 +1672,6 @@ Total: **690** · Open: **3** · Claimed: **48** · In Progress: **15** · Block
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-719 - Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app
-
-- Category: Operator signer / independent runtime dependencies
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C2 + F3 + S2 + P2(3) = 10
-- Evidence: /opt/wtf-operator-signer/node_modules/zod and its installed lock are 4.3.6 while the main app has 4.6.7. The signer externalizes dependencies; src/policy.ts parses constrained collection schemas before checking the token. GHSA-mrhx-c7xc-m3w5 describes bounded-collection validation memory amplification. Access requires its local Unix socket permissions 0660; no public anonymous HTTP trigger is claimed.
-- Correction direction: update the separate extension graph and deployed installation to compatible Zod 4.6.7 (fixed floor 4.6.6); retain current Node 22.23.4.
-- Verification idea: run owning schema/policy tests, preserve authorized signing behavior and verify the actual installed dependency after deployment. Collection fix is not a general frame byte limit.
-- Score: existing P2(3)+C2/F3/S2=10; separate installation, signer availability, restricted local DoS prerequisite.
-- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
-
-- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
-
-### WTF-BB-723 - Existing mail sender domain is absent from the configured outbound relay account
-
-- Category: Mail / outbound relay configuration
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex October 28 security full send
-- Last touched: 2026-10-28
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence: After correcting the pre-existing unreachable465 route to vendor-supported STARTTLS587, Resend authenticates235 but rejects a controlled owned-mailbox send550 becausewtfos.me is not verified. GET /domains using the unchanged existing relay credentials returns an empty complete list. All four pre-existing mail accounts and postmaster usewtfos.me, with no sender rewrite configured; the probe is representative. No message was accepted externally.
-- Correction direction: Configure the existing normal sender domain in the same provider account, retrieve its exact verification records, inspect authoritative DNS, add only required records preserving inbound MX and unrelated data, then verify provider status and a controlled owned-mailbox roundtrip. Existing project credentials only; no new purchase/account.
-- Verification: Preserve the four original accounts and13messagefiles, prove authenticatedrelay→ownedmailboxbodyhash, remove probe account/messages, confirm emptyqueue and healthy public mail. Record any inaccessible DNS ownership requirement explicitly.
-- Score: existing P2(3)+C2/F3/S0=8; existing mail availability failure, narrowly scoped provider/DNS configuration with no established security exploit.
 
 ### WTF-BB-722 - Funding menu fixtures and overlapping mobile controls block security release validation
 
@@ -6755,6 +6722,27 @@ Copy this when adding a new issue:
   - `npx tsx --test server/routes/macaroni-policy.test.ts`
   - `npm run test:e2e:inventory:coverage`
   - `npm run test:e2e:inventory`
+
+### WTF-BB-717 - Public mail runs Dovecot affected by crafted-header denial of service
+
+- Category: Mail / Dovecot and image security
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C4 + F4 + S3 + P1(4) = 15
+- Evidence: Actual DockerMailserver 15.1.0 image runs Dovecot 1:2.3.19.1+dfsg1-2.1+deb12u1. IMAP/LMTP are active, Postfix delivers via Dovecot LMTP, and ports 25/587/993 bind publicly. CVE-2026-27852 was publicly disclosed August 28; sending crafted mail followed by IMAP header parsing can exhaust memory and terminate the affected user process. This is DoS, not demonstrated RCE.
+- Additional image debt: installed Debian Brotli 1.0.9-2+b6 is below fixed 1.0.9-2+deb12u1; curl links it but attacker-controlled decode reachability was not proved. OpenSSL 3.0.17 also predates supported updates.
+- Correction direction: verify a replacement image with Dovecot CE 2.4.5 or the Debian trixie backport 1:2.4.1+dfsg1-6+deb13u7 and updated OS packages. Debian bookworm deb12u6 remains vulnerable; do not assume apt refresh or a newer DockerMailserver tag alone fixes this.
+- Verification idea: preserve mail data and validate migration/configuration, SMTP delivery, IMAP retrieval, TLS and actual installed package revisions.
+- Score: existing P1(4)+C4/F4/S3=15; image/config migration, mail availability consequence, externally deliverable DoS.
+- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
+
+- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
+
+- Related live migration verification finding (claimed before correction): configured outbound smtp.resend.com:465 times out from both exact old and patched images to both resolved IPv4 addresses. Both images verify STARTTLS/TLS1.3 on vendor-supported587. Existing smtp_tls_wrappermode=no with smtp_tls_security_level=encrypt matches587. Correct only RELAY_PORT to587, preserve credentials and allother configuration, verify relay authentication and controlled owned-mailbox roundtrip then remove probes. This is a pre-existing outbound path failure, not a migration regression.
+
+- Verified2026-10-28: actual patched DockerMailserver16.0.1 image runs Dovecot1:2.4.1+dfsg1-6+deb13u7, Brotli1.1.0-2+deb13u1 and OpenSSL3.5.7-1~deb13u3. Isolated migration/restart and public SMTP/LMTP/IMAP/TLS/authenticatedsubmission/relay-denial proofs passed. All4accounts and13originalmessagefiles preserved, probes removed, queueempty. Coldbackup copiedoffhost andchecksumverified; rollbackimage/config/volumesretained. Separatepre-existingoutbounddomainverification is tracked723 and user-deferred; it doesnotreopen theDovecotsecurityfinding. Evidence:infra/wtfos-mail/evidence/security-migration-2026-10-28.json.
 
 ### WTF-BB-688 - Live-source Node image and AT service runtimes predate October security fixes
 
@@ -13289,6 +13277,24 @@ Copy this when adding a new issue:
   - `npm run test:e2e:inventory`
 - Verification idea:
   - Add a rejected test where user A submits a valid-known media ID not owned by user A.
+
+### WTF-BB-719 - Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app
+
+- Category: Operator signer / independent runtime dependencies
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex October 28 security full send
+- Last touched: 2026-10-28
+- Score: C2 + F3 + S2 + P2(3) = 10
+- Evidence: /opt/wtf-operator-signer/node_modules/zod and its installed lock are 4.3.6 while the main app has 4.6.7. The signer externalizes dependencies; src/policy.ts parses constrained collection schemas before checking the token. GHSA-mrhx-c7xc-m3w5 describes bounded-collection validation memory amplification. Access requires its local Unix socket permissions 0660; no public anonymous HTTP trigger is claimed.
+- Correction direction: update the separate extension graph and deployed installation to compatible Zod 4.6.7 (fixed floor 4.6.6); retain current Node 22.23.4.
+- Verification idea: run owning schema/policy tests, preserve authorized signing behavior and verify the actual installed dependency after deployment. Collection fix is not a general frame byte limit.
+- Score: existing P2(3)+C2/F3/S2=10; separate installation, signer availability, restricted local DoS prerequisite.
+- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.
+
+- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
+
+- Verified2026-10-28: live signerZod4.6.7, Node22.23.4, unchangedbundle/allotherdeployeddependencies, identical7-walletdigest, authorizedhealth andinvalid-tokenrejection, socket0660. Source20tests/typecheck/build andold-fails/new-passesboundedarrayregression passed; actualbundleisolatedprotocolproofpassed. Nochainwrites. Evidence:docs/research/security-review-2026-10-28/evidence/dependency-remediation/signer-activation.json.
 
 ### WTF-BB-669 - FAQ videos speak production prompts and fail to perform as TommyTezos lessons
 

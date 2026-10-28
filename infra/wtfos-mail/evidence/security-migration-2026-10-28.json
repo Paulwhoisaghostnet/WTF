@@ -210,9 +210,10 @@
   },
   "sourceFiles": {
     "Dockerfile": "533aacff046085e2dd1179661345de02a24512f217f9f469cf5798640430fef1",
-    "docker-compose.yml": "aab77bbcec8048a7e73b98e387f30b5058dbf7bf72033b3f4872ba43ae70729e",
+    "docker-compose.yml": "0b5955a493134f4d0cc44b4a101a8a629bda25bd2c0539c1de9481440d861cdb",
     ".dockerignore": "08bb7a70af4ae5a9c15226f499f2e76055ebd521550f87eb102a1316cdb9df38",
-    "tests/protocol_probe.py": "17d7e39bece003b46242d4c3b9680e91f9bc7027df3ee837b18e093adc3d4cc2"
+    "tests/protocol_probe.py": "28f9e9ed1f3d8edcd21d9932023db95a931834fed6cf603dedf2e433b65aceb6",
+    ".env.example": "074585adc5867bbb180d6c0122f60d6889f8bb1f3296fac325a811a1baa7479f"
   },
   "relayConnectivity": {
     "existing465": {
@@ -276,6 +277,52 @@
       "smtp_tls_wrappermode": "no",
       "smtp_tls_security_level": "encrypt"
     },
-    "conclusion": "Both old and patched images time out on the unchanged configured port465 before TLS; both verify STARTTLS on587. Production relay configuration remains unchanged pending coordinated correction."
+    "conclusion": "The old and patched images both time out on465 and verify TLS on587. Production now uses587; authentication succeeds. Controlled external delivery was rejected by Resend550 because the original wtfos.me sender domain was not verified. No external test message was accepted."
+  },
+  "relayReadOnlyAuth": {
+    "authCode": 235,
+    "certificateVerified": true,
+    "tlsVersion": "TLSv1.3",
+    "messageSent": false,
+    "checkedAt": "2026-10-28T04:29:08.440392+00:00",
+    "port": 587
+  },
+  "relayPortCorrection": {
+    "changedAt": "2026-10-28T04:30:28.110329+00:00",
+    "changedEnvironmentKeys": [
+      "RELAY_PORT"
+    ],
+    "relayPort": 587,
+    "envOwnerAndModePreserved": true,
+    "imageUnchanged": true,
+    "mountsUnchanged": true,
+    "portsUnchanged": true,
+    "rollbackConfigRetained": true,
+    "stopGraceSeconds": 60
+  },
+  "relayEffectiveConfiguration": {
+    "relayMap": {
+      "sender_dependent_relayhost_maps": "texthash:/etc/postfix/relayhost_map",
+      "smtp_sender_dependent_authentication": "no"
+    },
+    "wtfosMeSenderRelay": "[smtp.resend.com]:587",
+    "senderDomain": "wtfos.me",
+    "sameExistingRelayCredentials": true,
+    "providerDomainListEmpty": true
+  },
+  "relayFinalCleanup": {
+    "checkedAt": "2026-10-28T04:34:16.027818+00:00",
+    "relayProbeAccountAndMailRemoved": true,
+    "originalAccountFileRestoredExactly": true,
+    "originalAccountCount": 4,
+    "originalAccountFileSha256": "ab55ae067100feb89347e1800f32ad1becb0ed36e3c0e985f0b1523b1f9fb0b4",
+    "originalMailFilesPreserved": 13,
+    "queueMessages": 0,
+    "health": "healthy",
+    "providerDomainCount": 0,
+    "providerHasMore": false,
+    "relayDataResponse": 550,
+    "providerReason": "wtfos.me domain is not verified",
+    "externalMessageAccepted": false
   }
 }
