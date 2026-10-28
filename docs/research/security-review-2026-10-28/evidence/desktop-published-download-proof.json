@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-28T04:26:58.637799+00:00",
+  "app": "spaghetti",
+  "version": "1.0.1-alpha.3",
+  "sourceCommit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+  "asset": {
+    "assetId": 683802274,
+    "name": "Spaghetti-Studio-1.0.1-alpha.3-mac-universal.zip",
+    "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/spaghetti-desktop-v1.0.1-alpha.3/Spaghetti-Studio-1.0.1-alpha.3-mac-universal.zip",
+    "sha256": "f536c960ec36aa955dd23a174141ab57e5f94b9d9cc9664e8a25566ccaf374ca",
+    "bytes": 222717922
+  },
+  "downloadedSha256": "f536c960ec36aa955dd23a174141ab57e5f94b9d9cc9664e8a25566ccaf374ca",
+  "downloadedBytes": 222717922,
+  "matches": true,
+  "installedSmoke": {
+    "ok": true,
+    "app": "spaghetti",
+    "executablePath": "published Spaghetti-Studio-1.0.1-alpha.3-mac-universal.zip / spaghetti-studio.app/Contents/MacOS/spaghetti-studio",
+    "origin": "http://127.0.0.1:30772",
+    "title": "Spaghetti \u2014 Pasta Protocol",
+    "assetsVerified": 4,
+    "stableOriginRelaunch": true,
+    "bundledToolsOpened": 0,
+    "provenance": {
+      "schema": "wtfos.pasta.desktop-build-provenance.v1",
+      "app": "@wtf/spaghetti-desktop",
+      "version": "1.0.1-alpha.3",
+      "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "dirty": false,
+      "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "target": {
+        "platform": "darwin",
+        "arch": "universal",
+        "format": "dmg+zip"
+      }
+    },
+    "runtimeVersions": {
+      "electron": "43.8.4",
+      "node": "24.22.1",
+      "chrome": "150.0.7871.250"
+    },
+    "screenshotPath": null
+  }
+}

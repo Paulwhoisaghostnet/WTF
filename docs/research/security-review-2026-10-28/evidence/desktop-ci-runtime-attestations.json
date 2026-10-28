@@ -1,0 +1,1214 @@
+{
+  "checkedAt": "2026-10-28T04:25:58.586539+00:00",
+  "applicationCount": 9,
+  "platformJobCount": 27,
+  "installedFormatProofCount": 36,
+  "applications": [
+    {
+      "app": "spaghetti",
+      "runId": 40631555955,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631555955",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "spaghetti",
+          "origin": "http://127.0.0.1:30772",
+          "title": "Spaghetti \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/spaghetti-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628868074,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "spaghetti",
+          "origin": "http://127.0.0.1:30772",
+          "title": "Spaghetti \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/spaghetti-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628868074,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "spaghetti",
+          "origin": "http://127.0.0.1:30772",
+          "title": "Spaghetti \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/spaghetti-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628868422,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "spaghetti",
+          "origin": "http://127.0.0.1:30772",
+          "title": "Spaghetti \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/spaghetti-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628868479,
+          "jobName": "Build Raspberry Pi arm64"
+        }
+      ]
+    },
+    {
+      "app": "macaroni",
+      "runId": 40631559522,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631559522",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "macaroni",
+          "origin": "http://127.0.0.1:30771",
+          "title": "Macaroni Studio \u2014 create your drop",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/macaroni-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628880008,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "macaroni",
+          "origin": "http://127.0.0.1:30771",
+          "title": "Macaroni Studio \u2014 create your drop",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/macaroni-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628880194,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "macaroni",
+          "origin": "http://127.0.0.1:30771",
+          "title": "Macaroni Studio \u2014 create your drop",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/macaroni-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628880194,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "macaroni",
+          "origin": "http://127.0.0.1:30771",
+          "title": "Macaroni Studio \u2014 create your drop",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/macaroni-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628880301,
+          "jobName": "Build Raspberry Pi arm64"
+        }
+      ]
+    },
+    {
+      "app": "pasta-suite",
+      "runId": 40631562581,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631562581",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "pasta-suite",
+          "origin": "http://127.0.0.1:30770",
+          "title": "Pasta Suite",
+          "assetsVerified": 39,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 8,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/pasta-suite-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628890199,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "pasta-suite",
+          "origin": "http://127.0.0.1:30770",
+          "title": "Pasta Suite",
+          "assetsVerified": 39,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 8,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/pasta-suite-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628890199,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "pasta-suite",
+          "origin": "http://127.0.0.1:30770",
+          "title": "Pasta Suite",
+          "assetsVerified": 39,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 8,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/pasta-suite-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628890619,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "pasta-suite",
+          "origin": "http://127.0.0.1:30770",
+          "title": "Pasta Suite",
+          "assetsVerified": 39,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 8,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/pasta-suite-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628890637,
+          "jobName": "Build Windows x64"
+        }
+      ]
+    },
+    {
+      "app": "ch-ease",
+      "runId": 40631565697,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631565697",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "ch-ease",
+          "origin": "http://127.0.0.1:30778",
+          "title": "CH-EASE \u2014 Pasta Protocol preparation studio",
+          "assetsVerified": 34,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ch-ease-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628899999,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "ch-ease",
+          "origin": "http://127.0.0.1:30778",
+          "title": "CH-EASE \u2014 Pasta Protocol preparation studio",
+          "assetsVerified": 34,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ch-ease-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628900269,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "ch-ease",
+          "origin": "http://127.0.0.1:30778",
+          "title": "CH-EASE \u2014 Pasta Protocol preparation studio",
+          "assetsVerified": 34,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ch-ease-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628900303,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "ch-ease",
+          "origin": "http://127.0.0.1:30778",
+          "title": "CH-EASE \u2014 Pasta Protocol preparation studio",
+          "assetsVerified": 34,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ch-ease-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628900303,
+          "jobName": "Build macOS universal"
+        }
+      ]
+    },
+    {
+      "app": "gnocchi",
+      "runId": 40631569012,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631569012",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "gnocchi",
+          "origin": "http://127.0.0.1:30773",
+          "title": "Gnocchi \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/gnocchi-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628910054,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "gnocchi",
+          "origin": "http://127.0.0.1:30773",
+          "title": "Gnocchi \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/gnocchi-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628910273,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "gnocchi",
+          "origin": "http://127.0.0.1:30773",
+          "title": "Gnocchi \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/gnocchi-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628910273,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "gnocchi",
+          "origin": "http://127.0.0.1:30773",
+          "title": "Gnocchi \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/gnocchi-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628910291,
+          "jobName": "Build Windows x64"
+        }
+      ]
+    },
+    {
+      "app": "ravioli",
+      "runId": 40631571987,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631571987",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "ravioli",
+          "origin": "http://127.0.0.1:30774",
+          "title": "Ravioli \u2014 Pasta Protocol",
+          "assetsVerified": 10,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ravioli-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628919300,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "ravioli",
+          "origin": "http://127.0.0.1:30774",
+          "title": "Ravioli \u2014 Pasta Protocol",
+          "assetsVerified": 10,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ravioli-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628919300,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "ravioli",
+          "origin": "http://127.0.0.1:30774",
+          "title": "Ravioli \u2014 Pasta Protocol",
+          "assetsVerified": 10,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ravioli-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628919572,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "ravioli",
+          "origin": "http://127.0.0.1:30774",
+          "title": "Ravioli \u2014 Pasta Protocol",
+          "assetsVerified": 10,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/ravioli-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628919719,
+          "jobName": "Build Windows x64"
+        }
+      ]
+    },
+    {
+      "app": "rotini",
+      "runId": 40631574846,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631574846",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "rotini",
+          "origin": "http://127.0.0.1:30775",
+          "title": "Rotini \u2014 Pasta Protocol",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/rotini-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628928461,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "rotini",
+          "origin": "http://127.0.0.1:30775",
+          "title": "Rotini \u2014 Pasta Protocol",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/rotini-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628928789,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "rotini",
+          "origin": "http://127.0.0.1:30775",
+          "title": "Rotini \u2014 Pasta Protocol",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/rotini-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628928789,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "rotini",
+          "origin": "http://127.0.0.1:30775",
+          "title": "Rotini \u2014 Pasta Protocol",
+          "assetsVerified": 6,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/rotini-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628928801,
+          "jobName": "Build Raspberry Pi arm64"
+        }
+      ]
+    },
+    {
+      "app": "penne",
+      "runId": 40631577416,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631577416",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "penne",
+          "origin": "http://127.0.0.1:30776",
+          "title": "Penne \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/penne-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628937650,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "penne",
+          "origin": "http://127.0.0.1:30776",
+          "title": "Penne \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/penne-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628937892,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "penne",
+          "origin": "http://127.0.0.1:30776",
+          "title": "Penne \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/penne-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628937950,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "penne",
+          "origin": "http://127.0.0.1:30776",
+          "title": "Penne \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/penne-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628937950,
+          "jobName": "Build macOS universal"
+        }
+      ]
+    },
+    {
+      "app": "lasagna",
+      "runId": 40631580341,
+      "runUrl": "https://github.com/Paulwhoisaghostnet/WTF/actions/runs/40631580341",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "buildAttempt": 1,
+      "buildJobCount": 3,
+      "proofs": [
+        {
+          "ok": true,
+          "app": "lasagna",
+          "origin": "http://127.0.0.1:30777",
+          "title": "Lasagna \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/lasagna-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "win32",
+              "arch": "x64",
+              "format": "nsis"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "nsis",
+          "jobId": 122628946721,
+          "jobName": "Build Windows x64"
+        },
+        {
+          "ok": true,
+          "app": "lasagna",
+          "origin": "http://127.0.0.1:30777",
+          "title": "Lasagna \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/lasagna-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "linux",
+              "arch": "arm64",
+              "format": "deb"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "deb",
+          "jobId": 122628946876,
+          "jobName": "Build Raspberry Pi arm64"
+        },
+        {
+          "ok": true,
+          "app": "lasagna",
+          "origin": "http://127.0.0.1:30777",
+          "title": "Lasagna \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/lasagna-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "zip",
+          "jobId": 122628947125,
+          "jobName": "Build macOS universal"
+        },
+        {
+          "ok": true,
+          "app": "lasagna",
+          "origin": "http://127.0.0.1:30777",
+          "title": "Lasagna \u2014 Pasta Protocol",
+          "assetsVerified": 4,
+          "stableOriginRelaunch": true,
+          "bundledToolsOpened": 0,
+          "provenance": {
+            "schema": "wtfos.pasta.desktop-build-provenance.v1",
+            "app": "@wtf/lasagna-desktop",
+            "version": "1.0.1-alpha.3",
+            "gitSha": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "dirty": false,
+            "sourceRevision": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+            "target": {
+              "platform": "darwin",
+              "arch": "universal",
+              "format": "dmg+zip"
+            }
+          },
+          "runtimeVersions": {
+            "electron": "43.8.4",
+            "node": "24.22.1",
+            "chrome": "150.0.7871.250"
+          },
+          "screenshotPath": null,
+          "installedFormat": "dmg",
+          "jobId": 122628947125,
+          "jobName": "Build macOS universal"
+        }
+      ]
+    }
+  ]
+}

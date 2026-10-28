@@ -1,0 +1,359 @@
+{
+  "checkedAt": "2026-10-28T04:27:48.351015+00:00",
+  "version": "1.0.1-alpha.3",
+  "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+  "releaseCount": 9,
+  "releases": [
+    {
+      "key": "spaghetti",
+      "releaseId": 426259296,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/spaghetti-desktop-v1.0.1-alpha.3",
+      "tag": "spaghetti-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:22:10Z",
+      "runId": 40631555955,
+      "assets": {
+        "MACOS": {
+          "assetId": 683802282,
+          "name": "Spaghetti-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/spaghetti-desktop-v1.0.1-alpha.3/Spaghetti-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "acc59557f27a98d9f68c9ea6f829f6f74d5b3976da231e897ddf726c19777278",
+          "bytes": 222790331
+        },
+        "WINDOWS": {
+          "assetId": 683802283,
+          "name": "Spaghetti-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/spaghetti-desktop-v1.0.1-alpha.3/Spaghetti-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "51ff8b3900dd2a52e08114fccdb87cc8762dafc7962812a9937ba01a6aba2b85",
+          "bytes": 105556259
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683802286,
+          "name": "Spaghetti-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/spaghetti-desktop-v1.0.1-alpha.3/Spaghetti-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "3831bfedf030d1c81dca6d6980cdeff98efbf5ec57eaadb10288a497280e308b",
+          "bytes": 96984576
+        },
+        "MACOS_ZIP": {
+          "assetId": 683802274,
+          "name": "Spaghetti-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/spaghetti-desktop-v1.0.1-alpha.3/Spaghetti-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "f536c960ec36aa955dd23a174141ab57e5f94b9d9cc9664e8a25566ccaf374ca",
+          "bytes": 222717922
+        }
+      }
+    },
+    {
+      "key": "macaroni",
+      "releaseId": 426259119,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/macaroni-desktop-v1.0.1-alpha.3",
+      "tag": "macaroni-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:21:48Z",
+      "runId": 40631559522,
+      "assets": {
+        "MACOS": {
+          "assetId": 683801370,
+          "name": "Macaroni-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.3/Macaroni-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "3091ff8ca29fe20c01953524a01c26bb2df853e3a52ff7aa9656abcaa3153125",
+          "bytes": 223001179
+        },
+        "WINDOWS": {
+          "assetId": 683801361,
+          "name": "Macaroni-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.3/Macaroni-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "99707387205cc4c6df2efa6fc9f19e252e497f0ae2b662065f4cbbbe2bdcad5e",
+          "bytes": 105663174
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683801369,
+          "name": "Macaroni-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.3/Macaroni-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "67d1cb20f01379820235441be783e767aac06c9a21596b5626c999d8ab7a756f",
+          "bytes": 97033520
+        },
+        "MACOS_ZIP": {
+          "assetId": 683801362,
+          "name": "Macaroni-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/macaroni-desktop-v1.0.1-alpha.3/Macaroni-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "9c5a3c781effd2cae637155c8cd9273c677c5de0d89c635a7b94ea9c218f9069",
+          "bytes": 222853594
+        }
+      }
+    },
+    {
+      "key": "pasta-suite",
+      "releaseId": 426259594,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/pasta-suite-desktop-v1.0.1-alpha.3",
+      "tag": "pasta-suite-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:22:46Z",
+      "runId": 40631562581,
+      "assets": {
+        "MACOS": {
+          "assetId": 683803914,
+          "name": "Pasta-Suite-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/pasta-suite-desktop-v1.0.1-alpha.3/Pasta-Suite-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "a83e3f37e2cd98c60787c4c6676ad85cf2d5b70a8d9217e8e93d77618fddd4b3",
+          "bytes": 231891802
+        },
+        "WINDOWS": {
+          "assetId": 683803911,
+          "name": "Pasta-Suite-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/pasta-suite-desktop-v1.0.1-alpha.3/Pasta-Suite-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "e48a82afafe59854ceb2b709ab5ccd2a21e9ca8e1c00cdcb478327cee6f8c365",
+          "bytes": 112470105
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683803915,
+          "name": "Pasta-Suite-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/pasta-suite-desktop-v1.0.1-alpha.3/Pasta-Suite-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "948f1b8e34b68f7c0bc57aecafca588ac55b0e557258ff1c260ee6df03e68000",
+          "bytes": 99822052
+        },
+        "MACOS_ZIP": {
+          "assetId": 683803916,
+          "name": "Pasta-Suite-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/pasta-suite-desktop-v1.0.1-alpha.3/Pasta-Suite-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "6e8760b7cc4cbd98b81edd19ee509388af4ce7fdde15326e5afb15a535be233f",
+          "bytes": 231945285
+        }
+      }
+    },
+    {
+      "key": "ch-ease",
+      "releaseId": 426259256,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/ch-ease-desktop-v1.0.1-alpha.3",
+      "tag": "ch-ease-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:22:06Z",
+      "runId": 40631565697,
+      "assets": {
+        "MACOS": {
+          "assetId": 683802089,
+          "name": "CH-EASE-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ch-ease-desktop-v1.0.1-alpha.3/CH-EASE-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "caaec54a02cc3a99f2507c969cba84b8fce85d7e8b74a12d30d702c9a4b18e40",
+          "bytes": 230331813
+        },
+        "WINDOWS": {
+          "assetId": 683802091,
+          "name": "CH-EASE-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ch-ease-desktop-v1.0.1-alpha.3/CH-EASE-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "69c2b9d5a80adf6d170a7fd18257ea13c20d601e48839d2801d102e6af0ad475",
+          "bytes": 111273791
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683802087,
+          "name": "CH-EASE-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ch-ease-desktop-v1.0.1-alpha.3/CH-EASE-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "64f7f3b88ace12396e874ad6ada5d3498d9ee14040eab1965b46d19566b7fe7d",
+          "bytes": 98855496
+        },
+        "MACOS_ZIP": {
+          "assetId": 683802088,
+          "name": "CH-EASE-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ch-ease-desktop-v1.0.1-alpha.3/CH-EASE-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "c235b0d2326cbe69a06a638e904f411e4f4f03cd6032d39f24ab2e1c155cb6bb",
+          "bytes": 230287012
+        }
+      }
+    },
+    {
+      "key": "gnocchi",
+      "releaseId": 426259298,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/gnocchi-desktop-v1.0.1-alpha.3",
+      "tag": "gnocchi-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:22:10Z",
+      "runId": 40631569012,
+      "assets": {
+        "MACOS": {
+          "assetId": 683802277,
+          "name": "Gnocchi-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/gnocchi-desktop-v1.0.1-alpha.3/Gnocchi-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "244fd83cfe8ccfdec31901b10dccff7abf7a2e8e2ad52bad9f367b65e6b9cff8",
+          "bytes": 223022793
+        },
+        "WINDOWS": {
+          "assetId": 683802279,
+          "name": "Gnocchi-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/gnocchi-desktop-v1.0.1-alpha.3/Gnocchi-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "7ad06bb60146eef2562676b50fab97e7922563661fde9048d5b0111d91329a2b",
+          "bytes": 105597095
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683802272,
+          "name": "Gnocchi-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/gnocchi-desktop-v1.0.1-alpha.3/Gnocchi-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "85d366bcf12ff5cd3714588d71c21e936ab60f4499c019b90d10adafbeef35dd",
+          "bytes": 97018424
+        },
+        "MACOS_ZIP": {
+          "assetId": 683802280,
+          "name": "Gnocchi-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/gnocchi-desktop-v1.0.1-alpha.3/Gnocchi-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "3beb9e92da85eefc617e4a32a162d0ca74e4d0138e990e764c8092e7acdc2056",
+          "bytes": 222829293
+        }
+      }
+    },
+    {
+      "key": "ravioli",
+      "releaseId": 426260741,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/ravioli-desktop-v1.0.1-alpha.3",
+      "tag": "ravioli-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:25:03Z",
+      "runId": 40631571987,
+      "assets": {
+        "MACOS": {
+          "assetId": 683808649,
+          "name": "Ravioli-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ravioli-desktop-v1.0.1-alpha.3/Ravioli-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "f64702ce441f3a16c64a86bfc9b44f7d1142288f132e8007dc3de2c1af270179",
+          "bytes": 222905327
+        },
+        "WINDOWS": {
+          "assetId": 683808651,
+          "name": "Ravioli-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ravioli-desktop-v1.0.1-alpha.3/Ravioli-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "9e8abfa6cb277aed4ded2116fd9bd1b351874e334400b870ad9b603f4544d829",
+          "bytes": 105623136
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683808646,
+          "name": "Ravioli-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ravioli-desktop-v1.0.1-alpha.3/Ravioli-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "30f152cb2cfbe1c955f9e00f4c8810124ac76d1fc543bafca3ef260c6dd03fc3",
+          "bytes": 96987104
+        },
+        "MACOS_ZIP": {
+          "assetId": 683808650,
+          "name": "Ravioli-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/ravioli-desktop-v1.0.1-alpha.3/Ravioli-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "acf756cce746c2d22de723a69de3e04de0b2898e485b6f10203f79fd883089d5",
+          "bytes": 222817053
+        }
+      }
+    },
+    {
+      "key": "rotini",
+      "releaseId": 426260949,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/rotini-desktop-v1.0.1-alpha.3",
+      "tag": "rotini-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:25:31Z",
+      "runId": 40631574846,
+      "assets": {
+        "MACOS": {
+          "assetId": 683809287,
+          "name": "Rotini-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/rotini-desktop-v1.0.1-alpha.3/Rotini-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "5698bcf783017af4b59e246ecbe70e8a62ebbfe4fb762b69c2c33a1e0dec763f",
+          "bytes": 222947080
+        },
+        "WINDOWS": {
+          "assetId": 683809286,
+          "name": "Rotini-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/rotini-desktop-v1.0.1-alpha.3/Rotini-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "122ab3768e219a598240c087dab9801a8f37c0bd697045192452cb98598d7df1",
+          "bytes": 105604824
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683809291,
+          "name": "Rotini-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/rotini-desktop-v1.0.1-alpha.3/Rotini-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "e1d0d5c9e3c2fce69759efe6423a30d35f7a13e12e7725467ff64388f89f46f8",
+          "bytes": 96955344
+        },
+        "MACOS_ZIP": {
+          "assetId": 683809285,
+          "name": "Rotini-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/rotini-desktop-v1.0.1-alpha.3/Rotini-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "32ead30695e4bf317787ce63670bac0824fa4bca9558c499a73b8c098a5fb24f",
+          "bytes": 222809121
+        }
+      }
+    },
+    {
+      "key": "penne",
+      "releaseId": 426260961,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/penne-desktop-v1.0.1-alpha.3",
+      "tag": "penne-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:25:33Z",
+      "runId": 40631577416,
+      "assets": {
+        "MACOS": {
+          "assetId": 683809323,
+          "name": "Penne-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/penne-desktop-v1.0.1-alpha.3/Penne-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "1c688ed691c8e5d3ea309ff0acce8e9e859b9216915308a3c65ddff69f619e99",
+          "bytes": 222866492
+        },
+        "WINDOWS": {
+          "assetId": 683809324,
+          "name": "Penne-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/penne-desktop-v1.0.1-alpha.3/Penne-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "c8f65c5444c01b85d50df2003d5755557df728b5fbd87d3171dcb2660eb230ad",
+          "bytes": 105572162
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683809329,
+          "name": "Penne-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/penne-desktop-v1.0.1-alpha.3/Penne-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "c63f3b2f7ac69a8c5c2694e586a02d06eec626ab525609343f2c7cd400ed5bc8",
+          "bytes": 97018516
+        },
+        "MACOS_ZIP": {
+          "assetId": 683809325,
+          "name": "Penne-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/penne-desktop-v1.0.1-alpha.3/Penne-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "a02f4e9006c9008ed6b922cdcdae939a8f2064c1cb5e186f4bf9df929d46dae6",
+          "bytes": 222745881
+        }
+      }
+    },
+    {
+      "key": "lasagna",
+      "releaseId": 426261110,
+      "releaseUrl": "https://github.com/Paulwhoisaghostnet/WTF/releases/tag/lasagna-desktop-v1.0.1-alpha.3",
+      "tag": "lasagna-desktop-v1.0.1-alpha.3",
+      "commit": "3a8439fb71ee2bd3a3219931eced1011c746cd28",
+      "publishedAt": "2026-10-28T04:25:51Z",
+      "runId": 40631580341,
+      "assets": {
+        "MACOS": {
+          "assetId": 683809813,
+          "name": "Lasagna-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/lasagna-desktop-v1.0.1-alpha.3/Lasagna-Studio-1.0.1-alpha.3-mac-universal.dmg",
+          "sha256": "a636fd99566d6cbdaa233fbe41f67f00da1447be91d0f0bc1029270103a379d0",
+          "bytes": 222799181
+        },
+        "WINDOWS": {
+          "assetId": 683809814,
+          "name": "Lasagna-Studio-1.0.1-alpha.3-win-x64.exe",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/lasagna-desktop-v1.0.1-alpha.3/Lasagna-Studio-1.0.1-alpha.3-win-x64.exe",
+          "sha256": "cb85b755507e59f6915d6b713c719da154959a8fda68aabc5e2f654e3ef10b8f",
+          "bytes": 105558884
+        },
+        "RASPBERRY_PI": {
+          "assetId": 683809815,
+          "name": "Lasagna-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/lasagna-desktop-v1.0.1-alpha.3/Lasagna-Studio-1.0.1-alpha.3-linux-arm64.deb",
+          "sha256": "a55f978c3deea834ef8c61766290e097fb284c4bcec7129a93352d26f377b2ca",
+          "bytes": 96919600
+        },
+        "MACOS_ZIP": {
+          "assetId": 683809817,
+          "name": "Lasagna-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "url": "https://github.com/Paulwhoisaghostnet/WTF/releases/download/lasagna-desktop-v1.0.1-alpha.3/Lasagna-Studio-1.0.1-alpha.3-mac-universal.zip",
+          "sha256": "9681334c592ce0d256ab6620c1f65354afbe18a06e4d7de580fa947a42e4d10f",
+          "bytes": 222711602
+        }
+      }
+    }
+  ]
+}

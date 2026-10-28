@@ -1,0 +1,43 @@
+{
+  "updatedAt": "2026-10-28T04:33:11.745376+00:00",
+  "host": "WTF",
+  "environmentFile": "/etc/wtf/wtf.env",
+  "lock": "/tmp/wtf-app-deploy.lock",
+  "lockDescriptorMode": "read-only; exclusive flock",
+  "keyCount": 63,
+  "existingKeysUpdated": 63,
+  "missingKeysAdded": 0,
+  "previousVersions": {
+    "MACARONI_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "PASTA_SUITE_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "SPAGHETTI_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "GNOCCHI_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "RAVIOLI_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "ROTINI_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "PENNE_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "LASAGNA_INSTALLER_VERSION": "1.0.1-alpha.2",
+    "CH_EASE_INSTALLER_VERSION": "1.0.1-alpha.2"
+  },
+  "installerVersions": {
+    "SPAGHETTI": "1.0.1-alpha.3",
+    "MACARONI": "1.0.1-alpha.3",
+    "PASTA_SUITE": "1.0.1-alpha.3",
+    "CH_EASE": "1.0.1-alpha.3",
+    "GNOCCHI": "1.0.1-alpha.3",
+    "RAVIOLI": "1.0.1-alpha.3",
+    "ROTINI": "1.0.1-alpha.3",
+    "PENNE": "1.0.1-alpha.3",
+    "LASAGNA": "1.0.1-alpha.3"
+  },
+  "unrelatedLinesPreserved": true,
+  "atomicReplacement": true,
+  "originalOwnerGroupModePreserved": true,
+  "environmentOwnerUid": 0,
+  "environmentGroupGid": 0,
+  "environmentMode": "0o600",
+  "backupPath": "/etc/wtf/wtf.env.desktop-security.20261028T043311741821Z.bak",
+  "backupMode": "0o600",
+  "containerRecreated": false,
+  "serviceRestarted": false,
+  "activation": "Environment staged only; normal main deployment must load it."
+}

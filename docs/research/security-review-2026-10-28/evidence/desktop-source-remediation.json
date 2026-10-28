@@ -638,5 +638,5 @@
       "screenshotPath": null
     }
   },
-  "releaseStatus": "Source verification complete; committed-source hosted build/install/provenance checks and publication remain pending. No production activation claimed."
+  "releaseStatus": "All nine alpha.3 releases published at3a8439fb; all27 native platform jobs and36 installed-format proofs passed. Verified63-key configuration staged; normal main deployment/authenticated manifest activation remains pending. See desktop-release-receipt.md."
 }
