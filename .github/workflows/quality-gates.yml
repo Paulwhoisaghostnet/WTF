@@ -46,6 +46,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Prepare desktop assets for unit parity
+        run: |
+          npm run prepare --prefix apps/macaroni-desktop
+          npm run prepare --prefix apps/pasta-suite-desktop
+
       - name: Aggregate unit tests
         run: npm run test:unit
 
