@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 // The outer app, embedded game, room creation, bridge, controls and recovery UI are real.
 const surface = page => page.locator('[data-wtfiap-surface="true"]:visible');
 async function partyFrame(page) {
+  await surface(page).getByRole("button", { name: "Open game menu" }).click();
   await surface(page).getByRole("link", { name: "Lobby" }).click();
   const element = await surface(page).locator('iframe[title="coLILseum"]').elementHandle();
   const frame = await element.contentFrame();
@@ -96,6 +97,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(frame.locator("#tournament-terms")).toContainText("Duel entry: 0.01 WTF");
     await expect(frame.locator("#start-room")).toBeDisabled();
     await expect(frame.getByRole("button", { name: "Stake wager" })).toBeVisible();
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toBeVisible();
     await page.goto("/colilseum?mode=tournament", { waitUntil: "domcontentloaded" });
     frame = await partyFrame(page);
@@ -203,17 +205,26 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(frame.locator("#start-room")).toHaveText("Use Room funding to start");
     await expect(frame.locator("#start-room")).toBeDisabled();
     await frame.locator("#other-room").click();
+    await expect(frame.locator("#room-type")).toBeVisible();
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(surface(page).getByRole("button", { name: "Room funding", exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
   test("untrusted window messages cannot select a funding room or expose payment controls", async ({ page }) => {
-    const { roomCode } = await createPreview(page);
+    const { frame, roomCode } = await createPreview(page);
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     const button = surface(page).getByRole("button", { name: "Room funding", exact: true });
     await expect(button).toBeVisible();
     await surface(page).getByRole("link", { name: "Practice" }).click();
+    await frame.waitForURL(/\/(?:index|generator)\.html(?:\?|$)/);
+    await frame.waitForLoadState("load");
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(button).toHaveCount(0);
-    await page.evaluate(code => window.postMessage({ type: "wtfiap:room", roomCode: code, roomType: "tournament" }, location.origin), roomCode);
+    await page.evaluate(async code => {
+      window.postMessage({ type: "wtfiap:room", roomCode: code, roomType: "tournament" }, location.origin);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }, roomCode);
     await expect(button).toHaveCount(0);
   });
 

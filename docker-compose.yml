@@ -30,7 +30,7 @@ x-wtfos-pds-healthcheck: &wtfos-pds-healthcheck
 
 services:
   postgres:
-    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    image: postgres:16.15-alpine3.24@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     restart: unless-stopped
     environment:
       POSTGRES_USER: wtf
@@ -293,7 +293,7 @@ services:
 
   # ── Indigo relay (aggregated subscribeRepos firehose) ────────────────────
   wtfos-relay-db:
-    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    image: postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:
@@ -339,7 +339,7 @@ services:
   # ── Labeler (com.atproto.label bans/labels) ──────────────────────────────
   # NOTE: image + full config finalized in S2.8 (labeler service). Profile-gated.
   wtfos-labeler-db:
-    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    image: postgres:16.15-alpine3.24@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
     restart: unless-stopped
     profiles: [wtfos-atproto]
     environment:

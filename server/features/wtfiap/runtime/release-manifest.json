@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "5e4409bb1ccf0b2f9f06d8c586d1d3c97c2f0f1db95df6651d809aa095beef74",
+  "generatorSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,9 +19,9 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "5e4409bb1ccf0b2f9f06d8c586d1d3c97c2f0f1db95df6651d809aa095beef74",
-      "sha256": "5e4409bb1ccf0b2f9f06d8c586d1d3c97c2f0f1db95df6651d809aa095beef74",
-      "bytes": 12948648
+      "sourceSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
+      "sha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
+      "bytes": 12948660
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",

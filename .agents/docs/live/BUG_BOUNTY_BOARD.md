@@ -77,7 +77,7 @@ Total: **689** · Open: **3** · Claimed: **47** · In Progress: **15** · Block
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 387 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 387 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-719 | Claimed | Codex October 28 security full send | 2026-10-28 | Operator signer / independent runtime dependencies | P2 | 10 | 475 | 2 | 3 | 2 | Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app |
-| WTF-BB-722 | Claimed | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 6 | 677 | 1 | 2 | 0 | Funding inventory tests bypass the current game menu and block security release validation |
+| WTF-BB-722 | Claimed | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 655 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
 | WTF-BB-721 | Claimed | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 685 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 71 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 93 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
@@ -700,16 +700,16 @@ Total: **689** · Open: **3** · Claimed: **47** · In Progress: **15** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 655 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 655 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 655 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
-| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 677 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
-| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 677 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
-| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 677 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
-| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 677 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
-| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 677 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 677 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 678 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
+| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 678 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 678 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 678 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 678 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 678 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
 | WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 685 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 387 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 655 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
-| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 677 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 678 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
 | WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 685 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
 | WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 685 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
 | WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 685 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
@@ -1621,6 +1621,8 @@ Total: **689** · Open: **3** · Claimed: **47** · In Progress: **15** · Block
 
 - Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
 
+- Related live migration verification finding (claimed before correction): configured outbound smtp.resend.com:465 times out from both exact old and patched images to both resolved IPv4 addresses. Both images verify STARTTLS/TLS1.3 on vendor-supported587. Existing smtp_tls_wrappermode=no with smtp_tls_security_level=encrypt matches587. Correct only RELAY_PORT to587, preserve credentials and allother configuration, verify relay authentication and controlled owned-mailbox roundtrip then remove probes. This is a pre-existing outbound path failure, not a migration regression.
+
 ### WTF-BB-720 - Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3
 
 - Category: Desktop / newly published Electron Node fixes
@@ -1690,18 +1692,23 @@ Total: **689** · Open: **3** · Claimed: **47** · In Progress: **15** · Block
 
 - Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.
 
-### WTF-BB-722 - Funding inventory tests bypass the current game menu and block security release validation
+### WTF-BB-722 - Funding menu fixtures and overlapping mobile controls block security release validation
 
 - Category: E2E / release inventory compatibility
 - Priority: P2
 - Status: Claimed
 - Owner/Session: Codex October 28 security full send
 - Last touched: 2026-10-28
-- Score: C1 + F2 + S0 + P2(3) = 6
+- Score: C2 + F2 + S0 + P2(3) = 7
 - Evidence: Existing main Quality run 40438367482 failed funding inventory stories waiting for a Lobby link. A fresh built-host local run reproduces the 60-second timeout at wtfiap-funding.spec.mjs:7; current WtfIap.tsx renders that link only after Open game menu. The owning gameplay story already follows this interaction.
 - Correction direction: Update the funding fixture navigation to use the existing menu, preserving all funded-flow assertions and real app behavior. Investigate the separately reported mobile quick-action assertion against the current accessible controls before changing it.
 - Verification idea: Reproduce the failing story, run affected funding/mobile stories on the built host, then require the release Quality run to pass. No gameplay or wallet behavior change is requested.
 - Score: existing P2(3)+C1/F2/S0=6; localized fixture correction needed to prove the authorized security release.
+
+- Further reproduced evidence: the current funding menu also hides Room funding until opened; absence assertions must inspect the opened menu to remain meaningful. The mobile preparation test trace shows the actual #mobile-resource element intercepting Move to bench clicks in the compact top rail. A minimal layout repair is needed; force-clicking would conceal a real blocked interaction.
+- Updated score: existing P2(3)+C2/F2/S0=7 for fixture navigation plus the reproduced compact-layout interaction defect.
+
+- Additional release gate failure reproduced in Quality40631464460: ubuntu-latest now resolves Ubuntu26.04, unsupported by installed Playwright1.59.1. Official Playwright support landed in1.61; current stable1.64.1 supports this platform. Upgrade the three Playwright packages together to1.64.1 without downgrading the runner or any dependency.
 
 ### WTF-BB-721 - New qs and desktop fast-uri advisory matches have compatible leaf patches
 

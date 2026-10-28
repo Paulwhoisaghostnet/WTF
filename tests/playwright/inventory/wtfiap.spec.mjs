@@ -402,8 +402,18 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       const mobileUnitId = (await gameState(mobile)).bench[0].id;
       await hit(mobile, mobile, `tile-0-${(await gameState(mobile)).board.playerStartRow}`);
       if ((await gameState(mobile)).selected !== mobileUnitId) await hit(mobile, mobile, `field-${mobileUnitId}`);
+      const metrics = await mobile.locator("#mobile-resource > span").evaluateAll(elements => elements.map(element => {
+        const { left, right } = element.getBoundingClientRect();
+        return { left, right };
+      }));
+      expect(metrics).toHaveLength(5);
+      for (let index = 0; index < metrics.length - 1; index++) {
+        expect(metrics[index].right).toBeLessThanOrEqual(metrics[index + 1].left);
+      }
       const quickActions = mobile.locator("#quick-actions");
-      await expect(quickActions.getByText("Move to bench", { exact: true })).toBeVisible();
+      const recall = quickActions.getByText("Move to bench", { exact: true });
+      await expect(recall).toBeVisible();
+      expect((await recall.boundingBox()).x).toBeGreaterThanOrEqual((await quickActions.boundingBox()).x);
       await expect(quickActions.getByText("Move Cherub", { exact: true })).toBeVisible();
       await quickActions.getByText("Move to bench", { exact: true }).click();
       expect((await gameState(mobile)).field).toHaveLength(0);

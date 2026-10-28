@@ -1,12 +1,16 @@
 # wtfOS compartment mail — self-hosted receive on the .me box, outbound via Resend smarthost.
-# Reversible: `docker compose down` in /opt/platform/mail on the AT box.
+# For existing installations, follow SECURITY-UPGRADE.md before replacing DMS 15.
 services:
   mailserver:
-    image: ghcr.io/docker-mailserver/docker-mailserver:15.1.0@sha256:af51b15dd3fc72153c0e90eb7692bb5e3a463212d87959a80fa7aa89b617d44a
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: wtfos-mailserver
     hostname: mail
     domainname: wtfos.me
     restart: unless-stopped
+    # DMS 16's official Compose contract allows its daemons one minute to stop.
+    stop_grace_period: 1m
     ports:
       - "25:25"
       - "587:587"
@@ -15,7 +19,7 @@ services:
       - mail-data:/var/mail/
       - mail-state:/var/mail-state/
       - mail-logs:/var/log/mail/
-      - ./config/:/tmp/docker-mailserver/
+      - ${MAIL_CONFIG_PATH:-./config/}:/tmp/docker-mailserver/
       - ./certs/:/etc/letsencrypt/:ro
     environment:
       - OVERRIDE_HOSTNAME=mail.wtfos.me
@@ -31,7 +35,7 @@ services:
       - OPENDKIM_KEY_LENGTH=2048
       - ONE_DIR_PER_USER=1
       - RELAY_HOST=${RELAY_HOST:-}
-      - RELAY_PORT=${RELAY_PORT:-465}
+      - RELAY_PORT=${RELAY_PORT:-587}
       - RELAY_USER=${RELAY_USER:-resend}
       - RELAY_PASSWORD=${RESEND_API_KEY:-}
     cap_add:
@@ -44,5 +48,8 @@ services:
 
 volumes:
   mail-data:
+    name: ${MAIL_DATA_VOLUME:-mail_mail-data}
   mail-state:
+    name: ${MAIL_STATE_VOLUME:-mail_mail-state}
   mail-logs:
+    name: ${MAIL_LOGS_VOLUME:-mail_mail-logs}

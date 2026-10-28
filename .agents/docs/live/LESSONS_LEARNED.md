@@ -12629,3 +12629,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: A security recheck initially reused an older Electron baseline from prior work. Fresh main and published asset evidence showed 43.8.3, and inspecting its build linkage showed Chromium supplies Brotli with the security correction despite older Node/Brotli version strings. The separate signer still loaded its own old Zod even though the main app was patched.
 
 **Rule**: Freeze the audited live commit, match published artifacts to runtime receipts, and inspect actual independent service dependencies. Resolve native-library linkage and vendor backports before assigning a CVE from a version string. Keep newly indexed advisories and newly discovered older gaps distinct from new disclosures, and never use a Debian fixed revision to infer Ubuntu status.
+
+---
+
+## 2026-10-28 - Security patch proof must follow the deployed package and installer bytes
+
+**What happened**: DockerMailserver16.0.1 still contained a vulnerable Dovecot Debian revision, the separate signer retained Zod4.3.6 despite the patched main app, and desktop alpha.2 packages embedded an older Node runtime. The signer's live Taquito graph also differed from the already newer source graph.
+
+**Why it mattered**: A newer image tag, a clean root audit, or an Electron version change in source does not prove the running service or downloadable executable contains a fix. Rebuilding the signer wholesale would have included unrelated unpublished runtime changes.
+
+**Rule**: Verify full installed distro revisions and actual process runtimes. Pin the fixed mail packages, test a cold-volume migration and rollback before replacing mail, retain the vendor's graceful-stop setting, and copy only deployment overrides into a new image. Patch the signer's actual dependency graph narrowly when source and live differ, retaining its bundle, keyring and all other dependency versions. Give Electron security rebuilds a new product release and require installed-format runtime, provenance and storage-relaunch proof before activating published hashes.
+
+---
+
+## 2026-10-28 - Release tests must follow current menus, visible controls and browser prerequisites
+
+**What happened**: Funding fixtures waited for links hidden behind the current game menu. The compact game action rail also inherited end alignment, putting its first button behind the resource panel; an obsolete sixth resource column collapsed the five metrics. Separately, Ubuntu26.04 CI could not install the old Playwright browser, and one local unit run started before the replacement browser download finished.
+
+**Why it mattered**: Hidden-menu absence assertions can pass without examining the relevant UI, while force-clicking a covered action would conceal a real user failure. Starting browser-backed tests before their executable is installed produces setup failures and can leave fixture servers open.
+
+**Rule**: Open the actual menu before asserting its controls or their absence. Keep mobile rail geometry assertions alongside the real action and resulting game-state assertion; repair the canonical source and regenerate the vendor manifest. Upgrade the test runner to a version supporting the CI OS, wait for its matching browser installation to finish, then run browser-backed tests. Preserve failing setup evidence and stop only that run's descendant processes before a justified retry.

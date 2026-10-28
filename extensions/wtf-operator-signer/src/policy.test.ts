@@ -145,6 +145,36 @@ test("WTFIAP signer validates two-human AI rooms and full-field ranks while pres
     args: { ...finish.payload.args, ranks: ranks.map(({ group_size: _size, ...rank }) => rank) } } }));
 });
 
+test("oversized WTFIAP entrants are rejected before any entrant is validated", () => {
+  // Both supported tournament schemas cap entrants at eight. The ninth entry
+  // must be rejected before Zod allocates validation work for every element.
+  let visited = 0;
+  const entrants = Array.from({ length: 9 }, () => "not-an-address");
+  Object.defineProperty(entrants, 0, {
+    get() { visited += 1; return "not-an-address"; },
+  });
+  const result = operatorSignerEnvelopeSchema.safeParse({
+    version: OPERATOR_SIGNER_PROTOCOL_VERSION,
+    auth: env.WTF_OPERATOR_SIGNER_AUTH_TOKEN,
+    requestId: "oversized-entrants",
+    walletId: "wtfiap-referee",
+    intent: "wtfiap_escrow",
+    payload: {
+      contract: "KT1G1zBKD5fVdmXFTAikmMAAK1urRnQ699nh",
+      chainId: "NetXsqzbfFenSTS",
+      entrypoint: "create_room",
+      args: {
+        room_id: "a".repeat(64), terms_hash: "b".repeat(64),
+        rules_hash: "c".repeat(64), seed_commitment: "d".repeat(64),
+        referee: "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+        currency: "0", entry_amount: "10000", payout_mode: "1", entrants,
+      },
+    },
+  });
+  assert.equal(result.success, false);
+  assert.equal(visited, 0, "rejected collections must not visit their elements");
+});
+
 function policyCode(config: SignerEnv, envelope: Parameters<typeof enforceEnvelopePolicy>[1]) {
   const result = enforceEnvelopePolicy(config, envelope);
   return result && !result.ok ? result.code : undefined;
