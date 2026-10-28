@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **645** · Open: **22** · Claimed: **42** · In Progress: **14** · Blocked: **2** · Fixed: **145** · Verified: **416** · Archived: **4**
+Total: **645** · Open: **22** · Claimed: **41** · In Progress: **14** · Blocked: **2** · Fixed: **145** · Verified: **417** · Archived: **4**
 
 ## Canonical Board
 
@@ -92,7 +92,6 @@ Total: **645** · Open: **22** · Claimed: **42** · In Progress: **14** · Bloc
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 271 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 370 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 370 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
-| WTF-BB-677 | Claimed | Codex Pasta alpha remaining release gates | 2026-10-27 | CI / desktop unit fixture preparation | P1 | 8 | 577 | 1 | 3 | 0 | Quality job runs desktop parity tests before copying generated desktop assets |
 | WTF-BB-406 | In Progress | Codex Rotini self-contained artifact repair | - | Pasta Protocol / Rotini artifact interoperability | P0 | 18 | 12 | 4 | 5 | 4 | Rotini mints generator recipes instead of self-contained display artifacts |
 | WTF-BB-662 | In Progress | Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff; Codex Pasta alpha readiness implementation | 2026-10-27 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 38 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
 | WTF-BB-422 | In Progress | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / browser-to-chain evidence | P0 | 17 | 38 | 4 | 5 | 3 | UI-LIVE runners now proxy actual Studio/holder interactions to isolated Node-only signers; Ravioli locally proves five modes and refuses to consume dependencies or open wrappers until same-run origination plus TzKT `asset`/`fa2`/token/balance evidence passes, but fresh aggregate Shadownet execution and captured screenshots remain before Verified |
@@ -567,6 +566,7 @@ Total: **645** · Open: **22** · Claimed: **42** · In Progress: **14** · Bloc
 | WTF-BB-263 | Verified | Codex Macaroni onboarding patch | 2026-06-14 | Macaroni / generated mint page readiness | P1 | 9 | 515 | 1 | 4 | 0 | Macaroni wtfOS publish now requires a valid deployed/resumed `KT1...` contract in Studio and on `/api/macaroni/publish`, while draft export remains available; verified by focused policy tests, JS syntax checks, TypeScript, and inventory coverage |
 | WTF-BB-260 | Verified | Codex Macaroni user-site CSP pass | - | Macaroni / user-site wallet CSP | P1 | 9 | 515 | 1 | 3 | 1 | Published user-site CSP blocks Macaroni wallet connect |
 | WTF-BB-108 | Verified | Codex pet rest test unblock pass | 2026-05-06 | Desktop pet / care tool UX | P1 | 9 | 515 | 1 | 4 | 0 | Rest tool is gated by shoebox inventory during live pet testing |
+| WTF-BB-677 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | CI / desktop unit fixture preparation | P1 | 8 | 577 | 1 | 3 | 0 | Quality job runs desktop parity tests before copying generated desktop assets |
 | WTF-BB-676 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | CI / Playwright runner compatibility | P1 | 8 | 577 | 1 | 3 | 0 | Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 577 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 577 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
@@ -1925,21 +1925,6 @@ Total: **645** · Open: **22** · Claimed: **42** · In Progress: **14** · Bloc
   - Discover inventory inputs from Git-tracked files, then filter by the existing source roots/extensions so local ignored artifacts cannot affect the output.
 - Verification idea:
   - Regenerate the inventory, verify it remains current with ignored prepared assets present, and confirm the clean GitHub Quality Gates pass.
-
-### WTF-BB-677 - Quality job runs desktop parity tests before copying generated desktop assets
-
-- Category: CI / desktop unit fixture preparation
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex Pasta alpha remaining release gates
-- Last touched: 2026-10-27
-- Score: C1 + F3 + S0 + P1(4) = 8
-- Evidence:
-  - After the Playwright runner fix, PR #48 quality CI reached aggregate unit tests and failed four tests because `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` were absent in a fresh checkout. The same tests passed locally after the installer preparation scripts had generated those directories.
-- Likely correction:
-  - Run the existing Macaroni and Suite `prepare` scripts before aggregate unit tests, preserving the established Git-tracked source allowlist.
-- Verification idea:
-  - The quality job executes both prepare steps and completes its aggregate unit suite, then typecheck, build, inventory, and link gates.
 
 ### WTF-BB-406 - Rotini mints generator recipes instead of self-contained display artifacts
 
@@ -12838,6 +12823,21 @@ Copy this when adding a new issue:
   - Pushed `7aaa18a` to `main`; GitHub Actions deploy run `25452157829` completed successfully.
   - Live `https://wtfgameshow.app/api/health` returned `commitRef: "7aaa18a"` after deploy.
   - Live bundle scan found the `Rest` button copy and found no `No shoebox`, `Box {`, `Box `, or pillow+shoebox gate strings.
+
+### WTF-BB-677 - Quality job runs desktop parity tests before copying generated desktop assets
+
+- Category: CI / desktop unit fixture preparation
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Pasta alpha remaining release gates
+- Last touched: 2026-10-27
+- Score: C1 + F3 + S0 + P1(4) = 8
+- Evidence:
+  - PR #48 quality CI reached aggregate unit tests after the Playwright runner fix and failed four tests because generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` directories were absent in a fresh checkout.
+- Correction:
+  - The quality job now runs the existing Macaroni and Suite asset preparation scripts before aggregate unit tests.
+- Verification (2026-10-27):
+  - Local targeted desktop parity tests passed 15/15 after those exact preparation commands. PR #48 run 40610861581 executed both preparation steps and its aggregate unit suite passed; the job advanced through typecheck and build to the full browser inventory.
 
 ### WTF-BB-676 - Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner
 

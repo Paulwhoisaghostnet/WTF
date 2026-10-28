@@ -10217,7 +10217,7 @@
     },
     {
       "id": "WTF-BB-677",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex Pasta alpha remaining release gates",
       "lastTouched": "2026-10-27",
       "category": "CI / desktop unit fixture preparation",
@@ -10228,7 +10228,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "Quality job runs desktop parity tests before copying generated desktop assets",
-      "body": "- Evidence:\n  - After the Playwright runner fix, PR #48 quality CI reached aggregate unit tests and failed four tests because `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` were absent in a fresh checkout. The same tests passed locally after the installer preparation scripts had generated those directories.\n- Likely correction:\n  - Run the existing Macaroni and Suite `prepare` scripts before aggregate unit tests, preserving the established Git-tracked source allowlist.\n- Verification idea:\n  - The quality job executes both prepare steps and completes its aggregate unit suite, then typecheck, build, inventory, and link gates."
+      "body": "- Evidence:\n  - PR #48 quality CI reached aggregate unit tests after the Playwright runner fix and failed four tests because generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` directories were absent in a fresh checkout.\n- Correction:\n  - The quality job now runs the existing Macaroni and Suite asset preparation scripts before aggregate unit tests.\n- Verification (2026-10-27):\n  - Local targeted desktop parity tests passed 15/15 after those exact preparation commands. PR #48 run 40610861581 executed both preparation steps and its aggregate unit suite passed; the job advanced through typecheck and build to the full browser inventory."
     },
     {
       "id": "WTF-BB-676",
