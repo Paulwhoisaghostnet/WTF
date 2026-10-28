@@ -30,3 +30,11 @@ Preparation uses online physical `pg_basebackup` with SHA256 backup manifests an
 The rehearsal proves that the current 16.14 image can reopen the cleanly stopped 16.15 copy with matching data/catalog/sequence state. Retain the exact old images and backups. If activation fails, stop the affected consumer and new database cleanly, restore only the database image selection, and reopen the same existing production data directory on that exact old image. Verify database/consumer/public health before reopening traffic. This preserves post-backup writes and avoids restoring stale data by default.
 
 If a separate data problem requires a backup restore, first preserve the failed current directory. Restore the verified backup to a different directory and explicitly account for any writes since the backup before switching production. Never overwrite the current data directory or silently discard those writes.
+
+## Execution receipt
+
+At 2026-10-28 04:40:07 UTC, the PLC and relay databases completed the coordinated activation on PostgreSQL 16.15. Their existing bind mounts and stable table-count/catalog/sequence summaries matched. Public PLC and relay health returned 200 afterward; all ten PDS health checks passed. Actual PLC Node 22.23.4, PDS Node 24.22.1, and relay/Caddy Go 1.26.10 remained unchanged. `activation.json` records the exact versions, images, backups, and timestamps.
+
+The first attempt completed database verification but hit an operator receipt-logging argument collision. Its guarded rollback reopened both original 16.14 images, and data summaries and public health were verified before retry. The logger was corrected and exercised with all actual stage shapes; final observation was moved outside the mutation rollback boundary. Fresh backups preceded the successful retry. The original attempt and rollback evidence remain in `activation.json`.
+
+The fresh main physical backup finished and passed `pg_verifybackup` at 04:39:24 UTC, with the prior verified backup preserved. Main production was unchanged by this preparation; its 16.15 activation and public verification remain part of the normal main deployment.

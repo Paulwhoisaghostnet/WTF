@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-28T04:38:31.446Z",
+  "baseUrl": "https://wtfos.app",
+  "credentialSource": "Existing production-scoped puppet credential file",
+  "actorRole": "contestant",
+  "passwordLoginStatus": 200,
+  "sessionIdentityStatus": 200,
+  "privateSessionMode": "0600",
+  "newAccountCreated": false,
+  "rolesChanged": false,
+  "manifestChecksRun": false
+}

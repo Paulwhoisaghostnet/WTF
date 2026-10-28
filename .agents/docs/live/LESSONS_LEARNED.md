@@ -12649,3 +12649,33 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Hidden-menu absence assertions can pass without examining the relevant UI, while force-clicking a covered action would conceal a real user failure. Starting browser-backed tests before their executable is installed produces setup failures and can leave fixture servers open.
 
 **Rule**: Open the actual menu before asserting its controls or their absence. Keep mobile rail geometry assertions alongside the real action and resulting game-state assertion; repair the canonical source and regenerate the vendor manifest. Upgrade the test runner to a version supporting the CI OS, wait for its matching browser installation to finish, then run browser-backed tests. Preserve failing setup evidence and stop only that run's descendant processes before a justified retry.
+
+---
+
+## 2026-10-28 - Generated inventories must describe the exact committed file set
+
+**What happened**: The environment generator scans both tracked and untracked source files. A mail evidence JSON and a concurrently updated relay example were present locally when the inventory was regenerated but absent from the same commit, so a local inventory check passed while clean CI failed.
+
+**Why it mattered**: Generated metadata can be internally consistent with a dirty workspace and still be wrong for the release commit. Evidence files under scanned infrastructure paths also affect the source-file count.
+
+**Rule**: Coordinate a source freeze, stage every intended scanned source and evidence file, then regenerate metadata. Confirm there are no untracked scanned files or unstaged scanned-source changes before committing. Run the check against the committed file set; do not mistake a dirty-tree check for clean-checkout proof.
+
+---
+
+## 2026-10-28 - SMTP authentication is not delivery proof
+
+**What happened**: The existing mail relay used unreachable port465 despite STARTTLS configuration. Both old and patched mail images connected and authenticated on587, but the provider rejected the normal sender because its domain had never been verified in that account.
+
+**Why it mattered**: Successful TLS and SMTP AUTH establish transport and credentials, not sender authorization or delivery. An upgrade can reveal an existing setup gap without causing it.
+
+**Rule**: Compare the old and new image before attributing a transport failure to migration. Use a controlled owned-mailbox roundtrip to prove delivery, preserve original account/message hashes, and remove probes. Record an external provider/DNS blocker separately from a completed package-security fix. When the user defers DNS verification, retain the exact vendor records and report outbound delivery as pending.
+
+---
+
+## 2026-10-28 - Deployment receipts must not turn a successful migration into an accidental failure
+
+**What happened**: Both AT databases upgraded to PostgreSQL16.15 and passed stable-data checks, but a receipt helper received duplicate `stage` arguments. The guarded script correctly restored the old images and consumers. The old databases, data snapshots and public health were verified before retrying.
+
+**Why it mattered**: Observer code can fail after the actual mutation succeeds. Treating a final logging exception as a migration failure creates avoidable service churn, even when rollback preserves the data.
+
+**Rule**: Exercise logging with the actual stage/record shapes before production execution. Keep final observer emission outside the mutation rollback boundary; preserve the failed attempt and rollback receipt. Verify restored data and health, retain fresh backups, then retry only the corrected operation. Database version strings alone do not establish migration or rollback safety.

@@ -93,3 +93,24 @@ proved. Never prune the original volumes as part of this security change.
 Local policy check: `node --test infra/wtfos-mail/tests/security-policy.test.mjs`.
 The protocol receipt is the behavior proof; static policy checks alone do not
 prove the migration or production deployment.
+
+## October 28 deployment result
+
+WTF-BB-717's patched image is running with the fixed package revisions above.
+The isolated migration passed restart persistence with stable message hashes,
+UIDs and UIDVALIDITY. Public SMTP, authenticated submission, LMTP delivery,
+verified IMAPS reads and unauthenticated relay denial passed. Both temporary
+probe accounts and their messages were removed; the four original account
+records and all 13 original Maildir files were preserved. The old image,
+original volumes/configuration and verified off-host cold archive are retained.
+See [the migration receipt](evidence/security-migration-2026-10-28.json).
+
+WTF-BB-723 is **user-deferred**: the user requested that DNS verification remain
+pending. The unchanged Resend account initially had no configured domains and
+rejected the existing `wtfos.me` sender domain with SMTP 550. Port 587 now
+connects, verifies TLS and authenticates successfully. The authorized sending
+domain was created with receiving disabled, but its four exact vendor DNS
+records have not been published. Apex MX/SPF remain unchanged. No external test
+message was accepted, and no successful outbound roundtrip is claimed. The
+domain remains `not_started`; [the DNS receipt](evidence/resend-domain-2026-10-28.json)
+retains the exact records and the user's deferral.

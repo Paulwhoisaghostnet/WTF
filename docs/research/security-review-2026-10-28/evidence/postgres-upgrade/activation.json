@@ -1,0 +1,638 @@
+{
+  "bounty": "WTF-BB-718",
+  "recordedAt": "2026-10-28T04:43:38.000974+00:00",
+  "state": {
+    "at": "Activated and verified on PostgreSQL 16.15.",
+    "main": "Fresh verified physical backup ready; replacement and live verification belong to normal main deployment."
+  },
+  "freshBackups": {
+    "main": {
+      "time": "2026-10-28T04:39:24.616284+00:00",
+      "stage": "fresh-backup-verified",
+      "role": "main",
+      "database": "main",
+      "sourceContainerId": "4f5c8d9effb0d73b7dbb6027d55202b203756e013b3755ca23b2256572a3765b",
+      "sourceImageId": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+      "sourceVersion": "16.14",
+      "sourceStartedAt": "2026-07-15T23:33:19.611610142Z",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/main/preactivation-20261028T043348Z/basebackup",
+      "startedAt": "2026-10-28T04:33:48.919095+00:00",
+      "clientImage": "postgres:16.15-alpine3.24@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab",
+      "verification": "backup successfully verified",
+      "manifestSha256": "5d25644c7b253570566a197c228e0ad5e802159c020f29395d1410540a5f51e5",
+      "bytes": 9223626412,
+      "finishedAt": "2026-10-28T04:39:24.601898+00:00",
+      "productionUnchanged": true,
+      "priorVerifiedBackupPreserved": true,
+      "protectedParentMode": "0o700",
+      "backupMode": "0o700",
+      "freeDataDiskBytes": 65273344000
+    },
+    "plc": {
+      "time": "2026-10-28T04:38:34.809056+00:00",
+      "stage": "fresh-backup-verified",
+      "role": "at",
+      "database": "plc",
+      "sourceContainerId": "35038e01814ab4280351d6a2290c4ce0d61b1bed5cfc3042558f45a913726997",
+      "sourceImageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "sourceVersion": "16.14",
+      "sourceStartedAt": "2026-10-28T04:37:42.140274072Z",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/plc/preactivation-20261028T043834Z/basebackup",
+      "startedAt": "2026-10-28T04:38:34.091460+00:00",
+      "clientImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "verification": "backup successfully verified",
+      "manifestSha256": "1167833b63a82c07000554d89e5d19a08c00270b7e766b3aa4414b346b2249eb",
+      "bytes": 48155471,
+      "finishedAt": "2026-10-28T04:38:34.791803+00:00",
+      "productionUnchanged": true,
+      "priorVerifiedBackupPreserved": true,
+      "protectedParentMode": "0o700",
+      "backupMode": "0o700",
+      "freeDataDiskBytes": 50791284736
+    },
+    "relay": {
+      "time": "2026-10-28T04:38:36.026303+00:00",
+      "stage": "fresh-backup-verified",
+      "role": "at",
+      "database": "relay",
+      "sourceContainerId": "77f7e88775ff75ed1fb413ff31dfda17a6ab54631e319800beba3d84a84a345e",
+      "sourceImageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "sourceVersion": "16.14",
+      "sourceStartedAt": "2026-10-28T04:37:42.138274156Z",
+      "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/relay/preactivation-20261028T043834Z/basebackup",
+      "startedAt": "2026-10-28T04:38:34.883511+00:00",
+      "clientImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "verification": "backup successfully verified",
+      "manifestSha256": "5ca03b8069f99467c69f5e1f214c7db5688589cd7973ba80c4cb500e7f1462ec",
+      "bytes": 49263430,
+      "finishedAt": "2026-10-28T04:38:36.009983+00:00",
+      "productionUnchanged": true,
+      "priorVerifiedBackupPreserved": true,
+      "protectedParentMode": "0o700",
+      "backupMode": "0o700",
+      "freeDataDiskBytes": 50741825536
+    }
+  },
+  "firstAttemptAndVerifiedRollback": {
+    "firstAttempt": {
+      "startedAt": "2026-10-28T04:37:36.542746+00:00",
+      "targetImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+      "configurationBackup": "/mnt/wtf-data/backups/security-20261028-postgres/compose-before-20261028T043736Z.yml",
+      "freshBackups": {
+        "wtfos-plc-db": {
+          "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/plc/preactivation-20261028T043651Z/basebackup",
+          "manifestSha256": "f6e009195f4fdc707378c8836542c829322b7c14d89cc36dfdf702baac56eabd",
+          "verifiedAt": "2026-10-28T04:36:51.890127+00:00"
+        },
+        "wtfos-relay-db": {
+          "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/relay/preactivation-20261028T043651Z/basebackup",
+          "manifestSha256": "68b9a0bb569c9b19ea93d86407deb4f92377bafeb1c9551840e11e26a543a09c",
+          "verifiedAt": "2026-10-28T04:36:52.779686+00:00"
+        }
+      },
+      "oldImageIds": {
+        "wtfos-plc-db": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+        "wtfos-relay-db": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229"
+      },
+      "consumersInitiallyRunning": {
+        "wtf-app-wtfos-plc-1": true,
+        "wtf-app-wtfos-atproto-relay-1": true
+      },
+      "productionMountsBefore": {
+        "wtfos-plc-db": [
+          {
+            "source": "/mnt/wtf-data/plc-db",
+            "destination": "/var/lib/postgresql/data"
+          }
+        ],
+        "wtfos-relay-db": [
+          {
+            "source": "/mnt/wtf-data/relay-db",
+            "destination": "/var/lib/postgresql/data"
+          }
+        ]
+      },
+      "stage": "rollback",
+      "configurationOnlyImagesChanged": true,
+      "stableSnapshotsBefore": {
+        "wtfos-plc-db": {
+          "userTableCount": 5,
+          "totalRows": 15,
+          "rowCountsSha256": "b27a8611934d6f5fd4cd90660e053f494c678cbfec1016f0fe7e4fe748de8237",
+          "catalogSha256": "5839c683cb25c640b64e9cfe0fa92246b7e6b435024b3b586c467f181c7685e9",
+          "sequenceStateSha256": "c4504fcf81ee1e1b1d664fe89185a59c8286afd0bbea3029baaea754b4fa1aee"
+        },
+        "wtfos-relay-db": {
+          "userTableCount": 5,
+          "totalRows": 242,
+          "rowCountsSha256": "18041c901bdd6268be591e6cd893507dade68194e72dd896f261f2e843b0c56f",
+          "catalogSha256": "87afb114aa8d5fe02eec32ac5e7a846bcead80c761b7157b7ac7f1c15f745721",
+          "sequenceStateSha256": "0ba875473f32a9c7297b4606b61899dec1cbbfdc9d8ff8612083dd890126e9a2"
+        }
+      },
+      "newContainers": {
+        "wtfos-plc-db": {
+          "id": "6917c645cd0b9ae0c9966654749d25308c9197841bf6e82594e7c094a6a3540d",
+          "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+          "serverVersion": "16.15",
+          "psqlClient": "psql (PostgreSQL) 16.15",
+          "mountsUnchanged": true,
+          "stableSnapshotMatches": true,
+          "outputPluginLibraries": "pgoutput, test_decoding"
+        },
+        "wtfos-relay-db": {
+          "id": "ab2e39e9240f232ae31c11b2076659fc4dcfa31cc254277eed90b32cdd76fdcb",
+          "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+          "serverVersion": "16.15",
+          "psqlClient": "psql (PostgreSQL) 16.15",
+          "mountsUnchanged": true,
+          "stableSnapshotMatches": true,
+          "outputPluginLibraries": "pgoutput, test_decoding"
+        }
+      },
+      "completedAt": "2026-10-28T04:37:41.104278+00:00",
+      "failure": "note() got multiple values for argument 'stage'",
+      "rollbackApplied": true
+    },
+    "rollbackProof": {
+      "wtfos-plc-db": {
+        "version": "16.14",
+        "imageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+        "snapshotMatchesBeforeFirstActivation": true,
+        "snapshot": {
+          "userTableCount": 5,
+          "totalRows": 15,
+          "rowCountsSha256": "b27a8611934d6f5fd4cd90660e053f494c678cbfec1016f0fe7e4fe748de8237",
+          "catalogSha256": "5839c683cb25c640b64e9cfe0fa92246b7e6b435024b3b586c467f181c7685e9",
+          "sequenceStateSha256": "c4504fcf81ee1e1b1d664fe89185a59c8286afd0bbea3029baaea754b4fa1aee"
+        }
+      },
+      "wtfos-relay-db": {
+        "version": "16.14",
+        "imageId": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+        "snapshotMatchesBeforeFirstActivation": true,
+        "snapshot": {
+          "userTableCount": 5,
+          "totalRows": 242,
+          "rowCountsSha256": "18041c901bdd6268be591e6cd893507dade68194e72dd896f261f2e843b0c56f",
+          "catalogSha256": "87afb114aa8d5fe02eec32ac5e7a846bcead80c761b7157b7ac7f1c15f745721",
+          "sequenceStateSha256": "0ba875473f32a9c7297b4606b61899dec1cbbfdc9d8ff8612083dd890126e9a2"
+        }
+      }
+    }
+  },
+  "operatorLoggingCorrection": {
+    "cause": "An event stage argument collided with the receipt stage key after database verification. The guarded handler reverted both databases to their original images.",
+    "correction": "Nest the receipt in the log event; keep final observer emission outside the mutation/rollback try boundary.",
+    "verification": {
+      "verifiedAt": "2026-10-28T04:39:52.100418+00:00",
+      "cases": [
+        {
+          "receiptStage": "preflight",
+          "eventStagePreserved": true,
+          "versionProofPreserved": true
+        },
+        {
+          "receiptStage": "consumers-paused",
+          "eventStagePreserved": true,
+          "versionProofPreserved": true
+        },
+        {
+          "receiptStage": "databases-replaced",
+          "eventStagePreserved": true,
+          "versionProofPreserved": true
+        },
+        {
+          "receiptStage": "consumers-restarted",
+          "eventStagePreserved": true,
+          "versionProofPreserved": true
+        },
+        {
+          "receiptStage": "rollback",
+          "eventStagePreserved": true,
+          "versionProofPreserved": true
+        }
+      ],
+      "duplicateKeywordRegressionPassed": true,
+      "observerOutsideRollbackBoundary": true,
+      "rollbackDataMatches": true
+    }
+  },
+  "atActivation": {
+    "startedAt": "2026-10-28T04:40:02.303190+00:00",
+    "targetImage": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+    "configurationBackup": "/mnt/wtf-data/backups/security-20261028-postgres/compose-before-20261028T044001Z.yml",
+    "freshBackups": {
+      "wtfos-plc-db": {
+        "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/plc/preactivation-20261028T043834Z/basebackup",
+        "manifestSha256": "1167833b63a82c07000554d89e5d19a08c00270b7e766b3aa4414b346b2249eb",
+        "verifiedAt": "2026-10-28T04:38:34.791803+00:00"
+      },
+      "wtfos-relay-db": {
+        "backupPath": "/mnt/wtf-data/backups/security-20261028-postgres/relay/preactivation-20261028T043834Z/basebackup",
+        "manifestSha256": "5ca03b8069f99467c69f5e1f214c7db5688589cd7973ba80c4cb500e7f1462ec",
+        "verifiedAt": "2026-10-28T04:38:36.009983+00:00"
+      }
+    },
+    "oldImageIds": {
+      "wtfos-plc-db": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+      "wtfos-relay-db": "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229"
+    },
+    "consumersInitiallyRunning": {
+      "wtf-app-wtfos-plc-1": true,
+      "wtf-app-wtfos-atproto-relay-1": true
+    },
+    "productionMountsBefore": {
+      "wtfos-plc-db": [
+        {
+          "source": "/mnt/wtf-data/plc-db",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ],
+      "wtfos-relay-db": [
+        {
+          "source": "/mnt/wtf-data/relay-db",
+          "destination": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    "stage": "consumers-restarted",
+    "configurationOnlyImagesChanged": true,
+    "stableSnapshotsBefore": {
+      "wtfos-plc-db": {
+        "userTableCount": 5,
+        "totalRows": 15,
+        "rowCountsSha256": "b27a8611934d6f5fd4cd90660e053f494c678cbfec1016f0fe7e4fe748de8237",
+        "catalogSha256": "5839c683cb25c640b64e9cfe0fa92246b7e6b435024b3b586c467f181c7685e9",
+        "sequenceStateSha256": "c4504fcf81ee1e1b1d664fe89185a59c8286afd0bbea3029baaea754b4fa1aee"
+      },
+      "wtfos-relay-db": {
+        "userTableCount": 5,
+        "totalRows": 242,
+        "rowCountsSha256": "18041c901bdd6268be591e6cd893507dade68194e72dd896f261f2e843b0c56f",
+        "catalogSha256": "87afb114aa8d5fe02eec32ac5e7a846bcead80c761b7157b7ac7f1c15f745721",
+        "sequenceStateSha256": "0ba875473f32a9c7297b4606b61899dec1cbbfdc9d8ff8612083dd890126e9a2"
+      }
+    },
+    "newContainers": {
+      "wtfos-plc-db": {
+        "id": "543f02879ba3f50ca8f527c2555e101358beb6fc0bdfe0883c58735281186888",
+        "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "serverVersion": "16.15",
+        "psqlClient": "psql (PostgreSQL) 16.15",
+        "mountsUnchanged": true,
+        "stableSnapshotMatches": true,
+        "outputPluginLibraries": "pgoutput, test_decoding"
+      },
+      "wtfos-relay-db": {
+        "id": "1d096cb8e1051f150722af9906aa427dc4f5b467497bc7198b5bc6a7d24b569e",
+        "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "serverVersion": "16.15",
+        "psqlClient": "psql (PostgreSQL) 16.15",
+        "mountsUnchanged": true,
+        "stableSnapshotMatches": true,
+        "outputPluginLibraries": "pgoutput, test_decoding"
+      }
+    },
+    "completedAt": "2026-10-28T04:40:07.028557+00:00"
+  },
+  "atPostActivation": {
+    "capturedAt": "2026-10-28T04:43:05.473410+00:00",
+    "role": "at",
+    "containers": [
+      {
+        "name": "wtf-app-wtfos-plc-db-1",
+        "containerId": "543f02879ba3f50ca8f527c2555e101358beb6fc0bdfe0883c58735281186888",
+        "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "imageRef": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "state": "running",
+        "health": "healthy",
+        "mounts": [
+          {
+            "source": "/mnt/wtf-data/plc-db",
+            "destination": "/var/lib/postgresql/data",
+            "type": "bind",
+            "rw": true
+          }
+        ],
+        "serverVersion": "16.15",
+        "clientVersion": "psql (PostgreSQL) 16.15"
+      },
+      {
+        "name": "wtf-app-wtfos-relay-db-1",
+        "containerId": "1d096cb8e1051f150722af9906aa427dc4f5b467497bc7198b5bc6a7d24b569e",
+        "imageId": "sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "imageRef": "postgres:16.15-alpine3.23@sha256:2a96bfbbaa8ba661510e9076431ee49d551c118a586099cb733b1214c4e4ff00",
+        "state": "running",
+        "health": "healthy",
+        "mounts": [
+          {
+            "source": "/mnt/wtf-data/relay-db",
+            "destination": "/var/lib/postgresql/data",
+            "type": "bind",
+            "rw": true
+          }
+        ],
+        "serverVersion": "16.15",
+        "clientVersion": "psql (PostgreSQL) 16.15"
+      },
+      {
+        "name": "wtf-app-wtfos-atproto-relay-1",
+        "containerId": "3d2b9202fcdb9bfab5074f020a7137116c5fff1b95cb2c7958ca1de5ffcc27eb",
+        "imageId": "sha256:c85010e668ee9323d4b171391d1181ad4e55ffce706b795424c68d756052ba37",
+        "imageRef": "wtfos-relay:local",
+        "state": "running",
+        "health": "healthy",
+        "goBuildInfo": [
+          "go1.26.10",
+          "path\tgithub.com/bluesky-social/indigo/cmd/relay",
+          "mod\tgithub.com/bluesky-social/indigo\tv0.0.0-20260529183052-5368f55344e0\t",
+          "build\t-buildmode=exe",
+          "build\t-compiler=gc",
+          "build\t-tags=timetzdata",
+          "build\tCGO_ENABLED=1",
+          "build\tCGO_CFLAGS=",
+          "build\tCGO_CPPFLAGS=",
+          "build\tCGO_CXXFLAGS=",
+          "build\tCGO_LDFLAGS=",
+          "build\tGOARCH=amd64",
+          "build\tGOOS=linux",
+          "build\tGOAMD64=v1",
+          "build\tvcs=git",
+          "build\tvcs.revision=5368f55344e0b5e203ab4d9501e1ddebd9983ad7",
+          "build\tvcs.time=2026-05-29T18:30:52Z",
+          "build\tvcs.modified=false"
+        ],
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-plc-1",
+        "containerId": "40adedc0de05e5840294eb278d5b824f1175289ab6f1eca834b5500c91798bd4",
+        "imageId": "sha256:3f9836d53aa00880ba3d251156f26af845a7f0ba34c7998c0efe8e89970a54d3",
+        "imageRef": "wtfos-plc:local",
+        "state": "running",
+        "health": null,
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v22.23.4"
+          }
+        ],
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtfos-edge-caddy",
+        "containerId": "aa49d7f19e80e414689f527e68cecaa0a2e8166fe6fb4c1c545c597dc4b605dc",
+        "imageId": "sha256:c0d4fc9f0ea31ec05e076f666d9f268df2ccc9812b9a3a08d6f97e852b3e437b",
+        "imageRef": "wtfos-caddy:security-20261022",
+        "state": "running",
+        "health": null,
+        "goBuildInfo": [
+          "go\tgo1.26.10",
+          "path\tgithub.com/caddyserver/caddy/v2/cmd/caddy",
+          "mod\tgithub.com/caddyserver/caddy/v2\tv2.11.7\th1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4="
+        ],
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-1",
+        "containerId": "c0fc1eb5624953d0991f9ebe81b15236d84d908a5305490fb22b0774b64f5b4c",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "6",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-social-1",
+        "containerId": "036c5814a5b0b03890923cdf86f36b41c138576ab8959b99bc0493d7990afa83",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-users-1",
+        "containerId": "a5a9ffedbd6ee90a95408ef181d5cfc41d84c407cd798297a6f916b78551d658",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-private-1",
+        "containerId": "aa05bbb75a810dd66a4978f2fc63ace07d7bc9966e9381d0c41cb415bf7bce40",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "6",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-os-1",
+        "containerId": "7efc3e07b81708f9ec40eaaff7b04460105d16c909bc40355e293d12388fd2e4",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-ops-1",
+        "containerId": "c665c5c2971741cce961810836cdedcba7e0870d1b6fe2d75b834530263d3acf",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-media-1",
+        "containerId": "789628765bd740f22668b520ebc7ffb8919a920ae404b11d4fd272a7e3b4c4cf",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-commerce-1",
+        "containerId": "5c64409d147686aa277ba98c7ac9e13ee1e9425eba5ae6a741360203fa4307d8",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-tezos-1",
+        "containerId": "2284813e758e9046df60d74cf312dc6b28a154d238fe579a731dbeb417084008",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      },
+      {
+        "name": "wtf-app-wtfos-pds-arcade-1",
+        "containerId": "8f65c4a51686299b0b08055f7cd6ef2def0d4dcdd1443982773d30b336ceec9f",
+        "imageId": "sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "imageRef": "ghcr.io/bluesky-social/pds:0.4@sha256:048b1ca076907bf7f271fc4ac13d4804cdf5f04ad56939bfec3fef1a18bfc757",
+        "state": "running",
+        "health": "healthy",
+        "runningNodeProcesses": [
+          {
+            "pid": "7",
+            "exe": "/usr/local/bin/node",
+            "version": "v24.22.1"
+          }
+        ],
+        "internalHealth": {
+          "status": 200,
+          "body": {
+            "version": "0.4.5046"
+          }
+        },
+        "imageUnchangedFromOctober27": true
+      }
+    ],
+    "publicHealth": [
+      {
+        "url": "https://plc.wtfos.me/_health",
+        "status": 200,
+        "body": {
+          "version": "0.0.0"
+        },
+        "verifiedAt": "2026-10-28T04:43:09.611703+00:00"
+      },
+      {
+        "url": "https://relay.wtfos.me/xrpc/_health",
+        "status": 200,
+        "body": {
+          "status": "ok"
+        },
+        "verifiedAt": "2026-10-28T04:43:09.896478+00:00"
+      }
+    ]
+  }
+}

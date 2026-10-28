@@ -96,5 +96,15 @@
     "https://resend.com/docs/api-reference/domains/create-domain",
     "https://resend.com/docs/api-reference/domains/verify-domain",
     "https://resend.com/docs/send-with-smtp"
-  ]
+  ],
+  "disposition": {
+    "recordedAt": "2026-10-28T04:38:37.067640+00:00",
+    "status": "user-deferred",
+    "userInstruction": "Leave DNS verification pending",
+    "providerDomainRetained": true,
+    "providerVerificationStatus": "not_started",
+    "dnsRecordsPublished": false,
+    "outboundRoundTripCompleted": false,
+    "temporaryProbePresent": false
+  }
 }

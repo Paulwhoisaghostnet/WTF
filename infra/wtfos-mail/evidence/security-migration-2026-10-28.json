@@ -324,5 +324,14 @@
     "relayDataResponse": 550,
     "providerReason": "wtfos.me domain is not verified",
     "externalMessageAccepted": false
+  },
+  "finalDisposition": {
+    "recordedAt": "2026-10-28T04:38:37.067640+00:00",
+    "WTF-BB-717": "Security remediation deployed and verified: fixed Dovecot/Brotli/OpenSSL/CA packages, preserved accounts/data, verified public SMTP/LMTP/IMAP/TLS, and tested isolated restart persistence.",
+    "WTF-BB-723": "User explicitly deferred DNS verification. Resend domain exists with verification not_started; exact required records retained.",
+    "temporaryProbePresent": false,
+    "outboundRoundTripCompleted": false,
+    "externalTestMessageAccepted": false,
+    "dnsChangesMade": false
   }
 }

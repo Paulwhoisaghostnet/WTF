@@ -1,7 +1,7 @@
 {
   "bounty": "WTF-BB-718",
   "preparedAt": "2026-10-28T04:22:12.557658+00:00",
-  "state": "All 3 backups, copied-data 16.14\u219216.15 checks, patched amcheck proofs, and 16.15\u219216.14 rollback rehearsals pass. Production activation remains pending the coordinated release.",
+  "state": "All 3 backups, copied-data 16.14\u219216.15 checks, patched amcheck proofs, and 16.15\u219216.14 rollback rehearsals pass. AT PLC and relay production activated on 16.15 with unchanged data mounts and matching stable snapshots; main fresh backup is verified and awaits the normal main deployment. See activation.json.",
   "source": "https://www.postgresql.org/docs/release/16.15/",
   "migrationApplicability": {
     "sameMajor": "16.14\u219216.15; vendor does not require dump/restore. Physical backup/restore rehearsal is performed for rollback proof.",
