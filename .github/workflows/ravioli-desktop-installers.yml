@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       release_tag:
-        description: "Release tag to publish, for example ravioli-desktop-v1.0.1-alpha.2"
+        description: "Release tag to publish, for example ravioli-desktop-v1.0.1-alpha.3"
         required: false
         type: string
   push:

@@ -19,9 +19,9 @@ const inventorySource = readFileSync("tests/e2e/inventory/domain-workflows.mjs",
 
 test("Spaghetti desktop package bundles the standard collection publisher in an Electron shell", () => {
   assert.equal(desktopPackage.name, "@wtf/spaghetti-desktop");
-  assert.equal(desktopPackage.version, "1.0.1-alpha.2");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.3");
   assert.equal(desktopPackage.main, "src/main.cjs");
-  assert.equal(desktopPackage.devDependencies.electron, "43.8.3");
+  assert.equal(desktopPackage.devDependencies.electron, "43.8.4");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
   assert.equal(desktopPackage.homepage, "https://wtfos.app/creation-tools/spaghetti/index.html");
   assert.equal(desktopPackage.desktopName, "spaghetti-studio");

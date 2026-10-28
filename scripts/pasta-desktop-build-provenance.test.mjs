@@ -41,7 +41,7 @@ test("preflight provenance records an exact revision and dirty marker while rele
     const cleanManifest = writeDesktopBuildProvenance(options);
     assert.equal(cleanManifest.schema, PASTA_DESKTOP_PROVENANCE_SCHEMA);
     assert.equal(cleanManifest.app, "@wtf/test-desktop");
-    assert.equal(cleanManifest.version, "1.0.1-alpha.2");
+    assert.equal(cleanManifest.version, "1.0.1-alpha.3");
     assert.match(cleanManifest.gitSha, /^[0-9a-f]{40}$/);
     assert.equal(cleanManifest.sourceRevision, cleanManifest.gitSha);
     assert.equal(cleanManifest.dirty, false);
@@ -110,7 +110,7 @@ test("all nine Pasta desktop packages share the alpha version and guarded proven
     const packageJson = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
     const packageLock = JSON.parse(readFileSync(path.join(appDir, "package-lock.json"), "utf8"));
 
-    assert.equal(packageJson.version, "1.0.1-alpha.2", directory);
+    assert.equal(packageJson.version, "1.0.1-alpha.3", directory);
     assert.equal(packageLock.version, packageJson.version, directory);
     assert.equal(packageLock.packages[""].version, packageJson.version, directory);
     assert.match(packageJson.scripts.start, /--mode=preflight/, directory);
@@ -154,7 +154,7 @@ function createGitFixture() {
     `${JSON.stringify(
       {
         name: "@wtf/test-desktop",
-        version: "1.0.1-alpha.2",
+        version: "1.0.1-alpha.3",
         build: { productName: "Test Studio" },
       },
       null,
@@ -167,12 +167,12 @@ function createGitFixture() {
     `${JSON.stringify(
       {
         name: "@wtf/test-desktop",
-        version: "1.0.1-alpha.2",
+        version: "1.0.1-alpha.3",
         lockfileVersion: 3,
         packages: {
           "": {
             name: "@wtf/test-desktop",
-            version: "1.0.1-alpha.2",
+            version: "1.0.1-alpha.3",
           },
         },
       },

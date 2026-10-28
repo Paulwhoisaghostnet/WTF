@@ -14,7 +14,7 @@ const liveCheckSource = readFileSync("scripts/check-macaroni-installers-live.mjs
 
 test("Macaroni desktop package bundles a no-prereq Electron shell", () => {
   assert.equal(desktopPackage.main, "src/main.cjs");
-  assert.equal(desktopPackage.devDependencies.electron, "43.8.3");
+  assert.equal(desktopPackage.devDependencies.electron, "43.8.4");
   assert.equal(desktopPackage.devDependencies["electron-builder"], "26.15.3");
   assert.equal(desktopPackage.homepage, "https://wtfos.app/creation-tools/macaroni/studio.html");
   assert.equal(desktopPackage.desktopName, "macaroni-studio");
@@ -82,7 +82,7 @@ test("Macaroni desktop installer workflow builds all target packages", () => {
 });
 
 test("Macaroni desktop live verifier follows the current alpha package release", () => {
-  assert.equal(desktopPackage.version, "1.0.1-alpha.2");
+  assert.equal(desktopPackage.version, "1.0.1-alpha.3");
   assert.match(liveCheckSource, /macaroni-desktop-v\$\{EXPECTED_VERSION\}/);
   assert.match(liveCheckSource, /\/api\/macaroni\/installers/);
   assert.match(liveCheckSource, /Macaroni-Studio-\$\{EXPECTED_VERSION\}-mac-universal\.dmg/);

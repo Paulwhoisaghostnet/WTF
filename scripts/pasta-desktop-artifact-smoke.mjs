@@ -9,13 +9,13 @@ import { fileURLToPath } from "node:url";
 
 import { _electron as electron } from "playwright";
 
-const ALPHA_VERSION = "1.0.1-alpha.2";
+const ALPHA_VERSION = "1.0.1-alpha.3";
 const PROVENANCE_SCHEMA = "wtfos.pasta.desktop-build-provenance.v1";
-// Electron 43.8.3 includes GHSA-jr5w-w6x2-84p9's CA mitigation. Its
-// embedded Node is still 24.22.0: this does not attest the later Node fixes.
+// Electron 43.8.4 retains the CA mitigation and includes Node 24.22.1
+// with the October security fixes; verify the actual packaged executable.
 const EXPECTED_RUNTIME_VERSIONS = Object.freeze({
-  electron: "43.8.3",
-  node: "24.22.0",
+  electron: "43.8.4",
+  node: "24.22.1",
   chrome: "150.0.7871.250",
 });
 const PERSISTENCE_KEY = "pasta.desktop.packaged-artifact-smoke.v1";

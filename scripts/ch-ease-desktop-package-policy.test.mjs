@@ -25,9 +25,9 @@ function extractStringArray(source, pattern, label) {
 
 test("CH-EASE desktop is an individual no-prerequisite installer", () => {
   assert.equal(pkg.name, "@wtf/ch-ease-desktop");
-  assert.equal(pkg.version, "1.0.1-alpha.2");
+  assert.equal(pkg.version, "1.0.1-alpha.3");
   assert.equal(pkg.main, "src/main.cjs");
-  assert.equal(pkg.devDependencies.electron, "43.8.3");
+  assert.equal(pkg.devDependencies.electron, "43.8.4");
   assert.equal(pkg.devDependencies["electron-builder"], "26.15.3");
   assert.equal(pkg.homepage, "https://wtfos.app/tools/ch-ease");
   assert.equal(pkg.desktopName, "ch-ease-studio");

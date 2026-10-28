@@ -9992,7 +9992,7 @@
       "category": "SDK / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 684,
+      "rank": 685,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10008,7 +10008,7 @@
       "category": "Game Studio / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 684,
+      "rank": 685,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10223,7 +10223,7 @@
       "category": "Profile / IPFS preview reliability",
       "priority": "P3",
       "points": 5,
-      "rank": 684,
+      "rank": 685,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10556,7 +10556,7 @@
       "functionalityDanger": 1,
       "securityDanger": 0,
       "points": 5,
-      "rank": 684,
+      "rank": 685,
       "title": "Macaroni live verifier incorrectly requires a product field absent from the established direct manifest",
       "body": "- Evidence: Production c21e4aa7 serves correct alpha.2 installer URLs/hashes; all27 public asset probes and allnine anonymous401 checks pass. Macaroni alone fails its live verifier because product is absent. Git history establishes the direct API has omitted that optional identity since June14 commit23127881d; the June30 verifier accepted it, while August8 commit8b096897 introduced the stricter assertion without changing the API. Studio consumes existing installer fields and does not require product.\n- Correction direction: Preserve the established API. Update the verifier to accept absent product while rejecting an explicitly incorrect product; retain version, URL, checksum and authorization checks. Prove behavior with executable validator tests and the real authenticated response.\n- Initial response-change hypothesis rejected after examining history: adding a new production field is unnecessary to satisfy the established contract.\n- Score: Existing board P2(3)+C1+F1+S0 formula; a false release-verification failure, not a production security exploit.\n- Verification: The executable validator test reproduces4pass/1fail before correction and5/5 afterward. Legacy absent identity and explicit macaroni pass; wrong product, stale version, wrong URL and wrong checksum remain rejected. Real authenticated Macaroni verification now passes against unchanged production c21e4aa7; the combined nine-product receipt confirms allnine manifests, allnine anonymous401s and all27 public range downloads. The other eight passing checks were preserved rather than rerun. Inventory version wording now describes alpha.2; no route/handle/API semantics changed. See evidence/desktop-macaroni-verifier-compatibility.json and desktop-live-installer-checks.json."
     },
@@ -10877,8 +10877,8 @@
     },
     {
       "id": "WTF-BB-717",
-      "status": "Open",
-      "owner": "Unassigned",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
       "lastTouched": "2026-10-28",
       "category": "Mail / Dovecot and image security",
       "priority": "P1",
@@ -10888,12 +10888,12 @@
       "points": 15,
       "rank": 93,
       "title": "Public mail runs Dovecot affected by crafted-header denial of service",
-      "body": "- Evidence: Actual DockerMailserver 15.1.0 image runs Dovecot 1:2.3.19.1+dfsg1-2.1+deb12u1. IMAP/LMTP are active, Postfix delivers via Dovecot LMTP, and ports 25/587/993 bind publicly. CVE-2026-27852 was publicly disclosed August 28; sending crafted mail followed by IMAP header parsing can exhaust memory and terminate the affected user process. This is DoS, not demonstrated RCE.\n- Additional image debt: installed Debian Brotli 1.0.9-2+b6 is below fixed 1.0.9-2+deb12u1; curl links it but attacker-controlled decode reachability was not proved. OpenSSL 3.0.17 also predates supported updates.\n- Correction direction: verify a replacement image with Dovecot CE 2.4.5 or the Debian trixie backport 1:2.4.1+dfsg1-6+deb13u7 and updated OS packages. Debian bookworm deb12u6 remains vulnerable; do not assume apt refresh or a newer DockerMailserver tag alone fixes this.\n- Verification idea: preserve mail data and validate migration/configuration, SMTP delivery, IMAP retrieval, TLS and actual installed package revisions.\n- Score: existing P1(4)+C4/F4/S3=15; image/config migration, mail availability consequence, externally deliverable DoS.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n"
+      "body": "- Evidence: Actual DockerMailserver 15.1.0 image runs Dovecot 1:2.3.19.1+dfsg1-2.1+deb12u1. IMAP/LMTP are active, Postfix delivers via Dovecot LMTP, and ports 25/587/993 bind publicly. CVE-2026-27852 was publicly disclosed August 28; sending crafted mail followed by IMAP header parsing can exhaust memory and terminate the affected user process. This is DoS, not demonstrated RCE.\n- Additional image debt: installed Debian Brotli 1.0.9-2+b6 is below fixed 1.0.9-2+deb12u1; curl links it but attacker-controlled decode reachability was not proved. OpenSSL 3.0.17 also predates supported updates.\n- Correction direction: verify a replacement image with Dovecot CE 2.4.5 or the Debian trixie backport 1:2.4.1+dfsg1-6+deb13u7 and updated OS packages. Debian bookworm deb12u6 remains vulnerable; do not assume apt refresh or a newer DockerMailserver tag alone fixes this.\n- Verification idea: preserve mail data and validate migration/configuration, SMTP delivery, IMAP retrieval, TLS and actual installed package revisions.\n- Score: existing P1(4)+C4/F4/S3=15; image/config migration, mail availability consequence, externally deliverable DoS.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n"
     },
     {
       "id": "WTF-BB-718",
-      "status": "Open",
-      "owner": "Unassigned",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
       "lastTouched": "2026-10-28",
       "category": "Infrastructure / PostgreSQL security",
       "priority": "P1",
@@ -10903,12 +10903,12 @@
       "points": 15,
       "rank": 93,
       "title": "All three running PostgreSQL servers remain on 16.14 before the 16.15 security fixes",
-      "body": "- Evidence: Direct SHOW server_version and executable checks report 16.14 on the main, PLC and relay databases. PostgreSQL 16.15 was released August 13 with security fixes including SQL-function memory corruption and privilege issues; this is older security debt newly identified here. Main/PLC are internal and relay binds to loopback; anonymous public SQL exposure was not established.\n- Correction direction: update each deployment to a verified PostgreSQL 16.15 image without changing the major version. Review logical-decoding/configuration, pgcrypto and relevant extension/index cleanup notes; do not blindly rotate the tag.\n- Verification idea: preserve and verify backups, inspect all three actual server versions after replacement, and exercise main/PLC/relay persistence and health.\n- Score: existing P1(4)+C3/F4/S4=15; coordinated persistent-service patch, core data availability and authenticated database memory-corruption consequence.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n"
+      "body": "- Evidence: Direct SHOW server_version and executable checks report 16.14 on the main, PLC and relay databases. PostgreSQL 16.15 was released August 13 with security fixes including SQL-function memory corruption and privilege issues; this is older security debt newly identified here. Main/PLC are internal and relay binds to loopback; anonymous public SQL exposure was not established.\n- Correction direction: update each deployment to a verified PostgreSQL 16.15 image without changing the major version. Review logical-decoding/configuration, pgcrypto and relevant extension/index cleanup notes; do not blindly rotate the tag.\n- Verification idea: preserve and verify backups, inspect all three actual server versions after replacement, and exercise main/PLC/relay persistence and health.\n- Score: existing P1(4)+C3/F4/S4=15; coordinated persistent-service patch, core data availability and authenticated database memory-corruption consequence.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n"
     },
     {
       "id": "WTF-BB-719",
-      "status": "Open",
-      "owner": "Unassigned",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
       "lastTouched": "2026-10-28",
       "category": "Operator signer / independent runtime dependencies",
       "priority": "P2",
@@ -10918,12 +10918,12 @@
       "points": 10,
       "rank": 475,
       "title": "Live operator signer still installs vulnerable Zod 4.3.6 separately from the patched main app",
-      "body": "- Evidence: /opt/wtf-operator-signer/node_modules/zod and its installed lock are 4.3.6 while the main app has 4.6.7. The signer externalizes dependencies; src/policy.ts parses constrained collection schemas before checking the token. GHSA-mrhx-c7xc-m3w5 describes bounded-collection validation memory amplification. Access requires its local Unix socket permissions 0660; no public anonymous HTTP trigger is claimed.\n- Correction direction: update the separate extension graph and deployed installation to compatible Zod 4.6.7 (fixed floor 4.6.6); retain current Node 22.23.4.\n- Verification idea: run owning schema/policy tests, preserve authorized signing behavior and verify the actual installed dependency after deployment. Collection fix is not a general frame byte limit.\n- Score: existing P2(3)+C2/F3/S2=10; separate installation, signer availability, restricted local DoS prerequisite.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n"
+      "body": "- Evidence: /opt/wtf-operator-signer/node_modules/zod and its installed lock are 4.3.6 while the main app has 4.6.7. The signer externalizes dependencies; src/policy.ts parses constrained collection schemas before checking the token. GHSA-mrhx-c7xc-m3w5 describes bounded-collection validation memory amplification. Access requires its local Unix socket permissions 0660; no public anonymous HTTP trigger is claimed.\n- Correction direction: update the separate extension graph and deployed installation to compatible Zod 4.6.7 (fixed floor 4.6.6); retain current Node 22.23.4.\n- Verification idea: run owning schema/policy tests, preserve authorized signing behavior and verify the actual installed dependency after deployment. Collection fix is not a general frame byte limit.\n- Score: existing P2(3)+C2/F3/S2=10; separate installation, signer availability, restricted local DoS prerequisite.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n"
     },
     {
       "id": "WTF-BB-720",
-      "status": "Open",
-      "owner": "Unassigned",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
       "lastTouched": "2026-10-28",
       "category": "Desktop / newly published Electron Node fixes",
       "priority": "P1",
@@ -10933,12 +10933,12 @@
       "points": 12,
       "rank": 281,
       "title": "Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3",
-      "body": "- Evidence: Fresh release IDs/sizes/SHA256 and active installer settings match all nine alpha.2 products and 27 previously verified platform artifacts with Electron 43.8.3/Node 24.22.0. Electron 43.8.4 published October 27; a checksum-verified official macOS arm64 binary reports Node 24.22.1, c-ares 1.34.9 and Undici 7.30.1. Prior upstream publication blocker is resolved.\n- Scope correction: current Electron already links Chromium Brotli containing the CVE-2026-111497 fix. Its older version strings alone are not vulnerability proof. Other Node DNS/TLS/connection reuse and Electron FSA/ASAR fixes motivate updating; app-specific exploit prerequisites remain conditional.\n- Correction direction: patch 43.8.3 to 43.8.4, preserve electron-builder 26.15.3 and the tested global-agent override, rebuild/test/publish the nine products and activate matching downloads.\n- Verification idea: all supported platform/installed-format checks, runtime versions, storage-preserving relaunch, checksums and live installer manifests. Source changes alone do not update published or customer-installed binaries.\n- Score: existing P1(4)+C2/F3/S3=12; compatible runtime patch across distributed installers, compatibility impact and conditional client security exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n"
+      "body": "- Evidence: Fresh release IDs/sizes/SHA256 and active installer settings match all nine alpha.2 products and 27 previously verified platform artifacts with Electron 43.8.3/Node 24.22.0. Electron 43.8.4 published October 27; a checksum-verified official macOS arm64 binary reports Node 24.22.1, c-ares 1.34.9 and Undici 7.30.1. Prior upstream publication blocker is resolved.\n- Scope correction: current Electron already links Chromium Brotli containing the CVE-2026-111497 fix. Its older version strings alone are not vulnerability proof. Other Node DNS/TLS/connection reuse and Electron FSA/ASAR fixes motivate updating; app-specific exploit prerequisites remain conditional.\n- Correction direction: patch 43.8.3 to 43.8.4, preserve electron-builder 26.15.3 and the tested global-agent override, rebuild/test/publish the nine products and activate matching downloads.\n- Verification idea: all supported platform/installed-format checks, runtime versions, storage-preserving relaunch, checksums and live installer manifests. Source changes alone do not update published or customer-installed binaries.\n- Score: existing P1(4)+C2/F3/S3=12; compatible runtime patch across distributed installers, compatibility impact and conditional client security exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n"
     },
     {
       "id": "WTF-BB-721",
-      "status": "Open",
-      "owner": "Unassigned",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
       "lastTouched": "2026-10-28",
       "category": "Dependencies / conditional and build-only leaf advisories",
       "priority": "P3",
@@ -10946,9 +10946,24 @@
       "functionalityDanger": 1,
       "securityDanger": 1,
       "points": 5,
-      "rank": 684,
+      "rank": 685,
       "title": "New qs and desktop fast-uri advisory matches have compatible leaf patches",
-      "body": "- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.\n- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.\n- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.\n- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n"
+      "body": "- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.\n- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.\n- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.\n- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n"
+    },
+    {
+      "id": "WTF-BB-722",
+      "status": "Claimed",
+      "owner": "Codex October 28 security full send",
+      "lastTouched": "2026-10-28",
+      "category": "E2E / release inventory compatibility",
+      "priority": "P2",
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 6,
+      "rank": 677,
+      "title": "Funding inventory tests bypass the current game menu and block security release validation",
+      "body": "- Evidence: Existing main Quality run 40438367482 failed funding inventory stories waiting for a Lobby link. A fresh built-host local run reproduces the 60-second timeout at wtfiap-funding.spec.mjs:7; current WtfIap.tsx renders that link only after Open game menu. The owning gameplay story already follows this interaction.\n- Correction direction: Update the funding fixture navigation to use the existing menu, preserving all funded-flow assertions and real app behavior. Investigate the separately reported mobile quick-action assertion against the current accessible controls before changing it.\n- Verification idea: Reproduce the failing story, run affected funding/mobile stories on the built host, then require the release Quality run to pass. No gameplay or wallet behavior change is requested.\n- Score: existing P2(3)+C1/F2/S0=6; localized fixture correction needed to prove the authorized security release.\n"
     }
   ]
 }

@@ -6,7 +6,7 @@ import process from "node:process";
 
 const DEFAULT_BASE_URL = "https://wtfos.app";
 const DEFAULT_REPOSITORY = "Paulwhoisaghostnet/WTF";
-const ALPHA_VERSION = "1.0.1-alpha.2";
+const ALPHA_VERSION = "1.0.1-alpha.3";
 
 const APPS = [
   {

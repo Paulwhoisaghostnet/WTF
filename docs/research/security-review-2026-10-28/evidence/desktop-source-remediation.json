@@ -1,0 +1,642 @@
+{
+  "checkedAt": "2026-10-28T04:16:24.268392+00:00",
+  "bounties": [
+    "WTF-BB-720",
+    "WTF-BB-721"
+  ],
+  "productVersion": "1.0.1-alpha.3",
+  "upstreamRelease": "https://github.com/electron/electron/releases/tag/v43.8.4",
+  "releaseVersionAvailability": "GitHub releases and remote tags checked before edits: all nine latest prereleases alpha.2; no alpha.3 tags existed.",
+  "scope": "All nine desktop manifests/locks and existing release version/runtime policy expectations; no UI, source data format, app identity, storage path, stable origin or API changes.",
+  "lockComparison": [
+    {
+      "dir": "ch-ease-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "7159c21df32cee0607ecb92d1d5751e87dbef059051bdf24aa6f9ed7dd4d5779",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "gnocchi-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "7ec971c8896be9ef475aa1b5357f0c3e309899df28e93a729b210b86765825f0",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "lasagna-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "5d1e0cc1750d4d6e4f4de4f3884b7eb0f9b1f450f148b45cabd37268ba4c3c26",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "macaroni-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "734366d45eea3e37b3d7ee87b18de57d90a92ae0096876c3624de79ddf911f64",
+      "lockSha256": "48af544bf26ba86e9f17e2279adb2015f3d6fcbbb5b3ecb30b3777bac5752954",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "pasta-suite-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "7d5d51f1201286698d19e9ffebbe2939cd31464632477f3d72a4a701eadae6d0",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "penne-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "ad7233fce9496db975586af62405a7386901a35da01a0dd8e381518d3a94297a",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "ravioli-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "f063287022fedfd9d496892418529616bd016302c19a02327d136307f2d0b5bf",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "rotini-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "ba9622b624ff4307d82e4f19d480a91abf7afbe2b49a48db271308cebf68ec8d",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    },
+    {
+      "dir": "spaghetti-desktop",
+      "changed": [
+        {
+          "path": "node_modules/electron",
+          "before": "43.8.3",
+          "after": "43.8.4"
+        },
+        {
+          "path": "node_modules/fast-uri",
+          "before": "3.1.8",
+          "after": "3.1.9"
+        }
+      ],
+      "added": [],
+      "removed": [],
+      "packageCount": 277,
+      "graphHash": "867c5c6200fab490e59fa939ddfc7e68186d2112d7606223e905cbd87585482f",
+      "lockSha256": "f190325c9987cefcb7d85d43fdc4f9557b9238bb8a87d74e94c6344d2fe8e299",
+      "electron": "43.8.4",
+      "builder": "26.15.3",
+      "globalAgent": "4.1.3",
+      "fastUri": "3.1.9"
+    }
+  ],
+  "exactPackageRecordComparison": [
+    {
+      "app": "ch-ease-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "gnocchi-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "lasagna-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "macaroni-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "pasta-suite-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "penne-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "ravioli-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "rotini-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    },
+    {
+      "app": "spaghetti-desktop",
+      "changedPackageRecords": [
+        "",
+        "node_modules/electron",
+        "node_modules/fast-uri"
+      ]
+    }
+  ],
+  "preservation": "Every dependency record except Electron and fast-uri is byte-equivalent as a parsed JSON object. Builder26.15.3, nested downloader3.1.0 and scoped global-agent4.1.3 retained. No dependencies added, removed or downgraded; roarr/sprintf-js absent.",
+  "cleanInstalls": {
+    "checkedAt": "2026-10-28T04:11:15.136535+00:00",
+    "node": "22.23.4",
+    "results": [
+      {
+        "app": "spaghetti",
+        "code": 0,
+        "command": [
+          "npm",
+          "ci",
+          "--prefix",
+          "apps/spaghetti-desktop",
+          "--no-fund"
+        ]
+      },
+      {
+        "app": "macaroni",
+        "code": 0,
+        "command": [
+          "npm",
+          "ci",
+          "--prefix",
+          "apps/macaroni-desktop",
+          "--no-fund"
+        ]
+      }
+    ]
+  },
+  "installedResolution": {
+    "checkedAt": "2026-10-28T04:12:28.118Z",
+    "results": [
+      {
+        "app": "spaghetti",
+        "electron": "43.8.4",
+        "builder": "26.15.3",
+        "appBuilderLib": "26.15.3",
+        "builderDownloader": "3.1.0",
+        "globalAgent": "4.1.3",
+        "fastUri": "3.1.9",
+        "roarrPresent": false,
+        "sprintfPresent": false
+      },
+      {
+        "app": "macaroni",
+        "electron": "43.8.4",
+        "builder": "26.15.3",
+        "appBuilderLib": "26.15.3",
+        "builderDownloader": "3.1.0",
+        "globalAgent": "4.1.3",
+        "fastUri": "3.1.9",
+        "roarrPresent": false,
+        "sprintfPresent": false
+      }
+    ]
+  },
+  "audits": {
+    "checkedAt": "2026-10-28T04:11:30.470695+00:00",
+    "results": [
+      {
+        "app": "ch-ease-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "ch-ease-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "gnocchi-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "gnocchi-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "lasagna-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "lasagna-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "macaroni-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "macaroni-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "pasta-suite-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "pasta-suite-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "penne-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "penne-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "ravioli-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "ravioli-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "rotini-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "rotini-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "spaghetti-desktop",
+        "scope": "full",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      {
+        "app": "spaghetti-desktop",
+        "scope": "production",
+        "exitCode": 0,
+        "counts": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    ]
+  },
+  "owningTests": {
+    "command": "node --test scripts/*desktop*.test.mjs scripts/pasta-protocol/standalone-installer-release-audit-policy.test.mjs",
+    "node": "22.23.4",
+    "passed": 82,
+    "failed": 0,
+    "skipped": 0,
+    "logSha256": "490eba607cda819c1b2bddb6000630a252f18d0531f9b922b8e7c510a93cb8c1"
+  },
+  "localPackaging": {
+    "command": "npm run pack --prefix apps/spaghetti-desktop",
+    "exitCode": 0,
+    "publish": "never",
+    "kind": "Local dirty-preflight directory package, not a release artifact",
+    "runtimeAndStorageSmoke": {
+      "ok": true,
+      "app": "spaghetti",
+      "executablePath": "apps/spaghetti-desktop/release/mac-arm64/spaghetti-studio.app/Contents/MacOS/spaghetti-studio",
+      "origin": "http://127.0.0.1:30772",
+      "title": "Spaghetti \u2014 Pasta Protocol",
+      "assetsVerified": 4,
+      "stableOriginRelaunch": true,
+      "bundledToolsOpened": 0,
+      "provenance": {
+        "schema": "wtfos.pasta.desktop-build-provenance.v1",
+        "app": "@wtf/spaghetti-desktop",
+        "version": "1.0.1-alpha.3",
+        "gitSha": "3d6f857182f90fe2b404656a422caef2791cd9dd",
+        "dirty": true,
+        "sourceRevision": "3d6f857182f90fe2b404656a422caef2791cd9dd-dirty",
+        "target": {
+          "platform": "darwin",
+          "arch": "arm64",
+          "format": "directory"
+        }
+      },
+      "runtimeVersions": {
+        "electron": "43.8.4",
+        "node": "24.22.1",
+        "chrome": "150.0.7871.250"
+      },
+      "screenshotPath": null
+    }
+  },
+  "releaseStatus": "Source verification complete; committed-source hosted build/install/provenance checks and publication remain pending. No production activation claimed."
+}

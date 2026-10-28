@@ -13,7 +13,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 
-const ALPHA_VERSION = "1.0.1-alpha.2";
+const ALPHA_VERSION = "1.0.1-alpha.3";
 const EXPECTED_TARGET = Object.freeze({
   platform: "darwin",
   arch: "universal",
