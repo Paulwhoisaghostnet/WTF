@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:https";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 const CONTRACT = "KT1XvNYseNDJJ6Kw27qhSEDF8ys8JhDopzfG";
 const OPERATION_HASH = `o${"1".repeat(50)}`;
@@ -30,12 +33,21 @@ function jsonResponse(response, status, body, cors = false) {
 }
 
 test.beforeAll(async () => {
-  const pem = execFileSync("openssl", [
-    "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
-    "-subj", "/CN=managed.wtfos.test", "-keyout", "/dev/stdout", "-out", "/dev/stdout",
-  ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  const key = pem.match(/-----BEGIN PRIVATE KEY-----[\s\S]+?-----END PRIVATE KEY-----/)?.[0];
-  const cert = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/)?.[0];
+  const certificateDir = mkdtempSync(path.join(tmpdir(), "macaroni-v35-collector-cert-"));
+  let key;
+  let cert;
+  try {
+    const keyPath = path.join(certificateDir, "key.pem");
+    const certPath = path.join(certificateDir, "cert.pem");
+    execFileSync("openssl", [
+      "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+      "-subj", "/CN=managed.wtfos.test", "-keyout", keyPath, "-out", certPath,
+    ], { stdio: ["ignore", "ignore", "ignore"] });
+    key = readFileSync(keyPath);
+    cert = readFileSync(certPath);
+  } finally {
+    rmSync(certificateDir, { recursive: true, force: true });
+  }
   if (!key || !cert) throw new Error("Could not create the local HTTPS collector fixture certificate");
 
   managedServer = createServer({ key, cert }, (request, response) => {

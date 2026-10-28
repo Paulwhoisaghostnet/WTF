@@ -11114,6 +11114,21 @@
       "securityDanger": 0,
       "title": "Quality job runs desktop parity tests before copying generated desktop assets",
       "body": "- Evidence:\n  - PR #48 quality CI reached aggregate unit tests after the Playwright runner fix and failed four tests because generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` directories were absent in a fresh checkout.\n- Correction:\n  - The quality job now runs the existing Macaroni and Suite asset preparation scripts before aggregate unit tests.\n- Verification (2026-10-27):\n  - Local targeted desktop parity tests passed 15/15 after those exact preparation commands. PR #48 run 40610861581 executed both preparation steps and its aggregate unit suite passed; the job advanced through typecheck and build to the full browser inventory.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-677; current main uses that ID for a separate finding."
+    },
+    {
+      "id": "WTF-BB-732",
+      "status": "Claimed",
+      "owner": "Codex Pasta alpha remaining release gates",
+      "lastTouched": "2026-10-27",
+      "category": "CI / Macaroni static collector browser fixture",
+      "priority": "P1",
+      "points": 8,
+      "rank": 577,
+      "complexity": 1,
+      "functionalityDanger": 3,
+      "securityDanger": 0,
+      "title": "Static collector browser fixture writes OpenSSL key and cert to one stdout path on Linux",
+      "body": "- Evidence:\n  - PR #48 Ubuntu 24.04 quality run 40610861581 completed 718 of 719 browser inventory stories. The sole failed story was `macaroni-v35-static-collector.spec.mjs`, whose `beforeAll` ran `openssl req ... -keyout /dev/stdout -out /dev/stdout`; OpenSSL exited nonzero before the collector assertion. The same story passes on macOS.\n- Likely correction:\n  - Generate key and certificate into distinct secure temporary files, read them for the HTTPS fixture, and remove the files before the browser story.\n- Verification idea:\n  - Focused story passes locally and in Ubuntu CI; the complete 719-story inventory passes.\n- Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-678; current main uses that ID for a separate finding."
     }
   ]
 }
