@@ -11459,3 +11459,13 @@
 **Why it mattered**: The unit job depended on ignored build outputs that were not created in its own workflow, hiding a CI-only failure behind a green local suite.
 
 **Rule**: If a test asserts packaged desktop parity, run the application's existing asset preparation script in that test job before the suite. Keep source allowlist and package policy enforcement in the preparation step.
+
+---
+
+## 2026-10-27 — Give OpenSSL fixture outputs separate temporary paths
+
+**What happened**: The full Ubuntu browser inventory completed 718 of 719 stories, then the Macaroni static collector story failed in its HTTPS fixture setup. It asked OpenSSL to write both a private key and certificate to `/dev/stdout`; that succeeded locally on macOS but failed on Linux.
+
+**Why it mattered**: The collector product flow itself was not reached on CI, and the final inventory gate stayed red after all other stories passed.
+
+**Rule**: Generate fixture keys and certificates into separate temporary files, read them into the local HTTPS server, and remove the files immediately. Keep platform-specific shell path behavior out of cross-platform browser fixtures.
