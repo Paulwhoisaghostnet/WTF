@@ -11439,3 +11439,13 @@
 **Why it mattered**: The fail-closed gate correctly prevented activation, but the default private full-scan path could not finish against the live provider under its observed rate limit.
 
 **Rule**: Preserve the private-CID boundary by paging public index rows locally. Pace requests below the measured provider burst and retry a 429 at the same cursor, honoring Retry-After when present. Treat other malformed or failed responses as unavailable rather than pretending the index was exhausted.
+
+---
+
+## 2026-10-27 — Pin the CI browser runner to a Playwright-supported OS
+
+**What happened**: The Pasta alpha PR quality job passed audit and policy gates but stopped before tests when `ubuntu-latest` resolved to Ubuntu 26.04 and Playwright 1.59.1 refused to install Chromium on that image.
+
+**Why it mattered**: Local Mac results were green, but the required GitHub quality job could not reach its unit, typecheck, build, and inventory checks because the runner image changed underneath it.
+
+**Rule**: Pin browser-bearing CI jobs to an OS version supported by the repository's installed Playwright release. Read the exact failed CI step before changing application code for a red quality job.
