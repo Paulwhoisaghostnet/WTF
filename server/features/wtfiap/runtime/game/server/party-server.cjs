@@ -316,8 +316,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.watcherSessions ||= {};
     room.messages ||= [];
     if (room.closedAtMs !== undefined) requireThat(Number.isSafeInteger(room.closedAtMs) && room.closedAtMs >= room.createdAtMs &&
-      room.closedByPlayerId === room.hostPlayerId && !room.match && !room.fundingLock && !room.fundingOffer,
-    'Closed room archive must be an unfunded, unstarted host action.');
+      room.closedByPlayerId === room.hostPlayerId && !room.fundingLock && !room.fundingOffer,
+    'Closed room archive must be an unfunded host action.');
     if (room.fundingOffer) requireThat(isWageredDuel(room) && room.config.duelWager.currency === 'XTZ' &&
       !room.closedAtMs && hash(room.fundingOffer.seed) === room.fundingOffer.seedCommitment &&
       ['roomId', 'termsHash', 'rulesHash', 'matchId'].every(key => /^[a-f0-9]{64}$/.test(room.fundingOffer[key])) &&
@@ -371,7 +371,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function lobby(room) {
     return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId,
       phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match ? room.match.phase : 'lobby',
-      ...(!room.match && !room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
+      ...(!room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
@@ -383,6 +383,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       : (room.match?.players.find(player => player.hp > 0)?.playerId || room.players[0]?.playerId)) : session.playerId;
     const base = room.terminalArchive ? clone(room.terminalArchive.views[watchedPlayerId])
       : room.match ? Party.view(room.match, watchedPlayerId) : lobby(room);
+    // Hosts may retire unescrowed tables from any phase. Escrow-bound rooms
+    // remain pinned to the refund/settlement flow and cannot be closed here.
+    if (room.closedAtMs === undefined && !room.fundingLock && !room.fundingOffer) base.canClose = true;
     if (spectator && room.match) {
       // Party.view contains a commander's private shop. A watcher gets the
       // same public board and combat, with no offers or actionable seat.
@@ -399,7 +402,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         Object.assign(player, { finalHP, finalGold, fieldedMaxHP });
       }
     }
-    return { ...base, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
+    return { ...base, phase: room.closedAtMs !== undefined ? 'closed' : base.phase,
+      roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
       authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: spectator ? null : session.nextSequence,
       viewer: { id: viewerId, name: spectator ? room.watchers.find(watcher => watcher.watcherId === viewerId)?.name : room.players.find(player => player.playerId === viewerId)?.name,
         role: spectator ? 'watcher' : 'player' }, watchingPlayerId: watchedPlayerId,
@@ -429,7 +433,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   }
   function schedule(room) {
     if (timers.has(room.roomCode)) clearTimeout(timers.get(room.roomCode));
-    timers.delete(room.roomCode); if (closing) return;
+    timers.delete(room.roomCode); if (closing || room.closedAtMs !== undefined) return;
     const atMs = deadline(room); if (atMs === null || atMs === undefined) return;
     requireThat(Number.isSafeInteger(atMs) && atMs >= 0, 'Party deadlines must be exact epoch milliseconds.');
     const delay = Math.min(MAX_TIMER_MS, Math.max(0, atMs - now()));
@@ -440,7 +444,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     timer.unref(); timers.set(room.roomCode, timer);
   }
   function advance(room) {
-    if (room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
+    if (room.closedAtMs !== undefined || room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
     if (room.match) {
       const result = Party.advance(room.match, now());
       requireThat(result.ok, result.reason || 'Party clock transition failed.', 500);
@@ -610,10 +614,10 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         requireThat(Object.keys(input).length === 0, 'Closing a room needs no extra terms.');
         requireThat(!session.watcherId && session.playerId === room.hostPlayerId,
           'Only the room host can close it.', 403);
-        requireThat(!room.match && !room.fundingLock && !room.fundingOffer, 'Started or escrow-bound rooms cannot be closed.', 409);
+        requireThat(!room.fundingLock && !room.fundingOffer, 'Escrow-bound rooms must use their refund or settlement flow.', 409);
         if (room.closedAtMs === undefined) {
           room.closedAtMs = now(); room.closedByPlayerId = session.playerId;
-          room.revision++; persist(room, false); publish(room);
+          room.revision++; schedule(room); persist(room, false); publish(room);
         }
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
