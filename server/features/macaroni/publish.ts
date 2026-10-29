@@ -72,13 +72,141 @@ function publicMediaUrl(value: unknown, gateway: unknown): string {
 }
 
 export function sanitizeMacaroniConfigForPublish(
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  publicOrigin = ""
 ): Record<string, unknown> {
   const theme = asRecord(input.theme);
   const social = asRecord(input.social);
   const share = asRecord(input.share);
+  const profile = asRecord(input.profile);
+  const reveal = asRecord(input.reveal);
+  const service = asRecord(input.service);
+  const royalties = asRecord(input.minterRoyalties);
+  const secureV35 = String(profile.id || input.contractVersion) === "macaroni-secure-v35";
+  const network = input.network === "mainnet" ? "mainnet" : "shadownet";
+  const contract = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(input.contract || ""))
+    ? String(input.contract)
+    : "";
+  const safeUrl = (value: unknown) => {
+    try {
+      const parsed = new URL(String(value || ""));
+      return parsed.protocol === "https:" ? parsed.href : "";
+    } catch {
+      return "";
+    }
+  };
+  const safeUrlTemplate = (value: unknown, placeholder: string) => {
+    const token = `{${placeholder}}`;
+    const sentinel = `__MACARONI_${placeholder.replace(/[^a-z0-9]/gi, "_").toUpperCase()}__`;
+    const source = String(value || "").trim();
+    if (!source.includes(token)) return "";
+    const normalized = safeUrl(source.replace(token, sentinel));
+    return normalized ? normalized.replace(sentinel, token) : "";
+  };
+  const text = (value: unknown, length: number) => String(value || "").trim().slice(0, length);
+  const nat = (value: unknown) => {
+    const number = Number(value);
+    return Number.isSafeInteger(number) && number >= 0 ? number : 0;
+  };
+  const tokens = Array.isArray(input.tokens) ? input.tokens.map((row) => {
+    const token = asRecord(row);
+    const common = {
+      id: nat(token.id),
+      displayId: nat(token.displayId),
+      quantity: Math.max(1, nat(token.quantity)),
+    };
+    return secureV35 ? common : {
+      ...common,
+      name: text(token.name, 200),
+      metadata: publicMediaUrl(token.metadata, input.gateway),
+      artifact: publicMediaUrl(token.artifact, input.gateway),
+      mime: text(token.mime, 160),
+    };
+  }) : [];
+  const blocks = Array.isArray(input.blocks) ? input.blocks.flatMap((row) => {
+    const block = asRecord(row);
+    const type = block.type === "h" || block.type === "img" ? block.type : "p";
+    const value = type === "img"
+      ? publicMediaUrl(block.value, input.gateway)
+      : text(block.value, 2_000);
+    return value ? [{ type, value }] : [];
+  }) : [];
+  const managedStatusUrl = publicOrigin && secureV35 && service.provider === "wtfos_managed" && contract
+    ? `${publicOrigin.replace(/\/+$/, "")}/api/macaroni/v35/status/${network}/${contract}`
+    : "";
   return {
-    ...input,
+    network,
+    rpc: network === "mainnet" ? "https://tezos-mainnet.octez.io/" : "https://tezos-shadownet.octez.io/",
+    contract,
+    contractVersion: secureV35 ? "macaroni-secure-v35" : text(input.contractVersion, 80),
+    profile: {
+      id: secureV35 ? "macaroni-secure-v35" : text(profile.id, 80),
+      label: text(profile.label, 160),
+      collectorUnpredictable: secureV35 && profile.collectorUnpredictable === true,
+      allocationLockedAtPurchase: secureV35 && profile.allocationLockedAtPurchase === true,
+      trustlessRandomnessClaimed: false,
+    },
+    title: text(input.title, 200),
+    description: text(input.description, 2_000),
+    cover: publicMediaUrl(input.cover, input.gateway),
+    gateway: safeUrl(input.gateway) || DEFAULT_IPFS_GATEWAY,
+    assetStrategy: secureV35 && input.assetStrategy === "public_prepin_private_manifest"
+      ? "public_prepin_private_manifest"
+      : secureV35 ? "pin_on_claim" : text(input.assetStrategy, 80),
+    tokens,
+    tokenSummary: {
+      tokenCount: tokens.length,
+      editionCount: tokens.reduce((total, token) => total + Number(token.quantity || 0), 0),
+      hasMultiEditions: tokens.some((token) => Number(token.quantity) > 1),
+    },
+    reveal: {
+      mode: reveal.mode === "delayed" ? "delayed" : "instant",
+      delayDays: nat(reveal.delayDays),
+      policy: text(reveal.policy, 80),
+      at: text(reveal.at, 80),
+      allocationChangesAtDisplay: false,
+      placeholderPool: secureV35 ? [] : Array.isArray(reveal.placeholderPool) ? reveal.placeholderPool : [],
+      serviceUrl: secureV35 ? "" : safeUrl(reveal.serviceUrl),
+    },
+    service: secureV35 ? {
+      schema: "wtfos.macaroni-v35-public-service.v1",
+      provider: service.provider === "creator_companion" ? "creator_companion" : "wtfos_managed",
+      publicStatusUrl: managedStatusUrl || safeUrl(service.publicStatusUrl),
+      claimStatusUrlTemplate: managedStatusUrl
+        ? `${managedStatusUrl}/claims/{claimId}`
+        : safeUrlTemplate(service.claimStatusUrlTemplate, "claimId"),
+      purchaseStatusUrlTemplate: managedStatusUrl
+        ? `${managedStatusUrl}/purchases/{operationHash}`
+        : safeUrlTemplate(service.purchaseStatusUrlTemplate, "operationHash"),
+      wakeUrl: service.provider === "creator_companion"
+        ? safeUrl(service.wakeUrl)
+        : contract && publicOrigin
+          ? `${publicOrigin.replace(/\/+$/, "")}/api/macaroni/v35/wake/${network}/${contract}`
+          : "",
+      projectId: text(service.projectId, 160).replace(/[^A-Za-z0-9:._-]/g, ""),
+    } : {
+      schema: text(service.schema, 120),
+      provider: text(service.provider, 80),
+      publicStatusUrl: safeUrl(service.publicStatusUrl),
+      claimStatusUrlTemplate: safeUrlTemplate(service.claimStatusUrlTemplate, "claimId"),
+      purchaseStatusUrlTemplate: safeUrlTemplate(service.purchaseStatusUrlTemplate, "operationHash"),
+      wakeUrl: safeUrl(service.wakeUrl),
+      projectId: text(service.projectId, 160).replace(/[^A-Za-z0-9:._-]/g, ""),
+    },
+    legacyRisk: secureV35 ? null : asRecord(input.legacyRisk),
+    minterRoyalties: {
+      enabled: royalties.enabled === true,
+      decimals: nat(royalties.decimals),
+      bps: Math.min(10_000, nat(royalties.bps)),
+      percent: Math.min(100, Math.max(0, Number(royalties.percent) || 0)),
+      mode: text(royalties.mode, 80),
+      updater: /^(tz1|tz2|tz3|tz4)[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(royalties.updater || ""))
+        ? String(royalties.updater) : "",
+      updateEndpoint: safeUrl(royalties.updateEndpoint),
+      updateStrategy: text(royalties.updateStrategy, 100),
+      metadataSource: text(royalties.metadataSource, 200),
+      lock: text(royalties.lock, 100),
+    },
     theme: {
       name: sanitizeThemeName(theme.name),
       accent: sanitizeCssColor(theme.accent),
@@ -94,6 +222,11 @@ export function sanitizeMacaroniConfigForPublish(
       xText: sanitizeShareText(share.xText || share.twitterText),
       bskyText: sanitizeShareText(share.bskyText || share.blueskyText),
     },
+    creatorSocial: {
+      twitter: sanitizeSocialHandle(asRecord(input.creatorSocial).twitter),
+      bsky: sanitizeSocialHandle(asRecord(input.creatorSocial).bsky),
+    },
+    blocks,
   };
 }
 
@@ -118,7 +251,7 @@ export function buildMacaroniPublishedHtml(input: {
   publicOrigin: string;
 }): string {
   const assetBase = macaroniStaticAssetBase(input.publicOrigin);
-  const config = sanitizeMacaroniConfigForPublish(input.config);
+  const config = sanitizeMacaroniConfigForPublish(input.config, input.publicOrigin);
   const title = String(config.title || "Macaroni Drop");
   const description = String(config.description || "").trim().slice(0, 300);
   const coverUrl = publicMediaUrl(config.cover, config.gateway);

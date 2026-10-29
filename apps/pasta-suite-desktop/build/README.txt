@@ -1,5 +1,10 @@
 PASTA SUITE 1.0.1-alpha.1 — DEVELOPER REVIEW BUILD
 
+2026-10-06 REVIEW SNAPSHOT
+Source and known issues: https://github.com/Paulwhoisaghostnet/WTF/tree/pasta-review-2026-10-06/pasta-protocol
+This handoff supplies macOS only. Use its manifest/checksums to distinguish older builds with the same version. It is unsigned and unnotarized, not production approved. Use Shadownet and disposable test assets only; Mainnet remains selectable in the application.
+Run only Pasta Suite, not standalone Macaroni at the same time: both Companion runtimes default to port 47835. Secure Blind Mint starts locked until the creator configures a dedicated finalizer, pinning, RPC, private backup and public HTTPS/CORS and passes the Companion doctor. Installed launch smoke does not prove a funded mint lifecycle. The dedicated finalizer key is held in private runtime custody.
+
 macOS
 1. Open the DMG.
 2. Drag Pasta Suite into Applications.

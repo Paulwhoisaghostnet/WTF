@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 test("Macaroni creator services require trusted-creator or scoped Macaroni permission", () => {
   const source = readFileSync("server/routes/macaroni.ts", "utf8");
@@ -406,6 +407,8 @@ test("Macaroni drop wallet runtime prefers Octez Connect with Beacon backup", ()
 
 test("Macaroni wallet operation fees track the padded gas limit that is actually sent", () => {
   const commonSource = readFileSync("public/creation-tools/macaroni/js/common.js", "utf8");
+  const browser = { window: {} as { MD?: { feeFloorForGasLimit: (gas: number, estimate: { opSize: number }) => number } }, TZ: {}, console };
+  runInNewContext(commonSource, browser);
 
   assert.match(commonSource, /TEZOS_MINIMAL_MUTEZ_PER_GAS_UNIT = 0\.1/);
   assert.match(commonSource, /DEFAULT_OPERATION_SIZE_BYTES = 1800/);
@@ -417,9 +420,11 @@ test("Macaroni wallet operation fees track the padded gas limit that is actually
   assert.match(commonSource, /fee = Math\.max\(estimateFee, paddedFeeFloor \|\| 0\)/);
   assert.match(commonSource, /fee = feeFloorForGasLimit\(gasLimit, null, opts\)/);
   assert.match(commonSource, /if \(limits\.fee != null\) sendOpts\.fee = limits\.fee/);
+  const highGasMidSizeFloor = browser.window.MD?.feeFloorForGasLimit(535_000, { opSize: 15_000 });
+  assert.ok(Number(highGasMidSizeFloor) >= Math.ceil(100 + 15_000 + 0.1 * 535_000));
 });
 
-test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modals", () => {
+test("Macaroni Studio uses inline feedback plus a required transaction review dialog", () => {
   const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
   const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
   const themeSource = readFileSync("public/creation-tools/macaroni/css/theme.css", "utf8");
@@ -437,7 +442,12 @@ test("Macaroni Studio uses sandbox-safe inline feedback instead of browser modal
   assert.match(studioSource, /invalidAddressNotice\("Treasury", state\.drop\.treasuryAddr, "deployStatus"\)/);
   assert.match(deploySource, /treasury:\s*state\.drop\.treasuryAddr \|\| me/);
   assert.match(deploySource, /await MD\.assertOperationSafety\(\)/);
-  assert.match(deploySource, /tezos\.wallet\.originate\(\{ code, storage \}\)\.send\(\)/);
+  assert.match(studioHtml, /<dialog class="transaction-review" id="transactionReviewDialog"/);
+  assert.match(studioSource, /function requestTransactionReview\(details\)/);
+  assert.match(studioSource, /async function estimateReviewedOrigination\(code, storage\)/);
+  assert.match(deploySource, /await requestTransactionReview\(\{/);
+  assert.match(deploySource, /fee: originationLimits\.fee/);
+  assert.match(deploySource, /storageLimit: originationLimits\.storageLimit/);
   assert.doesNotMatch(deploySource, /state\.network\s*===\s*"mainnet"/);
   assert.doesNotMatch(studioSource, /mainnetDeployConfirm|requestMainnetDeployConfirmation|btnConfirmMainnetDeploy|btnCancelMainnetDeploy/);
   assert.match(themeSource, /\.notice\.err/);
@@ -596,6 +606,46 @@ test("Macaroni generated mint quantity clamps to live supply and wallet allowanc
   assert.match(dropSource, /await refresh\(\)/);
   assert.match(dropSource, /only \$\{max\} \$\{countWord\(max, "mint is", "mints are"\)\} currently available for this wallet/);
   assert.match(dropSource, /qtyPlus[\s\S]*effectiveQtyMax\(activeStage\(\)\)/);
+
+  const sliceFunction = (name: string, nextName: string) => {
+    const start = dropSource.indexOf(`function ${name}(`);
+    const end = dropSource.indexOf(`\nfunction ${nextName}(`, start);
+    assert.ok(start >= 0 && end > start, `could not isolate ${name}`);
+    return dropSource.slice(start, end);
+  };
+  const exerciseSecureQuantity = new Function(
+    "secureStorage",
+    `
+      "use strict";
+      const isSecureV35Config = () => true;
+      const freshWalletStatus = () => null;
+      const walletAllowancePending = () => false;
+      const MD = { getAccount: () => "tz1-test", fmtTez: (value) => String(value) };
+      const elements = {
+        qty: { textContent: "" },
+        price: { textContent: "" },
+        btnMint: { disabled: false },
+        qtyPlus: { disabled: false },
+        qtyMinus: { disabled: false },
+      };
+      const $ = (id) => elements[id];
+      const MINT_QTY_UI_CAP = 10;
+      const secureServiceReady = true;
+      let storage = secureStorage;
+      let qty = 10;
+      ${sliceFunction("storageNatToNumber", "maxPerWalletFromStage")}
+      ${sliceFunction("collectionMintedCount", "isCommitmentV3")}
+      ${sliceFunction("collectionRemaining", "freshWalletStatus")}
+      ${sliceFunction("effectiveQtyMax", "disableMintControls")}
+      ${sliceFunction("syncMintQuantityUi", "applyWalletStageStatus")}
+      const result = syncMintQuantityUi({ priceMutez: 1_000_000 });
+      return { max: result.max, qty, plusDisabled: elements.qtyPlus.disabled };
+    `
+  );
+  assert.deepEqual(
+    exerciseSecureQuantity({ supply: 10, claims_created: 9 }),
+    { max: 1, qty: 1, plusDisabled: true }
+  );
 });
 
 test("Macaroni Studio models V2 editions, minter royalties, and placeholder pools", () => {
@@ -632,7 +682,7 @@ test("Macaroni Studio models V2 editions, minter royalties, and placeholder pool
   assert.match(studioSource, /function royaltyPolicyMetadata\(\)/);
   assert.match(studioSource, /function buildPlaceholderMetadata\(source, index, poolSize\)/);
   assert.match(studioSource, /tokenSummary:\s*\{\s*tokenCount: state\.tokens\.length,\s*editionCount: tokenEditionTotal\(\)/s);
-  assert.match(studioSource, /placeholderPool:\s*pool/);
+  assert.match(studioSource, /placeholderPool:\s*secureV35 \? \[\] : pool/);
   assert.match(studioSource, /minterRoyalties:\s*\{/);
   assert.match(studioSource, /updateStrategy: minterRoyaltiesEnabled\(\) \? "drop_page_or_creator_triggered" : "none"/);
   assert.match(studioSource, /storage = \{[\s\S]*token_supply: new M\(\)[\s\S]*token_minted: new M\(\)[\s\S]*placeholder_pool: placeholderPoolMap[\s\S]*minter_royalty_config:/);
@@ -648,7 +698,7 @@ test("Macaroni Studio models V2 editions, minter royalties, and placeholder pool
   assert.match(dropSource, /storage\.reveal_tail != null && storage\.reveal_cursor != null/);
   assert.match(dropSource, /royalty metadata sync is pending until the creator or configured updater pushes the revised metadata/);
 
-  assert.match(dropConfig, /contractVersion: "macaroni-v1"/);
+  assert.match(dropConfig, /contractVersion: "macaroni-secure-v35"/);
   assert.match(dropConfig, /placeholderPool: \[\]/);
   assert.match(dropConfig, /minterRoyalties:\s*\{/);
   assert.match(dropConfig, /updateEndpoint: ""/);
@@ -709,7 +759,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(studioSource, /crypto\.getRandomValues\(new Uint8Array\(32\)\)/);
   assert.match(studioSource, /crypto\.subtle\.digest\("SHA-256", payload\)/);
   assert.match(studioSource, /metadata_commitment: t\.metadataCommitment/);
-  assert.match(studioSource, /profile\.usesV3[\s\S]*id: t\.id - 1,[\s\S]*displayId: t\.id,[\s\S]*quantity: normalizeTokenQuantity\(t\.quantity\),[\s\S]*:\s*\{[\s\S]*metadata: t\.metadataCid/s);
+  assert.match(studioSource, /secureV35 \|\| profile\.usesV3[\s\S]*id: t\.id - 1,[\s\S]*displayId: t\.id,[\s\S]*quantity: normalizeTokenQuantity\(t\.quantity\),[\s\S]*:\s*\{[\s\S]*metadata: t\.metadataCid/s);
   assert.match(studioSource, /token_commitments: new M\(\), revealed_tokens: new M\(\), inventory_finalized: false/);
   assert.doesNotMatch(studioSource, /usesV3 && state\.drop\.revealMode !== "delayed"/);
   assert.match(studioSource, /delayed_reveal: delayed/);
@@ -719,7 +769,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(studioSource, /methodsObject\.finalize_inventory\(\)/);
   assert.match(studioSource, /does not claim provably random selection/);
   assert.match(dropSource, /does not claim provably random selection/);
-  assert.match(studioSource, /serviceUrl: profile\.usesV3 \? automaticRevealRequestUrl\(\) : ""/);
+  assert.match(studioSource, /serviceUrl: !secureV35 && profile\.usesV3 \? automaticRevealRequestUrl\(\) : ""/);
   assert.match(dropSource, /async function requestAutomaticV3Reveal\(\)/);
   assert.match(dropSource, /await requestAutomaticV3Reveal\(\)/);
   assert.match(studioSource, /const localCommitment = await metadataCommitment\(token\.metadataCid, token\.metadataNonce\)/);
@@ -758,7 +808,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(studioSource, /credentials: "omit"/);
   assert.match(studioSource, /await MD\.signMessage\(challenge\.message\)/);
   assert.match(studioSource, /This does not send a transaction or charge tez/);
-  assert.match(studioSource, /one free signature proving control of the contract/);
+  assert.match(studioSource, /This purpose-bound message proves that the connected wallet administers this one contract/);
   assert.match(studioSource, /proof:\s*\{[\s\S]*nonce: challenge\.nonce,[\s\S]*publicKey: signed\.publicKey,[\s\S]*signature: signed\.signature/s);
   assert.match(revealAuthSource, /MACARONI_REVEAL_REGISTRATION_VERSION/);
   assert.match(revealAuthSource, /verifyPublicKeyOwnership/);
@@ -878,4 +928,218 @@ test("Macaroni treats Shadownet as a first-class RPC and chain-id guarded networ
   assert.match(vendorSource, /shadownet:"https:\/\/shadownet\.kukai\.app"/);
   assert.match(frameSource, /allow-popups-to-escape-sandbox/);
   assert.equal(commonSource.includes("shadownet rotates"), false);
+});
+
+test("Macaroni V3.5 UI defaults secure, separates compatibility, and fails closed", () => {
+  const indexHtml = readFileSync("public/creation-tools/macaroni/index.html", "utf8");
+  const studioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const dropConfig = readFileSync("public/creation-tools/macaroni/drop.config.js", "utf8");
+
+  for (const source of [indexHtml, studioHtml]) {
+    assert.match(source, /Secure Blind Mint/);
+    assert.match(source, /Private until assigned/);
+    assert.match(source, /Cryptographically unpredictable to collectors/);
+    assert.match(source, /Allocation locked and non-rerollable/);
+    assert.match(source, /Automatic fulfillment/);
+    assert.match(source, /Static page anywhere/);
+  }
+  assert.match(studioHtml, /<details class="advanced-details" id="advancedOptions">/);
+  assert.ok(studioHtml.indexOf('id="revealMode"') < studioHtml.indexOf('id="advancedOptions"'));
+  assert.match(studioHtml, /Sealed deterministic order — not random/);
+  assert.match(studioHtml, /id="legacyRiskAcknowledged"/);
+  assert.match(studioHtml, /I understand Legacy Macaroni is a public-inventory surprise mint, not a truly blind or cryptographically random mint/);
+  assert.match(studioHtml, /id="assetStrategy"/);
+  assert.match(studioHtml, /Private raw files · pin after final mint/);
+  assert.match(studioHtml, /Public pre-pinned files · private committed order/);
+  assert.match(studioHtml, /Public pre-pinning is faster, but it is not truly blind/);
+  assert.match(studioHtml, /id="publicPrepinRiskAcknowledged"/);
+  assert.match(studioHtml, /at least five fulfillment operations/);
+  assert.match(studioHtml, /only after every purchased claim is fulfilled/);
+  assert.match(studioHtml, /id="btnDeploy"[^>]*disabled/);
+  assert.match(studioHtml, /id="operationHashRecoveryDialog"/);
+  assert.match(studioHtml, /This step must remain locked/);
+  assert.doesNotMatch(studioHtml, /value="no-broadcast"/);
+
+  assert.match(studioSource, /MACARONI_SECURE_PROFILE_ID = "macaroni-secure-v35"/);
+  assert.match(studioSource, /MACARONI_V35_REQUIRED_CAPABILITY = "use_managed_macaroni"/);
+  assert.match(studioSource, /managedMacaroniCapability\?\.managed\?\.requiredPermission/);
+  assert.match(studioSource, /denial\?\.adminInboxPath/);
+  assert.match(studioSource, /denial\?\.requestText/);
+  assert.match(studioSource, /element\.disabled = registered \|\|\s*\(id === "infraManaged" && managedMacaroniCapabilityState !== "granted"\)/);
+  assert.match(studioSource, /const usesV3 = !usesV35 && selected === "macaroni-commitment-v3"/);
+  assert.match(studioSource, /async function deploySecureV35\(\)/);
+  assert.match(studioSource, /Macaroni will not substitute a compatibility contract/);
+  assert.match(studioSource, /publicPrepinRiskAcknowledged/);
+  assert.match(studioSource, /publishes the artwork before allocation and carries copy-mint risk/);
+  assert.match(studioSource, /function secureCompanionFetch\(path, options = \{\}\)/);
+  assert.match(studioSource, /async function stageCompanionV35PrivateInventory\(\)/);
+  assert.match(studioSource, /creator-actions\/\$\{options\.requestPermanentClose \? "close" : "next"\}/);
+  assert.match(studioSource, /creator-attempts\/\$\{action\.attemptId\}\/submitted/);
+  assert.match(studioSource, /creator-attempts\/\$\{action\.attemptId\}\/prompt-started/);
+  assert.match(studioSource, /creator-attempts\/\$\{action\.attemptId\}\/prompt-aborted/);
+  assert.match(studioSource, /authenticatedRemoteWalletAbort\(error, walletErrorCapture\.take\(\)\)/);
+  assert.match(studioSource, /Only Beacon's raw OPERATION_REQUEST_ERROR event retains the remote peer/);
+  assert.match(studioSource, /String\(caught\.id \|\| ""\) !== walletResponseId/);
+  assert.match(studioSource, /A transformed catch object has/);
+  assert.match(studioSource, /beaconEvent: "OPERATION_REQUEST_ERROR"/);
+  assert.match(studioSource, /beaconErrorResponse/);
+  assert.match(studioSource, /function durableWalletAbortEvidence/);
+  assert.match(studioSource, /walletAbortEvidence/);
+  assert.match(studioSource, /async function recoverSecureWalletPromptAborts/);
+  assert.match(studioSource, /await recoverSecureWalletPromptAborts\(\)/);
+  assert.match(studioSource, /authenticated decline is saved on this device/);
+  assert.match(studioSource, /walletErrorType !== "ABORTED_ERROR"/);
+  assert.match(studioSource, /walletSenderId/);
+  assert.match(studioSource, /walletResponseId/);
+  assert.match(studioSource, /MD\.beginWalletOperationErrorCapture\(\)/);
+  assert.match(studioSource, /No retry will be offered until the outcome is resolved/);
+  assert.match(studioSource, /body\.proceedToWalletSend !== true/);
+  assert.match(studioSource, /publicCollectorReady !== true/);
+  assert.match(studioSource, /body\.publicCollectorReady === true/);
+  assert.match(studioSource, /normalizePublicUrlTemplate\(project\?\.claimStatusUrlTemplate, "claimId"\)/);
+  assert.match(studioSource, /wallet-prompt-started/);
+  assert.match(studioSource, /operation_hash_recovery_required/);
+  assert.match(studioSource, /confirmNoBroadcast: true/);
+  assert.match(studioSource, /state\.infrastructure\.privateInventory\?\.ready !== true/);
+  assert.match(studioSource, /const paddedGasFeeFloor = Number\(MD\.feeFloorForGasLimit\(gasLimit, estimate\)\)/);
+  assert.match(studioSource, /const opSize = Number\(estimate\?\.opSize \?\? estimate\?\.operationSize\)/);
+  assert.match(studioSource, /fee: Math\.max\(bufferedEstimateFee, paddedGasFeeFloor\)/);
+  assert.match(studioSource, /return paddedSecureActionLimits\(action\.liveEstimate\)/);
+  assert.doesNotMatch(studioSource, /getToolkit\(\)\.estimate\.transfer\(\{\s*to: action\.target/);
+  assert.match(studioSource, /MDSiteBundle\.downloadSiteZip/);
+  assert.match(dropConfig, /contractVersion: "macaroni-secure-v35"/);
+  assert.match(dropConfig, /trustlessRandomnessClaimed: false/);
+  assert.doesNotMatch(dropConfig, /ipfs:\/\/[A-Za-z0-9]/);
+
+  const abortFunctionStart = studioSource.indexOf("function authenticatedRemoteWalletAbort(");
+  const abortFunctionEnd = studioSource.indexOf("\n}\n\nasync function recordSecureWalletPromptAbort", abortFunctionStart) + 2;
+  assert.ok(abortFunctionStart >= 0 && abortFunctionEnd > abortFunctionStart);
+  const classifyAbort = new Function(
+    `${studioSource.slice(abortFunctionStart, abortFunctionEnd)}; return authenticatedRemoteWalletAbort;`
+  )();
+  const rawRemoteAbort = {
+    type: "error",
+    errorType: "ABORTED_ERROR",
+    id: "12345678-1234-4abc-8def-1234567890ab",
+    senderId: "3jEA7K7vMp8HD",
+    version: "2",
+  };
+  assert.deepEqual(classifyAbort(rawRemoteAbort, { errorResponse: rawRemoteAbort }), {
+    walletErrorType: "ABORTED_ERROR",
+    walletResponseId: rawRemoteAbort.id,
+    walletSenderId: rawRemoteAbort.senderId,
+    beaconVersion: "2",
+  });
+  assert.equal(classifyAbort({ ...rawRemoteAbort, id: "87654321-1234-4abc-8def-1234567890ab" }, { errorResponse: rawRemoteAbort }), null);
+  assert.equal(classifyAbort(rawRemoteAbort, null), null);
+  assert.equal(classifyAbort({ ...rawRemoteAbort, senderId: "" }, { errorResponse: { ...rawRemoteAbort, senderId: "" } }), null);
+});
+
+test("Macaroni V3.5 exports are secret-free and collector claims are reconciled exactly", () => {
+  const studioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
+  const siteBundle = readFileSync("public/creation-tools/macaroni/js/site-bundle.js", "utf8");
+  const dropHtml = readFileSync("public/creation-tools/macaroni/drop.html", "utf8");
+  const dropSource = readFileSync("public/creation-tools/macaroni/js/drop.js", "utf8");
+
+  assert.doesNotMatch(studioSource, /state\.pin\.jwt\s*=/);
+  assert.match(studioSource, /let sessionPinJwt = ""/);
+  assert.match(studioSource, /delete snapshot\.pin\.jwt/);
+  assert.match(studioSource, /function safeCreatorStateSnapshot\(\)/);
+  assert.match(studioSource, /"metadataNonce"/);
+  assert.match(studioSource, /"privateStorageRef"/);
+  assert.match(studioSource, /state: safeCreatorStateSnapshot\(\)/);
+
+  assert.match(siteBundle, /function assertSecretFreeConfig\(configJs\)/);
+  assert.match(siteBundle, /private and cannot be included in a static site/);
+  assert.match(siteBundle, /Secure V3\.5 token \$\{index \+ 1\} exposes/);
+  assert.match(siteBundle, /assertSecretFreeConfig\(configJs\);/);
+  assert.match(siteBundle, /"claimStatusUrlTemplate"/);
+  assert.match(siteBundle, /"purchaseStatusUrlTemplate"/);
+  assert.match(siteBundle, /"wakeUrl"/);
+  assert.match(siteBundle, /must contain exactly one \$\{token\} placeholder/);
+  assert.match(studioSource, /MDSiteBundle\.assertSecretFreeConfig\(body\);[\s\S]*setExportStatus\("Exporting…"/);
+  assert.match(siteBundle, /"vendor\/octez-connect\.js"/);
+  assert.match(siteBundle, /"vendor\/tezos\.js"/);
+  assert.match(siteBundle, /"js\/octez-wallet\.js"/);
+
+  const expectedSteps = ["Purchase confirmed", "Artwork secured", "Publishing to IPFS", "NFT ready"];
+  let last = -1;
+  for (const step of expectedSteps) {
+    const position = dropHtml.indexOf(step);
+    assert.ok(position > last, `${step} should appear in lifecycle order`);
+    last = position;
+  }
+  assert.match(dropHtml, /Your paid claim is confirmed and cannot be rerolled/);
+  assert.match(dropHtml, /forced allocation and final NFT mint are confirmed/);
+  assert.match(dropHtml, /exact private CARs bound to your NFT/);
+  assert.match(dropHtml, /id="legacyRiskBanner" role="alert" hidden/);
+
+  assert.match(dropSource, /c\.methodsObject\.purchase\(amount\)/);
+  assert.match(dropSource, /operationHash: submittedHash/);
+  assert.match(dropSource, /tag: "purchase_claim"/);
+  assert.match(dropSource, /transactionId: String\(transaction\.id\)/);
+  assert.match(dropSource, /claimIdFromPurchaseEvent/);
+  assert.match(dropSource, /no range has been guessed/);
+  assert.match(dropSource, /wtfos\.macaroni-v35-claim-status\.v1/);
+  assert.match(dropSource, /pasta\.macaroni-companion-public-claim\.v1/);
+  assert.match(dropSource, /pasta\.macaroni-companion-public-status\.v1/);
+  assert.match(dropSource, /purchaseStatusUrlTemplate/);
+  assert.match(dropSource, /claimStatusUrlTemplate/);
+  assert.match(dropSource, /wakeSecureFulfillmentService/);
+  assert.match(dropSource, /body\.serviceReady === true/);
+  assert.match(dropSource, /No purchase will be submitted/);
+  assert.match(dropSource, /if \(isSecureV35Config\(\) \|\| !rs/);
+
+  const browser = {
+    window: {},
+    URL,
+    Blob,
+    TextEncoder,
+    Uint8Array,
+    Uint32Array,
+    DataView,
+    setTimeout,
+  };
+  runInNewContext(siteBundle, browser);
+  const assertSecretFreeConfig = (browser.window as { MDSiteBundle: { assertSecretFreeConfig: (value: string) => unknown } })
+    .MDSiteBundle.assertSecretFreeConfig;
+  const secureConfig = {
+    profile: { id: "macaroni-secure-v35" },
+    contractVersion: "macaroni-secure-v35",
+    service: {
+      schema: "wtfos.macaroni-v35-public-service.v1",
+      provider: "creator_companion",
+      publicStatusUrl: "https://drops.example.test/v1/public/projects/drop-1/status",
+      claimStatusUrlTemplate: "https://drops.example.test/v1/public/projects/drop-1/claims/{claimId}",
+      purchaseStatusUrlTemplate: "https://drops.example.test/v1/public/projects/drop-1/purchases/{operationHash}",
+      wakeUrl: "https://drops.example.test/v1/public/projects/drop-1/wake",
+      projectId: "drop-1",
+    },
+    tokens: [{ id: 0, displayId: 1, quantity: 1 }],
+    reveal: { placeholderPool: [], serviceUrl: "" },
+  };
+  const configJs = (value: unknown) => `window.DROP_CONFIG = ${JSON.stringify(value)};`;
+  assert.doesNotThrow(() => assertSecretFreeConfig(configJs(secureConfig)));
+  assert.throws(
+    () => assertSecretFreeConfig(configJs({
+      ...secureConfig,
+      service: { ...secureConfig.service, metadataCid: "ipfs://private" },
+    })),
+    /unsupported field metadataCid/
+  );
+  assert.throws(
+    () => assertSecretFreeConfig(configJs({
+      ...secureConfig,
+      tokens: [{ ...secureConfig.tokens[0], artifact: "ipfs://private" }],
+    })),
+    /exposes artifact/
+  );
+  assert.throws(
+    () => assertSecretFreeConfig(configJs({
+      ...secureConfig,
+      service: { ...secureConfig.service, claimStatusUrlTemplate: "https:\/\/drops.example.test\/claims\/0" },
+    })),
+    /exactly one \{claimId\}/
+  );
 });

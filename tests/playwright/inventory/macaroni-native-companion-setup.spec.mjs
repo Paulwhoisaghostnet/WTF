@@ -1,0 +1,82 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("interaction inventory — Macaroni native Companion setup", () => {
+  test("guides a local creator to setup resources and explicitly rechecks readiness", async ({ page }) => {
+    let readinessRequests = 0;
+    await page.addInitScript(() => {
+      window.__macaroniNativeSetupActions = [];
+      window.MACARONI_DESKTOP = {
+        native: true,
+        version: "3.5-test",
+        openCompanionSetupGuide: async () => {
+          window.__macaroniNativeSetupActions.push("open-guide");
+          return { ok: true, action: "open-guide" };
+        },
+        openCompanionConfigFolder: async () => {
+          window.__macaroniNativeSetupActions.push("open-config-folder");
+          return { ok: true, action: "open-config-folder" };
+        },
+      };
+    });
+    await page.route("**/api/macaroni/v35/companion/readiness", async (route) => {
+      readinessRequests += 1;
+      if (readinessRequests === 1) {
+        return route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            schema: "wtfos.macaroni-v35-companion-readiness.v1",
+            ready: false,
+            studioApiReady: false,
+            code: "companion_setup_required",
+            reason: "Companion configuration is incomplete.",
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schema: "wtfos.macaroni-v35-companion-readiness.v1",
+          ready: true,
+          studioApiReady: true,
+          code: "ready",
+          reason: "Local Companion safety checks and the private Studio adapter are ready.",
+          network: "shadownet",
+          assetStrategies: ["pin_on_claim", "public_prepin_private_manifest"],
+          managementUrl: "http://127.0.0.1:30771/studio.html#secure-v35-companion",
+          publicCollectorReady: false,
+          publicCollectorCode: "companion_public_endpoint_unverified",
+          publicCollectorReason: "Configure and verify the public HTTPS collector endpoint before activation or export.",
+          publicBaseUrl: "",
+          collectorOrigin: "",
+          localDevelopmentOnly: true,
+        }),
+      });
+    });
+
+    await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
+
+    const setup = page.locator("#nativeCompanionSetup");
+    await expect(setup).toBeVisible();
+    await expect(page.locator("#nativeCompanionSetupTitle")).toHaveText("Finish Companion setup");
+    await expect(page.locator("#nativeCompanionSetupReason")).toContainText("Companion configuration is incomplete");
+    await expect(page.locator("#nativeCompanionSetupReason")).toContainText("Open the guide");
+    await expect(page.locator("#advancedOptions")).not.toHaveAttribute("open", "");
+
+    await page.locator("#btnOpenCompanionSetupGuide").click();
+    await expect(page.locator("#nativeCompanionActionStatus")).toContainText("did not copy generated keys");
+    await page.locator("#btnOpenCompanionConfigFolder").click();
+    await expect(page.locator("#nativeCompanionActionStatus")).toContainText("active .env selected");
+    expect(await page.evaluate(() => window.__macaroniNativeSetupActions)).toEqual([
+      "open-guide",
+      "open-config-folder",
+    ]);
+
+    await page.locator("#btnCheckCompanionAgain").click();
+    await expect(page.locator("#nativeCompanionSetupTitle")).toHaveText("Companion is ready");
+    await expect(page.locator("#nativeCompanionSetupBadge")).toHaveText("Ready");
+    await expect(page.locator("#nativeCompanionActionStatus")).toContainText("creation and launch steps are unlocked");
+    expect(readinessRequests).toBe(2);
+  });
+});

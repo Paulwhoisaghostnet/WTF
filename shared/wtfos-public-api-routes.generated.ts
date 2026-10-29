@@ -4187,7 +4187,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni installers.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:671"
+      "server/routes/macaroni.ts:985"
     ]
   },
   {
@@ -4196,7 +4196,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs pin.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:607"
+      "server/routes/macaroni.ts:921"
     ]
   },
   {
@@ -4205,7 +4205,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:574"
+      "server/routes/macaroni.ts:888"
     ]
   },
   {
@@ -4214,7 +4214,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload ticket.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:540"
+      "server/routes/macaroni.ts:854"
     ]
   },
   {
@@ -4223,7 +4223,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni media preview.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:636"
+      "server/routes/macaroni.ts:950"
     ]
   },
   {
@@ -4313,7 +4313,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni publish.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:763"
+      "server/routes/macaroni.ts:1561"
     ]
   },
   {
@@ -4322,7 +4322,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal automation.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:717"
+      "server/routes/macaroni.ts:1515"
     ]
   },
   {
@@ -4331,7 +4331,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal automation challenge.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:703"
+      "server/routes/macaroni.ts:1501"
     ]
   },
   {
@@ -4340,7 +4340,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni reveal operator.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:691"
+      "server/routes/macaroni.ts:1489"
     ]
   },
   {
@@ -4349,7 +4349,187 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal request.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:751"
+      "server/routes/macaroni.ts:1549"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/v35/capabilities",
+    "purpose": "Read or list macaroni v35 capabilities.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1005"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops",
+    "purpose": "Create, submit, or run macaroni v35 drops.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1039"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attach",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attach.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1229"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1251"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts/:attemptId/reconcile",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId reconcile.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1391"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts/:attemptId/submitted",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId submitted.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1360"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-aborted",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt aborted.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1325"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-started",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt started.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1294"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-rejected",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet rejected.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1268"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/next-action",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId next action.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1134"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/private-assets",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId private assets.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1213"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/private-assets/upload-ticket",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId private assets upload ticket.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1160"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/drops/:dropId/public-contract-metadata",
+    "purpose": "Create, submit, or run macaroni v35 drops dropId public contract metadata.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1084"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/v35/drops/:dropId/setup",
+    "purpose": "Read or list macaroni v35 drops dropId setup.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1117"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/private-assets/upload",
+    "purpose": "Create, submit, or run macaroni v35 private assets upload.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1196"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/registration/challenge",
+    "purpose": "Create, submit, or run macaroni v35 registration challenge.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/routes/macaroni.ts:1025"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/v35/status/:network/:contract",
+    "purpose": "Read or list macaroni v35 status network contract.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1421"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/v35/status/:network/:contract/claims/:claimId",
+    "purpose": "Read or list macaroni v35 status network contract claims claimId.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1438"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/macaroni/v35/status/:network/:contract/purchases/:operationHash",
+    "purpose": "Read or list macaroni v35 status network contract purchases operationHash.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1456"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/macaroni/v35/wake/:network/:contract",
+    "purpose": "Create, submit, or run macaroni v35 wake network contract.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/macaroni.ts:1474"
     ]
   },
   {

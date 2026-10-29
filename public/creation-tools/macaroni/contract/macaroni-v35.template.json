@@ -1,0 +1,182 @@
+{
+  "templateVersion": "macaroni-secure-claim-v3.5",
+  "source": "contracts/wtf-collections/MacaroniBlindMintFA2V35.py",
+  "scenario": "deploy_macaroni_blind_mint_v35_template",
+  "compileAndTestScript": "scripts/macaroni/compile-v35-contract-template.mjs",
+  "smartpyBinaryEnv": "SMARTPY_BIN",
+  "compiledContract": "public/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+  "compiledStorageTemplate": "public/creation-tools/macaroni/contract/macaroni-v35.storage.tz",
+  "artifactCopies": [
+    "public/creation-tools/macaroni/contract/macaroni-v35.contract.json",
+    "apps/macaroni-desktop/macaroni/contract/macaroni-v35.contract.json",
+    "companion/macaroni-v35/contract/macaroni-v35.contract.json"
+  ],
+  "entrypoints": [
+    "transfer",
+    "balance_of",
+    "update_operators",
+    "add_tokens_v35",
+    "append_token_slots_v35",
+    "replace_tokens_v35",
+    "set_stages",
+    "set_allowlist",
+    "finalize_setup",
+    "arm_fulfillment",
+    "activate_sale",
+    "close_sale",
+    "purchase",
+    "settle_claims_v35",
+    "fund_fulfillment_reserve",
+    "set_pause",
+    "transfer_administration",
+    "accept_administration",
+    "transfer_finalizer",
+    "accept_finalizer"
+  ],
+  "views": [
+    "get_balance",
+    "total_supply",
+    "get_token_supply",
+    "get_token_minted",
+    "get_claim",
+    "get_claim_token",
+    "is_operator",
+    "get_minter_pool_count",
+    "get_first_minter"
+  ],
+  "releasePolicies": [
+    "immediate",
+    "rolling_delay",
+    "scheduled",
+    "sellout"
+  ],
+  "claimModel": {
+    "purchaseParameter": "nat amount only",
+    "recipient": "transaction sender",
+    "order": "strict FIFO",
+    "finalTokenMint": "atomic with settlement; no placeholder or later reveal"
+  },
+  "setupModel": {
+    "tokenRows": "add_tokens_v35 declares sequential token ids, quantities, and commitments without expanding physical slots",
+    "physicalSlots": "append_token_slots_v35 fills canonical token-id order in resumable positive-count batches",
+    "completion": "finalize_setup requires slots_loaded == supply and next_slot_token_id == token_count",
+    "fulfillmentHandshake": "after local custody/readiness preflight, the configured finalizer must call arm_fulfillment before the administrator can activate_sale; pre-activation finalizer rotation resets the handshake",
+    "fulfillmentArmedStorage": "fulfillment_armed originates false, becomes true only through arm_fulfillment, and must be true for activate_sale"
+  },
+  "commitments": {
+    "hash": "SHA-256",
+    "hashChainLink": "sha256(utf8('macaroni-v35/hash-chain/v1') || 32-byte preimage)",
+    "allocation": "sha256(PACK((domain, (chain_id, (self, (creator, (claim_id, (buyer, (recipient, (unit, (purchase_level, preimage)))))))))))",
+    "metadata": "sha256(PACK((domain, (token_id, (metadata_uri, 32-byte metadata_nonce)))))"
+  },
+  "crossLanguageFixture": {
+    "source": "SmartPy scenario macaroni_v35_hash_fixture",
+    "inputs": {
+      "allocationDomainUtf8": "macaroni-v35/allocation/v1",
+      "metadataDomainUtf8": "macaroni-v35/metadata/v1",
+      "chainDomainUtf8": "macaroni-v35/hash-chain/v1",
+      "chainIdHex": "af1864d9feee0e1f",
+      "contractAddress": "KT1XvNYseNDJJ6Kw27qhSEDF8ys8JhDopzfG",
+      "creator": "tz1fextP23D6Ph2zeGTP8EwkP5Y8TufeFCHA",
+      "buyer": "tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU",
+      "recipient": "tz1M9CMEtsXm3QxA7FmMU2Qh7xzsuGXVbcDr",
+      "claimId": "7",
+      "unit": "2",
+      "purchaseLevel": "123456",
+      "entropyPreimageHex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "tokenId": "12",
+      "metadataUriUtf8": "ipfs://QmMacaroniV35CrossLanguageFixture",
+      "metadataNonceHex": "2222222222222222222222222222222222222222222222222222222222222222",
+      "initialSlotPool": [
+        "4",
+        "9",
+        "12",
+        "12",
+        "15",
+        "21",
+        "30"
+      ]
+    },
+    "allocation": {
+      "michelsonType": "(pair bytes (pair chain_id (pair address (pair address (pair nat (pair address (pair address (pair nat (pair nat bytes)))))))))",
+      "packTree": "(domain, (chain_id, (self, (creator, (claim_id, (buyer, (recipient, (unit, (purchase_level, preimage))))))))))",
+      "packedBytesHex": "0507070a0000001a6d616361726f6e692d7633352f616c6c6f636174696f6e2f763107070a00000008af1864d9feee0e1f07070a0000001601ffffffffffffffffffffffffffffffffffffffff0007070a000000160000db8fc132cf9624febe1675fbfd0c0fcdd7655f230707000707070a000000160000000000000000000000000000000000000000000007070a000000160000107c4009f2bcfcc248d6952998af5b7203b8ff590707000207070080890f0a000000201111111111111111111111111111111111111111111111111111111111111111",
+      "sha256Hex": "2e2da0e6f8a803e4054c94000ebbc6ec60a284fbb1bed6047415bb7a5974b420"
+    },
+    "metadata": {
+      "michelsonType": "(pair bytes (pair nat (pair bytes bytes)))",
+      "packTree": "(domain, (token_id, (metadata_uri, metadata_nonce)))",
+      "packedBytesHex": "0507070a000000186d616361726f6e692d7633352f6d657461646174612f76310707000c07070a00000028697066733a2f2f516d4d616361726f6e6956333543726f73734c616e6775616765466978747572650a000000202222222222222222222222222222222222222222222222222222222222222222",
+      "sha256Hex": "2f45abcca4a0e346235d6f84b7e6bf88d455100bdd2108d6bc8ef9fa7781f7fe"
+    },
+    "chainStep": {
+      "input": "utf8(chainDomainUtf8) || entropyPreimage",
+      "sha256Hex": "6460ea805ed89c397123484266b47a3b4c82c3faaf7e8845c4733653444289b8"
+    },
+    "swapPop": {
+      "remainingSlotsBefore": "7",
+      "draw": "4",
+      "lastIndex": "6",
+      "selectedTokenId": "15",
+      "replacementTokenId": "30",
+      "remainingSlotPool": [
+        [
+          "0",
+          "4"
+        ],
+        [
+          "1",
+          "9"
+        ],
+        [
+          "2",
+          "12"
+        ],
+        [
+          "3",
+          "12"
+        ],
+        [
+          "4",
+          "30"
+        ],
+        [
+          "5",
+          "21"
+        ]
+      ]
+    }
+  },
+  "measuredFundingPolicy": {
+    "evidence": ".agents/docs/archive/contracts/macaroni-v35-shadownet-costs.json",
+    "version": "2026-09-02T03:54:09.998Z",
+    "measuredAt": "2026-09-02T03:54:09.998Z",
+    "network": "shadownet",
+    "chainId": "NetXsqzbfFenSTS",
+    "maximumObservedSingletonMutez": 98885,
+    "maximumSettlementStorageBurnMutez": 97500,
+    "highestHistoricalAppliedRevealFeeMutez": 53680,
+    "fulfillmentSubsidyMutez": 151180,
+    "minimumFulfillmentSubsidyMutez": 151180,
+    "initialContractReserveMutez": 755900,
+    "fiveSettlementStartupMutez": 755900,
+    "armFulfillmentCostMutez": 363,
+    "finalizerLiquidStartupFloorMutez": 756263,
+    "finalizerStartupMutez": 756263,
+    "maximumObservedOriginationMutez": 5896549,
+    "derivation": "maximum observed V3.5 settlement storage/allocation burn + highest historical applied Macaroni V2 reveal baker fee",
+    "finalizerStartup": "finalizerStartupMutez covers five conservative settlement envelopes plus the measured arm_fulfillment cost; the finalizer must be revealed and retain at least that liquid balance",
+    "settlementGate": "every live estimated singleton settlement cost must fit inside minimumFulfillmentSubsidyMutez and the finalizer's fresh liquid balance"
+  },
+  "fulfillmentAccounting": {
+    "initialReserveReimbursements": 5,
+    "activationReserve": "paid-only stages require 5 * fulfillment_subsidy; any free stage requires max(5 * fulfillment_subsidy, physical_supply * fulfillment_subsidy)",
+    "purchaseRetention": "one immutable fulfillment_subsidy per paid unit",
+    "reimbursement": "one fulfillment_subsidy per successfully settled claim",
+    "finalSweep": "automatic after every created claim is settled and either all physical slots sold or the sale was irreversibly closed; close_sale may permanently cancel before activation and sweep immediately when no claims exist"
+  },
+  "trustDisclosure": "Single-custodian precommitted hidden entropy is unpredictable to ordinary buyers who do not know its preimages, but the custodian knows future preimages, can simulate candidate outcomes when the other claim inputs are known, can selectively participate, and can withhold fulfillment. Two-step finalizer rotation preserves the entropy cursor and FIFO queue.",
+  "signedOriginationBytes": 22783,
+  "protocolHeadroomBytes": 9985,
+  "protocolOperationDataLimitBytes": 32768
+}

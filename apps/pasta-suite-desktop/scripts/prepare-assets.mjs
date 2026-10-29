@@ -9,7 +9,16 @@ const appDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(appDir, "../..");
 const sourceRoot = path.join(repoRoot, "public/creation-tools");
 const iconSourceRoot = path.join(repoRoot, "public/pasta-icons");
+const companionSourceRoot = path.join(repoRoot, "companion/macaroni-v35");
 const outDir = path.join(appDir, "pasta");
+const companionOutDir = path.join(appDir, "companion/macaroni-v35");
+const companionExcludedTopLevel = new Set(["node_modules", "data", "secrets", ".env"]);
+
+function includeCompanionSource(source) {
+  const relative = path.relative(companionSourceRoot, source);
+  if (!relative) return true;
+  return !companionExcludedTopLevel.has(relative.split(path.sep)[0]);
+}
 const outToolsDir = path.join(outDir, "creation-tools");
 const packageJson = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
 
@@ -33,10 +42,12 @@ const tools = [
       "js/common.js",
       "js/studio.js",
       "js/drop.js",
+      "js/octez-wallet.js",
       "vendor/tezos.js",
       "vendor/octez-connect.js",
       "contract/mydrop.contract.json",
       "contract/macaroni-v3.contract.json",
+      "contract/macaroni-v35.contract.json",
     ],
   },
   {
@@ -181,6 +192,9 @@ if (!existsSync(iconSourceRoot)) {
   console.error(`Pasta icon assets not found: ${iconSourceRoot}`);
   process.exit(1);
 }
+if (!existsSync(path.join(companionSourceRoot, "package.json")) || !existsSync(path.join(companionSourceRoot, "templates/pasta-service.json"))) {
+  throw new Error(`Macaroni Companion assets not found: ${companionSourceRoot}`);
+}
 
 for (const tool of tools) {
   const sourceDir = path.join(sourceRoot, tool.id);
@@ -198,6 +212,7 @@ for (const tool of tools) {
 }
 
 rmSync(outDir, { recursive: true, force: true });
+rmSync(companionOutDir, { recursive: true, force: true });
 mkdirSync(outToolsDir, { recursive: true });
 cpSync(iconSourceRoot, path.join(outDir, "pasta-icons"), { recursive: true });
 
@@ -213,6 +228,9 @@ for (const tool of tools) {
     else if (stats.isFile()) copyFileSync(from, to);
   }
 }
+
+mkdirSync(path.dirname(companionOutDir), { recursive: true });
+cpSync(companionSourceRoot, companionOutDir, { recursive: true, filter: includeCompanionSource });
 
 writeFileSync(path.join(outDir, "index.html"), suiteIndexHtml(), "utf8");
 writeFileSync(path.join(outDir, "suite-manifest.json"), JSON.stringify({ version: packageJson.version, tools }, null, 2), "utf8");

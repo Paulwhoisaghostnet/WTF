@@ -980,6 +980,8 @@ export const DOMAIN_WORKFLOWS = [
       "media.personal-drive-backup",
       "arcade.creator-build-publish-discover",
       "macaroni.v3-commitment-reveal",
+      "macaroni.v35-managed-secure",
+      "macaroni.v35-companion-self-hosted",
     ],
     apiProbes: [
       { method: "GET", path: "/api/media/mine?category=video" },
@@ -993,6 +995,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "PATCH", path: "/api/studio/projects/1/workflow", body: { phase: "release", targetNetwork: "shadownet", checklist: { media_pinned: true }, references: { pinCid: "ipfs://bafy-inventory" } }, expectedStatuses: [200, 400, 401, 403, 404, 500] },
       { method: "GET", path: "/api/game-studio/projects" },
       { method: "GET", path: "/api/game-studio/templates" },
+      { method: "GET", path: "/api/macaroni/v35/capabilities", expectedStatuses: [200, 500, 503] },
       { method: "GET", path: "/api/macaroni/packages", expectedStatuses: [200, 401, 403, 404, 500, 503] },
       { method: "POST", path: "/api/macaroni/packages", body: { title: "E2E Macaroni Package" }, expectedStatuses: [201, 400, 401, 403, 404, 500, 503] },
       { method: "POST", path: "/api/macaroni/publish", body: { config: { title: "E2E Macaroni Drop", network: "shadownet", contract: "" } }, expectedStatuses: [400, 401, 403, 404, 423, 500, 503] },
@@ -1398,6 +1401,8 @@ export const DOMAIN_WORKFLOWS = [
     ],
     behaviorAssertionIds: [
       "macaroni.v3-commitment-reveal",
+      "macaroni.v35-managed-secure",
+      "macaroni.v35-companion-self-hosted",
       "pasta-protocol.gnocchi-multi-edition-collection",
       "pasta-protocol.ravioli-limited-edition-expiry-deconfliction",
       "pasta-protocol.ravioli-rotini-generated-at-open",

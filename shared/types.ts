@@ -829,6 +829,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "use_swap", label: "Use Swap", description: "Access the SpicySwap DEX integration", category: "market" },
   { key: "trusted_market_creator", label: "Trusted Market Creator", description: "Trusted creator lane for in-app store item submissions", category: "market" },
   { key: "use_wtfos_pinning", label: "Use wtfOS Pinning", description: "Use hosted wtfOS IPFS pinning, PDS manifests, and wallet backup policies", category: "market" },
+  { key: "use_managed_macaroni", label: "Use Managed Macaroni", description: "Register secure Macaroni drops with wtfOS-managed private assets and fulfillment automation", category: "market" },
 
   { key: "use_managed_macaroni", label: "Use Macaroni Creator Services", description: "Use Macaroni hosted pinning and owned-site publishing without general trusted-creator access", category: "market" },
 
@@ -894,7 +895,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
     "access_studio", "create_studio_projects", "trusted_tv_creator",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
-    "trusted_market_creator",
+    "trusted_market_creator", "use_managed_macaroni",
   ],
   [COBWEBSAINTS_FULL_USER_ROLE]: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_leaderboard", "view_gallery",
@@ -903,7 +904,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "send_dms", "read_message_board", "post_message_board", "react_messages", "create_tv_channel",
     "access_studio", "create_studio_projects", "trusted_tv_creator",
     "view_marketplace", "create_listings", "buy_listings", "place_offers", "manage_trade_board", "use_swap",
-    "trusted_market_creator", "use_wtfos_pinning",
+    "trusted_market_creator", "use_wtfos_pinning", "use_managed_macaroni",
   ],
   wtf_pin_collector: [
     "view_dashboard", "edit_own_profile", "link_wallets", "view_gallery",

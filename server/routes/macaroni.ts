@@ -29,6 +29,7 @@ import {
   macaroniIpfsMaxBytes,
   uploadLimitLabel,
 } from "../features/macaroni/upload-limits";
+import { MEDIA_STAGING_DIR } from "../lib/storage/paths";
 import {
   getMacaroniRevealOperator,
   requestMacaroniReveal,
@@ -38,6 +39,42 @@ import {
   createMacaroniRevealRegistrationChallenge,
   verifyMacaroniRevealRegistrationProof,
 } from "../features/macaroni/reveal-auth";
+import {
+  createMacaroniV35RegistrationChallenge,
+  verifyMacaroniV35RegistrationProof,
+} from "../features/macaroni/v35-auth";
+import {
+  macaroniV35CapabilitiesForUser,
+  attachManagedMacaroniV35Contract,
+  pinManagedMacaroniV35PublicContractMetadata,
+  getMacaroniV35CreatorSetup,
+  getNextManagedMacaroniV35CreatorAction,
+  getPublicMacaroniV35ClaimStatus,
+  getPublicMacaroniV35PurchaseStatus,
+  getPublicMacaroniV35Status,
+  reconcileManagedMacaroniV35CreatorAttempt,
+  recordManagedMacaroniV35SubmittedAttempt,
+  recordManagedMacaroniV35WalletPromptAbort,
+  recordManagedMacaroniV35WalletPromptStarted,
+  recordManagedMacaroniV35WalletRejection,
+  registerManagedMacaroniDrop,
+  userCanUseManagedMacaroni,
+  wakePublicMacaroniV35Drop,
+} from "../features/macaroni/v35-service";
+import {
+  macaroniV35IdentitySchema,
+  macaroniV35NextCreatorActionSchema,
+  macaroniV35AttachSchema,
+  macaroniV35NetworkSchema,
+  macaroniV35RegistrationSchema,
+  macaroniV35SubmittedAttemptSchema,
+  macaroniV35WalletPromptAbortedSchema,
+  macaroniV35WalletPromptStartedSchema,
+  macaroniV35WalletRejectedAttemptSchema,
+  hashMacaroniV35Payload,
+  managedMacaroniRuntimeReadiness,
+} from "../features/macaroni/v35-types";
+import { stageManagedMacaroniV35Token } from "../features/macaroni/v35-managed-assets";
 import { stageAndPinUpload } from "../features/ipfs-pinning/service";
 import {
   listWtfosOutboxForSource,
@@ -45,6 +82,7 @@ import {
 } from "../features/tz2at/wtfos-outbox";
 import {
   atprotoAccounts,
+  macaroniV35Drops,
   users,
 } from "@shared/schema";
 
@@ -52,6 +90,8 @@ const router = Router();
 
 const MACARONI_UPLOAD_AUDIENCE = "macaroni-ipfs-upload";
 const MACARONI_UPLOAD_PATH = "/api/macaroni/ipfs/upload";
+const MACARONI_V35_PRIVATE_UPLOAD_AUDIENCE = "macaroni-v35-private-asset-upload";
+const MACARONI_V35_PRIVATE_UPLOAD_PATH = "/api/macaroni/v35/private-assets/upload";
 const MACARONI_UPLOAD_TICKET_TTL_MS = 10 * 60 * 1000;
 const MACARONI_TOKEN_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
 const MACARONI_TOKEN_PREVIEW_INPUT_MAX_BYTES = 250 * 1024 * 1024;
@@ -143,7 +183,50 @@ type MacaroniUploadRequest = Request & {
   macaroniUploadTicket?: MacaroniUploadTicket;
 };
 
+type MacaroniV35PrivateUploadDescriptor = {
+  fileName: string;
+  byteSize: number;
+  mimeType: string;
+};
+
+type MacaroniV35PrivateUploadTicket = {
+  v: 1;
+  aud: typeof MACARONI_V35_PRIVATE_UPLOAD_AUDIENCE;
+  sub: number;
+  jti: string;
+  exp: number;
+  dropId: number;
+  registrationDigest: string;
+  tokenId: number;
+  quantity: number;
+  metadataDigest: string;
+  artifact: MacaroniV35PrivateUploadDescriptor;
+  display: MacaroniV35PrivateUploadDescriptor | null;
+  thumbnail: MacaroniV35PrivateUploadDescriptor | null;
+  maxBytes: number;
+};
+
+type MacaroniV35PrivateUploadRequest = Request & {
+  macaroniV35PrivateUploadTicket?: MacaroniV35PrivateUploadTicket;
+};
+
 const usedUploadTickets = new Map<string, number>();
+
+const v35PrivateUploadDescriptorSchema = z.object({
+  fileName: z.string().trim().min(1).max(260),
+  byteSize: z.number().int().positive(),
+  mimeType: z.string().trim().min(1).max(160),
+});
+
+const v35PrivateUploadTicketRequestSchema = z.object({
+  registrationDigest: z.string().regex(/^[0-9a-f]{64}$/),
+  tokenId: z.number().int().nonnegative(),
+  quantity: z.number().int().positive(),
+  metadata: z.record(z.string(), z.unknown()),
+  artifact: v35PrivateUploadDescriptorSchema,
+  display: v35PrivateUploadDescriptorSchema.nullable().optional(),
+  thumbnail: v35PrivateUploadDescriptorSchema.nullable().optional(),
+});
 
 function macaroniUploadTicketSecret(): string {
   return process.env.MACARONI_UPLOAD_TICKET_SECRET || getSessionSecret();
@@ -169,6 +252,13 @@ function macaroniUploadUrl(): string {
   return origin ? `${origin}${MACARONI_UPLOAD_PATH}` : MACARONI_UPLOAD_PATH;
 }
 
+function macaroniV35PrivateUploadUrl(): string {
+  const origin = safeDirectUploadOrigin();
+  return origin
+    ? `${origin}${MACARONI_V35_PRIVATE_UPLOAD_PATH}`
+    : MACARONI_V35_PRIVATE_UPLOAD_PATH;
+}
+
 function signUploadTicketPayload(encodedPayload: string): string {
   return createHmac("sha256", macaroniUploadTicketSecret())
     .update(encodedPayload)
@@ -190,6 +280,40 @@ function createMacaroniUploadTicket(input: {
     fileName: String(input.fileName || "macaroni-upload").slice(0, 260),
     byteSize: Number.isInteger(input.byteSize) ? Number(input.byteSize) : null,
     mimeType: String(input.mimeType || "application/octet-stream").slice(0, 160),
+    maxBytes: macaroniIpfsMaxBytes(),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(ticket)).toString("base64url");
+  return {
+    token: `${encodedPayload}.${signUploadTicketPayload(encodedPayload)}`,
+    ticket,
+  };
+}
+
+function createMacaroniV35PrivateUploadTicket(input: {
+  userId: number;
+  dropId: number;
+  registrationDigest: string;
+  tokenId: number;
+  quantity: number;
+  metadata: Record<string, unknown>;
+  artifact: MacaroniV35PrivateUploadDescriptor;
+  display?: MacaroniV35PrivateUploadDescriptor | null;
+  thumbnail?: MacaroniV35PrivateUploadDescriptor | null;
+}): { token: string; ticket: MacaroniV35PrivateUploadTicket } {
+  const ticket: MacaroniV35PrivateUploadTicket = {
+    v: 1,
+    aud: MACARONI_V35_PRIVATE_UPLOAD_AUDIENCE,
+    sub: input.userId,
+    jti: randomBytes(18).toString("base64url"),
+    exp: Date.now() + MACARONI_UPLOAD_TICKET_TTL_MS,
+    dropId: input.dropId,
+    registrationDigest: input.registrationDigest,
+    tokenId: input.tokenId,
+    quantity: input.quantity,
+    metadataDigest: hashMacaroniV35Payload(input.metadata),
+    artifact: input.artifact,
+    display: input.display ?? null,
+    thumbnail: input.thumbnail ?? null,
     maxBytes: macaroniIpfsMaxBytes(),
   };
   const encodedPayload = Buffer.from(JSON.stringify(ticket)).toString("base64url");
@@ -233,6 +357,37 @@ function verifyMacaroniUploadTicket(token: string): MacaroniUploadTicket | null 
   return ticket;
 }
 
+function verifyMacaroniV35PrivateUploadTicket(token: string): MacaroniV35PrivateUploadTicket | null {
+  const [encodedPayload, signature, extra] = String(token || "").split(".");
+  if (!encodedPayload || !signature || extra) return null;
+  const expected = signUploadTicketPayload(encodedPayload);
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  let ticket: MacaroniV35PrivateUploadTicket;
+  try {
+    ticket = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as MacaroniV35PrivateUploadTicket;
+  } catch {
+    return null;
+  }
+  if (ticket.v !== 1 || ticket.aud !== MACARONI_V35_PRIVATE_UPLOAD_AUDIENCE) return null;
+  if (!Number.isInteger(ticket.sub) || ticket.sub < 1) return null;
+  if (!Number.isSafeInteger(ticket.dropId) || ticket.dropId < 1) return null;
+  if (!Number.isSafeInteger(ticket.tokenId) || ticket.tokenId < 0) return null;
+  if (!Number.isSafeInteger(ticket.quantity) || ticket.quantity < 1) return null;
+  if (!/^[0-9a-f]{64}$/.test(ticket.registrationDigest) || !/^[0-9a-f]{64}$/.test(ticket.metadataDigest)) return null;
+  if (!ticket.jti || !Number.isFinite(ticket.exp) || ticket.exp <= Date.now()) return null;
+  if (!Number.isInteger(ticket.maxBytes) || ticket.maxBytes < 1 || ticket.maxBytes > macaroniIpfsMaxBytes()) return null;
+  const descriptors = [ticket.artifact, ticket.display, ticket.thumbnail].filter(Boolean) as MacaroniV35PrivateUploadDescriptor[];
+  if (!ticket.artifact || descriptors.some((file) => !file.fileName
+    || !Number.isSafeInteger(file.byteSize) || file.byteSize < 1 || file.byteSize > ticket.maxBytes
+    || !file.mimeType)) return null;
+  cleanupUsedUploadTickets();
+  if (usedUploadTickets.has(ticket.jti)) return null;
+  usedUploadTickets.set(ticket.jti, ticket.exp);
+  return ticket;
+}
+
 function bearerToken(req: Request): string {
   const value = String(req.get("authorization") || "");
   const match = value.match(/^Bearer\s+(.+)$/i);
@@ -245,6 +400,13 @@ function requireMacaroniUploadTicket(req: Request, res: Response, next: NextFunc
     return res.status(401).json({ error: "Invalid or expired Macaroni upload ticket" });
   }
   (req as MacaroniUploadRequest).macaroniUploadTicket = ticket;
+  return next();
+}
+
+function requireMacaroniV35PrivateUploadTicket(req: Request, res: Response, next: NextFunction) {
+  const ticket = verifyMacaroniV35PrivateUploadTicket(bearerToken(req));
+  if (!ticket) return res.status(401).json({ error: "Invalid or expired Macaroni V3.5 private upload ticket" });
+  (req as MacaroniV35PrivateUploadRequest).macaroniV35PrivateUploadTicket = ticket;
   return next();
 }
 
@@ -293,6 +455,49 @@ const tokenPreviewUpload = multer({
   },
 });
 
+const v35PrivateAssetUpload = multer({
+  dest: path.join(MEDIA_STAGING_DIR, "macaroni-v35-private-upload"),
+  limits: {
+    fileSize: macaroniIpfsMaxBytes(),
+    files: 3,
+    fields: 8,
+    fieldSize: 1024 * 1024,
+  },
+});
+
+const v35PrivateAssetFieldsSchema = z.object({
+  registrationDigest: z.string().regex(/^[0-9a-f]{64}$/),
+  tokenId: z.coerce.number().int().nonnegative(),
+  quantity: z.coerce.number().int().positive(),
+  metadata: z.string().transform((value, ctx) => {
+    try {
+      const parsed = JSON.parse(value);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") throw new Error("metadata must be an object");
+      return parsed as Record<string, unknown>;
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "metadata must be valid JSON object text" });
+      return z.NEVER;
+    }
+  }),
+});
+
+const v35PublicContractMetadataFieldsSchema = z.object({
+  registrationDigest: z.string().regex(/^[0-9a-f]{64}$/),
+  name: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(5_000),
+  homepage: z.string().trim().max(2_000).optional().transform((value, ctx) => {
+    if (!value) return undefined;
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
+      return parsed.toString();
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Homepage must be an HTTP(S) URL" });
+      return z.NEVER;
+    }
+  }),
+});
+
 function runPinUpload(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (err: unknown) => {
     if (!err) return next();
@@ -300,6 +505,16 @@ function runPinUpload(req: Request, res: Response, next: NextFunction) {
       err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
         ? `File exceeds the ${uploadLimitLabel(macaroniIpfsMaxBytes())} Macaroni IPFS upload limit`
         : "Invalid Macaroni IPFS upload";
+    return res.status(400).json({ error: message });
+  });
+}
+
+function runV35PublicContractMetadataUpload(req: Request, res: Response, next: NextFunction) {
+  upload.single("cover")(req, res, (err: unknown) => {
+    if (!err) return next();
+    const message = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
+      ? `Cover exceeds the ${uploadLimitLabel(macaroniIpfsMaxBytes())} managed metadata limit`
+      : "Invalid Macaroni V3.5 collection cover upload";
     return res.status(400).json({ error: message });
   });
 }
@@ -315,6 +530,94 @@ function runTokenPreviewUpload(req: Request, res: Response, next: NextFunction) 
   });
 }
 
+function runV35PrivateAssetUpload(req: Request, res: Response, next: NextFunction) {
+  v35PrivateAssetUpload.fields([
+    { name: "artifact", maxCount: 1 },
+    { name: "display", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+  ])(req, res, (err: unknown) => {
+    if (!err) return next();
+    const message = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
+      ? `Artifact exceeds the ${uploadLimitLabel(macaroniIpfsMaxBytes())} private-staging limit`
+      : "Invalid Macaroni V3.5 private artifact or preview upload";
+    return res.status(400).json({ error: message });
+  });
+}
+
+function uploadedFileMatchesDescriptor(
+  file: Express.Multer.File | undefined,
+  descriptor: MacaroniV35PrivateUploadDescriptor | null
+) {
+  if (!descriptor) return !file;
+  return Boolean(file
+    && file.originalname === descriptor.fileName
+    && file.size === descriptor.byteSize
+    && file.mimetype === descriptor.mimeType);
+}
+
+async function respondToV35PrivateAssetUpload(input: {
+  req: Request;
+  res: Response;
+  ownerUserId: number;
+  dropId: number;
+  ticket?: MacaroniV35PrivateUploadTicket;
+}) {
+  const parsed = v35PrivateAssetFieldsSchema.safeParse(input.req.body);
+  const files = (input.req.files || {}) as Record<string, Express.Multer.File[]>;
+  const artifactFile = files.artifact?.[0];
+  const displayFile = files.display?.[0];
+  const thumbnailFile = files.thumbnail?.[0];
+  const artifactPath = artifactFile?.path;
+  const uploadedPaths = [artifactPath, displayFile?.path, thumbnailFile?.path].filter(Boolean) as string[];
+  if (!Number.isSafeInteger(input.dropId) || input.dropId < 1 || !parsed.success || !artifactPath) {
+    await Promise.all(uploadedPaths.map((filePath) => rm(filePath, { force: true }).catch(() => undefined)));
+    return input.res.status(400).json({
+      error: "A token id, quantity, metadata JSON, registration digest, and artifact file are required",
+    });
+  }
+  if (input.ticket) {
+    const bound = input.ticket.dropId === input.dropId
+      && input.ticket.registrationDigest === parsed.data.registrationDigest
+      && input.ticket.tokenId === parsed.data.tokenId
+      && input.ticket.quantity === parsed.data.quantity
+      && input.ticket.metadataDigest === hashMacaroniV35Payload(parsed.data.metadata)
+      && uploadedFileMatchesDescriptor(artifactFile, input.ticket.artifact)
+      && uploadedFileMatchesDescriptor(displayFile, input.ticket.display)
+      && uploadedFileMatchesDescriptor(thumbnailFile, input.ticket.thumbnail);
+    if (!bound) {
+      await Promise.all(uploadedPaths.map((filePath) => rm(filePath, { force: true }).catch(() => undefined)));
+      return input.res.status(409).json({ error: "Private upload did not match its creator-approved ticket" });
+    }
+  }
+  try {
+    const staged = await stageManagedMacaroniV35Token({
+      ownerUserId: input.ownerUserId,
+      dropId: input.dropId,
+      registrationDigest: parsed.data.registrationDigest,
+      tokenId: parsed.data.tokenId,
+      quantity: parsed.data.quantity,
+      artifactPath,
+      artifactMimeType: artifactFile?.mimetype || "application/octet-stream",
+      displayPath: displayFile?.path,
+      displayMimeType: displayFile?.mimetype,
+      thumbnailPath: thumbnailFile?.path,
+      thumbnailMimeType: thumbnailFile?.mimetype,
+      metadata: parsed.data.metadata,
+    });
+    if (!staged) return input.res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return input.res.status(201).json({
+      ok: true,
+      ...staged,
+      privateCidDisclosed: false,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not stage private V3.5 asset";
+    return input.res.status(409).json({ error: message });
+  } finally {
+    await Promise.all(uploadedPaths.map((filePath) => rm(filePath, { force: true }).catch(() => undefined)));
+  }
+}
+
 function tryAcquireMacaroniTokenPreviewSlot(): boolean {
   if (activeMacaroniTokenPreviewJobs >= MACARONI_TOKEN_PREVIEW_MAX_CONCURRENT) return false;
   activeMacaroniTokenPreviewJobs += 1;
@@ -323,6 +626,17 @@ function tryAcquireMacaroniTokenPreviewSlot(): boolean {
 
 function releaseMacaroniTokenPreviewSlot(): void {
   activeMacaroniTokenPreviewJobs = Math.max(0, activeMacaroniTokenPreviewJobs - 1);
+}
+
+async function requireManagedMacaroniAccess(req: Request, res: Response, next: NextFunction) {
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    return next();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not evaluate Managed Macaroni access";
+    return res.status(503).json({ error: message });
+  }
 }
 
 function runFfmpeg(args: string[]): Promise<void> {
@@ -688,6 +1002,490 @@ router.get("/api/macaroni/installers", isAuthenticated, (_req, res) => {
   });
 });
 
+router.get("/api/macaroni/v35/capabilities", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const requestedNetwork = req.query.network;
+    const network = requestedNetwork == null || requestedNetwork === ""
+      ? undefined
+      : macaroniV35NetworkSchema.safeParse(requestedNetwork);
+    if (network && !network.success) {
+      return res.status(400).json({ error: "Managed Macaroni network must be mainnet or shadownet" });
+    }
+    return res.json(await macaroniV35CapabilitiesForUser(
+      req.user as { id?: number; role?: string; roles?: string[] } | undefined,
+      network?.data
+    ));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not evaluate Managed Macaroni access";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/registration/challenge", isAuthenticated, async (req, res) => {
+  const parsed = macaroniV35IdentitySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Macaroni V3.5 setup identity" });
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(await createMacaroniV35RegistrationChallenge(parsed.data));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create Macaroni V3.5 registration challenge";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops", isAuthenticated, async (req, res) => {
+  const parsed = macaroniV35RegistrationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid Macaroni V3.5 managed setup",
+      issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+    });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const { proof, ...registration } = parsed.data;
+    try {
+      await verifyMacaroniV35RegistrationProof(registration, proof);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Wallet proof failed";
+      return res.status(401).json({ error: message });
+    }
+    const ownerUserId = Number((req.user as { id?: number }).id);
+    const drop = await registerManagedMacaroniDrop({
+      ownerUserId,
+      registration,
+      administratorPublicKey: proof.publicKey,
+    });
+    return res.status(201).json({
+      ok: true,
+      dropId: drop.id,
+      clientSetupId: drop.clientSetupId,
+      registrationDigest: drop.registrationDigest,
+      network: drop.network,
+      contract: drop.contract,
+      status: drop.status,
+      serviceReady: false,
+      blocker: managedMacaroniRuntimeReadiness(drop.network),
+      setupPath: `/api/macaroni/v35/drops/${drop.id}/setup`,
+      publicContractMetadataPath: `/api/macaroni/v35/drops/${drop.id}/public-contract-metadata`,
+      privateAssetsPath: `/api/macaroni/v35/drops/${drop.id}/private-assets`,
+      nextActionPath: `/api/macaroni/v35/drops/${drop.id}/next-action`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not register Macaroni V3.5 setup";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post(
+  "/api/macaroni/v35/drops/:dropId/public-contract-metadata",
+  isAuthenticated,
+  requireManagedMacaroniAccess,
+  runV35PublicContractMetadataUpload,
+  async (req, res) => {
+    const dropId = Number(req.params.dropId);
+    const parsed = v35PublicContractMetadataFieldsSchema.safeParse(req.body || {});
+    const cover = req.file;
+    if (!Number.isSafeInteger(dropId) || dropId < 1 || !parsed.success || !cover) {
+      return res.status(400).json({
+        error: "A registration digest, collection name, description, and cover file are required",
+        issues: parsed.success ? [] : parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      });
+    }
+    try {
+      const result = await pinManagedMacaroniV35PublicContractMetadata({
+        ownerUserId: Number((req.user as { id?: number }).id),
+        dropId,
+        ...parsed.data,
+        coverFileName: cover.originalname || "macaroni-v35-cover",
+        coverMimeType: cover.mimetype || "application/octet-stream",
+        coverBytes: cover.buffer,
+      });
+      if (!result) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+      return res.status(result.created ? 201 : 200).json({ ok: true, ...result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not pin managed collection metadata";
+      return res.status(409).json({ error: message });
+    }
+  }
+);
+
+router.get("/api/macaroni/v35/drops/:dropId/setup", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  if (!Number.isSafeInteger(dropId) || dropId < 1) return res.status(400).json({ error: "Invalid drop id" });
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const ownerUserId = Number((req.user as { id?: number }).id);
+    const setup = await getMacaroniV35CreatorSetup({ ownerUserId, dropId });
+    if (!setup) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(setup);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load Macaroni V3.5 setup";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/next-action", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const parsed = macaroniV35NextCreatorActionSchema.safeParse(req.body || {});
+  if (!Number.isSafeInteger(dropId) || dropId < 1 || !parsed.success) {
+    return res.status(400).json({
+      error: "Invalid V3.5 next creator action request",
+      issues: parsed.success ? [] : parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+    });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const action = await getNextManagedMacaroniV35CreatorAction({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      ...parsed.data,
+    });
+    if (!action) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(action);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not determine the next V3.5 creator action";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post(
+  "/api/macaroni/v35/drops/:dropId/private-assets/upload-ticket",
+  isAuthenticated,
+  requireManagedMacaroniAccess,
+  async (req, res) => {
+    const dropId = Number(req.params.dropId);
+    const parsed = v35PrivateUploadTicketRequestSchema.safeParse(req.body || {});
+    if (!Number.isSafeInteger(dropId) || dropId < 1 || !parsed.success) {
+      return res.status(400).json({
+        error: "Invalid Macaroni V3.5 private upload ticket request",
+        issues: parsed.success ? [] : parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      });
+    }
+    const maxBytes = macaroniIpfsMaxBytes();
+    const descriptors = [parsed.data.artifact, parsed.data.display, parsed.data.thumbnail].filter(Boolean) as MacaroniV35PrivateUploadDescriptor[];
+    if (descriptors.some((file) => file.byteSize > maxBytes)) {
+      return res.status(400).json({
+        error: `A private file exceeds the ${uploadLimitLabel(maxBytes)} Macaroni V3.5 upload limit`,
+      });
+    }
+    const { token, ticket } = createMacaroniV35PrivateUploadTicket({
+      userId: Number((req.user as { id?: number }).id),
+      dropId,
+      ...parsed.data,
+    });
+    return res.json({
+      schema: "wtfos.macaroni-v35-private-upload-ticket.v1",
+      token,
+      uploadUrl: macaroniV35PrivateUploadUrl(),
+      direct: Boolean(safeDirectUploadOrigin()),
+      expiresAt: new Date(ticket.exp).toISOString(),
+      maxBytes: ticket.maxBytes,
+    });
+  }
+);
+
+router.post(
+  MACARONI_V35_PRIVATE_UPLOAD_PATH,
+  requireMacaroniV35PrivateUploadTicket,
+  runV35PrivateAssetUpload,
+  async (req, res) => {
+    const ticket = (req as MacaroniV35PrivateUploadRequest).macaroniV35PrivateUploadTicket;
+    if (!ticket) return res.status(401).json({ error: "Invalid or expired Macaroni V3.5 private upload ticket" });
+    return respondToV35PrivateAssetUpload({
+      req,
+      res,
+      ownerUserId: ticket.sub,
+      dropId: ticket.dropId,
+      ticket,
+    });
+  }
+);
+
+router.post(
+  "/api/macaroni/v35/drops/:dropId/private-assets",
+  isAuthenticated,
+  requireManagedMacaroniAccess,
+  runV35PrivateAssetUpload,
+  async (req, res) => {
+    const dropId = Number(req.params.dropId);
+    return respondToV35PrivateAssetUpload({
+      req,
+      res,
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+    });
+  }
+);
+
+router.post("/api/macaroni/v35/drops/:dropId/attach", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const parsed = macaroniV35AttachSchema.safeParse(req.body);
+  if (!Number.isSafeInteger(dropId) || dropId < 1 || !parsed.success) {
+    return res.status(400).json({ error: "Invalid V3.5 contract attachment" });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const result = await attachManagedMacaroniV35Contract({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      ...parsed.data,
+    });
+    if (!result) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not attach the originated contract";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  if (!Number.isSafeInteger(dropId) || dropId < 1) return res.status(400).json({ error: "Invalid V3.5 drop id" });
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    return res.status(409).json({
+      error: "Creator operation parameters are server-authored. Request the next durable action instead of constructing a wallet call in the browser.",
+      code: "server_authoritative_next_action_required",
+      nextActionPath: `/api/macaroni/v35/drops/${dropId}/next-action`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not authorize V3.5 setup operation routing";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-rejected", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const attemptId = Number(req.params.attemptId);
+  const parsed = macaroniV35WalletRejectedAttemptSchema.safeParse(req.body || {});
+  if (![dropId, attemptId].every((value) => Number.isSafeInteger(value) && value > 0) || !parsed.success) {
+    return res.status(400).json({ error: "Invalid V3.5 wallet rejection record" });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const attempt = await recordManagedMacaroniV35WalletRejection({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      attemptId,
+      requestId: parsed.data.requestId,
+      confirmNoBroadcast: parsed.data.confirmNoBroadcast,
+      reason: parsed.data.reason,
+    });
+    if (!attempt) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({ ok: true, attemptId: attempt.id, state: attempt.state });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not record wallet rejection";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-started", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const attemptId = Number(req.params.attemptId);
+  const parsed = macaroniV35WalletPromptStartedSchema.safeParse(req.body || {});
+  if (![dropId, attemptId].every((value) => Number.isSafeInteger(value) && value > 0) || !parsed.success) {
+    return res.status(400).json({ error: "Invalid V3.5 wallet prompt boundary" });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const attempt = await recordManagedMacaroniV35WalletPromptStarted({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      attemptId,
+      requestId: parsed.data.requestId,
+    });
+    if (!attempt) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({
+      ok: true,
+      attemptId: attempt.id,
+      state: attempt.state,
+      operationHash: attempt.operationHash,
+      promptBoundaryPersisted: attempt.state === "wallet_prompt_started",
+      proceedToWalletSend: attempt.state === "wallet_prompt_started" && !attempt.operationHash,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not persist wallet prompt boundary";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-aborted", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const attemptId = Number(req.params.attemptId);
+  const parsed = macaroniV35WalletPromptAbortedSchema.safeParse(req.body || {});
+  if (![dropId, attemptId].every((value) => Number.isSafeInteger(value) && value > 0)) {
+    return res.status(400).json({ error: "Invalid V3.5 wallet abort target" });
+  }
+  if (!parsed.success) {
+    return res.status(409).json({
+      error: "A raw, identified remote Beacon ABORTED_ERROR response is required; preserve this prompt for operation recovery",
+      code: "operation_hash_recovery_required",
+    });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const attempt = await recordManagedMacaroniV35WalletPromptAbort({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      attemptId,
+      ...parsed.data,
+    });
+    if (!attempt) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({
+      ok: true,
+      attemptId: attempt.id,
+      state: attempt.state,
+      retrySafe: attempt.state === "wallet_rejected",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not persist authenticated wallet abort";
+    return res.status(409).json({ error: message, code: "operation_hash_recovery_required" });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts/:attemptId/submitted", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const attemptId = Number(req.params.attemptId);
+  const parsed = macaroniV35SubmittedAttemptSchema.safeParse(req.body);
+  if (![dropId, attemptId].every((value) => Number.isSafeInteger(value) && value > 0) || !parsed.success) {
+    return res.status(400).json({ error: "Invalid V3.5 submitted operation record" });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const attempt = await recordManagedMacaroniV35SubmittedAttempt({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      attemptId,
+      operationHash: parsed.data.operationHash,
+      originatedContract: parsed.data.originatedContract,
+    });
+    if (!attempt) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({
+      ok: true,
+      attemptId: attempt.id,
+      state: attempt.state,
+      operationHash: attempt.operationHash,
+      originatedContract: attempt.originatedContract,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not persist submitted operation";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/drops/:dropId/attempts/:attemptId/reconcile", isAuthenticated, async (req, res) => {
+  const dropId = Number(req.params.dropId);
+  const attemptId = Number(req.params.attemptId);
+  if (![dropId, attemptId].every((value) => Number.isSafeInteger(value) && value > 0)) {
+    return res.status(400).json({ error: "Invalid V3.5 operation reconciliation request" });
+  }
+  try {
+    const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
+    if (!gate.allowed) return res.status(403).json(gate.capabilities);
+    const attempt = await reconcileManagedMacaroniV35CreatorAttempt({
+      ownerUserId: Number((req.user as { id?: number }).id),
+      dropId,
+      attemptId,
+    });
+    if (!attempt) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    return res.json({
+      ok: true,
+      attemptId: attempt.id,
+      state: attempt.state,
+      operationHash: attempt.operationHash,
+      error: attempt.error,
+      reconciliation: attempt.reconciliation,
+      reconciledAt: attempt.reconciledAt,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not reconcile setup operation";
+    return res.status(409).json({ error: message });
+  }
+});
+
+router.get("/api/macaroni/v35/status/:network/:contract", async (req, res) => {
+  const network = macaroniV35NetworkSchema.safeParse(req.params.network);
+  const contract = String(req.params.contract || "");
+  if (!network.success || !KT1_CONTRACT_ADDRESS.test(contract)) {
+    return res.status(400).json({ error: "Invalid Macaroni V3.5 drop identity" });
+  }
+  try {
+    const status = await getPublicMacaroniV35Status(network.data, contract);
+    if (!status) return res.status(404).json({ error: "Macaroni V3.5 drop not found" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load Macaroni V3.5 status";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.get("/api/macaroni/v35/status/:network/:contract/claims/:claimId", async (req, res) => {
+  const network = macaroniV35NetworkSchema.safeParse(req.params.network);
+  const contract = String(req.params.contract || "");
+  const claimId = String(req.params.claimId || "");
+  if (!network.success || !KT1_CONTRACT_ADDRESS.test(contract) || !/^[A-Za-z0-9:._-]{1,160}$/.test(claimId)) {
+    return res.status(400).json({ error: "Invalid Macaroni V3.5 claim identity" });
+  }
+  try {
+    const status = await getPublicMacaroniV35ClaimStatus({ network: network.data, contract, claimId });
+    if (!status) return res.status(404).json({ error: "Macaroni V3.5 claim not found" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load Macaroni V3.5 claim status";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.get("/api/macaroni/v35/status/:network/:contract/purchases/:operationHash", async (req, res) => {
+  const network = macaroniV35NetworkSchema.safeParse(req.params.network);
+  const contract = String(req.params.contract || "");
+  const operationHash = String(req.params.operationHash || "");
+  if (!network.success || !KT1_CONTRACT_ADDRESS.test(contract) || !/^o[1-9A-HJ-NP-Za-km-z]{50}$/.test(operationHash)) {
+    return res.status(400).json({ error: "Invalid Macaroni V3.5 purchase identity" });
+  }
+  try {
+    const status = await getPublicMacaroniV35PurchaseStatus({ network: network.data, contract, operationHash });
+    if (!status) return res.status(404).json({ error: "Macaroni V3.5 purchase not indexed yet" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load Macaroni V3.5 purchase status";
+    return res.status(503).json({ error: message });
+  }
+});
+
+router.post("/api/macaroni/v35/wake/:network/:contract", async (req, res) => {
+  const network = macaroniV35NetworkSchema.safeParse(req.params.network);
+  const contract = String(req.params.contract || "");
+  if (!network.success || !KT1_CONTRACT_ADDRESS.test(contract)) {
+    return res.status(400).json({ error: "Invalid Macaroni V3.5 drop identity" });
+  }
+  try {
+    const result = await wakePublicMacaroniV35Drop(network.data, contract);
+    return res.status(result.accepted ? 202 : result.registered ? 409 : 404).json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not wake Macaroni V3.5 fulfillment";
+    return res.status(503).json({ error: message });
+  }
+});
+
 router.get("/api/macaroni/reveal-operator", async (req, res) => {
   const parsed = revealNetworkSchema.safeParse(req.query.network);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Tezos network" });
@@ -785,6 +1583,30 @@ router.post(
 
     try {
       const user = req.user as { id: number };
+      const profile = config.profile && typeof config.profile === "object"
+        ? config.profile as Record<string, unknown>
+        : {};
+      const service = config.service && typeof config.service === "object"
+        ? config.service as Record<string, unknown>
+        : {};
+      if (String(profile.id || config.contractVersion) === "macaroni-secure-v35"
+        && service.provider === "wtfos_managed") {
+        const managedDrop = (await db.select().from(macaroniV35Drops).where(and(
+          eq(macaroniV35Drops.ownerUserId, user.id),
+          eq(macaroniV35Drops.contract, contract)
+        )).limit(1))[0];
+        if (!managedDrop) {
+          return res.status(409).json({ error: "This secure managed KT1 is not registered to your wtfOS account" });
+        }
+        config.network = managedDrop.network;
+        config.assetStrategy = managedDrop.assetStrategy;
+        config.service = {
+          schema: "wtfos.macaroni-v35-public-service.v1",
+          provider: "wtfos_managed",
+          publicStatusUrl: `${publicOrigin(req)}/api/macaroni/v35/status/${managedDrop.network}/${contract}`,
+          projectId: String(managedDrop.id),
+        };
+      }
       let state = await getUserSiteState(user.id);
       if (!state.site) state = await claimUserSite(user.id);
       if (!state.site) {
