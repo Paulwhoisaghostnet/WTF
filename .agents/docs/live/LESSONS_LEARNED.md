@@ -12705,3 +12705,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: After a challenger sent an open-seat XTZ deposit, the game only polled the read-only escrow view. The server reconciliation that admits the challenger and starts the funded room was only triggered by a manual refresh. Opening funding also hid the room iframe, so returning could land the challenger back in the lobby without the seat context.
 
 **Rule**: Keep the hosted room mounted beneath funding UI. Once a challenger deposit is visible on-chain, invoke the existing reconciliation endpoint while the seat is activating; when the authoritative view marks the seat ready, claim it and return to that same room. Never ask the challenger to send the wager again based only on a stale room card.
+
+## 2026-10-28 — Collapsed navigation should open as a readable overlay
+
+**What happened**: The compact coLILseum navigation opened as a narrow popup over the current game, causing link labels to wrap vertically and making navigation difficult to read and tap.
+
+**Rule**: When a user opens the primary navigation, present a full game-surface overlay with stable, full-width controls. Test the covered-screen behavior explicitly: close the menu before interacting with gameplay, and open it again before navigating.

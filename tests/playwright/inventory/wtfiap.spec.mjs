@@ -101,6 +101,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(surface(page).getByRole("link", { name: "Learn" })).toBeVisible();
     await expect(surface(page).getByRole("link", { name: "Team Builder" })).toBeVisible();
     await expect(surface(page).getByRole("link", { name: /^(Duel|Party|Tournament)$/ })).toHaveCount(0);
+    await surface(page).getByRole("button", { name: "Close game menu" }).click();
     const splash = await hostFrame(page);
     await expect(splash.locator(".choices a")).toHaveCount(4);
     await expect(splash.locator("#intro-copy")).toContainText("Lil Guys Present's");
@@ -113,6 +114,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(splashLayout.castLoaded).toBe(true);
     expect(splashLayout.bottom).toBeLessThanOrEqual(splashLayout.viewport);
     await splash.locator("body").screenshot({ path: test.info().outputPath("colilseum-splash.png") });
+    await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await surface(page).getByRole("link", { name: "Practice" }).click();
     const practice = await hostFrame(page);
     const game = await gameFrame(practice, "#frame");

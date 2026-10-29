@@ -17,39 +17,49 @@ const GameSurface = styled.section`
   background: #111719;
 `;
 
-const ModeNavigation = styled.nav`
+const ModeNavigation = styled.nav<{ $open: boolean }>`
   position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 40;
+  inset: ${({ $open }) => $open ? "0" : "8px auto auto 8px"};
+  z-index: ${({ $open }) => $open ? 60 : 40};
+  display: ${({ $open }) => $open ? "grid" : "block"};
+  place-items: ${({ $open }) => $open ? "center" : "initial"};
+  background: ${({ $open }) => $open ? "#071514f7" : "transparent"};
   color: var(--wtf-text-color, #111);
+  box-sizing: border-box;
 
   .menu-toggle { width: 44px; height: 44px; justify-content: center; font-size: 25px; line-height: 1; }
+  ${({ $open }) => $open && `.menu-toggle { position:absolute; top:8px; left:8px; }`}
   .menu-links {
-    position: absolute;
+    position: ${({ $open }) => $open ? "static" : "absolute"};
     top: 48px;
     left: 0;
-    width: min(240px, calc(100vw - 24px));
+    width: ${({ $open }) => $open ? "min(380px, calc(100% - 32px))" : "min(280px, calc(100vw - 24px))"};
+    min-width: ${({ $open }) => $open ? "min(280px, calc(100% - 32px))" : "240px"};
     display: grid;
-    gap: 4px;
-    padding: 8px;
+    grid-template-columns: 1fr;
+    gap: ${({ $open }) => $open ? "10px" : "4px"};
+    padding: ${({ $open }) => $open ? "28px" : "8px"};
     border: 1px solid currentColor;
     background: var(--wtf-window-color, #c0c0c0);
     box-shadow: 0 12px 28px #0008;
+    box-sizing: border-box;
+    white-space: normal;
   }
-  .menu-links strong { padding: 5px 7px; }
+  .menu-links strong { padding: 5px 7px; font-size: 1.2rem; }
 
   a, button {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
-    padding: 6px 10px;
+    min-height: ${({ $open }) => $open ? "56px" : "44px"};
+    padding: 8px 14px;
     border: 1px solid currentColor;
     color: var(--wtf-text-color, #111);
     text-decoration: none;
     background: transparent;
     font: inherit;
     cursor: pointer;
+    box-sizing: border-box;
+    white-space: nowrap;
   }
 
   a:focus-visible, button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
@@ -167,7 +177,7 @@ export function WtfIap() {
   return (
     <AppWindow title="coLILseum">
       <GameSurface aria-label="coLILseum" data-wtfiap-surface="true">
-        <ModeNavigation aria-label="coLILseum navigation">
+        <ModeNavigation $open={menuOpen} aria-label="coLILseum navigation">
           <button className="menu-toggle" type="button" aria-label={menuOpen ? "Close game menu" : "Open game menu"} aria-controls="colilseum-menu-links" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>☰</button>
           {menuOpen && <div id="colilseum-menu-links" className="menu-links"><strong>coLILseum</strong>
             <a href={`${WTFIAP_ASSET_ROOT}/welcome.html`} target={frameName} onClick={navigate}>Home</a>
