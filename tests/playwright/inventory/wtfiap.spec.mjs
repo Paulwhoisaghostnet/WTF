@@ -854,7 +854,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(state.projection).toBe("side");
     expect(state.facing.find(unit => unit.id === unitId)?.mirrored).toBe(true);
     // Hosted room identity comes from the authenticated account, not form text.
-    await expect(party.locator("#standings")).toContainText("WTF Admin · you");
+    await expect(party.locator("#standings")).toContainText("wtf-admin · you");
     await page.screenshot({ path: test.info().outputPath("party-recovered.png"), fullPage: true });
     expect(errors).toEqual([]);
   });
@@ -939,7 +939,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await guest.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
       await guest.locator("#refresh-rooms").click();
       const card = guest.locator(".table-card").filter({ has: guest.locator(`[aria-label="Join duel room ${code}"]`) });
-      await expect(card).toContainText("WTF Admin");
+      await expect(card).toContainText("wtf-admin");
       await expect(card).toContainText("0 W · 0 L");
       await expect(card.locator(".seat-dot.taken")).toHaveCount(1);
       await expect(card.locator(".seat-dot:not(.taken):not(.ai)")).toHaveCount(1);
@@ -948,6 +948,33 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await card.getByRole("button", { name: `Join duel room ${code}` }).click();
       await expect(guest.locator("#alive-count")).toContainText("2 / 2 seats");
     } finally { await guestContext.close(); }
+  });
+
+  test("lobby recognizes the signed-in WTF player and reissues their room seat", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#create-name")).toHaveValue("wtf-admin");
+    await page.locator("#prep-time").selectOption("ready");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toBeEmpty();
+    const code = await page.locator("#invite-code").inputValue();
+    await page.locator("#other-room").click();
+    await expect(page.locator("#welcome")).toBeVisible();
+    await expect(page.getByRole("button", { name: `Return to duel room ${code}` })).toBeVisible();
+
+    const secondDevice = await browser.newContext();
+    try {
+      const returningPlayer = await secondDevice.newPage();
+      expect((await returningPlayer.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await returningPlayer.goto("/games/installed/wtfiap/party.html", { waitUntil: "domcontentloaded" });
+      const returnButton = returningPlayer.getByRole("button", { name: `Return to duel room ${code}` });
+      await expect(returnButton).toBeVisible();
+      await returnButton.click();
+      await expect(returningPlayer.locator("#alive-count")).toContainText("1 / 2 seats");
+      await expect(returningPlayer.locator("#standings")).toContainText("wtf-admin · you");
+      await page.getByRole("button", { name: `Return to duel room ${code}` }).click();
+      await expect(page.locator("#alive-count")).toContainText("1 / 2 seats");
+      await expect(page.locator("#standings")).toContainText("wtf-admin · you");
+    } finally { await secondDevice.close(); }
   });
 
   test("lobby cards mark room type and add an outer gold border only for prizes", async ({ page }) => {

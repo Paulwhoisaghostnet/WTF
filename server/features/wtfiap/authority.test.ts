@@ -73,7 +73,12 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     assert.equal(host.view.config.fortunePricingVersion, 1);
     const room = `/rooms/${host.roomCode}`;
     assert.equal(host.sharePath, `/wtfiap?room=${host.roomCode}`);
-    assert.equal(host.view.players[0].name, 'Canonical Owner');
+    assert.equal(host.view.players[0].name, 'canonical-owner');
+    const personalizedRooms = await request('GET', '/rooms');
+    const myTable = personalizedRooms.rooms.find((table: any) => table.roomCode === host.roomCode);
+    assert.equal(myTable.myPlayerId, host.playerId);
+    assert.deepEqual(personalizedRooms.identity, { name: 'canonical-owner' });
+    assert(!JSON.stringify(personalizedRooms).includes('accountId'));
     await request('POST', `${room}/join`, { name: 'Second seat' }, undefined, 409);
     user = null;
     await request('GET', room, undefined, host.sessionToken, 403);
@@ -150,8 +155,12 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     const duplicate = await request('POST', `${room}/commands`, buy, host.sessionToken);
     assert.equal(duplicate.duplicate, true);
     assert.deepEqual(duplicate.view.self, restored.self);
+    const resumed = await request('POST', `${room}/resume`, {});
+    assert.equal(resumed.playerId, host.playerId);
+    await request('GET', room, undefined, resumed.sessionToken);
+    await request('GET', room, undefined, host.sessionToken, 401);
     user = null;
-    await request('GET', room, undefined, host.sessionToken, 403);
+    await request('GET', room, undefined, resumed.sessionToken, 403);
     await request('GET', room, undefined, guest.sessionToken);
     await request('GET', '/health');
   } finally {

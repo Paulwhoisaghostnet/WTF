@@ -8,7 +8,7 @@ const API_PREFIX = '/api/wtfiap/party';
 function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
   resolveActor = request => {
     const user = request.user;
-    return user ? { id: String(user.id), name: String(user.displayName || user.username || `Commander ${user.id}`) } : null;
+    return user ? { id: String(user.id), name: String(user.username || user.displayName || `Commander ${user.id}`) } : null;
   }, clock, onRoomChanged, onPreparationOpened, openDuelNetworks = [], runtimePath = path.join(__dirname, 'runtime/game/server/party-server.cjs') } = {}) {
   if (typeof isEnabled !== 'function') throw new Error('WTFIAP requires the host desktop-app gate.');
   const { createServer } = require(runtimePath);
@@ -25,7 +25,19 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
       await authority.ready;
       if (request.method === 'GET' && pathname === API_PREFIX + '/rooms') {
         response.setHeader('Cache-Control', 'no-store');
-        return response.json({ ok: true, rooms: listRooms(authority.dataDir) });
+        const accountId = request.user?.id == null ? null : String(request.user.id);
+        const rooms = listRooms(authority.dataDir).map(table => {
+          let playerId = null;
+          if (accountId) {
+            const record = authority.funding.inspect(table.roomCode);
+            playerId = record.players.find(player => !player.isAI && player.accountId === accountId)?.playerId ?? null;
+          }
+          return { ...table, ...(playerId ? { myPlayerId: playerId } : {}) };
+        });
+        const identityName = request.user
+          ? String(request.user.username || request.user.displayName || `Commander ${request.user.id}`)
+          : null;
+        return response.json({ ok: true, rooms, ...(identityName ? { identity: { name: identityName } } : {}) });
       }
       return authority.handler(request, response);
     } catch (error) {

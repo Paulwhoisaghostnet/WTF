@@ -507,6 +507,23 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.sessions[hash(sessionToken)] = session;
     return { playerId, sessionToken, session };
   }
+  function resumeAccountPlayer(room, request) {
+    const account = actor(request);
+    requireThat(account, 'Sign in to the WTF account that owns this commander.', 401);
+    const existing = Object.entries(room.sessions).find(([, session]) => session.accountId === account.id &&
+      room.players.some(player => player.playerId === session.playerId && !player.isAI));
+    requireThat(existing, 'This WTF account has no player seat in this room.', 404);
+    const previous = existing[1];
+    for (const [tokenHash, session] of Object.entries(room.sessions)) {
+      if (session.accountId === account.id && session.playerId === previous.playerId) delete room.sessions[tokenHash];
+    }
+    const sessionToken = crypto.randomUUID();
+    const session = { playerId: previous.playerId, accountId: account.id,
+      nextSequence: previous.nextSequence, commands: clone(previous.commands) };
+    room.sessions[hash(sessionToken)] = session;
+    persist(room, false);
+    return { roomCode: room.roomCode, playerId: session.playerId, sessionToken };
+  }
   function addWatcher(room, name, request) {
     const account = actor(request);
     if (account) name = account.name;
@@ -554,11 +571,17 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
-      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|close|commands|messages|events|replay|lobby))?$/);
+      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|resume|start|close|commands|messages|events|replay|lobby))?$/);
       requireThat(route, 'Unknown party endpoint.', 404);
       const room = rooms.get(route[1]); requireThat(room, 'Party room not found.', 404);
       const action = route[2];
       if (request.method === 'GET' && action === 'lobby') { writeJSON(response, 200, { ok: true, view: lobby(room), serverNowMs: now() }); return; }
+      if (request.method === 'POST' && action === 'resume') {
+        const input = await bodyJSON(request);
+        requireThat(Object.keys(input).length === 0, 'Rejoining a player seat needs no extra data.');
+        const identity = resumeAccountPlayer(room, request);
+        writeJSON(response, 200, { ok: true, ...identity }); return;
+      }
       if (request.method === 'POST' && action === 'join') {
         const input = await bodyJSON(request);
         immutableTerms(input);

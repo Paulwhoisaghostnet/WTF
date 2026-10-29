@@ -439,8 +439,8 @@
       "path": "server/features/wtfiap/runtime/game/server/party-server.cjs",
       "sourcePath": "game/server/party-server.wtfos.cjs",
       "sourceSha256": "a6865309e21cc757583da8076bcb9d04fb7d30356ab4b3678255830ba2af922d",
-      "sha256": "af397bb6dbb15a49331f8b9225d74c3540a38bebaee90695a7944b3210df5b0e",
-      "bytes": 66266
+      "sha256": "2307f2e91acbe76ac5e3209513372f0feec8885688390603c5a506480f2e7b89",
+      "bytes": 67670
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/army.cjs",

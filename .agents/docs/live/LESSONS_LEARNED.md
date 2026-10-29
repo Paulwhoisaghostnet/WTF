@@ -12711,3 +12711,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: The compact coLILseum navigation opened as a narrow popup over the current game, causing link labels to wrap vertically and making navigation difficult to read and tap.
 
 **Rule**: When a user opens the primary navigation, present a full game-surface overlay with stable, full-width controls. Test the covered-screen behavior explicitly: close the menu before interacting with gameplay, and open it again before navigating.
+
+## 2026-10-28 — Lobby seat recovery must be account-backed, not browser-token-only
+
+**What happened**: Room cards only considered a localStorage session when deciding whether to show a return action. A signed-in WTF player opening the lobby from another browser therefore looked like a stranger, even though the server session was already bound to their account. Name entry also asked them to repeat an identity the host already knew.
+
+**Why it mattered**: Losing one browser token made an active room appear inaccessible and forced players into a confusing join/watch flow. Reissuing a token without account verification would instead let anyone take over a seat.
+
+**Rule**: Bind human seats to the authenticated WTF account ID, use the WTF username as the displayed commander name, personalize only that account's lobby response, and reissue a session only after server-side account verification. Retain local bearer recovery for guests, rotate account-bound tokens on cross-device recovery, and test both devices after rotation.

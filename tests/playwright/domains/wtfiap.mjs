@@ -14,7 +14,7 @@ export function mountWtfiapDomain(app, { getState, getUser }) {
     canAccess: () => getState().userRole !== 'time_out',
     resolveActor: () => {
       const user = getUser();
-      return user ? { id: String(user.id), name: user.displayName || user.username } : null;
+      return user ? { id: String(user.id), name: user.username || user.displayName } : null;
     },
   });
   app.use((req, res, next) => {
@@ -34,6 +34,8 @@ export function mountWtfiapDomain(app, { getState, getUser }) {
     if (req.method === 'POST' && getUser() && req.get('x-csrf-token') !== 'test-csrf-token') {
       return res.status(403).json({ error: 'Invalid or missing CSRF token' });
     }
+    req.user = getUser();
+    req.isAuthenticated = () => Boolean(req.user);
     return authority.handler(req, res, next);
   });
   return { close: async () => { await authority.close(); rmSync(dataDir, { recursive: true, force: true }); } };
