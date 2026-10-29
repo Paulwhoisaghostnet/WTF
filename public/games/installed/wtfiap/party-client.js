@@ -33,6 +33,10 @@ async function copyInvitation(id,label){const input=$(id);try{await navigator.cl
 $('copy-code').onclick=()=>copyInvitation('invite-code','Room code');
 $('copy-link').onclick=()=>copyInvitation('invite-url','Invitation URL');
 $('share-invitation').onclick=async()=>{if(!credentials)return;try{await navigator.share({title:'Join my coLILseum room',text:'Join my coLILseum room. Room code: '+credentials.roomCode,url:invitationURL()});notice('Invitation shared.');}catch(error){if(error.name!=='AbortError')notice('Sharing is unavailable here. Use Copy code or Copy link.');}};
+function invitationText(){return 'Join my coLILseum room. Room code: '+credentials.roomCode+' '+invitationURL();}
+function openPostDraft(service){if(!credentials)return;const text=invitationText();const url=service==='x'?'https://x.com/intent/post?'+new URLSearchParams({text}):'https://bsky.app/intent/compose?'+new URLSearchParams({text});window.open(url,'_blank','noopener,noreferrer');}
+$('invite-x').onclick=()=>openPostDraft('x');$('invite-bluesky').onclick=()=>openPostDraft('bluesky');
+$('invite-mail').onclick=()=>{if(!credentials)return;const roomType=current?.roomType||current?.config?.roomType||'party';const payload={type:'wtfiap:open-mail-draft',roomCode:credentials.roomCode,roomType};if(window.parent!==window){window.parent.postMessage(payload,location.origin);return;}const query=new URLSearchParams({view:'drafts',compose:'wtfiap',subject:'Join my coLILseum '+roomType,body:'Join my coLILseum '+roomType+'. Room code: '+credentials.roomCode+'\n\n'+location.origin+'/colilseum/'+encodeURIComponent(credentials.roomCode)});window.open('/mail?'+query.toString(),'_blank','noopener,noreferrer');};
 for(const id of ['invite-code','invite-url'])$(id).addEventListener('click',()=>$(id).select());
 function isEscrow(tournament){return tournament?.mode==='escrow';}
 function fundingDisclosure(tournament){

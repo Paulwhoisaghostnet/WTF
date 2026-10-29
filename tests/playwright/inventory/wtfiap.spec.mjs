@@ -810,6 +810,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await surface(page).getByRole("button", { name: "Open game menu" }).click();
     await expect(surface(page).getByRole("link", { name: "Lobby", exact: true })).toBeVisible();
     const welcome = await hostFrame(page);
+    await surface(page).getByRole("button", { name: "Close game menu" }).click();
     await welcome.locator("#skip").click();
     await welcome.locator('.choices a[href="party.html"]').click();
     let party = await hostFrame(page);
@@ -822,6 +823,16 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await expect(party.locator("#invite-code")).not.toHaveValue("");
     const code = await party.locator("#invite-code").inputValue();
     await expect(party.locator("#invite-url")).toHaveValue(new RegExp(`/colilseum/${code}`));
+    await expect(party.locator("#invite-mail")).toBeVisible();
+    await expect(party.locator("#invite-x")).toBeVisible();
+    await expect(party.locator("#invite-bluesky")).toBeVisible();
+    await party.evaluate(() => { window.__colilseumIntent = ""; window.open = (url) => { window.__colilseumIntent = String(url); return null; }; });
+    await party.locator("#invite-x").click();
+    expect(await party.evaluate(() => window.__colilseumIntent)).toMatch(/^https:\/\/x\.com\/intent\/post\?/);
+    expect(decodeURIComponent(await party.evaluate(() => window.__colilseumIntent))).toContain(code);
+    await party.locator("#invite-bluesky").click();
+    expect(await party.evaluate(() => window.__colilseumIntent)).toMatch(/^https:\/\/bsky\.app\/intent\/compose\?/);
+    expect(decodeURIComponent(await party.evaluate(() => window.__colilseumIntent))).toContain(code);
     await party.locator("#fill-ai").check();
     await party.locator("#start-room").click();
     const game = await gameFrame(party, "#arena-frame");

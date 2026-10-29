@@ -9,6 +9,12 @@ import {
 
 export const NOTIFICATION_PREFERENCE_DEFINITIONS = [
   {
+    key: "game_turn_alerts",
+    label: "coLILseum Turn Alerts",
+    description: "Notify when a coLILseum preparation round opens and your next action is ready.",
+    defaultEnabled: true,
+  },
+  {
     key: "market_new_listing",
     label: "New Market Listings",
     description:

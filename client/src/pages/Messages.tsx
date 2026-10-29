@@ -854,6 +854,14 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
   };
 
   const handleNotificationClick = (item: NotificationItem) => {
+    if (item.eventKey.startsWith("wtfiap.turn.")) {
+      const roomCode = typeof item.metadata?.roomCode === "string" ? item.metadata.roomCode : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomCode)) return;
+      void api.put(`/api/notifications/${item.id}/opened`, {});
+      if (!item.read) markNotificationReadMutation.mutate(item.id);
+      wm.openPage(`/colilseum/${roomCode.toLowerCase()}`);
+      return;
+    }
     if (!item.eventKey.startsWith("studio.")) return;
     const projectId = studioProjectIdFromMetadata(item.metadata);
     if (projectId == null) return;
@@ -1313,10 +1321,11 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                 <ListPanel data-messages-region="list-panel">
                   {(notifications?.items || []).map((item) => {
                     const isStudio = item.eventKey.startsWith("studio.");
+                    const isGameTurn = item.eventKey.startsWith("wtfiap.turn.") && typeof item.metadata?.roomCode === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.metadata.roomCode);
                     const studioId = isStudio
                       ? studioProjectIdFromMetadata(item.metadata)
                       : null;
-                    const clickable = studioId != null;
+                    const clickable = studioId != null || isGameTurn;
                     return (
                       <NotificationRow
                         key={item.id}
@@ -1332,7 +1341,7 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                       >
                         <NotificationTitle>
                           {item.title}
-                          {isStudio ? <StudioBadge>STUDIO</StudioBadge> : null}
+                          {isStudio ? <StudioBadge>STUDIO</StudioBadge> : isGameTurn ? <StudioBadge>GAME TURN</StudioBadge> : null}
                         </NotificationTitle>
                         {item.body ? (
                           <NotificationBody>{item.body}</NotificationBody>
@@ -1353,7 +1362,8 @@ export function Messages({ initialTab = "direct-messages" }: MessagesProps) {
                             {new Date(item.createdAt).toLocaleString()}
                           </span>
                           <span>{eventKeyLabel(item.eventKey)}</span>
-                          {clickable ? <span>· Click to open</span> : null}
+                          {isGameTurn ? <Button size="sm" onClick={(e: any) => { e.stopPropagation(); handleNotificationClick(item); }}>Return to round {Number.isSafeInteger(item.metadata?.roundNumber) ? String(item.metadata?.roundNumber) : "room"}</Button> : null}
+                          {clickable && !isGameTurn ? <span>· Click to open</span> : null}
                           {!item.read && (
                             <Button
                               size="sm"

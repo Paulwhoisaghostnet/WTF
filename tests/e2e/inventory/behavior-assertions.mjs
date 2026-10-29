@@ -1,5 +1,14 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "wtfiap.turn-alerts-and-invites",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap", "mail", "messages"],
+    ownerSpec: "server/features/wtfiap/authority.test.ts; client/src/pages/WtfIap.tsx; client/src/pages/Messages.tsx; client/src/pages/Mail.tsx; public/games/installed/wtfiap/party-client.js",
+    verificationCommand: "npx tsx --test server/features/wtfiap/authority.test.ts && npm run build && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/wtfiap.spec.mjs --grep 'Stuffs Games opens splash'",
+    userVisibleAssertion: "When a new preparation round opens, an account-bound player who is not connected to that room receives an opt-out-aware WTFOS notification with a button that opens the exact coLILseum room and round. A live room connection suppresses the notification. Room invitations can open a prefilled WTF Mail draft, share through the device's native share options (including AIM where available), or open X and Bluesky compose pages without using their APIs.",
+    durableSideEffectAssertion: "The room authority emits turn notifications outside match state and only for human players with account-bound sessions; active room SSE subscriptions are excluded. Notification records honor the user's game-turn preference and contain a validated same-origin room route. Invitation links carry only room identity, and Mail requires the player to add recipients and send explicitly. The notification integration changes no contracts or pinned match outcomes.",
+  },
+  {
     id: "wtfiap.open-seat-xtz-duel",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

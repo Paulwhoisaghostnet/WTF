@@ -12,6 +12,7 @@ import { createFundingService, type FundingGame } from "./funding";
 import { postgresFundingStore } from "./funding-store";
 import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, mainnetXtzFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
 import { createOpenDuelService, openDuelConfigs } from "./open-duel";
+import { createNotificationsForUsers } from "../../lib/notifications";
 
 export type WtfiapAuthority = {
   handler: RequestHandler;
@@ -42,6 +43,17 @@ export function getWtfiapAuthority(): WtfiapAuthority {
       canAccess: async (request: Request) => canOpenAppsForRole(
         request.user ? await listRolesForUserSnapshot(request.user) : null),
       onRoomChanged: () => { funding?.kick(); if (openDuel) void runJob(OPEN_JOB_NAME); },
+      onPreparationOpened: async ({ roomCode, roundNumber, recipients }: { roomCode: string; roundNumber: number; recipients: Array<{ userId: string; playerId: string }> }) => {
+        const users = recipients.map(recipient => Number(recipient.userId)).filter(userId => Number.isSafeInteger(userId) && userId > 0);
+        if (!users.length) return;
+        await createNotificationsForUsers(users, {
+          eventKey: `wtfiap.turn.${roomCode}.${roundNumber}`,
+          title: "Your coLILseum turn is ready",
+          body: `Round ${roundNumber} is open. Return to your room to shop, arrange your lineup, and mark ready.`,
+          metadata: { route: `/colilseum/${roomCode}`, roomCode, roundNumber, action: "return-to-room" },
+          preferenceKey: "game_turn_alerts",
+        });
+      },
       openDuelNetworks: Object.values(openDuelConfigs()).filter(lane => lane.enabled).map(lane => lane.network),
     });
   }

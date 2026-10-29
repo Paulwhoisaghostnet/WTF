@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Hourglass, TextInput } from "react95";
@@ -722,6 +722,7 @@ export function Mail() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const { marks, setMarks, savedDrafts, setSavedDrafts } = usePersistentInboxState(user?.id);
+  const handledWtfIapDraft = useRef(false);
 
   const [view, setView] = useState<InboxView>(() => {
     if (typeof window === "undefined") return "inbox";
@@ -748,6 +749,20 @@ export function Mail() {
     return Number.isInteger(id) && id > 0 ? id : null;
   });
   const [adminContactReply, setAdminContactReply] = useState("");
+
+  useEffect(() => {
+    if (handledWtfIapDraft.current || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("compose") !== "wtfiap") return;
+    handledWtfIapDraft.current = true;
+    setView("drafts");
+    setDraftMode("mail");
+    setDraftTargetUserId(null);
+    setDraftEmail("");
+    setDraftSubject(params.get("subject") || "Join my coLILseum room");
+    setDraftBody(params.get("body") || "");
+    setNotice("Invitation draft ready. Add recipients before sending.");
+  }, []);
 
   useEffect(() => {
     logClientSystemEvent({

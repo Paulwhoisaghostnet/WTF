@@ -194,7 +194,7 @@ function auditFundingRoom(room, atMs) {
 }
 
 function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now, listen = true,
-  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged,
+  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged, onPreparationOpened,
   openDuelNetworks = [] } = {}) {
   requireThat(typeof apiPrefix === 'string' && /^\/[A-Za-z0-9_/-]+$/.test(apiPrefix) && !apiPrefix.endsWith('/') && !apiPrefix.includes('//'), 'Use an absolute API path without a trailing slash.');
   requireThat(typeof sharePath === 'string' && sharePath.startsWith('/') && !sharePath.startsWith('//') && !/[?#\\]/.test(sharePath), 'Use a same-origin invitation path without a query or fragment.');
@@ -444,7 +444,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     if (room.match) {
       const result = Party.advance(room.match, now());
       requireThat(result.ok, result.reason || 'Party clock transition failed.', 500);
-      if (result.events?.some(event => event.type === 'preparation-opened')) prepareBots(room);
+      const preparationOpened = result.events?.find(event => event.type === 'preparation-opened');
+      if (preparationOpened) {
+        prepareBots(room);
+        notifyPreparationOpened(room, preparationOpened.roundNumber);
+      }
       const accountingChanged = reconcileTournament(room);
       if (result.changed || accountingChanged) {
         room.revision++;
@@ -462,6 +466,19 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       const result = Party.prepareAI(room.match, player.playerId, now());
       requireThat(result.ok, result.reason || 'AI preparation failed.', 500);
     }
+  }
+  function notifyPreparationOpened(room, roundNumber = room.match?.roundNumber) {
+    if (typeof onPreparationOpened !== 'function' || !Number.isSafeInteger(roundNumber)) return;
+    const recipients = room.players.filter(player => !player.isAI && validText(player.playerId)).flatMap(player => {
+      const roomWindowOpen = [...(streams.get(room.roomCode) || [])].some(subscriber =>
+        subscriber.session?.playerId === player.playerId && !subscriber.response.destroyed && !subscriber.response.writableEnded);
+      if (roomWindowOpen) return [];
+      const accountId = Object.values(room.sessions).find(session => session.playerId === player.playerId && validText(session.accountId))?.accountId;
+      return accountId ? [{ userId: accountId, playerId: player.playerId, name: player.name }] : [];
+    });
+    if (!recipients.length) return;
+    queueMicrotask(() => Promise.resolve(onPreparationOpened({ roomCode: room.roomCode, roundNumber, recipients }))
+      .catch(error => console.warn('coLILseum turn notification failed:', error?.message || error)));
   }
   function authenticate(request, room) {
     const authorization = request.headers.authorization || '';
@@ -635,6 +652,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
           terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
         prepareBots(room);
+        notifyPreparationOpened(room, room.match.roundNumber);
         room.revision++; persist(room); publish(room); schedule(room);
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
@@ -816,6 +834,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
         terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
       prepareBots(room);
+      notifyPreparationOpened(room, room.match.roundNumber);
       room.revision++; persist(room); publish(room); schedule(room);
       return funding.inspect(roomCode);
     },

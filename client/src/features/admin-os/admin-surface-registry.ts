@@ -337,6 +337,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "messages.dm-report-review-safety-loop",
       "inbox.compose-reply-send-actions",
       "desktop-reggie.summon-wim-messages",
+      "wtfiap.turn-alerts-and-invites",
     ],
   },
   {
@@ -403,7 +404,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "comms.item.indexed",
       "app.interaction.tracked",
     ],
-    behaviorAssertionIds: ["inbox.compose-reply-send-actions", "admin-inbox.role-aware-feedback", "desktop-reggie.summon-wim-messages"],
+    behaviorAssertionIds: ["inbox.compose-reply-send-actions", "admin-inbox.role-aware-feedback", "desktop-reggie.summon-wim-messages", "wtfiap.turn-alerts-and-invites"],
   },
   {
     id: "digest",
@@ -1475,7 +1476,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     adminPanelTabs: ["OS Admin", "System Logs"],
     nativeSettings: ["desktop app availability", "Party room board mode and preparation timer", "Tournament accounting preview"],
     automationHandles: ["desktop.icon.opened", "desktop.window.opened"],
-    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel", "wtfiap.turn-alerts-and-invites"],
   },
   {
     id: "arcade",

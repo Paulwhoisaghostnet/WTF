@@ -4,7 +4,7 @@ export const DOMAIN_WORKFLOWS = [
     domain: "WTFIAP Autobattler",
     routes: ["/colilseum", "/colilseum/:roomCode", "/wtfiap"],
     eventHandles: ["desktop.icon.opened", "desktop.window.opened", "desktop.start_menu.opened"],
-    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel", "wtfiap.turn-alerts-and-invites"],
     apiProbes: [
       { method: "GET", path: "/api/wtfiap/party/health" },
       { method: "GET", path: "/api/wtfiap/party/rooms" },

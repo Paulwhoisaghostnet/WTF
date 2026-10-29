@@ -149,6 +149,17 @@ export function WtfIap() {
         setFundingOpen(true);
         return;
       }
+      if (event.source === frameRef.current?.contentWindow && event.origin === window.location.origin && event.data?.type === "wtfiap:open-mail-draft") {
+        const { roomCode, roomType } = event.data;
+        if (typeof roomCode === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomCode) && ["duel", "party", "tournament"].includes(roomType)) {
+          const code = roomCode.toLowerCase();
+          const subject = `Join my coLILseum ${roomType}`;
+          const body = `Join my coLILseum ${roomType}. Room code: ${code}\n\n${window.location.origin}/colilseum/${code}`;
+          const query = new URLSearchParams({ view: "drafts", compose: "wtfiap", subject, body });
+          windowManager.openPage(`/mail?${query.toString()}`);
+        }
+        return;
+      }
       const message = readWtfIapRoomMessage(event, frameRef.current?.contentWindow ?? null, window.location.origin);
       if (!message) return;
       if (!message.roomCode && !urlRecoveryRef.current) {
@@ -165,7 +176,7 @@ export function WtfIap() {
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, []);
+  }, [windowManager]);
   useEffect(() => {
     if (!menuOpen) return;
     const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };

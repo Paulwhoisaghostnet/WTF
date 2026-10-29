@@ -24,6 +24,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
   let authority: any;
   let server: Server;
   let base!: string;
+  const turnNotifications: Array<{ roomCode: string; roundNumber: number; recipients: Array<{ userId: string; playerId: string }> }> = [];
   let streamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   async function open() {
     const app = express();
@@ -39,6 +40,7 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     authority = createWtfiapAuthority({ dataDir,
       isEnabled: () => enabled,
       canAccess: () => canOpenAppsForRole(user ? role : null),
+      onPreparationOpened: (notice: any) => { turnNotifications.push(notice); },
     });
     await authority.ready;
     app.use(authority.handler);
@@ -83,6 +85,11 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     await request('GET', room, undefined, guest.sessionToken);
     user = { id: 41, username: 'canonical-owner', displayName: 'Canonical Owner' };
     const started = await request('POST', `${room}/start`, { fillAI: true }, host.sessionToken);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(turnNotifications.length, 1);
+    assert.equal(turnNotifications[0].roomCode, host.roomCode);
+    assert.equal(turnNotifications[0].roundNumber, 1);
+    assert.deepEqual(turnNotifications[0].recipients.map(recipient => recipient.userId), ['41']);
     assert.equal(started.view.players.length, 8);
     assert.equal(started.view.players.filter((p: any) => p.isAI).length, 6);
     assert.equal(started.view.phase, 'preparation');
