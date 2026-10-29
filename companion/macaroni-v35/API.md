@@ -29,6 +29,8 @@ Direct local integrations may call `/v1/admin/*` with `Authorization: Bearer <ad
 
 `studioApiReady` is true only after the full doctor and authenticated adapter probe pass. It intentionally remains separate from `publicCollectorReady`: the desktop default can safely stage and manage a project on loopback while launch/export remains locked. A remote page unlocks only with an HTTPS public base, the exact HTTPS collector origin in CORS, and a live status identity proof. While local setup is incomplete, `studioApiReady` is false and `assetStrategies` is empty.
 
+Before sending the admin token to the configured loopback port, the main process calls `GET /identity?challenge={64 lowercase hex characters}` without authorization. Companion returns the challenge and an HMAC-SHA256 proof keyed by the private admin token. A foreign service or malformed response produces `companion_identity_mismatch`; the token is never sent to that port. This is a local process identity check, not a public authentication route.
+
 Every proxied admin request, including reads, requires the exact installed Studio `Origin` and loopback `Host`. Missing or foreign origins are rejected before the main process reads or injects the admin token. Unknown methods, query-bearing paths, malformed ids, and arbitrary upstream paths are not proxied. Every response is checked again for secret keys, private CIDs/URIs, entropy preimages, metadata nonces, raw assets, encrypted paths, and signed bytes. Only the expressly public `contractMetadataUri` and `publicCoverUri` may contain `ipfs://` values.
 
 ## Exact desktop route map
@@ -40,6 +42,8 @@ All paths in the left column are relative to the Studio origin.
 | `GET /api/macaroni/v35/companion/readiness` | main-process readiness and doctor probe |
 | `POST /api/macaroni/v35/companion/projects` | `POST /v1/admin/projects` |
 | `GET /api/macaroni/v35/companion/projects/{dropRef}` | `GET /v1/admin/projects/{dropRef}` |
+| `GET /api/macaroni/v35/companion/projects/{dropRef}/attention` | `GET /v1/admin/projects/{dropRef}/attention` |
+| `POST /api/macaroni/v35/companion/projects/{dropRef}/attention/{workId}/retry` | `POST /v1/admin/projects/{dropRef}/attention/{workId}/retry` |
 | `PUT /api/macaroni/v35/companion/projects/{dropRef}/uploads/{uploadId}` | `PUT /v1/admin/projects/{dropRef}/uploads/{uploadId}` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/tokens/{tokenId}` | `POST /v1/admin/projects/{dropRef}/tokens/{tokenId}` |
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/public-contract-metadata` | same suffix under `/v1/admin` |
@@ -54,6 +58,12 @@ All paths in the left column are relative to the Studio origin.
 | `POST /api/macaroni/v35/companion/projects/{dropRef}/{preflight\|observe-activation\|wake}` | same named `/v1/admin` action |
 
 The protected `/contract` attachment route remains available for operator recovery, but the normal Studio flow must not use it. The planner derives the KT1 from the exact finalized origination and binds it only after checking the signer, code, storage, amount, and canonical head-minus-two snapshot.
+
+## Operator attention and publication status
+
+The bearer-protected attention list returns redacted manual-review work and publication work that is retrying after a transient error. Each item includes its work id, claim id when present, work type, state, attempt number, public operation hash when signed, chain or publication state, a safe diagnostic code, and `retrySafe`. It never returns signed bytes, private CIDs, file paths, preimages, or raw provider errors.
+
+`POST .../attention/{workId}/retry` accepts only manual-review work. For a signed operation it checks the exact bytes in the mempool or chain, finalized exact failure, or branch expiry plus canonical absence before requeueing. For unsigned setup or publication work, the operator should first correct the reported funding, pinner, or CAR issue. A transient publication retry is already queued and returns `publication_already_retrying` if manually retried. A signed attempt with unresolved chain evidence returns `signed_attempt_unresolved` and retains the signer-wide lock.
 
 ## 1. Register the immutable project
 

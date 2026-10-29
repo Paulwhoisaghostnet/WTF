@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { normalizeIpfsUri } from "./ipfs-gateways";
 import type { HamsterState } from "./desktop";
 import {
   applyHamsterAction,
@@ -676,7 +677,7 @@ test("resolves stored media items into usable desktop wallpaper URLs", () => {
       sourceUrl: "ipfs://bafybeigdyrzt",
       playbackUrl: null,
     }),
-    "/api/cache/media?url=https%3A%2F%2Fnftstorage.link%2Fipfs%2Fbafybeigdyrzt"
+    `/api/cache/media?url=${encodeURIComponent(normalizeIpfsUri("ipfs://bafybeigdyrzt"))}`
   );
   assert.equal(
     mediaLibraryWallpaperUrl({
@@ -699,7 +700,7 @@ test("resolves owned token image metadata into desktop wallpaper URLs", () => {
         artifactUri: "ipfs://artifact",
       },
     }),
-    "/api/cache/media?url=https%3A%2F%2Fnftstorage.link%2Fipfs%2Fdisplay"
+    `/api/cache/media?url=${encodeURIComponent(normalizeIpfsUri("ipfs://display"))}`
   );
   assert.equal(
     tokenWallpaperUrl({

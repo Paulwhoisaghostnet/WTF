@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { createServer, request as httpRequest } from "node:http";
 import { mkdtemp, readFile, rm, stat, writeFile, mkdir } from "node:fs/promises";
@@ -81,6 +82,17 @@ function readyUpstream(handler = null) {
       }));
       return;
     }
+    if (request.url?.startsWith("/identity?challenge=")) {
+      const challenge = new URL(request.url, "http://127.0.0.1").searchParams.get("challenge");
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        schema: "pasta.macaroni-companion-identity.v1",
+        challenge,
+        proof: createHmac("sha256", "a-local-admin-token-that-is-never-sent-to-the-renderer")
+          .update(`pasta.macaroni-companion-identity.v1:${challenge}`).digest("hex"),
+      }));
+      return;
+    }
     if (request.url === "/v1/admin/readiness") {
       assert.equal(request.headers.authorization, "Bearer a-local-admin-token-that-is-never-sent-to-the-renderer");
       response.writeHead(200, { "content-type": "application/json" });
@@ -133,6 +145,8 @@ test("desktop bootstrap creates private local custody config without auto-accept
 test("desktop route map is an exact method-and-path allowlist", () => {
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects`), "/v1/admin/projects");
   assert.equal(routeFor("GET", `${COMPANION_PREFIX}/projects/${dropRef}`), `/v1/admin/projects/${dropRef}`);
+  assert.equal(routeFor("GET", `${COMPANION_PREFIX}/projects/${dropRef}/attention`), `/v1/admin/projects/${dropRef}/attention`);
+  assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/attention/7/retry`), `/v1/admin/projects/${dropRef}/attention/7/retry`);
   assert.equal(routeFor("PUT", `${COMPANION_PREFIX}/projects/${dropRef}/uploads/${uploadId}`), `/v1/admin/projects/${dropRef}/uploads/${uploadId}`);
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/tokens/12`), `/v1/admin/projects/${dropRef}/tokens/12`);
   assert.equal(routeFor("POST", `${COMPANION_PREFIX}/projects/${dropRef}/public-contract-metadata`), `/v1/admin/projects/${dropRef}/public-contract-metadata`);
@@ -168,6 +182,31 @@ test("desktop readiness proves doctor plus admin adapter without exposing the to
     localDevelopmentOnly: false,
   });
   assert.equal(JSON.stringify(readiness).includes("a-local-admin-token"), false);
+});
+
+test("desktop refuses a lookalike service before sending its admin token", async (t) => {
+  let receivedAdminToken = false;
+  const { adapter } = await configuredRuntime(t, (request, response) => {
+    if (request.headers.authorization) receivedAdminToken = true;
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(request.url === "/health"
+      ? { schema: "pasta.macaroni-companion-health.v1", fulfillmentReady: true }
+      : { schema: "pasta.macaroni-companion-identity.v1", proof: "0".repeat(64) }));
+  });
+  const readiness = await adapter.readiness();
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.code, "companion_identity_mismatch");
+  assert.equal(receivedAdminToken, false);
+});
+
+test("desktop identifies a non-JSON service on the Companion port", async (t) => {
+  const { adapter } = await configuredRuntime(t, (_request, response) => {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<html>another service</html>");
+  });
+  const readiness = await adapter.readiness();
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.code, "companion_identity_mismatch");
 });
 
 test("desktop proxy injects admin auth, streams uploads, and rejects a secret-bearing response", async (t) => {

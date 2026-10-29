@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { TezosWatcher } from "../src/adapters/tezos-watcher.mjs";
@@ -80,6 +83,21 @@ test("finalized contract snapshots select head-2, never head or head-1", async (
   const snapshot = await watcher.finalizedHeadSnapshot();
   assert.deepEqual(snapshot, { level: 99, blockHash: "BLockAt99", observedHeadLevel: 101 });
   assert.equal(requestedBlock, "99");
+});
+
+test("attached code accepts reordered top-level sections but rejects changed Michelson", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "macaroni-v35-code-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const artifact = [{ prim: "storage", args: [{ prim: "nat" }] }, { prim: "parameter", args: [{ prim: "unit" }] }, { prim: "code", args: [[]] }];
+  const file = path.join(root, "reviewed.json");
+  await writeFile(file, JSON.stringify(artifact));
+  const { watcher } = watcherFixture();
+  watcher.abiPath = file;
+  watcher.toolkit.rpc.getScript = async () => ({ code: [artifact[1], artifact[0], artifact[2]] });
+  const matched = await watcher.verifyContractCode("KT1contract", "Bfinalized");
+  assert.equal(matched.expected, matched.observed);
+  watcher.toolkit.rpc.getScript = async () => ({ code: [{ prim: "parameter", args: [{ prim: "nat" }] }, artifact[0], artifact[2]] });
+  await assert.rejects(() => watcher.verifyContractCode("KT1contract", "Bfinalized"), /does not match/);
 });
 
 test("sellout policy releases existing claims after irreversible undersold close", () => {
@@ -194,6 +212,29 @@ test("private duplicate scan never sends target CIDs to Objkt", async () => {
   const result = await watcher.duplicateCidCheck([{ tokenId: 0, artifactUri: privateCid, metadataUri: `${privateCid}-metadata` }]);
   assert.equal(result.matches.length, 0);
   assert.equal(bodies.some((body) => body.includes(privateCid)), false);
+});
+
+test("private duplicate scan resumes the same public cursor after Objkt rate limiting", async () => {
+  const requests = [];
+  const responses = [
+    new Response("rate limit", { status: 429 }),
+    Response.json({ data: { token: [{ pk: 7, artifact_uri: "ipfs://public-other", metadata: null, fa_contract: "KT1public", token_id: "0", flag: "none" }] } }),
+    Response.json({ data: { token: [] } }),
+  ];
+  const watcher = new TezosWatcher({
+    rpcUrl: "https://rpc.invalid", indexerUrl: "https://indexer.invalid",
+    duplicateCheckUrl: "https://objkt.invalid/graphql", duplicateCheckMode: "private_full_scan",
+    network: "shadownet", expectedChainId: "NetXsqzbfFenSTS",
+    signerKeyFile: "/unused", abiPath: "/unused",
+    fetchImpl: async (_url, init) => {
+      requests.push(JSON.parse(init.body));
+      return responses.shift();
+    },
+  });
+  const result = await watcher.duplicateCidCheck([{ tokenId: 0, artifactUri: "ipfs://private-artifact", metadataUri: "ipfs://private-metadata" }]);
+  assert.deepEqual(requests.map((row) => row.variables.cursor), ["-1", "-1", "7"]);
+  assert.equal(requests.some((row) => JSON.stringify(row).includes("private-artifact")), false);
+  assert.equal(result.matches.length, 0);
 });
 
 test("claim ingestion reads head-2 storage and ignores both non-final head levels", async () => {
@@ -471,6 +512,46 @@ test("late renderer hash reporting scans the full issuance window before creator
   const absent = await watcher.creatorSubmissionStatus(attempt);
   assert.equal(absent.state, "expired_absent");
   assert.deepEqual(searched, { from: 100, through: 398 });
+});
+
+test("final creator reconciliation uses the raw canonical RPC operation instead of normalized indexer JSON", async () => {
+  const { watcher } = watcherFixture({ headLevel: 104 });
+  watcher.toolkit.rpc.getBlockHash = async ({ block }) => {
+    assert.equal(block, "100");
+    return "B100";
+  };
+  watcher.exactOrigination = async () => [{ hash: OPERATION, level: 100, code: [{ prim: "parameter" }], storage: { bytes: "00" } }];
+  watcher.fetch = async (url) => {
+    assert.equal(String(url), "https://rpc.invalid/chains/main/blocks/B100/operations");
+    return Response.json([[{ hash: OPERATION, contents: [{
+      kind: "origination", source: "tz1creator", balance: "0",
+      script: { code: [{ prim: "storage" }, { prim: "parameter" }], storage: { string: "raw" } },
+      metadata: { operation_result: { status: "applied", originated_contracts: ["KT1contract"] } },
+    }] }]]);
+  };
+  const result = await watcher.creatorSubmissionStatus({ entrypoint: "origination", operation_hash: OPERATION });
+  assert.equal(result.state, "indexed_final");
+  assert.deepEqual(result.rows[0].code, [{ prim: "storage" }, { prim: "parameter" }]);
+  assert.deepEqual(result.rows[0].storage, { string: "raw" });
+  assert.equal(result.rows[0].originatedContract.address, "KT1contract");
+});
+
+test("hashless creator candidates are bound to canonical RPC rows before intent matching", async () => {
+  const { watcher } = watcherFixture({ headLevel: 104 });
+  watcher.finalizedHeadSnapshot = async () => ({ level: 102, blockHash: "B102", observedHeadLevel: 104 });
+  watcher.fetch = async (url) => {
+    assert.match(String(url), /^https:\/\/indexer\.invalid\/v1\/operations\/originations\?/);
+    return Response.json([{ hash: OPERATION, level: 100, storage: { bytes: "normalized" } }]);
+  };
+  watcher.canonicalCreatorOperationRows = async (hash, level) => {
+    assert.equal(hash, OPERATION);
+    assert.equal(level, 100);
+    return [{ hash, level, storage: { string: "raw" } }];
+  };
+  const result = await watcher.findFinalCreatorIntentCandidates({
+    entrypoint: "origination", signer: "tz1creator", issued_head_level: 98,
+  });
+  assert.deepEqual(result.rows, [{ hash: OPERATION, level: 100, storage: { string: "raw" } }]);
 });
 
 test("a hashless wallet prompt never expires from chain time because the wallet may forge later", async () => {

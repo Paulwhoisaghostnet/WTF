@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,14 +14,24 @@ const companionSourceRoot = path.join(repoRoot, "companion/macaroni-v35");
 const outDir = path.join(appDir, "pasta");
 const companionOutDir = path.join(appDir, "companion/macaroni-v35");
 const companionExcludedTopLevel = new Set(["node_modules", "data", "secrets", ".env"]);
+const trackedCompanionFiles = execFileSync("git", ["ls-files", "-z", "--", "companion/macaroni-v35"], { cwd: repoRoot })
+  .toString("utf8").split("\0").filter(Boolean)
+  .map((file) => path.relative(companionSourceRoot, path.join(repoRoot, file)));
+if (!trackedCompanionFiles.length) throw new Error("Companion packaging requires a Git source checkout");
 
 function includeCompanionSource(source) {
   const relative = path.relative(companionSourceRoot, source);
   if (!relative) return true;
-  return !companionExcludedTopLevel.has(relative.split(path.sep)[0]);
+  if (companionExcludedTopLevel.has(relative.split(path.sep)[0])) return false;
+  const info = lstatSync(source);
+  if (info.isSymbolicLink()) throw new Error(`Companion packaging rejects symbolic links: ${relative}`);
+  if (info.isDirectory()) return trackedCompanionFiles.some((file) => file.startsWith(`${relative}${path.sep}`));
+  return info.isFile() && trackedCompanionFiles.includes(relative);
 }
 const outToolsDir = path.join(outDir, "creation-tools");
 const packageJson = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
+const alphaShadownetOnly = packageJson.version.includes("-alpha.");
+const validatedAlphaTools = new Set(["ch-ease", "macaroni", "spaghetti"]);
 
 const tools = [
   {
@@ -227,13 +238,41 @@ for (const tool of tools) {
     if (stats.isDirectory()) cpSync(from, to, { recursive: true });
     else if (stats.isFile()) copyFileSync(from, to);
   }
+  if (alphaShadownetOnly) {
+    for (const page of ["index.html", "studio.html"]) {
+      const pagePath = path.join(targetDir, page);
+      if (!existsSync(pagePath)) continue;
+      const source = readFileSync(pagePath, "utf8");
+      writeFileSync(pagePath, source.replace(/<option value="mainnet">Mainnet<\/option>/g,
+        '<option value="mainnet" disabled>Mainnet (unavailable in alpha)</option>'), "utf8");
+    }
+  }
+  if (alphaShadownetOnly && tool.id === "ch-ease") {
+    const sourcePath = path.join(targetDir, "js/studio.js");
+    const source = readFileSync(sourcePath, "utf8");
+    const networkChoice = 'params.get("network") === "mainnet" ? "mainnet" : "shadownet"';
+    if (!source.includes(networkChoice)) throw new Error("CH-EASE alpha network guard could not be installed");
+    writeFileSync(sourcePath, source.replace(networkChoice, '"shadownet"'), "utf8");
+  }
+  if (alphaShadownetOnly && tool.id !== "ch-ease") {
+    const sourcePath = path.join(targetDir, "js/common.js");
+    const source = readFileSync(sourcePath, "utf8");
+    const setup = "function setupToolkit(networkKey, customRpc) {";
+    if (!source.includes(setup)) throw new Error(`${tool.id} alpha network guard could not be installed`);
+    writeFileSync(sourcePath, source.replace(setup,
+      `${setup}\n    if (networkKey !== "shadownet") throw new Error("This Pasta Suite alpha supports only Tezos Shadownet");`), "utf8");
+  }
 }
 
 mkdirSync(path.dirname(companionOutDir), { recursive: true });
 cpSync(companionSourceRoot, companionOutDir, { recursive: true, filter: includeCompanionSource });
 
 writeFileSync(path.join(outDir, "index.html"), suiteIndexHtml(), "utf8");
-writeFileSync(path.join(outDir, "suite-manifest.json"), JSON.stringify({ version: packageJson.version, tools }, null, 2), "utf8");
+writeFileSync(path.join(outDir, "suite-manifest.json"), JSON.stringify({
+  version: packageJson.version,
+  network: alphaShadownetOnly ? "shadownet" : "mainnet-or-shadownet",
+  tools: tools.map((tool) => ({ ...tool, alphaStatus: validatedAlphaTools.has(tool.id) ? "supported" : "preview" })),
+}, null, 2), "utf8");
 
 console.log(`Prepared Pasta suite assets in ${path.relative(repoRoot, outDir)}`);
 
@@ -244,6 +283,7 @@ function suiteIndexHtml() {
         <article class="tool-card" data-tool="${tool.id}" data-entry="${tool.entry}">
           <span>${tool.title}</span>
           <small>${tool.summary}</small>
+          <small>${validatedAlphaTools.has(tool.id) ? "Alpha supported" : "Preview"} · ${alphaShadownetOnly ? "Shadownet only" : "Tezos"}</small>
           <button type="button">Start with ${tool.title} ↗</button>
         </article>`,
     )
@@ -432,7 +472,7 @@ function suiteIndexHtml() {
         <aside class="projects">
           <label>Project name <input id="project-title" placeholder="My next release" /></label>
           <label>Starting workflow <select id="project-tool">${tools.map((tool) => `<option value="${tool.id}">${tool.title}</option>`).join("")}</select></label>
-          <label>Network <select id="project-network"><option value="shadownet">Shadownet (recommended for testing)</option><option value="mainnet">Mainnet</option></select></label>
+          <label>Network <select id="project-network"><option value="shadownet">Shadownet (recommended for testing)</option>${alphaShadownetOnly ? "" : '<option value="mainnet">Mainnet</option>'}</select></label>
           <button id="create-project" type="button">Create project</button>
           <button id="export-project" type="button">Export active manifest</button>
           <label>Import manifest <input id="import-project" type="file" accept="application/json,.json" /></label>
@@ -463,7 +503,7 @@ function suiteIndexHtml() {
           <button id="connect-wallet" type="button">Connect wallet</button>
         </div>
         <div class="manager-row">
-          <label>Network <select id="contract-network"><option value="shadownet">Shadownet</option><option value="mainnet">Mainnet</option></select></label>
+          <label>Network <select id="contract-network"><option value="shadownet">Shadownet</option>${alphaShadownetOnly ? "" : '<option value="mainnet">Mainnet</option>'}</select></label>
           <label id="contract-address">Contract address <input id="contract-kt" placeholder="KT1…" /></label>
           <button id="open-contract" type="button">Open contract</button>
         </div>
@@ -487,6 +527,7 @@ function suiteIndexHtml() {
       (() => {
         const KEY = "wtfos.pasta.colander.workspace.v1";
         const SCHEMA = "pasta-project@1";
+        const ALPHA_SHADOWNET_ONLY = ${alphaShadownetOnly};
         const TOOL_IDS = new Set(["ch-ease", "macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]);
         const PROJECT_STAGES = new Set(["planning", "preparing", "deployed", "published", "archived"]);
         const CONTRACT_SOURCES = new Set(["deployed", "remembered", "colander"]);
@@ -543,6 +584,10 @@ function suiteIndexHtml() {
         const emit = (type, detail = {}) => window.dispatchEvent(new CustomEvent("pasta-protocol", { detail: { type, app: "colander", ...detail } }));
         const toolCard = (toolId) => Array.from(document.querySelectorAll(".tool-card")).find((card) => card.dataset.tool === toolId);
         function launchTool(toolId, project, contract) {
+          if (ALPHA_SHADOWNET_ONLY && project.network !== "shadownet") {
+            byId("suite-status").textContent = "This alpha opens only Shadownet projects. The imported Mainnet project remains saved for a later release.";
+            return false;
+          }
           const card = toolCard(toolId);
           if (!card) { byId("suite-status").textContent = "The owner app for this record is not installed in this suite."; return false; }
           const query = new URLSearchParams({ handoff: "colander-workspace", projectId: project.id, projectTitle: project.title, network: project.network, kind: toolId });
@@ -615,6 +660,10 @@ function suiteIndexHtml() {
             const verified = record.lastVerifiedAt ? "verified " + new Date(record.lastVerifiedAt).toLocaleString() : "not re-verified on this device";
             const row = resourceCard(record.label, record.address + " · " + record.network + " · " + verified);
             row.actions.appendChild(actionButton("Open in contract manager", () => {
+              if (ALPHA_SHADOWNET_ONLY && record.network !== "shadownet") {
+                byId("suite-status").textContent = "Mainnet contract management is unavailable in this Shadownet alpha.";
+                return;
+              }
               byId("contract-network").value = record.network === "shadownet" ? "shadownet" : "mainnet";
               byId("contract-kt").value = record.address;
               byId("open-contract").click();
@@ -870,7 +919,7 @@ function suiteIndexHtml() {
             renderActions();
           } catch (error) { openedContract = null; openedEntrypoints = new Set(); byId("contract-actions").innerHTML = ""; byId("contract-facts").textContent = "Could not open contract: " + (error.message || error); }
         };
-        byId("contract-network").value = localStorage.getItem("wtf:network") || "shadownet";
+        byId("contract-network").value = ALPHA_SHADOWNET_ONLY ? "shadownet" : (localStorage.getItem("wtf:network") || "shadownet");
         function refreshProjects() {
           try {
             const next = normalizeProjects(JSON.parse(localStorage.getItem(KEY) || "[]"));

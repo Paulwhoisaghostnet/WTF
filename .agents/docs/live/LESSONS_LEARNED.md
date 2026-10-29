@@ -11360,6 +11360,118 @@
 
 ---
 
+## 2026-10-27 — A changed precondition does not resolve a signed finalizer operation
+
+**What happened**: The Companion classified a changed FIFO cursor or arm precondition as a failed signed attempt before proving canonical absence. That released the journal's signer-wide single-flight guard even though the exact signed bytes could still be in a mempool or later block. The desktop adapter also trusted a lookalike loopback health response before sending its admin token to the configured port.
+
+**Why it mattered**: A second finalizer signature could be issued while the first remained unresolved, and another local process could receive the private admin token. A parked `manual_review` work item had no supported way for an operator to inspect its exact attempt and safely retry.
+
+**Rule**: Keep an unresolved signed attempt in a guarded journal state until finalized exact-operation or branch-expiry plus canonical-absence evidence resolves it. Expose only redacted attempt identity and chain status to the operator; requeue only when the same bytes or a proven-safe linked replacement can run, including a successor after a finalized exact failure. Prove loopback service identity with a fresh challenge before any admin-token request, and require exact Origin/Host on local write routes. Test installed-source copies and browser recovery controls, since source-level tests alone cannot establish a packaged alpha boundary.
+
+---
+
+## 2026-10-27 — Keep inventory selectors aligned with current creator entry copy
+
+**What happened**: The broad inventory run timed out in the cobwebsaints to Macaroni handoff. The test searched for an `Open Studio` link while Macaroni's actual entry link had already changed to `Create a secure drop`. It also tried to use a compatibility selector inside collapsed Advanced options without explicitly selecting that profile and asserted obsolete reveal copy.
+
+**Why it mattered**: The stale selector hid downstream handoff assertions and made a broad test failure look like an alpha regression.
+
+**Rule**: When creator entry copy or profile flow changes, update domain-owned inventory selectors and assertions to the current accessible UI, perform the explicit profile choice, and rerun the affected browser story. Use the failing page snapshot to distinguish stale test expectations from an absent interaction.
+
+---
+
+## 2026-10-27 — Publication retries need a visible state without an arbitrary cap
+
+**What happened**: A broken pinner could leave Macaroni publication work retrying on each block interval while the operator panel listed only parked signed work. A failed provider credential or CAR-root mismatch would therefore repeat with no useful correction path.
+
+**Why it mattered**: An NFT could be settled while its assigned media remained unpublished, with the creator unable to see whether the pinner was still retrying or needed configuration repair.
+
+**Rule**: Park deterministic authorization, configuration, and CAR-integrity failures with a safe diagnostic and operator retry after correction. Show transient publication retries without exposing raw provider errors or inventing a retry-count threshold.
+
+**Verification note**: The first browser rerun served an older `dist/public` and therefore failed against stale Studio copy. Rebuild the root app before browser assertions when static creation-tool files change; the rebuilt Macaroni story passed.
+
+---
+
+## 2026-10-27 — Apply release boundaries to every installer that embeds the worker
+
+**What happened**: Suite hardening was tested while standalone Macaroni still copied Companion through a broad directory denylist, accepted local export writes without the exact installed Origin and Host, and exposed Mainnet in its alpha UI.
+
+**Why it mattered**: The same Companion runtime was distributed through two installers, so protecting only Suite left a second alpha path with a weaker boundary.
+
+**Rule**: When a shared worker is packaged by more than one shell, verify the same source allowlist, network gate, local write boundary, and artifact smoke for each shipping shell before alpha handoff.
+
+---
+
+## 2026-10-27 — Alpha review branches need current dependency and inventory gates
+
+**What happened**: The Pasta alpha PR targeted an older review branch whose root lockfile failed the production audit before CI reached TypeScript or browser coverage. The broad local inventory then passed 717 of 718 stories but timed out at a Gamma IPFS test that still clicked the retired `Own-node setup` label; the current action is `Connect Porcupin` and opens the same route. The generated environment inventory also lagged the added test sources. A local TypeScript invocation hit Node's default 4 GB heap ceiling before producing diagnostics.
+
+**Why it mattered**: A clean alpha implementation could not obtain an honest green quality signal while an inherited dependency graph, a stale cross-domain selector, generated metadata, and a smaller local compiler heap obscured the actual result.
+
+**Rule**: When a feature PR starts from an older review base, audit its exact root lockfile and apply patched compatible dependencies without dropping branch-specific packages. Diagnose broad browser failures from the failing page snapshot and current accessible control, then rerun the affected story and full gate. Regenerate source-scanned inventories after test changes. Run TypeScript with the repository CI heap setting and distinguish heap exhaustion from compiler errors.
+
+---
+
+## 2026-10-27 — Rehearse current Studio review steps and defer upload directories until use
+
+**What happened**: The Macaroni UI-live fixture still selected Legacy contracts through a collapsed control, omitted the current capabilities response, expected pinning to enable deploy without a checklist refresh, lacked read-only origination estimates, and waited through new transaction review dialogs without approving them. After the Multer security update, `dest` created the production private-upload directory while the route module loaded; local API and health tests failed before receiving a request. Other unit assertions expected a retired IPFS gateway and metadata shape.
+
+**Why it mattered**: A stale fixture could falsely portray a functioning creator flow as blocked. Eager creation of a production mount path made route registration depend on host filesystem permissions, hiding both genuine and unrelated test results.
+
+**Rule**: Run the actual Studio UI against the current workflow, including explicit compatibility acknowledgement, read-only estimates, and each wallet review. Refresh launch readiness after pin success. Create private-upload directories when handling uploads, not at module import, and derive test gateway expectations from the shared gateway policy.
+
+---
+
+## 2026-10-27 — Reconcile creator setup from canonical chain values and immutable milestones
+
+**What happened**: An installed Macaroni V3.5 alpha on Shadownet applied contract origination, token declaration, edition-slot loading, and sale-stage setup. The Companion falsely failed origination after comparing TzKT-normalized JSON to the authored Micheline; a repeated creator-key check conflicted with its previously saved finalized level; final-batch reconciliation and the next-action check wrote incompatible milestone digests; and stage reconciliation looked up a numeric key in a decoded `MichelsonMap` whose keys were strings and compared millisecond plan timestamps to Tezos second timestamps.
+
+**Why it mattered**: Real creator transactions succeeded on-chain while the setup journal refused to advance. Blindly retrying those signatures could duplicate or conflict with irreversible contract operations.
+
+**Rule**: Re-read exact finalized operations from canonical Tezos RPC, compare reviewed code after only protocol-invariant top-level section ordering, and verify the resulting storage at a finalized block. Record a logical milestone once; subsequent checks must accept the same complete evidence and reject conflicting evidence. For Tezos storage, use decoded map key types and chain timestamp precision, and verify all sale terms. Recover a known false failure only against its existing operation hash and only when no newer attempt exists; never resubmit it to repair a journal discrepancy.
+
+---
+
+## 2026-10-27 — Pace privacy-preserving public index scans
+
+**What happened**: The installed Macaroni V3.5 alpha reached activation, but its public-only Objkt duplicate-CID scan made back-to-back GraphQL page requests. The Shadownet endpoint served 500 rows per request even when asked for 1,000 and returned HTTP 429 with an HTML body after roughly 40 rapid pages, so the preflight stopped as unavailable.
+
+**Why it mattered**: The fail-closed gate correctly prevented activation, but the default private full-scan path could not finish against the live provider under its observed rate limit.
+
+**Rule**: Preserve the private-CID boundary by paging public index rows locally. Pace requests below the measured provider burst and retry a 429 at the same cursor, honoring Retry-After when present. Treat other malformed or failed responses as unavailable rather than pretending the index was exhausted.
+
+---
+
+## 2026-10-27 — Pin the CI browser runner to a Playwright-supported OS
+
+**What happened**: The Pasta alpha PR quality job passed audit and policy gates but stopped before tests when `ubuntu-latest` resolved to Ubuntu 26.04 and Playwright 1.59.1 refused to install Chromium on that image.
+
+**Why it mattered**: Local Mac results were green, but the required GitHub quality job could not reach its unit, typecheck, build, and inventory checks because the runner image changed underneath it.
+
+**Rule**: Pin browser-bearing CI jobs to an OS version supported by the repository's installed Playwright release. Read the exact failed CI step before changing application code for a red quality job.
+
+---
+
+## 2026-10-27 — Prepare copied desktop sources before parity tests in CI
+
+**What happened**: The GitHub quality job reached unit tests on the supported Ubuntu runner, but four tests failed because a fresh checkout lacked generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` copies. The local checkout had those files from earlier desktop packaging, so local unit tests passed.
+
+**Why it mattered**: The unit job depended on ignored build outputs that were not created in its own workflow, hiding a CI-only failure behind a green local suite.
+
+**Rule**: If a test asserts packaged desktop parity, run the application's existing asset preparation script in that test job before the suite. Keep source allowlist and package policy enforcement in the preparation step.
+
+---
+
+## 2026-10-27 — Give OpenSSL fixture outputs separate temporary paths
+
+**What happened**: The full Ubuntu browser inventory completed 718 of 719 stories, then the Macaroni static collector story failed in its HTTPS fixture setup. It asked OpenSSL to write both a private key and certificate to `/dev/stdout`; that succeeded locally on macOS but failed on Linux.
+
+**Why it mattered**: The collector product flow itself was not reached on CI, and the final inventory gate stayed red after all other stories passed.
+
+**Rule**: Generate fixture keys and certificates into separate temporary files, read them into the local HTTPS server, and remove the files immediately. Keep platform-specific shell path behavior out of cross-platform browser fixtures.
+
+---
+
 ## 2026-10-27 — Correct reviewed claims in the mergeable document
 
 **What happened**: PR #38's review response remained mergeable as a file even after discussion comments identified false guarantees about Rotini storage and costs, payout fallback, marketplace support, and Macaroni recovery. A later implementation PR addressed several defects, but comments alone would have left the original claims in the repository if PR #38 merged.
