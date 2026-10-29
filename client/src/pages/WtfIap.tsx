@@ -64,6 +64,30 @@ const GameFrame = styled.iframe`
   background: #111719;
 `;
 
+const FundingOverlay = styled.div`
+  position: absolute;
+  z-index: 35;
+  top: 60px;
+  right: 12px;
+  bottom: 12px;
+  width: min(520px, calc(100% - 24px));
+  overflow: auto;
+  border: 1px solid #d9bb72;
+  border-radius: 10px;
+  background: #102322f2;
+  color: #f3ecd8;
+  box-shadow: 0 16px 48px #0009;
+
+  @media (max-width: 700px) {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: min(72vh, 620px);
+  }
+`;
+
 export function WtfIap() {
   const frameName = `wtfiap-${useId()}`;
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -154,21 +178,22 @@ export function WtfIap() {
             {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => { setFundingOpen(open => !open); setMenuOpen(false); }}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
           </div>}
         </ModeNavigation>
-        {fundingOpen && fundingRoom && <FundingPanel key={fundingRoom} roomCode={fundingRoom}
-          onReturn={() => setFundingOpen(false)} onEnterRoom={() => {
-            setEntryPath(`/colilseum/${encodeURIComponent(fundingRoom)}`);
-            setFundingOpen(false);
-          }} />}
         <GameFrame
           ref={frameRef}
           onLoad={() => setMenuOpen(false)}
-          style={fundingOpen ? { display: "none" } : undefined}
           name={frameName}
           title="coLILseum"
           src={frameSource}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
           allow="fullscreen; orientation-lock; clipboard-write"
         />
+        {fundingOpen && fundingRoom && <FundingOverlay role="dialog" aria-label="Room wager and escrow">
+          <FundingPanel key={fundingRoom} roomCode={fundingRoom}
+            onReturn={() => setFundingOpen(false)} onEnterRoom={() => {
+              setEntryPath(`/colilseum/${encodeURIComponent(fundingRoom)}`);
+              setFundingOpen(false);
+            }} />
+        </FundingOverlay>}
       </GameSurface>
     </AppWindow>
   );

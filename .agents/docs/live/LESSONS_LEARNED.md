@@ -12699,3 +12699,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A client-policy or inspection-permission failure is not evidence that the deployed application is broken, and changing service permissions or bypassing transport protections would weaken the proof.
 
 **Rule**: Diagnose the failing layer, retain certificate checks, use the established permitted public client, and use narrowly scoped read-only privilege for actual process inspection. Preserve sanitized evidence; do not alter service configuration merely to make an observer succeed.
+
+## 2026-10-28 — Open-seat wager recovery must stay in the room flow
+
+**What happened**: After a challenger sent an open-seat XTZ deposit, the game only polled the read-only escrow view. The server reconciliation that admits the challenger and starts the funded room was only triggered by a manual refresh. Opening funding also hid the room iframe, so returning could land the challenger back in the lobby without the seat context.
+
+**Rule**: Keep the hosted room mounted beneath funding UI. Once a challenger deposit is visible on-chain, invoke the existing reconciliation endpoint while the seat is activating; when the authoritative view marks the seat ready, claim it and return to that same room. Never ask the challenger to send the wager again based only on a stale room card.

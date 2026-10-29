@@ -1775,11 +1775,11 @@ Total: **690** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 - Priority: P1
 - Status: In Progress
 - Owner/Session: Codex coLILseum open-seat wagering
-- Last touched: 2026-10-24
+- Last touched: 2026-10-28
 - Score: C3 + F4 + S2 + P1(4) = 13
 - Evidence: The earlier escrow freezes two paying wallets at creation and requires both player seats before locking, so the creator cannot establish a wager in an empty Duel room. Timed Duel preparation also waited until its deadline after both players were ready.
 - Correction: A versioned XTZ Duel offer lets the creator stake entry plus 0.5 XTZ immediately, with the first finalized matching guest deposit claiming the seat. The guest can withdraw before start; an unmatched creator can cancel and recover entry plus fee. Existing rooms retain pinned rules. Both ready commanders start timed rounds early.
-- Verification: SmartPy scenarios, isolated PostgreSQL/HTTP and source-game state-transition tests, and 11 funding browser tests pass. Shadownet cancellation, settlement, treasury fee, and claim receipts are finalized. Mainnet origination `ooNDfL4A5E3NPD54DMexQFATXBa1PdmhCkuFKTDQwASzcjRw7Vx` finalized as `KT1Tz9f3584SxyHLWeoPiHhFPxWMJmqQzTaL` with the same code hash. Production app activation and a real linked-wallet end-to-end room remain pending.
+- Verification: SmartPy scenarios, isolated PostgreSQL/HTTP and source-game state-transition tests, and 11 funding browser tests pass. Shadownet cancellation, settlement, treasury fee, and claim receipts are finalized. Mainnet origination `ooNDfL4A5E3NPD54DMexQFATXBa1PdmhCkuFKTDQwASzcjRw7Vx` finalized as `KT1Tz9f3584SxyHLWeoPiHhFPxWMJmqQzTaL` with the same code hash. Client recovery now keeps the room iframe mounted, reconciles a confirmed challenger deposit while the seat is activating, and enters the same room when the seat is ready. A real linked-wallet end-to-end room remains pending.
 
 ### WTF-BB-701 - Mainnet WTF wagers lack a verified escrow and dedicated signer lane
 

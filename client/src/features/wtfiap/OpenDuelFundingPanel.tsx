@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { styled } from 'styled-components';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
@@ -10,7 +10,7 @@ import { createFundingActionLatch } from './funding-checkpoint';
 import { formatFundingAmount, type FundingWalletAction } from './funding-types';
 
 const Surface = styled.section`
-  flex:1; min-height:0; overflow:auto; padding:20px; background:var(--wtf-window-color,#c0c0c0); color:var(--wtf-text-color,#111);
+  min-height:0; overflow:auto; padding:18px; box-sizing:border-box; background:transparent; color:inherit;
   h2{margin:0 0 8px} p{line-height:1.45} button{padding:10px 14px;cursor:pointer} button:disabled{opacity:.6;cursor:default}
   button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
   .primary{background:#285d4c;color:#fff;border:1px solid #17372f;font-weight:700}
@@ -36,6 +36,7 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
   const latch=useMemo(()=>createFundingActionLatch(`wtfiap-open-duel:${account}:${roomCode}`),[account,roomCode]);
   const [view,setView]=useState<View|null>(null),[busy,setBusy]=useState(false),[waiting,setWaiting]=useState(false);
   const [message,setMessage]=useState(''),[error,setError]=useState('');
+  const autoClaimed=useRef<string|null>(null),reconciling=useRef(false);
   const [pending,setPending]=useState<{entrypoint:string;opHash:string}|null>(()=>{
     if(!account)return null;
     try{return JSON.parse(localStorage.getItem(checkpointKey(account,roomCode))||'null');}catch{return null;}
@@ -52,13 +53,23 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
     return result.room;
   }
   useEffect(()=>{if(!account)return;let active=true;
-    const tick=()=>{void api.get<{ok:true;room:View}>(endpoint(roomCode)).then(result=>{
+    const tick=async()=>{try{
+      let result=await api.get<{ok:true;room:View}>(endpoint(roomCode));
+      if(!active)return;
+      if(result.room.guestDepositVerified&&!result.room.guestSeatReady&&!reconciling.current){
+        reconciling.current=true;
+        try {
+          await api.post(endpoint(roomCode)+'/reconcile',{});
+          result=await api.get<{ok:true;room:View}>(endpoint(roomCode));
+        } finally { reconciling.current=false; }
+      }
       if(!active)return;setView(result.room);
       if(pending&&complete(result.room,pending.entrypoint)){
         localStorage.removeItem(checkpointKey(account,roomCode));setPending(null);
       }
-    }).catch(reason=>{if(active)setError((reason as Error).message);});};
-    tick();const timer=window.setInterval(tick,3000);return()=>{active=false;window.clearInterval(timer);};
+    }catch(reason){if(active)setError((reason as Error).message);}};
+    autoClaimed.current=null;void tick();const timer=window.setInterval(()=>void tick(),3000);
+    return()=>{active=false;window.clearInterval(timer);};
   },[account,roomCode,pending?.opHash]);
   async function action(work:()=>Promise<void>,allowPending=false){if(busy||pending&&!allowPending||latch.active)return;setBusy(true);setError('');setMessage('');
     try{await latch.run(work);}catch(reason){setError((reason as Error).message);}finally{setBusy(false);}}
@@ -104,6 +115,16 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
     localStorage.setItem('autobattler:party-session:'+roomCode,JSON.stringify({...result.seat,role:'player',pending:null}));
     setMessage('Your funded commander is ready. Opening the arena.');onEnterRoom();
   }
+  useEffect(()=>{
+    const key=account?`${account}:${roomCode}`:null;
+    if(!key||!view?.guestSeatReady||busy||pending||autoClaimed.current===key)return;
+    autoClaimed.current=key;
+    setBusy(true);setError('');
+    void latch.run(claimSeat).catch(reason=>{
+      setError((reason as Error).message);
+      if(autoClaimed.current===key)autoClaimed.current=null;
+    }).finally(()=>setBusy(false));
+  },[account,roomCode,view?.guestSeatReady,busy,pending?.opHash]);
   if(!user)return <Surface><h2>Open-seat wager</h2><p>Sign in before staking or claiming a duel seat.</p><button onClick={onReturn}>Return</button></Surface>;
   const entry=view?formatFundingAmount(view.terms.entryAtomic,6):'—';
   const total=view?formatFundingAmount((BigInt(view.terms.entryAtomic)+BigInt(view.houseFeeAtomic)).toString(),6):'—';
@@ -123,7 +144,7 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
       </button>}
       {view?.self.actions.claim&&!pending&&<button className="primary" disabled={busy} onClick={()=>void action(()=>send(view.self.actions.claim!))}>Claim prize</button>}
       {view?.guestSeatReady&&<button className="primary" disabled={busy} onClick={()=>void action(claimSeat)}>Enter funded match</button>}
-      <button disabled={busy} onClick={()=>void action(async()=>{await api.post(endpoint(roomCode)+'/reconcile',{});await refresh();},true)}>Recheck</button>
+      <button disabled={busy} onClick={()=>void action(async()=>{await api.post(endpoint(roomCode)+'/reconcile',{});await refresh();},true)}>Refresh escrow status</button>
       <button onClick={onReturn}>Return to game</button>
     </div>
     {view&&<dl><dt>Room</dt><dd>{roomCode}</dd><dt>Network</dt><dd>{network}</dd>
@@ -136,6 +157,7 @@ export function OpenDuelFundingPanel({roomCode,onReturn,onEnterRoom}:{roomCode:s
         view.chainStatus==='settled'?'Winner claims from escrow.':'Winner claims after settlement.'}</dd>
       <dt>Treasury</dt><dd><code>{view.treasuryAddress}</code></dd></dl>}
     {pending&&<p className="status" role="status">Wallet operation submitted: <code>{pending.opHash}</code>. Verification is pending; no second payment is needed.</p>}
+    {view?.guestDepositVerified&&!view.guestSeatReady&&<p className="status" role="status">Your entry is confirmed on-chain. The room is activating your seat now; you do not need to stake again. This panel will open the same match as soon as the seat is ready.</p>}
     {view&&!view.self.isHost&&!view.chainStatus&&<p className="status">Waiting for the creator to stake this wager. Return with the room link to claim its open seat.</p>}
     {message&&<p className="status" role="status">{message}</p>}
     {error&&<p className="error" role="alert">{error}</p>}
