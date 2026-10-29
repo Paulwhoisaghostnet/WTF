@@ -11469,3 +11469,13 @@
 **Why it mattered**: The collector product flow itself was not reached on CI, and the final inventory gate stayed red after all other stories passed.
 
 **Rule**: Generate fixture keys and certificates into separate temporary files, read them into the local HTTPS server, and remove the files immediately. Keep platform-specific shell path behavior out of cross-platform browser fixtures.
+
+---
+
+## 2026-10-27 — Correct reviewed claims in the mergeable document
+
+**What happened**: PR #38's review response remained mergeable as a file even after discussion comments identified false guarantees about Rotini storage and costs, payout fallback, marketplace support, and Macaroni recovery. A later implementation PR addressed several defects, but comments alone would have left the original claims in the repository if PR #38 merged.
+
+**Why it mattered**: A reviewer or future implementer could treat the merged document as an approved implementation plan despite corrections existing only in the conversation. Its historical snapshot and the later alpha candidate also needed separate evidence labels.
+
+**Rule**: Before merging a review or design document, reconcile its assertions with the exact reviewed source and later verified changes in the document itself. Keep proposals conditional, identify the target commit, and distinguish source findings, implementation evidence, and remaining release work. Re-run the PR against its actual integration base rather than attributing another PR's green checks to it.
