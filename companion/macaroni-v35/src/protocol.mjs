@@ -7,6 +7,14 @@ export const ALLOCATION_DOMAIN = Buffer.from("macaroni-v35/allocation/v1", "utf8
 export const METADATA_DOMAIN = Buffer.from("macaroni-v35/metadata/v1", "utf8");
 export const RECOVERY_VERSION = "macaroni-v35-reverse-hash-chain.v1";
 
+export function orderedMichelsonCodeSections(code) {
+  if (!Array.isArray(code)) return null;
+  // The Tezos protocol permits these top-level sections in any order; RPCs
+  // and indexers may return a different order from the authored artifact.
+  const key = (section) => `${section?.prim || ""}:${section?.prim === "view" ? section?.args?.[0]?.string || "" : ""}`;
+  return [...code].sort((left, right) => key(left).localeCompare(key(right)));
+}
+
 export function normalizedHex(value, bytes = null) {
   const hex = Buffer.isBuffer(value) || value instanceof Uint8Array
     ? Buffer.from(value).toString("hex")

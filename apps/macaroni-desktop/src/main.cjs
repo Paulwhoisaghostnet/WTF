@@ -6,6 +6,7 @@ const fsp = require("node:fs/promises");
 const http = require("node:http");
 const path = require("node:path");
 const { listenOnStableOrigin } = require("./loopback-origin.cjs");
+const { isSameOrigin, isTrustedMutation } = require("./local-boundary.cjs");
 
 const PRODUCT_NAME = "Macaroni Studio";
 const COMPANION_SETUP_IPC_CHANNEL = "macaroni:companion-setup";
@@ -175,6 +176,10 @@ async function handleRequest(req, res) {
   setBaseHeaders(res);
   const parsed = new URL(req.url || "/", "http://127.0.0.1");
 
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !isTrustedMutation(req.headers, baseUrl)) {
+    return sendJson(res, 403, { error: "studio_origin_required", message: "This local action requires the installed Macaroni Studio origin." });
+  }
+
   if (parsed.pathname.startsWith("/api/macaroni/v35/companion")) {
     if (companionAdapter && await companionAdapter.proxy(req, res, parsed)) return;
     return sendJson(res, 404, {
@@ -244,6 +249,7 @@ async function startCompanionAdapter() {
     runtimeRoot: path.join(app.getPath("userData"), "macaroni-v35-companion"),
     studioOrigin: baseUrl,
     managementUrl: `${baseUrl}/studio.html#secure-v35-companion`,
+    alphaShadownetOnly: app.getVersion().includes("-alpha."),
     launchChild: (modulePath, args, options) => utilityProcess.fork(modulePath, args, options),
   });
   await companionAdapter.initialize();
@@ -315,7 +321,7 @@ function createWindow() {
   });
 
   mainWindow.webContents.on("will-navigate", (event, navigationUrl) => {
-    if (navigationUrl.startsWith(baseUrl)) return;
+    if (isSameOrigin(navigationUrl, baseUrl)) return;
     event.preventDefault();
     if (isSafeExternalUrl(navigationUrl)) shell.openExternal(navigationUrl).catch(() => {});
   });

@@ -4,6 +4,7 @@ import { Parser } from "@taquito/michel-codec";
 import { MichelsonMap, ParameterSchema, Schema, UnitValue } from "@taquito/michelson-encoder";
 import { digest } from "./journal.mjs";
 import { CompanionServiceError } from "./project-service.mjs";
+import { orderedMichelsonCodeSections } from "./protocol.mjs";
 
 const OPERATION = /^o[1-9A-HJ-NP-Za-km-z]{50}$/;
 const IMPLICIT = /^(tz1|tz2|tz3|tz4)[1-9A-HJ-NP-Za-km-z]{33}$/;
@@ -13,6 +14,11 @@ const BEACON_VERSION = /^[0-9]+(?:\.[0-9]+)*$/;
 
 function address(value) {
   return typeof value === "string" ? value : value?.address || null;
+}
+
+function exactMichelsonCodeDigest(code) {
+  const ordered = orderedMichelsonCodeSections(code);
+  return ordered ? digest(ordered) : null;
 }
 
 function nat(value, label) {
@@ -116,6 +122,24 @@ export class CompanionCreatorSetup {
     this.projectService = projectService;
     this.runtime = runtime;
     this.artifactPromise = null;
+  }
+
+  completeMilestone(project, stepKey, expectedPostcondition, finalizedBatches = []) {
+    const existing = this.journal.creatorStep(project.drop_ref, stepKey);
+    if (!existing) {
+      return this.journal.completeCreatorStep({
+        dropRef: project.drop_ref, stepKey, network: project.network,
+        signer: project.administrator, expectedPostcondition,
+      });
+    }
+    const lastBatch = finalizedBatches.at(-1);
+    const sameTally = digest(existing.expectedPostcondition) === digest(expectedPostcondition);
+    const sameFinalBatch = lastBatch?.state === "complete" && Boolean(lastBatch.final_batch)
+      && existing.expectedPostcondition?.finalBatch === lastBatch.batch_index;
+    if (existing.state !== "complete" || (!sameTally && !sameFinalBatch)) {
+      throw new CompanionServiceError("creator_milestone_conflict", `The saved ${stepKey} milestone conflicts with finalized inventory`, 409);
+    }
+    return existing;
   }
 
   async artifact() {
@@ -421,7 +445,12 @@ export class CompanionCreatorSetup {
       const estimate = await this.liveTransfer(project, key.publicKey, "reveal_creator_key", null, 1);
       return this.prepareAction({ project, logicalStep: "reveal_creator_key", semantic: null, amountMutez: 1, liveEstimate: estimate });
     }
-    this.journal.completeCreatorStep({ dropRef, stepKey: "reveal_creator_key", network: project.network, signer: project.administrator, expectedPostcondition: { managerKeyRevealed: true, finalizedBlock: key.level } });
+    const revealedStep = this.journal.creatorStep(dropRef, "reveal_creator_key");
+    if (!revealedStep) {
+      this.journal.completeCreatorStep({ dropRef, stepKey: "reveal_creator_key", network: project.network, signer: project.administrator, expectedPostcondition: { managerKeyRevealed: true, finalizedBlock: key.level } });
+    } else if (revealedStep.state !== "complete" || revealedStep.expectedPostcondition?.managerKeyRevealed !== true) {
+      throw new CompanionServiceError("creator_reveal_step_conflict", "The saved creator-key reveal has not been safely completed", 409);
+    }
     if (!project.contract_address) {
       const origination = await this.buildOrigination(project, plan);
       const estimate = await this.requireInjectableSize(await this.watcher.estimateCreatorOrigination({
@@ -444,7 +473,7 @@ export class CompanionCreatorSetup {
       const finalBatch = selected.rows.length === tokenRows.length;
       return this.prepareAction({ project, logicalStep: "add_tokens_v35", semantic: selected.rows, batchIndex, finalBatch, liveEstimate: selected.estimate, chunk: { batchIndex, finalBatch, rows: selected.rows.length } });
     }
-    this.journal.completeCreatorStep({ dropRef, stepKey: "inventory_declared", network: project.network, signer: project.administrator, expectedPostcondition: { tokenRows: tokens.length } });
+    this.completeMilestone(project, "inventory_declared", { tokenRows: tokens.length }, tokenBatches);
     const slotBatches = completedBatches("append_token_slots_v35");
     const loaded = new Map();
     for (const step of slotBatches) for (const row of step.parameters.wallet || []) loaded.set(row.token_id, (loaded.get(row.token_id) || 0) + row.count);
@@ -455,7 +484,7 @@ export class CompanionCreatorSetup {
       const finalBatch = selected.units === slotsRemaining;
       return this.prepareAction({ project, logicalStep: "append_token_slots_v35", semantic: selected.rows, batchIndex, finalBatch, liveEstimate: selected.estimate, chunk: { batchIndex, finalBatch, rows: selected.rows.length, units: selected.units } });
     }
-    this.journal.completeCreatorStep({ dropRef, stepKey: "inventory_complete", network: project.network, signer: project.administrator, expectedPostcondition: { physicalSlots: project.physical_supply } });
+    this.completeMilestone(project, "inventory_complete", { physicalSlots: project.physical_supply }, slotBatches);
     if (!this.journal.creatorStep(dropRef, "set_stages")?.state.includes("complete")) {
       const semantic = plan.stages.map((stage) => ({ stage: stage.stage, start: stage.start, price_mutez: stage.priceMutez, use_allowlist: stage.useAllowlist, max_per_wallet: stage.maxPerWallet }));
       return this.prepareAction({ project, logicalStep: "set_stages", semantic, liveEstimate: await this.liveTransfer(project, key.key, "set_stages", semantic) });
@@ -469,7 +498,7 @@ export class CompanionCreatorSetup {
       const finalBatch = selected.rows.length === remainingAllowlist.length;
       return this.prepareAction({ project, logicalStep: "set_allowlist", semantic: selected.rows, batchIndex, finalBatch, liveEstimate: selected.estimate, chunk: { batchIndex, finalBatch, rows: selected.rows.length } });
     }
-    this.journal.completeCreatorStep({ dropRef, stepKey: "allowlist_complete", network: project.network, signer: project.administrator, expectedPostcondition: { rows: plan.allowlist.length } });
+    this.completeMilestone(project, "allowlist_complete", { rows: plan.allowlist.length }, allowBatches);
     if (this.journal.creatorStep(dropRef, "finalize_setup")?.state !== "complete") {
       return this.prepareAction({ project, logicalStep: "finalize_setup", semantic: null, liveEstimate: await this.liveTransfer(project, key.key, "finalize_setup", null) });
     }
@@ -504,7 +533,7 @@ export class CompanionCreatorSetup {
       if (address(row.sender) !== attempt.signer) return false;
       if (attempt.entrypoint === "origination") {
         return Number(row.contractBalance ?? 0) === attempt.amount_mutez
-          && digest(row.code) === digest(attempt.parameters.code)
+          && exactMichelsonCodeDigest(row.code) === exactMichelsonCodeDigest(attempt.parameters.code)
           && digest(row.storage) === digest(attempt.parameters.storage)
           && (!appliedOnly || /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(address(row.originatedContract) || ""));
       }
@@ -630,7 +659,23 @@ export class CompanionCreatorSetup {
     const project = this.journal.getProject(dropRef);
     const attempt = this.journal.creatorAttempt(attemptId);
     if (!project || !attempt || attempt.drop_ref !== dropRef || !attempt.operation_hash) throw new CompanionServiceError("creator_attempt_not_submitted", "Creator action has no submitted operation to reconcile", 409);
-    if (["applied", "failed", "expired"].includes(attempt.state)) return this.actionResponse(attempt);
+    if (["applied", "expired"].includes(attempt.state)) return this.actionResponse(attempt);
+    if (attempt.state === "failed") {
+      // Recheck only known historical false negatives using the same durable
+      // operation hash. Never reopen a terminal chain failure or supersede a
+      // newer wallet attempt.
+      const recoverableOrigination = attempt.entrypoint === "origination"
+        && attempt.error === "Final origination does not match the exact signer, code, storage, amount, or derived KT1";
+      const recoverableStage = attempt.entrypoint === "set_stages"
+        && attempt.error === "Final transaction matched, but its exact expected contract result is absent";
+      if (!recoverableOrigination && !recoverableStage) {
+        return this.actionResponse(attempt);
+      }
+      const latest = this.journal.latestCreatorAttemptForStep(attempt.setup_step_id);
+      if (latest?.id !== attempt.id) {
+        throw new CompanionServiceError("creator_recovery_conflict", "A newer creator attempt exists; the old origination cannot be automatically recovered", 409);
+      }
+    }
     const status = await this.watcher.creatorSubmissionStatus(attempt);
     if (["not_indexed_within_ttl", "indexed_waiting_finality", "canonical_inclusion_not_indexed"].includes(status.state)) {
       const updated = this.journal.reconcileCreatorAttempt(dropRef, attemptId, "needs_reconciliation", status, "Exact operation is not final yet; do not sign it again");
@@ -663,14 +708,7 @@ export class CompanionCreatorSetup {
   }
 
   async reconcileOrigination(project, attempt, rows, finalized) {
-    const expected = attempt.parameters;
-    const match = rows.find((row) => row.status === "applied"
-      && address(row.sender) === attempt.signer
-      && Number(row.contractBalance ?? 0) === attempt.amount_mutez
-      && digest(row.code) === digest(expected.code)
-      && digest(row.storage) === digest(expected.storage)
-      && Number(row.level) <= finalized.level
-      && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(address(row.originatedContract) || ""));
+    const match = this.matchingCreatorRows(attempt, rows, { appliedOnly: true, finalizedLevel: finalized.level })[0];
     if (!match) return { applied: false, reason: "Final origination does not match the exact signer, code, storage, amount, or derived KT1" };
     const originatedContract = address(match.originatedContract);
     await this.watcher.verifyContractBinding({ ...project, contract_address: originatedContract }, [], { requirePristine: true, atBlock: finalized.blockHash });
@@ -709,9 +747,11 @@ export class CompanionCreatorSetup {
       const size = Number(storage.stages.size ?? [...storage.stages.keys()].length);
       if (size !== rows.length) return false;
       for (const row of rows) {
-        const stage = await storage.stages.get(row.stage);
+        const stage = await storage.stages.get(String(row.stage));
+        const maxPerWallet = stage?.max_per_wallet?.Some ?? null;
         if (!stage || nat(stage.price, "stage price") !== row.price_mutez || Boolean(stage.use_allowlist) !== row.use_allowlist
-          || new Date(stage.start).getTime() !== new Date(row.start).getTime()) return false;
+          || Math.floor(new Date(stage.start).getTime() / 1000) !== Math.floor(new Date(row.start).getTime() / 1000)
+          || (row.max_per_wallet == null ? maxPerWallet !== null : nat(maxPerWallet, "stage wallet cap") !== row.max_per_wallet)) return false;
       }
       return true;
     }

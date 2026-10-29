@@ -93,22 +93,24 @@ test.describe("interaction inventory - cobwebsaints account readiness", () => {
     await page.goto("/tools/macaroni", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Macaroni").first()).toBeVisible();
     const macaroniFrame = page.frameLocator('iframe[title="Macaroni"]');
-    await macaroniFrame.getByRole("link", { name: /Open Studio/ }).click();
+    await macaroniFrame.getByRole("link", { name: /Create a secure drop/ }).click();
     await expect(macaroniFrame.locator("#pinAccessHint")).toContainText(
       "wtfOS pinning and wtfOS subdomain publishing are enabled",
     );
+    await macaroniFrame.locator("#advancedOptions summary").click();
     await macaroniFrame.locator("#contractVersion").selectOption("macaroni-commitment-v3");
+    await macaroniFrame.locator("#btnUseCompatibilityProfile").click();
     await expect(macaroniFrame.locator("#contractVersionHint")).toContainText(
-      "seals inventory before sale",
+      "fixes creator-defined order before sale",
     );
     await expect(macaroniFrame.locator("#contractVersionHint")).toContainText(
-      "not provable randomness",
+      "does not claim provably random selection",
     );
     await expect(macaroniFrame.locator("#revealHint")).toContainText(
-      "one free signature proving control of the contract",
+      "Artwork displays automatically after fulfillment",
     );
     await expect(macaroniFrame.locator("#revealHint")).toContainText(
-      "does not send a transaction or charge tez",
+      "allocation is locked",
     );
     await macaroniFrame.getByRole("tab", { name: "Drop Page Designer" }).click();
     await expect(macaroniFrame.locator("#publishWtfOSGate")).toBeVisible();

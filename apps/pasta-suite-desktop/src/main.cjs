@@ -8,6 +8,7 @@ const path = require("node:path");
 const { installStoredSite, listStoredSites, removeStoredSite, resolveHostedSitePath } = require("./site-archive.cjs");
 const { resolveStaticPath } = require("./static-path.cjs");
 const { listenOnStableOrigin } = require("./loopback-origin.cjs");
+const { isSameOrigin, isTrustedMutation } = require("./local-boundary.cjs");
 
 const PRODUCT_NAME = "Pasta Suite";
 const COMPANION_SETUP_IPC_CHANNEL = "macaroni:companion-setup";
@@ -166,6 +167,10 @@ function hostedSitePath(urlPath) {
   return resolveHostedSitePath(hostedSitesRoot(), urlPath);
 }
 
+function trustedMutation(req) {
+  return isTrustedMutation(req.headers, baseUrl);
+}
+
 async function listHostedSites() {
   return listStoredSites(hostedSitesRoot());
 }
@@ -252,6 +257,10 @@ function redirectToTool(parsed, res) {
 async function handleRequest(req, res) {
   setBaseHeaders(res);
   const parsed = new URL(req.url || "/", "http://127.0.0.1");
+
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !trustedMutation(req)) {
+    return sendJson(res, 403, { error: "suite_origin_required", message: "This local action requires the installed Pasta Suite origin." });
+  }
 
   if (parsed.pathname.startsWith("/api/macaroni/v35/companion")) {
     if (companionAdapter && await companionAdapter.proxy(req, res, parsed)) return;
@@ -359,6 +368,7 @@ async function startCompanionAdapter() {
     runtimeRoot: path.join(app.getPath("userData"), "macaroni-v35-companion"),
     studioOrigin: baseUrl,
     managementUrl: `${baseUrl}/creation-tools/macaroni/studio.html#secure-v35-companion`,
+    alphaShadownetOnly: app.getVersion().includes("-alpha."),
     launchChild: (modulePath, args, options) => utilityProcess.fork(modulePath, args, options),
   });
   await companionAdapter.initialize();
@@ -374,12 +384,16 @@ function isSafeExternalUrl(value) {
   }
 }
 
+function isSuiteUrl(value) {
+  return isSameOrigin(value, baseUrl);
+}
+
 function shouldAllowPopup(value) {
   if (value === "about:blank") return true;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" && url.protocol !== "http:") return false;
-    if (baseUrl && value.startsWith(baseUrl)) return true;
+    if (isSuiteUrl(value)) return true;
     return [
       "kukai.app",
       "shadownet.kukai.app",
@@ -412,14 +426,15 @@ function createWindow() {
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (shouldAllowPopup(url)) {
+      const local = isSuiteUrl(url);
       return {
         action: "allow",
         overrideBrowserWindowOptions: {
-          width: url.startsWith(baseUrl) ? 1200 : 520,
-          height: url.startsWith(baseUrl) ? 850 : 760,
-          title: url.startsWith(baseUrl) ? "Pasta tool" : "Pasta wallet",
+          width: local ? 1200 : 520,
+          height: local ? 850 : 760,
+          title: local ? "Pasta tool" : "Pasta wallet",
           webPreferences: {
-            preload: path.join(__dirname, "preload.cjs"),
+            ...(local ? { preload: path.join(__dirname, "preload.cjs") } : {}),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
@@ -432,7 +447,7 @@ function createWindow() {
   });
 
   mainWindow.webContents.on("will-navigate", (event, navigationUrl) => {
-    if (navigationUrl.startsWith(baseUrl)) return;
+    if (isSuiteUrl(navigationUrl)) return;
     event.preventDefault();
     if (isSafeExternalUrl(navigationUrl)) shell.openExternal(navigationUrl).catch(() => {});
   });

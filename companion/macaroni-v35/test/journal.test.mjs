@@ -142,3 +142,57 @@ test("signed work survives a crash lease and finalizer signing is globally singl
   journal.completeWork(firstWork.id);
   assert.doesNotThrow(() => readyAttempt(journal, secondWork, "drop-b"));
 });
+
+test("manual review preserves the unresolved signed intent's global signing guard", async (t) => {
+  const { journal } = await journalFixture(t);
+  createProject(journal, "drop-review-a", "a");
+  createProject(journal, "drop-review-b", "b");
+  const work = settlementWork(journal, "drop-review-a", "claim-0");
+  readyAttempt(journal, work, "drop-review-a");
+  journal.persistSigned({
+    workItemId: work.id,
+    operationHash: "operation-awaiting-chain-proof",
+    signedBytesPath: "/private/awaiting-chain-proof.enc",
+    signedBytesSha256: "a".repeat(64),
+    branch: "block-a",
+    branchLevel: 100,
+    managerCounter: "7",
+  });
+  journal.manualReviewWork(work.id, "fifo_cursor_changed");
+  assert.equal(journal.listAttentionWork("drop-review-a")[0].id, work.id);
+  assert.equal(journal.getOperationForWork(work.id).signed_attempt_state, "signed");
+  assert.throws(() => readyAttempt(journal, settlementWork(journal, "drop-review-b", "claim-0"), "drop-review-b"), /serialized across projects/);
+});
+
+test("a finalized exact failure permits a linked successor but an unproved failure does not", async (t) => {
+  const { journal } = await journalFixture(t);
+  createProject(journal, "drop-failed", "a");
+  const work = settlementWork(journal, "drop-failed", "claim-0");
+  readyAttempt(journal, work, "drop-failed");
+  journal.persistSigned({
+    workItemId: work.id,
+    operationHash: "operation-failed",
+    signedBytesPath: "/private/failed.signed.enc",
+    signedBytesSha256: "a".repeat(64),
+    branch: "block-a",
+    branchLevel: 100,
+    managerCounter: "7",
+  });
+  assert.throws(() => journal.reconcileOperation(work.id, "failed", { reason: "operation_failed" }), /finalized exact-operation evidence/);
+  journal.reconcileOperation(work.id, "failed", {
+    reason: "operation_failed", operationHash: "operation-failed", level: 110, finalizedAtHeadLevel: 112,
+  });
+  journal.manualReviewWork(work.id, "operation_failed");
+  journal.retryWork(work.id, Date.now(), "Operator requested a chain-checked recovery");
+  journal.persistSigned({
+    workItemId: work.id,
+    operationHash: "operation-successor",
+    signedBytesPath: "/private/successor.signed.enc",
+    signedBytesSha256: "b".repeat(64),
+    branch: "block-b",
+    branchLevel: 113,
+    managerCounter: "8",
+  });
+  assert.equal(journal.getOperationForWork(work.id).attempt_number, 2);
+  assert.equal(journal.getOperationForWork(work.id).operation_hash, "operation-successor");
+});
