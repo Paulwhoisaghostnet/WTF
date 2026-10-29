@@ -2,7 +2,7 @@
 
 **Original review:** skllz (@skullzarmy), against [`b351cccd`](https://github.com/Paulwhoisaghostnet/WTF/commit/b351cccd4b1b5958ab668f2fad22d089672946c4) and the `pasta-review-2026-10-06` unsigned macOS review package
 
-**Technical correction:** Nimrod, 2026-10-27, incorporating the discussion in [PR #38](https://github.com/Paulwhoisaghostnet/WTF/pull/38) and the separate implementation in [draft PR #48](https://github.com/Paulwhoisaghostnet/WTF/pull/48)
+**Technical correction:** Nimrod, 2026-10-27, incorporating the discussion in [PR #38](https://github.com/Paulwhoisaghostnet/WTF/pull/38) and the separate implementation in [PR #48](https://github.com/Paulwhoisaghostnet/WTF/pull/48), now merged into the review branch
 
 This document records useful observations and candidate Aleatory patterns without treating a proposal as a verified Pasta implementation. The review target above is a historical snapshot. PR #48 contains later alpha corrections and evidence; neither PR is a production or Mainnet signoff.
 
@@ -57,7 +57,7 @@ PR #48 corrects the alpha Macaroni recovery and desktop boundaries above. Its fu
 
 Recommended sequence:
 
-1. Integrate and review the concrete alpha corrections in PR #48 on the review branch; keep the release labeled as a controlled Shadownet alpha.
+1. Use the PR #48 corrections now integrated on the review branch as the controlled Shadownet alpha baseline; do not present that baseline as a public or Mainnet release.
 2. Choose the exact supported tool/mode/platform matrix. Prove each advertised complete user outcome against its matching source and contract artifacts, including the retained Ravioli/Rotini/Gnocchi proof and payment/recovery findings. Keep unverified tools visibly preview or unavailable.
 3. Exercise the remotely hosted collector, backup/restore and custody handoff, service capacity/funding, public status, and failure recovery for any managed Macaroni offer. Prepare signed/notarized packages for public macOS distribution and verify the exact distributed bytes.
 4. Specify specialist provider offers and local/self-run adapters in parallel, without making a full marketplace or a Rotini lifecycle migration a prerequisite for a narrower verified release.
