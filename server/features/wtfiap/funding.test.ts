@@ -171,12 +171,22 @@ test("funded rooms bind exact linked humans, freeze terms and do not mistake sub
 });
 
 test("lost signer response survives restart as reconciliation-only; no fresh request ID can double-submit", async () => {
-  const f = fixture(), s = await open(f); f.loseResponse(); await s.drain(); await s.close();
+  const f = fixture(), s = await open(f); f.loseResponse(); await s.drain();
   assert.equal(f.rows.get("test-room")!.intents[0].status, "submission-unknown");
+  assert.match((await s.view("test-room", "1")).health.error || "", /Submission outcome is unknown/);
+  assert.equal(s.health.error, null, "a blocked room must not fail the entire worker");
+  assert.equal(s.health.blockedRoomCount, 1, "operator health still counts blocked rooms");
+  assert.equal(Object.hasOwn((await s.view("test-room", "1")).health, "blockedRoomCount"), false,
+    "aggregate operator diagnostics must not leak into a room view");
+  await s.close();
   const recovered = f.service(); await recovered.drain(); await recovered.drain();
+  assert.equal(recovered.health.error, null);
+  assert.equal(recovered.health.blockedRoomCount, 1);
+  assert.match((await recovered.view("test-room", "1")).health.error || "", /Submission outcome is unknown/);
   assert.equal(f.submissions.length, 1);
   f.observe(1); await recovered.drain();
   assert.equal(f.rows.get("test-room")!.intents[0].status, "applied");
+  assert.equal(recovered.health.blockedRoomCount, 0);
   assert.equal(f.submissions.length, 1); await recovered.close();
 });
 

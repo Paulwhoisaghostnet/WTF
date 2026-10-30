@@ -159,10 +159,28 @@ test('hosted WTFIAP preserves authority, privacy, CSRF, live updates and durable
     assert.equal(resumed.playerId, host.playerId);
     await request('GET', room, undefined, resumed.sessionToken);
     await request('GET', room, undefined, host.sessionToken, 401);
+    const resumedView = (await request('GET', room, undefined, resumed.sessionToken)).view;
+    assert.equal(resumedView.canClose, true);
     user = null;
     await request('GET', room, undefined, resumed.sessionToken, 403);
+    await request('POST', `${room}/close`, {}, guest.sessionToken, 403);
     await request('GET', room, undefined, guest.sessionToken);
+    user = { id: 41, username: 'canonical-owner', displayName: 'Canonical Owner' };
+    const closed = await request('POST', `${room}/close`, {}, resumed.sessionToken);
+    assert.equal(closed.view.phase, 'closed');
+    assert.equal(closed.view.canClose, undefined);
+    await request('POST', `${room}/commands`, { ...buy, commandId: randomUUID(), sequence: closed.view.nextCommandSequence }, resumed.sessionToken, 409);
+    assert(!((await request('GET', '/rooms')).rooms.some((table: any) => table.roomCode === host.roomCode)));
     await request('GET', '/health');
+    await close();
+    const closedArchive = JSON.parse(readFileSync(path.join(dataDir, host.roomCode + '.json'), 'utf8'));
+    assert.equal(closedArchive.closedByPlayerId, host.playerId);
+    assert.equal(typeof closedArchive.match, 'string');
+    await open();
+    const reopenedClosed = await request('GET', room, undefined, resumed.sessionToken);
+    assert.equal(reopenedClosed.view.phase, 'closed');
+    assert.equal((await request('GET', `${room}/lobby`)).view.phase, 'closed');
+    assert(!((await request('GET', '/rooms')).rooms.some((table: any) => table.roomCode === host.roomCode)));
   } finally {
     if (streamReader) await streamReader.cancel();
     if (authority) await close();
