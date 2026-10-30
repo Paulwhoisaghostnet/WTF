@@ -12729,3 +12729,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Removed only the two image IDs with no container references under the deployment lock, preserving running images, volumes, and build cache. The host gained about 5 GB of free space without a container restart. Funding now retains uncertain-submit errors in the affected durable room and keeps its submission blocked; focused tests prove the room warning, clean worker health across restart, and no duplicate signer request. Actual storage, chain, and reconciliation failures still set global worker errors.
 
 **Rule**: Distinguish a worker that cannot reconcile from a worker that correctly reports an unresolved room. Preserve uncertain-payment state and operator visibility without turning an isolated known room into a global deploy failure. Recover Docker space only from images proven unused by every container; do not prune volumes or replay escrow intents to make health green.
+
+---
+
+## 2026-10-29 — Refreshing an authoritative game manifest also changes its rules identity
+
+**What happened**: Remote `main` updated the coLILseum release manifest after allowing hosts to close active, unfunded rooms. The authoritative party-server hash changed, but the funded-room compatibility map and two exact-hash tests still named the previous release. The aggregate CI gate failed; deploying that candidate would also reject older funded rooms under the normal safety guard.
+
+**Correction and proof**: The server diff shows every new close path requires no escrow lock or offer, while escrow-bound start, advance, view, and settlement paths remain guarded. Added the new exact runtime hash to the compatibility map with only the previously approved pinned hashes and the immediately preceding release; unknown future hashes still fail. A hosted authority test proves a prior-release escrow-bound room has no close action and rejects close before and after match start. The pinned two/eight-seat and Cherub replay digests, deploy-guard tests, and hero-balance tests pass.
+
+**Rule**: Treat a manifest refresh of an authoritative file as a new rules identity even when the gameplay change appears outside funded rooms. Prove funded behavior first, then update the exact compatibility list and hash assertions in the same release; never bypass the deployment guard to clear CI.
