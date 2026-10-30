@@ -62,8 +62,8 @@
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
       "sourceSha256": "7f75824feafbf3bfe07e493dc786c2dc0a70175eeaa0b89dc2ae5ea42b040ab5",
-      "sha256": "513494fcabde7c5ba08229fb0d47e3b0745e0ffbdaae9e8f819fdb2f419272bb",
-      "bytes": 72464
+      "sha256": "238f2f74907d6660349eb24483f3f8c4a3b6363982685f64029d73c82e41fe95",
+      "bytes": 72292
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",

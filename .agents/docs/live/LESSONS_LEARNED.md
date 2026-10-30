@@ -12729,3 +12729,33 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Removed only the two image IDs with no container references under the deployment lock, preserving running images, volumes, and build cache. The host gained about 5 GB of free space without a container restart. Funding now retains uncertain-submit errors in the affected durable room and keeps its submission blocked; focused tests prove the room warning, clean worker health across restart, and no duplicate signer request. Actual storage, chain, and reconciliation failures still set global worker errors.
 
 **Rule**: Distinguish a worker that cannot reconcile from a worker that correctly reports an unresolved room. Preserve uncertain-payment state and operator visibility without turning an isolated known room into a global deploy failure. Recover Docker space only from images proven unused by every container; do not prune volumes or replay escrow intents to make health green.
+
+---
+
+## 2026-10-29 — Refreshing an authoritative game manifest also changes its rules identity
+
+**What happened**: Remote `main` updated the coLILseum release manifest after allowing hosts to close active, unfunded rooms. The authoritative party-server hash changed, but the funded-room compatibility map and two exact-hash tests still named the previous release. The aggregate CI gate failed; deploying that candidate would also reject older funded rooms under the normal safety guard.
+
+**Correction and proof**: The server diff shows every new close path requires no escrow lock or offer, while escrow-bound start, advance, view, and settlement paths remain guarded. Added the new exact runtime hash to the compatibility map with only the previously approved pinned hashes and the immediately preceding release; unknown future hashes still fail. A hosted authority test proves a prior-release escrow-bound room has no close action and rejects close before and after match start. The pinned two/eight-seat and Cherub replay digests, deploy-guard tests, and hero-balance tests pass.
+
+**Rule**: Treat a manifest refresh of an authoritative file as a new rules identity even when the gameplay change appears outside funded rooms. Prove funded behavior first, then update the exact compatibility list and hash assertions in the same release; never bypass the deployment guard to clear CI.
+
+---
+
+## 2026-10-29 — Missing public fields must never prove a saved room seat
+
+**What happened**: A fresh coLILseum guest saw “Return to room” for a table they had never joined. The public room summary intentionally omitted player IDs, but the client compared each missing `player.playerId` with a missing `saved?.playerId`; both were `undefined`, so any human player looked like the guest's saved seat.
+
+**Correction and proof**: The lobby now offers local Return only when it has a saved player role, player ID, and session token; authenticated cross-device Return still comes from the server's account-personalized `myPlayerId`. A rebuilt browser run proves a saved browser can return after switching to anonymous, an independent guest sees Join and takes the second seat, and the signed-in two-browser recovery story still passes.
+
+**Rule**: Treat absent fields as absence of evidence, never as matching identities. For public summaries that deliberately omit private identifiers, test both a fresh browser and a saved session against the real room authority; keep admission decisions on the server.
+
+---
+
+## 2026-10-29 — Vendored game edits must update the release manifest
+
+**What happened**: The coLILseum guest-join fix passed its browser tests, but aggregate CI failed when `vendor-wtfiap.mjs` compared the changed packaged `party-client.js` with its pinned byte count and SHA-256. Focused browser tests alone did not exercise that package gate.
+
+**Correction and proof**: Recomputed only that file's packaged size and digest in the release manifest; the vendored package verifier and its test pass again. The upstream source digest remains the source project's historical value, while the packaged digest records this hosted correction.
+
+**Rule**: When changing a packaged coLILseum file in WTF, run `node scripts/vendor-wtfiap.mjs` before CI. If it reports a changed file, update the exact packaged bytes and hash while preserving the source digest; do not weaken the manifest check.
