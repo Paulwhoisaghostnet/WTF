@@ -12944,3 +12944,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Merged distinct canonical IDs, retained the newer Pasta lifecycle record, advanced the escrow record to its verified production state, recomputed derived ranks, preserved both sets of lesson insertions, and regenerated the board. `npm run bounty:board:check` and inventory coverage pass.
 
 **Rule**: For this repository, reconcile `docs/reference/bug-bounty-records.json` by record ID and verification history, then regenerate `.agents/docs/live/BUG_BOUNTY_BOARD.md`; preserve existing lesson entries from both branches before appending a new correction.
+
+### 2026-10-30 — A release gate's unblock path must exist in the shipped tree
+
+**What happened**: The Pasta live-readiness gate correctly named the missing WTF.ME account and host, then directed the operator to `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md`. That file was absent. A source policy test checked only that the string appeared in the gate, so the broken pointer passed CI.
+
+**Why it mattered**: The production write sequence has distinct account, host, page, pin, TLS, and public verification states. Without the linked instructions, an operator could not follow the gate's own safe path or distinguish a partial page publish from a complete pin-discovery proof.
+
+**Correction and proof**: Added the runbook from the guarded publisher and read-only inventory behavior, plus a policy test that reads the linked file and checks the required commands and partial-failure warning. The three relevant policy suites pass 28/28; the live audit remains blocked on actual credentials and host proof.
+
+**Rule**: Whenever a release gate prints a local remediation path, assert that the file is tracked and present in a fresh checkout, and document each external write boundary and verification step it directs operators to perform.

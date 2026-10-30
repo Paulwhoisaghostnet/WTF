@@ -239,3 +239,14 @@ test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", 
   assert.match(source, /pin discovery enabled/);
   assert.doesNotMatch(source, /PASTA_WTFME_LIVE_PASSWORD[^\\n]+console\.log/);
 });
+
+test("Pasta WTF.ME unblock pointer resolves to the guarded operator runbook", () => {
+  const runbook = readFileSync(".agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md", "utf8");
+  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH_RUNBOOK\.md/);
+  assert.match(runbook, /pasta:wtfme:live-inventory/);
+  assert.match(runbook, /PASTA_WTFME_LIVE_EXPECT_HOST/);
+  assert.match(runbook, /PASTA_WTFME_LIVE_PUBLISH=1/);
+  assert.match(runbook, /pasta:wtfme:live-check/);
+  assert.match(runbook, /pinRecoveryChecks/);
+  assert.match(runbook, /not one atomic transaction/);
+});
