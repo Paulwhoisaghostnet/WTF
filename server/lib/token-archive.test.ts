@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 import {
   ARCHIVER_SKU,

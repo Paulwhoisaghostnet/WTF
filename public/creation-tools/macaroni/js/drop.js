@@ -162,6 +162,28 @@ if (!CFG) {
   throw new Error("missing drop.config.js");
 }
 
+const MACARONI_SECURE_PROFILE_ID = "macaroni-secure-v35";
+const LEGACY_CONTRACT_VERSIONS = new Set(["macaroni-v1", "macaroni-editions-v2"]);
+const LEGACY_COLLECTOR_WARNING = "I understand Legacy Macaroni is a public-inventory surprise mint, not a truly blind or cryptographically random mint. Artwork may be discovered or copied before purchase; allocations may be predictable; and reveal completion may depend on a human transaction.";
+const SECURE_FULFILLMENT_STEPS = ["purchase_confirmed", "artwork_secured", "publishing_ipfs", "nft_ready"];
+
+function dropProfileId() {
+  return String(CFG.profile?.id || CFG.contractVersion || "");
+}
+
+function isSecureV35Config() {
+  return dropProfileId() === MACARONI_SECURE_PROFILE_ID;
+}
+
+function isLegacyConfig() {
+  return LEGACY_CONTRACT_VERSIONS.has(dropProfileId());
+}
+
+function secureDropHandlerIsAvailable() {
+  return typeof window.MacaroniV35Drop?.purchase === "function" &&
+    typeof window.MacaroniV35Drop?.reconcilePurchaseClaims === "function";
+}
+
 const ALLOWED_THEME_NAMES = new Set(["dark", "gallery", "paper", "neon"]);
 const ALLOWED_FONT_STACKS = new Set([
   "",
@@ -220,6 +242,24 @@ function safeHttpUrl(raw) {
     return "";
   }
 }
+
+function renderDropProfilePolicy() {
+  const legacyBanner = $("legacyRiskBanner");
+  if (legacyBanner) {
+    legacyBanner.hidden = !isLegacyConfig();
+    legacyBanner.textContent = isLegacyConfig()
+      ? `Legacy compatibility warning: ${CFG.legacyRisk?.warning || LEGACY_COLLECTOR_WARNING}`
+      : "";
+  }
+  if ($("secureProfilePromise")) $("secureProfilePromise").hidden = !isSecureV35Config();
+  if ($("secureFulfillmentTimeline")) $("secureFulfillmentTimeline").hidden = !isSecureV35Config();
+  if (isSecureV35Config() && $("btnMint")) {
+    $("btnMint").textContent = "Purchase";
+    $("btnMint").setAttribute("aria-label", "Purchase from this secure blind mint");
+  }
+}
+
+renderDropProfilePolicy();
 
 function setCardStatus(card, text) {
   const cap = document.createElement("div");
@@ -530,7 +570,7 @@ function stagePositionText(stage) {
 function dropSupplyShareLine() {
   if (!storage) return "";
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount();
   if (!Number.isFinite(supply) || !Number.isFinite(minted)) return "";
   return `Minted: ${minted}/${supply}${supply > minted ? `, ${supply - minted} remaining` : ""}`;
 }
@@ -962,7 +1002,7 @@ async function loadRecentMints(options) {
     setRecentMintsMessage("Recent mint activity appears after deployment.");
     return;
   }
-  const minted = storage ? Number(storage.minted) : "";
+  const minted = collectionMintedCount() ?? "";
   const revealed = storage ? Number(storage.revealed || 0) : "";
   const delayed = storage ? Number(!!storage.delayed_reveal) : "";
   const key = `${CFG.network || "mainnet"}:${CFG.contract}:${minted}:${revealed}:${delayed}`;
@@ -1153,15 +1193,25 @@ let customRecentCompatSeq = 0;
 let customRecentCompatKey = "";
 let walletConnecting = false;
 let walletRestoring = true;
+let lastPurchaseOperationHash = "";
+let secureServiceReady = false;
+let secureServiceReason = "Secure fulfillment readiness has not been verified.";
 const MINT_QTY_UI_CAP = 10;
 const RECENT_MINT_LIMIT = 8;
 const CUSTOM_RECENT_MINT_LIMIT = 10;
 
+function collectionMintedCount() {
+  if (!storage) return null;
+  return storageNatToNumber(isSecureV35Config() ? storage.claims_created : storage.minted);
+}
+
 function isCommitmentV3() {
-  return CFG.contractVersion === "macaroni-commitment-v3" || storage?.token_commitments != null;
+  return !isSecureV35Config() &&
+    (CFG.contractVersion === "macaroni-commitment-v3" || storage?.token_commitments != null);
 }
 
 function revealState() {
+  if (isSecureV35Config()) return null;
   if (!storage) return null;
   const queuePending = isCommitmentV3()
     ? Math.max(0, Number(storage.reveal_tail || 0) - Number(storage.revealed || 0))
@@ -1249,7 +1299,7 @@ function walletStatusKey(stage) {
     stage?.maxPerWallet ?? "",
     stage?.useAllowlist ? "allow" : "open",
     storage ? Number(storage.supply) : "",
-    storage ? Number(storage.minted) : "",
+    collectionMintedCount() ?? "",
   ].join(":");
 }
 
@@ -1260,7 +1310,7 @@ function stageNeedsWalletAllowance(stage) {
 function collectionRemaining() {
   if (!storage) return null;
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount();
   if (!Number.isFinite(supply) || !Number.isFinite(minted)) return null;
   return Math.max(0, supply - minted);
 }
@@ -1303,7 +1353,8 @@ function syncMintQuantityUi(stage) {
   if ($("price")) $("price").textContent = stage ? MD.fmtTez(stage.priceMutez * qty) : "";
 
   const pending = walletAllowancePending(stage);
-  const canMint = !!MD.getAccount() && !!stage && max > 0 && qty <= max && !pending;
+  const canMint = !!MD.getAccount() && !!stage && max > 0 && qty <= max && !pending &&
+    (!isSecureV35Config() || secureServiceReady);
   if ($("btnMint")) $("btnMint").disabled = !canMint;
   if ($("qtyPlus")) $("qtyPlus").disabled = pending || max <= 0 || qty >= max;
   if ($("qtyMinus")) $("qtyMinus").disabled = qty <= 1 || max <= 0;
@@ -1393,6 +1444,9 @@ async function preflightMint(stage, amount) {
   if (!stage) throw new Error("no active sale stage is available");
   await MD.assertOperationSafety();
   await refresh();
+  if (isSecureV35Config() && !secureServiceReady) {
+    throw new Error(secureServiceReason || "secure fulfillment is not ready; no purchase was submitted");
+  }
   const freshStage = activeStage(new Date());
   if (!freshStage || freshStage.id !== stage.id) {
     throw new Error("sale stage changed while preparing mint — review the current stage and try again");
@@ -1413,8 +1467,11 @@ async function preflightMint(stage, amount) {
   const { c, estimate } = await MD.withRpcFallback(async () => {
     const tezos = MD.getToolkit();
     const contract = await tezos.wallet.at(CFG.contract);
+    const purchaseMethod = isSecureV35Config()
+      ? contract.methodsObject.purchase(amount)
+      : contract.methodsObject.mint(amount);
     const limits = await MD.estimateWalletOp(
-      contract.methodsObject.mint(amount),
+      purchaseMethod,
       { amount: total, mutez: true },
       {
         ...STORAGE_PROFILE.mint,
@@ -1485,11 +1542,13 @@ async function loadOwnedMints() {
 }
 
 async function refresh() {
+  if (isSecureV35Config()) await refreshSecureServiceReadiness();
   if (!CFG.contract) {
     $("supplyText").textContent = "drop not deployed yet — check back soon";
     $("stagesList").innerHTML = '<div class="muted">no stages configured</div>';
     updateDropShareLinks(null, "Drop page is live; contract is not deployed yet");
     loadRecentMints();
+    renderSecureFulfillmentTimeline();
     return;
   }
   try {
@@ -1514,6 +1573,7 @@ async function refresh() {
     const revealedNow = Number(storage.revealed);
     if (revealedNow !== lastRevealed && sessionIds.length) reveal(sessionIds);
     lastRevealed = revealedNow;
+    if (isSecureV35Config()) await refreshSecureFulfillmentStatus();
   } catch (e) {
     $("supplyText").textContent = "could not load contract: " + (e.message || e);
   }
@@ -1523,7 +1583,7 @@ function render() {
   if (!storage) return;
   renderMinterRoyaltyStatus();
   const supply = Number(storage.supply);
-  const minted = Number(storage.minted);
+  const minted = collectionMintedCount() ?? 0;
   const left = supply - minted;
   const rs = revealState();
   const mintedPct = supply ? Math.round((minted / supply) * 100) : 0;
@@ -1539,7 +1599,12 @@ function render() {
 
   // Collectors should know the reveal mechanics BEFORE they mint.
   const note = $("modeNote");
-  if (isCommitmentV3()) {
+  if (isSecureV35Config()) {
+    note.style.display = "";
+    note.textContent = secureServiceReady
+      ? "Secure blind mint — each purchase creates a paid, non-rerollable claim. The forced allocation and final NFT mint confirm before the exact assigned CARs are published to IPFS. This does not claim trustless randomness."
+      : `Secure purchasing is temporarily unavailable: ${secureServiceReason}`;
+  } else if (isCommitmentV3()) {
     note.style.display = "";
     note.textContent =
       "Sealed V3 allocation — token rows, quantities, metadata commitments, and creator-defined order were permanently fixed before sale. This contract does not claim provably random selection. Each token reveals only after its full edition supply is allocated.";
@@ -1582,6 +1647,14 @@ function render() {
   renderRevealPanel(now);
 
   // mint box
+  if (isSecureV35Config() && !storage.sale_active) {
+    $("stageInfo").textContent = Number(storage.claims_created || 0) >= Number(storage.supply || 0) && Number(storage.supply || 0) > 0
+      ? "Sold out — automatic fulfillment continues below."
+      : "Secure sale is not active yet.";
+    $("price").textContent = "";
+    disableMintControls();
+    return;
+  }
   if (storage.paused) {
     $("stageInfo").textContent = "Minting is paused by the creator.";
     $("price").textContent = "";
@@ -1627,7 +1700,7 @@ function render() {
 function renderRevealPanel(now) {
   const rs = revealState();
   const panel = $("revealPending");
-  if (!rs || !rs.delayed || rs.pending <= 0) {
+  if (isSecureV35Config() || !rs || !rs.delayed || rs.pending <= 0) {
     panel.style.display = "none";
     return;
   }
@@ -1674,6 +1747,240 @@ function operationLink(hash) {
       shadownet: "https://shadownet.tzkt.io/",
     }[CFG.network || "mainnet"] || "https://tzkt.io/";
   return base + hash;
+}
+
+function secureFulfillmentStorageKey() {
+  const network = String(CFG.network || "mainnet").replace(/[^a-z0-9_-]/gi, "");
+  const contract = String(CFG.contract || "unconfigured").replace(/[^a-zA-Z0-9]/g, "");
+  const wallet = String(MD.getAccount() || "unconnected").replace(/[^a-zA-Z0-9]/g, "");
+  return `macaroni.v35.fulfillment.v1.${network}.${contract}.${wallet}`;
+}
+
+function readSecureFulfillment() {
+  if (!isSecureV35Config()) return null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(secureFulfillmentStorageKey()) || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeSecureFulfillment(patch) {
+  if (!isSecureV35Config()) return null;
+  const previous = readSecureFulfillment() || {};
+  const next = {
+    version: 1,
+    network: CFG.network || "mainnet",
+    contract: CFG.contract || "",
+    wallet: MD.getAccount() || previous.wallet || "",
+    ...previous,
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(secureFulfillmentStorageKey(), JSON.stringify(next));
+  renderSecureFulfillmentTimeline(next);
+  return next;
+}
+
+function fulfillmentProgressIndex(stateName) {
+  return {
+    confirming_purchase: -1,
+    purchase_confirmed: 0,
+    artwork_secured: 1,
+    publishing_ipfs: 2,
+    nft_ready: 3,
+  }[stateName] ?? -1;
+}
+
+function renderSecureFulfillmentTimeline(record = readSecureFulfillment()) {
+  if (!isSecureV35Config() || !$("secureFulfillmentTimeline")) return;
+  const index = fulfillmentProgressIndex(record?.state || "");
+  for (const [stepIndex, stepName] of SECURE_FULFILLMENT_STEPS.entries()) {
+    const row = document.querySelector(`[data-fulfillment-step="${stepName}"]`);
+    if (!row) continue;
+    row.dataset.status = stepIndex <= index ? "complete" : stepIndex === index + 1 ? "active" : "pending";
+  }
+  const summary = $("fulfillmentSummary");
+  if (summary) {
+    summary.textContent = !record
+      ? "After your purchase confirms, the forced allocation and final NFT mint complete before the exact assigned files are published to IPFS."
+      : record.state === "nft_ready"
+      ? "Your NFT metadata and artwork are ready."
+      : record.message || "Automatic completion is in progress. You may close this page and return with the same wallet.";
+  }
+  const technical = $("fulfillmentTechnicalStatus");
+  if (technical) {
+    const claimText = Array.isArray(record?.claimIds) && record.claimIds.length
+      ? ` · claim${record.claimIds.length === 1 ? "" : "s"} ${record.claimIds.join(", ")}`
+      : record?.operationHash ? " · emitted claim IDs are still being reconciled; no range has been guessed" : "";
+    technical.textContent = record
+      ? `${record.message || "Automatic fulfillment in progress"}${claimText}`
+      : "No purchase recorded in this browser yet.";
+  }
+  const link = $("fulfillmentOperationLink");
+  if (link) {
+    link.hidden = !record?.operationHash;
+    if (record?.operationHash) link.href = operationLink(record.operationHash);
+  }
+}
+
+function claimIdFromPurchaseEvent(event) {
+  const payload = event?.payload || event?.data || {};
+  const raw = payload?.claim_id ?? payload?.claimId;
+  const value = typeof raw === "object" && raw !== null ? raw.int : raw;
+  const text = String(value ?? "");
+  return /^\d+$/.test(text) ? text : "";
+}
+
+async function purchaseClaimIdsFromConfirmedOperation(operationHashValue) {
+  const template = String(CFG.service?.purchaseStatusUrlTemplate || "").trim();
+  if (template.includes("{operationHash}")) {
+    const serviceUrl = safeHttpUrl(template.replace("{operationHash}", encodeURIComponent(operationHashValue)));
+    if (serviceUrl) {
+      try {
+        const serviceResponse = await fetch(serviceUrl, { cache: "no-store", credentials: "omit" });
+        const serviceBody = await serviceResponse.json().catch(() => ({}));
+        if (serviceResponse.ok) {
+          const managedClaims = serviceBody.schema === "wtfos.macaroni-v35-purchase-status.v1"
+            && serviceBody.operationHash === operationHashValue && Array.isArray(serviceBody.claims)
+            ? serviceBody.claims.map((claim) => claim?.claimId)
+            : [];
+          const companionClaims = CFG.service?.provider === "creator_companion" && Array.isArray(serviceBody.claimIds)
+            ? serviceBody.claimIds
+            : [];
+          const claimIds = [...new Set([...managedClaims, ...companionClaims]
+            .map((claimId) => String(claimId ?? ""))
+            .filter((claimId) => /^\d+$/.test(claimId)))];
+          if (claimIds.length) return claimIds;
+        }
+      } catch (_) {
+        // Public service status is an acceleration path. The finalized TzKT
+        // event lookup below remains the independent recovery source.
+      }
+    }
+  }
+  const transaction = await lookupRelevantOperation(operationHashValue, "purchase");
+  if (!transaction?.id) return [];
+  const params = new URLSearchParams({
+    contract: CFG.contract,
+    tag: "purchase_claim",
+    transactionId: String(transaction.id),
+  });
+  const response = await fetch(`${tzktApiBase()}/v1/contracts/events?${params}`, { cache: "no-store" });
+  if (!response.ok) return [];
+  const events = await response.json();
+  if (!Array.isArray(events)) return [];
+  return [...new Set(events
+    .filter((event) => String(event?.tag || "") === "purchase_claim" && Number(event?.transactionId) === Number(transaction.id))
+    .map(claimIdFromPurchaseEvent)
+    .filter(Boolean))];
+}
+
+async function wakeSecureFulfillmentService() {
+  if (!isSecureV35Config()) return false;
+  const url = safeHttpUrl(CFG.service?.wakeUrl);
+  if (!url) return false;
+  try {
+    const response = await fetch(url, { method: "POST", credentials: "omit" });
+    return response.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+function secureClaimStatusUrl(claimId) {
+  if (!/^\d+$/.test(String(claimId || ""))) return "";
+  const template = String(CFG.service?.claimStatusUrlTemplate || "").trim();
+  if (template.includes("{claimId}")) {
+    return safeHttpUrl(template.replace("{claimId}", encodeURIComponent(String(claimId))));
+  }
+  const base = safeHttpUrl(CFG.service?.publicStatusUrl);
+  return base ? `${base.replace(/\/+$/, "")}/claims/${encodeURIComponent(String(claimId))}` : "";
+}
+
+async function refreshSecureFulfillmentStatus() {
+  if (!isSecureV35Config()) return;
+  let record = readSecureFulfillment();
+  if (!record?.operationHash) {
+    renderSecureFulfillmentTimeline(record);
+    return;
+  }
+  if (!Array.isArray(record.claimIds) || !record.claimIds.length) {
+    const claimIds = await purchaseClaimIdsFromConfirmedOperation(record.operationHash).catch(() => []);
+    if (!claimIds.length) {
+      writeSecureFulfillment({
+        state: record.state === "confirming_purchase" ? "confirming_purchase" : "purchase_confirmed",
+        message: "Purchase is confirmed; waiting for the emitted claim IDs to appear in the public index before tracking exact fulfillment.",
+      });
+      return;
+    }
+    record = writeSecureFulfillment({
+      state: "purchase_confirmed",
+      claimIds,
+      message: "Paid claim confirmed. Macaroni is securing the forced allocation and final NFT mint.",
+    });
+  }
+  const statuses = [];
+  for (const claimId of record.claimIds) {
+    const url = secureClaimStatusUrl(claimId);
+    if (!url) continue;
+    try {
+      const response = await fetch(url, { cache: "no-store", credentials: "omit" });
+      const body = await response.json().catch(() => ({}));
+      const expectedSchema = CFG.service?.provider === "creator_companion"
+        ? "pasta.macaroni-companion-public-claim.v1"
+        : "wtfos.macaroni-v35-claim-status.v1";
+      if (response.ok && body.schema === expectedSchema && String(body.claimId) === String(claimId)) {
+        statuses.push(body);
+      }
+    } catch (_) {
+      // The paid claim remains durable on-chain; the next refresh resumes status lookup.
+    }
+  }
+  if (!statuses.length) {
+    writeSecureFulfillment({
+      message: "The paid claim is safe on-chain. Fulfillment status is temporarily unavailable and will resume automatically.",
+    });
+    return;
+  }
+  const stateIndex = (name) => ({ artwork_secured: 1, publishing_ipfs: 2, nft_ready: 3 }[name] ?? 0);
+  const leastAdvanced = statuses.reduce((current, item) =>
+    stateIndex(item.state) < stateIndex(current.state) ? item : current
+  );
+  writeSecureFulfillment({
+    state: leastAdvanced.state,
+    message: leastAdvanced.message || "Automatic fulfillment is in progress.",
+    settlementOperationHashes: statuses.map((item) => item.settlementOperationHash).filter(Boolean),
+  });
+}
+
+async function refreshSecureServiceReadiness() {
+  if (!isSecureV35Config()) return true;
+  const url = safeHttpUrl(CFG.service?.publicStatusUrl);
+  if (!url) {
+    secureServiceReady = false;
+    secureServiceReason = "The public fulfillment status descriptor is missing. No purchase will be submitted.";
+    return false;
+  }
+  try {
+    const response = await fetch(url, { cache: "no-store", credentials: "omit" });
+    const body = await response.json().catch(() => ({}));
+    const expectedSchema = CFG.service?.provider === "creator_companion"
+      ? "pasta.macaroni-companion-public-status.v1"
+      : "wtfos.macaroni-v35-public-status.v1";
+    const identityMatches = body.schema === expectedSchema &&
+      body.network === (CFG.network || "mainnet") && body.contract === CFG.contract;
+    secureServiceReady = Boolean(response.ok && identityMatches && body.serviceReady === true);
+    secureServiceReason = secureServiceReady
+      ? "Automatic fulfillment service verified."
+      : body.serviceBlocker?.reason || body.progress?.message || body.error ||
+        "The fulfillment service has not reported ready for this exact contract. No purchase will be submitted.";
+  } catch (error) {
+    secureServiceReady = false;
+    secureServiceReason = `The fulfillment service could not be reached. No purchase will be submitted. ${error.message || error}`;
+  }
+  return secureServiceReady;
 }
 
 function operationRpcBase() {
@@ -1879,13 +2186,36 @@ async function publicReveal() {
 
 // ---------- mint ----------
 async function mintOnce(c, priceMutez) {
+  const entrypoint = isSecureV35Config() ? "purchase" : "mint";
+  const method = isSecureV35Config() ? c.methodsObject.purchase(1) : c.methodsObject.mint(1);
   const op = await MD.sendWalletOp(
-    c.methodsObject.mint(1),
+    method,
     { amount: priceMutez, mutez: true },
     { ...STORAGE_PROFILE.mint, gasPerUnit: 50_000, units: 1 }
   );
+  const submittedHash = operationHash(op);
+  if (isSecureV35Config()) {
+    if (!submittedHash) throw new Error("wallet did not return the secure purchase operation hash");
+    lastPurchaseOperationHash = submittedHash;
+    writeSecureFulfillment({
+      state: "confirming_purchase",
+      operationHash: submittedHash,
+      claimIds: [],
+      message: "Wallet submitted the purchase. Macaroni is confirming the exact operation before reading its emitted claim ID.",
+    });
+  }
   $("mintStatus").textContent = "minting… waiting for confirmation";
-  await confirmWalletOperation(op, "mint", "mintStatus", "mint");
+  await confirmWalletOperation(op, entrypoint, "mintStatus", isSecureV35Config() ? "purchase" : "mint");
+  if (isSecureV35Config()) {
+    writeSecureFulfillment({
+      state: "purchase_confirmed",
+      operationHash: submittedHash,
+      message: "Your paid claim is confirmed and cannot be rerolled. Reconciling its emitted claim ID now.",
+    });
+    await wakeSecureFulfillmentService();
+    await refreshSecureFulfillmentStatus();
+    return [];
+  }
   return extractMintedIds(op);
 }
 
@@ -1897,18 +2227,42 @@ async function mintBatch(c, priceMutez, amount) {
   $("mintStatus").textContent = "approve in your wallet…";
   try {
     const total = priceMutez * amount;
+    const entrypoint = isSecureV35Config() ? "purchase" : "mint";
+    const method = isSecureV35Config() ? c.methodsObject.purchase(amount) : c.methodsObject.mint(amount);
     const op = await MD.sendWalletOp(
-      c.methodsObject.mint(amount),
+      method,
       { amount: total, mutez: true },
       { ...STORAGE_PROFILE.mint, gasPerUnit: 50_000, units: amount }
     );
+    const submittedHash = operationHash(op);
+    if (isSecureV35Config()) {
+      if (!submittedHash) throw new Error("wallet did not return the secure purchase operation hash");
+      lastPurchaseOperationHash = submittedHash;
+      writeSecureFulfillment({
+        state: "confirming_purchase",
+        operationHash: submittedHash,
+        claimIds: [],
+        message: "Wallet submitted the purchase. Macaroni is confirming the exact operation before reading its emitted claim IDs.",
+      });
+    }
     $("mintStatus").textContent = "minting… waiting for confirmation";
-    await confirmWalletOperation(op, "mint", "mintStatus", "mint");
+    await confirmWalletOperation(op, entrypoint, "mintStatus", isSecureV35Config() ? "purchase" : "mint");
+    if (isSecureV35Config()) {
+      writeSecureFulfillment({
+        state: "purchase_confirmed",
+        operationHash: submittedHash,
+        message: "Your paid claims are confirmed and cannot be rerolled. Reconciling their emitted claim IDs now.",
+      });
+      await wakeSecureFulfillmentService();
+      await refreshSecureFulfillmentStatus();
+      return [];
+    }
     const ids = await extractMintedIds(op);
     if (ids.length) return ids;
     return mintBatchSingles(c, priceMutez, amount);
   } catch (e) {
     const msg = operationErrorMessage(e);
+    if (isSecureV35Config()) throw e;
     if (!/more time than the operation|gas|exceeded/i.test(msg)) throw e;
     $("mintStatus").textContent = "batch gas tight — minting one at a time…";
     return mintBatchSingles(c, priceMutez, amount);
@@ -2016,6 +2370,17 @@ async function mint() {
     stage = preflight.stage;
     $("mintStatus").textContent = "approve in your wallet…";
     const ids = await mintBatch(c, stage.priceMutez, qty);
+    if (isSecureV35Config()) {
+      walletStatusCache = { key: "", status: null };
+      await refreshBalance("checked after purchase");
+      await refresh();
+      stage = activeStage(new Date()) || stage;
+      await updateWalletStatus(stage, { force: true });
+      await refreshSecureFulfillmentStatus();
+      await loadRecentMints({ force: true });
+      $("mintStatus").textContent = "Purchase confirmed ✓ · automatic fulfillment is in progress below";
+      return;
+    }
     sessionIds.push(...ids);
     walletStatusCache = { key: "", status: null };
     $("mintStatus").textContent = isCommitmentV3()
@@ -2114,6 +2479,7 @@ $("btnConnect").addEventListener("click", async () => {
     await refreshBalance("connected");
     render();
     await loadOwnedMints();
+    await refreshSecureFulfillmentStatus();
   } catch (e) {
     setText("mintStatus", "wallet connect cancelled or failed: " + (e.message || e));
   } finally {
@@ -2140,6 +2506,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   setText("ownedMintStatus", "");
   $("revealGrid").innerHTML = "";
   $("revealSection").style.display = "none";
+  renderSecureFulfillmentTimeline();
   render();
 });
 
@@ -2151,6 +2518,7 @@ MD.restoreWallet(CFG.title || "Macaroni")
     if (addr) {
       await refreshBalance("restored");
       await loadOwnedMints();
+      await refreshSecureFulfillmentStatus();
     } else {
       await refreshBalance();
     }
@@ -2183,6 +2551,7 @@ $("qtyPlus").addEventListener("click", () => {
 $("btnMint").addEventListener("click", mint);
 $("btnReveal").addEventListener("click", publicReveal);
 
+renderSecureFulfillmentTimeline();
 refresh().then(() => loadOwnedMints());
 setInterval(render, 1000);     // countdowns
 setInterval(refresh, 30000);   // chain state

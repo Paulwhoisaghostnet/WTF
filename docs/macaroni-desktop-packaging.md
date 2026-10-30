@@ -1,6 +1,6 @@
 # Macaroni Desktop Packaging
 
-Macaroni Desktop wraps the static Macaroni Studio bundle in Electron so users can install it without Python, npm, Node, or a local web server. The native app starts its private stable origin at `http://127.0.0.1:30771`, loads `studio.html`, and keeps the same Tezos wallet/RPC and self-managed Pinata/IPFS-node workflow as the wtfOS version. The fixed origin keeps browser-saved drafts available after quit/relaunch; a second launch focuses the existing window, and an occupied origin fails explicitly instead of silently switching storage namespaces.
+Macaroni Desktop wraps the static Macaroni Studio bundle and the Macaroni V3.5 Companion in Electron so users can install it without Python, npm, Node, or a local web server. The native app starts its private stable origin at `http://127.0.0.1:30771`, loads `studio.html`, and supervises the private Companion on loopback. The fixed Studio origin keeps browser-saved drafts available after quit/relaunch; a second launch focuses the existing window, and an occupied origin fails explicitly instead of silently switching storage namespaces.
 
 The desktop build intentionally does not include wtfOS hosted resources:
 
@@ -8,6 +8,14 @@ The desktop build intentionally does not include wtfOS hosted resources:
 - `/api/macaroni/publish` returns a native-app error.
 - Studio hides wtfOS pinning, wtfOS publishing, and installer-download controls in native mode.
 - Export writes a local `Documents/Macaroni/site` folder and still downloads `macaroni-site.zip`.
+
+## V3.5 Self-Hosted Boundary
+
+The recommended V3.5 path keeps the exported collector page static and secret-free. The bundled Companion owns private artifact custody, deterministic CAR creation, allocation-secret recovery, chain watching, durable transaction state, IPFS publication, and finalizer signing. The Electron main process holds the local admin credential and exposes only an exact same-origin creator API to Studio; neither Studio nor an exported page receives that credential.
+
+A fresh installation deliberately remains **Setup required**. Before a remote sale can open, the creator must configure and pass the bundled doctor for a dedicated funded Tezos finalizer, a private Kubo or CAR-capable pinning provider, the selected Tezos RPC, durable backup/recovery, and an HTTPS public endpoint with the exact collector-page CORS origin. Macaroni does not silently downgrade a failed secure setup to Legacy. The complete setup, provider, funding, trust, backup, and recovery instructions ship in `companion/macaroni-v35/README.md`, `API.md`, `BACKUP_RECOVERY.md`, `.env.example`, and the platform installers/templates.
+
+Legacy Macaroni remains available under Advanced for creators who need a static-only compatibility drop. It does not use the Companion, and Studio requires the creator to read and acknowledge its public-inventory, predictable-allocation, copy-mint, and human-reveal risks before V1 or V2 can be selected, deployed, or exported.
 
 ## Local Commands
 
@@ -36,7 +44,7 @@ The workflow builds:
 
 - macOS universal DMG and ZIP on `macos-latest`
 - Windows x64 NSIS installer on `windows-latest`
-- Raspberry Pi Linux arm64 DEB on `ubuntu-latest`
+- Raspberry Pi Linux arm64 DEB on the native `ubuntu-24.04-arm` runner
 
 The Raspberry Pi `.deb` build requires package metadata that Linux package tools can expose to users and package managers. Keep `homepage`, `author.email`, `build.linux.maintainer`, and `build.deb.packageName` populated in `apps/macaroni-desktop/package.json`; `npm run macaroni:desktop:check` guards those fields because electron-builder rejects or weakens the `.deb` without them.
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { normalizeIpfsUri } from "./ipfs-gateways";
 import type { HamsterState } from "./desktop";
 import {
   applyHamsterAction,

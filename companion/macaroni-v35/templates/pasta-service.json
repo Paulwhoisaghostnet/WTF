@@ -1,0 +1,15 @@
+{
+  "schema": "pasta.macaroni-service.v1",
+  "mode": "creator_companion",
+  "network": "shadownet",
+  "contract": "KT1_REPLACE_AFTER_ORIGINATION",
+  "contractMetadataUri": "ipfs://REPLACE_WITH_PUBLIC_CONTRACT_METADATA_CID",
+  "publicCoverUri": "ipfs://REPLACE_WITH_PUBLIC_COVER_CID",
+  "status": "armed",
+  "statusSource": "tezos_chain_and_companion",
+  "statusUrl": "https://companion.REPLACE.example/v1/public/projects/PROJECT_UUID/status",
+  "claimStatusUrlTemplate": "https://companion.REPLACE.example/v1/public/projects/PROJECT_UUID/claims/{claimId}",
+  "purchaseStatusUrlTemplate": "https://companion.REPLACE.example/v1/public/projects/PROJECT_UUID/purchases/{operationHash}",
+  "wakeUrl": "https://companion.REPLACE.example/v1/public/projects/PROJECT_UUID/wake",
+  "containsSecrets": false
+}

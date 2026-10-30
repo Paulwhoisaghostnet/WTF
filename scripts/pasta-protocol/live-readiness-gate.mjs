@@ -337,7 +337,11 @@ function checkRecordedColanderActionProof() {
     record("recorded Colander Shadownet action proof", "skipped", "PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=0");
     return;
   }
-  runPackageScript("pasta:shadownet:colander:action-proof");
+  const result = runPackageScriptResult("pasta:shadownet:colander:action-proof");
+  if (!result.ok) {
+    block("recorded Colander Shadownet action proof", result.detail);
+    return;
+  }
   record("recorded Colander Shadownet action proof", "pass", "TzKT indexed operation verified without signer execution");
 }
 
@@ -493,7 +497,7 @@ function printBlockerRemediation() {
   }
   if (hasCredentialBlocker || hasHostBlocker) {
     console.log(
-      "[pasta-live-readiness] runbook: .agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md"
+      "[pasta-live-readiness] runbook: docs/runbooks/pasta-wtfme-live-publish.md"
     );
     console.log(
       "[pasta-live-readiness] next: bind the proof to the emitted host with PASTA_WTFME_LIVE_HOST=<published-host> for readiness checks and PASTA_WTFME_LIVE_EXPECT_HOST=<published-host> before any PASTA_WTFME_LIVE_PUBLISH=1 run"

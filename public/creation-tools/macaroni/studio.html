@@ -48,6 +48,91 @@
     <div id="resumeStatus" class="muted" style="margin-top:8px"></div>
   </section>
 
+  <section class="panel secure-profile-panel" id="secProfile" aria-labelledby="profileHeading">
+    <div class="spread">
+      <div>
+        <span class="pill ok">Recommended</span>
+        <h2 id="profileHeading">Secure Blind Mint</h2>
+      </div>
+      <span class="pill" id="profileStatus">Readiness check pending</span>
+    </div>
+    <p>Macaroni keeps the final artwork private until a purchase is permanently assigned. Collectors sign once; fulfillment continues automatically.</p>
+    <button class="profile-choice selected" id="btnUseSecureProfile" type="button" aria-pressed="true">
+      <strong>Use Secure Blind Mint</strong>
+      <span>Simple creator setup, one collector purchase signature, and automatic recovery-aware fulfillment.</span>
+    </button>
+    <div class="outcome-strip" id="secureOutcomeStrip" aria-label="Secure blind mint outcomes">
+      <span>Private until assigned</span>
+      <span>Cryptographically unpredictable to collectors</span>
+      <span>Allocation locked and non-rerollable</span>
+      <span>Automatic fulfillment</span>
+      <span>Static page anywhere</span>
+    </div>
+    <p class="muted trust-note">This is secure against ordinary collectors, but it is not trustless. A collector without the private secret cannot predict, choose, or reroll an allocation, and the contract prevents the fulfillment service from changing or skipping an allocation after purchase. The selected secret custodian can still calculate an outcome once its purchase inputs are known, disclose the secret, or stop fulfillment. A paid claim is not automatically refunded if both the custodian and its recovery backup fail.</p>
+
+    <div class="hosting-summary" id="managedHostingChoice">
+      <span><strong id="simpleServiceOwner">Checking managed access…</strong><small id="simpleServiceOwnerDetail">Eligible wtfOS creators are automatically assigned managed private staging and fulfillment.</small></span>
+      <div class="access-recovery" id="managedAccessRecovery" hidden>
+        <strong>Required capability: <code id="managedRequiredCapability">use_managed_macaroni</code></strong>
+        <span id="managedAccessReason">Checking the managed capability response…</span>
+        <span class="notice" id="managedRequestTemplate" hidden></span>
+        <a class="btn ghost small" id="requestManagedAccess" hidden>Request managed access</a>
+        <button class="btn ghost small" id="btnShowCompanionOption" type="button">Use self-hosted Companion instead</button>
+      </div>
+    </div>
+    <div class="notice warn" id="secureReadiness" role="status" aria-live="polite">Checking the selected secure infrastructure. Macaroni will not deploy or export a secure drop until every required part is verified.</div>
+    <div class="native-companion-setup" id="nativeCompanionSetup" aria-labelledby="nativeCompanionSetupTitle" hidden>
+      <div class="spread">
+        <div>
+          <span class="eyebrow">Local private service</span>
+          <h3 id="nativeCompanionSetupTitle">Finish Companion setup</h3>
+        </div>
+        <span class="pill warn" id="nativeCompanionSetupBadge">Action required</span>
+      </div>
+      <p id="nativeCompanionSetupReason">Open the guide, complete the private configuration, then check readiness again.</p>
+      <ol class="native-companion-steps">
+        <li><strong>Read the guide.</strong> It explains the finalizer wallet, IPFS, RPC, HTTPS, privacy boundaries, and recovery.</li>
+        <li><strong>Finish the private config.</strong> The app opens the exact local <code>.env</code> it uses; generated admin and encryption keys are never returned to this page.</li>
+        <li><strong>Check again.</strong> Macaroni unlocks only after every local doctor and private adapter check passes.</li>
+      </ol>
+      <div class="row native-companion-actions">
+        <button class="btn" id="btnOpenCompanionSetupGuide" type="button">Open setup guide</button>
+        <button class="btn ghost" id="btnOpenCompanionConfigFolder" type="button">Open config folder</button>
+        <button class="btn ghost" id="btnCheckCompanionAgain" type="button">Check again</button>
+      </div>
+      <p class="muted native-companion-result" id="nativeCompanionActionStatus" role="status" aria-live="polite">Your configuration and private worker data stay on this device.</p>
+    </div>
+    <div class="native-companion-setup" id="nativeCompanionAttention" aria-labelledby="nativeCompanionAttentionTitle" hidden>
+      <div class="spread">
+        <div>
+          <span class="eyebrow">Local fulfillment recovery</span>
+          <h3 id="nativeCompanionAttentionTitle">Claim and publication status</h3>
+        </div>
+        <button class="btn ghost small" id="btnCheckCompanionAttention" type="button">Inspect claims</button>
+      </div>
+      <p class="muted">Inspect signed claims and publication retries. An unresolved signature keeps the finalizer locked across projects. Signed work can be retried only after the local Companion verifies the same bytes, finalized failure, or canonical expiry and absence. Publication authorization and integrity failures wait for operator correction.</p>
+      <div id="nativeCompanionAttentionList" aria-live="polite">Choose Inspect claims to check local work and chain status.</div>
+    </div>
+  </section>
+
+  <section class="panel requirements-card" id="hostingCostRecovery" aria-labelledby="hostingCostHeading">
+    <div class="spread">
+      <h2 id="hostingCostHeading">Hosting, costs &amp; recovery</h2>
+      <span class="pill" id="responsibilityBadge">Checking responsibility</span>
+    </div>
+    <dl class="requirements-grid">
+      <div><dt>Static drop page</dt><dd id="staticHostingRequirement">Host anywhere; it contains no private artwork, key, nonce, or provider credential.</dd></div>
+      <div><dt>Private service owner</dt><dd id="serviceOwnerRequirement">Checking access…</dd></div>
+      <div><dt>Deployment/setup</dt><dd id="deploymentCostRequirement">Pending live wallet estimate. No amount is guessed.</dd></div>
+      <div><dt>Automation reserve</dt><dd id="reserveCostRequirement">Pending live measurement. Launch stays blocked until the estimate covers at least five fulfillment operations.</dd></div>
+      <div><dt>Each purchase contributes</dt><dd id="purchaseContributionRequirement">Pending live measurement from the selected contract and collection class.</dd></div>
+      <div><dt>Storage plan</dt><dd id="storagePlanRequirement">Checking the selected infrastructure…</dd></div>
+      <div><dt>If the service goes offline</dt><dd id="offlineResultRequirement">The purchase claim remains locked; fulfillment pauses and resumes from the durable journal after recovery.</dd></div>
+      <div><dt>After final fulfillment</dt><dd id="reserveRefundRequirement">After sellout or an irreversible creator close, and only after every purchased claim is fulfilled, the remaining automation reserve returns to the sales treasury.</dd></div>
+    </dl>
+    <p class="muted">All cost values must be labeled <strong>live-measured</strong> or <strong>pending measurement</strong>. Macaroni does not invent a fee, reserve, or percentage.</p>
+  </section>
+
   <!-- 1. Network -->
   <section class="panel" id="secNetwork">
     <h2>1 · Network</h2>
@@ -82,13 +167,6 @@
         <input type="text" id="dropSymbol" placeholder="DROP" maxlength="8" />
         <label>Description *</label>
         <textarea id="dropDesc" placeholder="What is this collection about?"></textarea>
-        <label>Contract version</label>
-        <select id="contractVersion">
-          <option value="macaroni-v1">Macaroni V1 — classic blind mint</option>
-          <option value="macaroni-editions-v2">Macaroni V2 — editions + minter royalties</option>
-          <option value="macaroni-commitment-v3">Macaroni V3 — sealed, finalized inventory</option>
-        </select>
-        <p class="muted" id="contractVersionHint">V1 is for 1/1 blind drops. V2 is required for shared-token editions, minter royalty pools, or multiple unrevealed images.</p>
       </div>
       <div>
         <label>Collection logo / cover (≤1 MB, square JPG/PNG) *</label>
@@ -110,50 +188,14 @@
             <input type="text" id="royaltyAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
           </div>
         </div>
-        <label>Treasury — receives 100% of mint payments (defaults to your wallet)</label>
+        <label>Sales proceeds wallet — receives each purchase minus the disclosed fixed fulfillment subsidy (defaults to your wallet)</label>
         <input type="text" id="treasuryAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
-        <div class="panel" style="margin:12px 0;padding:12px">
-          <label style="margin:0"><input type="checkbox" id="minterRoyaltiesEnabled" /> add minter royalty pool (Macaroni V2)</label>
-          <div id="minterRoyaltyFields" style="display:none;margin-top:8px">
-            <div class="grid2">
-              <div>
-                <label>Minter royalty pool</label>
-                <input type="number" id="minterRoyaltyPct" min="0" max="100" step="0.1" value="0" />
-              </div>
-              <div>
-                <label>Minter royalty split</label>
-                <select id="minterRoyaltyMode">
-                  <option value="first_minter">First minter gets the full pool</option>
-                  <option value="rolling_pool">Equal split between minters after sellout/lock</option>
-                </select>
-              </div>
-            </div>
-            <label>Royalty updater (defaults to your wallet)</label>
-            <input type="text" id="royaltyUpdaterAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
-            <label>Royalty updater endpoint (optional)</label>
-            <input type="url" id="royaltyUpdateEndpoint" placeholder="https://…" autocomplete="off" autocapitalize="none" spellcheck="false" />
-            <p class="muted">Minter royalties use Macaroni V2 metadata updates. The generated drop page or creator-triggered updater patches token metadata after mints, then locks it after first-minter sync or after sellout/creator lock for rolling pools.</p>
-          </div>
-        </div>
-        <div class="grid2">
-          <div>
-            <label>Reveal mode</label>
-            <select id="revealMode">
-              <option value="instant">Instant — automatic after mint confirms</option>
-              <option value="delayed">Delayed — automatic after the reveal window</option>
-            </select>
-          </div>
-          <div id="revealDelayWrap" style="display:none">
-            <label>Auto-reveal window (days, 0–30)</label>
-            <input type="number" id="revealDelay" min="0" max="30" step="1" value="7" />
-          </div>
-        </div>
-        <p class="muted" id="revealHint" style="display:none">Delayed: collectors mint blanks showing your cover image. You can reveal at any time from step 6 — and once the oldest unrevealed mint is older than the window, <strong>anyone</strong> can trigger the reveal from the mint page, so collectors are never stuck. The window can be changed later but never above 30 days.</p>
-        <div id="placeholderPoolWrap" style="display:none;margin-top:10px">
-          <label>Unrevealed placeholder images (optional pool)</label>
-          <input type="file" id="placeholderFiles" accept="image/*" multiple />
-          <p class="muted" id="placeholderPoolStatus">No custom placeholder pool selected.</p>
-        </div>
+        <label>When should the collector see the final artwork?</label>
+        <select id="revealMode">
+          <option value="instant">Immediately after purchase — automatic</option>
+          <option value="delayed">Automatically later — no creator action</option>
+        </select>
+        <p class="muted" id="revealHint">This changes only when the artwork becomes visible. It never changes, rerolls, or postpones the purchase allocation.</p>
       </div>
     </div>
   </section>
@@ -176,71 +218,209 @@
     <div style="max-height:340px;overflow:auto;margin-top:10px">
       <table class="tokens" id="tokenTable"></table>
     </div>
+    <div class="row" id="securePrivateStagingAction" style="margin-top:14px">
+      <button class="btn" id="btnStagePrivate" type="button" disabled>Stage private artwork</button>
+      <span id="privateStagingStatus" class="muted" role="status" aria-live="polite">Add the token sheet and matching artwork files to continue.</span>
+    </div>
   </section>
 
-  <!-- 4. IPFS -->
-  <section class="panel" id="secIpfs">
-    <h2>4 · Media storage (IPFS)</h2>
-    <p class="muted" id="pinIntro">Your art and metadata are pinned to IPFS.</p>
-    <div class="grid3">
-      <div>
-        <label>Provider</label>
-        <select id="pinKind">
-          <option value="pinata">Pinata (JWT)</option>
-          <option value="node">Own IPFS node (HTTP API)</option>
+  <!-- Advanced compatibility and infrastructure -->
+  <section class="panel" id="secAdvanced">
+    <details class="advanced-details" id="advancedOptions">
+      <summary>
+        <span><strong>Advanced</strong><small>Compatibility contracts, allocation/storage choices, specialist reveal schedules, pinners, operators, funding, and self-host internals</small></span>
+      </summary>
+
+      <div class="advanced-group" id="compatibilityProfiles">
+        <h3>Contract compatibility</h3>
+        <p class="muted">These profiles preserve existing Macaroni contracts. They are not substitutes for the Secure V3.5 profile.</p>
+        <label>Compatibility contract</label>
+        <select id="contractVersion">
+          <option value="macaroni-commitment-v3">Sealed deterministic order — not random</option>
+          <option value="macaroni-editions-v2">Legacy Macaroni V2 — editions + minter royalties</option>
+          <option value="macaroni-v1">Legacy Macaroni V1 — classic static-only</option>
         </select>
+        <p class="muted" id="contractVersionHint">V3 permanently seals creator-defined order, but it is not random. V1/V2 are public-inventory Legacy compatibility.</p>
+
+        <div class="legacy-risk-review" id="legacyRiskReview">
+          <h4>Required Legacy risk review</h4>
+          <p>Legacy pre-publishes inventory information. A technically capable person may inspect or copy work before buying, and allocation or reveal completion may be predictable or depend on a human transaction.</p>
+          <label class="risk-acknowledgement">
+            <input type="checkbox" id="legacyRiskAcknowledged" />
+            <span>I understand Legacy Macaroni is a public-inventory surprise mint, not a truly blind or cryptographically random mint. Artwork may be discovered or copied before purchase; allocations may be predictable; and reveal completion may depend on a human transaction.</span>
+          </label>
+          <button class="btn danger small" id="btnUseCompatibilityProfile" type="button">Use selected compatibility profile</button>
+          <p class="muted" id="legacyRiskStatus" role="status" aria-live="polite">V1/V2 cannot be selected, deployed, published, or exported until this warning is acknowledged.</p>
+        </div>
       </div>
-      <div id="pinJwtWrap">
-        <label>Pinata JWT</label>
-        <input type="password" id="pinJwt" placeholder="eyJ…" />
+
+      <div class="advanced-group">
+        <h3>Automatic-later display policy</h3>
+        <p class="muted">These schedules affect display eligibility only. Allocation is locked during purchase and cannot be rerolled while waiting.</p>
+        <select id="laterPolicy">
+          <option value="rolling-delay">Rolling per-purchase delay / interval</option>
+          <option value="absolute-time">One absolute date and time</option>
+          <option value="after-sellout">After sellout</option>
+        </select>
+        <div class="grid2" id="revealDelayWrap" style="display:none">
+          <div id="rollingDelayWrap">
+            <label>Delay after purchase (days, 0–30 for compatibility contracts)</label>
+            <input type="number" id="revealDelay" min="0" max="30" step="1" value="7" />
+            <label>Minimum spacing between automatic final mints (seconds)</label>
+            <input type="number" id="claimIntervalSeconds" min="0" step="1" value="0" />
+            <p class="muted">0 means fulfill each eligible FIFO claim as soon as the service can. A larger value deliberately spaces automatic fulfillment; it never changes allocations.</p>
+          </div>
+          <div id="revealAtWrap" style="display:none">
+            <label>Display date and time</label>
+            <input type="datetime-local" id="revealAt" />
+          </div>
+        </div>
+        <div id="placeholderPoolWrap" style="display:none;margin-top:10px">
+          <label>Legacy unrevealed placeholder images (optional pool)</label>
+          <input type="file" id="placeholderFiles" accept="image/*" multiple />
+          <p class="muted" id="placeholderPoolStatus">No custom placeholder pool selected.</p>
+        </div>
       </div>
-      <div id="pinUrlWrap" style="display:none">
-        <label>IPFS API URL</label>
-        <input type="url" id="pinUrl" placeholder="http://127.0.0.1:5001" />
+
+      <div class="advanced-group">
+        <h3>Minter royalty compatibility</h3>
+        <label style="margin:0"><input type="checkbox" id="minterRoyaltiesEnabled" /> Add minter royalty pool (Legacy V2)</label>
+        <div id="minterRoyaltyFields" style="display:none;margin-top:8px">
+          <div class="grid2">
+            <div>
+              <label>Minter royalty pool</label>
+              <input type="number" id="minterRoyaltyPct" min="0" max="100" step="0.1" value="0" />
+            </div>
+            <div>
+              <label>Minter royalty split</label>
+              <select id="minterRoyaltyMode">
+                <option value="first_minter">First minter gets the full pool</option>
+                <option value="rolling_pool">Equal split between minters after sellout/lock</option>
+              </select>
+            </div>
+          </div>
+          <label>Royalty updater (defaults to your wallet)</label>
+          <input type="text" id="royaltyUpdaterAddr" placeholder="tz1…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+          <label>Royalty updater endpoint (optional)</label>
+          <input type="url" id="royaltyUpdateEndpoint" placeholder="https://…" autocomplete="off" autocapitalize="none" spellcheck="false" />
+          <p class="muted">Legacy V2 metadata can update after mints, then locks after first-minter sync or sellout/creator lock.</p>
+        </div>
       </div>
-      <div>
-        <label>Preferred gateway (for previews + drop page)</label>
-        <input type="url" id="gateway" placeholder="https://ipfs.fileship.xyz/" />
+
+      <div class="advanced-group">
+        <h3>Secure asset preparation</h3>
+        <label>How should assigned files reach IPFS?</label>
+        <select id="assetStrategy">
+          <option value="pin_on_claim">Private raw files · pin after final mint (recommended)</option>
+          <option value="public_prepin_private_manifest">Public pre-pinned files · private committed order</option>
+        </select>
+        <p class="muted" id="assetStrategyHint">Raw files stay in private staging. After the forced allocation and final NFT mint confirm, the fulfillment service publishes the exact assigned CARs.</p>
+        <div class="notice warn" id="publicPrepinWarning" hidden>
+          <strong>Public pre-pinning is faster, but it is not truly blind.</strong>
+          <span>Anyone who discovers a CID can retrieve or copy the work before purchase. The committed inventory still prevents allocation changes and rerolls, but this option restores the pre-mint copy and marketplace-reporting risk.</span>
+          <label class="check"><input id="publicPrepinRiskAcknowledged" type="checkbox" /> I understand that this Advanced option publishes the artwork before allocation and carries copy-mint risk.</label>
+        </div>
       </div>
-    </div>
-    <div id="pinAccessHint" class="muted" style="margin-top:8px"></div>
-    <div class="row" style="margin-top:14px">
-      <button class="btn" id="btnPin">Pin all media + metadata</button>
-      <span id="pinStatus" class="muted"></span>
-    </div>
-    <div class="progress" style="margin-top:10px"><div id="pinBar"></div></div>
+
+      <div class="advanced-group" id="secIpfs">
+        <h3>Storage &amp; pinner compatibility</h3>
+        <p class="muted" id="pinIntro">Pre-pinning is an Advanced compatibility workflow. Secure V3.5 uses private staging and pins only the assigned artifact during fulfillment.</p>
+        <div class="grid3">
+          <div>
+            <label>Provider</label>
+            <select id="pinKind">
+              <option value="pinata">Pinata (JWT)</option>
+              <option value="node">Own IPFS node (HTTP API)</option>
+            </select>
+          </div>
+          <div id="pinJwtWrap">
+            <label>Pinata JWT</label>
+            <input type="password" id="pinJwt" placeholder="eyJ…" autocomplete="off" />
+          </div>
+          <div id="pinUrlWrap" style="display:none">
+            <label>IPFS API URL</label>
+            <input type="url" id="pinUrl" placeholder="http://127.0.0.1:5001" />
+          </div>
+          <div>
+            <label>Preferred public gateway</label>
+            <input type="url" id="gateway" placeholder="https://ipfs.fileship.xyz/" />
+          </div>
+        </div>
+        <div id="pinAccessHint" class="muted" style="margin-top:8px"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn ghost" id="btnPin">Pre-pin all media + metadata</button>
+          <span id="pinStatus" class="muted"></span>
+        </div>
+        <div class="progress" style="margin-top:10px"><div id="pinBar"></div></div>
+      </div>
+
+      <div class="advanced-group">
+        <h3>Companion operator, funding &amp; recovery</h3>
+        <label class="hosting-choice" id="companionHostingChoice">
+          <input type="radio" name="infrastructureKind" id="infraCompanion" value="companion" />
+          <span><strong>Use self-hosted Companion</strong> <em class="pill warn">Setup required</em><small>Your own always-on private staging, pinner, funded signer, durable queue, monitoring, and backup service.</small></span>
+        </label>
+        <label class="hosting-choice" id="advancedManagedHostingChoice">
+          <input type="radio" name="infrastructureKind" id="infraManaged" value="wtfos-managed" />
+          <span><strong>Use wtfOS managed service</strong><small>Automatically selected for accounts granted <code>use_managed_macaroni</code>.</small></span>
+        </label>
+        <p class="muted">The downloadable Companion must keep raw artwork and credentials outside the static website, run an always-on durable queue and funded signer, monitor failures, and restore from backup. Setup templates and installers are included only when the selected Companion package is available and passes readiness.</p>
+        <p class="muted" id="advancedFundingSummary">Loading the reviewed SMALL, LARGE, and MIXED Shadownet funding evidence. Launch requires an initial reserve covering at least five fulfillment operations.</p>
+      </div>
+    </details>
   </section>
 
-  <!-- 5. Sale stages -->
+  <!-- 4. Sale stages -->
   <section class="panel" id="secStages">
-    <h2>5 · Sale stages</h2>
+    <h2>4 · Sale stages</h2>
     <p class="muted">At least one stage is required. Stages must start in chronological order. Allowlist CSV format: one <code>tz1…address,capacity</code> per line.</p>
     <div id="stagesEditor"></div>
     <button class="btn ghost small" id="btnAddStage">+ Add stage</button>
   </section>
 
-  <!-- 6. Deploy -->
+  <!-- 5. Launch checklist -->
   <section class="panel" id="secDeploy">
-    <h2>6 · Deploy & sync on-chain</h2>
-    <p class="muted">Deploys your own FA2 contract (it appears as a standalone collection on objkt), then loads token metadata, stages and allowlists in batched transactions. V3 permanently finalizes its inventory before any sale stage opens. You pay only network fees — there is <strong>no platform fee</strong>.</p>
-    <div class="row">
-      <button class="btn" id="btnDeploy">Deploy contract</button>
-      <button class="btn ghost" id="btnSync" disabled>Sync drop</button>
-      <button class="btn ghost" id="btnReveal" style="display:none">Reveal minted</button>
-      <span id="deployStatus" class="muted"></span>
+    <div class="spread">
+      <h2>5 · Launch checklist</h2>
+      <span class="pill" id="launchOverallStatus">Not ready</span>
     </div>
+    <p class="muted">Every wallet request is reviewed separately and recorded here. You can close the Studio and return later; Macaroni reconciles an existing operation hash before allowing a retry.</p>
+    <ol class="launch-checklist" id="launchChecklist">
+      <li data-launch-step="readiness"><span class="step-state" data-step-state>Not ready</span><div><strong>Verify network &amp; infrastructure</strong><small>No transaction. Confirms the wallet network, secure service, storage, signer, queue, monitoring, and recovery path.</small></div></li>
+      <li data-launch-step="stage-private-inventory"><span class="step-state" data-step-state>Not ready</span><div><strong>Stage private inventory</strong><small>No transaction. Artwork stays outside the static website and public IPFS until assignment.</small></div></li>
+      <li data-launch-step="deploy-contract"><span class="step-state" data-step-state>Not ready</span><div><strong>Deploy the collection contract</strong><small>Wallet transaction. Creates your creator-owned FA2 collection.</small><button class="btn small" id="btnDeploy" type="button" disabled>Review &amp; deploy contract</button></div></li>
+      <li data-launch-step="sync-inventory"><span class="step-state" data-step-state>Not ready</span><div><strong>Load and permanently finalize inventory</strong><small>One or more reviewed wallet transactions. Each batch resumes independently.</small><button class="btn ghost small" id="btnSync" type="button" disabled>Review next setup transaction</button></div></li>
+      <li data-launch-step="configure-sale"><span class="step-state" data-step-state>Not ready</span><div><strong>Configure sale stages &amp; allowlists</strong><small>Reviewed wallet transaction for each required batch.</small></div></li>
+      <li data-launch-step="fund-reserve"><span class="step-state" data-step-state>Not ready</span><div><strong>Fund the measured automation reserve</strong><small>Wallet transaction. The review shows this drop's exact evidence-derived reserve before you sign; it always covers at least five conservative fulfillment envelopes.</small></div></li>
+      <li data-launch-step="authorize-automation"><span class="step-state" data-step-state>Not ready</span><div><strong>Fulfillment service confirms readiness</strong><small>Automatic finalizer transaction paid by the service operator. The creator is not asked to sign it.</small></div></li>
+      <li data-launch-step="activate-sale"><span class="step-state" data-step-state>Not ready</span><div><strong>Open the sale</strong><small>Your final reviewed setup transaction. Until you sign it, collectors cannot purchase.</small></div></li>
+      <li data-launch-step="publish-page"><span class="step-state" data-step-state>Not ready</span><div><strong>Publish the static collector page</strong><small>No private data. Publishing unlocks only after contract, service heartbeat, reserve, and recovery checks pass.</small></div></li>
+    </ol>
+    <button class="btn ghost" id="btnReveal" type="button" style="display:none">Reveal minted</button>
+    <div id="deployStatus" class="muted" role="status" aria-live="polite"></div>
     <div class="grid2" style="margin-top:10px">
       <div>
         <label>Contract address</label>
         <input type="text" id="contractAddr" placeholder="KT1… (filled after deploy, or paste an existing one)" class="mono" autocomplete="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div>
-        <label>Sync progress</label>
+        <label>Checklist progress</label>
         <div class="progress" style="margin-top:14px"><div id="syncBar"></div></div>
       </div>
     </div>
-    <div class="log" id="log" style="margin-top:14px">ready.</div>
-    <p class="muted" style="margin-top:10px">Done here? Switch to the <strong>Page Designer</strong> tab to style your mint page and export your website.</p>
+    <details class="technical-details" style="margin-top:14px">
+      <summary>Technical operation log</summary>
+      <div class="log" id="log">ready.</div>
+    </details>
+    <details class="technical-details" style="margin-top:10px">
+      <summary>Public-chain privacy boundary</summary>
+      <p class="muted">Macaroni keeps the artwork CAR unavailable until the final mint is confirmed. The final metadata address and allocation proof must still pass through a Tezos node and public transaction pool just before confirmation, so an RPC operator, baker, or mempool observer may briefly see that address first. The earlier on-chain collection commitment proves the creator's inventory and the transaction can mint only the already-locked claim.</p>
+    </details>
+    <div class="row" id="secureCloseAction" style="margin-top:10px" hidden>
+      <button class="btn danger small" id="btnCloseSecureSale" type="button">Permanently close this sale</button>
+      <span class="muted">Stops future purchases. Existing claims still finish; unused reserve returns only after all purchased claims are fulfilled.</span>
+    </div>
+    <p class="muted" style="margin-top:10px">When the checklist is complete, switch to <strong>Drop Page Designer</strong> to preview and publish.</p>
   </section>
 </div>
 
@@ -311,8 +491,8 @@
       </section>
 
       <section class="panel" id="secInstallers">
-        <h2>Macaroni desktop app</h2>
-        <p class="muted">Installers run Macaroni locally with the same contract/deploy flow and self-managed Pinata or IPFS node settings. wtfOS platform pinning and subdomain publishing stay available only inside wtfOS for trusted creators.</p>
+        <h2>Macaroni Desktop &amp; Companion</h2>
+        <p class="muted">A secure self-hosted package needs both the static collector page and a private Companion service. The selected package must include separate no-secret site files, private worker templates/installers, credential and backup checklists, a setup guide, health checks, and a Shadownet rehearsal. A plain static Desktop wrapper alone is not secure-infrastructure readiness.</p>
         <div class="installer-grid" id="installerGrid" aria-live="polite">
           <a class="btn ghost installer-link disabled" id="installerMacos" data-installer-platform="macos" aria-disabled="true">macOS</a>
           <a class="btn ghost installer-link disabled" id="installerWindows" data-installer-platform="windows" aria-disabled="true">Windows</a>
@@ -335,6 +515,66 @@
 
   </div>
 </div>
+
+<dialog class="transaction-review" id="transactionReviewDialog" aria-labelledby="transactionReviewTitle" aria-describedby="transactionReviewSummary">
+  <form method="dialog">
+    <div class="spread">
+      <div>
+        <span class="pill warn" id="transactionReviewKind">Wallet transaction</span>
+        <h2 id="transactionReviewTitle">Review before signing</h2>
+      </div>
+      <button class="btn ghost small" id="btnCloseTransactionReview" value="cancel" aria-label="Close transaction review">Close</button>
+    </div>
+    <p id="transactionReviewSummary">Macaroni will explain the exact action before your wallet opens.</p>
+    <dl class="transaction-review-grid">
+      <div><dt>What you are signing</dt><dd id="reviewAction">—</dd></div>
+      <div><dt>Network</dt><dd id="reviewNetwork">—</dd></div>
+      <div><dt>Wallet</dt><dd id="reviewWallet">—</dd></div>
+      <div><dt>Contract / entrypoint</dt><dd id="reviewEntrypoint">—</dd></div>
+      <div><dt>Amount transferred</dt><dd id="reviewAmount">—</dd></div>
+      <div><dt>Network fee</dt><dd id="reviewFee">Pending live wallet estimate</dd></div>
+      <div><dt>Storage</dt><dd id="reviewStorage">Pending live wallet estimate</dd></div>
+      <div><dt>Irreversible effect</dt><dd id="reviewIrreversible">—</dd></div>
+    </dl>
+    <div class="grid2 review-outcomes">
+      <div class="notice"><strong>If you sign</strong><span id="reviewIfSign">—</span></div>
+      <div class="notice"><strong>If you decline</strong><span id="reviewIfDecline">—</span></div>
+    </div>
+    <div class="notice" id="reviewExistingOperation" hidden>
+      <strong>Existing operation</strong>
+      <span id="reviewOperationStatus"></span>
+      <a id="reviewOperationLink" target="_blank" rel="noopener" hidden>View on TzKT</a>
+    </div>
+    <div class="row transaction-review-actions">
+      <button class="btn ghost" id="btnDeclineTransaction" value="cancel">Decline for now</button>
+      <button class="btn" id="btnApproveTransaction" value="default">Continue to wallet</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="transaction-review" id="operationHashRecoveryDialog" aria-labelledby="operationHashRecoveryTitle" aria-describedby="operationHashRecoverySummary">
+  <form method="dialog">
+    <div class="spread">
+      <div>
+        <span class="pill warn">Wallet outcome check</span>
+        <h2 id="operationHashRecoveryTitle">Do not sign this step again yet</h2>
+      </div>
+      <button class="btn ghost small" value="cancel" aria-label="Close wallet outcome check">Close</button>
+    </div>
+    <p id="operationHashRecoverySummary">Macaroni cannot yet prove whether the wallet broadcast the reviewed transaction.</p>
+    <label>Operation hash, if your wallet shows one
+      <input id="recoveryOperationHash" type="text" autocomplete="off" spellcheck="false" placeholder="o…" />
+    </label>
+    <div class="notice warn">
+      <strong>This step must remain locked</strong>
+      <span>Record the hash if the wallet shows one. Otherwise keep checking. A wallet can approve an old request later, so Macaroni cannot safely issue the same transaction again merely because no hash has appeared yet.</span>
+    </div>
+    <div class="row transaction-review-actions">
+      <button class="btn ghost" value="cancel">Keep checking</button>
+      <button class="btn" value="record-hash">Record operation hash</button>
+    </div>
+  </form>
+</dialog>
 
 <footer class="credits">Macaroni — open-source blind mints on Tezos · 0% platform fee · your contract, your keys</footer>
 

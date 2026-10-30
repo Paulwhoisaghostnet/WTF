@@ -11,6 +11,11 @@ const mainSource = readFileSync("apps/pasta-suite-desktop/src/main.cjs", "utf8")
 const preloadSource = readFileSync("apps/pasta-suite-desktop/src/preload.cjs", "utf8");
 const siteArchiveSource = readFileSync("apps/pasta-suite-desktop/src/site-archive.cjs", "utf8");
 const prepareSource = readFileSync("apps/pasta-suite-desktop/scripts/prepare-assets.mjs", "utf8");
+const companionAdapterSource = readFileSync("companion/macaroni-v35/desktop-adapter.cjs", "utf8");
+const desktopSetupSource = readFileSync("companion/macaroni-v35/desktop-setup.cjs", "utf8");
+const companionPackage = JSON.parse(readFileSync("companion/macaroni-v35/package.json", "utf8"));
+const macaroniStudioHtml = readFileSync("public/creation-tools/macaroni/studio.html", "utf8");
+const macaroniStudioSource = readFileSync("public/creation-tools/macaroni/js/studio.js", "utf8");
 const portableCheaseSource = readFileSync("public/creation-tools/ch-ease/js/studio.js", "utf8");
 const rotiniArtifactSource = readFileSync("public/creation-tools/rotini/js/rotini-artifact.js", "utf8");
 const rotiniMintSource = readFileSync("public/creation-tools/rotini/js/rotini-mint.js", "utf8");
@@ -51,6 +56,7 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
     "package.json",
     "src/**/*",
     "pasta/**/*",
+    "companion/**/*",
     "provenance/**/*",
   ]);
   assert.equal(desktopPackage.build.artifactName, "Pasta-Suite-${version}-${os}-${arch}.${ext}");
@@ -85,11 +91,49 @@ test("Pasta suite desktop package bundles all Pasta tools in an Electron shell",
   assert.equal(desktopPackage.build.deb.packageName, "pasta-suite");
   assert.equal(desktopPackage.build.deb.packageCategory, "devel");
   assert.equal(desktopPackage.build.deb.maintainer, "wtfOS <support@wtfos.app>");
+  assert.deepEqual(desktopPackage.dependencies, companionPackage.dependencies);
   assert.match(gitignoreSource, /apps\/pasta-suite-desktop\/pasta\//);
   assert.match(gitignoreSource, /apps\/pasta-suite-desktop\/release\//);
 });
 
 test("Pasta suite asset preparation preserves production creation-tool paths", () => {
+  assert.match(prepareSource, /companion\/macaroni-v35/);
+  assert.match(prepareSource, /companionExcludedTopLevel/);
+  assert.match(prepareSource, /"node_modules", "data", "secrets", "\.env"/);
+  for (const excluded of ["node_modules", "data", "secrets", ".env"]) {
+    assert.equal(existsSync(`apps/pasta-suite-desktop/companion/macaroni-v35/${excluded}`), false);
+  }
+  assert.match(prepareSource, /macaroni-v35\.contract\.json/);
+  assert.match(mainSource, /js\/octez-wallet\.js/);
+  assert.match(mainSource, /vendor\/octez-connect\.js/);
+  assert.match(mainSource, /pasta-service\.json/);
+  assert.match(mainSource, /utilityProcess\.fork/);
+  assert.match(mainSource, /startCompanionAdapter/);
+  assert.match(mainSource, /app\.getPath\("userData"\), "macaroni-v35-companion"/);
+  assert.match(mainSource, /companionAdapter\.proxy/);
+  assert.match(mainSource, /ipcMain\.handle\(COMPANION_SETUP_IPC_CHANNEL/);
+  assert.match(mainSource, /sender\.origin !== appOrigin \|\| sender\.pathname !== COMPANION_STUDIO_PATH/);
+  assert.match(mainSource, /COMPANION_STUDIO_PATH = "\/creation-tools\/macaroni\/studio\.html"/);
+  assert.match(mainSource, /prepareDesktopSetupKit/);
+  assert.match(mainSource, /shell\.openPath\(guidePath\)/);
+  assert.match(mainSource, /shell\.showItemInFolder\(companionAdapter\.envPath\)/);
+  assert.match(mainSource, /return \{ ok: true, action \}/);
+  assert.doesNotMatch(mainSource, /readFile\(companionAdapter\.envPath/);
+  assert.match(companionAdapterSource, /Authorization: `Bearer \$\{adminToken\}`/);
+  assert.match(companionAdapterSource, /studioApiReady: true/);
+  assert.match(companionAdapterSource, /companion_response_rejected/);
+  assert.doesNotMatch(mainSource, /copyDropAsset\([^\n]*(?:\.env|secrets|private-assets|admin\.token|finalizer\.key)/);
+  assert.match(preloadSource, /openCompanionSetupGuide/);
+  assert.match(preloadSource, /openCompanionConfigFolder/);
+  assert.match(preloadSource, /ipcRenderer\.invoke\("macaroni:companion-setup", \{ action \}\)/);
+  assert.match(macaroniStudioSource, /renderNativeCompanionSetup/);
+  assert.match(macaroniStudioSource, /checkNativeCompanionAgain/);
+  for (const id of ["nativeCompanionSetup", "btnOpenCompanionSetupGuide", "btnOpenCompanionConfigFolder", "btnCheckCompanionAgain"]) {
+    assert.match(macaroniStudioHtml, new RegExp(`id="${id}"`));
+  }
+  assert.match(desktopSetupSource, /SAFE_SETUP_DIRECTORIES/);
+  assert.ok(existsSync("apps/pasta-suite-desktop/companion/macaroni-v35/desktop-setup.cjs"));
+  assert.ok(existsSync("apps/pasta-suite-desktop/companion/macaroni-v35/DESKTOP_SETUP.md"));
   for (const id of bundledPastaTools) {
     assert.match(prepareSource, new RegExp(`id: "${id}"`));
     assert.match(prepareSource, /public\/creation-tools/);
@@ -181,6 +225,28 @@ test("Pasta suite asset preparation preserves production creation-tool paths", (
   ]);
 });
 
+test("alpha package includes CH-EASE and blocks Mainnet in every bundled publisher toolkit", () => {
+  const bundleRoot = "apps/pasta-suite-desktop/pasta";
+  const manifest = JSON.parse(readFileSync(`${bundleRoot}/suite-manifest.json`, "utf8"));
+  assert.equal(manifest.network, "shadownet");
+  for (const id of ["ch-ease", "macaroni", "spaghetti"]) {
+    assert.equal(manifest.tools.find((tool) => tool.id === id)?.alphaStatus, "supported");
+  }
+  for (const id of ["gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
+    assert.equal(manifest.tools.find((tool) => tool.id === id)?.alphaStatus, "preview");
+  }
+  const suiteIndex = readFileSync(`${bundleRoot}/index.html`, "utf8");
+  assert.match(suiteIndex, /const ALPHA_SHADOWNET_ONLY = true/);
+  assert.doesNotMatch(suiteIndex, /<option value="mainnet">Mainnet<\/option>/);
+  const chease = readFileSync(`${bundleRoot}/creation-tools/ch-ease/js/studio.js`, "utf8");
+  assert.match(chease, /network: "shadownet"/);
+  for (const id of ["macaroni", "spaghetti", "gnocchi", "ravioli", "rotini", "penne", "lasagna"]) {
+    const common = readFileSync(`${bundleRoot}/creation-tools/${id}/js/common.js`, "utf8");
+    assert.match(common, /if \(networkKey !== "shadownet"\) throw new Error\("This Pasta Suite alpha supports only Tezos Shadownet"\)/);
+  }
+  assert.match(companionAdapterSource, /alphaShadownetOnly/);
+});
+
 test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS APIs", () => {
   assert.match(mainSource, /http\.createServer/);
   assert.match(mainSource, /listenOnStableOrigin\(nextServer, PRODUCT_NAME\)/);
@@ -214,11 +280,14 @@ test("Pasta suite desktop runtime serves local assets and blocks hosted wtfOS AP
   assert.match(mainSource, /contextIsolation: true/);
   assert.match(mainSource, /sandbox: true/);
   assert.match(mainSource, /setWindowOpenHandler/);
-  assert.match(mainSource, /if \(baseUrl && value\.startsWith\(baseUrl\)\) return true/);
+  assert.match(mainSource, /isSameOrigin\(value, baseUrl\)/);
+  assert.match(mainSource, /if \(isSuiteUrl\(value\)\) return true/);
+  assert.match(mainSource, /\.\.\.\(local \? \{ preload: path\.join\(__dirname, "preload\.cjs"\) \} : \{\}\)/);
+  assert.match(mainSource, /if \(\["POST", "PUT", "PATCH", "DELETE"\]\.includes\(req\.method\) && !trustedMutation\(req\)\)/);
   assert.equal(
     (mainSource.match(/preload: path\.join\(__dirname, "preload\.cjs"\)/g) || []).length,
     2,
-    "the main window and every allowed Pasta tool child must receive the native preload",
+    "the main window and local tool children receive the native preload; external wallet windows do not",
   );
   assert.match(prepareSource, /window\.open\(card\.dataset\.entry/);
   assert.match(preloadSource, /PASTA_SUITE_DESKTOP/);

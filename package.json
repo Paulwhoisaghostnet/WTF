@@ -207,7 +207,7 @@
     "pasta:shadownet:colander:ui-live:check": "tsx --test scripts/pasta-protocol/shadownet-colander-ui-live.test.ts",
     "pasta:shadownet:colander": "npm run build && HARNESS_PORT=4322 playwright test tests/playwright/inventory/pasta-protocol-colander-shadownet.spec.mjs --project=chromium --reporter=list",
     "pasta:shadownet:wtfme": "npm run build && HARNESS_PORT=4324 playwright test tests/playwright/inventory/pasta-protocol-wtfme-hosting.spec.mjs --project=chromium --reporter=list",
-    "pasta:shadownet:pinning": "npx tsx --test server/features/ipfs-pinning/pasta-proof.test.ts server/features/ipfs-pinning/well-known-policy.test.ts server/routes/ipfs-pinning-pasta-policy.test.ts",
+    "pasta:shadownet:pinning": "npx tsx --test server/features/ipfs-pinning/pasta-proof.test.ts server/features/ipfs-pinning/well-known-policy.test.ts server/routes/ipfs-pinning-pasta-policy.test.ts server/features/tz2at/pds-provisioning-policy.test.ts",
     "pasta:live-readiness": "node scripts/pasta-protocol/live-readiness-gate.mjs",
     "pasta:live-readiness:final": "PASTA_LIVE_READINESS_FINAL_LAUNCH=1 node scripts/pasta-protocol/live-readiness-gate.mjs",
     "pasta:live-readiness:check": "node --test scripts/pasta-protocol/live-readiness-gate-policy.test.mjs",
@@ -284,7 +284,8 @@
     "load:test": "npx tsx tests/load/run-load.mjs",
     "load:test:prod-baseline": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_LABEL=prod-baseline WTF_LOAD_STEPS=1,3 WTF_LOAD_MIX=public:1 WTF_LOAD_MAX_RPS=4 WTF_LOAD_STEP_SECONDS=20 WTF_LOAD_AUTH=guest npx tsx tests/load/run-load.mjs",
     "load:test:prod-ramp": "WTF_LOAD_BASE_URL=https://wtfos.app WTF_LOAD_ALLOW_PRODUCTION=1 WTF_LOAD_AUTH=wallet WTF_LOAD_LABEL=prod-ramp WTF_LOAD_STEPS=1,3,5,10 WTF_LOAD_STEP_SECONDS=25 npx tsx tests/load/run-load.mjs",
-    "load:ui:wtf-live": "npx tsx tests/load/ui-wtf-live-scenario.mjs"
+    "load:ui:wtf-live": "npx tsx tests/load/ui-wtf-live-scenario.mjs",
+    "contract:macaroni-v35:compile": "node scripts/macaroni/compile-v35-contract-template.mjs"
   },
   "dependencies": {
     "@atproto/api": "^0.20.4",
@@ -334,12 +335,18 @@
     "wouter": "^3.9.0",
     "ws": "^8.21.1",
     "zod": "^4.6.7",
-    "zod-validation-error": "^5.0.0"
+    "zod-validation-error": "^5.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.1041.0",
+    "@ipld/car": "5.4.7",
+    "ipfs-unixfs-importer": "17.0.1",
+    "multiformats": "14.0.5",
+    "pinata": "2.5.6"
   },
   "overrides": {
     "esbuild": "0.28.0",
     "fast-uri": "3.1.9",
     "hono": "4.13.11",
+    "@hono/node-server": "2.1.3",
     "qs": "6.16.1",
     "@walletconnect/core": "2.23.6",
     "@walletconnect/sign-client": "2.23.6",
