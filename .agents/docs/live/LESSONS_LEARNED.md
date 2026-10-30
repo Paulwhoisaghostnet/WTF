@@ -12767,3 +12767,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A created account, verified external Bluesky profile, healthy PDS, and available pinning service do not imply that the specific publisher can claim a host or publish a recoverable pin manifest.
 
 **Rule**: Verify the exact publisher's account ID, email, role permissions, wallet links, OAuth identity, site eligibility, and account-scoped PDS provisioning status before attempting any live host or pin write. Keep PDS provisioning scoped to that ID and retain the normal signature and OAuth proof paths for identity links.
+
+### 2026-10-30 — Identity-only OAuth cannot hydrate profile through the granted session
+
+**What happened**: The dedicated Pasta Bluesky account approved the WTF identity-only OAuth request, but the WTF callback failed with `ScopeMissingError` for `app.bsky.actor.getProfile`. The callback tried to read a public profile through the newly granted session, whose scope permits identity only.
+
+**Why it mattered**: The least-privilege linking path could not save the account even though the user authorized it correctly. Repeating OAuth could not repair a deterministic scope mismatch.
+
+**Rule**: Fetch public AT profile data through the configured public AppView during identity-only OAuth callbacks. Keep the authenticated session for operations covered by its actual grant, and prove the live callback after deploying the fix.

@@ -1909,6 +1909,9 @@ Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 - 2026-10-30 scoped policy verification: `npm run check`, 10 focused PDS/inventory tests, `npm run pasta:wtfme:live-inventory:check`, `npm run pasta:wtfme:live-publish:check`, `npm run pasta:live-readiness:check`, `npm run security:public-release-boundary`, `npm run test:e2e:inventory:coverage`, `npm run env:inventory:check`, and `npm run bounty:board:check` passed. The production publisher account and public host/pin proof remain open.
   - 2026-10-30 dedicated account `pasta` (user ID 77) exists. Project mailbox `pasta@wtfos.me`, display name, and avatar are set; the additive `wtf_pin_collector` role grants `use_wtfos_pinning`. Dedicated Bluesky identity `pastaprotocol.bsky.social` is verified, but OAuth is not yet linked to WTF. The authenticated site eligibility returns `pasta.wtfos.me` with missing wallet, OAuth social, and DID target. The account-scoped PDS status remains `provisioningEnabled:false` until the narrow policy is deployed and user ID 77 is allowlisted.
 
+- 2026-10-30 live identity-link finding: Dedicated `pasta` account 77 authorized `pastaprotocol.bsky.social` with an identity-only AT OAuth scope, but WTF redirected to `?error=atproto_oauth`; production logs show `ScopeMissingError` for `app.bsky.actor.getProfile`. The callback used the limited OAuth session to read a public Bluesky profile, making the least-privilege link fail before the account row was saved.
+- Correction in this pass: Load the public profile through the configured public AppView while retaining the identity-only grant for the callback session. Verify with focused tests and a fresh live Pasta OAuth link after deployment.
+
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 
 - Category: API / reliability
