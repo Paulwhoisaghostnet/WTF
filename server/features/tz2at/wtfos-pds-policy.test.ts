@@ -4,12 +4,13 @@ import { readFileSync } from "node:fs";
 
 test("WTFOS PDS request path provisions a separate repo and writes identity link", () => {
   const route = readFileSync("server/routes/tz2at.ts", "utf8");
+  const provisioningPolicy = readFileSync("server/features/tz2at/pds-provisioning-policy.ts", "utf8");
   const handlePolicy = readFileSync("server/features/tz2at/wtfos-pds-handle.ts", "utf8");
   const schema = readFileSync("shared/schema-social.ts", "utf8");
 
   assert.match(route, /agent\.createAccount\(/);
   assert.match(route, /WTFOS_ATPROTO_NETWORK_DOMAIN/);
-  assert.match(route, /pdsOfferingConfig\(account,\s*username\)/);
+  assert.match(route, /pdsOfferingConfig\(account,\s*username,\s*user\.id\)/);
   assert.match(handlePolicy, /validateUserSiteLabel\(input\.username,\s*domain\)/);
   assert.match(handlePolicy, /source:\s*"wtfos_username"/);
   assert.match(route, /collection:\s*"app\.wtfos\.identity\.link"/);
@@ -17,7 +18,9 @@ test("WTFOS PDS request path provisions a separate repo and writes identity link
   assert.match(route, /canonicalDid:\s*input\.canonicalDid/);
   assert.match(route, /wtfDid:\s*account\.data\.did/);
   assert.match(route, /encryptOAuthSecret\(session\.accessJwt\)/);
-  assert.match(route, /WTFOS_PDS_PROVISIONING_ENABLED/);
+  assert.match(route, /wtfosPdsProvisioningEnabledForUser\(user\.id\)/);
+  assert.match(provisioningPolicy, /WTFOS_PDS_PROVISIONING_ENABLED/);
+  assert.match(provisioningPolicy, /WTFOS_PDS_PROVISIONING_ALLOWED_USER_IDS/);
   assert.match(schema, /wtfosAtprotoIdentities/);
   assert.match(schema, /encryptedRepoPassword/);
 });

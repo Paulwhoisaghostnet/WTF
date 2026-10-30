@@ -124,7 +124,8 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.doesNotMatch(route, /if \(!req\.isAuthenticated\?\.\(\) \|\| !sessionState\?\.userId\)/);
   assert.match(route, /buildSkywireAtprotoScope/);
   assert.match(route, /normalizeSkywirePermissionTier/);
-  assert.match(route, /new Agent\(session\)/);
+  assert.match(route, /getPublicAtprotoAgent\(\)\.getProfile\(\{ actor: session\.did \}\)/);
+  assert.doesNotMatch(route, /new Agent\(session\)/);
   assert.match(route, /eventType:\s*"atproto\.account\.registered"/);
   assert.match(oauth, /persistCredentialSessionForDid/);
   assert.match(oauth, /ATPROTO_MAX_SCOPE/);

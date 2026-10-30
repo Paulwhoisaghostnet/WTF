@@ -15,6 +15,7 @@ import {
   atprotoAccountCapabilities,
   atprotoAccountSessionSummary,
   getAtprotoOAuthClient,
+  getPublicAtprotoAgent,
   isAtprotoEnabled,
   atprotoOAuthAppStateKeyForCallback,
   deleteAtprotoOAuthStateFamily,
@@ -1136,9 +1137,10 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       return redirectWith("error=atproto_state");
     }
 
-    const { Agent } = await import("@atproto/api");
-    const api = new Agent(session);
-    const profile = await api.getProfile({ actor: session.did });
+    // Identity-only OAuth grants no app.bsky.actor.getProfile RPC scope. Profile
+    // data is public, so hydrate it through the public AppView instead of the
+    // permission-limited OAuth session.
+    const profile = await getPublicAtprotoAgent().getProfile({ actor: session.did });
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
     const sessionTokenScope =
       typeof (session as any)?.tokenSet?.scope === "string" ? String((session as any).tokenSet.scope) : null;
