@@ -83,7 +83,7 @@ Total: **703** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-707 | In Progress | Codex coLILseum open-seat wagering | 2026-10-24 | WTFIAP escrow / open-seat admission | P1 | 13 | 190 | 3 | 4 | 2 | XTZ Duel wagers cannot be funded before a challenger takes a seat |
 | WTF-BB-701 | In Progress | Codex coLILseum dual-network wagering | 2026-10-23 | WTFIAP escrow / Mainnet admission | P1 | 13 | 190 | 3 | 4 | 2 | Mainnet WTF wagers lack a verified escrow and dedicated signer lane |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 190 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
-| WTF-BB-342 | In Progress | Codex Pasta primary scratch/live host audit | 2026-07-06 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 190 | 2 | 5 | 2 | Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface |
+| WTF-BB-342 | In Progress | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 190 | 2 | 5 | 2 | Pasta WTF.ME public host and pin recovery remain unproven; live readiness checks remain in progress |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 190 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 190 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 282 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
@@ -1885,13 +1885,13 @@ Total: **703** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
   - The authenticated production admin registry reports WTFIAM, Arcade, Casino, Game Studio, Studio, and Mail all enabled, registered, permanent, and installable. The public FAQ returns ten seeded entries beginning with the five-task Start Here guidance.
   - Exact deploy run `33686283236` succeeded and `https://wtfos.app/api/health/ready` reports commit `7e0cf18a` with database, chain, and jobs healthy. Live authenticated probes for contestant `e2e_bert` and admin `e2e_thecount` now return all six commissioned apps enabled, including Casino from their existing `casino-app-pass`; Casino status still returns `canEnter: false` and inactive membership. A live Chromium check confirms the contestant sees the locked Casino launcher and cannot enter. WTF-BB-622 is Verified.
 
-### WTF-BB-342 - Pasta WTF.ME hosted-page and source-level pinning/recovery proofs exist locally, the current publisher is dry-run/expected-host/host-drift guarded, and live readiness on `9652a72d` verifies repo cleanup, deployment identity, installer assets/catalog, static runtime markers, signer-backed Colander action proof `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h`, and non-spending TzKT replay; final launch remains blocked only on missing dedicated WTF.ME publish credentials and no public Pasta WTF.ME host, with `paulwhoisaghost.wtfos.me` TLS-allowed but missing Pasta landing markers, `wtf-admin.wtfos.me` and `macaroni.wtfos.me` unregistered, and `cobwebsaints.wtfos.me` not serving a valid Pasta proof surface
+### WTF-BB-342 - Pasta WTF.ME public host and pin recovery remain unproven; live readiness checks remain in progress
 
 - Category: Pasta Protocol / WTF.ME host and pin recovery
 - Priority: P1
 - Status: In Progress
-- Owner/Session: Codex Pasta primary scratch/live host audit
-- Last touched: 2026-07-06
+- Owner/Session: Codex Pasta mainnet alpha integration
+- Last touched: 2026-10-29
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
   - Historical `npm run pasta:wtfme:live-check` failed against production because `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returned HTTP 403 with `handle not registered`.
@@ -1972,6 +1972,7 @@ Total: **703** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
   - Still blocked live: no production host currently serves the Pasta landing/mint/collection pages plus public pin discovery; `wtf-admin.wtfos.me` is unregistered, and `paulwhoisaghost.wtfos.me` is registered but not yet published with Pasta content.
   - 2026-07-06 live recheck with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved repo cleanup, deployment identity, static/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof while blocking only on the dedicated WTF.ME credential and live host proof.
   - 2026-07-06 strict final gate with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d npm run pasta:live-readiness:final` proved the same non-WTF.ME surfaces and exited `1` only on the same WTF.ME blockers.
+- 2026-10-29 integration pass: current live gate found an obsolete dependency on `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-action-report.md`, which the architecture cleanup deleted. The verifier now rechecks the immutable Shadownet operation and storage directly through TzKT without local archived prose or signer execution; operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` passed. The gate now records a failed chain lookup as a structured blocker. Separate cleanup audit still flags older divergent Pasta review branches for manual classification; no branch was deleted. Dedicated WTF.ME host, authentication, and publication evidence remain open.
 
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 

@@ -337,7 +337,11 @@ function checkRecordedColanderActionProof() {
     record("recorded Colander Shadownet action proof", "skipped", "PASTA_LIVE_READINESS_CHECK_COLANDER_PROOF=0");
     return;
   }
-  runPackageScript("pasta:shadownet:colander:action-proof");
+  const result = runPackageScriptResult("pasta:shadownet:colander:action-proof");
+  if (!result.ok) {
+    block("recorded Colander Shadownet action proof", result.detail);
+    return;
+  }
   record("recorded Colander Shadownet action proof", "pass", "TzKT indexed operation verified without signer execution");
 }
 

@@ -24,11 +24,11 @@ test("recorded Colander action proof verifier is non-spending", () => {
   assert.match(source, /Refusing to verify Shadownet Colander proof with TEZOS_NETWORK=mainnet/);
 });
 
-test("recorded Colander action proof verifier checks the report artifact", () => {
-  assert.match(source, /shadownet-colander-action-report\.md/);
-  assert.match(source, /- Status: PASSED/);
-  assert.match(source, /Signer wallet id/);
-  assert.match(source, /TzKT indexed the operation as an applied transaction/);
+test("recorded Colander action proof uses canonical chain evidence without an archived local report", () => {
+  assert.doesNotMatch(source, /shadownet-colander-action-report\.md/);
+  assert.doesNotMatch(source, /readFileSync/);
+  assert.match(source, /operation\?\.hash === OPERATION_HASH/);
+  assert.match(source, /operation\?\.level === EXPECTED_LEVEL/);
 });
 
 test("recorded Colander action proof verifier checks TzKT operation identity and storage", () => {
