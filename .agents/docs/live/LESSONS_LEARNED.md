@@ -12739,3 +12739,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: The server diff shows every new close path requires no escrow lock or offer, while escrow-bound start, advance, view, and settlement paths remain guarded. Added the new exact runtime hash to the compatibility map with only the previously approved pinned hashes and the immediately preceding release; unknown future hashes still fail. A hosted authority test proves a prior-release escrow-bound room has no close action and rejects close before and after match start. The pinned two/eight-seat and Cherub replay digests, deploy-guard tests, and hero-balance tests pass.
 
 **Rule**: Treat a manifest refresh of an authoritative file as a new rules identity even when the gameplay change appears outside funded rooms. Prove funded behavior first, then update the exact compatibility list and hash assertions in the same release; never bypass the deployment guard to clear CI.
+
+---
+
+## 2026-10-29 — Missing public fields must never prove a saved room seat
+
+**What happened**: A fresh coLILseum guest saw “Return to room” for a table they had never joined. The public room summary intentionally omitted player IDs, but the client compared each missing `player.playerId` with a missing `saved?.playerId`; both were `undefined`, so any human player looked like the guest's saved seat.
+
+**Correction and proof**: The lobby now offers local Return only when it has a saved player role, player ID, and session token; authenticated cross-device Return still comes from the server's account-personalized `myPlayerId`. A rebuilt browser run proves a saved browser can return after switching to anonymous, an independent guest sees Join and takes the second seat, and the signed-in two-browser recovery story still passes.
+
+**Rule**: Treat absent fields as absence of evidence, never as matching identities. For public summaries that deliberately omit private identifiers, test both a fresh browser and a saved session against the real room authority; keep admission decisions on the server.
