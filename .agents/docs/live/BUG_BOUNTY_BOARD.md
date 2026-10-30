@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **704** · Open: **4** · Claimed: **42** · In Progress: **16** · Blocked: **3** · Fixed: **122** · Verified: **513** · Archived: **4**
+Total: **705** · Open: **4** · Claimed: **42** · In Progress: **16** · Blocked: **3** · Fixed: **123** · Verified: **513** · Archived: **4**
 
 ## Canonical Board
 
@@ -215,6 +215,7 @@ Total: **704** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 616 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 616 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 616 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
+| WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 692 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 546 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
@@ -719,15 +720,15 @@ Total: **704** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 692 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 692 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 692 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 699 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 700 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 388 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 669 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 692 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 699 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 699 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 699 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 699 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 699 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 700 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 700 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 700 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 700 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 700 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 190 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 282 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 388 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -4743,6 +4744,23 @@ Total: **704** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
   - `npm run check -- --pretty false`
   - `npm run test:e2e:inventory:coverage`
   - `HARNESS_PORT=4176 npm run test:e2e:inventory`
+
+### WTF-BB-747 - Gamma pinning inventory waits for obsolete Connect Porcupin button
+
+- Category: Pasta Protocol / IPFS Pinning inventory test
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex Pasta mainnet alpha integration
+- Last touched: 2026-10-29
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence:
+  - The full local inventory and isolated Gamma media-infrastructure story each time out waiting for `Connect Porcupin`. The current IPFS Pinning Manager renders `Own-node setup` for the same `/apps/porcupin-setup` handoff.
+- Likely correction direction:
+  - Update the inventory interaction to the current button label and keep its destination and Gamma presentation assertions.
+- Verification idea:
+  - Run the isolated Gamma story and the CI inventory on the integrated branch.
+- Current correction: the Gamma inventory clicks the current `Own-node setup` control and retains the `/apps/porcupin-setup` destination and presentation assertions.
+- Verification: the formerly timed-out story passed in isolation in 3.2 seconds; full CI inventory is pending on the corrected head.
 
 ### WTF-BB-011 - Wallet/Tezos bundle chunks are huge and pull Node core externals
 

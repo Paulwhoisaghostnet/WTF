@@ -12893,3 +12893,14 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A static source assertion failed for the wrong file while a real separate-origin collector path had regressed; the stale TV marker hid otherwise intact seed behavior.
 
 **Rule**: After integrating a refactor, point source-policy checks at the active module and assert the browser-facing HTTP behavior, including private-route denial. For source sections, locate semantic markers instead of hard-coded numbering when intervening sections may be added.
+
+
+---
+
+## 2026-10-29 — Inventory labels must follow current UI copy after branch integration
+
+**What happened**: The integrated Gamma IPFS Pinning Manager rendered an `Own-node setup` button that still opened `/apps/porcupin-setup`, while an older inventory story waited for the removed `Connect Porcupin` label until its test timeout.
+
+**Why it mattered**: The full browser gate looked like a slow media-infrastructure failure even though the navigation action and destination still worked.
+
+**Rule**: When a branch merges current UI copy, assert the visible control label users actually see and preserve the destination assertion. Reproduce a full-suite timeout as a focused story before changing product behavior.
