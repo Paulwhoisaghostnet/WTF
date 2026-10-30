@@ -132,6 +132,21 @@ describe("CORS origin resolution", () => {
       const macaroni = await request("/api/macaroni/reveal-request", "POST", "https://mint.example");
       assert.equal(macaroni.headers.get("access-control-allow-origin"), "https://mint.example");
       assert.equal(macaroni.headers.get("access-control-allow-credentials"), null);
+      for (const [path, method] of [
+        ["/api/macaroni/v35/status/shadownet/KT1test", "GET"],
+        ["/api/macaroni/v35/status/shadownet/KT1test/claims/claim-1", "GET"],
+        ["/api/macaroni/v35/status/shadownet/KT1test/purchases/opHash", "GET"],
+        ["/api/macaroni/v35/wake/shadownet/KT1test", "POST"],
+      ]) {
+        const publicResponse = await request(path, method, "https://collector.example");
+        assert.equal(publicResponse.headers.get("access-control-allow-origin"), "https://collector.example", path);
+        assert.equal(publicResponse.headers.get("access-control-allow-credentials"), null, path);
+      }
+      const privateMacaroni = await request("/api/macaroni/v35/drops/private", "POST", "https://collector.example");
+      assert.equal(privateMacaroni.status, 403);
+      const publicPreflight = await request("/api/macaroni/v35/wake/shadownet/KT1test", "OPTIONS", "https://collector.example");
+      assert.equal(publicPreflight.headers.get("access-control-allow-origin"), "https://collector.example");
+      assert.equal(publicPreflight.headers.get("access-control-allow-credentials"), null);
       const source = readFileSync("server/app.ts", "utf8");
       assert.match(source, /corsOptionsFor,[\s\S]*from "\.\/lib\/cors-origins"/);
       assert.ok(source.indexOf("app.use(cors(corsOptionsFor(allowedOrigins)))") < source.indexOf("app.use(userSiteHostRouter)"));

@@ -99,7 +99,8 @@ function requestPath(req: any): string {
   return rawUrl.split("?", 1)[0] || rawUrl;
 }
 
-function shouldAllowMacaroniRevealOrigin(origin: string | undefined, path: string): boolean {
+function shouldAllowMacaroniPublicOrigin(origin: string | undefined, path: string): boolean {
+  if (/^\/api\/macaroni\/v35\/(?:status|wake)\//.test(path)) return true;
   if (path === "/api/macaroni/reveal-request") return true;
   if (!origin || ![
     "/api/macaroni/reveal-operator",
@@ -165,7 +166,7 @@ export function corsOptionsFor(allowedOrigins: Set<string>): Parameters<typeof c
 
   return (req, callback) => {
     if (isPrivateHandoff(req)) return callback(null, privatePageFormOptions);
-    if (shouldAllowMacaroniRevealOrigin(req.headers.origin, requestPath(req))) {
+    if (shouldAllowMacaroniPublicOrigin(req.headers.origin, requestPath(req))) {
       return callback(null, { origin: true, credentials: false });
     }
     if (shouldAllowNullOriginArcadeSource(req.headers.origin, requestPath(req))) {

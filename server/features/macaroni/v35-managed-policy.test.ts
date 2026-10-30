@@ -59,14 +59,14 @@ import {
   pendingMacaroniV35OperationContainsHash,
 } from "./v35-managed-worker";
 
-const [schema, migration, worker, service, managedAssets, routes, app] = await Promise.all([
+const [schema, migration, worker, service, managedAssets, routes, corsOrigins] = await Promise.all([
   readFile(new URL("../../../shared/schema-macaroni.ts", import.meta.url), "utf8"),
   readFile(new URL("../../../drizzle/0126_macaroni_v35_infrastructure.sql", import.meta.url), "utf8"),
   readFile(new URL("./v35-managed-worker.ts", import.meta.url), "utf8"),
   readFile(new URL("./v35-service.ts", import.meta.url), "utf8"),
   readFile(new URL("./v35-managed-assets.ts", import.meta.url), "utf8"),
   readFile(new URL("../../routes/macaroni.ts", import.meta.url), "utf8"),
-  readFile(new URL("../../app.ts", import.meta.url), "utf8"),
+  readFile(new URL("../../lib/cors-origins.ts", import.meta.url), "utf8"),
 ]);
 
 test("managed denial gives exact role remediation and a self-host alternative", () => {
@@ -430,13 +430,13 @@ test("creator attempt APIs are authenticated, resumable, and public status/wake 
   assert.match(routes, /attempts\/:attemptId\/wallet-rejected/);
   assert.match(routes, /attempts\/:attemptId\/submitted/);
   assert.match(routes, /attempts\/:attemptId\/reconcile/);
-  assert.match(app, /origin:\s*"\*",\s*credentials:\s*false/);
-  const macaroniCors = app.slice(
-    app.indexOf("function shouldAllowMacaroniRevealOrigin"),
-    app.indexOf("function corsOptionsFor")
+  const macaroniCors = corsOrigins.slice(
+    corsOrigins.indexOf("function shouldAllowMacaroniPublicOrigin"),
+    corsOrigins.indexOf("/** Shared by the app")
   );
-  assert.match(macaroniCors, /v35\\\/\(status\|wake\)/);
+  assert.match(macaroniCors, /v35\\\/\(\?:status\|wake\)/);
   assert.doesNotMatch(macaroniCors, /v35\\\/drops/);
+  assert.match(corsOrigins, /return callback\(null, \{ origin: true, credentials: false \}\)/);
   assert.match(service, /state:\s*"wallet_prompt_started"/);
   assert.match(service, /exact pre-send review attempt can be cancelled/);
   assert.match(service, /confirmNoBroadcast:\s*input\.confirmNoBroadcast/);

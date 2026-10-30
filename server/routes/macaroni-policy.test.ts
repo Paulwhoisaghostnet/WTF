@@ -825,7 +825,7 @@ test("Macaroni V3 seals final metadata behind nonce-backed commitments", () => {
   assert.match(revealServiceSource, /contract\.methodsObject\.reveal_tokens_v3\(batch\)\.send\(\)/);
   assert.match(revealServiceSource, /export async function requestMacaroniReveal/);
   assert.match(schemaSource, /export const macaroniRevealJobs = pgTable/);
-  assert.match(corsSource, /function shouldAllowMacaroniRevealOrigin/);
+  assert.match(corsSource, /function shouldAllowMacaroniPublicOrigin/);
   assert.match(corsSource, /path === "\/api\/macaroni\/reveal-request"/);
   assert.match(corsSource, /"127\.0\.0\.1", "localhost", "::1"/);
   assert.match(corsSource, /callback\(null, \{ origin: true, credentials: false \}\)/);

@@ -12882,3 +12882,14 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A valid, non-spending chain proof appeared broken because the verifier depended on removed local prose, and the readiness result did not provide a complete blocker list.
 
 **Rule**: Bind historical operation checks to canonical chain identity and storage, then report dependency failures as named readiness blockers. Keep archived notes as human context, not as a required runtime input after their removal.
+
+
+---
+
+## 2026-10-29 — Integration tests must follow moved middleware and exercise its HTTP boundary
+
+**What happened**: The Pasta branch asserted Macaroni collector CORS against `server/app.ts`, but current main had extracted the policy into `server/lib/cors-origins.ts`. The public V3.5 status and wake exception was lost in that move. Two Roger Radio source tests also looked for an old numbered comment after current main inserted a guide-channel section.
+
+**Why it mattered**: A static source assertion failed for the wrong file while a real separate-origin collector path had regressed; the stale TV marker hid otherwise intact seed behavior.
+
+**Rule**: After integrating a refactor, point source-policy checks at the active module and assert the browser-facing HTTP behavior, including private-route denial. For source sections, locate semantic markers instead of hard-coded numbering when intervening sections may be added.
