@@ -233,7 +233,7 @@ test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", 
   assert.match(source, /active WTFOS DID\/repo/);
   assert.match(source, /linked Tezos wallet/);
   assert.match(source, /WTF Pin Collector permission/);
-  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH_RUNBOOK\.md/);
+  assert.match(source, /pasta-wtfme-live-publish\.md/);
   assert.match(source, /PASTA_WTFME_LIVE_EXPECT_HOST=<published-host>/);
   assert.match(source, /PASTA_WTFME_LIVE_PUBLISH=1/);
   assert.match(source, /pin discovery enabled/);
@@ -241,8 +241,8 @@ test("Pasta live-readiness gate prints non-secret WTF.ME unblock instructions", 
 });
 
 test("Pasta WTF.ME unblock pointer resolves to the guarded operator runbook", () => {
-  const runbook = readFileSync(".agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md", "utf8");
-  assert.match(source, /PASTA_WTFME_LIVE_PUBLISH_RUNBOOK\.md/);
+  const runbook = readFileSync("docs/runbooks/pasta-wtfme-live-publish.md", "utf8");
+  assert.match(source, /pasta-wtfme-live-publish\.md/);
   assert.match(runbook, /pasta:wtfme:live-inventory/);
   assert.match(runbook, /PASTA_WTFME_LIVE_EXPECT_HOST/);
   assert.match(runbook, /PASTA_WTFME_LIVE_PUBLISH=1/);

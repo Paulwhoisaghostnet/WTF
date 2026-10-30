@@ -12947,10 +12947,10 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ### 2026-10-30 — A release gate's unblock path must exist in the shipped tree
 
-**What happened**: The Pasta live-readiness gate correctly named the missing WTF.ME account and host, then directed the operator to `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md`. That file was absent. A source policy test checked only that the string appeared in the gate, so the broken pointer passed CI.
+**What happened**: The Pasta live-readiness gate correctly named the missing WTF.ME account and host, then directed the operator to `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md`. That file was absent. A source policy test checked only that the string appeared in the gate, so the broken pointer passed CI. The first repair put the file there, but the public-release boundary correctly rejected tracking a new internal-agent document.
 
 **Why it mattered**: The production write sequence has distinct account, host, page, pin, TLS, and public verification states. Without the linked instructions, an operator could not follow the gate's own safe path or distinguish a partial page publish from a complete pin-discovery proof.
 
-**Correction and proof**: Added the runbook from the guarded publisher and read-only inventory behavior, plus a policy test that reads the linked file and checks the required commands and partial-failure warning. The three relevant policy suites pass 28/28; the live audit remains blocked on actual credentials and host proof.
+**Correction and proof**: Added the runbook under `docs/runbooks/pasta-wtfme-live-publish.md`, moved the gate pointer, and added a policy test that reads the linked file and checks the required commands and partial-failure warning. The focused policy suites and public-release boundary pass; the live audit remains blocked on actual credentials and host proof.
 
 **Rule**: Whenever a release gate prints a local remediation path, assert that the file is tracked and present in a fresh checkout, and document each external write boundary and verification step it directs operators to perform.
