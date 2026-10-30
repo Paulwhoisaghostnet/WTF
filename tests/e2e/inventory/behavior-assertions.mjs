@@ -890,12 +890,12 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "pasta-protocol.pinning-recovery",
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol", "wtf-domains", "ipfs-pinning"],
-    ownerSpec: "server/features/ipfs-pinning/pasta-proof.test.ts, server/features/ipfs-pinning/well-known-policy.test.ts, server/routes/ipfs-pinning-pasta-policy.test.ts, scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",
+    ownerSpec: "server/features/ipfs-pinning/pasta-proof.test.ts, server/features/ipfs-pinning/well-known-policy.test.ts, server/routes/ipfs-pinning-pasta-policy.test.ts, server/features/tz2at/pds-provisioning-policy.test.ts, scripts/pasta-protocol/wtfme-live-inventory-policy.test.mjs",
     verificationCommand: "npm run pasta:shadownet:pinning",
     userVisibleAssertion:
       "Pasta publish recovery can expose a public .well-known pin manifest for hosted pages, contract artifacts, token metadata, and relationship metadata only after the user-site PDS binding has a valid repo DID and matching pinManifest AT URI.",
     durableSideEffectAssertion:
-      "The focused source proof builds public pinPolicy, pinManifest, and pinItem records for the current Shadownet proof contracts, keeps checksum/object-mirror/IPFS fallback coordinates public and credential-free, validates the recovery drill from .well-known discovery through manifest and item records, verifies the live project-bundle publish route is permission-gated, object-storage-gated, duplicate-safe, and fail-closed while public discovery has no matching manifest URI, and keeps the read-only live inventory response exposing non-secret pin-home readiness plus page/pin prerequisite checks before any publish write.",
+      "The focused source proof builds public pinPolicy, pinManifest, and pinItem records for the current Shadownet proof contracts, keeps checksum/object-mirror/IPFS fallback coordinates public and credential-free, validates the recovery drill from .well-known discovery through manifest and item records, verifies the live project-bundle publish route is permission-gated, object-storage-gated, duplicate-safe, and fail-closed while public discovery has no matching manifest URI, keeps the read-only live inventory response exposing non-secret pin-home readiness plus page/pin prerequisite checks before any publish write, and proves WTFOS repo provisioning remains closed by default while an exact publisher user ID can be allowed without opening the global PDS gate.",
   },
   {
     id: "inventory.temporary-grants-unlock-apps",

@@ -12759,3 +12759,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Recomputed only that file's packaged size and digest in the release manifest; the vendored package verifier and its test pass again. The upstream source digest remains the source project's historical value, while the packaged digest records this hosted correction.
 
 **Rule**: When changing a packaged coLILseum file in WTF, run `node scripts/vendor-wtfiap.mjs` before CI. If it reports a changed file, update the exact packaged bytes and hash while preserving the source digest; do not weaken the manifest check.
+
+### 2026-10-30 — Publisher account setup must be verified as the actual account
+
+**What happened**: The dedicated Pasta WTF account was registered and branded, but its public host remained unclaimable. Authenticated checks for user 77 showed missing wallet and OAuth links, while the healthy WTFOS PDS still refused repo provisioning. The account email was not editable in the profile UI and the pin collector role was absent.
+
+**Why it mattered**: A created account, verified external Bluesky profile, healthy PDS, and available pinning service do not imply that the specific publisher can claim a host or publish a recoverable pin manifest.
+
+**Rule**: Verify the exact publisher's account ID, email, role permissions, wallet links, OAuth identity, site eligibility, and account-scoped PDS provisioning status before attempting any live host or pin write. Keep PDS provisioning scoped to that ID and retain the normal signature and OAuth proof paths for identity links.
