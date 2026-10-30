@@ -39,6 +39,7 @@ import {
   wtfosOutboxStatusForUser,
 } from "../features/tz2at/wtfos-outbox";
 import { suggestWtfosPdsHandle } from "../features/tz2at/wtfos-pds-handle";
+import { wtfosPdsProvisioningEnabledForUser } from "../features/tz2at/pds-provisioning-policy";
 import {
   normalizeTz2atWalletAddress,
   parseTzbskyCryptoAddressRecord,
@@ -196,10 +197,6 @@ function wtfosPdsConfigured(): boolean {
   );
 }
 
-function wtfosPdsProvisioningEnabled(): boolean {
-  return process.env.WTFOS_PDS_PROVISIONING_ENABLED === "true";
-}
-
 function wtfosPdsHealthUrl(): string | null {
   const explicit = process.env.WTFOS_PDS_HEALTH_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
@@ -231,7 +228,8 @@ function randomRepoPassword(): string {
 
 function pdsOfferingConfig(
   account?: { handle?: string | null } | null,
-  username?: string | null
+  username?: string | null,
+  userId?: number
 ) {
   const handleSuggestion = suggestWtfosPdsHandle({
     username,
@@ -247,7 +245,7 @@ function pdsOfferingConfig(
     suggestedHandleSource: handleSuggestion.source,
     invalidUsernameReason: handleSuggestion.invalidUsernameReason,
     configured: wtfosPdsConfigured(),
-    provisioningEnabled: wtfosPdsProvisioningEnabled(),
+    provisioningEnabled: wtfosPdsProvisioningEnabledForUser(userId ?? 0),
   };
 }
 
@@ -267,7 +265,7 @@ async function provisionWtfosRepo(input: {
   canonicalHandle: string | null;
   wtfHandle: string;
 }) {
-  if (!wtfosPdsProvisioningEnabled()) {
+  if (!wtfosPdsProvisioningEnabledForUser(input.userId)) {
     return { provisioned: false, reason: "provisioning_disabled" as const };
   }
   const health = await fetchWtfosPdsHealth();
@@ -491,7 +489,7 @@ async function statusForUser(userId: number) {
     etherlinkWallets,
     relay,
     wtfosIdentity: wtfosIdentity ?? null,
-    pdsOffering: { ...pdsOfferingConfig(account, username), serviceHealth: pdsHealth },
+    pdsOffering: { ...pdsOfferingConfig(account, username, userId), serviceHealth: pdsHealth },
   });
 }
 
@@ -515,16 +513,16 @@ router.get("/api/tz2at/pds-offering", isAuthenticated, async (req, res) => {
       etherlinkWallets: [],
       relay: await fetchRelayHealth(),
       wtfosIdentity: identity,
-      pdsOffering: { ...pdsOfferingConfig(account, username), serviceHealth: await fetchWtfosPdsHealth() },
+      pdsOffering: { ...pdsOfferingConfig(account, username, user.id), serviceHealth: await fetchWtfosPdsHealth() },
     }).pdsOffering,
   });
 });
 
-router.get("/api/tz2at/pds/status", isAuthenticated, async (_req, res) => {
+router.get("/api/tz2at/pds/status", isAuthenticated, async (req, res) => {
   res.json({
     publicUrl: wtfosPdsUrl(),
     configured: wtfosPdsConfigured(),
-    provisioningEnabled: wtfosPdsProvisioningEnabled(),
+    provisioningEnabled: wtfosPdsProvisioningEnabledForUser((req.user as any).id),
     handleDomain: wtfosHandleDomain(),
     identityLinkCollection: "app.wtfos.identity.link",
     gameLexiconPrefix: "app.wtfos",
@@ -562,7 +560,7 @@ router.post("/api/tz2at/pds-offering/request", isAuthenticated, mutationLimiter,
   if (!wtfosPdsConfigured()) return res.status(503).json({ error: "WTFOS PDS is not configured yet" });
   const now = new Date();
   const username = typeof user?.username === "string" ? user.username : await usernameForUserId(user.id);
-  const config = pdsOfferingConfig(account, username);
+  const config = pdsOfferingConfig(account, username, user.id);
   let identity;
   try {
     [identity] = await db
@@ -627,7 +625,7 @@ router.post("/api/tz2at/pds-offering/request", isAuthenticated, mutationLimiter,
     return res.status(200).json({ ok: true, identity, status: await statusForUser(user.id) });
   }
 
-  if (!wtfosPdsProvisioningEnabled()) {
+  if (!wtfosPdsProvisioningEnabledForUser(user.id)) {
     return res.status(202).json({
       ok: true,
       identity,

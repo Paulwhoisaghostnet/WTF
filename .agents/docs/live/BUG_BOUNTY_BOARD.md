@@ -83,7 +83,7 @@ Total: **709** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-707 | In Progress | Codex coLILseum open-seat wagering | 2026-10-24 | WTFIAP escrow / open-seat admission | P1 | 13 | 190 | 3 | 4 | 2 | XTZ Duel wagers cannot be funded before a challenger takes a seat |
 | WTF-BB-701 | In Progress | Codex coLILseum dual-network wagering | 2026-10-23 | WTFIAP escrow / Mainnet admission | P1 | 13 | 190 | 3 | 4 | 2 | Mainnet WTF wagers lack a verified escrow and dedicated signer lane |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 190 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
-| WTF-BB-342 | In Progress | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 190 | 2 | 5 | 2 | Pasta WTF.ME public host and pin recovery remain unproven; live readiness checks remain in progress |
+| WTF-BB-342 | In Progress | Codex Pasta WTF.ME publisher continuation | 2026-10-30 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 190 | 2 | 5 | 2 | Pasta WTF.ME public host and pin recovery remain unproven; live readiness checks remain in progress |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 190 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 190 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 282 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
@@ -1896,8 +1896,8 @@ Total: **709** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
 - Category: Pasta Protocol / WTF.ME host and pin recovery
 - Priority: P1
 - Status: In Progress
-- Owner/Session: Codex Pasta mainnet alpha integration
-- Last touched: 2026-10-29
+- Owner/Session: Codex Pasta WTF.ME publisher continuation
+- Last touched: 2026-10-30
 - Score: C2 + F5 + S2 + P1(4) = 13
 - Evidence:
   - Historical `npm run pasta:wtfme:live-check` failed against production because `https://wtfos.app/internal/tls/allow?domain=wtf-admin.wtfos.me` returned HTTP 403 with `handle not registered`.
@@ -1979,6 +1979,9 @@ Total: **709** · Open: **4** · Claimed: **42** · In Progress: **16** · Block
   - 2026-07-06 live recheck with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness` proved repo cleanup, deployment identity, static/runtime markers, all suite/individual installer assets, installer catalog auth, and recorded Colander action proof while blocking only on the dedicated WTF.ME credential and live host proof.
   - 2026-07-06 strict final gate with `PASTA_LIVE_READINESS_EXPECT_COMMIT=9652a72d npm run pasta:live-readiness:final` proved the same non-WTF.ME surfaces and exited `1` only on the same WTF.ME blockers.
 - 2026-10-29 integration pass: current live gate found an obsolete dependency on `.agents/docs/archive/contracts/pasta-protocol/shadownet-colander-action-report.md`, which the architecture cleanup deleted. The verifier now rechecks the immutable Shadownet operation and storage directly through TzKT without local archived prose or signer execution; operation `oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h` passed. The gate now records a failed chain lookup as a structured blocker. Separate cleanup audit still flags older divergent Pasta review branches for manual classification; no branch was deleted. Dedicated WTF.ME host, authentication, and publication evidence remain open.
+- 2026-10-30 live publisher investigation: The signed-in `paulwhoisaghost` WTF.ME site is published with unrelated pages, so it must not be overwritten for Pasta. Public profile lookup shows `pasta` is unclaimed. Authenticated `GET /api/tz2at/pds/status` reports a healthy, configured PDS but `provisioningEnabled:false`; a new dedicated account could claim and publish pages after identity/wallet linking, but it cannot self-provision the active WTFOS repo required for Pasta pin recovery. Claiming this record for a focused publisher diagnostic and scoped provisioning path; no production account, host, role, or PDS setting has been changed.
+- 2026-10-30 scoped correction: Added `WTFOS_PDS_PROVISIONING_ALLOWED_USER_IDS` as a default-closed exact numeric user-ID allowlist used by the authenticated PDS offering/status and actual repo provisioning path. The existing global flag retains its meaning; production is not changed until a dedicated account ID is explicitly configured. The Pasta read-only inventory now fetches authenticated PDS status, reports only configured/provisioning/health booleans, and explains disabled provisioning when no active repo exists. Focused policy tests pass 10/10. This is source evidence only; the production account, scoped env setting, active repo, host, and pin publication remain unproven.
+- 2026-10-30 scoped policy verification: `npm run check`, 10 focused PDS/inventory tests, `npm run pasta:wtfme:live-inventory:check`, `npm run pasta:wtfme:live-publish:check`, `npm run pasta:live-readiness:check`, `npm run security:public-release-boundary`, `npm run test:e2e:inventory:coverage`, `npm run env:inventory:check`, and `npm run bounty:board:check` passed. The production publisher account and public host/pin proof remain open.
 
 ### WTF-BB-025 - Route-level Tezos fetches bypass shared upstream rate-limit control
 

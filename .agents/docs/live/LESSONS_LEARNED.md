@@ -12962,3 +12962,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Doctor now recovers each noncomplete project's stored entropy, checks the presence and location of its persisted uploads, manifests, and CARs, and decrypts and hashes every unresolved signed operation. An isolated stopped-snapshot test passes at the original root and fails on relocation, a missing signed file, or a missing staged CAR. The backup instructions specify the absolute-path requirement until an explicit migration exists and note that file presence is not CAR integrity proof.
 
 **Rule**: A recovery preflight must exercise persisted custody references with the restored key and actual runtime paths. A fresh cryptographic round trip alone does not prove that a stopped snapshot can resume paid work.
+
+### 2026-10-30 — WTF.ME pin recovery needs account-scoped repo provisioning
+
+**What happened**: The Pasta release gate reported missing publisher credentials and a host. A live authenticated PDS status probe also showed that the healthy WTFOS PDS had provisioning disabled. A dedicated account with a linked social DID could publish pages but could not create the active WTFOS repo required for pin recovery; the existing inventory only reported the missing repo.
+
+**Correction and proof**: Added an exact numeric user-ID allowlist for PDS provisioning while retaining the default-closed and existing global settings. The read-only Pasta publisher inventory now reports PDS provisioning status and names the disabled setting when a repo is missing. Focused tests prove the allowlist rejects other IDs and that the inventory adds no write method. The dedicated account and live pin publish still require separate identity and operator setup.
+
+**Rule**: Trace a release prerequisite through the live service capability that creates it. A healthy service is not enough when its creation path is disabled; use a scoped rollout and report the disabled capability before attempting publication.

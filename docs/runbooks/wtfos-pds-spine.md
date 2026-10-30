@@ -40,7 +40,7 @@ The app exposes:
 - `GET /api/tz2at/outbox/status`
 - `POST /api/tz2at/outbox/flush`
 
-`POST /api/tz2at/pds-offering/request` refuses requests until the PDS is configured. With `WTFOS_PDS_PROVISIONING_ENABLED=false`, it records the canonical DID and requested WTFOS handle/repo target. With provisioning enabled and PDS health passing, it creates the WTFOS PDS account, stores encrypted repo session material, and writes the linkage record into the WTFOS repo.
+`POST /api/tz2at/pds-offering/request` refuses requests until the PDS is configured. With global provisioning off and the signed-in user ID absent from `WTFOS_PDS_PROVISIONING_ALLOWED_USER_IDS`, it records the canonical DID and requested WTFOS handle/repo target. Set that variable to a comma-separated list of exact positive numeric user IDs for a scoped rollout; `GET /api/tz2at/pds/status` and `GET /api/tz2at/pds-offering` report the resulting capability for the signed-in account. With provisioning enabled for that account and PDS health passing, the request creates the WTFOS PDS account, stores encrypted repo session material, and writes the linkage record into the WTFOS repo. `WTFOS_PDS_PROVISIONING_ENABLED=true` remains the global rollout switch.
 
 The outbox endpoints are the first narrow publisher rail for WTFOS-owned `app.wtfos.*` repo records. Every newly ingested `challenge_system_events` row can enqueue an `app.wtfos.activity.event` for two targets:
 

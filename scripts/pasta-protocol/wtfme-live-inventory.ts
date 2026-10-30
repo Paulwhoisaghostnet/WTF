@@ -207,7 +207,7 @@ function check(name: string, passed: boolean, passDetail: string, blockedDetail:
   };
 }
 
-function summarizeReadiness(user: any, state: any) {
+function summarizeReadiness(user: any, state: any, pds: any) {
   const mySite = summarizeSite(state.site);
   const eligibility = summarizeEligibility(state);
   const pinRegistry = summarizePinRegistry(state);
@@ -278,7 +278,9 @@ function summarizeReadiness(user: any, state: any) {
       "active PDS/repo pin home",
       pinHomeReady,
       `pin home ${pinRegistry?.home?.status} for ${pinRegistry?.home?.repoDid}`,
-      "set up an active wtfos.me PDS/repo before publishing Pasta pin recovery"
+      !pds.provisioningEnabled
+        ? "WTFOS PDS provisioning is disabled for this account; enable a scoped user-ID rollout or use an already active WTFOS repo before publishing Pasta pin recovery"
+        : "request an active wtfos.me PDS/repo before publishing Pasta pin recovery"
     ),
   ];
 
@@ -298,6 +300,15 @@ function summarizeReadiness(user: any, state: any) {
 
 async function getSiteState(): Promise<any> {
   return expectJson(await fetchWithCookies("/api/wtf-sites/my"), "WTF.ME site state");
+}
+
+async function getPdsStatus() {
+  const state = await expectJson(await fetchWithCookies("/api/tz2at/pds/status"), "WTFOS PDS status");
+  return {
+    configured: Boolean(state.configured),
+    provisioningEnabled: Boolean(state.provisioningEnabled),
+    serviceHealthy: state.serviceHealth?.ok === true,
+  };
 }
 
 async function getAdminSites(): Promise<{ access: boolean; status: number; sites: any[]; error?: string }> {
@@ -357,8 +368,7 @@ function sanitizedUser(user: any) {
 
 async function main(): Promise<void> {
   const user = await login();
-  const state = await getSiteState();
-  const admin = await getAdminSites();
+  const [state, admin, pds] = await Promise.all([getSiteState(), getAdminSites(), getPdsStatus()]);
   const hosts = new Set<string>(hostCandidates());
   const mySite = summarizeSite(state.site);
   if (mySite?.host) hosts.add(mySite.host);
@@ -372,7 +382,7 @@ async function main(): Promise<void> {
     tls.push(await probeTlsAsk(host));
   }
 
-  const readiness = summarizeReadiness(user, state);
+  const readiness = summarizeReadiness(user, state, pds);
 
   console.log(JSON.stringify({
     ok: true,
@@ -381,6 +391,7 @@ async function main(): Promise<void> {
     mySite,
     eligibility: summarizeEligibility(state),
     pinRegistry: summarizePinRegistry(state),
+    pdsProvisioning: pds,
     readiness,
     adminSites: {
       access: admin.access,
