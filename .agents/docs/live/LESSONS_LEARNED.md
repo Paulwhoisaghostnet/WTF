@@ -12775,3 +12775,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The least-privilege linking path could not save the account even though the user authorized it correctly. Repeating OAuth could not repair a deterministic scope mismatch.
 
 **Rule**: Fetch public AT profile data through the configured public AppView during identity-only OAuth callbacks. Keep the authenticated session for operations covered by its actual grant, and prove the live callback after deploying the fix.
+
+### 2026-10-30 — Production runtime env and same-commit deploys need separate proofs
+
+**What happened**: The Pasta PDS allowlist was staged in the checkout `.env`, but the app service uses the root-owned `/etc/wtf/wtf.env` through `WTF_ENV_FILE`. The merged code deployed successfully while the container still lacked the allowlist. A manual GitHub redeploy of the same commit then failed before server deployment because its incremental Git bundle had no objects when server HEAD equaled the requested commit.
+
+**Why it mattered**: A green deploy and a correct source commit did not prove the publisher account's runtime policy was active. The manual workflow could not apply an environment-only change to an unchanged commit.
+
+**Rule**: Inspect the running container's effective environment for rollout settings and verify both an allowed and denied account against the public endpoint. For unchanged-commit redeploys, build a nonempty tip-commit bundle with its parent as prerequisite; exercise workflow_dispatch through its health check, not merely the initial push deploy.
