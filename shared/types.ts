@@ -829,9 +829,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "use_swap", label: "Use Swap", description: "Access the SpicySwap DEX integration", category: "market" },
   { key: "trusted_market_creator", label: "Trusted Market Creator", description: "Trusted creator lane for in-app store item submissions", category: "market" },
   { key: "use_wtfos_pinning", label: "Use wtfOS Pinning", description: "Use hosted wtfOS IPFS pinning, PDS manifests, and wallet backup policies", category: "market" },
-  { key: "use_managed_macaroni", label: "Use Managed Macaroni", description: "Register secure Macaroni drops with wtfOS-managed private assets and fulfillment automation", category: "market" },
-
-  { key: "use_managed_macaroni", label: "Use Macaroni Creator Services", description: "Use Macaroni hosted pinning and owned-site publishing without general trusted-creator access", category: "market" },
+  { key: "use_managed_macaroni", label: "Use Managed Macaroni", description: "Use Macaroni hosted pinning, owned-site publishing, private assets, and fulfillment automation without general trusted-creator access", category: "market" },
 
   // ── Moderation ──
   { key: "pin_threads", label: "Pin Threads", description: "Pin or unpin message board threads", category: "moderation" },

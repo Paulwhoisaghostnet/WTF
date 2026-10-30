@@ -3908,7 +3908,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:232"
+      "server/routes.ts:233"
     ]
   },
   {
@@ -3917,7 +3917,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health diagnostics.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes.ts:253"
+      "server/routes.ts:254"
     ]
   },
   {
@@ -3926,7 +3926,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health disk.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes.ts:303"
+      "server/routes.ts:304"
     ]
   },
   {
@@ -3935,7 +3935,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health ready.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:238"
+      "server/routes.ts:239"
     ]
   },
   {
@@ -4187,7 +4187,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni installers.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:985"
+      "server/routes/macaroni.ts:993"
     ]
   },
   {
@@ -4196,7 +4196,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs pin.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:921"
+      "server/routes/macaroni.ts:929"
     ]
   },
   {
@@ -4205,7 +4205,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:888"
+      "server/routes/macaroni.ts:896"
     ]
   },
   {
@@ -4214,7 +4214,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni ipfs upload ticket.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:854"
+      "server/routes/macaroni.ts:862"
     ]
   },
   {
@@ -4223,7 +4223,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni media preview.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:950"
+      "server/routes/macaroni.ts:958"
     ]
   },
   {
@@ -4313,7 +4313,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni publish.",
     "declaredAccess": "Permission",
     "sources": [
-      "server/routes/macaroni.ts:1561"
+      "server/routes/macaroni.ts:1569"
     ]
   },
   {
@@ -4322,7 +4322,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal automation.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1515"
+      "server/routes/macaroni.ts:1523"
     ]
   },
   {
@@ -4331,7 +4331,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal automation challenge.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1501"
+      "server/routes/macaroni.ts:1509"
     ]
   },
   {
@@ -4340,7 +4340,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni reveal operator.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1489"
+      "server/routes/macaroni.ts:1497"
     ]
   },
   {
@@ -4349,7 +4349,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni reveal request.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1549"
+      "server/routes/macaroni.ts:1557"
     ]
   },
   {
@@ -4358,7 +4358,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni v35 capabilities.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1005"
+      "server/routes/macaroni.ts:1013"
     ]
   },
   {
@@ -4367,7 +4367,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1039"
+      "server/routes/macaroni.ts:1047"
     ]
   },
   {
@@ -4376,7 +4376,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attach.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1229"
+      "server/routes/macaroni.ts:1237"
     ]
   },
   {
@@ -4385,7 +4385,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1251"
+      "server/routes/macaroni.ts:1259"
     ]
   },
   {
@@ -4394,7 +4394,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId reconcile.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1391"
+      "server/routes/macaroni.ts:1399"
     ]
   },
   {
@@ -4403,7 +4403,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId submitted.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1360"
+      "server/routes/macaroni.ts:1368"
     ]
   },
   {
@@ -4412,7 +4412,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt aborted.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1325"
+      "server/routes/macaroni.ts:1333"
     ]
   },
   {
@@ -4421,7 +4421,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt started.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1294"
+      "server/routes/macaroni.ts:1302"
     ]
   },
   {
@@ -4430,7 +4430,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet rejected.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1268"
+      "server/routes/macaroni.ts:1276"
     ]
   },
   {
@@ -4439,7 +4439,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId next action.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1134"
+      "server/routes/macaroni.ts:1142"
     ]
   },
   {
@@ -4448,7 +4448,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId private assets.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1213"
+      "server/routes/macaroni.ts:1221"
     ]
   },
   {
@@ -4457,7 +4457,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId private assets upload ticket.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1160"
+      "server/routes/macaroni.ts:1168"
     ]
   },
   {
@@ -4466,7 +4466,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 drops dropId public contract metadata.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1084"
+      "server/routes/macaroni.ts:1092"
     ]
   },
   {
@@ -4475,7 +4475,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni v35 drops dropId setup.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1117"
+      "server/routes/macaroni.ts:1125"
     ]
   },
   {
@@ -4484,7 +4484,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 private assets upload.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1196"
+      "server/routes/macaroni.ts:1204"
     ]
   },
   {
@@ -4493,7 +4493,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 registration challenge.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/macaroni.ts:1025"
+      "server/routes/macaroni.ts:1033"
     ]
   },
   {
@@ -4502,7 +4502,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni v35 status network contract.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1421"
+      "server/routes/macaroni.ts:1429"
     ]
   },
   {
@@ -4511,7 +4511,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni v35 status network contract claims claimId.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1438"
+      "server/routes/macaroni.ts:1446"
     ]
   },
   {
@@ -4520,7 +4520,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list macaroni v35 status network contract purchases operationHash.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1456"
+      "server/routes/macaroni.ts:1464"
     ]
   },
   {
@@ -4529,7 +4529,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run macaroni v35 wake network contract.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/macaroni.ts:1474"
+      "server/routes/macaroni.ts:1482"
     ]
   },
   {
@@ -4754,7 +4754,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list mcp tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:173"
+      "server/routes/mcp.ts:174"
     ]
   },
   {
@@ -4763,7 +4763,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run mcp tokens.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:200"
+      "server/routes/mcp.ts:201"
     ]
   },
   {
@@ -4772,7 +4772,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Delete, revoke, or stop mcp tokens id.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/mcp.ts:249"
+      "server/routes/mcp.ts:250"
     ]
   },
   {
@@ -5051,7 +5051,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list metrics.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:271"
+      "server/routes.ts:272"
     ]
   },
   {
@@ -5654,7 +5654,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:215"
+      "server/routes.ts:216"
     ]
   },
   {
@@ -5663,7 +5663,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public capabilities.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:215"
+      "server/routes.ts:216"
     ]
   },
   {
@@ -5672,7 +5672,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public docs.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:225"
+      "server/routes.ts:226"
     ]
   },
   {
@@ -5681,7 +5681,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public openapi.json.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:220"
+      "server/routes.ts:221"
     ]
   },
   {
@@ -8563,7 +8563,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Handle the supported methods for mcp.",
     "declaredAccess": "MCP bearer",
     "sources": [
-      "server/routes/mcp.ts:284"
+      "server/routes/mcp.ts:285"
     ]
   },
   {

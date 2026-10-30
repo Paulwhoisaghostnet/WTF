@@ -12841,3 +12841,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The collector product flow itself was not reached on CI, and the final inventory gate stayed red after all other stories passed.
 
 **Rule**: Generate fixture keys and certificates into separate temporary files, read them into the local HTTPS server, and remove the files immediately. Keep platform-specific shell path behavior out of cross-platform browser fixtures.
+
+---
+
+## 2026-10-29 — Reconcile isolated Pasta records against current main
+
+**What happened**: The Pasta alpha branch had been isolated while current main reused several of the same bug bounty IDs for unrelated work. A direct merge also conflicted with later CORS extraction, generated inventories, and dependency locks.
+
+**Why it mattered**: Choosing one side of those conflicts would silently erase valid audit history or regress current main behavior, even if the Pasta tests passed on the older branch.
+
+**Rule**: Integrate against current main by semantic record identity, remap colliding bounty IDs without deleting either issue, preserve current main infrastructure refactors, and regenerate derived documentation and locks from the combined source before release verification.
+
+---
+
+## 2026-10-29 — Deduplicate shared permission definitions after branch integration
+
+**What happened**: Current main and the Pasta branch each defined `use_managed_macaroni` with different descriptions. Integrating both created two help topics with the same stable ID, and the aggregate unit suite found the collision.
+
+**Why it mattered**: Duplicate permission metadata makes administrative help and role displays ambiguous even though the TypeScript check passes.
+
+**Rule**: When merging shared role or permission catalogs, keep one canonical entry per key and run the catalog uniqueness tests before treating the integration as verified.

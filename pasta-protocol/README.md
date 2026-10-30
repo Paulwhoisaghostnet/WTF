@@ -4,14 +4,18 @@ Pasta Protocol is a suite of Tezos creator tools: prepare a collection, publish 
 
 This directory is a review hub, not a second implementation or a standalone repository. The source remains in the linked directories below. The desktop suite runs independently of the wtfOS account/database/server; optional hosted integration is mapped separately.
 
-## Install the suite
+## Current alpha boundary
+
+The October 6 installer below is a historical review snapshot. The current integrated candidate includes later Macaroni V3.5 recovery and desktop fixes, and its Suite and standalone Macaroni setup enforce Shadownet. Use a package built from the reviewed candidate commit and its matching manifest for new alpha testing; do not treat the October 6 installer or its reused version number as proof of those fixes. [Known issues](KNOWN_ISSUES.md) record the funded installed-app path and remaining release boundaries. No Mainnet alpha or public production release is approved by this review hub.
+
+## Historical review installer
 
 Download the **Pasta Suite macOS universal DMG or ZIP** from the [2026-10-06 review prerelease](https://github.com/Paulwhoisaghostnet/WTF/releases/tag/pasta-review-2026-10-06). One app contains Colander and all eight tools. No separate Macaroni install is needed.
 
 - Application version: `1.0.1-alpha.1`; source tag: [`pasta-review-2026-10-06`](https://github.com/Paulwhoisaghostnet/WTF/tree/pasta-review-2026-10-06). Use the release manifest and SHA256SUMS to identify these exact files, not just the version number: older local builds reused that version.
 - These are unsigned, unnotarized developer-review builds. Follow [installation and review instructions](REVIEW.md). Do not globally disable macOS security protections.
 - This handoff provides macOS installers only. Windows/Linux build definitions exist, but their earlier `1.0.0` releases do **not** contain this V3.5 snapshot.
-- Use **Shadownet and disposable test assets/wallets only** for this review. The apps still expose Mainnet; this is a reviewer instruction, not an enforced network restriction. Read [known issues and evidence limits](KNOWN_ISSUES.md) before signing anything.
+- Use **Shadownet and disposable test assets/wallets only** for this older installer. Its Mainnet option is exposed, so the instruction is not an enforced restriction. The current candidate has a Shadownet-only alpha guard.
 
 ## What each tool does
 
