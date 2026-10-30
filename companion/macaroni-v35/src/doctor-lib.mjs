@@ -47,6 +47,15 @@ function requireCurrentPrivatePath(filePath, privateDir, label) {
   }
 }
 
+async function requireStoredPrivateFile(filePath, privateDir, label) {
+  requireCurrentPrivatePath(filePath, privateDir, label);
+  try {
+    if (!(await stat(filePath)).isFile()) throw new Error("not a regular file");
+  } catch {
+    throw new Error(`${label} is missing from this stopped snapshot`);
+  }
+}
+
 export async function runDoctor(options = {}) {
   const loaded = options.config
     ? { config: options.config, errors: options.configErrors || [] }
@@ -108,6 +117,23 @@ export async function runDoctor(options = {}) {
           throw new Error(`project ${project.drop_ref} entropy cannot be recovered from this stopped snapshot`);
         }
       }
+      const privateFiles = [
+        ...journal.db.prepare(`SELECT p.drop_ref, 'uploaded asset' AS kind, u.encrypted_path AS file_path
+          FROM private_uploads u JOIN companion_projects p ON p.drop_ref = u.drop_ref
+          WHERE p.state != 'complete' AND u.state = 'uploaded'`).all().map((row) => ({ ...row, directory: config.uploadDir })),
+        ...journal.db.prepare(`SELECT p.drop_ref, 'token manifest' AS kind, t.private_manifest_path AS file_path
+          FROM token_inventory t JOIN companion_projects p ON p.drop_ref = t.drop_ref
+          WHERE p.state != 'complete'`).all().map((row) => ({ ...row, directory: config.privateAssetDir })),
+        ...journal.db.prepare(`SELECT p.drop_ref, a.kind || ' CAR' AS kind, a.encrypted_car_path AS file_path
+          FROM custodied_assets a JOIN companion_projects p ON p.drop_ref = a.drop_ref
+          WHERE p.state != 'complete'`).all().map((row) => ({ ...row, directory: config.privateAssetDir })),
+        ...journal.db.prepare(`SELECT p.drop_ref, a.kind || ' CAR' AS kind, a.encrypted_car_path AS file_path
+          FROM token_aux_assets a JOIN companion_projects p ON p.drop_ref = a.drop_ref
+          WHERE p.state != 'complete'`).all().map((row) => ({ ...row, directory: config.privateAssetDir })),
+      ];
+      for (const item of privateFiles) {
+        await requireStoredPrivateFile(item.file_path, item.directory, `project ${item.drop_ref} ${item.kind}`);
+      }
       const attempts = journal.db.prepare(`SELECT w.drop_ref, a.signed_bytes_path, a.signed_bytes_sha256
         FROM signed_operation_attempts a
         JOIN operation_journal o ON o.id = a.operation_journal_id
@@ -127,7 +153,7 @@ export async function runDoctor(options = {}) {
           throw new Error(`project ${attemptRow.drop_ref} unresolved signed attempt cannot be recovered from this stopped snapshot`);
         }
       }
-      return { nonterminalProjects: projects.length, unresolvedSignedAttempts: attempts.length };
+      return { nonterminalProjects: projects.length, storedPrivateFiles: privateFiles.length, unresolvedSignedAttempts: attempts.length };
     } finally {
       journal.close();
     }

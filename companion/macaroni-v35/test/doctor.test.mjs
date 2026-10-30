@@ -107,6 +107,13 @@ test("stopped snapshot restores at its original root and refuses relocated or in
     });
     journal.attachContract(dropRef, "KT1isolatedtestcontract");
     journal.setProjectState(dropRef, "active");
+    const artifactPath = path.join(config.privateAssetDir, `${dropRef}.artifact.car.enc`);
+    const metadataPath = path.join(config.privateAssetDir, `${dropRef}.metadata.car.enc`);
+    const manifestPath = path.join(config.privateAssetDir, `${dropRef}.manifest.enc`);
+    await Promise.all([artifactPath, metadataPath, manifestPath].map((file) => writeFile(file, "isolated-private-fixture", { mode: 0o600 })));
+    journal.saveStagedToken({ dropRef, tokenId: 0, quantity: 1, metadataCommitment: "a".repeat(64),
+      privateManifestPath: manifestPath, artifactChecksum: "b".repeat(64), artifactEncryptedPath: artifactPath,
+      metadataChecksum: "c".repeat(64), metadataEncryptedPath: metadataPath, uploadIds: [] });
     const work = journal.enqueue({ dropRef, workType: "settle_claim", semanticKey: "0:settle_claims_v35", payload: { claimId: 0 } });
     journal.createReadyAttempt({ workItemId: work.id, requestId: `${dropRef}:settle`, intentIdentity: { claimId: 0 },
       expectedPostcondition: { claimId: 0 }, network: "shadownet", signer: "tz1finalizer",
@@ -127,7 +134,7 @@ test("stopped snapshot restores at its original root and refuses relocated or in
   const restored = await runDoctor({ config, skipNetwork: true, allowSkippedNetwork: true });
   assert.equal(restored.ready, true, JSON.stringify(restored.checks));
   assert.deepEqual(restored.checks.find((check) => check.name === "stored-private-recovery-custody")?.detail,
-    { nonterminalProjects: 1, unresolvedSignedAttempts: 1 });
+    { nonterminalProjects: 1, storedPrivateFiles: 3, unresolvedSignedAttempts: 1 });
 
   await cp(backup, relocated, { recursive: true });
   const moved = await runDoctor({ config: { ...config, ...configFor(relocated) }, skipNetwork: true, allowSkippedNetwork: true });
@@ -138,4 +145,11 @@ test("stopped snapshot restores at its original root and refuses relocated or in
   const incomplete = await runDoctor({ config, skipNetwork: true, allowSkippedNetwork: true });
   assert.equal(incomplete.ready, false);
   assert.match(incomplete.checks.find((check) => check.name === "stored-private-recovery-custody")?.detail || "", /unresolved signed attempt cannot be recovered/);
+
+  await cp(path.join(backup, "private-assets", "signed-operations", `${dropRef}.signed.enc`),
+    path.join(root, "private-assets", "signed-operations", `${dropRef}.signed.enc`));
+  await rm(path.join(root, "private-assets", `${dropRef}.artifact.car.enc`));
+  const missingAsset = await runDoctor({ config, skipNetwork: true, allowSkippedNetwork: true });
+  assert.equal(missingAsset.ready, false);
+  assert.match(missingAsset.checks.find((check) => check.name === "stored-private-recovery-custody")?.detail || "", /artifact CAR is missing/);
 });
