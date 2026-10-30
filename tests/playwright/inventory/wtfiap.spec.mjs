@@ -932,6 +932,12 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.locator("#create-room").click();
     await expect(page.locator("#invite-code")).not.toHaveValue("");
     const code = await page.locator("#invite-code").inputValue();
+    expect((await page.request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await page.locator("#other-room").click();
+    await page.locator("#refresh-rooms").click();
+    await expect(page.getByRole("button", { name: `Return to duel room ${code}` })).toBeVisible();
+    await page.getByRole("button", { name: `Return to duel room ${code}` }).click();
+    await expect(page.locator("#alive-count")).toContainText("1 / 2 seats");
     const guestContext = await browser.newContext();
     try {
       const guest = await guestContext.newPage();
@@ -940,6 +946,7 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await guest.locator("#refresh-rooms").click();
       const card = guest.locator(".table-card").filter({ has: guest.locator(`[aria-label="Join duel room ${code}"]`) });
       await expect(card).toContainText("wtf-admin");
+      await expect(guest.getByRole("button", { name: `Return to duel room ${code}` })).toHaveCount(0);
       await expect(card).toContainText("0 W · 0 L");
       await expect(card.locator(".seat-dot.taken")).toHaveCount(1);
       await expect(card.locator(".seat-dot:not(.taken):not(.ai)")).toHaveCount(1);

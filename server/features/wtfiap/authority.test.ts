@@ -203,3 +203,51 @@ test('production wiring retains middleware order, private bind mount and shutdow
   assert.match(read('Dockerfile'), /\/app\/wtfiap-data/);
   assert.match(read('docker-entrypoint.sh'), /WRITABLE_DIRS="[^"\n]*\/app\/wtfiap-data/);
 });
+
+test('a prior-release escrow-bound room cannot be closed before or after match start', async () => {
+  const dataDir = mkdtempSync(path.join(tmpdir(), 'wtfiap-funded-close-'));
+  const authority = createWtfiapAuthority({ dataDir, isEnabled: () => true,
+    canAccess: () => true, resolveActor: (request: any) => ({ id: String(request.headers['x-test-user']),
+      name: `Player ${request.headers['x-test-user']}` }) });
+  const app = express();
+  app.use(express.json({ verify(req: any, _res, buffer) { req.rawBody = buffer.toString('utf8'); } }));
+  app.use(authority.handler);
+  const server = createServer(app);
+  await authority.ready;
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${(server.address() as any).port}${API_PREFIX}`;
+  const request = async (method: string, route: string, body: unknown, user: string, token?: string) => {
+    const response = await fetch(base + route, { method, headers: {
+      'Content-Type': 'application/json', 'x-test-user': user,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    return { status: response.status, body: await response.json() as any };
+  };
+  try {
+    const created = await request('POST', '/rooms', { name: 'Host', roomType: 'duel',
+      boardMode: 'standard', preparationSeconds: null,
+      duelWager: { currency: 'XTZ', entryFee: '1' } }, '1');
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const code = created.body.roomCode;
+    const joined = await request('POST', `/rooms/${code}/join`, { name: 'Guest' }, '2');
+    assert.equal(joined.status, 201, JSON.stringify(joined.body));
+    const binding = { roomId: 'a'.repeat(64), termsHash: 'b'.repeat(64),
+      rulesHash: 'f4acaf1dd0f1e0fcfd1d57f3a403e0d503721f94fdc269d1cdc07c26719c67fe',
+      matchId: 'c'.repeat(64), network: 'shadownet', escrowContract: 'KT1' + '1'.repeat(33) };
+    authority.funding.lock(code, binding);
+    const hostToken = created.body.sessionToken;
+    const before = await request('GET', `/rooms/${code}`, undefined, '1', hostToken);
+    assert.equal(before.status, 200);
+    assert.equal(before.body.view.canClose, undefined);
+    assert.equal((await request('POST', `/rooms/${code}/close`, {}, '1', hostToken)).status, 409);
+    authority.funding.start(code, binding);
+    const active = await request('GET', `/rooms/${code}`, undefined, '1', hostToken);
+    assert.equal(active.status, 200);
+    assert.equal(active.body.view.canClose, undefined);
+    assert.equal((await request('POST', `/rooms/${code}/close`, {}, '1', hostToken)).status, 409);
+  } finally {
+    await authority.close();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
