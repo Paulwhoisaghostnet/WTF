@@ -12,15 +12,15 @@ Stop the Companion so the filesystem snapshot is consistent. Back up these items
 - `secrets/admin.token`;
 - `.env` and the exact bundled `contract/` directory.
 
-Keep an offline encrypted copy. Test restoring it to a separate machine before opening a sale. Never put a backup under the static drop's document root or an ordinary public cloud folder.
+Keep an offline encrypted copy. Test restoring it to a separate machine before opening a sale. The Companion currently stores absolute private-file paths in `companion.sqlite`, so the separate machine must use the same absolute configured `data/` and secret paths as the original. A different path requires an explicit, verified journal migration; copying the files to a new root is not enough. Never put a backup under the static drop's document root or an ordinary public cloud folder.
 
 ## Restore
 
 1. Keep the original installation stopped.
-2. Restore the paths above without renaming individual encrypted files.
+2. Restore the paths above to the same absolute locations recorded by the original installation, without renaming individual encrypted files. Use the original `.env` paths and verify its `data/` root exists there before starting the Companion.
 3. Restore private file permissions. On macOS/Linux, directories should be `0700` and `.env`/secret files `0600`.
 4. Install the same package version with Node.js 22 or newer.
-5. Run `npm run doctor`. Confirm the network, contract hash, finalizer address, encryption recovery, index services, CAR provider, and gateway all pass.
+5. Run `npm run doctor`. Confirm the network, contract hash, finalizer address, encryption recovery, stored private recovery custody, index services, CAR provider, and gateway all pass. The stored-custody check opens each noncomplete project's entropy and each unresolved signed operation with the restored master key; it refuses paths outside the configured private root and missing or changed signed bytes. It is a preflight check, not a replacement for a stopped-snapshot rehearsal of the full publish and settlement path.
 6. Start the Companion once. Check the admin project state and public claim counts before changing any external service.
 
 Do not register a replacement project with a new entropy chain. Do not delete work rows, edit token quantities/commitments, clear an operation hash, or manually move the FIFO cursor.

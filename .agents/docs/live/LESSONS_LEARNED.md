@@ -12954,3 +12954,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Added the runbook under `docs/runbooks/pasta-wtfme-live-publish.md`, moved the gate pointer, and added a policy test that reads the linked file and checks the required commands and partial-failure warning. The focused policy suites and public-release boundary pass; the live audit remains blocked on actual credentials and host proof.
 
 **Rule**: Whenever a release gate prints a local remediation path, assert that the file is tracked and present in a fresh checkout, and document each external write boundary and verification step it directs operators to perform.
+
+### 2026-10-30 — Restored Companion custody must be checked against persisted paths
+
+**What happened**: The Macaroni doctor proved it could encrypt and recover a newly generated entropy chain, but it did not test paths already stored in `companion.sqlite`. A stopped backup copied to a different absolute root could pass that check while its project entropy and unresolved signed operations still pointed to the old root.
+
+**Correction and proof**: Doctor now recovers each noncomplete project's stored entropy and decrypts and hashes every unresolved signed operation after checking those paths against the configured private root. An isolated stopped-snapshot test passes at the original root and fails on relocation or a missing signed file. The backup instructions specify the absolute-path requirement until an explicit migration exists.
+
+**Rule**: A recovery preflight must exercise persisted custody references with the restored key and actual runtime paths. A fresh cryptographic round trip alone does not prove that a stopped snapshot can resume paid work.

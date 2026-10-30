@@ -8,6 +8,7 @@ import { TezosWatcher } from "./adapters/tezos-watcher.mjs";
 import { createPinningAdapter } from "./adapters/pinning.mjs";
 import { loadCompanionConfig, publicConfig } from "./config.mjs";
 import {
+  decryptPrivateFile,
   encryptEntropyForKeyring,
   generateEntropyChain,
   recoverEntropyFromKeyring,
@@ -34,6 +35,16 @@ async function secureFile(filePath, minimumBytes) {
           ? "file must not be group/world accessible"
           : null,
   };
+}
+
+function requireCurrentPrivatePath(filePath, privateDir, label) {
+  if (typeof filePath !== "string" || !path.isAbsolute(filePath)) {
+    throw new Error(`${label} has no absolute private custody path`);
+  }
+  const relative = path.relative(path.resolve(privateDir), path.resolve(filePath));
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`${label} points outside this Companion's private data directory; restore the stopped snapshot to its original absolute path`);
+  }
 }
 
 export async function runDoctor(options = {}) {
@@ -79,6 +90,47 @@ export async function runDoctor(options = {}) {
   await attempt("sqlite-operation-journal", async () => {
     const journal = openJournal(config.journalPath);
     journal.close();
+  });
+  await attempt("stored-private-recovery-custody", async () => {
+    const journal = openJournal(config.journalPath);
+    try {
+      const projects = journal.db.prepare("SELECT drop_ref, entropy_head, entropy_length, entropy_keyring_path FROM companion_projects WHERE state != 'complete'").all();
+      for (const project of projects) {
+        requireCurrentPrivatePath(project.entropy_keyring_path, config.privateAssetDir, `project ${project.drop_ref} entropy`);
+        try {
+          await recoverEntropyFromKeyring({
+            encryptedPath: project.entropy_keyring_path,
+            masterKeyFile: config.masterKeyFile,
+            expectedHead: project.entropy_head,
+            expectedLength: project.entropy_length,
+          });
+        } catch {
+          throw new Error(`project ${project.drop_ref} entropy cannot be recovered from this stopped snapshot`);
+        }
+      }
+      const attempts = journal.db.prepare(`SELECT w.drop_ref, a.signed_bytes_path, a.signed_bytes_sha256
+        FROM signed_operation_attempts a
+        JOIN operation_journal o ON o.id = a.operation_journal_id
+        JOIN work_items w ON w.id = o.work_item_id
+        WHERE a.state IN ('signed', 'submitted')`).all();
+      for (const attemptRow of attempts) {
+        requireCurrentPrivatePath(attemptRow.signed_bytes_path, path.join(config.privateAssetDir, "signed-operations"), `project ${attemptRow.drop_ref} signed attempt`);
+        try {
+          const signedBytes = await decryptPrivateFile({
+            encryptedPath: attemptRow.signed_bytes_path,
+            masterKeyFile: config.masterKeyFile,
+          });
+          if (createHash("sha256").update(signedBytes).digest("hex") !== attemptRow.signed_bytes_sha256) {
+            throw new Error("signed bytes changed");
+          }
+        } catch {
+          throw new Error(`project ${attemptRow.drop_ref} unresolved signed attempt cannot be recovered from this stopped snapshot`);
+        }
+      }
+      return { nonterminalProjects: projects.length, unresolvedSignedAttempts: attempts.length };
+    } finally {
+      journal.close();
+    }
   });
 
   await attempt("reviewed-contract-artifact", async () => {
