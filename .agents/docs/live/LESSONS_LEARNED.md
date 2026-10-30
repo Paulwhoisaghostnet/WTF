@@ -12749,3 +12749,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: The lobby now offers local Return only when it has a saved player role, player ID, and session token; authenticated cross-device Return still comes from the server's account-personalized `myPlayerId`. A rebuilt browser run proves a saved browser can return after switching to anonymous, an independent guest sees Join and takes the second seat, and the signed-in two-browser recovery story still passes.
 
 **Rule**: Treat absent fields as absence of evidence, never as matching identities. For public summaries that deliberately omit private identifiers, test both a fresh browser and a saved session against the real room authority; keep admission decisions on the server.
+
+---
+
+## 2026-10-29 — Vendored game edits must update the release manifest
+
+**What happened**: The coLILseum guest-join fix passed its browser tests, but aggregate CI failed when `vendor-wtfiap.mjs` compared the changed packaged `party-client.js` with its pinned byte count and SHA-256. Focused browser tests alone did not exercise that package gate.
+
+**Correction and proof**: Recomputed only that file's packaged size and digest in the release manifest; the vendored package verifier and its test pass again. The upstream source digest remains the source project's historical value, while the packaged digest records this hosted correction.
+
+**Rule**: When changing a packaged coLILseum file in WTF, run `node scripts/vendor-wtfiap.mjs` before CI. If it reports a changed file, update the exact packaged bytes and hash while preserving the source digest; do not weaken the manifest check.

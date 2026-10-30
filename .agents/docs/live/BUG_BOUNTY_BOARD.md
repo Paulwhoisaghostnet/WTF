@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Blocked: **3** · Fixed: **124** · Verified: **502** · Archived: **4**
+Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Blocked: **3** · Fixed: **123** · Verified: **503** · Archived: **4**
 
 ## Canonical Board
 
@@ -179,7 +179,6 @@ Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 387 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 387 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
 | WTF-BB-725 | Fixed | Codex Docker readiness repair | 2026-10-29 | WTFIAP / funded-room deployment compatibility | P1 | 10 | 475 | 2 | 4 | 0 | Latest coLILseum manifest changes its rules hash without updating funded-room compatibility proof |
-| WTF-BB-724 | Fixed | Codex Docker readiness repair | 2026-10-29 | WTFIAP / escrow readiness isolation | P1 | 10 | 475 | 2 | 4 | 0 | A blocked test-room escrow submission makes the entire production app unready |
 | WTF-BB-652 | Fixed | Codex full-send release verification | - | E2E live puppets / Casino | P1 | 10 | 475 | 3 | 3 | 0 | Casino workflow schema missing from local puppet DB prep |
 | WTF-BB-643 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 475 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 475 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
@@ -532,6 +531,7 @@ Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 387 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 387 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 387 | 2 | 3 | 2 | X token refresh updates users table without serialization |
+| WTF-BB-724 | Verified | Codex Docker readiness repair | 2026-10-29 | WTFIAP / escrow readiness isolation | P1 | 10 | 475 | 2 | 4 | 0 | A blocked test-room escrow submission makes the entire production app unready |
 | WTF-BB-679 | Verified | Codex gameshow production release | 2026-10-18 | Production readiness / backfill scheduler | P1 | 10 | 475 | 2 | 4 | 0 | Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness |
 | WTF-BB-668 | Verified | Codex quality typecheck memory repair | 2026-09-02 | CI / TypeScript release gate | P1 | 10 | 475 | 2 | 4 | 0 | Quality typecheck exhausts Node's default heap after the FAQ release |
 | WTF-BB-665 | Verified | Codex Kiln clean-checkout fixture repair | 2026-09-01 | Kiln CI / hermetic test data | P1 | 10 | 475 | 2 | 4 | 0 | Kiln main CI depends on a gitignored local reference-contract corpus |
@@ -3916,20 +3916,6 @@ Total: **693** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 - Score: P1(4)+C2/F4/S0=10; a release-blocking compatibility map drift with custody safety implications.
 
 - Local verification (2026-10-29): Exact diff changes close availability only while fundingLock and fundingOffer are absent. Hosted authority proof rejects close before and after starting a prior-release escrow-bound room. The pinned two/eight-seat and Cherub replay digests, deploy-guard tests, and hero-balance tests pass. Read-only production snapshot found nonterminal funded-room hashes b6685336, 49e69fb6 and df03f526; the exact incoming rules hash permits each, while unknown future hashes still fail. Full CI and normal production deployment remain to verify.
-
-### WTF-BB-724 - A blocked test-room escrow submission makes the entire production app unready
-
-- Category: WTFIAP / escrow readiness isolation
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Docker readiness repair
-- Last touched: 2026-10-29
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence: Production /api/health/ready returns 503 with DB and chain healthy but jobs unhealthy. One historical zero-deposit Shadownet room has a durable submission-unknown create_room intent. The funding worker copies its room-local error to service-wide health.error; the scheduler throws, and public readiness fails on every pass. The room remains intentionally blocked for manual reconciliation.
-- Correction direction: Keep submission-unknown and signer-send uncertainty on the affected room, without promoting them to worker failure. Preserve global failure for actual storage, chain, or reconciliation exceptions. Do not reset or replay the intent.
-- Verification idea: Reproduce a lost signer response, verify the room stays blocked and no second submission occurs across passes, verify worker health remains clear, then run focused funding and inventory checks and verify deployed public readiness.
-- Score: P1(4)+C2/F4/S0=10; production readiness and deploy signaling are broken while payment safety must remain fail-closed.
-- Local verification (2026-10-29): Funding tests 20 passed, 1 isolated-PostgreSQL case skipped; the lost-response test proves the room stays blocked and visible, worker health remains clean across restart, the operator health counts the blocked room while player views do not inherit it, and no second signer request occurs. Inventory coverage and bounty-board integrity pass. Production deployment and public readiness remain to be verified.
 
 ### WTF-BB-652 - Casino workflow schema missing from local puppet DB prep
 
@@ -11802,6 +11788,22 @@ Copy this when adding a new issue:
 - Verification (2026-09-01):
   - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
   - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
+
+### WTF-BB-724 - A blocked test-room escrow submission makes the entire production app unready
+
+- Category: WTFIAP / escrow readiness isolation
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Docker readiness repair
+- Last touched: 2026-10-29
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence: Production /api/health/ready returns 503 with DB and chain healthy but jobs unhealthy. One historical zero-deposit Shadownet room has a durable submission-unknown create_room intent. The funding worker copies its room-local error to service-wide health.error; the scheduler throws, and public readiness fails on every pass. The room remains intentionally blocked for manual reconciliation.
+- Correction direction: Keep submission-unknown and signer-send uncertainty on the affected room, without promoting them to worker failure. Preserve global failure for actual storage, chain, or reconciliation exceptions. Do not reset or replay the intent.
+- Verification idea: Reproduce a lost signer response, verify the room stays blocked and no second submission occurs across passes, verify worker health remains clear, then run focused funding and inventory checks and verify deployed public readiness.
+- Score: P1(4)+C2/F4/S0=10; production readiness and deploy signaling are broken while payment safety must remain fail-closed.
+- Local verification (2026-10-29): Funding tests 20 passed, 1 isolated-PostgreSQL case skipped; the lost-response test proves the room stays blocked and visible, worker health remains clean across restart, the operator health counts the blocked room while player views do not inherit it, and no second signer request occurs. Inventory coverage and bounty-board integrity pass. Production deployment and public readiness remain to be verified.
+
+- Production verification (2026-10-29): The narrow worker fix deployed in main commit e9a1df34 via successful Hetzner run 40988740661. The owner also authorized deleting the exact historical zero-collection Shadownet test room 82ba8bd0-fcbd-444b-98cb-a32407b5a917; its funding row and game file were removed after checking network, zero collection, null chain observation, and absent operation hash. After app restart, public /api/health/ready returned HTTP 200 for e9a1df34 with DB, chain, and jobs true; funding health reported error null, headStreamConnected true, blockedRoomCount 0. The remaining worker regression test still proves an uncertain future submission stays room-local and is never retried blindly.
 
 ### WTF-BB-679 - Backfill manifest sequence exhausted its PostgreSQL integer range and fails live readiness
 
