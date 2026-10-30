@@ -80,7 +80,7 @@ export function createFundingService({ config, configs, store, game, chain, link
 }) {
   let running: Promise<void> | null = null, rerun = false, closed = false;
   const health = { lastAttemptAt: null as string | null, lastSuccessAt: null as string | null,
-    error: null as string | null, headStreamConnected: false };
+    error: null as string | null, headStreamConnected: false, blockedRoomCount: 0 };
   const termsOf = (room: GameRoom) => room.config.roomType === "duel" ? room.config.duelWager : room.config.tournament;
   const wagerRoom = (room: GameRoom) => Boolean(termsOf(room));
   const payingPlayers = (room: GameRoom) => room.players.filter(player => !player.isAI);
@@ -365,8 +365,8 @@ export function createFundingService({ config, configs, store, game, chain, link
       const unresolved = record.intents.find(op => op.status === "submission-unknown");
       if (unresolved) {
         const message = unresolved.error || "An escrow submission needs reconciliation before it can continue.";
+        // This room is blocked safely; the reconciliation worker can still be healthy.
         await store.mutate(code, old => { demand(old, "Funding room missing."); old.error = message; return { record: old, value: undefined }; });
-        health.error = message;
       }
       return;
     }
@@ -391,7 +391,7 @@ export function createFundingService({ config, configs, store, game, chain, link
       await store.mutate(code, old => {
         demand(old, "Durable funding room missing."); const op = old.intents.find(i => i.id === next.id)!;
         op.error = "Submission outcome is unknown. Reconciliation is required before any further action.";
-        old.error = op.error; health.error = op.error; return { record: old, value: undefined };
+        old.error = op.error; return { record: old, value: undefined };
       });
     }
   }
@@ -439,6 +439,8 @@ export function createFundingService({ config, configs, store, game, chain, link
             }
           }
         });
+        health.blockedRoomCount = (await store.list()).filter(record =>
+          record.intents.some(intent => intent.status === "submission-unknown")).length;
         if (!health.error) health.lastSuccessAt = clock().toISOString();
       } catch { health.error = "Funding storage or chain reconciliation is unavailable."; }
     })().finally(() => {
@@ -498,7 +500,9 @@ export function createFundingService({ config, configs, store, game, chain, link
           record.chain.paid.length === record.bindings.length),
         actions, payout: binding && record?.chain?.claims[binding.walletAddress] || null,
         pendingOperations: (record?.observations || []).filter(o => o.playerId === player?.playerId) },
-      error: record?.error || null, health: { ...health, error: record?.error || null } };
+      error: record?.error || null, health: { lastAttemptAt: health.lastAttemptAt,
+        lastSuccessAt: health.lastSuccessAt, headStreamConnected: health.headStreamConnected,
+        error: record?.error || null } };
   }
   const publicConfig = (c: FundingConfig) => ({ enabled: c.enabled, ...(c.reason ? { reason: c.reason } : {}),
       network: c.network, chainId: c.chainId, rpcUrl: c.rpcUrl, escrowContract: c.escrowContract,

@@ -12719,3 +12719,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Losing one browser token made an active room appear inaccessible and forced players into a confusing join/watch flow. Reissuing a token without account verification would instead let anyone take over a seat.
 
 **Rule**: Bind human seats to the authenticated WTF account ID, use the WTF username as the displayed commander name, personalize only that account's lobby response, and reissue a session only after server-side account verification. Retain local bearer recovery for guests, rotate account-bound tokens on cross-device recovery, and test both devices after rotation.
+
+---
+
+## 2026-10-29 — A blocked escrow intent is room state, not a failed worker
+
+**What happened**: Production readiness returned 503 even though the app, database, and chain checks were available. One historical Shadownet test room had a zero-deposit `submission-unknown` create intent. Every reconciliation pass copied that room's warning into service-wide worker health, so the scheduler recorded a failure and made the whole site unready. Failed release builds also left two unused candidate Docker images consuming about 5 GB.
+
+**Correction and proof**: Removed only the two image IDs with no container references under the deployment lock, preserving running images, volumes, and build cache. The host gained about 5 GB of free space without a container restart. Funding now retains uncertain-submit errors in the affected durable room and keeps its submission blocked; focused tests prove the room warning, clean worker health across restart, and no duplicate signer request. Actual storage, chain, and reconciliation failures still set global worker errors.
+
+**Rule**: Distinguish a worker that cannot reconcile from a worker that correctly reports an unresolved room. Preserve uncertain-payment state and operator visibility without turning an isolated known room into a global deploy failure. Recover Docker space only from images proven unused by every container; do not prune volumes or replay escrow intents to make health green.
