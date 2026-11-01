@@ -154,9 +154,22 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
     userVisibleAssertion:
-      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices, keep their icon/label/description text contained at desktop and mobile widths, and route each choice to its commissioned application.",
+      "The classic OS welcome introduces paulwhoisaclippy's video and a primary Mission Control action, with the shared Play, Create, Shop, Events, and Talk choices available in an expandable list; Help & Start Here and the Stuffs menu retain the same destinations at desktop and mobile widths.",
     durableSideEffectAssertion:
-      "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
+      "The shared wayfinder regression locks the five route mappings; the browser harness expands and follows a welcome choice, persists one-time completion before navigation, verifies stale-session recovery, and confirms the mobile Help route exposes the same task map as full-width, non-overlapping controls.",
+  },
+  {
+    id: "auth.paulwhoisaclippy-welcome-video",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "tests/playwright/inventory/auth-session.spec.mjs; tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    userVisibleAssertion:
+      "A first-time signed-in player sees paulwhoisaclippy's captioned welcome video with play controls on classic and direct full-screen wtfOS entry, a visible path to Mission Control, and a way to continue; Help & Start Here can replay the same video later.",
+    durableSideEffectAssertion:
+      "Explicit first-entry navigation persists the existing one-time welcomedToWtfOs state and emits auth.welcome.completed. The browser harness verifies the video decodes, the welcome appears on direct full-screen entry, and replay from Help leaves the completed state unchanged.",
   },
   {
     id: "auth.faq-registration-tutorials",
@@ -1655,6 +1668,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The desktop context menu exposes Summon Reggie, Reggie can be hidden or snoozed and later pops back in with a temporary speech bubble, and WIM identifies assistant-authored messages as Reggie messages.",
     durableSideEffectAssertion:
       "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
+  },
+  {
+    id: "desktop-paulwhoisaclippy.ambient-whisper",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-ambient",
+    ownerSpec: "tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    userVisibleAssertion:
+      "paulwhoisaclippy floats in unobstructed desktop space wearing red glasses, speaks a short optional whisper on click or keyboard activation, stays beneath app windows, and becomes still when reduced motion is requested.",
+    durableSideEffectAssertion:
+      "The click uses the existing desktop.object.clicked event with objectId paulwhoisaclippy; the inventory harness records the accepted event while no pet-care, reward, or account state changes.",
   },
   {
     id: "desktop.app-store-ranked-unlocks",

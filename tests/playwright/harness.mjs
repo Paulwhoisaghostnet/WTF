@@ -42,6 +42,7 @@ const state = {
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
   welcomePending: false,
+  gmWelcome: null,
   welcomeCompleteUnauthorized: false,
   wtfLiveSoundboard: { clips: [], armed: true, updatedAt: null },
   wtfLiveShowKits: [],
@@ -522,6 +523,7 @@ app.post("/__test/state", (req, res) => {
   state.groupchatRequestCount = 0;
   state.groupchatLog = [];
   state.interactionLog = [];
+  state.gmWelcome = req.body?.gmWelcome ?? null;
   const defaultAuthUser = defaultAuthUserForRole(state.userRole);
   state.authUser = defaultAuthUser
     ? {
@@ -698,7 +700,7 @@ app.get("/api/auth/user", (_req, res) => {
     welcomedToWtfOsAt: state.welcomePending ? null : "2026-01-01T00:00:00Z",
     gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
     gmWelcomeLastSeenAt: nowIso(),
-    gmWelcome: null,
+    gmWelcome: state.gmWelcome,
     createdAt: "2026-01-01T00:00:00Z",
     effectivePermissions:
       state.userRole === "admin"

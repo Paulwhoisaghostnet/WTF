@@ -4,6 +4,7 @@ import { Button, Window, WindowContent, WindowHeader } from "react95";
 import { useLocation } from "wouter";
 import { useAuth } from "../lib/auth-context";
 import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
+import { PaulWelcomeVideo } from "../features/onboarding/PaulWelcomeVideo";
 
 const Backdrop = styled.div`
   position: fixed;
@@ -17,6 +18,17 @@ const Backdrop = styled.div`
 
 const WelcomeWindow = styled(Window)`
   width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const ScrollContent = styled(WindowContent)`
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 `;
 
 const Body = styled.div`
@@ -35,15 +47,19 @@ const Intro = styled.p`
   margin: 0;
 `;
 
-const TaskPrompt = styled.p`
-  margin: 0;
-  font-weight: 700;
+const MorePlaces = styled.details`
+  summary {
+    cursor: pointer;
+    min-height: 32px;
+    font-weight: 700;
+  }
 `;
 
 const TaskGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
+  margin-top: 8px;
 
   @media (max-width: 620px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -70,9 +86,21 @@ const TaskIcon = styled.span`
 `;
 
 const HelpText = styled.p`
-  margin: 0;
+  margin: 8px 0 0;
   color: #333;
   font-size: 12px;
+`;
+
+const SecondaryLinks = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+
+  button {
+    min-height: 40px;
+    white-space: normal;
+  }
 `;
 
 const GmFrame = styled.figure`
@@ -99,14 +127,27 @@ const Caption = styled.figcaption`
 `;
 
 const Footer = styled.div`
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+  padding: 10px 0 0;
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
 
   button {
     max-width: 100%;
+    min-height: 40px;
     white-space: normal;
+  }
+
+  @media (max-width: 480px) {
+    button {
+      flex: 1 1 100%;
+    }
   }
 `;
 
@@ -163,7 +204,7 @@ export function WelcomeMessage() {
         <WindowHeader>
           <span>Welcome Event</span>
         </WindowHeader>
-        <WindowContent>
+        <ScrollContent>
           <Body>
             <Title id="wtf-welcome-title">
               {needsWtfWelcome
@@ -173,63 +214,75 @@ export function WelcomeMessage() {
             {needsWtfWelcome && (
               <>
                 <Intro>
-                  This is your community desktop. Choose what you want to do first;
-                  every destination is also available from the Start menu.
+                  Your desktop is a game world. Start in Mission Control for your first
+                  challenge, or explore through the icons and Stuffs menu. Meet
+                  paulwhoisaclippy—he will show you around.
                 </Intro>
-                <TaskPrompt>What do you want to do?</TaskPrompt>
-                <TaskGrid aria-label="Choose your first task">
-                  {CLASSIC_TASK_WAYFINDER.map((task) => (
-                    <TaskButton
-                      key={task.id}
-                      type="button"
-                      title={task.description}
-                      onClick={() => acknowledge(task.route)}
-                      disabled={saving}
-                    >
-                      <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
-                      <strong>{task.label}</strong>
-                    </TaskButton>
-                  ))}
-                </TaskGrid>
-                <HelpText>
-                  Not sure yet? Open Help &amp; Start Here at any time, or personalize
-                  your account from Profile.
-                </HelpText>
+                <PaulWelcomeVideo autoPlay />
+                <MorePlaces>
+                  <summary>More places to go</summary>
+                  <TaskGrid aria-label="Choose your first task">
+                    {CLASSIC_TASK_WAYFINDER.map((task) => (
+                      <TaskButton
+                        key={task.id}
+                        type="button"
+                        title={task.description}
+                        onClick={() => acknowledge(task.route)}
+                        disabled={saving}
+                      >
+                        <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
+                        <strong>{task.label}</strong>
+                      </TaskButton>
+                    ))}
+                  </TaskGrid>
+                  <HelpText>
+                    Help &amp; Start Here lets you replay this welcome. Profile lets you
+                    personalize your account.
+                  </HelpText>
+                  <SecondaryLinks>
+                    <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving}>
+                      Help &amp; Start Here
+                    </Button>
+                    <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving}>
+                      Profile
+                    </Button>
+                  </SecondaryLinks>
+                </MorePlaces>
               </>
             )}
             {gmWelcome && (
-              <GmFrame>
-                <GmImage
-                  src={gmWelcome.asset.imageUrl}
-                  alt={`${gmWelcome.asset.name} by ${gmWelcome.authorName}`}
-                  width={gmWelcome.asset.width ?? 720}
-                  height={gmWelcome.asset.height ?? 720}
-                />
-                <Caption>
-                  {gmWelcome.asset.name} from{" "}
-                  <a
-                    href={gmWelcome.collectionUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {gmWelcome.projectName}
-                  </a>{" "}
-                  by {gmWelcome.authorName}
-                </Caption>
-              </GmFrame>
+              <MorePlaces open>
+                <summary>Today's GM artwork</summary>
+                <GmFrame>
+                  <GmImage
+                    src={gmWelcome.asset.imageUrl}
+                    alt={`${gmWelcome.asset.name} by ${gmWelcome.authorName}`}
+                    width={gmWelcome.asset.width ?? 720}
+                    height={gmWelcome.asset.height ?? 720}
+                  />
+                  <Caption>
+                    {gmWelcome.asset.name} from{" "}
+                    <a
+                      href={gmWelcome.collectionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {gmWelcome.projectName}
+                    </a>{" "}
+                    by {gmWelcome.authorName}
+                  </Caption>
+                </GmFrame>
+              </MorePlaces>
             )}
             {error && <ErrorText>{error}</ErrorText>}
             <Footer>
               {needsWtfWelcome ? (
                 <>
+                  <Button type="button" primary onClick={() => acknowledge("/mission-control")} disabled={saving}>
+                    {saving ? "Saving..." : "Open Mission Control"}
+                  </Button>
                   <Button type="button" onClick={() => acknowledge()} disabled={saving}>
-                    {saving ? "Saving..." : "Explore Desktop"}
-                  </Button>
-                  <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving}>
-                    Help &amp; Start Here
-                  </Button>
-                  <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving}>
-                    Profile
+                    Skip and enter desktop
                   </Button>
                 </>
               ) : (
@@ -239,7 +292,7 @@ export function WelcomeMessage() {
               )}
             </Footer>
           </Body>
-        </WindowContent>
+        </ScrollContent>
       </WelcomeWindow>
     </Backdrop>
   );

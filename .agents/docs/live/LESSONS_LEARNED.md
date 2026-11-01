@@ -12783,3 +12783,19 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A green deploy and a correct source commit did not prove the publisher account's runtime policy was active. The manual workflow could not apply an environment-only change to an unchanged commit.
 
 **Rule**: Inspect the running container's effective environment for rollout settings and verify both an allowed and denied account against the public endpoint. For unchanged-commit redeploys, build a nonempty tip-commit bundle with its parent as prerequisite; exercise workflow_dispatch through its health check, not merely the initial push deploy.
+
+### 2026-11-01 — Animated desktop characters need a stable click target
+
+**What happened**: paulwhoisaclippy floated by animating the entire button, so the browser interaction test could never find a stable point to click. After moving the animation, the next test still exercised an old bundle because the inventory harness serves `dist/public` rather than live source.
+
+**Correction and proof**: Kept the button's hit box fixed, animated only the ghost image, rebuilt the client, and verified pointer interaction, keyboard dismissal, event logging, mobile placement, and reduced-motion behavior in Playwright.
+
+**Rule**: Keep interactive hit boxes stationary when ambient characters move. Rebuild before running the static-dist Playwright harness after UI edits; otherwise a stale bundle can make a correct fix appear broken.
+
+### 2026-11-01 — A clean worktree needs its lockfile's dependencies for typecheck
+
+**What happened**: The first typecheck used `node_modules` symlinked from an older checkout. That install had MCP SDK 1.30.0 while this branch's lockfile specifies 1.32.0, producing two false errors in unchanged server routes.
+
+**Correction and proof**: Installed the branch's locked packages in isolation, switched the worktree to that install after browser tests completed, and reran `npm run check` successfully.
+
+**Rule**: Before treating TypeScript errors in an isolated worktree as source regressions, compare the installed package version with that worktree's lockfile. Run the final check with lock-matched dependencies without mutating another checkout's install.

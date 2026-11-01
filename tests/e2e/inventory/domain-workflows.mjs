@@ -76,6 +76,7 @@ export const DOMAIN_WORKFLOWS = [
       "desktop.chat_typography.updated",
       "system_settings.language_changed",
       "desktop.weather.updated",
+      "desktop.object.clicked",
       "desktop.pet.action",
       "desktop.bug_report.opened",
       "bug_report.created",
