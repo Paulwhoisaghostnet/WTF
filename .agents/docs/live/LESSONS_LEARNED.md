@@ -12823,3 +12823,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Users could not reliably change the linked account, and successful profile identity checks consumed a priced X user lookup. A correct OAuth implementation still fails at X before consent if its callback is not registered exactly.
 
 **Rule**: For Profile identity proof, use OAuth 1.0a request and access-token exchange with read-only access, `force_login`, the intended handle, and a session-bound request token. Accept only the returned provider identity, reject a different account before persistence, discard the access token, and keep W action grants separate. Redirect cached Profile OAuth 2.0 starts and stop in-flight Profile callbacks before any metered lookup. Register the exact canonical callback in X Console and confirm it with a signed request-token probe before relying on the flow.
+
+---
+
+## 2026-11-02 — Environment inventory must follow OAuth config edits
+
+**What happened**: The X proof change added consumer-key references and revised `.env.example`, but the generated environment inventory was not refreshed. Quality Gates stopped at its Environment inventory step before reaching the tests.
+
+**Why it mattered**: A correct runtime fix could not receive a green release check because the tracked generated reference no longer matched the source tree.
+
+**Rule**: After changing environment references or `.env.example` lifecycle comments, run `npm run env:inventory`, then `npm run env:inventory:check`, and include the generated reference in the same release commit.
