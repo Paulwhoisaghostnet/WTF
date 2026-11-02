@@ -4,7 +4,10 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { build as compileComponent } from "esbuild";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../..");
@@ -16,6 +19,35 @@ const offline = process.argv.includes("--offline");
 const width = 1280;
 const height = 720;
 const fps = 30;
+let reggieSpriteMarkup = "";
+
+async function renderActualReggieSprite() {
+  const compiled = path.join(work, "HamsterPixelSprite.mjs");
+  await compileComponent({
+    entryPoints: [path.join(root, "client/src/components/layout/HamsterPixelSprite.tsx")],
+    outfile: compiled,
+    platform: "node",
+    format: "esm",
+    jsx: "automatic",
+    logLevel: "silent",
+  });
+  const { HamsterPixelSprite } = await import(pathToFileURL(compiled).href);
+  const palette = {
+    fur: "#e8a33c", belly: "#ffe9c4", ear: "#d98b2b",
+    spot: "#8a5a1b", accent: "#2f6fd6",
+  };
+  const svg = renderToStaticMarkup(createElement(HamsterPixelSprite,
+    { alive: true, moving: false, scheme: palette, width: 112, height: 74 }));
+  const match = /^<svg[^>]*>([\s\S]*)<\/svg>$/.exec(svg);
+  if (!match) throw new Error("Could not render the real Reggie sprite");
+  const body = match[1].replace(/<style>[\s\S]*?<\/style>/, "")
+    .replaceAll("var(--ham-fur)", palette.fur)
+    .replaceAll("var(--ham-belly)", palette.belly)
+    .replaceAll("var(--ham-ear)", palette.ear)
+    .replaceAll("var(--ham-spot)", palette.spot)
+    .replaceAll("var(--ham-accent)", palette.accent);
+  return `<svg x="126" y="503" width="112" height="74" viewBox="0 0 96 64" shape-rendering="crispEdges">${body}</svg>`;
+}
 
 function run(command, args, extra = {}) {
   const result = spawnSync(command, args, { cwd: root, stdio: "inherit", ...extra });
@@ -77,6 +109,13 @@ function visual(scene) {
           ${rect(x + 17, 513, 38, 38, i === 1 ? a : "#9FD4E3", 9)}
           ${label(x + 17, 578, name, 18, "#F3F8F8", 700, 1)}`;
       }).join("");
+    case "reggie":
+      return `${rect(108, 484, 632, 112, "#3B2A37", 15, a)}
+        ${rect(126, 503, 112, 74, "#69484A", 10, a)}
+        ${reggieSpriteMarkup}
+        ${label(256, 519, "REGGIE", 18, a, 700, 1.2)}
+        ${label(256, 552, "REGGIE QUEST PROGRESS", 24, "#F5F6F2", 700)}
+        ${label(256, 580, "NEXT STEP  →  TAKE ME THERE", 18, "#F1DDBD", 600)}`;
     case "routes":
       return ["ARCADE", "CREATE", "EVENTS", "TALK"].map((name, i) => {
         const x = 108 + (i % 2) * 315;
@@ -143,6 +182,7 @@ function vttTime(seconds) {
 
 await mkdir(work, { recursive: true });
 await mkdir(target, { recursive: true });
+reggieSpriteMarkup = await renderActualReggieSprite();
 const scenes = JSON.parse(await readFile(storyboardPath, "utf8"));
 const narrationDir = path.join(work, "narration");
 await mkdir(narrationDir, { recursive: true });

@@ -75,8 +75,23 @@
     ]
   },
   {
+    "id": "reggie",
+    "eyebrow": "QUEST GUIDE / 06",
+    "title": "Meet Reggie.",
+    "lines": [
+      "He tracks the Reggie quest path.",
+      "Click him for your next step."
+    ],
+    "visual": "reggie",
+    "accent": "#F6BE75",
+    "spoken": [
+      "Meet Reggie, your quiet quest guide. He tracks your progress along the Reggie quest path.",
+      "Click him when you want the next available quest step or a route there. I handle how the desktop works."
+    ]
+  },
+  {
     "id": "routes",
-    "eyebrow": "EXPLORE / 06",
+    "eyebrow": "EXPLORE / 07",
     "title": "Pick a direction.",
     "lines": [
       "Arcade and Create are here.",
@@ -91,7 +106,7 @@
   },
   {
     "id": "nearby",
-    "eyebrow": "YOUR MOVE / 07",
+    "eyebrow": "YOUR MOVE / 08",
     "title": "Start anywhere.",
     "lines": [
       "One click is enough.",

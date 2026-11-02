@@ -133,7 +133,6 @@ export const DOMAIN_WORKFLOWS = [
       "reggie.assistant.summoned",
       "reggie.assistant.dismissed",
       "reggie.hint.shown",
-      "reggie.question.asked",
       "reggie.message.sent",
       "reggie.progress.checked",
     ],

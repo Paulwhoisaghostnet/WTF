@@ -40,7 +40,6 @@ export interface ReggieSummonEventDetail {
   source?: string;
   x?: number;
   y?: number;
-  message?: string;
 }
 
 /**
@@ -163,7 +162,7 @@ export function progressPercent(state: ReggieQuestState): number {
   return Math.round((state.completedCount / state.totalCount) * 100);
 }
 
-/** Reggie stays on screen for signed-in users until the finale completes. */
+/** Reggie stays available for signed-in users until the finale completes. */
 export function shouldShowReggie(input: {
   hasUser: boolean;
   questState: ReggieQuestState | null;
@@ -175,45 +174,4 @@ export function shouldShowReggie(input: {
   const now = input.now ?? Date.now();
   if (input.dismissedUntil && input.dismissedUntil > now) return false;
   return true;
-}
-
-export interface ReggieAccountSnapshot {
-  username: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  pfpImageUrl: string | null;
-  twitterHandle: string | null;
-  twitterVerified: boolean;
-  experiencePoints: number;
-}
-
-/** Compact, human-readable account-state summary Reggie can recite. */
-export function describeAccountState(
-  account: ReggieAccountSnapshot,
-  state: ReggieQuestState | null
-): string {
-  const parts: string[] = [];
-  parts.push(
-    account.displayName
-      ? `You're ${account.displayName} (@${account.username}).`
-      : `You're @${account.username} — no display name yet, which is a crime I intend to solve.`
-  );
-  parts.push(
-    account.avatarUrl || account.pfpImageUrl
-      ? "PFP: set."
-      : "PFP: missing. You are currently a gray silhouette of pure potential."
-  );
-  parts.push(
-    account.twitterVerified
-      ? `X: linked${account.twitterHandle ? ` as @${account.twitterHandle}` : ""}.`
-      : "X: not linked."
-  );
-  parts.push(`EXP: ${account.experiencePoints}.`);
-  if (state) {
-    parts.push(
-      `Quest progress: ${state.completedCount}/${state.totalCount} side quests done (${progressPercent(state)}%).`
-    );
-  }
-  return parts.join(" ");
 }

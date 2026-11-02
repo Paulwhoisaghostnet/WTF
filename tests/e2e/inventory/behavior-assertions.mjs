@@ -163,11 +163,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",
     ownerSpec:
-      "tests/playwright/inventory/auth-session.spec.mjs; tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+      "tests/playwright/inventory/auth-session.spec.mjs; tests/playwright/inventory/paulwhoisaclippy.spec.mjs; tests/playwright/inventory/reggie-quest-guide.spec.mjs",
     verificationCommand:
-      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/paulwhoisaclippy.spec.mjs tests/playwright/inventory/reggie-quest-guide.spec.mjs",
     userVisibleAssertion:
-      "A first-time signed-in player sees paulwhoisaclippy's captioned welcome video with play controls on classic and direct full-screen wtfOS entry, a visible path to Mission Control, and a way to continue; Help & Start Here can replay the same video later.",
+      "A first-time signed-in player sees paulwhoisaclippy's captioned welcome video with play controls on classic and direct full-screen wtfOS entry, a visible path to Mission Control, and a way to continue; Paul explains that he teaches the desktop while Reggie quietly guides the authored Reggie quest path. Help & Start Here can replay the same video and written guidance later.",
     durableSideEffectAssertion:
       "Explicit first-entry navigation persists the existing one-time welcomedToWtfOs state and emits auth.welcome.completed. The browser harness verifies the video decodes, the welcome appears on direct full-screen entry, and replay from Help leaves the completed state unchanged.",
   },
@@ -1685,11 +1685,11 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS",
     ownerSurfaceIds: ["desktop-reggie", "wim", "messages", "mail"],
     ownerSpec:
-      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/playwright/inventory/reggie-quest-guide.spec.mjs; tests/e2e/inventory/domain-workflows.mjs",
     verificationCommand:
-      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run test:e2e:inventory:coverage",
+      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/reggie-quest-guide.spec.mjs && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
-      "The desktop context menu exposes Summon Reggie, Reggie can be hidden or snoozed and later pops back in with a temporary speech bubble, and WIM identifies assistant-authored messages as Reggie messages.",
+      "Reggie stays quiet on the signed-in desktop until the player clicks or summons him. His bubble offers a current step in the authored Reggie quest path, quest log, progress check, Quest HQ, and quest destination, without a general question field or periodic nags. The player can hide and later summon him from the desktop context menu, or snooze him for ten minutes and see him wake without a bubble. WIM identifies his quest messages as Reggie messages.",
     durableSideEffectAssertion:
       "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
   },

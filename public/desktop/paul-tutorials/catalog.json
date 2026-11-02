@@ -2,22 +2,23 @@
   {
     "slug": "desktop-basics",
     "title": "Find your way around the desktop",
-    "summary": "Open Mission Control, use window controls, and find the Stuffs menu.",
+    "summary": "Open Mission Control, call on Reggie for the next step in your Reggie quest path, and use the desktop controls.",
     "category": "Getting started",
     "route": "/",
     "steps": [
       "Find the Mission Control icon on your desktop.",
       "Open Mission Control to see your next move.",
-      "Minimize its window without losing your place.",
+      "Click Reggie for the next step in your Reggie quest path.",
+      "Close Reggie's bubble, then minimize Mission Control.",
       "Bring Mission Control back from the taskbar.",
       "Open Stuffs to find the rest of your apps."
     ],
-    "transcript": "Hey, I'm Paul. This desktop is your game world. Find the Mission Control icon near the top left. Click Mission Control. This window shows a next move and paths into challenges, side quests, and rewards. Need the desktop again? Click the little minimize button in this window's title bar. Your window is still running. Click Mission Control on the taskbar to bring it back. Now click Stuffs at the bottom left. This menu is where you find more apps whenever you want to explore.",
-    "durationSeconds": 31.216,
+    "transcript": "Hey, I'm Paul. This desktop is your game world. Find the Mission Control icon near the top left. Click Mission Control. This window shows a next move and paths into challenges, side quests, and rewards. That little hamster is Reggie. He tracks your progress along the Reggie quest path. Click him for the next available step and a route to it. I show you how the OS works. Close Reggie's bubble, then click the little minimize button in Mission Control's title bar. Your window is still running. Click Mission Control on the taskbar to bring it back. Now click Stuffs at the bottom left. This menu is where you find more apps whenever you want to explore.",
+    "durationSeconds": 42.016,
     "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
     "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
     "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
-    "sha256": "5fb0967f8a0b12049fa3c0297430d271ea684efcb7cc1f8d2a3e079a356faea0"
+    "sha256": "e0d1cfd0f253381d51ff6a37170acff575f4e61f1f7fdcf0deb07420a08d5ae4"
   },
   {
     "slug": "mission-control",

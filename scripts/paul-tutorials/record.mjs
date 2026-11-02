@@ -72,6 +72,37 @@ async function setHarnessState(episode) {
 }
 
 async function installEpisodeFixtures(page, episode) {
+  if (episode.slug === "desktop-basics") {
+    const quest = {
+      questComplete: false,
+      completedCount: 0,
+      totalCount: 1,
+      finale: null,
+      steps: [{
+        id: 1,
+        seedKey: "reggie_profile_tutorial",
+        stepKey: "profile",
+        title: "Set up your profile",
+        description: "Add a display name to your profile.",
+        route: "/profile",
+        actionLabel: "Open Profile",
+        anchorId: "profile",
+        category: "identity",
+        order: 1,
+        prereqStepKeys: [],
+        rewards: { xp: 10, wtf: 0 },
+        status: "available",
+        completedAt: null,
+      }],
+    };
+    await page.route("**/api/reggie/quest", (route) => route.fulfill({
+      contentType: "application/json", body: JSON.stringify(quest),
+    }));
+    await page.route("**/api/reggie/messages", (route) => route.fulfill({
+      status: 201, contentType: "application/json",
+      body: JSON.stringify({ ok: true, conversationId: 41 }),
+    }));
+  }
   if (episode.slug === "play-arcade") {
     const game = {
       id: "gamma-breach", slug: "gamma-breach", title: "Gamma Sample",
@@ -352,16 +383,24 @@ async function performDesktopBasics(page, index) {
     await pointAt(page, page.getByTestId("mission-control-next"), "Mission Control next move");
     await parkGuide(page);
   } else if (index === 2) {
+    const reggie = page.locator('[data-reggie-assistant="true"]');
+    await clickAt(page, reggie.locator('button[aria-label^="Reggie"]').first(), "Reggie side-quest guide");
+    const bubble = reggie.locator('[role="dialog"]');
+    await bubble.waitFor({ state: "visible" });
+    await pointAt(page, bubble.getByRole("button", { name: "Take me there" }), "Route to next side quest");
+    await parkGuide(page);
+  } else if (index === 3) {
+    await clickAt(page, page.locator('[data-reggie-assistant="true"] [role="dialog"] button[title="Close"]'), "Close Reggie bubble");
     await clickAt(page, page.getByRole("button", { name: "Minimize Mission Control" }), "Minimize Mission Control");
     await page.locator('button[title^="Mission Control - click"]').waitFor({ state: "visible" });
     await pointAt(page, page.locator('button[title^="Mission Control - click"]'), "Minimized window on taskbar");
     await parkGuide(page);
-  } else if (index === 3) {
+  } else if (index === 4) {
     await clickAt(page, page.locator('button[title^="Mission Control - click"]'), "Mission Control taskbar button");
     await page.getByText("Where am I?", { exact: true }).waitFor({ state: "visible" });
     await pointAt(page, page.getByTestId("mission-control-next"), "Restored Mission Control window");
     await parkGuide(page);
-  } else if (index === 4) {
+  } else if (index === 5) {
     await clickAt(page, page.getByRole("button", { name: "Open Stuffs menu" }), "Stuffs menu");
     await page.getByText("Games", { exact: true }).first().waitFor({ state: "visible" });
   }

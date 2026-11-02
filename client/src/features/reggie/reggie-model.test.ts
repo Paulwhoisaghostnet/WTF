@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   availableSteps,
   checkpointsForRoute,
-  describeAccountState,
   progressPercent,
   recommendedStep,
   REGGIE_SUMMON_EVENT,
@@ -81,7 +80,7 @@ test("stepsUnlockedBy reports newly reachable locked steps", () => {
   );
 });
 
-test("shouldShowReggie gates on user, completion, and snooze", () => {
+test("shouldShowReggie gates on user, quest completion, and snooze", () => {
   const quest = state([step({})]);
   assert.equal(shouldShowReggie({ hasUser: false, questState: quest, dismissedUntil: null }), false);
   assert.equal(shouldShowReggie({ hasUser: true, questState: quest, dismissedUntil: null }), true);
@@ -128,27 +127,10 @@ test("every route checkpoint has a selector-resolvable anchor fallback", () => {
   ]);
 });
 
-test("progressPercent and describeAccountState summarize account state", () => {
+test("progressPercent summarizes quest state", () => {
   const quest = state([
     step({ stepKey: "a", status: "completed" }),
     step({ stepKey: "b", status: "available" }),
   ]);
   assert.equal(progressPercent(quest), 50);
-  const summary = describeAccountState(
-    {
-      username: "newbie",
-      displayName: null,
-      bio: null,
-      avatarUrl: null,
-      pfpImageUrl: null,
-      twitterHandle: null,
-      twitterVerified: false,
-      experiencePoints: 12,
-    },
-    quest
-  );
-  assert.match(summary, /@newbie/);
-  assert.match(summary, /PFP: missing/);
-  assert.match(summary, /X: not linked/);
-  assert.match(summary, /1\/2 side quests/);
 });

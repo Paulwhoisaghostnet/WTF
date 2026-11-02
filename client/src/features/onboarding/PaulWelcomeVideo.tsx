@@ -154,6 +154,10 @@ export function PaulWelcomeVideo({
             Open Mission Control to see challenges, your progress, and rewards.
           </li>
           <li>
+            Reggie tracks your progress along the Reggie quest path. Click him when you
+            want the next available step or a route to it. Paul explains how the desktop works.
+          </li>
+          <li>
             Visit Arcade to play games, or Create to find tools for making things.
           </li>
           <li>
