@@ -29,7 +29,7 @@ Total: **716** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 
 | ID | Status | Owner/Session | Last touched | Category | Priority | Points | Rank | C | F | S | Title |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| WTF-BB-729 | Open | Unassigned | 2026-11-01 | Progression / XP tier semantics | P2 | 9 | 550 | 3 | 3 | 0 | Spending EXP can lower the displayed XP tier after a player has progressed |
+| WTF-BB-752 | Open | Unassigned | 2026-11-01 | Progression / XP tier semantics | P2 | 9 | 550 | 3 | 3 | 0 | Spending EXP can lower the displayed XP tier after a player has progressed |
 | WTF-BB-715 | Open | Unassigned | 2026-10-25 | coLILseum / AI shopping | P2 | 9 | 550 | 3 | 3 | 0 | AI commanders hoard gold and cheap copies instead of recruiting premium offers |
 | WTF-BB-434 | Open | Unclaimed | 2026-07-18 | Pasta Protocol / live proof signer coordination | P2 | 9 | 550 | 3 | 3 | 0 | Independent UI-LIVE runners can be launched concurrently with the same creator/collector keyring identities, causing account-counter contention and rejected partial evidence; current aggregate execution is serialized manually, but the harness still needs a cross-process lock keyed by signer addresses with stale-lock recovery and a no-write contention test |
 | WTF-BB-723 | Open | User-deferred DNS verification | 2026-10-28 | Mail / outbound relay configuration | P2 | 8 | 623 | 2 | 3 | 0 | Existing mail sender domain is absent from the configured outbound relay account |
@@ -748,7 +748,7 @@ Total: **716** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 
 ## Issue Details
 
-### WTF-BB-729 - Spending EXP can lower the displayed XP tier after a player has progressed
+### WTF-BB-752 - Spending EXP can lower the displayed XP tier after a player has progressed
 
 - Category: Progression / XP tier semantics
 - Priority: P2

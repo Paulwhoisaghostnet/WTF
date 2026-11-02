@@ -11326,7 +11326,7 @@
       "body": "- Evidence (2026-11-02): Generated `docs/reference/environment-variables.md` labels `WTF_PLATFORM_KEYRING_MASTER_KEY` as `Secret: no`, while `scripts/platform-wallets.ts` consumes its value as the encryption master key. The classifier recognizes `PRIVATE_KEY` and `SECRET` but not `KEYRING_MASTER_KEY`; the rescue snapshot contains a narrower regex correction.\n- Why it matters: Operators and tooling relying on the generated inventory receive an incorrect handling signal for live key material. The generator records names and metadata only; no value exposure was observed.\n- Correction direction: Recognize keyring master-key and JSON keyring names as secret, add a policy assertion for the existing platform master key, and regenerate the inventory.\n- Verification idea: Run the focused environment inventory policy test and `npm run env:inventory:check`; confirm the generated row says `yes` and no runtime values appear.\n- Score: P2(3)+C1/F2/S1=7; a small metadata correction with conditional secret-handling risk.\n- Correction and verification (2026-11-02): Secret-name detection now includes `KEYRING_MASTER_KEY` and `KEYRING_JSON`. The existing platform master-key row and file-path row regenerate as `Secret: yes` with omitted defaults; no value is read into the inventory. The focused environment inventory policy suite passed 3/3, `npm run env:inventory:check`, `npm run bounty:board:check`, and `git diff --check` passed."
     },
     {
-      "id": "WTF-BB-729",
+      "id": "WTF-BB-752",
       "status": "Open",
       "owner": "Unassigned",
       "lastTouched": "2026-11-01",

@@ -13136,3 +13136,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The missing generated file was a local test setup error, not a source-policy failure or a new CI defect. Running the aggregate alone obscured the actual gate state.
 
 **Rule**: Before local aggregate units that assert desktop bundle contents, run the same Macaroni and Pasta Suite asset preparation commands as Quality Gates. Confirm a clean-checkout failure against the workflow sequence before changing source or CI; targeted desktop policies should pass after that preparation.
+
+---
+
+## 2026-11-02 — Reserve bounty IDs across concurrent active checkouts
+
+**What happened**: The combined release branch carried an open progression finding as `WTF-BB-729` while a separate active X-linking checkout had independently claimed that ID for a different finding. Neither branch's board check could see the other uncommitted record.
+
+**Why it mattered**: Merging both later would make the canonical board ambiguous and could silently replace one finding during a conflict resolution.
+
+**Rule**: Before promoting parallel work, compare new canonical IDs with active checkout changes as well as merged branches. Renumber one record in the canonical JSON, regenerate the board, and verify uniqueness before pushing the combined result.
