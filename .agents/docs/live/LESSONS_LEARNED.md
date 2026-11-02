@@ -12783,3 +12783,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A green deploy and a correct source commit did not prove the publisher account's runtime policy was active. The manual workflow could not apply an environment-only change to an unchanged commit.
 
 **Rule**: Inspect the running container's effective environment for rollout settings and verify both an allowed and denied account against the public endpoint. For unchanged-commit redeploys, build a nonempty tip-commit bundle with its parent as prerequisite; exercise workflow_dispatch through its health check, not merely the initial push deploy.
+
+---
+
+## 2026-11-02 — Desktop status regions make global role locators ambiguous
+
+**What happened**: Adding the passive 30-day login account readout as an accessible `<output>` gave it the implicit `status` role. An existing Admin E2E assertion used `page.getByRole("status")` for its app-registration feedback and then matched both the desktop readout and the active Admin message.
+
+**Why it mattered**: The Admin operation succeeded, but the browser test failed in strict mode because the desktop shell remains mounted behind app windows.
+
+**Rule**: Scope status and other repeated role locators to the owning active app surface. A shell-level accessible readout can introduce a valid role match even when it does not accept input.
+
+---
+
+## 2026-11-02 — Wallet auth actor fixtures must apply proof-binding schema
+
+**What happened**: The local live-puppet database preparation list stopped before `0125_wallet_auth_proof_binding.sql`. Wallet-auth actor tests then reached nonce queries with no `origin` or `action` columns, even though the application migration defines both.
+
+**Why it mattered**: Schema drift in the actor fixture stopped wallet-login verification before it could test the current authentication behavior.
+
+**Rule**: When a wallet-auth migration adds fields consumed by login routes, include it in every explicitly managed actor database migration list and lock the migration and required columns with a policy assertion before relying on the live-puppet suite.

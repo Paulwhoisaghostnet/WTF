@@ -41,3 +41,22 @@ test("local puppet DB preparation includes current WTF LIVE room schemas", () =>
     );
   }
 });
+
+test("local puppet DB preparation includes the wallet auth proof-binding schema", async () => {
+  assert.match(
+    preparationSource,
+    /"drizzle\/0125_wallet_auth_proof_binding\.sql"/,
+    "wallet login actor traffic reads nonce origin and action, so puppet DB setup must apply migration 0125"
+  );
+  const migration = await readFile(
+    new URL("../drizzle/0125_wallet_auth_proof_binding.sql", import.meta.url),
+    "utf8"
+  );
+  for (const column of ["origin", "action"]) {
+    assert.match(
+      migration,
+      new RegExp(`ADD COLUMN IF NOT EXISTS "${column}"`),
+      `migration 0125 must add wallet_auth_nonces.${column}`
+    );
+  }
+});
