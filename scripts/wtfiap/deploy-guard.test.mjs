@@ -28,7 +28,7 @@ test('an active open-seat duel is bound to its durable escrow record before repl
 });
 test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
-  const currentRelease = '9331bb06c2c54dd19b0fda5c645e68952501a015f6529b08d2f4eafb73fd4497';
+  const currentRelease = '539152890115d04a522c1f8de9ae6bcef99435e300b80a4d3527193b138832f7';
   assert.equal(rules.getRuntimeRulesHash(), currentRelease);
   assert.equal(rules.supportsPinnedRules(currentRelease, 'f4acaf1dd0f1e0fcfd1d57f3a403e0d503721f94fdc269d1cdc07c26719c67fe'), true);
   assert.equal(rules.supportsPinnedRules(currentRelease, 'df03f5268ef98057c603630dca7c9d4932bdf5dfbc6d9e38b104e79aaf1a6fcb'), true);

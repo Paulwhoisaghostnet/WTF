@@ -13286,3 +13286,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A partially copied signer bundle could leave a later service restart running new code without the matching dependency install and without a verified rollout.
 
 **Rule**: Run npm with `--prefix /opt/wtf-operator-signer` under `wtf-signer`, then restart and compare the installed bundle hash with the local build. Keep the directory inaccessible to the deploy user.
+
+---
+
+## 2026-11-02 — Rebase hosted game behavior when vendoring a newer room server
+
+**What happened**: The sponsored-room source was based on a game server variant that lacked the hosted `resume` endpoint and turn notification calls, and narrowed the existing unfunded room close action. The vendor command replaced the hosted server with that variant, so the aggregate authority test failed.
+
+**Why it mattered**: Existing players could lose seat recovery and turn alerts even though the new sponsor flow tests passed.
+
+**Rule**: Compare the vendored hosted game server against the current hosted release before accepting a new game workspace variant. Preserve hosted endpoints and lifecycle hooks, then run the hosted authority and deployment-guard tests against the vendored bytes.

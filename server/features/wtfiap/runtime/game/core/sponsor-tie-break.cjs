@@ -9,6 +9,7 @@ const Standings = require('./party-standings.cjs');
 const demand = (condition, message) => { if (!condition) throw new Error(message); };
 const hash = text => createHash('sha256').update(text).digest('hex');
 const copy = value => JSON.parse(JSON.stringify(value));
+const lex = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const HIT_TYPES = new Set(['hit', 'spell-hit', 'dot-hit', 'reflect-hit', 'shatter-hit']);
 const HEAL_TYPES = new Set(['heal', 'item-heal', 'zone-heal']);
 
@@ -58,7 +59,8 @@ function metricsFor(state, selected) {
         const amount = event.healthDamage + event.absorbed;
         demand(Number.isFinite(amount) && amount >= 0, 'Replay damage must be finite and nonnegative.');
         score.damage += amount; round.damage += amount;
-        score.heroDamage.set(event.unitId, (score.heroDamage.get(event.unitId) || 0) + amount);
+        const heroKey = event.unitId.replace(/^(?:player|enemy):/, '');
+        score.heroDamage.set(heroKey, (score.heroDamage.get(heroKey) || 0) + amount);
       } else {
         demand(Number.isFinite(event.amount) && event.amount >= 0, 'Replay healing must be finite and nonnegative.');
         score.healing += event.amount; round.healing += event.amount;
@@ -90,8 +92,8 @@ function factorScore(score, name) {
 
 function resolveGroup(playerIds, scores, seed, placeFrom, rounds) {
   const names = factorNames(rounds).sort((a, b) =>
-    hash(`colilseum-sponsor-factor-v1:${seed}:${placeFrom}:${a}`).localeCompare(
-      hash(`colilseum-sponsor-factor-v1:${seed}:${placeFrom}:${b}`)) || a.localeCompare(b));
+    lex(hash(`colilseum-sponsor-factor-v1:${seed}:${placeFrom}:${a}`),
+      hash(`colilseum-sponsor-factor-v1:${seed}:${placeFrom}:${b}`)) || lex(a, b));
   const draws = [];
   function rank(ids, nextFactor) {
     if (ids.length === 1) return ids;
@@ -108,7 +110,7 @@ function resolveGroup(playerIds, scores, seed, placeFrom, rounds) {
     const values = ids.map(playerId => ({ playerId,
       value: hash(`colilseum-sponsor-final-v1:${seed}:${placeFrom}:${playerId}`) + ':' + playerId }));
     draws.push({ factor: 'committed-seed-draw', scores: values });
-    return values.sort((a, b) => b.value.localeCompare(a.value)).map(item => item.playerId);
+    return values.sort((a, b) => lex(b.value, a.value)).map(item => item.playerId);
   }
   return { resolvedPlayerIds: rank(playerIds, 0), draws };
 }
@@ -122,7 +124,8 @@ function derive(state, seed) {
   for (const group of standings.groups) {
     const humanIds = group.playerIds.filter(id => humans.has(id));
     if (humanIds.length < 2) { rankedPlayerIds.push(...humanIds); continue; }
-    const resolved = resolveGroup(humanIds, scores, seed, group.placeFrom, state.roundNumber);
+    // Later rounds cannot contain actions by this eliminated cohort.
+    const resolved = resolveGroup(humanIds, scores, seed, group.placeFrom, group.eliminatedRound ?? state.roundNumber);
     rankedPlayerIds.push(...resolved.resolvedPlayerIds);
     tieBreaks.push({ placeFrom: group.placeFrom, playerIds: humanIds,
       resolvedPlayerIds: resolved.resolvedPlayerIds, draws: resolved.draws });

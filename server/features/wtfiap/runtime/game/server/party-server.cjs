@@ -214,7 +214,7 @@ function auditFundingRoom(room, atMs) {
 }
 
 function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now, listen = true,
-  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged,
+  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged, onPreparationOpened,
   openDuelNetworks = [] } = {}) {
   requireThat(typeof apiPrefix === 'string' && /^\/[A-Za-z0-9_/-]+$/.test(apiPrefix) && !apiPrefix.endsWith('/') && !apiPrefix.includes('//'), 'Use an absolute API path without a trailing slash.');
   requireThat(typeof sharePath === 'string' && sharePath.startsWith('/') && !sharePath.startsWith('//') && !/[?#\\]/.test(sharePath), 'Use a same-origin invitation path without a query or fragment.');
@@ -349,8 +349,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.messages ||= [];
     if (room.closedAtMs !== undefined) requireThat(Number.isSafeInteger(room.closedAtMs) && room.closedAtMs >= room.createdAtMs &&
       (room.closedByPlayerId === room.hostPlayerId || isSponsored(room) && room.closedByPlayerId === room.hostWatcherId) &&
-      !room.match && !room.fundingLock && !room.fundingOffer,
-    'Closed room archive must be an unfunded, unstarted host action.');
+      (!isSponsored(room) || !room.match) && !room.fundingLock && !room.fundingOffer,
+    'Closed room archive must be an unfunded host action.');
     if (room.fundingOffer) requireThat(isWageredDuel(room) && room.config.duelWager.currency === 'XTZ' &&
       !room.closedAtMs && hash(room.fundingOffer.seed) === room.fundingOffer.seedCommitment &&
       ['roomId', 'termsHash', 'rulesHash', 'matchId'].every(key => /^[a-f0-9]{64}$/.test(room.fundingOffer[key])) &&
@@ -406,7 +406,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   function lobby(room) {
     return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null,
       phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match ? room.match.phase : 'lobby',
-      ...(!room.match && !room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
+      ...((!isSponsored(room) || !room.match) && !room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
@@ -418,6 +418,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       : (room.match?.players.find(player => player.hp > 0)?.playerId || room.players[0]?.playerId)) : session.playerId;
     const base = room.terminalArchive ? clone(room.terminalArchive.views[watchedPlayerId])
       : room.match ? Party.view(room.match, watchedPlayerId) : lobby(room);
+    // Existing unescrowed rooms can still be retired after a match starts.
+    if (room.closedAtMs === undefined && !room.fundingLock && !room.fundingOffer && (!isSponsored(room) || !room.match)) base.canClose = true;
     if (spectator && room.match) {
       // Party.view contains a commander's private shop. A watcher gets the
       // same public board and combat, with no offers or actionable seat.
@@ -434,7 +436,8 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         Object.assign(player, { finalHP, finalGold, fieldedMaxHP });
       }
     }
-    return { ...base, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null, config: clone(room.config),
+    return { ...base, phase: room.closedAtMs !== undefined ? 'closed' : base.phase,
+      roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null, config: clone(room.config),
       authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: spectator ? null : session.nextSequence,
       viewer: { id: viewerId, name: spectator ? room.watchers.find(watcher => watcher.watcherId === viewerId)?.name : room.players.find(player => player.playerId === viewerId)?.name,
         role: spectator ? 'watcher' : 'player' }, watchingPlayerId: watchedPlayerId,
@@ -464,7 +467,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   }
   function schedule(room) {
     if (timers.has(room.roomCode)) clearTimeout(timers.get(room.roomCode));
-    timers.delete(room.roomCode); if (closing) return;
+    timers.delete(room.roomCode); if (closing || room.closedAtMs !== undefined) return;
     const atMs = deadline(room); if (atMs === null || atMs === undefined) return;
     requireThat(Number.isSafeInteger(atMs) && atMs >= 0, 'Party deadlines must be exact epoch milliseconds.');
     const delay = Math.min(MAX_TIMER_MS, Math.max(0, atMs - now()));
@@ -475,11 +478,15 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     timer.unref(); timers.set(room.roomCode, timer);
   }
   function advance(room) {
-    if (room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
+    if (room.closedAtMs !== undefined || room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
     if (room.match) {
       const result = Party.advance(room.match, now());
       requireThat(result.ok, result.reason || 'Party clock transition failed.', 500);
-      if (result.events?.some(event => event.type === 'preparation-opened')) prepareBots(room);
+      const preparationOpened = result.events?.find(event => event.type === 'preparation-opened');
+      if (preparationOpened) {
+        prepareBots(room);
+        notifyPreparationOpened(room, preparationOpened.roundNumber);
+      }
       const accountingChanged = reconcileTournament(room);
       if (result.changed || accountingChanged) {
         room.revision++;
@@ -497,6 +504,19 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       const result = Party.prepareAI(room.match, player.playerId, now());
       requireThat(result.ok, result.reason || 'AI preparation failed.', 500);
     }
+  }
+  function notifyPreparationOpened(room, roundNumber = room.match?.roundNumber) {
+    if (typeof onPreparationOpened !== 'function' || !Number.isSafeInteger(roundNumber)) return;
+    const recipients = room.players.filter(player => !player.isAI && validText(player.playerId)).flatMap(player => {
+      const roomWindowOpen = [...(streams.get(room.roomCode) || [])].some(subscriber =>
+        subscriber.session?.playerId === player.playerId && !subscriber.response.destroyed && !subscriber.response.writableEnded);
+      if (roomWindowOpen) return [];
+      const accountId = Object.values(room.sessions).find(session => session.playerId === player.playerId && validText(session.accountId))?.accountId;
+      return accountId ? [{ userId: accountId, playerId: player.playerId, name: player.name }] : [];
+    });
+    if (!recipients.length) return;
+    queueMicrotask(() => Promise.resolve(onPreparationOpened({ roomCode: room.roomCode, roundNumber, recipients }))
+      .catch(error => console.warn('coLILseum turn notification failed:', error?.message || error)));
   }
   function authenticate(request, room) {
     const authorization = request.headers.authorization || '';
@@ -528,6 +548,23 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     const session = { playerId, nextSequence: 1, commands: {}, ...(account ? { accountId: account.id } : {}) };
     room.sessions[hash(sessionToken)] = session;
     return { playerId, sessionToken, session };
+  }
+  function resumeAccountPlayer(room, request) {
+    const account = actor(request);
+    requireThat(account, 'Sign in to the WTF account that owns this commander.', 401);
+    const existing = Object.entries(room.sessions).find(([, session]) => session.accountId === account.id &&
+      room.players.some(player => player.playerId === session.playerId && !player.isAI));
+    requireThat(existing, 'This WTF account has no player seat in this room.', 404);
+    const previous = existing[1];
+    for (const [tokenHash, session] of Object.entries(room.sessions)) {
+      if (session.accountId === account.id && session.playerId === previous.playerId) delete room.sessions[tokenHash];
+    }
+    const sessionToken = crypto.randomUUID();
+    const session = { playerId: previous.playerId, accountId: account.id,
+      nextSequence: previous.nextSequence, commands: clone(previous.commands) };
+    room.sessions[hash(sessionToken)] = session;
+    persist(room, false);
+    return { roomCode: room.roomCode, playerId: session.playerId, sessionToken };
   }
   function addWatcher(room, name, request) {
     const account = actor(request);
@@ -580,11 +617,17 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
           ...(sponsorWatches ? { role: 'watcher' } : {}),
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
-      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|close|commands|messages|events|replay|lobby))?$/);
+      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|resume|start|close|commands|messages|events|replay|lobby))?$/);
       requireThat(route, 'Unknown party endpoint.', 404);
       const room = rooms.get(route[1]); requireThat(room, 'Party room not found.', 404);
       const action = route[2];
       if (request.method === 'GET' && action === 'lobby') { writeJSON(response, 200, { ok: true, view: lobby(room), serverNowMs: now() }); return; }
+      if (request.method === 'POST' && action === 'resume') {
+        const input = await bodyJSON(request);
+        requireThat(Object.keys(input).length === 0, 'Rejoining a player seat needs no extra data.');
+        const identity = resumeAccountPlayer(room, request);
+        writeJSON(response, 200, { ok: true, ...identity }); return;
+      }
       if (request.method === 'POST' && action === 'join') {
         const input = await bodyJSON(request);
         immutableTerms(input);
@@ -613,10 +656,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         requireThat(Object.keys(input).length === 0, 'Closing a room needs no extra terms.');
         requireThat(session.playerId === room.hostPlayerId || isSponsored(room) && session.watcherId === room.hostWatcherId,
           'Only the room host can close it.', 403);
-        requireThat(!room.match && !room.fundingLock && !room.fundingOffer, 'Started or escrow-bound rooms cannot be closed.', 409);
+        requireThat((!isSponsored(room) || !room.match) && !room.fundingLock && !room.fundingOffer,
+          'Escrow-bound rooms must use their refund or settlement flow.', 409);
         if (room.closedAtMs === undefined) {
           room.closedAtMs = now(); room.closedByPlayerId = session.playerId || session.watcherId;
-          room.revision++; persist(room, false); publish(room);
+          room.revision++; schedule(room); persist(room, false); publish(room);
         }
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
@@ -679,6 +723,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
           terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
         prepareBots(room);
+        notifyPreparationOpened(room, room.match.roundNumber);
         room.revision++; persist(room); publish(room); schedule(room);
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
@@ -880,6 +925,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
         terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
       prepareBots(room);
+      notifyPreparationOpened(room, room.match.roundNumber);
       room.revision++; persist(room); publish(room); schedule(room);
       return funding.inspect(roomCode);
     },
