@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "compiler": "smartpy-tezos==0.24.1",
+  "policyStatus": "local-candidate; no network deployment",
+  "sourceHashes": {
+    "WtfIapSponsorEscrow.py": "a4723551f44dba50c6af2227bfe12356c7dfbe35566ef79ff137097011de08e8",
+    "DummyPrizeFA2.py": "8c2589cb06e1d09e9780013dd4550b02c97bd09061a3a6ad66ea64fa3827e53f",
+    "test_escrow.py": "a7ad3bf6f617f20f1def1ef60451e94d31c35a4da938604288a7c98fc902c0e0",
+    "test_arithmetic.py": "d6dd5dec0a4f9554b556b95e782e2f168ae6d53b6edc2ee7753864b37d1b24c5",
+    "build-artifacts.mjs": "ca6caf28fdc98d043ce88690c1043844298558dc6c2c70fdde060f2dc227bfcc"
+  },
+  "artifacts": {
+    "contract.json": {
+      "sha256": "840cfe0a48ded7c30385e81ff8e3cfbebd56184892e7957666efe7bdad9e83b7",
+      "bytes": 593109
+    },
+    "storage.json": {
+      "sha256": "05ff6802a1d8eed20ac5e2a0112ff840d9d856ae754e141b8fff241f4f8f09ec",
+      "bytes": 1141
+    },
+    "interface.json": {
+      "sha256": "bfb9952a374deadd9ef15eb2471fc3118f69b9b37716fb65b934b723671bb7fb",
+      "bytes": 130405
+    }
+  },
+  "checks": {
+    "smartpyScenarios": "run separately before export",
+    "arithmetic": "run separately before export",
+    "entrypointAndViewParity": true,
+    "storageWarning": "Fixture addresses. Encode network-specific constructor values before origination."
+  }
+}

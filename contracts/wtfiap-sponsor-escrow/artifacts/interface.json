@@ -1,0 +1,2560 @@
+{
+  "schemaVersion": 1,
+  "title": "coLILseum sponsored prize escrow candidate",
+  "policyStatus": "local-candidate; no network deployment",
+  "artifactSha256": "840cfe0a48ded7c30385e81ff8e3cfbebd56184892e7957666efe7bdad9e83b7",
+  "transport": {
+    "bytes32": "lowercase hexadecimal without 0x",
+    "nat": "unsigned decimal string",
+    "mode": {
+      "fixed": 0,
+      "random": 1,
+      "pick": 2
+    },
+    "entryCurrency": {
+      "FREE": 0,
+      "XTZ": 1,
+      "WTF": 2
+    },
+    "cashCurrency": {
+      "XTZ": 0,
+      "WTF": 1
+    },
+    "status": {
+      "funding": 0,
+      "active": 1,
+      "settled": 2,
+      "voided": 3
+    },
+    "quantum": {
+      "XTZ": "10000",
+      "WTF": "1000000"
+    }
+  },
+  "parameterType": {
+    "prim": "or",
+    "args": [
+      {
+        "prim": "or",
+        "args": [
+          {
+            "prim": "or",
+            "args": [
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "bytes",
+                    "annots": [
+                      "%cancel_room"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "address",
+                            "annots": [
+                              "%recipient"
+                            ]
+                          },
+                          {
+                            "prim": "nat",
+                            "annots": [
+                              "%currency"
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%claim_cash"
+                    ]
+                  }
+                ]
+              },
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "nat",
+                        "annots": [
+                          "%index"
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%claim_lot"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "address",
+                        "annots": [
+                          "%designated_wallet"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "nat",
+                            "annots": [
+                              "%entry_amount"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "nat",
+                                "annots": [
+                                  "%entry_currency"
+                                ]
+                              },
+                              {
+                                "prim": "pair",
+                                "args": [
+                                  {
+                                    "prim": "list",
+                                    "args": [
+                                      {
+                                        "prim": "pair",
+                                        "args": [
+                                          {
+                                            "prim": "address",
+                                            "annots": [
+                                              "%token_address"
+                                            ]
+                                          },
+                                          {
+                                            "prim": "pair",
+                                            "args": [
+                                              {
+                                                "prim": "nat",
+                                                "annots": [
+                                                  "%token_id"
+                                                ]
+                                              },
+                                              {
+                                                "prim": "pair",
+                                                "args": [
+                                                  {
+                                                    "prim": "nat",
+                                                    "annots": [
+                                                      "%amount"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "prim": "nat",
+                                                    "annots": [
+                                                      "%fixed_place"
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ],
+                                    "annots": [
+                                      "%lots"
+                                    ]
+                                  },
+                                  {
+                                    "prim": "pair",
+                                    "args": [
+                                      {
+                                        "prim": "nat",
+                                        "annots": [
+                                          "%minimum_humans"
+                                        ]
+                                      },
+                                      {
+                                        "prim": "pair",
+                                        "args": [
+                                          {
+                                            "prim": "nat",
+                                            "annots": [
+                                              "%mode"
+                                            ]
+                                          },
+                                          {
+                                            "prim": "pair",
+                                            "args": [
+                                              {
+                                                "prim": "list",
+                                                "args": [
+                                                  {
+                                                    "prim": "nat"
+                                                  }
+                                                ],
+                                                "annots": [
+                                                  "%pick_counts"
+                                                ]
+                                              },
+                                              {
+                                                "prim": "pair",
+                                                "args": [
+                                                  {
+                                                    "prim": "list",
+                                                    "args": [
+                                                      {
+                                                        "prim": "pair",
+                                                        "args": [
+                                                          {
+                                                            "prim": "nat",
+                                                            "annots": [
+                                                              "%xtz"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "prim": "pair",
+                                                            "args": [
+                                                              {
+                                                                "prim": "nat",
+                                                                "annots": [
+                                                                  "%wtf"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "prim": "nat",
+                                                                "annots": [
+                                                                  "%pool_weight"
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ],
+                                                    "annots": [
+                                                      "%places"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "prim": "pair",
+                                                    "args": [
+                                                      {
+                                                        "prim": "nat",
+                                                        "annots": [
+                                                          "%pool_denominator"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "prim": "pair",
+                                                        "args": [
+                                                          {
+                                                            "prim": "nat",
+                                                            "annots": [
+                                                              "%pool_numerator"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "prim": "pair",
+                                                            "args": [
+                                                              {
+                                                                "prim": "address",
+                                                                "annots": [
+                                                                  "%referee"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "prim": "pair",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "bytes",
+                                                                    "annots": [
+                                                                      "%room_id"
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "prim": "pair",
+                                                                    "args": [
+                                                                      {
+                                                                        "prim": "bytes",
+                                                                        "annots": [
+                                                                          "%rules_hash"
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "prim": "pair",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "bytes",
+                                                                            "annots": [
+                                                                              "%seed_commitment"
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "prim": "pair",
+                                                                            "args": [
+                                                                              {
+                                                                                "prim": "address",
+                                                                                "annots": [
+                                                                                  "%sponsor"
+                                                                                ]
+                                                                              },
+                                                                              {
+                                                                                "prim": "bytes",
+                                                                                "annots": [
+                                                                                  "%terms_hash"
+                                                                                ]
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%create_room"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "prim": "or",
+            "args": [
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "unit",
+                    "annots": [
+                      "%default"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "list",
+                        "args": [
+                          {
+                            "prim": "address"
+                          }
+                        ],
+                        "annots": [
+                          "%human_ranks"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "list",
+                            "args": [
+                              {
+                                "prim": "nat"
+                              }
+                            ],
+                            "annots": [
+                              "%lot_places"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "bytes",
+                                "annots": [
+                                  "%match_id"
+                                ]
+                              },
+                              {
+                                "prim": "pair",
+                                "args": [
+                                  {
+                                    "prim": "bytes",
+                                    "annots": [
+                                      "%result_hash"
+                                    ]
+                                  },
+                                  {
+                                    "prim": "pair",
+                                    "args": [
+                                      {
+                                        "prim": "bytes",
+                                        "annots": [
+                                          "%room_id"
+                                        ]
+                                      },
+                                      {
+                                        "prim": "bytes",
+                                        "annots": [
+                                          "%transcript_hash"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%finalize_room"
+                    ]
+                  }
+                ]
+              },
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "nat",
+                            "annots": [
+                              "%index"
+                            ]
+                          },
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%expected_terms_hash"
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%fund_sponsor_lot"
+                    ]
+                  },
+                  {
+                    "prim": "or",
+                    "args": [
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%room_id"
+                            ]
+                          },
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%expected_terms_hash"
+                            ]
+                          }
+                        ],
+                        "annots": [
+                          "%fund_sponsor_wtf"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%room_id"
+                            ]
+                          },
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%expected_terms_hash"
+                            ]
+                          }
+                        ],
+                        "annots": [
+                          "%fund_sponsor_xtz"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "prim": "or",
+        "args": [
+          {
+            "prim": "or",
+            "args": [
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%expected_terms_hash"
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%join_room"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "address",
+                        "annots": [
+                          "%player"
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%refund_entry"
+                    ]
+                  }
+                ]
+              },
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "nat",
+                        "annots": [
+                          "%index"
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%refund_sponsor_lot"
+                    ]
+                  },
+                  {
+                    "prim": "bytes",
+                    "annots": [
+                      "%refund_sponsor_wtf"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "prim": "or",
+            "args": [
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "bytes",
+                    "annots": [
+                      "%refund_sponsor_xtz"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "address",
+                        "annots": [
+                          "%player"
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%register_entrant"
+                    ]
+                  }
+                ]
+              },
+              {
+                "prim": "or",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "bytes",
+                        "annots": [
+                          "%room_id"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%expected_terms_hash"
+                            ]
+                          },
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%match_id"
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%start_room"
+                    ]
+                  },
+                  {
+                    "prim": "or",
+                    "args": [
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%room_id"
+                            ]
+                          },
+                          {
+                            "prim": "address",
+                            "annots": [
+                              "%player"
+                            ]
+                          }
+                        ],
+                        "annots": [
+                          "%unregister_entrant"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "bytes",
+                            "annots": [
+                              "%room_id"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "bytes",
+                                "annots": [
+                                  "%reason_hash"
+                                ]
+                              },
+                              {
+                                "prim": "bytes",
+                                "annots": [
+                                  "%evidence_hash"
+                                ]
+                              }
+                            ]
+                          }
+                        ],
+                        "annots": [
+                          "%void_room"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "storageType": {
+    "prim": "pair",
+    "args": [
+      {
+        "prim": "big_map",
+        "args": [
+          {
+            "prim": "pair",
+            "args": [
+              {
+                "prim": "bytes"
+              },
+              {
+                "prim": "pair",
+                "args": [
+                  {
+                    "prim": "address"
+                  },
+                  {
+                    "prim": "nat"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "prim": "pair",
+            "args": [
+              {
+                "prim": "nat",
+                "annots": [
+                  "%amount"
+                ]
+              },
+              {
+                "prim": "bool",
+                "annots": [
+                  "%claimed"
+                ]
+              }
+            ]
+          }
+        ],
+        "annots": [
+          "%cash_claims"
+        ]
+      },
+      {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "big_map",
+            "args": [
+              {
+                "prim": "pair",
+                "args": [
+                  {
+                    "prim": "bytes"
+                  },
+                  {
+                    "prim": "nat"
+                  }
+                ]
+              },
+              {
+                "prim": "pair",
+                "args": [
+                  {
+                    "prim": "bool",
+                    "annots": [
+                      "%claimed"
+                    ]
+                  },
+                  {
+                    "prim": "address",
+                    "annots": [
+                      "%recipient"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "annots": [
+              "%lot_claims"
+            ]
+          },
+          {
+            "prim": "pair",
+            "args": [
+              {
+                "prim": "address",
+                "annots": [
+                  "%room_creator"
+                ]
+              },
+              {
+                "prim": "pair",
+                "args": [
+                  {
+                    "prim": "big_map",
+                    "args": [
+                      {
+                        "prim": "bytes"
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "address",
+                            "annots": [
+                              "%designated_wallet"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "list",
+                                "args": [
+                                  {
+                                    "prim": "address"
+                                  }
+                                ],
+                                "annots": [
+                                  "%entrants"
+                                ]
+                              },
+                              {
+                                "prim": "pair",
+                                "args": [
+                                  {
+                                    "prim": "nat",
+                                    "annots": [
+                                      "%entry_amount"
+                                    ]
+                                  },
+                                  {
+                                    "prim": "pair",
+                                    "args": [
+                                      {
+                                        "prim": "nat",
+                                        "annots": [
+                                          "%entry_currency"
+                                        ]
+                                      },
+                                      {
+                                        "prim": "pair",
+                                        "args": [
+                                          {
+                                            "prim": "set",
+                                            "args": [
+                                              {
+                                                "prim": "nat"
+                                              }
+                                            ],
+                                            "annots": [
+                                              "%funded_lots"
+                                            ]
+                                          },
+                                          {
+                                            "prim": "pair",
+                                            "args": [
+                                              {
+                                                "prim": "nat",
+                                                "annots": [
+                                                  "%held_wtf"
+                                                ]
+                                              },
+                                              {
+                                                "prim": "pair",
+                                                "args": [
+                                                  {
+                                                    "prim": "nat",
+                                                    "annots": [
+                                                      "%held_xtz"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "prim": "pair",
+                                                    "args": [
+                                                      {
+                                                        "prim": "nat",
+                                                        "annots": [
+                                                          "%house_fee"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "prim": "pair",
+                                                        "args": [
+                                                          {
+                                                            "prim": "list",
+                                                            "args": [
+                                                              {
+                                                                "prim": "pair",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "address",
+                                                                    "annots": [
+                                                                      "%token_address"
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "prim": "pair",
+                                                                    "args": [
+                                                                      {
+                                                                        "prim": "nat",
+                                                                        "annots": [
+                                                                          "%token_id"
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "prim": "pair",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "nat",
+                                                                            "annots": [
+                                                                              "%amount"
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "prim": "nat",
+                                                                            "annots": [
+                                                                              "%fixed_place"
+                                                                            ]
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "annots": [
+                                                              "%lots"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "prim": "pair",
+                                                            "args": [
+                                                              {
+                                                                "prim": "option",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "bytes"
+                                                                  }
+                                                                ],
+                                                                "annots": [
+                                                                  "%match_id"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "prim": "pair",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "nat",
+                                                                    "annots": [
+                                                                      "%minimum_humans"
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "prim": "pair",
+                                                                    "args": [
+                                                                      {
+                                                                        "prim": "nat",
+                                                                        "annots": [
+                                                                          "%mode"
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "prim": "pair",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "set",
+                                                                            "args": [
+                                                                              {
+                                                                                "prim": "address"
+                                                                              }
+                                                                            ],
+                                                                            "annots": [
+                                                                              "%paid"
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "prim": "pair",
+                                                                            "args": [
+                                                                              {
+                                                                                "prim": "list",
+                                                                                "args": [
+                                                                                  {
+                                                                                    "prim": "nat"
+                                                                                  }
+                                                                                ],
+                                                                                "annots": [
+                                                                                  "%pick_counts"
+                                                                                ]
+                                                                              },
+                                                                              {
+                                                                                "prim": "pair",
+                                                                                "args": [
+                                                                                  {
+                                                                                    "prim": "list",
+                                                                                    "args": [
+                                                                                      {
+                                                                                        "prim": "pair",
+                                                                                        "args": [
+                                                                                          {
+                                                                                            "prim": "nat",
+                                                                                            "annots": [
+                                                                                              "%xtz"
+                                                                                            ]
+                                                                                          },
+                                                                                          {
+                                                                                            "prim": "pair",
+                                                                                            "args": [
+                                                                                              {
+                                                                                                "prim": "nat",
+                                                                                                "annots": [
+                                                                                                  "%wtf"
+                                                                                                ]
+                                                                                              },
+                                                                                              {
+                                                                                                "prim": "nat",
+                                                                                                "annots": [
+                                                                                                  "%pool_weight"
+                                                                                                ]
+                                                                                              }
+                                                                                            ]
+                                                                                          }
+                                                                                        ]
+                                                                                      }
+                                                                                    ],
+                                                                                    "annots": [
+                                                                                      "%places"
+                                                                                    ]
+                                                                                  },
+                                                                                  {
+                                                                                    "prim": "pair",
+                                                                                    "args": [
+                                                                                      {
+                                                                                        "prim": "nat",
+                                                                                        "annots": [
+                                                                                          "%pool_denominator"
+                                                                                        ]
+                                                                                      },
+                                                                                      {
+                                                                                        "prim": "pair",
+                                                                                        "args": [
+                                                                                          {
+                                                                                            "prim": "nat",
+                                                                                            "annots": [
+                                                                                              "%pool_numerator"
+                                                                                            ]
+                                                                                          },
+                                                                                          {
+                                                                                            "prim": "pair",
+                                                                                            "args": [
+                                                                                              {
+                                                                                                "prim": "nat",
+                                                                                                "annots": [
+                                                                                                  "%prize_wtf"
+                                                                                                ]
+                                                                                              },
+                                                                                              {
+                                                                                                "prim": "pair",
+                                                                                                "args": [
+                                                                                                  {
+                                                                                                    "prim": "nat",
+                                                                                                    "annots": [
+                                                                                                      "%prize_xtz"
+                                                                                                    ]
+                                                                                                  },
+                                                                                                  {
+                                                                                                    "prim": "pair",
+                                                                                                    "args": [
+                                                                                                      {
+                                                                                                        "prim": "address",
+                                                                                                        "annots": [
+                                                                                                          "%referee"
+                                                                                                        ]
+                                                                                                      },
+                                                                                                      {
+                                                                                                        "prim": "pair",
+                                                                                                        "args": [
+                                                                                                          {
+                                                                                                            "prim": "option",
+                                                                                                            "args": [
+                                                                                                              {
+                                                                                                                "prim": "bytes"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "annots": [
+                                                                                                              "%result_hash"
+                                                                                                            ]
+                                                                                                          },
+                                                                                                          {
+                                                                                                            "prim": "pair",
+                                                                                                            "args": [
+                                                                                                              {
+                                                                                                                "prim": "bytes",
+                                                                                                                "annots": [
+                                                                                                                  "%rules_hash"
+                                                                                                                ]
+                                                                                                              },
+                                                                                                              {
+                                                                                                                "prim": "pair",
+                                                                                                                "args": [
+                                                                                                                  {
+                                                                                                                    "prim": "bytes",
+                                                                                                                    "annots": [
+                                                                                                                      "%seed_commitment"
+                                                                                                                    ]
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                    "prim": "pair",
+                                                                                                                    "args": [
+                                                                                                                      {
+                                                                                                                        "prim": "address",
+                                                                                                                        "annots": [
+                                                                                                                          "%sponsor"
+                                                                                                                        ]
+                                                                                                                      },
+                                                                                                                      {
+                                                                                                                        "prim": "pair",
+                                                                                                                        "args": [
+                                                                                                                          {
+                                                                                                                            "prim": "bool",
+                                                                                                                            "annots": [
+                                                                                                                              "%sponsor_wtf_funded"
+                                                                                                                            ]
+                                                                                                                          },
+                                                                                                                          {
+                                                                                                                            "prim": "pair",
+                                                                                                                            "args": [
+                                                                                                                              {
+                                                                                                                                "prim": "bool",
+                                                                                                                                "annots": [
+                                                                                                                                  "%sponsor_xtz_funded"
+                                                                                                                                ]
+                                                                                                                              },
+                                                                                                                              {
+                                                                                                                                "prim": "pair",
+                                                                                                                                "args": [
+                                                                                                                                  {
+                                                                                                                                    "prim": "nat",
+                                                                                                                                    "annots": [
+                                                                                                                                      "%status"
+                                                                                                                                    ]
+                                                                                                                                  },
+                                                                                                                                  {
+                                                                                                                                    "prim": "pair",
+                                                                                                                                    "args": [
+                                                                                                                                      {
+                                                                                                                                        "prim": "bytes",
+                                                                                                                                        "annots": [
+                                                                                                                                          "%terms_hash"
+                                                                                                                                        ]
+                                                                                                                                      },
+                                                                                                                                      {
+                                                                                                                                        "prim": "pair",
+                                                                                                                                        "args": [
+                                                                                                                                          {
+                                                                                                                                            "prim": "option",
+                                                                                                                                            "args": [
+                                                                                                                                              {
+                                                                                                                                                "prim": "bytes"
+                                                                                                                                              }
+                                                                                                                                            ],
+                                                                                                                                            "annots": [
+                                                                                                                                              "%transcript_hash"
+                                                                                                                                            ]
+                                                                                                                                          },
+                                                                                                                                          {
+                                                                                                                                            "prim": "pair",
+                                                                                                                                            "args": [
+                                                                                                                                              {
+                                                                                                                                                "prim": "option",
+                                                                                                                                                "args": [
+                                                                                                                                                  {
+                                                                                                                                                    "prim": "bytes"
+                                                                                                                                                  }
+                                                                                                                                                ],
+                                                                                                                                                "annots": [
+                                                                                                                                                  "%void_evidence_hash"
+                                                                                                                                                ]
+                                                                                                                                              },
+                                                                                                                                              {
+                                                                                                                                                "prim": "option",
+                                                                                                                                                "args": [
+                                                                                                                                                  {
+                                                                                                                                                    "prim": "bytes"
+                                                                                                                                                  }
+                                                                                                                                                ],
+                                                                                                                                                "annots": [
+                                                                                                                                                  "%void_reason_hash"
+                                                                                                                                                ]
+                                                                                                                                              }
+                                                                                                                                            ]
+                                                                                                                                          }
+                                                                                                                                        ]
+                                                                                                                                      }
+                                                                                                                                    ]
+                                                                                                                                  }
+                                                                                                                                ]
+                                                                                                                              }
+                                                                                                                            ]
+                                                                                                                          }
+                                                                                                                        ]
+                                                                                                                      }
+                                                                                                                    ]
+                                                                                                                  }
+                                                                                                                ]
+                                                                                                              }
+                                                                                                            ]
+                                                                                                          }
+                                                                                                        ]
+                                                                                                      }
+                                                                                                    ]
+                                                                                                  }
+                                                                                                ]
+                                                                                              }
+                                                                                            ]
+                                                                                          }
+                                                                                        ]
+                                                                                      }
+                                                                                    ]
+                                                                                  }
+                                                                                ]
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "annots": [
+                      "%rooms"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "address",
+                        "annots": [
+                          "%treasury_address"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "nat",
+                            "annots": [
+                              "%wtf_quantum"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "address",
+                                "annots": [
+                                  "%wtf_token_address"
+                                ]
+                              },
+                              {
+                                "prim": "pair",
+                                "args": [
+                                  {
+                                    "prim": "nat",
+                                    "annots": [
+                                      "%wtf_token_id"
+                                    ]
+                                  },
+                                  {
+                                    "prim": "pair",
+                                    "args": [
+                                      {
+                                        "prim": "nat",
+                                        "annots": [
+                                          "%xtz_paid_room_house_fee"
+                                        ]
+                                      },
+                                      {
+                                        "prim": "nat",
+                                        "annots": [
+                                          "%xtz_quantum"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "entrypoints": {
+    "cancel_room": {
+      "prim": "bytes",
+      "annots": [
+        "%cancel_room"
+      ]
+    },
+    "claim_cash": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "address",
+              "annots": [
+                "%recipient"
+              ]
+            },
+            {
+              "prim": "nat",
+              "annots": [
+                "%currency"
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%claim_cash"
+      ]
+    },
+    "claim_lot": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "nat",
+          "annots": [
+            "%index"
+          ]
+        }
+      ],
+      "annots": [
+        "%claim_lot"
+      ]
+    },
+    "create_room": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "address",
+          "annots": [
+            "%designated_wallet"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "nat",
+              "annots": [
+                "%entry_amount"
+              ]
+            },
+            {
+              "prim": "pair",
+              "args": [
+                {
+                  "prim": "nat",
+                  "annots": [
+                    "%entry_currency"
+                  ]
+                },
+                {
+                  "prim": "pair",
+                  "args": [
+                    {
+                      "prim": "list",
+                      "args": [
+                        {
+                          "prim": "pair",
+                          "args": [
+                            {
+                              "prim": "address",
+                              "annots": [
+                                "%token_address"
+                              ]
+                            },
+                            {
+                              "prim": "pair",
+                              "args": [
+                                {
+                                  "prim": "nat",
+                                  "annots": [
+                                    "%token_id"
+                                  ]
+                                },
+                                {
+                                  "prim": "pair",
+                                  "args": [
+                                    {
+                                      "prim": "nat",
+                                      "annots": [
+                                        "%amount"
+                                      ]
+                                    },
+                                    {
+                                      "prim": "nat",
+                                      "annots": [
+                                        "%fixed_place"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ],
+                      "annots": [
+                        "%lots"
+                      ]
+                    },
+                    {
+                      "prim": "pair",
+                      "args": [
+                        {
+                          "prim": "nat",
+                          "annots": [
+                            "%minimum_humans"
+                          ]
+                        },
+                        {
+                          "prim": "pair",
+                          "args": [
+                            {
+                              "prim": "nat",
+                              "annots": [
+                                "%mode"
+                              ]
+                            },
+                            {
+                              "prim": "pair",
+                              "args": [
+                                {
+                                  "prim": "list",
+                                  "args": [
+                                    {
+                                      "prim": "nat"
+                                    }
+                                  ],
+                                  "annots": [
+                                    "%pick_counts"
+                                  ]
+                                },
+                                {
+                                  "prim": "pair",
+                                  "args": [
+                                    {
+                                      "prim": "list",
+                                      "args": [
+                                        {
+                                          "prim": "pair",
+                                          "args": [
+                                            {
+                                              "prim": "nat",
+                                              "annots": [
+                                                "%xtz"
+                                              ]
+                                            },
+                                            {
+                                              "prim": "pair",
+                                              "args": [
+                                                {
+                                                  "prim": "nat",
+                                                  "annots": [
+                                                    "%wtf"
+                                                  ]
+                                                },
+                                                {
+                                                  "prim": "nat",
+                                                  "annots": [
+                                                    "%pool_weight"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ],
+                                      "annots": [
+                                        "%places"
+                                      ]
+                                    },
+                                    {
+                                      "prim": "pair",
+                                      "args": [
+                                        {
+                                          "prim": "nat",
+                                          "annots": [
+                                            "%pool_denominator"
+                                          ]
+                                        },
+                                        {
+                                          "prim": "pair",
+                                          "args": [
+                                            {
+                                              "prim": "nat",
+                                              "annots": [
+                                                "%pool_numerator"
+                                              ]
+                                            },
+                                            {
+                                              "prim": "pair",
+                                              "args": [
+                                                {
+                                                  "prim": "address",
+                                                  "annots": [
+                                                    "%referee"
+                                                  ]
+                                                },
+                                                {
+                                                  "prim": "pair",
+                                                  "args": [
+                                                    {
+                                                      "prim": "bytes",
+                                                      "annots": [
+                                                        "%room_id"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "prim": "pair",
+                                                      "args": [
+                                                        {
+                                                          "prim": "bytes",
+                                                          "annots": [
+                                                            "%rules_hash"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "prim": "pair",
+                                                          "args": [
+                                                            {
+                                                              "prim": "bytes",
+                                                              "annots": [
+                                                                "%seed_commitment"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "prim": "pair",
+                                                              "args": [
+                                                                {
+                                                                  "prim": "address",
+                                                                  "annots": [
+                                                                    "%sponsor"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "prim": "bytes",
+                                                                  "annots": [
+                                                                    "%terms_hash"
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%create_room"
+      ]
+    },
+    "default": {
+      "prim": "unit",
+      "annots": [
+        "%default"
+      ]
+    },
+    "finalize_room": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "list",
+          "args": [
+            {
+              "prim": "address"
+            }
+          ],
+          "annots": [
+            "%human_ranks"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "list",
+              "args": [
+                {
+                  "prim": "nat"
+                }
+              ],
+              "annots": [
+                "%lot_places"
+              ]
+            },
+            {
+              "prim": "pair",
+              "args": [
+                {
+                  "prim": "bytes",
+                  "annots": [
+                    "%match_id"
+                  ]
+                },
+                {
+                  "prim": "pair",
+                  "args": [
+                    {
+                      "prim": "bytes",
+                      "annots": [
+                        "%result_hash"
+                      ]
+                    },
+                    {
+                      "prim": "pair",
+                      "args": [
+                        {
+                          "prim": "bytes",
+                          "annots": [
+                            "%room_id"
+                          ]
+                        },
+                        {
+                          "prim": "bytes",
+                          "annots": [
+                            "%transcript_hash"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%finalize_room"
+      ]
+    },
+    "fund_sponsor_lot": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "nat",
+              "annots": [
+                "%index"
+              ]
+            },
+            {
+              "prim": "bytes",
+              "annots": [
+                "%expected_terms_hash"
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%fund_sponsor_lot"
+      ]
+    },
+    "fund_sponsor_wtf": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "bytes",
+          "annots": [
+            "%expected_terms_hash"
+          ]
+        }
+      ],
+      "annots": [
+        "%fund_sponsor_wtf"
+      ]
+    },
+    "fund_sponsor_xtz": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "bytes",
+          "annots": [
+            "%expected_terms_hash"
+          ]
+        }
+      ],
+      "annots": [
+        "%fund_sponsor_xtz"
+      ]
+    },
+    "join_room": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "bytes",
+          "annots": [
+            "%expected_terms_hash"
+          ]
+        }
+      ],
+      "annots": [
+        "%join_room"
+      ]
+    },
+    "refund_entry": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "address",
+          "annots": [
+            "%player"
+          ]
+        }
+      ],
+      "annots": [
+        "%refund_entry"
+      ]
+    },
+    "refund_sponsor_lot": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "nat",
+          "annots": [
+            "%index"
+          ]
+        }
+      ],
+      "annots": [
+        "%refund_sponsor_lot"
+      ]
+    },
+    "refund_sponsor_wtf": {
+      "prim": "bytes",
+      "annots": [
+        "%refund_sponsor_wtf"
+      ]
+    },
+    "refund_sponsor_xtz": {
+      "prim": "bytes",
+      "annots": [
+        "%refund_sponsor_xtz"
+      ]
+    },
+    "register_entrant": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "address",
+          "annots": [
+            "%player"
+          ]
+        }
+      ],
+      "annots": [
+        "%register_entrant"
+      ]
+    },
+    "start_room": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "bytes",
+              "annots": [
+                "%expected_terms_hash"
+              ]
+            },
+            {
+              "prim": "bytes",
+              "annots": [
+                "%match_id"
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%start_room"
+      ]
+    },
+    "unregister_entrant": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "address",
+          "annots": [
+            "%player"
+          ]
+        }
+      ],
+      "annots": [
+        "%unregister_entrant"
+      ]
+    },
+    "void_room": {
+      "prim": "pair",
+      "args": [
+        {
+          "prim": "bytes",
+          "annots": [
+            "%room_id"
+          ]
+        },
+        {
+          "prim": "pair",
+          "args": [
+            {
+              "prim": "bytes",
+              "annots": [
+                "%reason_hash"
+              ]
+            },
+            {
+              "prim": "bytes",
+              "annots": [
+                "%evidence_hash"
+              ]
+            }
+          ]
+        }
+      ],
+      "annots": [
+        "%void_room"
+      ]
+    }
+  },
+  "views": [
+    {
+      "name": "get_room",
+      "input": {
+        "prim": "bytes"
+      },
+      "output": {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "address",
+            "annots": [
+              "%designated_wallet"
+            ]
+          },
+          {
+            "prim": "pair",
+            "args": [
+              {
+                "prim": "list",
+                "args": [
+                  {
+                    "prim": "address"
+                  }
+                ],
+                "annots": [
+                  "%entrants"
+                ]
+              },
+              {
+                "prim": "pair",
+                "args": [
+                  {
+                    "prim": "nat",
+                    "annots": [
+                      "%entry_amount"
+                    ]
+                  },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      {
+                        "prim": "nat",
+                        "annots": [
+                          "%entry_currency"
+                        ]
+                      },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          {
+                            "prim": "set",
+                            "args": [
+                              {
+                                "prim": "nat"
+                              }
+                            ],
+                            "annots": [
+                              "%funded_lots"
+                            ]
+                          },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              {
+                                "prim": "nat",
+                                "annots": [
+                                  "%held_wtf"
+                                ]
+                              },
+                              {
+                                "prim": "pair",
+                                "args": [
+                                  {
+                                    "prim": "nat",
+                                    "annots": [
+                                      "%held_xtz"
+                                    ]
+                                  },
+                                  {
+                                    "prim": "pair",
+                                    "args": [
+                                      {
+                                        "prim": "nat",
+                                        "annots": [
+                                          "%house_fee"
+                                        ]
+                                      },
+                                      {
+                                        "prim": "pair",
+                                        "args": [
+                                          {
+                                            "prim": "list",
+                                            "args": [
+                                              {
+                                                "prim": "pair",
+                                                "args": [
+                                                  {
+                                                    "prim": "address",
+                                                    "annots": [
+                                                      "%token_address"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "prim": "pair",
+                                                    "args": [
+                                                      {
+                                                        "prim": "nat",
+                                                        "annots": [
+                                                          "%token_id"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "prim": "pair",
+                                                        "args": [
+                                                          {
+                                                            "prim": "nat",
+                                                            "annots": [
+                                                              "%amount"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "prim": "nat",
+                                                            "annots": [
+                                                              "%fixed_place"
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ],
+                                            "annots": [
+                                              "%lots"
+                                            ]
+                                          },
+                                          {
+                                            "prim": "pair",
+                                            "args": [
+                                              {
+                                                "prim": "option",
+                                                "args": [
+                                                  {
+                                                    "prim": "bytes"
+                                                  }
+                                                ],
+                                                "annots": [
+                                                  "%match_id"
+                                                ]
+                                              },
+                                              {
+                                                "prim": "pair",
+                                                "args": [
+                                                  {
+                                                    "prim": "nat",
+                                                    "annots": [
+                                                      "%minimum_humans"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "prim": "pair",
+                                                    "args": [
+                                                      {
+                                                        "prim": "nat",
+                                                        "annots": [
+                                                          "%mode"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "prim": "pair",
+                                                        "args": [
+                                                          {
+                                                            "prim": "set",
+                                                            "args": [
+                                                              {
+                                                                "prim": "address"
+                                                              }
+                                                            ],
+                                                            "annots": [
+                                                              "%paid"
+                                                            ]
+                                                          },
+                                                          {
+                                                            "prim": "pair",
+                                                            "args": [
+                                                              {
+                                                                "prim": "list",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "nat"
+                                                                  }
+                                                                ],
+                                                                "annots": [
+                                                                  "%pick_counts"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "prim": "pair",
+                                                                "args": [
+                                                                  {
+                                                                    "prim": "list",
+                                                                    "args": [
+                                                                      {
+                                                                        "prim": "pair",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "nat",
+                                                                            "annots": [
+                                                                              "%xtz"
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "prim": "pair",
+                                                                            "args": [
+                                                                              {
+                                                                                "prim": "nat",
+                                                                                "annots": [
+                                                                                  "%wtf"
+                                                                                ]
+                                                                              },
+                                                                              {
+                                                                                "prim": "nat",
+                                                                                "annots": [
+                                                                                  "%pool_weight"
+                                                                                ]
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ],
+                                                                    "annots": [
+                                                                      "%places"
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "prim": "pair",
+                                                                    "args": [
+                                                                      {
+                                                                        "prim": "nat",
+                                                                        "annots": [
+                                                                          "%pool_denominator"
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "prim": "pair",
+                                                                        "args": [
+                                                                          {
+                                                                            "prim": "nat",
+                                                                            "annots": [
+                                                                              "%pool_numerator"
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "prim": "pair",
+                                                                            "args": [
+                                                                              {
+                                                                                "prim": "nat",
+                                                                                "annots": [
+                                                                                  "%prize_wtf"
+                                                                                ]
+                                                                              },
+                                                                              {
+                                                                                "prim": "pair",
+                                                                                "args": [
+                                                                                  {
+                                                                                    "prim": "nat",
+                                                                                    "annots": [
+                                                                                      "%prize_xtz"
+                                                                                    ]
+                                                                                  },
+                                                                                  {
+                                                                                    "prim": "pair",
+                                                                                    "args": [
+                                                                                      {
+                                                                                        "prim": "address",
+                                                                                        "annots": [
+                                                                                          "%referee"
+                                                                                        ]
+                                                                                      },
+                                                                                      {
+                                                                                        "prim": "pair",
+                                                                                        "args": [
+                                                                                          {
+                                                                                            "prim": "option",
+                                                                                            "args": [
+                                                                                              {
+                                                                                                "prim": "bytes"
+                                                                                              }
+                                                                                            ],
+                                                                                            "annots": [
+                                                                                              "%result_hash"
+                                                                                            ]
+                                                                                          },
+                                                                                          {
+                                                                                            "prim": "pair",
+                                                                                            "args": [
+                                                                                              {
+                                                                                                "prim": "bytes",
+                                                                                                "annots": [
+                                                                                                  "%rules_hash"
+                                                                                                ]
+                                                                                              },
+                                                                                              {
+                                                                                                "prim": "pair",
+                                                                                                "args": [
+                                                                                                  {
+                                                                                                    "prim": "bytes",
+                                                                                                    "annots": [
+                                                                                                      "%seed_commitment"
+                                                                                                    ]
+                                                                                                  },
+                                                                                                  {
+                                                                                                    "prim": "pair",
+                                                                                                    "args": [
+                                                                                                      {
+                                                                                                        "prim": "address",
+                                                                                                        "annots": [
+                                                                                                          "%sponsor"
+                                                                                                        ]
+                                                                                                      },
+                                                                                                      {
+                                                                                                        "prim": "pair",
+                                                                                                        "args": [
+                                                                                                          {
+                                                                                                            "prim": "bool",
+                                                                                                            "annots": [
+                                                                                                              "%sponsor_wtf_funded"
+                                                                                                            ]
+                                                                                                          },
+                                                                                                          {
+                                                                                                            "prim": "pair",
+                                                                                                            "args": [
+                                                                                                              {
+                                                                                                                "prim": "bool",
+                                                                                                                "annots": [
+                                                                                                                  "%sponsor_xtz_funded"
+                                                                                                                ]
+                                                                                                              },
+                                                                                                              {
+                                                                                                                "prim": "pair",
+                                                                                                                "args": [
+                                                                                                                  {
+                                                                                                                    "prim": "nat",
+                                                                                                                    "annots": [
+                                                                                                                      "%status"
+                                                                                                                    ]
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                    "prim": "pair",
+                                                                                                                    "args": [
+                                                                                                                      {
+                                                                                                                        "prim": "bytes",
+                                                                                                                        "annots": [
+                                                                                                                          "%terms_hash"
+                                                                                                                        ]
+                                                                                                                      },
+                                                                                                                      {
+                                                                                                                        "prim": "pair",
+                                                                                                                        "args": [
+                                                                                                                          {
+                                                                                                                            "prim": "option",
+                                                                                                                            "args": [
+                                                                                                                              {
+                                                                                                                                "prim": "bytes"
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "annots": [
+                                                                                                                              "%transcript_hash"
+                                                                                                                            ]
+                                                                                                                          },
+                                                                                                                          {
+                                                                                                                            "prim": "pair",
+                                                                                                                            "args": [
+                                                                                                                              {
+                                                                                                                                "prim": "option",
+                                                                                                                                "args": [
+                                                                                                                                  {
+                                                                                                                                    "prim": "bytes"
+                                                                                                                                  }
+                                                                                                                                ],
+                                                                                                                                "annots": [
+                                                                                                                                  "%void_evidence_hash"
+                                                                                                                                ]
+                                                                                                                              },
+                                                                                                                              {
+                                                                                                                                "prim": "option",
+                                                                                                                                "args": [
+                                                                                                                                  {
+                                                                                                                                    "prim": "bytes"
+                                                                                                                                  }
+                                                                                                                                ],
+                                                                                                                                "annots": [
+                                                                                                                                  "%void_reason_hash"
+                                                                                                                                ]
+                                                                                                                              }
+                                                                                                                            ]
+                                                                                                                          }
+                                                                                                                        ]
+                                                                                                                      }
+                                                                                                                    ]
+                                                                                                                  }
+                                                                                                                ]
+                                                                                                              }
+                                                                                                            ]
+                                                                                                          }
+                                                                                                        ]
+                                                                                                      }
+                                                                                                    ]
+                                                                                                  }
+                                                                                                ]
+                                                                                              }
+                                                                                            ]
+                                                                                          }
+                                                                                        ]
+                                                                                      }
+                                                                                    ]
+                                                                                  }
+                                                                                ]
+                                                                              }
+                                                                            ]
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_cash_claim",
+      "input": {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "bytes",
+            "annots": [
+              "%room_id"
+            ]
+          },
+          {
+            "prim": "pair",
+            "args": [
+              {
+                "prim": "address",
+                "annots": [
+                  "%recipient"
+                ]
+              },
+              {
+                "prim": "nat",
+                "annots": [
+                  "%currency"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "output": {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "nat",
+            "annots": [
+              "%amount"
+            ]
+          },
+          {
+            "prim": "bool",
+            "annots": [
+              "%claimed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_lot_claim",
+      "input": {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "bytes",
+            "annots": [
+              "%room_id"
+            ]
+          },
+          {
+            "prim": "nat",
+            "annots": [
+              "%index"
+            ]
+          }
+        ]
+      },
+      "output": {
+        "prim": "pair",
+        "args": [
+          {
+            "prim": "bool",
+            "annots": [
+              "%claimed"
+            ]
+          },
+          {
+            "prim": "address",
+            "annots": [
+              "%recipient"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

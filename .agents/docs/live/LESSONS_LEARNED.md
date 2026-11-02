@@ -13266,3 +13266,83 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Paul did not look like the character users were promised, and the recorded introductions would continue showing the old design after a sprite change.
 
 **Rule**: Inspect character art at its rendered desktop size and in each shared placement. When a visual asset is baked into guide recordings, rebuild and validate those recordings and their posters from reusable narration in the same change. Version the public asset URLs when browser caching could keep showing the old art after deploy.
+
+---
+
+## 2026-11-02 — Read settled escrow claims with Taquito's flattened big-map keys
+
+**What happened**: The sponsored escrow settled and paid its Shadownet XTZ claims, but the host reader returned no cash claims. Its Taquito `BigMapAbstraction.get` call supplied a nested pair for a three-part Michelson key; Taquito expects one positional array containing room ID, wallet and currency index.
+
+**Why it mattered**: A funded room could appear settled while its prize and treasury claim state stayed invisible to the game UI.
+
+**Rule**: Use the flattened positional key for each nested-pair big map and check the reader against a settled on-chain room, as well as a mocked regression case, before enabling new escrow views.
+
+---
+
+## 2026-11-02 — Install signer dependencies without entering its private directory as the deploy user
+
+**What happened**: The signer deployment copied the new bundle but stopped before restart because its remote command tried to `cd` into `/opt/wtf-operator-signer` as the deploy user. That directory is restricted to the signer service account.
+
+**Why it mattered**: A partially copied signer bundle could leave a later service restart running new code without the matching dependency install and without a verified rollout.
+
+**Rule**: Run npm with `--prefix /opt/wtf-operator-signer` under `wtf-signer`, then restart and compare the installed bundle hash with the local build. Keep the directory inaccessible to the deploy user.
+
+---
+
+## 2026-11-02 — Rebase hosted game behavior when vendoring a newer room server
+
+**What happened**: The sponsored-room source was based on a game server variant that lacked the hosted `resume` endpoint and turn notification calls, and narrowed the existing unfunded room close action. The vendor command replaced the hosted server with that variant, so the aggregate authority test failed.
+
+**Why it mattered**: Existing players could lose seat recovery and turn alerts even though the new sponsor flow tests passed.
+
+**Rule**: Compare the vendored hosted game server against the current hosted release before accepting a new game workspace variant. Preserve hosted endpoints and lifecycle hooks, then run the hosted authority and deployment-guard tests against the vendored bytes.
+
+---
+
+## 2026-11-02 — Preserve hosted lobby actions when vendoring game UI
+
+**What happened**: The game workspace client lacked hosted lobby actions for returning to a saved seat, prefilling a logged-in WTF identity, and drafting invitations. Vendoring it removed those controls from the hosted game, although the sponsor room browser itself worked.
+
+**Why it mattered**: The full browser inventory found three regressions in existing room navigation and invitations.
+
+**Rule**: Compare both the game server and client against the hosted release before vendoring. Rebuild the host's public assets before browser testing; a stale build can falsely report the same failure after the source is fixed.
+
+---
+
+## 2026-11-02 — Wire prize selection through the game, host, and escrow result
+
+**What happened**: The sponsor escrow contract supported finish-place FA2 prize picks, but the game rejected that room mode and the host had no pick action or result mapping.
+
+**Why it mattered**: A sponsor could not offer ordered prize choice even though the contract had a settlement mode for it. A completed match could not settle until each lot was assigned to a verified human finisher.
+
+**Rule**: For every escrow prize mode, test the room creation UI, server acceptance, authenticated post-match action, persisted choice order, and exact result submitted to escrow. A contract entrypoint alone is not a finished game feature.
+
+---
+
+## 2026-11-02 — Wait for the host's finalized block before judging a sponsor deposit or claim
+
+**What happened**: The Shadownet WTF sponsor deposit and winner claim both confirmed and appeared in TzKT, while the host chain reader initially returned the earlier state. The reader intentionally snapshots `head~2`, which had not yet reached each freshly included operation. The journaled test resumed without resending the operation and passed once the snapshot advanced.
+
+**Why it mattered**: Treating an expected finality delay as failed custody could prompt an unsafe duplicate transaction or a false player-facing funding error.
+
+**Rule**: For sponsor escrow live proofs, wait until the `head~2` snapshot includes the operation before asserting the reader state. Preserve the operation journal and reconcile confirmed hashes before any retry; never interpret a stale read as proof that a deposit or payout did not occur.
+
+---
+
+## 2026-11-02 — Show settlement state after an FA2 prize leaves escrow
+
+**What happened**: The prize panel used the current escrow FA2 balance to show whether sponsor funding was verified. Once an FA2 prize was claimed, that balance correctly fell to zero, but the settled room could then display a warning that prize custody was pending and the match could not start.
+
+**Why it mattered**: A completed payout looked like an unfunded room to players returning to check their winnings.
+
+**Rule**: Use current custody checks to gate a room before combat. After settlement or void, show the chain lifecycle and claim or refund state instead of interpreting the remaining escrow balance as a new funding failure.
+
+---
+
+## 2026-11-02 — Match the wallet prompt to the paid-room fee condition
+
+**What happened**: The sponsored-room server adds the 0.5 XTZ Mainnet house fee only when entrants pay an XTZ wager, but the client wallet-call validator added it to every sponsor XTZ prize deposit. A free-entry or WTF-entry room with an XTZ prize could show the correct deposit action and still reject it before the wallet opened.
+
+**Why it mattered**: Mainnet sponsors could not fund valid free-entry or WTF-entry prize rooms containing XTZ, even though the deployed escrow accepted those room terms.
+
+**Rule**: Derive the wallet amount from the same pinned room terms and fee condition as the server. Cover paid XTZ, free, and WTF-entry plans in the wallet-call regression suite before enabling the Mainnet sponsor lane.

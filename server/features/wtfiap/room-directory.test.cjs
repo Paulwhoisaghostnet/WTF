@@ -50,3 +50,18 @@ test('directory includes joinable and live rooms but excludes full waiting, clos
   assert.equal(roomSummary({ ...base, voidArchive: {} }), null);
   assert.equal(roomSummary({ ...base, fundingFaultArchive: {} }), null);
 });
+
+test('sponsor-funded Party and Tournament tables stay discoverable while accepting entrants', () => {
+  for (const roomType of ['party', 'tournament']) {
+    const locked = roomSummary({ roomCode: 'sponsor',
+      config: { roomType, sponsor: { places: [{ place: 1 }] }, sponsorNetwork: 'mainnet' },
+      players: [{ playerId: 'p1', name: 'Sponsor', isAI: false }],
+      fundingLock: { roomId: 'pinned' }, match: null });
+    assert.equal(locked?.type, roomType);
+    assert.equal(locked?.openSeats, 7);
+    assert.deepEqual(locked?.sponsored, { network: 'mainnet' });
+    assert.equal(locked?.wager, null);
+  }
+  assert.equal(roomSummary({ roomCode: 'legacy', config: { roomType: 'tournament' },
+    players: [{ playerId: 'p1', name: 'Host' }], fundingLock: { roomId: 'pinned' } }), null);
+});

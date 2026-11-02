@@ -1,8 +1,10 @@
 import { Router } from "express";
-import { getWtfiapAuthority, getWtfiapFunding, getWtfiapOpenDuel, canAccessWtfiap } from "../features/wtfiap/service";
+import { getWtfiapAuthority, getWtfiapFunding, getWtfiapOpenDuel, getWtfiapSponsorFunding, canAccessWtfiap } from "../features/wtfiap/service";
 import { createFundingHandler } from "../features/wtfiap/funding-http";
 import { createOpenDuelHandler } from "../features/wtfiap/open-duel-http";
+import { createSponsorFundingHandler } from "../features/wtfiap/sponsor-funding-http";
 const router = Router();
+router.use(createSponsorFundingHandler({ getService: getWtfiapSponsorFunding, canAccess: canAccessWtfiap }));
 router.use(createFundingHandler({ getService: getWtfiapFunding, canAccess: canAccessWtfiap }));
 router.use(createOpenDuelHandler({ getService: getWtfiapOpenDuel, canAccess: canAccessWtfiap }));
 

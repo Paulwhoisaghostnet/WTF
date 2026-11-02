@@ -40,7 +40,7 @@ rsync -az -e "ssh ${SSH_OPTS[*]}" \
   --rsync-path "sudo rsync" \
   package.json package-lock.json "$REMOTE:/opt/wtf-operator-signer/"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo chown -R wtf-signer:wtf /opt/wtf-operator-signer"
-ssh "${SSH_OPTS[@]}" "$REMOTE" "cd /opt/wtf-operator-signer && sudo -u wtf-signer env HOME=/tmp npm_config_cache=/tmp/wtf-signer-npm-cache npm ci --omit=dev --no-audit --no-fund"
+ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo -u wtf-signer env HOME=/tmp npm_config_cache=/tmp/wtf-signer-npm-cache npm --prefix /opt/wtf-operator-signer ci --omit=dev --no-audit --no-fund"
 
 echo "→ restarting systemd unit"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl restart wtf-operator-signer"

@@ -43,9 +43,10 @@ if (sourceFlag !== -1) {
   const hostConfig = `window.WTFIAP_HOST_CONFIG=Object.freeze(${JSON.stringify({ apiBase: "/api/wtfiap/party", csrfTokenPath: "/api/auth/csrf-token", invitePath: "/colilseum" })});\n`;
   fs.writeFileSync(path.join(root, assets, "host-config.js"), hostConfig);
   files.push({ path: `${assets}/host-config.js`, generatedBy: "scripts/vendor-wtfiap.mjs", sha256: digest(hostConfig), bytes: Buffer.byteLength(hostConfig) });
-  // The hosted release omits the unfinished sponsored-prize room prototype.
+  // Sponsored prizes are normalized by the same core module in the hosted
+  // game server and in the separately gated sponsor-funding service.
   copy("game/server/party-server.wtfos.cjs", `${runtime}/game/server/party-server.cjs`);
-  for (const name of fs.readdirSync(path.join(source, "game/core")).filter((name) => name.endsWith(".cjs") && !name.endsWith(".test.cjs") && name !== "sponsored-prizes.cjs").sort()) {
+  for (const name of fs.readdirSync(path.join(source, "game/core")).filter((name) => name.endsWith(".cjs") && !name.endsWith(".test.cjs")).sort()) {
     copy(`game/core/${name}`, `${runtime}/game/core/${name}`);
   }
   for (const name of ["engine.js", "hero-catalog.js", "terrain.js", "zones.js", "zone-policy.js"]) {

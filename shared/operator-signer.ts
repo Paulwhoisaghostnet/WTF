@@ -70,6 +70,7 @@ export const operatorSignerIntentSchema = z.enum([
   "unpause_buyback",
   "originate_contract",
   "wtfiap_escrow",
+  "wtfiap_sponsor_escrow",
   "custom",
 ]);
 
@@ -151,6 +152,62 @@ export const operatorSignerWtfIapPayloadSchema = z.discriminatedUnion("entrypoin
   z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_treasury"), args: wtfiapHash }).strict(),
 ]);
 export type OperatorSignerWtfIapPayload = z.infer<typeof operatorSignerWtfIapPayloadSchema>;
+
+// Sponsor custody has a separate intent and contract allowlist. Existing paid
+// duel/tournament rooms retain the original WTFIAP intent and schema.
+const sponsorPrizePlace = z.object({ xtz: wtfiapNat, wtf: wtfiapNat,
+  pool_weight: wtfiapNat }).strict();
+const sponsorPrizeLot = z.object({ token_address: tezosContractAddressSchema,
+  token_id: wtfiapNat, amount: wtfiapNat, fixed_place: z.number().int().min(0).max(3) }).strict();
+const sponsorCreateRoom = z.object({
+  room_id: wtfiapHash, terms_hash: wtfiapHash, rules_hash: wtfiapHash,
+  seed_commitment: wtfiapHash, referee: wtfiapAddress, sponsor: wtfiapAddress,
+  mode: z.number().int().min(0).max(2), minimum_humans: z.number().int().min(1).max(8),
+  entry_currency: z.number().int().min(0).max(2), entry_amount: wtfiapNat,
+  pool_numerator: wtfiapNat, pool_denominator: wtfiapNat,
+  designated_wallet: wtfiapAddress,
+  places: z.array(sponsorPrizePlace).min(1).max(3), lots: z.array(sponsorPrizeLot),
+  pick_counts: z.array(z.number().int().min(0)),
+}).strict().superRefine((args, ctx) => {
+  if (args.minimum_humans < args.places.length ||
+      args.entry_currency !== 0 && args.minimum_humans < 2 ||
+      args.entry_currency === 0 && (args.entry_amount !== "0" || args.pool_numerator !== "0") ||
+      args.entry_currency !== 0 && args.entry_amount === "0" ||
+      args.pool_denominator === "0" ||
+      BigInt(args.pool_numerator) > BigInt(args.pool_denominator))
+    ctx.addIssue({ code: "custom", message: "Sponsor entry, minimum, or pool terms are invalid." });
+  if (args.mode === 0 ? args.pick_counts.length !== 0 || args.lots.some(lot => lot.fixed_place < 1 || lot.fixed_place > args.places.length)
+    : args.pick_counts.length !== args.places.length || args.lots.some(lot => lot.fixed_place !== 0) ||
+      args.pick_counts.reduce((sum, count) => sum + count, 0) !== args.lots.length)
+    ctx.addIssue({ code: "custom", message: "Sponsor FA2 prize allocation does not match the selected mode." });
+});
+export const operatorSignerWtfIapSponsorPayloadSchema = z.discriminatedUnion("entrypoint", [
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("create_room"), args: sponsorCreateRoom }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("register_entrant"), args: z.object({
+    room_id: wtfiapHash, player: wtfiapAddress,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("unregister_entrant"), args: z.object({
+    room_id: wtfiapHash, player: wtfiapAddress,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("start_room"), args: z.object({
+    room_id: wtfiapHash, expected_terms_hash: wtfiapHash, match_id: wtfiapHash,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("finalize_room"), args: z.object({
+    room_id: wtfiapHash, match_id: wtfiapHash, transcript_hash: wtfiapHash,
+    result_hash: wtfiapHash, human_ranks: z.array(wtfiapAddress).min(1).max(8).refine(distinctAddresses),
+    lot_places: z.array(z.number().int().min(1).max(3)),
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("void_room"), args: z.object({
+    room_id: wtfiapHash, reason_hash: wtfiapHash, evidence_hash: wtfiapHash,
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_cash"), args: z.object({
+    room_id: wtfiapHash, recipient: wtfiapAddress, currency: z.number().int().min(0).max(1),
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_lot"), args: z.object({
+    room_id: wtfiapHash, index: z.number().int().min(0),
+  }).strict() }).strict(),
+]);
+export type OperatorSignerWtfIapSponsorPayload = z.infer<typeof operatorSignerWtfIapSponsorPayloadSchema>;
 
 const operatorSignerEnvelopeBaseSchema = z.object({
   version: z.literal(OPERATOR_SIGNER_PROTOCOL_VERSION),
@@ -237,6 +294,12 @@ export const operatorSignerWtfIapEnvelopeSchema = operatorSignerEnvelopeBaseSche
   payload: operatorSignerWtfIapPayloadSchema,
 });
 
+export const operatorSignerWtfIapSponsorEnvelopeSchema = operatorSignerEnvelopeBaseSchema.extend({
+  intent: z.literal("wtfiap_sponsor_escrow"),
+  walletId: platformWalletIdSchema,
+  payload: operatorSignerWtfIapSponsorPayloadSchema,
+});
+
 export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerHealthEnvelopeSchema,
   operatorSignerListPlatformWalletsEnvelopeSchema,
@@ -249,6 +312,7 @@ export const operatorSignerEnvelopeSchema = z.discriminatedUnion("intent", [
   operatorSignerUnpauseBuybackEnvelopeSchema,
   operatorSignerOriginationEnvelopeSchema,
   operatorSignerWtfIapEnvelopeSchema,
+  operatorSignerWtfIapSponsorEnvelopeSchema,
   operatorSignerCustomEnvelopeSchema,
 ]);
 

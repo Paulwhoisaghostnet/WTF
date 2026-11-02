@@ -12,6 +12,9 @@ import { createFundingService, type FundingGame } from "./funding";
 import { postgresFundingStore } from "./funding-store";
 import { shadownetXtzFundingConfig, mainnetWtfFundingConfig, mainnetXtzFundingConfig, fundingMonitorConfigs, monitorFundingHeads, tezosFundingChain } from "./funding-contract";
 import { createOpenDuelService, openDuelConfigs } from "./open-duel";
+import { createSponsorFundingService, type SponsorGame } from "./sponsor-funding";
+import { postgresSponsorStore } from "./sponsor-funding-store";
+import { sponsorFundingConfig, tezosSponsorChain } from "./sponsor-funding-chain";
 import { createNotificationsForUsers } from "../../lib/notifications";
 
 export type WtfiapAuthority = {
@@ -23,10 +26,13 @@ export type WtfiapAuthority = {
 let authority: WtfiapAuthority | undefined;
 let funding: ReturnType<typeof createFundingService> | undefined;
 let openDuel: ReturnType<typeof createOpenDuelService> | undefined;
+let sponsorFunding: ReturnType<typeof createSponsorFundingService> | undefined;
 let monitors: ReturnType<typeof monitorFundingHeads>[] = [];
 let monitorStartup: Promise<void> | undefined;
+let sponsorMonitorStartup: Promise<void> | undefined;
 const JOB_NAME = "wtfiap-escrow-reconciliation";
 const OPEN_JOB_NAME = "wtfiap-open-duel-reconciliation";
+const SPONSOR_JOB_NAME = "wtfiap-sponsor-escrow-reconciliation";
 export async function canAccessWtfiap(request: Request) {
   return (await getDesktopAppConfig()).wtfiap === true && canOpenAppsForRole(
     request.user ? await listRolesForUserSnapshot(request.user) : null);
@@ -42,7 +48,7 @@ export function getWtfiapAuthority(): WtfiapAuthority {
       isEnabled: async () => (await getDesktopAppConfig()).wtfiap === true,
       canAccess: async (request: Request) => canOpenAppsForRole(
         request.user ? await listRolesForUserSnapshot(request.user) : null),
-      onRoomChanged: () => { funding?.kick(); if (openDuel) void runJob(OPEN_JOB_NAME); },
+      onRoomChanged: () => { funding?.kick(); sponsorFunding?.kick(); if (openDuel) void runJob(OPEN_JOB_NAME); },
       onPreparationOpened: async ({ roomCode, roundNumber, recipients }: { roomCode: string; roundNumber: number; recipients: Array<{ userId: string; playerId: string }> }) => {
         const users = recipients.map(recipient => Number(recipient.userId)).filter(userId => Number.isSafeInteger(userId) && userId > 0);
         if (!users.length) return;
@@ -126,15 +132,63 @@ export function getWtfiapOpenDuel() {
   }
   return openDuel;
 }
+export function getWtfiapSponsorFunding() {
+  if (!sponsorFunding) {
+    const configs = { mainnet: sponsorFundingConfig("mainnet"),
+      shadownet: sponsorFundingConfig("shadownet") };
+    const store = postgresSponsorStore(pool);
+    sponsorFunding = createSponsorFundingService({ store,
+      game: getWtfiapAuthority().funding as SponsorGame,
+      chain: tezosSponsorChain(), configs,
+      onWake: () => { void runJob(SPONSOR_JOB_NAME); },
+      linkedWallet: async (userId, address) => {
+        const rows = await db.select({ id: userWallets.id }).from(userWallets)
+          .where(and(eq(userWallets.userId, Number(userId)),
+            eq(userWallets.walletAddress, address)));
+        return rows.length > 0;
+      },
+    });
+    register({ name: SPONSOR_JOB_NAME, intervalMs: 0,
+      scope: "wtfiap-sponsor-escrow", fn: async () => {
+        await sponsorFunding!.drain();
+        if (sponsorFunding!.health.error) throw new Error(sponsorFunding!.health.error);
+        return { cursorAfter: { ...sponsorFunding!.health } };
+      } });
+    // Current and pinned networks need chain-head wakeups. The minimal block
+    // delay is obtained from each chain's own constants before monitoring.
+    sponsorMonitorStartup = store.list().then(async records => {
+      const lanes = [...Object.values(configs).filter(c => c.enabled),
+        ...records.filter(r => r.lock).map(r => r.config)];
+      const distinct = [...new Map(lanes.map(c => [c.chainId + ":" + c.rpcUrl, c])).values()];
+      for (const lane of distinct) {
+        try {
+          const response = await fetch(lane.rpcUrl.replace(/\/$/, "") +
+            "/chains/main/blocks/head/context/constants");
+          if (!response.ok) continue;
+          const constants: any = await response.json();
+          const delay = Number(constants.minimal_block_delay);
+          if (!Number.isSafeInteger(delay) || delay <= 0) continue;
+          monitors.push(monitorFundingHeads({ ...lane,
+            minimalBlockDelaySeconds: delay } as any,
+            () => sponsorFunding?.kick(), sponsorFunding!.health));
+        } catch { sponsorFunding!.health.error = "Sponsor chain-head monitoring is unavailable."; }
+      }
+    }).catch(() => { sponsorFunding!.health.error = "Saved sponsor escrow networks could not be loaded."; });
+  }
+  return sponsorFunding;
+}
 export async function startWtfiapAuthority(): Promise<void> {
   await getWtfiapAuthority().ready;
   getWtfiapFunding().kick();
   getWtfiapOpenDuel();
+  getWtfiapSponsorFunding().kick();
   void runJob(OPEN_JOB_NAME);
 }
 export async function stopWtfiapAuthority(): Promise<void> {
   await monitorStartup;
+  await sponsorMonitorStartup;
   await Promise.all(monitors.map(monitor => monitor.close()));
   if (funding) await funding.close();
+  if (sponsorFunding) await sponsorFunding.close();
   if (authority) await authority.close();
 }
