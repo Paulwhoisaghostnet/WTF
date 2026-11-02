@@ -12803,3 +12803,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Schema drift in the actor fixture stopped wallet-login verification before it could test the current authentication behavior.
 
 **Rule**: When a wallet-auth migration adds fields consumed by login routes, include it in every explicitly managed actor database migration list and lock the migration and required columns with a policy assertion before relying on the live-puppet suite.
+
+---
+
+## 2026-11-02 — Preserve mixed workspace work before restoring the main checkout
+
+**What happened**: A long-lived branch accumulated 526 Git-visible changes while falling more than 200 commits behind `main`. Some files already matched production, but copying the remaining tree wholesale would restore older private-page behavior, and the Anatomy assets included material whose redistribution rights still need review.
+
+**Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
+
+**Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
