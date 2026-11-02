@@ -13036,3 +13036,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A package-specific Shadownet guard did not enforce the documented alpha boundary on the public hosted path. A privileged creator and configured production signer could have started a Mainnet setup before the release review approved that path.
 
 **Rule**: Put alpha network guards in the authoritative server registration, creator action, publishing, and worker paths, and in the hosted UI. Test denial with otherwise complete Mainnet runtime configuration; keep compatibility-profile behavior explicit and separate.
+
+---
+
+## 2026-11-02 — Match local unit preflight to the CI packaging steps
+
+**What happened**: A direct `npm run test:unit` from the clean Pasta consolidation checkout failed a desktop package policy because its ignored `apps/pasta-suite-desktop/pasta/suite-manifest.json` had not been generated. The Quality Gates workflow already prepares both desktop asset trees before aggregate units, following the October 27 correction.
+
+**Why it mattered**: The missing generated file was a local test setup error, not a source-policy failure or a new CI defect. Running the aggregate alone obscured the actual gate state.
+
+**Rule**: Before local aggregate units that assert desktop bundle contents, run the same Macaroni and Pasta Suite asset preparation commands as Quality Gates. Confirm a clean-checkout failure against the workflow sequence before changing source or CI; targeted desktop policies should pass after that preparation.
