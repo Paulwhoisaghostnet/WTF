@@ -37,6 +37,19 @@ test("sponsor XTZ deposit pins the prize plus room fee and refuses altered walle
   assert.equal(sponsorWalletCalls(value, claim, "cashClaim", undefined, "XTZ")[0].entrypoint, "claim_cash");
 });
 
+test("free and WTF-entry sponsor rooms do not charge the XTZ paid-room fee", () => {
+  const value = room();
+  value.network = "mainnet";
+  value.chainId = "NetXdQprcVkpaWU";
+  for (const currency of ["FREE", "WTF"] as const) {
+    value.terms.entry = { currency, entryAtomic: currency === "FREE" ? "0" : "100000000" };
+    const prizeOnly = action(value, "fund_sponsor_xtz", fundingParams(value), "2500000");
+    assert.equal(sponsorWalletCalls(value, prizeOnly, "sponsorXtz")[0].amountMutez, "2500000");
+    assert.throws(() => sponsorWalletCalls(value,
+      { ...prizeOnly, amountMutez: "3000000" }, "sponsorXtz"));
+  }
+});
+
 test("paid XTZ and free entries sign exactly the room's price", () => {
   const value = room();
   const paid = action(value, "join_room", fundingParams(value), "1000000");

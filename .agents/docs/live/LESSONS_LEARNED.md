@@ -13336,3 +13336,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A completed payout looked like an unfunded room to players returning to check their winnings.
 
 **Rule**: Use current custody checks to gate a room before combat. After settlement or void, show the chain lifecycle and claim or refund state instead of interpreting the remaining escrow balance as a new funding failure.
+
+---
+
+## 2026-11-02 — Match the wallet prompt to the paid-room fee condition
+
+**What happened**: The sponsored-room server adds the 0.5 XTZ Mainnet house fee only when entrants pay an XTZ wager, but the client wallet-call validator added it to every sponsor XTZ prize deposit. A free-entry or WTF-entry room with an XTZ prize could show the correct deposit action and still reject it before the wallet opened.
+
+**Why it mattered**: Mainnet sponsors could not fund valid free-entry or WTF-entry prize rooms containing XTZ, even though the deployed escrow accepted those room terms.
+
+**Rule**: Derive the wallet amount from the same pinned room terms and fee condition as the server. Cover paid XTZ, free, and WTF-entry plans in the wallet-call regression suite before enabling the Mainnet sponsor lane.

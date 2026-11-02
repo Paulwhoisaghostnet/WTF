@@ -78,7 +78,8 @@ export function sponsorWalletCalls(room: SponsorWalletRoom, action: FundingWalle
   };
   if (action.entrypoint !== allowed[kind]) throw new Error("Unexpected escrow entrypoint for this prize action.");
   let amount = 0n, asset: { contract: string; tokenId: string } | undefined;
-  if (kind === "sponsorXtz") amount = atomic(room.terms.deposit.xtzAtomic) + atomic(room.houseFeeAtomic || "0");
+  if (kind === "sponsorXtz") amount = atomic(room.terms.deposit.xtzAtomic) +
+    (room.terms.entry.currency === "XTZ" ? atomic(room.houseFeeAtomic || "0") : 0n);
   if (kind === "entry" && room.terms.entry.currency === "XTZ") amount = atomic(room.terms.entry.entryAtomic);
   if (kind === "sponsorWtf" || kind === "entry" && room.terms.entry.currency === "WTF")
     asset = { contract: room.wtfToken.contract, tokenId: String(room.wtfToken.tokenId) };

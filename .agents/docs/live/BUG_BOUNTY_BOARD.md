@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **723** · Open: **7** · Claimed: **42** · In Progress: **16** · Blocked: **3** · Fixed: **131** · Verified: **520** · Archived: **4**
+Total: **724** · Open: **7** · Claimed: **42** · In Progress: **16** · Blocked: **3** · Fixed: **131** · Verified: **521** · Archived: **4**
 
 ## Canonical Board
 
@@ -225,8 +225,8 @@ Total: **723** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 627 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 627 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 627 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
-| WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 707 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
-| WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 707 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
+| WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 708 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
+| WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 708 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 554 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
@@ -707,6 +707,7 @@ Total: **723** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 627 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 627 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 627 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
+| WTF-BB-758 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize wallet amounts | P2 | 7 | 680 | 1 | 3 | 0 | Free-entry Mainnet XTZ prize includes a paid-room fee in the wallet prompt |
 | WTF-BB-756 | Verified | Codex Paul ghost visual correction | 2026-11-02 | Desktop OS / Paul character readability | P2 | 7 | 680 | 2 | 2 | 0 | Paul reads as a floating face instead of a red-glasses ghost |
 | WTF-BB-751 | Verified | Codex rescue-resolution keyring inventory pass | 2026-11-02 | Release governance / secret inventory classification | P2 | 7 | 680 | 1 | 2 | 1 | Environment inventory marks the platform keyring master key as non-secret |
 | WTF-BB-722 | Verified | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 680 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
@@ -730,23 +731,23 @@ Total: **723** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 680 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 680 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 680 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
-| WTF-BB-757 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize status | P2 | 6 | 707 | 1 | 2 | 0 | Claimed FA2 prize makes a settled room look unfunded |
-| WTF-BB-748 | Verified | Codex Pasta WTF.ME release-ops continuation | 2026-10-30 | Pasta release / WTF.ME operator instructions | P2 | 6 | 707 | 1 | 2 | 0 | Pasta live readiness points to a missing WTF.ME publish runbook |
-| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 707 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
-| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 707 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
-| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 707 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
-| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 707 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
-| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 707 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 707 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 718 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-757 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize status | P2 | 6 | 708 | 1 | 2 | 0 | Claimed FA2 prize makes a settled room look unfunded |
+| WTF-BB-748 | Verified | Codex Pasta WTF.ME release-ops continuation | 2026-10-30 | Pasta release / WTF.ME operator instructions | P2 | 6 | 708 | 1 | 2 | 0 | Pasta live readiness points to a missing WTF.ME publish runbook |
+| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 708 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
+| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 708 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 708 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 708 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 708 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 708 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 719 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 394 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 680 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
-| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 707 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 718 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 718 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 718 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 718 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 718 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 708 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 719 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 719 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 719 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 719 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 719 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 190 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 282 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 394 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -15476,6 +15477,21 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
+
+### WTF-BB-758 - Free-entry Mainnet XTZ prize includes a paid-room fee in the wallet prompt
+
+- Category: coLILseum / sponsored prize wallet amounts
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex coLILseum sponsor-prize rollout
+- Last touched: 2026-11-02
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence (2026-11-02): The server requests sponsor XTZ prize deposits plus the 0.5 XTZ house fee only for XTZ paid-entry rooms, while the client validator added that fee for every room. Free-entry and WTF-entry rooms with an XTZ prize rejected the valid funding action before a wallet prompt.
+- Why it matters: Valid Mainnet sponsor prize rooms could not be funded from the player UI. No funds were sent by this failed validation.
+- Correction: Apply the fee only when the pinned entry currency is XTZ.
+- Verification idea: Check paid XTZ, free, and WTF-entry wallet actions against the exact server amount condition.
+- Score: P2(3)+C1/F3/S0=7; a blocked funding interaction without loss of funds.
+- Verification (2026-11-02): Focused sponsor wallet-call tests pass 5/5, including rejecting an extra fee in free and WTF-entry plans; TypeScript and production build pending final gate.
 
 ### WTF-BB-756 - Paul reads as a floating face instead of a red-glasses ghost
 
