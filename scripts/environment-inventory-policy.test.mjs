@@ -38,6 +38,7 @@ test("generated environment inventory exposes the required governance fields", a
   assert.match(generated, /secret value intentionally omitted/);
   assert.doesNotMatch(generated, /\| `SESSION_SECRET` \|[^\n]*changeme/i);
   assert.match(generated, /\| `DATABASE_URL` \|[^\n]*\| none \(secret value intentionally omitted\) \| yes \|/);
+  assert.match(generated, /\| `WTF_PLATFORM_KEYRING_MASTER_KEY` \|[^\n]*\| none \(secret value intentionally omitted\) \| yes \|/);
   assert.doesNotMatch(generated, /\| `CORS_ALLOWED_ORIGINS` \|[^\n]*TRUST_PROXY=/);
 });
 
