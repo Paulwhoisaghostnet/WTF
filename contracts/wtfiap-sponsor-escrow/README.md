@@ -17,9 +17,9 @@ Dummy WTF test token in operation `op85p2XfefPpseeGofXuXqA2ZoEdnxxzFPJeUGcRJdBW8
 The hosted chain reader verified its funded flag and held amount, then verified
 the settled winner claim as paid with zero WTF held after operation
 `ooZao8YybjoSJUqG7mCbrzqbMtQ8bgCLvh9jM8rVK1wUtC1BUHc`. TzKT shows
-the winner received the exact amount. Mainnet origination is not a funded
-Mainnet match proof. The host still must enable its network-specific settings
-and game UI before players can use these contracts.
+the winner received the exact amount. The separate Mainnet funded proof is
+recorded below. The host still must enable its network-specific settings and
+game UI before players can use these contracts.
 
 An indexed FA2 lot also completed the Shadownet custody-to-winner path in room
 `c1a5b5ee01069111a46359ddb9a7e451e8fa85267843a681c6d0c8c08248edc4`.
@@ -34,6 +34,47 @@ and escrow balance 0. The larger recipient balance includes an earlier WTF
 cash-prize award. This uses a fungible FA2 test token as a lot, so it verifies
 the common FA2 transfer and indexed custody path, not NFT artwork metadata
 or every third-party FA2 implementation.
+
+## Mainnet mixed-prize proof
+
+The journaled Mainnet free-entry room
+`e902928cdf3021ccc67a4a9aaf6af7c1af13448b3e14d7699bc42a83b2bc3a27`
+used the deployed sponsor escrow above, the configured Mainnet WTF FA2
+`KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD` (token ID 0), two authorized
+human service wallets, and the configured Mainnet fallback RPC after the
+primary returned HTTP 503. The sponsor deposited 0.01 XTZ, 0.01 WTF cash,
+and one atomic WTF unit as a fixed first-place FA2 lot. Both humans joined
+with zero entry fee. There was no paid-room house fee. The hosted chain reader
+verified custody of all three assets before start, then verified all three
+claims as paid and both held cash balances as zero. TzKT independently showed
+the recipient's WTF balance rise from 0 to 1,000,001 atomic units and the
+escrow's token balance return to zero. Every operation below was confirmed by
+the journal and appears as `applied` in the Mainnet indexer.
+
+| Step | Mainnet operation |
+| --- | --- |
+| Sponsor authorizes FA2 escrow operator | `opZvHpyc6txwPPjQqPA1VzeUbXm1EFugM6NZKvQ61AgK7UiP5m1` |
+| Create room | `opCRDzoQjHMfFiJ2hYRbWfEdaUb1D1XfwKmjCYK6MXDo3TzkEWG` |
+| Fund XTZ prize | `ooQVgrGGNditeUjK1rQAbQt9QVTRS8gKMb3JMvgPfysdu1yw4oj` |
+| Fund WTF cash prize | `ooTrrE6NojUr7pDLVN4Wm4u18X6fLLHaqqBbjddN8zHCy3pmTFR` |
+| Fund FA2 lot | `ooDk5Jek6tgYSUzpokb9sYUM2vUHGnCPKzDdMBaU3HWTgCv4RXc` |
+| Register sponsor entrant | `onxzjjc6T5N3U9TDn6b15z1tYsQ4qE71mbyYFEU6HZc2sGSoYNe` |
+| Register winner entrant | `onjdHmP63Vms2Xonqk5wTGTdLemCCVsbx2eaqVqkNy1P58iKZfZ` |
+| Sponsor joins | `onjjjNacVTGdZUorVodz9nDDQ8r4eem3XVrnkrYTK41bvoLCDL9` |
+| Winner joins | `opELUWfXCEa989ZrxKUAAdShcDiWhwtrTh9K9aKGhTbJWWb8Vsn` |
+| Start | `opHfEEM8w7cSdn7jTfJeocmr2oaeGATTq5ADi67md98z1dGrmQD` |
+| Finalize | `oo7sFYvR6X6ttr3RsRcNNry8NuSf9y2V6ZrMFtfv2NKP8PT2tvA` |
+| Claim 0.01 XTZ | `ongstzgkCay37fuejCFMrXpG5TB81C3ZgAEqh6ggqbVp1ZyjZfJ` |
+| Claim 0.01 WTF | `oot2b9uYFrWiFskEwL55SXbojLUYKsoSLRpM6gKqS4BD6LJfWRf` |
+| Claim one atomic FA2 lot | `ookefSJV7uqkgbFmdRD5iH4H3y4xaYGPhqJ2kPBUBKLCmQGisti` |
+
+This proves the configured Mainnet custody, settlement, and payout paths for
+the standard WTF FA2, including its use as a separate lot. One atomic WTF
+unit is fungible and has no NFT artwork; this is not proof of NFT metadata or
+arbitrary third-party FA2 behavior. The smoke script submits a referee result
+directly and does not prove live player wallet prompts, a completed game replay,
+the hosted room UI, paid entries, refunds, random/pick lot assignment, or
+automated payout scheduling. Those are separate integration paths.
 
 This is a new escrow contract. It leaves the deployed Duel and Tournament
 entry-pot contracts untouched. The hosted game must not offer sponsored rooms
@@ -133,8 +174,10 @@ lifecycle followed. The configured Shadownet Dummy WTF cash-prize path has
 also passed deposit, hosted chain-reader verification, settlement, payout, and
 zero-reserve checks. This verifies the deployed Shadownet contract and chain
 reader; the game room's `open`/`observe`/`reconcile`/`start` integration still
-requires a test through the newly deployed host. A funded Mainnet WTF room and
-arbitrary third-party FA2 token custody still need their own live receipts.
+requires a test through the newly deployed host. The Mainnet mixed-prize proof
+above verifies the deployed contract and production chain reader with funded
+XTZ, WTF, and FA2 lot claims. Arbitrary third-party FA2 token behavior still
+needs its own live receipt.
 
 `test-shadownet-wtf.ts` is the journaled Shadownet cash-prize proof. Its
 `--preflight` checks the configured indexed Dummy WTF balance, signers, RPC
