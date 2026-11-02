@@ -4180,6 +4180,7 @@ test.describe("interaction inventory - WTFOS gamma arcade OS shell", () => {
         contentType: "application/json",
         body: JSON.stringify({
           twitter: true,
+          twitterProof: true,
           twitterOauth2: true,
           discord: true,
           publicSiteUrl: "https://gamma.wtfos.app",

@@ -51,6 +51,15 @@ import {
   serveGmWelcomeAsset,
 } from "./gm-welcome";
 import { runXConnectOnboardingSoon } from "../lib/w-x-onboarding";
+import {
+  exchangeXProofToken,
+  normalizeXProofHandle,
+  requestXProofToken,
+  shouldUseXIdentityProof,
+  xProofAccountUpdate,
+  xProofAuthorizeUrl,
+  XProofProviderError,
+} from "./twitter-proof";
 import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { listActiveUserCurses } from "../lib/user-curses";
 import { getWtfOsAccessForRoles } from "../lib/role-surface-access";
@@ -476,6 +485,9 @@ router.get("/api/auth/social/config", (_req, res) => {
     ),
     twitter: legacyTwitterOAuthEnabled(),
     twitterOauth2: Boolean(process.env.TWITTER_CLIENT_ID?.trim()),
+    twitterProof: Boolean(
+      process.env.TWITTER_CONSUMER_KEY?.trim() && process.env.TWITTER_CONSUMER_SECRET?.trim()
+    ),
     discord: Boolean(
       process.env.DISCORD_CLIENT_ID?.trim() &&
         process.env.DISCORD_CLIENT_SECRET?.trim()
@@ -1248,8 +1260,156 @@ if (legacyTwitterOAuthEnabled()) {
   });
 }
 
+/**
+ * Profile-only X identity proof. X's OAuth 1.0a access-token exchange can
+ * return user_id and screen_name, so this path needs no billed /users/me read.
+ * The returned access token is discarded; W's separate OAuth 2.0 flow remains
+ * available when a user explicitly authorizes its API actions.
+ */
+router.get("/api/auth/twitter-proof", isAuthenticated, async (req, res) => {
+  const consumerKey = process.env.TWITTER_CONSUMER_KEY?.trim() || "";
+  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET?.trim() || "";
+  if (!consumerKey || !consumerSecret) {
+    return res.redirect(profileRedirect("error=twitter_proof_not_configured"));
+  }
+
+  const rawHandle = req.query.expectedHandle;
+  const expectedHandle = normalizeXProofHandle(rawHandle);
+  if (!expectedHandle) {
+    return res.redirect(profileRedirect("error=twitter_proof_handle"));
+  }
+
+  try {
+    const callbackUrl = oauthCallbackUrl("/api/auth/twitter-proof/callback");
+    const pending = await requestXProofToken({ consumerKey, consumerSecret }, callbackUrl);
+    (req.session as any).twitterProof = {
+      token: pending.token,
+      secret: pending.secret,
+      userId: (req.user as any).id,
+      expectedHandle,
+      createdAt: Date.now(),
+    };
+    req.session.save((err) => {
+      if (err) {
+        console.error("[auth] X identity proof session save failed:", err);
+        return res.redirect(profileRedirect("error=twitter_proof_session"));
+      }
+      return res.redirect(xProofAuthorizeUrl(pending.token, expectedHandle));
+    });
+  } catch (err) {
+    if (err instanceof XProofProviderError) {
+      console.error(`[auth] X identity proof request failed: status=${err.status}`);
+    } else {
+      console.error("[auth] X identity proof request failed:", err);
+    }
+    return res.redirect(profileRedirect("error=twitter_proof_request"));
+  }
+});
+
+router.get("/api/auth/twitter-proof/callback", async (req, res) => {
+  const pending = (req.session as any).twitterProof;
+  const fail = (code: string, extra = "") =>
+    profileRedirect(`error=${code}${extra}`);
+
+  try {
+    if (!req.user || !pending || pending.userId !== (req.user as any).id) {
+      return res.redirect(fail("twitter_proof_session"));
+    }
+    const returnedToken = typeof req.query.oauth_token === "string" ? req.query.oauth_token : "";
+    const verifier = typeof req.query.oauth_verifier === "string" ? req.query.oauth_verifier : "";
+    const denied = typeof req.query.denied === "string" ? req.query.denied : "";
+    delete (req.session as any).twitterProof;
+    // Consume the pending authorization before exchanging a one-time verifier.
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+
+    if (denied) {
+      return res.redirect(fail("twitter_proof_denied"));
+    }
+    if (!returnedToken || !verifier || returnedToken !== pending.token) {
+      return res.redirect(fail("twitter_proof_state"));
+    }
+    // Match the existing X OAuth 2.0 pending authorization window.
+    if (!pending.createdAt || Date.now() - Number(pending.createdAt) > 10 * 60 * 1000) {
+      return res.redirect(fail("twitter_proof_expired"));
+    }
+
+    const consumerKey = process.env.TWITTER_CONSUMER_KEY?.trim() || "";
+    const consumerSecret = process.env.TWITTER_CONSUMER_SECRET?.trim() || "";
+    if (!consumerKey || !consumerSecret) {
+      return res.redirect(fail("twitter_proof_not_configured"));
+    }
+
+    let identity: Awaited<ReturnType<typeof exchangeXProofToken>>;
+    try {
+      identity = await exchangeXProofToken(
+        { consumerKey, consumerSecret },
+        { token: pending.token, secret: pending.secret },
+        verifier
+      );
+    } catch (err) {
+      if (err instanceof XProofProviderError) {
+        console.error(`[auth] X identity proof exchange failed: status=${err.status}`);
+      } else {
+        console.error("[auth] X identity proof exchange failed:", err);
+      }
+      return res.redirect(fail("twitter_proof_exchange"));
+    }
+
+    // X's Log in guide omits these fields in its example while the API
+    // reference includes them. A response without identity is not proof.
+    if (!identity) {
+      return res.redirect(fail("twitter_proof_identity"));
+    }
+    const expectedHandle = normalizeXProofHandle(pending.expectedHandle);
+    if (!expectedHandle) {
+      return res.redirect(fail("twitter_proof_state"));
+    }
+    if (expectedHandle !== identity.handle) {
+      return res.redirect(
+        fail(
+          "twitter_proof_wrong_account",
+          `&expected=${encodeURIComponent(expectedHandle)}&actual=${encodeURIComponent(identity.handle)}`
+        )
+      );
+    }
+
+    const user = req.user as any;
+    const updateSet = xProofAccountUpdate(user, identity);
+    const [updated] = await db
+      .update(users)
+      .set(updateSet)
+      .where(eq(users.id, user.id))
+      .returning();
+    if (!updated) {
+      return res.redirect(fail("twitter_proof"));
+    }
+    await new Promise<void>((resolve, reject) => {
+      req.login(updated, (err) => (err ? reject(err) : resolve()));
+    });
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+    return res.redirect(profileRedirect("verified=twitter_proof"));
+  } catch (err) {
+    console.error("[auth] X identity proof callback failed:", err);
+    return res.redirect(fail("twitter_proof"));
+  }
+});
+
 router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
   try {
+    // Cached Profile bundles may still call the old OAuth 2.0 start URL.
+    // Route them to identity-only proof before creating a token whose
+    // /users/me lookup would consume a paid X API User Read.
+    if (shouldUseXIdentityProof(req.query.returnTo)) {
+      const intended = normalizeXProofHandle(req.query.expectedHandle);
+      if (!intended) {
+        return res.redirect(profileRedirect("error=twitter_proof_handle"));
+      }
+      return res.redirect(`/api/auth/twitter-proof?expectedHandle=${encodeURIComponent(intended)}`);
+    }
     const clientId = getTwitterOAuth2ClientId();
     if (!clientId) {
       return res.redirect(profileRedirect("error=twitter_oauth2_not_configured"));
@@ -1349,6 +1509,12 @@ router.get("/api/auth/twitter-oauth2/callback", isAuthenticated, async (req, res
     }
     if (!createdAt || Date.now() - createdAt > 10 * 60 * 1000) {
       return res.redirect(fail("twitter_oauth2_expired"));
+    }
+
+    // An OAuth 2.0 Profile attempt started before this release must not reach
+    // /users/me either. Ask the user to restart through identity proof.
+    if (shouldUseXIdentityProof(returnTo)) {
+      return res.redirect(fail("twitter_proof_restart"));
     }
 
     let token: Awaited<ReturnType<typeof exchangeTwitterOAuth2Code>>;

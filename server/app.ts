@@ -394,6 +394,7 @@ export async function createApp() {
       "/api/auth/google",
       "/api/auth/github",
       "/api/auth/twitter",
+      "/api/auth/twitter-proof",
       "/api/auth/twitter-oauth2",
       "/api/auth/discord",
     ],

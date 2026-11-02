@@ -485,13 +485,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "profile-social",
     ownerSpec:
-      "server/auth/oauth-base.test.ts, server/features/w/x-connect-onboarding-policy.test.ts, client/src/pages/profile-social-link-policy.test.ts",
+      "server/auth/oauth-base.test.ts; server/auth/twitter-proof.test.ts; client/src/pages/profile-social-link-policy.test.ts; tests/playwright/inventory/profile-x-proof.spec.mjs",
     verificationCommand:
-      "npx tsx --test server/auth/oauth-base.test.ts server/features/w/x-connect-onboarding-policy.test.ts client/src/pages/profile-social-link-policy.test.ts",
+      "npx tsx --test server/auth/oauth-base.test.ts server/auth/twitter-proof.test.ts client/src/pages/profile-social-link-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-x-proof.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "When a user types an intended X handle before connecting, Profile sends that handle into OAuth, the provider callback URL stays on canonical wtfos.app even if legacy platform env is present, and Profile shows a wrong-account recovery message if X authorizes a different logged-in account.",
+      "Profile requires the intended X handle, explains the fresh X sign-in for account changes, sends that handle to the identity-only proof route, and displays a specific recovery message if X returns another account or omits identity. The provider callback stays on canonical wtfos.app even if legacy platform env is present.",
     durableSideEffectAssertion:
-      "The server stores the expected X handle in the OAuth session, canonicalizes legacy wtfgameshow.app callback origins to wtfos.app, and rejects mismatched callbacks before updating twitterId/twitterHandle/token fields or running X onboarding.",
+      "The server binds a one-time signed OAuth 1.0a request token to the wtfOS session, requires provider-returned user ID and screen name to match the intended handle, replaces the stored X identity only after that proof, clears credentials from a different previously linked X account, and performs no metered user lookup. The browser story covers the handoff and callback error; external provider consent and durable DB write still require a live account-backed proof before full E2E coverage can be claimed.",
   },
   {
     id: "profile.pfp-preview-gateway-fallback",

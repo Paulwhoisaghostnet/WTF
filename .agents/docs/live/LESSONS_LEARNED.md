@@ -12813,3 +12813,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
 
 **Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
+
+---
+
+## 2026-11-02 — Profile X proof needs account choice and an approved canonical callback
+
+**What happened**: Profile relinking used OAuth 2.0, which could silently reuse the browser's existing X account and then called the metered `/2/users/me` endpoint for identity. The X app approved only the legacy `wtfgameshow.app` OAuth 2.0 callback; a signed request for a new canonical `wtfos.app` callback returned X error 415 until that exact URL was added in the developer console.
+
+**Why it mattered**: Users could not reliably change the linked account, and successful profile identity checks consumed a priced X user lookup. A correct OAuth implementation still fails at X before consent if its callback is not registered exactly.
+
+**Rule**: For Profile identity proof, use OAuth 1.0a request and access-token exchange with read-only access, `force_login`, the intended handle, and a session-bound request token. Accept only the returned provider identity, reject a different account before persistence, discard the access token, and keep W action grants separate. Redirect cached Profile OAuth 2.0 starts and stop in-flight Profile callbacks before any metered lookup. Register the exact canonical callback in X Console and confirm it with a signed request-token probe before relying on the flow.

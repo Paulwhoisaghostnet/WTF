@@ -376,6 +376,7 @@ interface SocialProfile {
 interface SocialOAuthConfig {
   twitter: boolean;
   twitterOauth2: boolean;
+  twitterProof: boolean;
   discord: boolean;
   publicSiteUrl: string | null;
 }
@@ -543,8 +544,8 @@ export function Profile() {
     const verified = params.get("verified");
     const err = params.get("error");
 
-    if (verified === "twitter" || verified === "twitter_oauth2") {
-      setOauthFlash({ kind: "ok", message: "Twitter account linked successfully." });
+    if (verified === "twitter" || verified === "twitter_oauth2" || verified === "twitter_proof") {
+      setOauthFlash({ kind: "ok", message: "X account verified and linked successfully." });
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     } else if (verified === "discord") {
@@ -553,7 +554,69 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     }
 
-    if (err === "twitter_oauth2_session") {
+    if (err === "twitter_proof_not_configured") {
+      setOauthFlash({
+        kind: "err",
+        message: "X identity verification is unavailable right now. Please try again later.",
+      });
+    } else if (err === "twitter_proof_handle") {
+      setOauthFlash({
+        kind: "err",
+        message: "Enter a valid X handle in Profile before starting verification.",
+      });
+    } else if (err === "twitter_proof_request") {
+      setOauthFlash({
+        kind: "err",
+        message: "X could not start identity verification. Please try again; if it persists, contact support.",
+      });
+    } else if (err === "twitter_proof_session") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your sign-in session was lost during X verification. Return to Profile and start again in the same browser.",
+      });
+    } else if (err === "twitter_proof_state") {
+      setOauthFlash({
+        kind: "err",
+        message: "This X verification link is no longer valid. Return to Profile and start a new one.",
+      });
+    } else if (err === "twitter_proof_restart") {
+      setOauthFlash({
+        kind: "err",
+        message: "This older X verification attempt needs to restart. Choose the X account again from this Profile page; your linked account was not changed.",
+      });
+    } else if (err === "twitter_proof_expired") {
+      setOauthFlash({
+        kind: "err",
+        message: "X verification timed out. Return to Profile and start again.",
+      });
+    } else if (err === "twitter_proof_denied") {
+      setOauthFlash({
+        kind: "err",
+        message: "X authorization was cancelled. Your linked X account was not changed.",
+      });
+    } else if (err === "twitter_proof_exchange") {
+      setOauthFlash({
+        kind: "err",
+        message: "X could not finish identity verification. Please try again; if it persists, contact support.",
+      });
+    } else if (err === "twitter_proof_identity") {
+      setOauthFlash({
+        kind: "err",
+        message: "X did not return an account identity. Your linked X account was not changed.",
+      });
+    } else if (err === "twitter_proof_wrong_account") {
+      const expected = params.get("expected");
+      const actual = params.get("actual");
+      setOauthFlash({
+        kind: "err",
+        message: `X signed in as ${actual ? `@${actual}` : "another X account"}, but you asked to link ${expected ? `@${expected}` : "the handle you entered"}. Return to Profile and sign in to the intended X account. Your profile's X link was not changed.`,
+      });
+    } else if (err === "twitter_proof") {
+      setOauthFlash({
+        kind: "err",
+        message: "X identity verification failed. Your linked X account was not changed. Please try again.",
+      });
+    } else if (err === "twitter_oauth2_session") {
       setOauthFlash({
         kind: "err",
         message:
@@ -959,11 +1022,14 @@ export function Profile() {
   };
 
   const expectedTwitterHandle = normalizeProfileTwitterHandle(twitterHandle);
-  const twitterConnectLabel = expectedTwitterHandle
-    ? `${social?.twitterVerified ? "Reconnect" : "Connect"} @${expectedTwitterHandle}`
-    : social?.twitterVerified
-      ? "Reconnect X"
-      : "Connect X";
+  const currentTwitterHandle = normalizeProfileTwitterHandle(social?.twitterHandle || "");
+  const twitterConnectLabel = !expectedTwitterHandle
+    ? "Enter an X handle"
+    : social?.twitterVerified && currentTwitterHandle === expectedTwitterHandle
+      ? `Reverify @${expectedTwitterHandle}`
+      : social?.twitterVerified
+        ? `Change to @${expectedTwitterHandle}`
+        : `Verify @${expectedTwitterHandle}`;
 
   /* ── PFP editor ────────────────────────────────────────────────────────── */
 
@@ -1394,21 +1460,21 @@ export function Profile() {
             placeholder="handle (without @)"
             style={{ flex: 1, minWidth: 100 }}
           />
-          {social?.twitterVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          {oauthConfig?.twitterOauth2 ? (
+          {social?.twitterVerified && (
+            <VerifiedBadge>
+              {social.twitterHandle ? `Linked @${social.twitterHandle}` : "Linked X account"}
+            </VerifiedBadge>
+          )}
+          {oauthConfig?.twitterProof ? (
             <UiButton
               size="sm"
-              disabled={disconnectSocialMutation.isPending}
+              disabled={disconnectSocialMutation.isPending || !expectedTwitterHandle}
               onClick={() => {
                 const params = new URLSearchParams({
-                  tier: "profile",
-                  returnTo: "profile",
+                  expectedHandle: expectedTwitterHandle,
                 });
-                if (expectedTwitterHandle) {
-                  params.set("expectedHandle", expectedTwitterHandle);
-                }
                 window.location.assign(
-                  oauthStartUrl(`/api/auth/twitter-oauth2?${params.toString()}`)
+                  oauthStartUrl(`/api/auth/twitter-proof?${params.toString()}`)
                 );
               }}
             >
@@ -1419,7 +1485,7 @@ export function Profile() {
               data-wtf-caption="true"
               style={{ maxWidth: 140 }}
             >
-              Minimal X OAuth2 not configured
+              X identity verification unavailable
             </span>
           )}
           {social?.twitterHandle || social?.twitterVerified ? (
@@ -1442,6 +1508,13 @@ export function Profile() {
             }}
           />
         </SocialRow>
+        {oauthConfig?.twitterProof ? (
+          <div data-wtf-caption="true" style={{ marginBottom: 10 }}>
+            {expectedTwitterHandle
+              ? `X will ask you to sign in as @${expectedTwitterHandle}. Verification uses X sign-in without an X profile lookup.`
+              : "Enter the X handle you want to verify. X will ask you to sign in to that account."}
+          </div>
+        ) : null}
 
         <SocialRow>
           <strong style={{ width: 70 }}>Discord:</strong>

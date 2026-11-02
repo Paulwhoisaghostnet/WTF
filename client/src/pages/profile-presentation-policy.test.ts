@@ -51,7 +51,7 @@ test("Profile keeps shared account, wallet, avatar, OAuth, and Skywire behavior"
   assert.match(profileSource, /api\.delete\("\/api\/profile\/pfp"\)/);
   assert.match(profileSource, /\/api\/profile\/pfp-candidates\?\$\{pfpQueryParams\}/);
   assert.match(profileSource, /presentationRouteHref\("\/skywire"\)/);
-  assert.match(profileSource, /oauthStartUrl\(`\/api\/auth\/twitter-oauth2\?\$\{params\.toString\(\)\}`\)/);
+  assert.match(profileSource, /oauthStartUrl\(`\/api\/auth\/twitter-proof\?\$\{params\.toString\(\)\}`\)/);
   assert.match(profileSource, /oauthStartUrl\("\/api\/auth\/discord"\)/);
   assert.doesNotMatch(profileSource, /\/api\/gamma/);
 });

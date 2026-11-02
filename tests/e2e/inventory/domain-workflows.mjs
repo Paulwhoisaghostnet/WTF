@@ -44,6 +44,7 @@ export const DOMAIN_WORKFLOWS = [
       "auth.stale-session-welcome-recovery",
       "auth.faq-registration-tutorials",
       "wtfos.guide-promo-channel",
+      "profile.x-oauth-expected-account",
       "profile.pfp-preview-gateway-fallback",
     ],
     apiProbes: [
