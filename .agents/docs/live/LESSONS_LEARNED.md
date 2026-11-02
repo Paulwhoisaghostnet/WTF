@@ -13276,3 +13276,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A funded room could appear settled while its prize and treasury claim state stayed invisible to the game UI.
 
 **Rule**: Use the flattened positional key for each nested-pair big map and check the reader against a settled on-chain room, as well as a mocked regression case, before enabling new escrow views.
+
+---
+
+## 2026-11-02 — Install signer dependencies without entering its private directory as the deploy user
+
+**What happened**: The signer deployment copied the new bundle but stopped before restart because its remote command tried to `cd` into `/opt/wtf-operator-signer` as the deploy user. That directory is restricted to the signer service account.
+
+**Why it mattered**: A partially copied signer bundle could leave a later service restart running new code without the matching dependency install and without a verified rollout.
+
+**Rule**: Run npm with `--prefix /opt/wtf-operator-signer` under `wtf-signer`, then restart and compare the installed bundle hash with the local build. Keep the directory inaccessible to the deploy user.
