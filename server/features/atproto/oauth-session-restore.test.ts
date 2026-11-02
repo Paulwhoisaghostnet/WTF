@@ -152,3 +152,32 @@ test("OAuthSession wrapper objects cannot be persisted as encrypted token materi
     /Skywire's AT Protocol session needs to be reconnected/
   );
 });
+
+test("Profile proof captures the OAuth SDK session without writing it to an existing DID row", async () => {
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "atproto-oauth-restore-test-secret";
+  process.env.NODE_ENV = "test";
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  const {
+    captureAtprotoOAuthCallbackSessions,
+    saveAtprotoSdkSessionForDid,
+    takePendingOAuthSessionForDid,
+  } = await import("./oauth");
+  const session = {
+    dpopJwk: { kty: "EC", crv: "P-256", x: "x", y: "y", d: "d" },
+    authMethod: { method: "none" },
+    tokenSet: {
+      sub: "did:plc:proof",
+      access_token: "new-identity-token",
+      refresh_token: "new-identity-refresh-token",
+      scope: "atproto",
+    },
+  } as any;
+
+  const captured = await captureAtprotoOAuthCallbackSessions(async () => {
+    await saveAtprotoSdkSessionForDid("did:plc:proof", session);
+    return "verified";
+  });
+  assert.equal(captured.value, "verified");
+  assert.equal(captured.sessions.get("did:plc:proof"), session);
+  assert.equal(takePendingOAuthSessionForDid("did:plc:proof"), null);
+});

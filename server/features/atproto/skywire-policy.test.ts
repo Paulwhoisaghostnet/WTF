@@ -61,7 +61,7 @@ test("Skywire can register new AT Protocol identities without leaking credential
   assert.match(route, /platformActor:\s*z\.string\(\)\.optional\(\)/);
   assert.match(route, /platformActorIntent:\s*boolean/);
   assert.match(route, /const platformActorIntent = parsed\.data\.platformActor === "1" \|\| parsed\.data\.platformActor === "true"/);
-  assert.match(route, /isReservedSkywirePlatformHandle\(handle\) && !platformActorIntent/);
+  assert.match(route, /isReservedSkywirePlatformHandle\(handle\) && \(appName === "profile" \|\| !platformActorIntent\)/);
   assert.match(route, /platformActorIntent:\s*appName === "skywire" && platformActorIntent/);
   assert.match(route, /isReservedSkywirePlatformHandle\(returnedHandle\) && !sessionState\.platformActorIntent/);
   assert.match(route, /resolveAtprotoHandleViaPublicResolver\(handle\)/);
@@ -512,7 +512,7 @@ test("Skywire exposes app-grade actor discovery and WTF-native AT repo signals",
   assert.match(events, /"atproto\.thread\.viewed"/);
 });
 
-test("Profile social surfaces expose Skywire identity links", () => {
+test("Profile social surfaces expose AT Protocol identity linking alongside other networks", () => {
   const atprotoRoute = readFileSync("server/routes/atproto.ts", "utf8");
   const route = readFileSync("server/routes/profile.ts", "utf8");
   const page = readFileSync("client/src/pages/Profile.tsx", "utf8");
@@ -521,13 +521,14 @@ test("Profile social surfaces expose Skywire identity links", () => {
   assert.match(route, /atprotoHandle/);
   assert.match(atprotoRoute, /"\/api\/atproto\/unlink"/);
   assert.match(atprotoRoute, /eventType:\s*"atproto\.account\.unlinked"/);
-  assert.match(page, /<strong style=\{\{ width: 70 \}\}>Skywire:<\/strong>/);
-  assert.match(page, /Connect Skywire/);
-  assert.match(page, /Open Skywire/);
+  assert.match(page, /data-profile-section="social-network-linking"/);
+  assert.match(page, /<SocialNetworkLabel>AT Protocol:<\/SocialNetworkLabel>/);
+  assert.match(page, /aria-label="AT Protocol handle"/);
+  assert.match(page, /oauthStartUrl\(`\/api\/atproto\/oauth\/start\?\$\{params\.toString\(\)\}`\)/);
   assert.match(page, /disconnectSkywireMutation/);
   assert.match(page, /api\.post<\{ ok: true \}>\("\/api\/atproto\/unlink"/);
-  assert.match(page, /Disconnect this Skywire AT Protocol identity/);
-  assert.match(page, /Failed to disconnect Skywire/);
+  assert.match(page, /Disconnect this AT Protocol identity/);
+  assert.match(page, /Failed to disconnect AT Protocol account/);
   assert.match(publicPage, /profile\.atprotoHandle/);
   assert.match(publicPage, /https:\/\/bsky\.app\/profile\/\$\{profile\.atprotoHandle\}/);
 });

@@ -17,6 +17,10 @@ import {
   users,
 } from "@shared/schema";
 import { getXpTierForTotal } from "@shared/types";
+import {
+  assertDiscordIdentityAvailable,
+  DiscordIdentityAlreadyLinkedError,
+} from "../auth/discord-ownership";
 
 const router = Router();
 const CLAIM_TTL_MS = Math.max(
@@ -404,12 +408,8 @@ router.post(
       .limit(1);
     if (!claim) return res.status(404).json({ error: "claim_not_found" });
 
-    const existing = await findUserByDiscordId(data.discordUserId);
-    if (existing && existing.id !== claim.userId) {
-      return res.status(409).json({ error: "discord_already_linked" });
-    }
-
-    const [updatedUser] = await db.transaction(async (tx) => {
+    const claimResult = await db.transaction(async (tx) => {
+      await assertDiscordIdentityAvailable(tx, data.discordUserId, claim.userId);
       const [linked] = await tx
         .update(users)
         .set({
@@ -459,8 +459,20 @@ router.post(
           )
         );
 
-      return [linked];
-    });
+      return linked;
+    }).then(
+      (updatedUser) => ({ updatedUser }),
+      (error: unknown) => {
+        if (error instanceof DiscordIdentityAlreadyLinkedError) {
+          return { error: "discord_already_linked" as const };
+        }
+        throw error;
+      }
+    );
+    if ("error" in claimResult) {
+      return res.status(409).json({ error: claimResult.error });
+    }
+    const { updatedUser } = claimResult;
 
     res.json({
       ok: true,

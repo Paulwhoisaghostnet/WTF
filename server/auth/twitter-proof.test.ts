@@ -6,9 +6,11 @@ import {
   normalizeXProofHandle,
   parseXProofIdentity,
   requestXProofToken,
+  resolveXProofIntent,
   shouldUseXIdentityProof,
   xProofAccountUpdate,
   xProofAuthorizeUrl,
+  xProofIdentityMatchesIntent,
   XProofProviderError,
   X_PROOF_ACCESS_TOKEN_URL,
   X_PROOF_REQUEST_TOKEN_URL,
@@ -39,6 +41,48 @@ test("X proof authorize URL forces a fresh login and pre-fills the intended acco
   assert.equal(url.searchParams.get("oauth_token"), "request-token");
   assert.equal(url.searchParams.get("force_login"), "true");
   assert.equal(url.searchParams.get("screen_name"), "example_123");
+  const direct = new URL(xProofAuthorizeUrl("request-token", null));
+  assert.equal(direct.searchParams.get("force_login"), null);
+  assert.equal(direct.searchParams.get("screen_name"), null);
+});
+
+test("first X link can use the browser's signed-in account without a typed handle", () => {
+  const intent = resolveXProofIntent(undefined, {});
+  assert.deepEqual(intent, {
+    expectedHandle: null,
+    priorId: null,
+    allowAccountChange: true,
+    promptHandle: null,
+  });
+  assert.equal(xProofIdentityMatchesIntent(
+    { id: "123", handle: "alice" },
+    intent!
+  ), true);
+  assert.equal(resolveXProofIntent("bad handle", {}), null);
+});
+
+test("X reverify binds the existing account; a targeted handle permits an account change", () => {
+  const current = { twitterId: "123", twitterHandle: "alice", twitterVerified: true };
+  const reverify = resolveXProofIntent(undefined, current);
+  assert.deepEqual(reverify, {
+    expectedHandle: "alice",
+    priorId: "123",
+    allowAccountChange: false,
+    promptHandle: null,
+  });
+  assert.equal(xProofIdentityMatchesIntent({ id: "123", handle: "alice" }, reverify!), true);
+  assert.equal(xProofIdentityMatchesIntent({ id: "456", handle: "alice" }, reverify!), false);
+  assert.equal(xProofIdentityMatchesIntent({ id: "456", handle: "bob" }, reverify!), false);
+
+  const changed = resolveXProofIntent("@bob", current);
+  assert.deepEqual(changed, {
+    expectedHandle: "bob",
+    priorId: "123",
+    allowAccountChange: true,
+    promptHandle: "bob",
+  });
+  assert.equal(xProofIdentityMatchesIntent({ id: "456", handle: "bob" }, changed!), true);
+  assert.equal(xProofIdentityMatchesIntent({ id: "456", handle: "alice" }, changed!), false);
 });
 
 test("cached Profile OAuth 2.0 requests use identity proof while W keeps its API-action flow", () => {

@@ -5,6 +5,7 @@ import { isSystemUserRole, type UserRole } from "@shared/types";
 import { randomBytes } from "crypto";
 import { ensureUserRole, listUserRoles, setUserRoles } from "../lib/user-roles";
 import type { WalletProofAction } from "./wallet-verify";
+import { assertDiscordIdentityAvailable } from "./discord-ownership";
 
 async function withRoleSet<T extends { id: number; role: UserRole } | null>(
   user: T
@@ -188,22 +189,33 @@ export async function linkSocialAccount(
     tokenSecret?: string;
   }
 ) {
+  if (provider === "discord") {
+    const [updated] = await db.transaction(async (tx) => {
+      await assertDiscordIdentityAvailable(tx, providerId, userId);
+      return tx
+        .update(users)
+        .set({
+          discordId: providerId,
+          discordHandle: handle,
+          discordVerified: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+    });
+    return withRoleSet(updated ?? null);
+  }
+
   const sets: Record<string, any> = { updatedAt: new Date() };
 
-  if (provider === "twitter") {
-    sets.twitterId = providerId;
-    sets.twitterHandle = handle;
-    sets.twitterVerified = true;
-    if (oauth?.token) {
-      sets.twitterOauthToken = oauth.token;
-    }
-    if (oauth?.tokenSecret) {
-      sets.twitterOauthTokenSecret = oauth.tokenSecret;
-    }
-  } else {
-    sets.discordId = providerId;
-    sets.discordHandle = handle;
-    sets.discordVerified = true;
+  sets.twitterId = providerId;
+  sets.twitterHandle = handle;
+  sets.twitterVerified = true;
+  if (oauth?.token) {
+    sets.twitterOauthToken = oauth.token;
+  }
+  if (oauth?.tokenSecret) {
+    sets.twitterOauthTokenSecret = oauth.tokenSecret;
   }
 
   const [updated] = await db

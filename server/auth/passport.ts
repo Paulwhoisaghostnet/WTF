@@ -20,6 +20,14 @@ import {
   legacyTwitterOAuthEnabled,
   legacyTwitterOAuthPackageAvailable,
 } from "./twitter-legacy";
+import {
+  DISCORD_PROFILE_SCOPES,
+  DiscordLinkError,
+  discordAuthorizationParams,
+  resolveDiscordLinkIdentity,
+  type DiscordLinkIntent,
+} from "./discord-link";
+import { DiscordIdentityAlreadyLinkedError } from "./discord-ownership";
 
 const scryptAsync = promisify(scrypt);
 const GITHUB_AUTHORIZATION_URL = "https://github.com/login/oauth/authorize";
@@ -238,7 +246,7 @@ function createGithubStrategy() {
   return strategy;
 }
 
-function createDiscordStrategy() {
+export function createDiscordStrategy() {
   const strategy = new OAuth2Strategy(
     {
       authorizationURL: DISCORD_AUTHORIZATION_URL,
@@ -246,7 +254,9 @@ function createDiscordStrategy() {
       clientID: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       callbackURL: oauthCallbackUrl("/api/auth/discord/callback"),
-      scope: ["identify", "guilds", "guilds.members.read", "role_connections.write"],
+      scope: [...DISCORD_PROFILE_SCOPES],
+      state: true,
+      sessionKey: "oauth2:discord-profile-link",
       passReqToCallback: true,
     } as any,
     async (
@@ -258,23 +268,24 @@ function createDiscordStrategy() {
       done: (err: Error | null, user?: any) => void
     ) => {
       try {
-        if (!req.user) {
-          console.warn("[auth] discord verify missing session user");
-          return done(null, false as any);
-        }
+        const intent = (req.session as typeof req.session & {
+          discordLinkIntent?: DiscordLinkIntent;
+        })?.discordLinkIntent;
+        if (req.session) delete req.session.discordLinkIntent;
+        if (!req.user?.id) throw new DiscordLinkError("discord_session");
+        const identity = resolveDiscordLinkIdentity(intent, req.user.id, profile);
         const { linkSocialAccount } = await import("./storage");
-        const handle = profile.username
-          ? `${profile.username}#${profile.discriminator || "0"}`
-          : profile.id;
         const user = await linkSocialAccount(
           req.user.id,
           "discord",
-          profile.id,
-          handle
+          identity.id,
+          identity.handle
         );
         done(null, user);
       } catch (err) {
-        done(err as Error);
+        done(err instanceof DiscordIdentityAlreadyLinkedError
+          ? new DiscordLinkError("discord_already_linked")
+          : err as Error);
       }
     }
   );
@@ -287,6 +298,8 @@ function createDiscordStrategy() {
       done(err as Error);
     }
   };
+
+  strategy.authorizationParams = discordAuthorizationParams;
 
   return strategy;
 }
@@ -328,7 +341,7 @@ async function fetchDiscordProfile(accessToken: string): Promise<OAuthProfile> {
   const user = await oauthJson<any>(DISCORD_USER_URL, accessToken);
   return {
     provider: "discord",
-    id: String(user.id),
+    id: user?.id != null ? String(user.id) : "",
     username: user.username ? String(user.username) : null,
     displayName: user.global_name ? String(user.global_name) : user.username ? String(user.username) : null,
     discriminator: user.discriminator ? String(user.discriminator) : null,

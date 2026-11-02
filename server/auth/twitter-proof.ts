@@ -49,6 +49,49 @@ export function normalizeXProofHandle(raw: unknown): string | null {
   return /^[A-Za-z0-9_]{1,15}$/.test(cleaned) ? cleaned.toLowerCase() : null;
 }
 
+export function resolveXProofIntent(
+  rawExpectedHandle: unknown,
+  current: {
+    twitterId?: string | null;
+    twitterHandle?: string | null;
+    twitterVerified?: boolean | null;
+  }
+): {
+  expectedHandle: string | null;
+  priorId: string | null;
+  allowAccountChange: boolean;
+  promptHandle: string | null;
+} | null {
+  if (rawExpectedHandle != null && typeof rawExpectedHandle !== "string") return null;
+  const supplied = typeof rawExpectedHandle === "string" ? rawExpectedHandle.trim() : "";
+  const requestedHandle = supplied ? normalizeXProofHandle(supplied) : null;
+  if (supplied && !requestedHandle) return null;
+
+  const linked = current.twitterVerified === true;
+  const priorId = linked ? String(current.twitterId || "").trim() || null : null;
+  const currentHandle = linked ? normalizeXProofHandle(current.twitterHandle) : null;
+  if (linked && !priorId && !currentHandle) return null;
+
+  const accountChange = !!requestedHandle && (!linked || requestedHandle !== currentHandle);
+  return {
+    expectedHandle: requestedHandle || currentHandle,
+    priorId,
+    allowAccountChange: !linked || accountChange,
+    // A targeted change may need X's account switch. Ordinary proof can reuse
+    // the browser's signed-in X account and still checks the returned identity.
+    promptHandle: accountChange ? requestedHandle : null,
+  };
+}
+
+export function xProofIdentityMatchesIntent(
+  identity: { id: string; handle: string },
+  intent: { expectedHandle: string | null; priorId: string | null; allowAccountChange: boolean }
+): boolean {
+  if (intent.expectedHandle && intent.expectedHandle !== identity.handle) return false;
+  if (intent.priorId && !intent.allowAccountChange && intent.priorId !== identity.id) return false;
+  return true;
+}
+
 /** W explicitly owns API-action OAuth; every other target is profile proof. */
 export function shouldUseXIdentityProof(returnTo: unknown): boolean {
   return returnTo !== "w";
@@ -130,10 +173,11 @@ export function xProofAccountUpdate(
 export function xProofAuthorizeUrl(requestToken: string, expectedHandle: string | null): string {
   const url = new URL(X_PROOF_AUTHORIZE_URL);
   url.searchParams.set("oauth_token", requestToken);
-  // Unlike X OAuth 2.0, this documented parameter forces the account holder
-  // to authenticate again instead of silently reusing the previous X account.
-  url.searchParams.set("force_login", "true");
-  if (expectedHandle) url.searchParams.set("screen_name", expectedHandle);
+  if (expectedHandle) {
+    // Force account choice only for an explicitly targeted first link/change.
+    url.searchParams.set("force_login", "true");
+    url.searchParams.set("screen_name", expectedHandle);
+  }
   return url.toString();
 }
 

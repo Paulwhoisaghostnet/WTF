@@ -45,6 +45,8 @@ export const DOMAIN_WORKFLOWS = [
       "auth.faq-registration-tutorials",
       "wtfos.guide-promo-channel",
       "profile.x-oauth-expected-account",
+      "profile.discord-expected-account",
+      "profile.atproto-expected-account",
       "profile.pfp-preview-gateway-fallback",
     ],
     apiProbes: [
