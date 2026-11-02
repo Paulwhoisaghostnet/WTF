@@ -1,1 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64" viewBox="0 0 96 64" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M33 4h26v3h8v4h7v5h5v7h4v17h-4v7h-6v5h-8v4h-8v3h11v3H47v-3H34v-4H24v-5h-8v-7h-5V25h4v-9h5v-6h7V7h6z" fill="#172334"></path><path d="M34 8h24v3h8v4h6v5h4v7h3v12h-4v6h-6v4h-8v4h-9v3h-5v-3H35v-4H25v-5h-7v-7h-3V27h4v-8h5v-5h7v-3h3z" fill="#e9f8f4"></path><path d="M61 13h5v4h6v5h4v7h3v10h-4v6h-6v4h-8v4h-9v3h-5v-3h5v-4h7v-5h6v-6h4V23h-4v-5h-4z" fill="#b5d9dc"></path><path d="M27 18h6v-4h9v-3h15v3H38v4h-7v5h-5v7h-4v8h-4V27h4v-7h5z" fill="#ffffff"></path><path d="M24 44h6v5h8v4h9v3H35v-4H25v-5h-1z" fill="#cbe8e5"></path><path d="M23 23h23v3h5v-3h23v3h3v16h-3v3H51v-3h-5v3H23v-3h-3V26h3z" fill="#3b1824"></path><path d="M25 25h19v4h5v-3h4v3h3v-4h16v3h3v12h-3v3H54v-3h-3v-8h-4v8h-3v3H25v-3h-3V28h3z" fill="#d61e2e"></path><path d="M27 30h15v9H27zM57 30h13v9H57z" fill="#d9f0ed"></path><path d="M27 30h3v9h-3zM57 30h3v9h-3z" fill="#f8ffff"></path><path d="M31 32h4v5h-4zM63 31h4v6h-4z" fill="#172334"></path><path d="M32 32h1v1h-1zM64 31h1v1h-1z" fill="#ffffff"></path><path d="M23 27h4v3h-4zM70 27h4v3h-4z" fill="#ff5260"></path><path d="M30 19h8v2h-8zM62 19h7v2h-7v2h-3v-2h3z" fill="#172334"></path><path d="M39 47h4v2h9v-2h7v2h-4v3H43v-2h-4z" fill="#29424e"></path><path d="M49 49h5v2h-5z" fill="#ffffff"></path><path d="M73 53h5v3h-5zM80 47h3v3h-3zM19 50h3v3h-3z" fill="#b5d9dc"></path><path d="M79 56h3v3h-3z" fill="#e9f8f4"></path></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64" viewBox="0 0 96 64" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+  <!-- One unbroken sheet, raised arms, and a scalloped hem make Paul a ghost at desktop size. -->
+  <path d="M40 4h16v3h8v4h6v5h5v7h4v8h7v4h4v8h-5v4h-6v10h-9v-4h-6v8H53v-6h-8v6H34v-8h-6v4h-9V47h-6v-4H8v-8h4v-4h7v-8h4v-7h5v-5h6V7h6z" fill="#efffff" stroke="#172334" stroke-width="3" stroke-linejoin="miter"/>
+  <path d="M65 12h5v5h5v8h4v8h7v7h-7v4h-5v9h-4v-5h-7v8h-6v-6h-7v-4h8v-5h7v-7h5v-9h-5z" fill="#bedfe2"/>
+  <path d="M34 12h8v3h-8v5h-5v8h-4v-8h4v-5h5zM21 34h-8v5h8z" fill="#ffffff"/>
+  <path d="M25 45h4v8h-4zM37 52h4v6h-4zM55 52h4v6h-4z" fill="#d9eeee"/>
+  <!-- Bright, thick red frames stay readable when the SVG is scaled down in Help. -->
+  <path d="M21 25h24v3h6v-3h24v3h3v15h-3v3H52v-3h-6v3H21v-3h-3V28h3z" fill="#661e2b"/>
+  <path d="M23 27h20v4h6v-3h4v3h5v-4h15v3h3v11h-3v3H54v-3h-4v-7h-4v7h-4v3H23v-3h-3V30h3z" fill="#eb3045"/>
+  <path d="M27 31h13v8H27zM59 31h12v8H59z" fill="#e5fafa"/>
+  <path d="M27 31h3v8h-3zM59 31h3v8h-3z" fill="#ffffff"/>
+  <path d="M32 33h5v5h-5zM63 33h5v5h-5z" fill="#172334"/>
+  <path d="M33 33h2v2h-2zM64 33h2v2h-2z" fill="#ffffff"/>
+  <path d="M20 29h4v3h-4zM73 29h4v3h-4zM43 28h4v3h-4zM53 28h4v3h-4z" fill="#ff6874"/>
+  <path d="M32 20h8v2h-8zM60 20h8v2h-8z" fill="#29424e"/>
+  <path d="M46 47h7v2h2v4h-2v2h-7v-2h-2v-4h2z" fill="#29424e"/>
+  <path d="M48 50h5v3h-5z" fill="#87b9c2"/>
+  <path d="M9 49h3v3H9zM84 51h3v3h-3z" fill="#d8f4f1"/>
+</svg>

@@ -18,7 +18,7 @@
     "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
     "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
     "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
-    "sha256": "e0d1cfd0f253381d51ff6a37170acff575f4e61f1f7fdcf0deb07420a08d5ae4"
+    "sha256": "b53e7f0101a777dda734864fd96d2acd44a16bebecd54d774a8c07cfc08c5ea8"
   },
   {
     "slug": "mission-control",
@@ -36,7 +36,7 @@
     "videoUrl": "/desktop/paul-tutorials/mission-control.mp4",
     "captionsUrl": "/desktop/paul-tutorials/mission-control.vtt",
     "posterUrl": "/desktop/paul-tutorials/mission-control-poster.jpg",
-    "sha256": "fe37d7f583661ae961a86eca8e1b8957850a614f44db4243c748b6cca375d6de"
+    "sha256": "cab04719adb10114d1db13ede63b19e2c65aa873d1d620ccec2135a2b34fa181"
   },
   {
     "slug": "side-quest-reward",
@@ -51,11 +51,11 @@
       "Find the reward confirmation and Market link."
     ],
     "transcript": "Side Quests lists small daily tasks. Open Today to see the tasks available to you. First do the activity on a card and let wtfOS verify it. This example is already verified and ready to claim. Click Claim. This ready task lists fifteen XP and one WTF; wait for the reward confirmation before moving on. The confirmation links to Market, where you can inspect eligible live items. A single claim does not automatically unlock every app or guarantee a tier change.",
-    "durationSeconds": 34.059,
+    "durationSeconds": 34.059333,
     "videoUrl": "/desktop/paul-tutorials/side-quest-reward.mp4",
     "captionsUrl": "/desktop/paul-tutorials/side-quest-reward.vtt",
     "posterUrl": "/desktop/paul-tutorials/side-quest-reward-poster.jpg",
-    "sha256": "6605b6a7220d3850fcebc58b9dfb15e8b733a68fa828baf284ea2a1108f28fa2"
+    "sha256": "0c3d086c2e3a986c88de79862c16d8494f3c7f2b292052304f08fcc63558fc83"
   },
   {
     "slug": "play-arcade",
@@ -73,7 +73,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-arcade.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-arcade.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-arcade-poster.jpg",
-    "sha256": "7276c600488b54cb8a36dccfcd92d6af897028802846201acbf5a5b812f4f929"
+    "sha256": "6650d5b5214b8f6a273514c1e43e2315eec593bd2426a9533a286498d87ef216"
   },
   {
     "slug": "play-guided-round",
@@ -94,7 +94,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-guided-round.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-guided-round.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-guided-round-poster.jpg",
-    "sha256": "086d92fa1899eaef66ac39d02cfb09d73f6c71dfdead397bcb7077a0afc3eb7e"
+    "sha256": "5a76ec992f45aae982622bfdb09c0b50f267624f8e0323b62b5255e59e565c2e"
   },
   {
     "slug": "create-something",
@@ -110,11 +110,11 @@
       "Export the PNG to your device."
     ],
     "transcript": "Create starts with the kind of thing you want to make. I'll open PixAlerce for pixel art. Choose Blank canvas, select thirty two by thirty two, and press Create. Pick a color and the Brush tool. Drag across the canvas to make your first mark. Open App Menu, choose Export Animation, and select PNG for a still image. Choose Device download and Export PNG. The file is now yours to keep or use elsewhere.",
-    "durationSeconds": 27.941,
+    "durationSeconds": 27.940667,
     "videoUrl": "/desktop/paul-tutorials/create-something.mp4",
     "captionsUrl": "/desktop/paul-tutorials/create-something.vtt",
     "posterUrl": "/desktop/paul-tutorials/create-something-poster.jpg",
-    "sha256": "860012f580ab0d719f0fb80b17de293b8d5cb14b8e602a243545d7c81defe4e5"
+    "sha256": "e01cd227b787a926d9f940ff673bb2746b6950b6b4af85cc8c85a0bb3ac7ae16"
   },
   {
     "slug": "events",
@@ -129,11 +129,11 @@
       "Open My plans and find your saved event."
     ],
     "transcript": "Events lives in Calendar. Under Browse, choose Agenda to scan upcoming events by date. I'll open a tutorial sample event to read its time, description, and room link before making a plan. If you plan to attend, choose Going. Calendar confirms the plan and turns on a task tray reminder. Open My plans to find the event again. This is where your calendar choices collect.",
-    "durationSeconds": 25.085351,
+    "durationSeconds": 25.077667,
     "videoUrl": "/desktop/paul-tutorials/events.mp4",
     "captionsUrl": "/desktop/paul-tutorials/events.vtt",
     "posterUrl": "/desktop/paul-tutorials/events-poster.jpg",
-    "sha256": "f6d8a14315844ea595fae2eb43ce7b16aef7cb328e6612e6c6fee587e409a9ab"
+    "sha256": "55895d365f4cf0ec133e4dc2167a9acc79bd2a78dfc46789c75e4bbb7d741c5f"
   },
   {
     "slug": "talk",
@@ -148,11 +148,11 @@
       "Press Send message and check the confirmation."
     ],
     "transcript": "Inbox brings mail and messages together. WIM can send while external mailbox setup is pending. Click New message to start a WIM note. Choose WTF user through WIM, then select the person you want to reach. Write your note in Message body. You can add a subject, but a WIM message does not need one. Click Send message. The Message sent confirmation tells you this note went through.",
-    "durationSeconds": 27.991,
+    "durationSeconds": 27.990667,
     "videoUrl": "/desktop/paul-tutorials/talk.mp4",
     "captionsUrl": "/desktop/paul-tutorials/talk.vtt",
     "posterUrl": "/desktop/paul-tutorials/talk-poster.jpg",
-    "sha256": "fb3fe7571bea6aa4c5337971f70687c6ace2f618358550ccffee4e861a5150db"
+    "sha256": "a6bc7ac06db7f5f0cd8c7d25aee2c208faad4fd20f44d0597fc50c03efb7a0ff"
   },
   {
     "slug": "shop-safely",
@@ -171,7 +171,7 @@
     "videoUrl": "/desktop/paul-tutorials/shop-safely.mp4",
     "captionsUrl": "/desktop/paul-tutorials/shop-safely.vtt",
     "posterUrl": "/desktop/paul-tutorials/shop-safely-poster.jpg",
-    "sha256": "c935c88861994de8f3d91c94abaa32da751672dfcba4f9591774c04837a2a4ca"
+    "sha256": "3be944d50de160aa677b12a68663816b1b300ef81392f4fd3a66d8971f60b1f7"
   },
   {
     "slug": "personalize",
@@ -190,6 +190,6 @@
     "videoUrl": "/desktop/paul-tutorials/personalize.mp4",
     "captionsUrl": "/desktop/paul-tutorials/personalize.vtt",
     "posterUrl": "/desktop/paul-tutorials/personalize-poster.jpg",
-    "sha256": "f969ac1c69d855f32044bde4e5d629995981cadfb38b157b8b8c05336dee8512"
+    "sha256": "6a87a7649df20922fedfbfca5608c50f0e0276b00105a534e6617dbe83ac1946"
   }
 ]
