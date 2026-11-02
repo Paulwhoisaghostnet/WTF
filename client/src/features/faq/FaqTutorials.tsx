@@ -4,6 +4,7 @@ import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { api } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
+import { useRecordWatchedVideo } from "../video-history/video-history";
 
 export type FaqTutorial = {
   slug: string;
@@ -195,6 +196,7 @@ function formatDuration(totalSeconds: number): string {
 }
 
 export function FaqTutorials() {
+  const { recordWatchedVideo, failedVideoId, savingVideoId, savedVideoId } = useRecordWatchedVideo();
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [playerKey, setPlayerKey] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
@@ -289,6 +291,7 @@ export function FaqTutorials() {
                   accountName: selected.accountName,
                 },
               });
+              void recordWatchedVideo(`tommy/${selected.slug}`);
             }}
           >
             <source src={selected.videoUrl} type="video/mp4" />
@@ -306,6 +309,8 @@ export function FaqTutorials() {
             <MetaPill>Account: {selected.accountName}</MetaPill>
             <MetaPill>AI narration + English captions</MetaPill>
           </VideoStatus>
+          {savingVideoId === `tommy/${selected.slug}` && <VideoStatus role="status">Saving this watch to your profile…</VideoStatus>}
+          {savedVideoId === `tommy/${selected.slug}` && <VideoStatus role="status">Saved to your profile.</VideoStatus>}
           {playbackError ? (
             <PlayerError role="alert">
               This guide did not load. Check your connection, then{" "}
@@ -320,6 +325,19 @@ export function FaqTutorials() {
               </Button>
             </PlayerError>
           ) : null}
+          {failedVideoId === `tommy/${selected.slug}` && (
+            <PlayerError role="alert">
+              Your completed watch could not be saved to your profile. {" "}
+              <Button
+                type="button"
+                size="sm"
+                disabled={savingVideoId === `tommy/${selected.slug}`}
+                onClick={() => void recordWatchedVideo(`tommy/${selected.slug}`)}
+              >
+                Retry save
+              </Button>
+            </PlayerError>
+          )}
         </VideoColumn>
 
         <GuideCopy>

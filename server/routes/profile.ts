@@ -16,7 +16,7 @@ import {
   dmMessages,
 } from "@shared/schema";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
-import { isAuthenticated } from "../auth/passport";
+import { isAuthenticated, requirePermission } from "../auth/passport";
 import { hasPermission } from "../lib/permissions";
 import { formatWtf } from "@shared/types";
 import { sanitizeThumbnailUrl } from "../lib/thumbnail-url";
@@ -36,6 +36,13 @@ import {
   sanitizeProfilePfpImageUrl,
   type ProfilePfpTokenReference,
 } from "../features/profile/pfp-policy";
+import {
+  findWatchableVideo,
+  isWellFormedVideoWatchId,
+  listVideoViewers,
+  listWatchedVideos,
+  recordWatchedVideo,
+} from "../lib/video-watch-history";
 
 const router = Router();
 
@@ -202,6 +209,45 @@ router.get("/api/profile/account", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("GET /api/profile/account error:", err);
     res.status(500).json({ error: "Failed to fetch profile account" });
+  }
+});
+
+/* ── Completed instructional videos and their account-owned watch history ── */
+router.get("/api/profile/watched-videos", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as { id: number };
+    res.json({ videos: await listWatchedVideos(user.id) });
+  } catch (error) {
+    console.error("GET /api/profile/watched-videos error:", error);
+    res.status(500).json({ error: "Failed to fetch watched videos" });
+  }
+});
+
+router.post("/api/profile/watched-videos", isAuthenticated, async (req, res) => {
+  const videoId = req.body?.videoId;
+  if (typeof videoId !== "string" || !findWatchableVideo(videoId)) {
+    return res.status(400).json({ error: "Unknown instructional video" });
+  }
+  try {
+    const user = req.user as { id: number };
+    res.json(await recordWatchedVideo(user.id, videoId));
+  } catch (error) {
+    console.error("POST /api/profile/watched-videos error:", error);
+    res.status(500).json({ error: "Failed to save watched video" });
+  }
+});
+
+/* Viewers are account information; only user managers can inspect a video's roster. */
+router.get("/api/admin/video-watch-roster", requirePermission("manage_users"), async (req, res) => {
+  const videoId = req.query.videoId;
+  if (typeof videoId !== "string" || !isWellFormedVideoWatchId(videoId)) {
+    return res.status(400).json({ error: "Invalid instructional video ID" });
+  }
+  try {
+    res.json({ videoId, viewers: await listVideoViewers(videoId) });
+  } catch (error) {
+    console.error("GET /api/admin/video-watch-roster error:", error);
+    res.status(500).json({ error: "Failed to fetch video viewers" });
   }
 });
 

@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useState,
   type ReactNode,
 } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +42,8 @@ interface User {
   hasPassword?: boolean;
   welcomedToWtfOs?: boolean;
   welcomedToWtfOsAt?: string | null;
+  /** Server-backed completion of paulwhoisaclippy's intro video. */
+  hasSeenIntroVideo?: boolean;
   gmWelcomeUtcDay?: string | null;
   gmWelcomeLastSeenAt?: string | null;
   gmWelcome?: {
@@ -91,6 +94,8 @@ interface WalletRegisterData {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  /** Changes only after a successful interactive login, not session hydration. */
+  loginEntry: { userId: number; nonce: number } | null;
   isAdmin: boolean;
   canParticipate: boolean;
   hasPermission: (key: string) => boolean;
@@ -107,6 +112,10 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
+  const [loginEntry, setLoginEntry] = useState<{ userId: number; nonce: number } | null>(null);
+  const markLoginEntry = (userId: number) => {
+    setLoginEntry((current) => ({ userId, nonce: (current?.nonce ?? 0) + 1 }));
+  };
 
   useEffect(() => {
     const clearStaleSession = (event: Event) => {
@@ -124,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
       qc.setQueryData(["auth", "user"], null);
+      setLoginEntry(null);
     };
     window.addEventListener(AUTH_SESSION_INVALID_EVENT, clearStaleSession);
     return () => {
@@ -142,10 +152,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("wtfosLogin") !== "github") return;
+    url.searchParams.delete("wtfosLogin");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    markLoginEntry(user.id);
+  }, [user?.id]);
+
   const loginMutation = useMutation({
     mutationFn: (creds: { username: string; password: string }) =>
       api.post<User>("/api/auth/login", creds),
-    onSuccess: (data) => qc.setQueryData(["auth", "user"], data),
+    onSuccess: (data) => {
+      qc.setQueryData(["auth", "user"], data);
+      markLoginEntry(data.id);
+    },
   });
 
   const registerMutation = useMutation({
@@ -156,7 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: () => api.post("/api/auth/logout"),
-    onSuccess: () => qc.setQueryData(["auth", "user"], null),
+    onSuccess: () => {
+      qc.setQueryData(["auth", "user"], null);
+      setLoginEntry(null);
+    },
   });
 
   const completeWelcomeMutation = useMutation({
@@ -192,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (result.action === "login" && result.user) {
       qc.setQueryData(["auth", "user"], result.user);
+      markLoginEntry(result.user.id);
     }
 
     return result;
@@ -209,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user: user ?? null,
     isLoading,
+    loginEntry,
     isAdmin: roleIsAdmin(user?.roles ?? user?.role),
     canParticipate: user ? roleCanParticipate(user.roles ?? user.role) : false,
     hasPermission: (key: string) =>

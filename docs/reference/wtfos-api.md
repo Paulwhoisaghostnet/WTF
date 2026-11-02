@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **935 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **938 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 935 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 938 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -95,7 +95,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | Family | Operations | Use |
 | --- | ---: | --- |
 | `access` | 1 | Public capability and canonical-origin discovery. |
-| `admin` | 88 | Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration. |
+| `admin` | 89 | Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration. |
 | `admin-inbox` | 6 | User-to-admin support threads and replies. |
 | `anchor` | 1 | Operations for the anchor domain. |
 | `apphost` | 12 | Authenticated proxy for launching, streaming, controlling, and stopping host-run applications. |
@@ -163,7 +163,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `penne` | 1 | Penne installer discovery. |
 | `porcupin` | 5 | Porcupin pinning service status and operations. |
 | `portfolio` | 5 | Wallet portfolio positions and valuation views. |
-| `profile` | 16 | Current-user profile, social identities, settings, and public user views. |
+| `profile` | 18 | Current-user profile, social identities, settings, and public user views. |
 | `protocol` | 10 | Non-REST protocol and discovery endpoints. |
 | `public` | 4 | Operations for the public domain. |
 | `rat` | 2 | Rat Race feeds, token candidates, voting, and results. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 453**, **PATCH 36**, **POST 323**, **PUT 65**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 216**, **Session 473**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 455**, **PATCH 36**, **POST 324**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 216**, **Session 475**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -211,7 +211,7 @@ Public capability and canonical-origin discovery.
 </details>
 
 <details>
-<summary><code>admin</code> — 88 operations</summary>
+<summary><code>admin</code> — 89 operations</summary>
 
 Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration.
 
@@ -291,6 +291,7 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | POST | `/api/admin/users/:id/temp-password` | Create, submit, or run admin users id temp password. | Admin | `server/features/admin/users/temp-password-routes.ts:40` |
 | POST | `/api/admin/users/:id/wtf-subdomains` | Create, submit, or run admin users id wtf subdomains. | Admin | `server/routes/wtf-subdomains.ts:154` |
 | POST | `/api/admin/users/:id/xp` | Create, submit, or run admin users id xp. | Admin | `server/features/admin/users/xp-routes.ts:26` |
+| GET | `/api/admin/video-watch-roster` | Read or list admin video watch roster. | Admin | `server/routes/profile.ts:241` |
 | GET | `/api/admin/w-digest-handles` | Read or list admin w digest handles. | Admin | `server/features/w/digest/routes.ts:147` |
 | PUT | `/api/admin/w-digest-handles` | Replace or set admin w digest handles. | Admin | `server/features/w/digest/routes.ts:164` |
 | GET | `/api/admin/wallets/:address/dossier` | Read or list admin wallets address dossier. | Admin | `server/features/admin/users/dossier-routes.ts:48` |
@@ -458,29 +459,29 @@ Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:919` |
-| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:60` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1537`<br>`server/auth/routes.ts:1547` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1542`<br>`server/auth/routes.ts:1550` |
-| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1222` |
-| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1226` |
-| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:885` |
-| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:845` |
-| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:755` |
-| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:790` |
-| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:693` |
-| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:471` |
-| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1233`<br>`server/auth/routes.ts:1243` |
-| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1251` |
-| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1309` |
-| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:496` |
-| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:613` |
-| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1238`<br>`server/auth/routes.ts:1246` |
-| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:807` |
-| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1033` |
-| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1128` |
-| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1052` |
-| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:812` |
+| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:926` |
+| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:61` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1544`<br>`server/auth/routes.ts:1554` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1549`<br>`server/auth/routes.ts:1557` |
+| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1229` |
+| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1233` |
+| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:892` |
+| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:852` |
+| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:762` |
+| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:797` |
+| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:700` |
+| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:478` |
+| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1240`<br>`server/auth/routes.ts:1250` |
+| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1258` |
+| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1316` |
+| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:503` |
+| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:620` |
+| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1245`<br>`server/auth/routes.ts:1253` |
+| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:814` |
+| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1040` |
+| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1135` |
+| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1059` |
+| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:819` |
 
 </details>
 
@@ -1477,28 +1478,30 @@ Wallet portfolio positions and valuation views.
 </details>
 
 <details>
-<summary><code>profile</code> — 16 operations</summary>
+<summary><code>profile</code> — 18 operations</summary>
 
 Current-user profile, social identities, settings, and public user views.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:184` |
-| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:209` |
-| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:506` |
-| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:595` |
+| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:191` |
+| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:255` |
+| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:552` |
+| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:641` |
 | GET | `/api/profile/dossier` | Read or list profile dossier. | Session | `server/routes/wallets.ts:1194` |
-| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:477` |
-| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:422` |
-| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:634` |
-| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:138` |
-| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:253` |
-| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:356` |
+| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:523` |
+| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:468` |
+| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:680` |
+| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:145` |
+| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:299` |
+| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:402` |
 | GET | `/api/profile/tokens` | Read or list profile tokens. | Session | `server/routes/wallets.ts:635` |
 | POST | `/api/profile/tokens/sync` | Create, submit, or run profile tokens sync. | Session | `server/routes/wallets.ts:915` |
 | POST | `/api/profile/tokens/trade-board` | Create, submit, or run profile tokens trade board. | Session | `server/routes/wallets.ts:832` |
 | GET | `/api/profile/wallet-graph` | Read or list profile wallet graph. | Session | `server/routes/wallets.ts:443` |
-| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:730` |
+| GET | `/api/profile/watched-videos` | Read or list profile watched videos. | Session | `server/routes/profile.ts:216` |
+| POST | `/api/profile/watched-videos` | Create, submit, or run profile watched videos. | Session | `server/routes/profile.ts:226` |
+| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:776` |
 
 </details>
 
@@ -1942,11 +1945,11 @@ Public user profiles, activity, listings, DMs, and trade boards.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:761` |
-| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:1003` |
-| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:1032` |
-| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:960` |
-| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:854` |
+| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:807` |
+| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:1049` |
+| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:1078` |
+| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:1006` |
+| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:900` |
 
 </details>
 

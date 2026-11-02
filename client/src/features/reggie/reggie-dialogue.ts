@@ -8,7 +8,7 @@
 export interface StepDialogue {
   /** First time Reggie pitches this step. */
   intro: string[];
-  /** Reminder / nag variants. */
+  /** Guidance when the user asks Reggie to take them to this step. */
   nudge: string[];
   /** Celebration when the step verifies. */
   congrats: string[];
@@ -39,47 +39,6 @@ export function pickLine(pool: string[], seed: string, avoid?: string): string {
   return line;
 }
 
-export const REGGIE_GREETINGS: string[] = [
-  "Hey! I'm Reggie. Resident hamster, unlicensed tour guide, and the only one around here who reads the manual.",
-  "Welcome back. The desktop missed you. I didn't, but the desktop did.",
-  "Oh good, you're here. I've been running on this wheel of anticipation all day.",
-  "Greetings, user. I've prepared a full onboarding itinerary and three unrelated opinions.",
-  "You again! Excellent. My quest log doesn't fill itself. Well, technically it does — that's the whole system — but you know what I mean.",
-  "Hi. Reggie. Hamster. Assistant. Questions welcome, cheek-pouch jokes tolerated.",
-  "Look who booted up. I had a whole speech ready and only some of it is legally advice-adjacent.",
-  "There you are. I was about to organize your quest log by emotional damage.",
-  "Welcome back to wtfOS. I swept the desktop, alphabetized the side quests, and judged your progress quietly.",
-  "Ah, my favorite user. Do not ask how many users I say that to. Numbers ruin magic.",
-  "Reggie online. Clipboard loaded. Opinions sharpened. Tiny feet: unstoppable.",
-  "Good timing. I was two seconds from giving the taskbar a performance review.",
-];
-
-export const REGGIE_NAGS: string[] = [
-  "Not to nag, but I'm absolutely going to nag: you've got side quests waiting.",
-  "Psst. The quest log is looking at you. I taught it that.",
-  "Every minute you don't finish a side quest, I do one lap on the wheel. I'm exhausted. Help.",
-  "Reminder from your friendly neighborhood rodent: progress bars don't fill themselves.",
-  "I filed a formal complaint about your idle time. It was addressed to you. This is the complaint.",
-  "The rewards ledger called. It's lonely.",
-  "You know what would look great on you? A completed quest step. Very slimming.",
-  "I've seen glaciers onboard faster. Adorable glaciers, but still.",
-  "Your next unlock is sitting there with a little bow on it. I tied the bow. It took forever.",
-  "I am not saying you are procrastinating. The evidence is saying it and I am merely holding the folder.",
-  "The OS has snacks for doers. Metaphorical snacks. Sometimes actual rewards. Either way: move.",
-  "If side quests could sigh, yours would be fogging up the monitor.",
-  "Tiny reminder from a tiny professional: completed steps unlock better mischief.",
-  "The quest tree is not going to climb itself, and I refuse to grow thumbs.",
-];
-
-export const REGGIE_EMPTY_QUESTION_REPLIES: string[] = [
-  "You have to actually ask something. Silence is free; answers cost a question.",
-  "I received a beautiful blank. Minimalist. Useless. Type a question.",
-  "That was not a question; that was air with punctuation dreams.",
-  "Ask me with words, please. I left my mind-reading helmet in the other burrow.",
-  "Tiny input, tiny answer: try typing the actual question.",
-  "I respect the dramatic pause. Now add nouns.",
-];
-
 export const REGGIE_QUEST_COMPLETE_LINES: string[] = [
   "That's it. That's the whole questline. You went from wtf newbie to wtf rockstar and I have the paperwork to prove it. I'm... actually tearing up. Hamsters can do that.",
   "Quest complete. My work here is done. I'll be in my burrow if you need me — which you won't, because I trained you perfectly.",
@@ -93,14 +52,10 @@ export const REGGIE_QUEST_COMPLETE_LINES: string[] = [
 
 export const REGGIE_ASSISTANT_SCRIPT = {
   summon: [
-    "You rang? Reggie, reporting for desktop duty. I brought advice and absolutely no chill.",
-    "Summoned from the depths of the taskbar. What are we fixing, finding, or theatrically overexplaining?",
-    "Behold: one assistant, freshly summoned, lightly caffeinated by vibes.",
-    "I'm here. The desktop context menu has taste now.",
-    "Reggie has entered the chat bubble. Try not to act surprised; you literally summoned me.",
-    "At your service. Unless the service is math after midnight. Then at your emotional support.",
-    "I popped back in because you asked nicely. Or clicked aggressively. I accept both.",
-    "The assistant has been summoned. The clipboard is loaded. The opinions are unsupervised.",
+    "Quest log ready. Select What's next? for your next available step, or open the log to choose a side quest.",
+    "I'm here for my questline. I can check progress, show an available step, or take you to its destination.",
+    "Reggie reporting for quest duty. Open the quest log or let me point to the next available step.",
+    "You called the quest guide. Pick a step from the log and I'll show you where to go.",
   ],
   loading: [
     "Give me a second to load your quest state. Even hamsters have latency.",
@@ -126,7 +81,7 @@ export const REGGIE_ASSISTANT_SCRIPT = {
   ],
   progress: [
     "Running the books... you're at {completed}/{total} ({percent}%). I've asked the system to re-verify everything — give it a beat and check the quest list.",
-    "Audit time: {completed}/{total} side quests, {percent}% complete. I pinged verification because I enjoy accountability when it happens to other people.",
+    "Audit time: {completed}/{total} quest steps, {percent}% complete. I pinged verification because I enjoy accountability when it happens to other people.",
     "Ledger check: {completed}/{total}, which is {percent}%. Re-verification is underway; the quest machinery is stretching its little legs.",
     "Progress report: {completed}/{total} complete, {percent}% done. Respectable. Improvable. Conveniently, I have suggestions.",
     "I re-ran the numbers: {completed}/{total}, {percent}%. The system is double-checking; I am single-judging.",
@@ -285,14 +240,14 @@ const BASE_REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = {
   },
   navigator: {
     intro: [
-      "Navigation lesson! Open apps from desktop icons or the Start menu, manage windows, and try the command palette. Do the tour and open at least one app the proper way.",
-      "Time to learn the OS itself: icons open apps, the Start menu holds everything, windows drag and stack, and the command palette is the power-user cheat code.",
+      "Navigation quest is available. Paul teaches the desktop controls; I track the quest when you try them. Open an app from a desktop icon, then visit Dashboard to finish this step.",
+      "Paul's navigation lesson covers the controls. Your quest is to open an app from a desktop icon and reach Dashboard; I'll watch for the proof and mark it complete.",
     ],
     nudge: [
-      "The navigation tour is still waiting. It's the difference between living here and just visiting.",
+      "For this navigation quest, open an app from a desktop icon and visit Dashboard. Paul's lesson covers the controls if you need them.",
     ],
     congrats: [
-      "Tour complete! You can officially get anywhere in wtfOS. With great navigation comes great responsibility.",
+      "Navigation quest verified: you opened an app from a desktop icon and reached Dashboard. Paul can help with the other controls.",
     ],
   },
   pet_adopt: {
@@ -601,10 +556,10 @@ const REGGIE_STEP_STORY_NOTES: Record<string, StepStoryNote> = {
     flair: "Taste was exercised. No injuries reported.",
   },
   navigator: {
-    action: "tour navigation with icons, Start, windows, and command palette",
-    why: "Knowing how to move around turns wtfOS from a maze into a place you own.",
-    nag: "You are still navigating like a guest with a polite map.",
-    win: "You can get around the OS without needing me to squeak directions every time.",
+    action: "follow Paul's lesson, open an app from a desktop icon, and visit Dashboard",
+    why: "Opening an app from a desktop icon and visiting Dashboard gives this quest the proof it needs.",
+    nag: "The icon-open and Dashboard visit are still waiting for this quest.",
+    win: "Your navigation quest is verified. Paul taught the controls; I marked the progress.",
     flair: "Power user training: tiny edition.",
   },
   pet_adopt: {
@@ -771,57 +726,6 @@ export const REGGIE_STEP_DIALOGUE: Record<string, StepDialogue> = Object.fromEnt
   ])
 );
 
-/**
- * Smart-ass replies for questions outside Reggie's wheelhouse. Deliberately
- * enormous so the well never feels dry.
- */
-export const REGGIE_SMARTASS_REPLIES: string[] = [
-  "I'm a hamster with a quest log, not a search engine. Try asking about wtfOS.",
-  "Fascinating question. Unrelated to anything I know, but fascinating.",
-  "My knowledge base covers wtfOS, quests, and sunflower seeds. You've strayed.",
-  "That's above my pay grade, and I'm paid in bedding.",
-  "I ran that through my brain. My brain is the size of a chickpea. It said no.",
-  "Error 404: hamster competence not found. Ask me about wtfOS instead.",
-  "I'd answer that, but then I'd be wrong AND smug, and one at a time please.",
-  "You're asking the rodent. Consider that. Now ask me something about wtfOS.",
-  "Let me consult my notes... these are drawings of seeds. Ask about the OS.",
-  "I have a certificate in wtfOS guidance and absolutely nothing else.",
-  "Beyond my whiskers, friend. wtfOS questions only.",
-  "The answer is somewhere between 'no idea' and 'still no idea'.",
-  "I could make something up, but the last hamster who did that got promoted to management, and I fear success.",
-  "My crystal ball is a marble I found. It says: ask about side quests.",
-  "That question bounced off my tiny skull like a sunflower seed off a window.",
-  "If it's not in wtfOS, it's not in Reggie. That's the deal. Take it up with my agent.",
-  "Hmm. Hmmmm. No. Next question.",
-  "I once tried to know things outside wtfOS. I pulled a muscle.",
-  "That's a great question for someone with a spine longer than 4 centimeters.",
-  "The wheel in my enclosure spins faster than my brain on that topic.",
-  "Out of scope, chief. My scope is: this OS, your quests, and snack schedules.",
-  "I'll allow the question, but I refuse the answer, on account of not having one.",
-  "You want the OTHER assistant. Tall, invisible, doesn't exist. I'm the hamster one.",
-  "My lawyer (also a hamster) advises me not to speculate.",
-  "Somewhere, an actual expert just shivered. Ask me about wtfOS instead.",
-  "I know 87 things and that isn't one of them. Impressive count though, right?",
-  "Buddy, I navigate by smell. Recalibrate your expectations.",
-  "That's outside the burrow of my expertise.",
-  "Processing... processing... this is me stalling because I don't know.",
-  "Great question! Anyway. Side quests?",
-  "I asked the desktop pet. It also doesn't know, but it says hi.",
-  "My sources (a wheel, a water bottle) have no comment.",
-  "If I answered questions like that, they'd make me wear a tie.",
-  "Nope. But have you connected your Etherlink wallet yet? Smooth segue, Reggie.",
-  "I'm flattered you think I know that. Genuinely. Warm feeling. No answer though.",
-  "Some knowledge is forbidden. Some is just missing. Mine is the second one.",
-  "That's a mystery even the command palette can't solve, and it solves everything.",
-  "I stuffed the answer in my cheek pouches and lost it. Happens more than you'd think.",
-  "Consider this a teaching moment where neither of us learns anything.",
-  "Whoa there. I'm one hamster. The lore team is down the hall.",
-  "The only firehose I know is the AT Protocol one, and it has no opinion either.",
-  "Denied. Not for security reasons. For ignorance reasons.",
-  "I would need at least three more brain cells and a snack to attempt that.",
-  "Look, I peaked at 'explains wallet signatures'. Let me have this.",
-];
-
 export type ReggieAssistantScriptKind = keyof typeof REGGIE_ASSISTANT_SCRIPT;
 
 function fillTemplate(line: string, values: Record<string, string | number> = {}): string {
@@ -841,22 +745,6 @@ export function assistantStateLine(
   return fillTemplate(pickLine([...pool], `${kind}:${seed}`, avoid), values);
 }
 
-export function greeting(seed: string): string {
-  return pickLine(REGGIE_GREETINGS, `greet:${seed}`);
-}
-
-export function nag(seed: string, avoid?: string): string {
-  return pickLine(REGGIE_NAGS, `nag:${seed}`, avoid);
-}
-
-export function emptyQuestionReply(seed: string, avoid?: string): string {
-  return pickLine(REGGIE_EMPTY_QUESTION_REPLIES, `empty-question:${seed}`, avoid);
-}
-
-export function smartAssReply(seed: string, avoid?: string): string {
-  return pickLine(REGGIE_SMARTASS_REPLIES, `smartass:${seed}`, avoid);
-}
-
 export function stepLine(
   stepKey: string,
   kind: keyof StepDialogue,
@@ -865,7 +753,7 @@ export function stepLine(
 ): string {
   const dialogue = REGGIE_STEP_DIALOGUE[stepKey];
   if (!dialogue) {
-    return pickLine(REGGIE_NAGS, `${stepKey}:${kind}:${seed}`, avoid);
+    return `I cannot find that quest step in my log. Open Quest HQ or ask What's next?`;
   }
   return pickLine(dialogue[kind], `${stepKey}:${kind}:${seed}`, avoid);
 }

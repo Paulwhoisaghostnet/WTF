@@ -18,15 +18,24 @@ const DIST_DIR = path.resolve(__dirname, "../../dist/public");
 const FAQ_TUTORIALS = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../shared/faq-tutorials.json"), "utf8")
 );
+const PAUL_TUTORIALS = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../public/desktop/paul-tutorials/catalog.json"), "utf8")
+);
 const WTFOS_PROMOS = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../shared/wtfos-promos.json"), "utf8")
 );
+const VIDEO_TITLES = new Map([
+  ["paul/intro", "Welcome to wtfOS with paulwhoisaclippy"],
+  ...PAUL_TUTORIALS.map((video) => [`paul/${video.slug}`, video.title]),
+  ...FAQ_TUTORIALS.map((video) => [`tommy/${video.slug}`, video.title]),
+]);
 const PORT = Number(process.env.HARNESS_PORT || 4173);
 const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user";
 
 const state = {
   mode: "normal", // "normal" | "rate-limited" | "cold-rate-limited" | "ok-after-rate-limit"
   userRole: "admin",
+  manageUsersPermission: true,
   groupchatRequestCount: 0,
   groupchatLog: [],
   interactionLog: [],
@@ -42,6 +51,12 @@ const state = {
   skywireChatEnabled: true,
   skywireHandle: "wtf-admin.bsky.social",
   welcomePending: false,
+  introSeenOverride: true,
+  videoWatchHistory: new Map(),
+  videoWatchUsers: new Map(),
+  lastAuthUser: null,
+  lastAuthRole: null,
+  gmWelcome: null,
   welcomeCompleteUnauthorized: false,
   wtfLiveSoundboard: { clips: [], armed: true, updatedAt: null },
   wtfLiveShowKits: [],
@@ -177,6 +192,21 @@ function defaultAuthUserForRole(role) {
 function currentAuthUser() {
   if (state.userRole === "anonymous") return null;
   return state.authUser || defaultAuthUserForRole(state.userRole);
+}
+
+function videoHistoryForUser(userId) {
+  const key = Number(userId);
+  let history = state.videoWatchHistory.get(key);
+  if (!history) {
+    history = new Map();
+    state.videoWatchHistory.set(key, history);
+  }
+  return history;
+}
+
+function hasSeenIntroVideo(userId) {
+  return Boolean(state.videoWatchHistory.get(Number(userId))?.has("paul/intro")) ||
+    (Number(state.authUser?.id) === Number(userId) && state.introSeenOverride);
 }
 
 function isCobwebsaintsUser(user = currentAuthUser()) {
@@ -517,11 +547,19 @@ app.get("/__test/media/harness-alpha-token.png", (_req, res) => {
 
 // ── Test control ────────────────────────────────────────────────
 app.post("/__test/state", (req, res) => {
+  if (req.body?.preserveVideoWatchHistory !== true) {
+    state.videoWatchHistory = new Map();
+    state.videoWatchUsers = new Map();
+  }
   state.mode = String(req.body?.mode || "normal");
   state.userRole = String(req.body?.userRole || req.body?.role || "admin");
+  state.manageUsersPermission = req.body?.manageUsersPermission === undefined
+    ? state.userRole === "admin"
+    : Boolean(req.body.manageUsersPermission);
   state.groupchatRequestCount = 0;
   state.groupchatLog = [];
   state.interactionLog = [];
+  state.gmWelcome = req.body?.gmWelcome ?? null;
   const defaultAuthUser = defaultAuthUserForRole(state.userRole);
   state.authUser = defaultAuthUser
     ? {
@@ -531,6 +569,8 @@ app.post("/__test/state", (req, res) => {
         displayName: String(req.body?.displayName || defaultAuthUser.displayName),
       }
     : null;
+  state.lastAuthUser = state.authUser ? { ...state.authUser } : null;
+  state.lastAuthRole = state.authUser ? state.userRole : null;
   state.driveConnected = Boolean(req.body?.driveConnected);
   state.profileSocialConnected = req.body?.profileSocialConnected || null;
   state.etherlinkLinked = Boolean(req.body?.etherlinkLinked);
@@ -542,6 +582,9 @@ app.post("/__test/state", (req, res) => {
   state.skywireChatEnabled = req.body?.skywireChatEnabled !== false;
   state.skywireHandle = String(req.body?.skywireHandle || "wtf-admin.bsky.social");
   state.welcomePending = Boolean(req.body?.welcomePending);
+  state.introSeenOverride = req.body?.hasSeenIntroVideo === undefined
+    ? !state.welcomePending
+    : Boolean(req.body.hasSeenIntroVideo);
   state.welcomeCompleteUnauthorized = Boolean(req.body?.welcomeCompleteUnauthorized);
   state.wtfLiveSoundboard = { clips: [], armed: true, updatedAt: null };
   state.wtfLiveShowKits = [];
@@ -603,6 +646,11 @@ app.post("/__test/state", (req, res) => {
       skywireChatEnabled: state.skywireChatEnabled,
       skywireHandle: state.skywireHandle,
       welcomePending: state.welcomePending,
+      hasSeenIntroVideo: state.authUser ? hasSeenIntroVideo(state.authUser.id) : false,
+      videoWatchHistory: [...state.videoWatchHistory.entries()].map(([userId, videos]) => ({
+        userId,
+        videoIds: [...videos.keys()],
+      })),
       welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
       wtfUserSiteClaimed: state.wtfUserSiteClaimed,
       wtfUserSiteStatus: state.wtfUserSiteStatus,
@@ -630,6 +678,11 @@ app.get("/__test/state", (_req, res) => {
     skywireChatEnabled: state.skywireChatEnabled,
     skywireHandle: state.skywireHandle,
     welcomePending: state.welcomePending,
+    hasSeenIntroVideo: state.authUser ? hasSeenIntroVideo(state.authUser.id) : false,
+    videoWatchHistory: [...state.videoWatchHistory.entries()].map(([userId, videos]) => ({
+      userId,
+      videoIds: [...videos.keys()],
+    })),
     welcomeCompleteUnauthorized: state.welcomeCompleteUnauthorized,
     wtfUserSiteClaimed: state.wtfUserSiteClaimed,
     wtfUserSiteStatus: state.wtfUserSiteStatus,
@@ -680,12 +733,8 @@ app.get("/api/auth/csrf-token", (_req, res) => {
   res.json({ csrfToken: "test-csrf-token" });
 });
 
-app.get("/api/auth/user", (_req, res) => {
-  const authUser = currentAuthUser();
-  if (!authUser) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
-  res.json({
+function harnessAuthPayload(authUser) {
+  return {
     id: authUser.id,
     username: authUser.username,
     displayName: authUser.displayName,
@@ -696,9 +745,10 @@ app.get("/api/auth/user", (_req, res) => {
     twitterPublic: true,
     welcomedToWtfOs: !state.welcomePending,
     welcomedToWtfOsAt: state.welcomePending ? null : "2026-01-01T00:00:00Z",
+    hasSeenIntroVideo: hasSeenIntroVideo(authUser.id),
     gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
     gmWelcomeLastSeenAt: nowIso(),
-    gmWelcome: null,
+    gmWelcome: state.gmWelcome,
     createdAt: "2026-01-01T00:00:00Z",
     effectivePermissions:
       state.userRole === "admin"
@@ -735,7 +785,74 @@ app.get("/api/auth/user", (_req, res) => {
       adminPanelTabs: state.userRole === "admin" ? ["OS Admin", "Automation"] : [],
       automationHandles: ["admin_inbox.message.created", "app.interaction.tracked"],
     },
-  });
+  };
+}
+
+app.get("/api/auth/user", (_req, res) => {
+  const authUser = currentAuthUser();
+  if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+  res.json(harnessAuthPayload(authUser));
+});
+
+app.post("/api/auth/logout", (_req, res) => {
+  const authUser = currentAuthUser();
+  if (authUser) {
+    state.lastAuthUser = { ...authUser };
+    state.lastAuthRole = state.userRole;
+  }
+  state.userRole = "anonymous";
+  state.authUser = null;
+  res.json({ ok: true });
+});
+
+app.post("/api/auth/login", (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  if (!username || username !== state.lastAuthUser?.username) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  state.authUser = { ...state.lastAuthUser };
+  state.userRole = state.lastAuthRole || "contestant";
+  res.json(harnessAuthPayload(state.authUser));
+});
+
+app.get("/api/profile/watched-videos", (_req, res) => {
+  const authUser = currentAuthUser();
+  if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+  const videos = [...videoHistoryForUser(authUser.id).entries()]
+    .map(([videoId, watchedAt]) => ({ videoId, title: VIDEO_TITLES.get(videoId), watchedAt }))
+    .sort((a, b) => b.watchedAt.localeCompare(a.watchedAt));
+  res.json({ videos });
+});
+
+app.post("/api/profile/watched-videos", (req, res) => {
+  const authUser = currentAuthUser();
+  if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+  const videoId = String(req.body?.videoId || "");
+  const title = VIDEO_TITLES.get(videoId);
+  if (!title) return res.status(400).json({ error: "Unknown video" });
+  const history = videoHistoryForUser(authUser.id);
+  if (!history.has(videoId)) history.set(videoId, nowIso());
+  state.videoWatchUsers.set(authUser.id, { username: authUser.username });
+  res.json({ videoId, title, watchedAt: history.get(videoId) });
+});
+
+app.get("/api/admin/video-watch-roster", (req, res) => {
+  const authUser = currentAuthUser();
+  if (!authUser) return res.status(401).json({ error: "Not authenticated" });
+  if (!state.manageUsersPermission) return res.status(403).json({ error: "Forbidden" });
+  const videoId = String(req.query.videoId || "");
+  if (!/^(paul|tommy)\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(videoId)) {
+    return res.status(400).json({ error: "Invalid video ID" });
+  }
+  const viewers = [...state.videoWatchHistory.entries()]
+    .flatMap(([userId, videos]) => videos.has(videoId)
+      ? [{
+          userId,
+          username: state.videoWatchUsers.get(userId)?.username || `player-${userId}`,
+          watchedAt: videos.get(videoId),
+        }]
+      : []);
+  res.json({ videoId, viewers });
 });
 
 app.get("/api/auth/social/config", (_req, res) => {
@@ -840,6 +957,7 @@ app.post("/api/auth/welcome/complete", (_req, res) => {
     roles: [state.userRole],
     welcomedToWtfOs: true,
     welcomedToWtfOsAt: nowIso(),
+    hasSeenIntroVideo: hasSeenIntroVideo(authUser.id),
     gmWelcomeUtcDay: new Date().toISOString().slice(0, 10),
     gmWelcomeLastSeenAt: nowIso(),
     gmWelcome: null,

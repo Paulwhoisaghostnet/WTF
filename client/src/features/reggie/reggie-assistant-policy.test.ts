@@ -8,13 +8,16 @@ const customCursorSource = readFileSync("client/src/features/desktop/CustomCurso
 const wimSource = readFileSync("client/src/pages/Wim.tsx", "utf8");
 const localizationSource = readFileSync("client/src/lib/localization-catalogs.ts", "utf8");
 
-test("Reggie can be dismissed, summoned, and persisted into WIM", () => {
+test("Reggie can be dismissed, summoned for quests, and persisted into WIM", () => {
   assert.match(assistantSource, /REGGIE_SUMMON_EVENT/);
   assert.match(assistantSource, /window\.addEventListener\(REGGIE_SUMMON_EVENT/);
   assert.match(assistantSource, /setDismissed\(true\)/);
+  assert.match(assistantSource, /Snooze Reggie for 10 minutes/);
   assert.match(assistantSource, /setSnoozedUntil\(null\)/);
-  assert.match(assistantSource, /TRANSIENT_BUBBLE_MS/);
-  assert.match(assistantSource, /hideAfter/);
+  assert.match(assistantSource, /suggestNext\(\)/);
+  assert.match(assistantSource, /What's next\?/);
+  assert.match(assistantSource, /Take me there/);
+  assert.doesNotMatch(assistantSource, /answerQuestion|handleAsk|NAG_INTERVAL_MS|setInterval\(/);
   assert.match(assistantSource, /\/api\/reggie\/messages/);
   assert.match(assistantSource, /"reggie\.assistant\.summoned"/);
   assert.match(assistantSource, /"reggie\.assistant\.dismissed"/);
