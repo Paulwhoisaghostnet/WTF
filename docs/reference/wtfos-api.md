@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **958 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **960 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 958 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 960 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -104,7 +104,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `archive` | 2 | Operations for the archive domain. |
 | `atproto` | 13 | AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations. |
 | `attendance` | 4 | Attendance check-ins and event attendance records. |
-| `auth` | 23 | Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap. |
+| `auth` | 25 | Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap. |
 | `barter` | 2 | On-chain barter listings, offers, settlements, and synchronization. |
 | `board` | 23 | Message-board channels, posts, reactions, moderation, search, and inbound webhooks. |
 | `browser` | 2 | Server-assisted browser/session tooling. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 460**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 489**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 462**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 223**, **Session 490**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -453,35 +453,37 @@ Attendance check-ins and event attendance records.
 </details>
 
 <details>
-<summary><code>auth</code> — 23 operations</summary>
+<summary><code>auth</code> — 25 operations</summary>
 
 Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:926` |
-| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:61` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1544`<br>`server/auth/routes.ts:1554` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1549`<br>`server/auth/routes.ts:1557` |
-| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1229` |
-| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1233` |
-| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:892` |
-| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:852` |
-| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:762` |
-| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:797` |
-| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:700` |
-| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:478` |
-| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1240`<br>`server/auth/routes.ts:1250` |
-| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1258` |
-| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1316` |
-| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:503` |
-| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:620` |
-| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1245`<br>`server/auth/routes.ts:1253` |
-| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:814` |
-| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1040` |
-| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1135` |
-| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1059` |
-| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:819` |
+| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:938` |
+| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:70` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1710`<br>`server/auth/routes.ts:1720` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1715`<br>`server/auth/routes.ts:1723` |
+| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1241` |
+| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1245` |
+| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:904` |
+| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:864` |
+| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:774` |
+| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:809` |
+| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:712` |
+| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:487` |
+| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1252`<br>`server/auth/routes.ts:1262` |
+| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1408` |
+| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1476` |
+| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:515` |
+| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:632` |
+| GET | `/api/auth/twitter-proof` | Read or list auth twitter proof. | Session | `server/auth/routes.ts:1276` |
+| GET | `/api/auth/twitter-proof/callback` | Read or list auth twitter proof callback. | Public/handler | `server/auth/routes.ts:1316` |
+| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1257`<br>`server/auth/routes.ts:1265` |
+| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:826` |
+| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1052` |
+| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1147` |
+| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1071` |
+| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:831` |
 
 </details>
 

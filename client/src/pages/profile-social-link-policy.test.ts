@@ -4,25 +4,34 @@ import test from "node:test";
 
 const profileSource = readFileSync(new URL("./Profile.tsx", import.meta.url), "utf8");
 
-test("Profile X linking carries the intended handle and explains wrong-account callbacks", () => {
+test("Profile verifies a typed X account through the identity-only sign-in flow", () => {
   assert.match(
     profileSource,
     /function normalizeProfileTwitterHandle/,
-    "Profile should normalize the typed X handle before OAuth handoff"
+    "Profile should normalize the typed X handle before X handoff"
   );
   assert.match(
     profileSource,
-    /params\.set\("expectedHandle", expectedTwitterHandle\)/,
-    "Profile should bind the intended X handle into the OAuth start URL"
+    /expectedHandle: expectedTwitterHandle/,
+    "Profile should bind the intended X handle into the proof start URL"
   );
   assert.match(
     profileSource,
-    /twitter_oauth2_wrong_account/,
-    "Profile should render a specific wrong-account OAuth recovery message"
+    /oauthStartUrl\(`\/api\/auth\/twitter-proof\?\$\{params\.toString\(\)\}`\)/,
+    "Profile should start the identity-only proof flow"
   );
   assert.match(
     profileSource,
-    /Switch accounts on x\.com, then reconnect/,
-    "Profile should tell users how to recover when X returns the wrong logged-in account"
+    /disabled=\{disconnectSocialMutation\.isPending \|\| !expectedTwitterHandle\}/,
+    "Profile should require a valid intended handle before verification"
+  );
+  assert.match(profileSource, /twitter_proof_wrong_account/);
+  assert.match(profileSource, /Your profile's X link was not changed/);
+  assert.match(profileSource, /X will ask you to sign in as @/);
+  assert.match(profileSource, /Verification uses X sign-in without an X profile lookup/);
+  assert.doesNotMatch(
+    profileSource,
+    /oauthStartUrl\(`\/api\/auth\/twitter-oauth2\?/,
+    "Profile proof should not use the OAuth2 path that fetches a metered user record"
   );
 });

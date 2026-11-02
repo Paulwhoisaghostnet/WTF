@@ -1429,7 +1429,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth change password.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:926"
+      "server/auth/routes.ts:938"
     ]
   },
   {
@@ -1438,7 +1438,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth csrf token.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:61"
+      "server/auth/routes.ts:70"
     ]
   },
   {
@@ -1447,8 +1447,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth discord.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1544",
-      "server/auth/routes.ts:1554"
+      "server/auth/routes.ts:1710",
+      "server/auth/routes.ts:1720"
     ]
   },
   {
@@ -1457,8 +1457,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth discord callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1549",
-      "server/auth/routes.ts:1557"
+      "server/auth/routes.ts:1715",
+      "server/auth/routes.ts:1723"
     ]
   },
   {
@@ -1467,7 +1467,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth github.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1229"
+      "server/auth/routes.ts:1241"
     ]
   },
   {
@@ -1476,7 +1476,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth github callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1233"
+      "server/auth/routes.ts:1245"
     ]
   },
   {
@@ -1485,7 +1485,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth gm welcome assets filename.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:892"
+      "server/auth/routes.ts:904"
     ]
   },
   {
@@ -1494,7 +1494,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth gm welcome complete.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:852"
+      "server/auth/routes.ts:864"
     ]
   },
   {
@@ -1503,7 +1503,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth login.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:762"
+      "server/auth/routes.ts:774"
     ]
   },
   {
@@ -1512,7 +1512,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth logout.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:797"
+      "server/auth/routes.ts:809"
     ]
   },
   {
@@ -1521,7 +1521,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth register.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:700"
+      "server/auth/routes.ts:712"
     ]
   },
   {
@@ -1530,7 +1530,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth social config.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:478"
+      "server/auth/routes.ts:487"
     ]
   },
   {
@@ -1539,8 +1539,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1240",
-      "server/auth/routes.ts:1250"
+      "server/auth/routes.ts:1252",
+      "server/auth/routes.ts:1262"
     ]
   },
   {
@@ -1549,7 +1549,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1258"
+      "server/auth/routes.ts:1408"
     ]
   },
   {
@@ -1558,7 +1558,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2 callback.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1316"
+      "server/auth/routes.ts:1476"
     ]
   },
   {
@@ -1567,7 +1567,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2 diagnostics.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:503"
+      "server/auth/routes.ts:515"
     ]
   },
   {
@@ -1576,7 +1576,25 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter oauth2 diagnostics self test.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:620"
+      "server/auth/routes.ts:632"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/twitter-proof",
+    "purpose": "Read or list auth twitter proof.",
+    "declaredAccess": "Session",
+    "sources": [
+      "server/auth/routes.ts:1276"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/twitter-proof/callback",
+    "purpose": "Read or list auth twitter proof callback.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/auth/routes.ts:1316"
     ]
   },
   {
@@ -1585,8 +1603,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth twitter callback.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1245",
-      "server/auth/routes.ts:1253"
+      "server/auth/routes.ts:1257",
+      "server/auth/routes.ts:1265"
     ]
   },
   {
@@ -1595,7 +1613,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth user.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:814"
+      "server/auth/routes.ts:826"
     ]
   },
   {
@@ -1604,7 +1622,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet challenge.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1040"
+      "server/auth/routes.ts:1052"
     ]
   },
   {
@@ -1613,7 +1631,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet register.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1135"
+      "server/auth/routes.ts:1147"
     ]
   },
   {
@@ -1622,7 +1640,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth wallet verify.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/auth/routes.ts:1059"
+      "server/auth/routes.ts:1071"
     ]
   },
   {
@@ -1631,7 +1649,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run auth welcome complete.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:819"
+      "server/auth/routes.ts:831"
     ]
   },
   {

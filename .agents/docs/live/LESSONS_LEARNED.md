@@ -13146,3 +13146,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Merging both later would make the canonical board ambiguous and could silently replace one finding during a conflict resolution.
 
 **Rule**: Before promoting parallel work, compare new canonical IDs with active checkout changes as well as merged branches. Renumber one record in the canonical JSON, regenerate the board, and verify uniqueness before pushing the combined result.
+
+---
+
+## 2026-11-02 — Profile X proof needs account choice and an approved canonical callback
+
+**What happened**: Profile relinking used OAuth 2.0, which could silently reuse the browser's existing X account and then called the metered `/2/users/me` endpoint for identity. The X app approved only the legacy `wtfgameshow.app` OAuth 2.0 callback; a signed request for a new canonical `wtfos.app` callback returned X error 415 until that exact URL was added in the developer console.
+
+**Why it mattered**: Users could not reliably change the linked account, and successful profile identity checks consumed a priced X user lookup. A correct OAuth implementation still fails at X before consent if its callback is not registered exactly.
+
+**Rule**: For Profile identity proof, use OAuth 1.0a request and access-token exchange with read-only access, `force_login`, the intended handle, and a session-bound request token. Accept only the returned provider identity, reject a different account before persistence, discard the access token, and keep W action grants separate. Redirect cached Profile OAuth 2.0 starts and stop in-flight Profile callbacks before any metered lookup. Register the exact canonical callback in X Console and confirm it with a signed request-token probe before relying on the flow.

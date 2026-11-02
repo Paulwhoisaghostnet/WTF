@@ -866,6 +866,7 @@ app.get("/api/admin/video-watch-roster", (req, res) => {
 app.get("/api/auth/social/config", (_req, res) => {
   res.json({
     twitter: true,
+    twitterProof: true,
     twitterOauth2: true,
     discord: true,
     publicSiteUrl: "http://127.0.0.1",
