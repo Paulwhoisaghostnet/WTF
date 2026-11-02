@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { useWindowManager } from "../../lib/window-context";
+import { useRecordWatchedVideo } from "../video-history/video-history";
 
 type PaulTutorial = {
   slug: string;
@@ -288,6 +289,7 @@ async function loadPaulTutorials(): Promise<PaulTutorial[]> {
 export function PaulTutorialSeries() {
   const [, setLocation] = useLocation();
   const windowManager = useWindowManager();
+  const { recordWatchedVideo, failedVideoId, savingVideoId, savedVideoId } = useRecordWatchedVideo();
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [playerKey, setPlayerKey] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
@@ -405,6 +407,7 @@ export function PaulTutorialSeries() {
                   eventType: "faq.tutorial.completed",
                   metadata: { tutorialSlug: selected.slug, series: "paulwhoisaclippy" },
                 });
+                void recordWatchedVideo(`paul/${selected.slug}`);
               }}
             >
               <source src={selected.videoUrl} type="video/mp4" />
@@ -414,6 +417,8 @@ export function PaulTutorialSeries() {
             <MediaNote>
               {selected.category} · {formatDuration(selected.durationSeconds)} · Narrated walkthrough with English captions. On a phone, use full screen in landscape.
             </MediaNote>
+            {savingVideoId === `paul/${selected.slug}` && <MediaNote role="status">Saving this watch to your profile…</MediaNote>}
+            {savedVideoId === `paul/${selected.slug}` && <MediaNote role="status">Saved to your profile.</MediaNote>}
             {playbackError && (
               <ErrorNotice role="alert">
                 This episode could not play. The written steps are still available.
@@ -426,6 +431,19 @@ export function PaulTutorialSeries() {
                   }}
                 >
                   Retry video
+                </Button>
+              </ErrorNotice>
+            )}
+            {failedVideoId === `paul/${selected.slug}` && (
+              <ErrorNotice role="alert">
+                Your completed watch could not be saved to your profile.
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={savingVideoId === `paul/${selected.slug}`}
+                  onClick={() => void recordWatchedVideo(`paul/${selected.slug}`)}
+                >
+                  Retry save
                 </Button>
               </ErrorNotice>
             )}

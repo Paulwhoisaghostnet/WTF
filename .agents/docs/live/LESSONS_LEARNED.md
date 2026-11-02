@@ -12815,3 +12815,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Added a labeled episode chooser above the video at narrow widths while retaining the full cards below, and hid Reggie only on narrow `/faq` views. The focused browser test at 390 × 844 verifies the chooser is inside the initial viewport, can select the last episode, and Reggie returns after following Try this in wtfOS.
 
 **Rule**: On small screens, make the next meaningful choice visible before scrolling through the current lesson, and verify persistent assistants cannot obscure instructional controls or results.
+
+### 2026-11-02 — Welcome acknowledgement is not a video watch receipt
+
+**What happened**: The existing `welcomedToWtfOs` flag was set when a player chose a destination or skipped Paul's intro. Treating that flag as proof of playback would have marked skipped videos as watched. Showing every unseen intro on auth hydration would also have interrupted a player again on a same-session refresh after Skip.
+
+**Correction and proof**: Added a unique account-and-video completion row written only after the player reaches `ended`, with a server-derived title and first-watch timestamp. The auth response derives intro history from that row. An explicit later login shows the intro again if it remains unseen or a brief boot screen if it was completed; ordinary hydration respects the current session's welcome acknowledgement. Focused browser coverage proved skip, partial play, completion, replay idempotency, profile ownership, roster permissions, and reduced-motion boot. A disposable local PostgreSQL run proved row uniqueness, user isolation, roster lookup, and cascade deletion.
+
+**Rule**: Keep welcome acknowledgement, video completion, and daily greeting state separate. Base the returning-login choice on a durable watch receipt, preserve the first completion on replay, and distinguish a new login from a page refresh.

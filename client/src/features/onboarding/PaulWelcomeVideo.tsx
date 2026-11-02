@@ -1,6 +1,7 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { Button } from "react95";
+import { useRecordWatchedVideo } from "../video-history/video-history";
 
 const VIDEO_URL = "/desktop/paulwhoisaclippy-welcome.mp4";
 const POSTER_URL = "/desktop/paulwhoisaclippy-welcome-poster.png";
@@ -62,13 +63,25 @@ const WrittenGuide = styled.details`
   }
 `;
 
-export function PaulWelcomeVideo({ autoPlay = false }: { autoPlay?: boolean }) {
+export function PaulWelcomeVideo({
+  autoPlay = false,
+  onSavePendingChange,
+}: {
+  autoPlay?: boolean;
+  onSavePendingChange?: (pending: boolean) => void;
+}) {
   const [failed, setFailed] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
+  const { recordWatchedVideo, failedVideoId, savingVideoId, savedVideoId, canRecord } = useRecordWatchedVideo();
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const shouldAutoPlay = autoPlay && !prefersReducedMotion;
+  const saveCompletedWatch = () => {
+    if (!canRecord) return;
+    onSavePendingChange?.(true);
+    void recordWatchedVideo("paul/intro").finally(() => onSavePendingChange?.(false));
+  };
 
   return (
     <Player>
@@ -83,6 +96,7 @@ export function PaulWelcomeVideo({ autoPlay = false }: { autoPlay?: boolean }) {
         aria-label="paulwhoisaclippy's welcome and wtfOS navigation video"
         onError={() => setFailed(true)}
         onCanPlay={() => setFailed(false)}
+        onEnded={saveCompletedWatch}
       >
         <source src={VIDEO_URL} type="video/mp4" />
         <track
@@ -99,6 +113,8 @@ export function PaulWelcomeVideo({ autoPlay = false }: { autoPlay?: boolean }) {
           The video starts muted. Use the player controls for sound or full screen.
         </Note>
       )}
+      {savingVideoId === "paul/intro" && <Note role="status">Saving this watch to your profile…</Note>}
+      {savedVideoId === "paul/intro" && <Note role="status">Saved to your profile.</Note>}
       {failed && (
         <ErrorMessage role="alert">
           <span>The welcome video could not load. The navigation steps below are still available.</span>
@@ -111,6 +127,19 @@ export function PaulWelcomeVideo({ autoPlay = false }: { autoPlay?: boolean }) {
             }}
           >
             Retry video
+          </Button>
+        </ErrorMessage>
+      )}
+      {failedVideoId === "paul/intro" && (
+        <ErrorMessage role="alert">
+          <span>Your completed watch could not be saved to your profile.</span>
+          <Button
+            type="button"
+            size="sm"
+            disabled={savingVideoId === "paul/intro"}
+            onClick={saveCompletedWatch}
+          >
+            Retry save
           </Button>
         </ErrorMessage>
       )}

@@ -196,6 +196,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The browser harness loads every checked-in episode asset and verifies selected, played, and completed events retain the tutorial slug and paulwhoisaclippy series identity; Try this in wtfOS follows the episode's registered route without granting rewards or changing account state.",
   },
   {
+    id: "auth.watched-video-history-and-boot",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec: "tests/playwright/inventory/video-watch-history.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/video-watch-history.spec.mjs",
+    userVisibleAssertion:
+      "Finishing a known Help video records it once on the signed-in account and lists it on My Profile. A returning account that has completed Paul's intro sees a short wtfOS boot animation after login; an account that skipped the intro sees the intro again. Reduced-motion users can enter directly.",
+    durableSideEffectAssertion:
+      "The watched-video roster is keyed by user and canonical video ID, survives logout and login, is idempotent on replay, and cannot be written by a guest or for an unknown video. The per-video viewer roster requires manage_users permission, while each profile can read only its own history.",
+  },
+  {
     id: "wtfos.guide-promo-channel",
     domain: "WTF TV, Playback, Channels, and Embeds",
     platformOwner: "faq-tv",

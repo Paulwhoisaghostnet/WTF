@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "../lib/auth-context";
 import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
 import { PaulWelcomeVideo } from "../features/onboarding/PaulWelcomeVideo";
+import { WtfOsBootScreen } from "../features/onboarding/WtfOsBootScreen";
 
 const Backdrop = styled.div`
   position: fixed;
@@ -158,9 +159,15 @@ const ErrorText = styled.p`
 `;
 
 export function WelcomeMessage() {
-  const { user, completeWelcome, completeGmWelcome } = useAuth();
+  const { user, loginEntry, completeWelcome, completeGmWelcome } = useAuth();
   const [, setLocation] = useLocation();
+  const [entryDecision, setEntryDecision] = useState<{
+    userId: number;
+    hasSeenIntroVideo: boolean;
+  } | null>(null);
+  const [bootFinishedForLoginNonce, setBootFinishedForLoginNonce] = useState<number | null>(null);
   const [hiddenForUserId, setHiddenForUserId] = useState<number | null>(null);
+  const [introSavePending, setIntroSavePending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -168,11 +175,36 @@ export function WelcomeMessage() {
     setError("");
     setSaving(false);
     setHiddenForUserId(null);
+    setBootFinishedForLoginNonce(null);
+    setIntroSavePending(false);
   }, [user?.id]);
 
-  if (!user || hiddenForUserId === user.id) return null;
+  useEffect(() => {
+    if (!user) {
+      setEntryDecision(null);
+      return;
+    }
+    setEntryDecision((current) => current?.userId === user.id
+      ? current
+      : {
+          userId: user.id,
+          hasSeenIntroVideo: user.hasSeenIntroVideo === true,
+        });
+  }, [user]);
 
-  const needsWtfWelcome = user.welcomedToWtfOs !== true;
+  if (!user || entryDecision?.userId !== user.id || hiddenForUserId === user.id) return null;
+
+  if (
+    entryDecision.hasSeenIntroVideo &&
+    loginEntry?.userId === user.id &&
+    bootFinishedForLoginNonce !== loginEntry.nonce
+  ) {
+    return <WtfOsBootScreen onFinish={() => setBootFinishedForLoginNonce(loginEntry.nonce)} />;
+  }
+
+  const explicitLogin = loginEntry?.userId === user.id;
+  const needsWtfWelcome = !entryDecision.hasSeenIntroVideo &&
+    (user.welcomedToWtfOs !== true || explicitLogin);
   const gmWelcome = user.gmWelcome?.shouldShow ? user.gmWelcome : null;
 
   if (!needsWtfWelcome && !gmWelcome) return null;
@@ -180,10 +212,11 @@ export function WelcomeMessage() {
   const chosenUsername = user.username;
 
   const acknowledge = async (route?: string) => {
+    if (introSavePending) return;
     setSaving(true);
     setError("");
     try {
-      if (needsWtfWelcome) {
+      if (needsWtfWelcome && user.welcomedToWtfOs !== true) {
         await completeWelcome();
       }
       if (gmWelcome) {
@@ -218,11 +251,11 @@ export function WelcomeMessage() {
                   challenge, or explore through the icons and Stuffs menu. Meet
                   paulwhoisaclippy—he will show you around.
                 </Intro>
-                <PaulWelcomeVideo autoPlay />
+                <PaulWelcomeVideo autoPlay onSavePendingChange={setIntroSavePending} />
                 <Button
                   type="button"
                   onClick={() => acknowledge("/faq")}
-                  disabled={saving}
+                  disabled={saving || introSavePending}
                   style={{ minHeight: 40, whiteSpace: "normal" }}
                 >
                   Watch Paul's step-by-step videos
@@ -236,7 +269,7 @@ export function WelcomeMessage() {
                         type="button"
                         title={task.description}
                         onClick={() => acknowledge(task.route)}
-                        disabled={saving}
+                        disabled={saving || introSavePending}
                       >
                         <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
                         <strong>{task.label}</strong>
@@ -248,10 +281,10 @@ export function WelcomeMessage() {
                     personalize your account.
                   </HelpText>
                   <SecondaryLinks>
-                    <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving}>
+                    <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving || introSavePending}>
                       Help &amp; Start Here
                     </Button>
-                    <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving}>
+                    <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving || introSavePending}>
                       Profile
                     </Button>
                   </SecondaryLinks>
@@ -286,10 +319,10 @@ export function WelcomeMessage() {
             <Footer>
               {needsWtfWelcome ? (
                 <>
-                  <Button type="button" primary onClick={() => acknowledge("/mission-control")} disabled={saving}>
+                  <Button type="button" primary onClick={() => acknowledge("/mission-control")} disabled={saving || introSavePending}>
                     {saving ? "Saving..." : "Open Mission Control"}
                   </Button>
-                  <Button type="button" onClick={() => acknowledge()} disabled={saving}>
+                  <Button type="button" onClick={() => acknowledge()} disabled={saving || introSavePending}>
                     Skip and enter desktop
                   </Button>
                 </>

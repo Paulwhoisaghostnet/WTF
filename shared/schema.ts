@@ -70,6 +70,7 @@ import {
 } from "./schema-green-room";
 import { macaroniPackages } from "./schema-macaroni";
 import { tvChannels } from "./schema-tv";
+import { userVideoWatches } from "./schema-video-watch";
 import {
   telegramDigestAnnouncements,
   telegramDigestSources,
@@ -102,6 +103,7 @@ export * from "./schema-etherlink";
 export * from "./schema-discord";
 export * from "./schema-studio";
 export * from "./schema-tv";
+export * from "./schema-video-watch";
 export * from "./schema-telegram";
 export * from "./schema-comms";
 export * from "./schema-mail";
@@ -137,6 +139,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   xpEvents: many(xpEvents),
   rewardFlags: many(challengeRewardFlags),
   tvChannels: many(tvChannels),
+  watchedVideos: many(userVideoWatches),
   messages: many(messages),
   notifications: many(userNotifications),
   curses: many(userCurses),

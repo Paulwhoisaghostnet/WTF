@@ -107,7 +107,7 @@ test.describe("interaction inventory - auth session recovery", () => {
     expect(walletWarnings).toEqual([]);
   });
 
-  test("first welcome opens Mission Control and does not repeat after completion", async ({
+  test("first welcome opens Mission Control and does not repeat after acknowledgement", async ({
     page,
     request,
   }) => {
@@ -128,6 +128,7 @@ test.describe("interaction inventory - auth session recovery", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     const state = await (await request.get("/__test/state")).json();
     expect(state.interactionLog.filter((event) => event.eventType === "auth.welcome.completed")).toHaveLength(1);
+    expect(state.hasSeenIntroVideo).toBe(false);
   });
 
   test("the welcome also appears on a direct full-screen wtfOS entry", async ({
