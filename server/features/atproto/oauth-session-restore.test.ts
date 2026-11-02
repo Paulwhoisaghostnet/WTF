@@ -184,6 +184,7 @@ test("Profile proof captures the OAuth SDK session without writing it to an exis
 
 test("Profile identity proof has a separate OAuth client grant from Skywire", async () => {
   process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  process.env.WTFOS_PUBLIC_BASE_URL = "https://wtfos.app";
   const { getAtprotoOAuthClient, getAtprotoProfileProofOAuthClient } = await import("./oauth");
   const skywire = await getAtprotoOAuthClient();
   const profile = await getAtprotoProfileProofOAuthClient();
@@ -196,6 +197,7 @@ test("public Profile OAuth metadata advertises an identity-only client separate 
   process.env.SESSION_SECRET = process.env.SESSION_SECRET || "atproto-oauth-restore-test-secret";
   process.env.NODE_ENV = "test";
   process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  process.env.WTFOS_PUBLIC_BASE_URL = "https://wtfos.app";
   const { default: express } = await import("express");
   const { default: atprotoRouter } = await import("../../routes/atproto");
   const app = express();
