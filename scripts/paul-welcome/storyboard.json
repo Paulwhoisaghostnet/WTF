@@ -1,0 +1,122 @@
+[
+  {
+    "id": "hello",
+    "eyebrow": "WELCOME / 01",
+    "title": "paulwhoisaclippy",
+    "lines": [
+      "This desktop is your game world.",
+      "I'll be around to help."
+    ],
+    "visual": "hello",
+    "accent": "#8DE6D3",
+    "spoken": [
+      "Hi, I'm Paul who is a Clippy.",
+      "Welcome to wtfOS. This desktop is your game world. I'll be around to help."
+    ]
+  },
+  {
+    "id": "icons",
+    "eyebrow": "DESKTOP / 02",
+    "title": "Click an icon.",
+    "lines": [
+      "Desktop icons open programs.",
+      "Pick one to begin."
+    ],
+    "visual": "icons",
+    "accent": "#F5C76E",
+    "spoken": [
+      "The icons on your desktop open programs.",
+      "Click one to get started."
+    ]
+  },
+  {
+    "id": "stuffs",
+    "eyebrow": "STUFFS / 03",
+    "title": "Find the rest.",
+    "lines": [
+      "Stuffs is on the taskbar.",
+      "Open it to find more apps."
+    ],
+    "visual": "stuffs",
+    "accent": "#FF9CA8",
+    "spoken": [
+      "Looking for something else?",
+      "Open Stuffs on the taskbar to find the rest of your apps."
+    ]
+  },
+  {
+    "id": "windows",
+    "eyebrow": "WINDOWS / 04",
+    "title": "Keep your place.",
+    "lines": [
+      "Move or minimize windows.",
+      "Return from the taskbar."
+    ],
+    "visual": "windows",
+    "accent": "#B6A5F6",
+    "spoken": [
+      "You can move or minimize windows.",
+      "Find them again on the taskbar whenever you're ready."
+    ]
+  },
+  {
+    "id": "mission",
+    "eyebrow": "PROGRESS / 05",
+    "title": "Mission Control.",
+    "lines": [
+      "Challenges, progress, rewards.",
+      "Some missions can earn XP, too."
+    ],
+    "visual": "mission",
+    "accent": "#8EC9FF",
+    "spoken": [
+      "Mission Control shows challenges, progress, and rewards.",
+      "Some missions can earn XP or rewards."
+    ]
+  },
+  {
+    "id": "reggie",
+    "eyebrow": "QUEST GUIDE / 06",
+    "title": "Meet Reggie.",
+    "lines": [
+      "He tracks the Reggie quest path.",
+      "Click him for your next step."
+    ],
+    "visual": "reggie",
+    "accent": "#F6BE75",
+    "spoken": [
+      "Meet Reggie, your quiet quest guide. He tracks your progress along the Reggie quest path.",
+      "Click him when you want the next available quest step or a route there. I handle how the desktop works."
+    ]
+  },
+  {
+    "id": "routes",
+    "eyebrow": "EXPLORE / 07",
+    "title": "Pick a direction.",
+    "lines": [
+      "Arcade and Create are here.",
+      "So are Events and Talk."
+    ],
+    "visual": "routes",
+    "accent": "#F5C76E",
+    "spoken": [
+      "Try Arcade for games, or Create for making things.",
+      "Events and Talk are here when you want people."
+    ]
+  },
+  {
+    "id": "nearby",
+    "eyebrow": "YOUR MOVE / 08",
+    "title": "Start anywhere.",
+    "lines": [
+      "One click is enough.",
+      "I'll be haunting your desktop."
+    ],
+    "visual": "nearby",
+    "accent": "#8DE6D3",
+    "spoken": [
+      "You don't need to learn it all now. Pick one thing.",
+      "I'll be haunting your desktop, in a helpful way."
+    ]
+  }
+]

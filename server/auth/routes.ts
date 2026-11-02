@@ -54,6 +54,7 @@ import { runXConnectOnboardingSoon } from "../lib/w-x-onboarding";
 import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { listActiveUserCurses } from "../lib/user-curses";
 import { getWtfOsAccessForRoles } from "../lib/role-surface-access";
+import { hasWatchedIntroVideo } from "../lib/video-watch-history";
 
 const router = Router();
 
@@ -179,6 +180,12 @@ function loginWithSessionRegen(
 async function toSafeUserWithPermissions(user: any) {
   const safe = toSafeUser(user);
   if (!safe) return safe;
+  try {
+    safe.hasSeenIntroVideo = await hasWatchedIntroVideo(Number(safe.id));
+  } catch (error) {
+    console.warn("[auth] could not load intro watch history:", error);
+    safe.hasSeenIntroVideo = false;
+  }
   safe.roles = await listRolesForUserSnapshot(safe);
   safe.role = safe.roles[0] ?? safe.role;
   safe.curses = await listActiveUserCurses(Number(safe.id));
@@ -1225,7 +1232,7 @@ if (process.env.GITHUB_CLIENT_ID) {
   );
   router.get(
     "/api/auth/github/callback",
-    oauthLoginCallback("github", "/dashboard", "/login")
+    oauthLoginCallback("github", "/dashboard?wtfosLogin=github", "/login")
   );
 }
 

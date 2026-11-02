@@ -12833,3 +12833,73 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A matching provider directory alone does not prove that an archive assembled from a later repository commit matches the installed Mainnet daemon.
 
 **Rule**: Compare every release-assembler input with the installed commit, preserve that commit with a durable release tag, and use the pinned commit for exact source reconstruction until a separately verified upgrade is intended.
+
+---
+
+### 2026-11-01 — Animated desktop characters need a stable click target
+
+**What happened**: paulwhoisaclippy floated by animating the entire button, so the browser interaction test could never find a stable point to click. After moving the animation, the next test still exercised an old bundle because the inventory harness serves `dist/public` rather than live source.
+
+**Correction and proof**: Kept the button's hit box fixed, animated only the ghost image, rebuilt the client, and verified pointer interaction, keyboard dismissal, event logging, mobile placement, and reduced-motion behavior in Playwright.
+
+**Rule**: Keep interactive hit boxes stationary when ambient characters move. Rebuild before running the static-dist Playwright harness after UI edits; otherwise a stale bundle can make a correct fix appear broken.
+
+### 2026-11-01 — A clean worktree needs its lockfile's dependencies for typecheck
+
+**What happened**: The first typecheck used `node_modules` symlinked from an older checkout. That install had MCP SDK 1.30.0 while this branch's lockfile specifies 1.32.0, producing two false errors in unchanged server routes.
+
+**Correction and proof**: Installed the branch's locked packages in isolation, switched the worktree to that install after browser tests completed, and reran `npm run check` successfully.
+
+**Rule**: Before treating TypeScript errors in an isolated worktree as source regressions, compare the installed package version with that worktree's lockfile. Run the final check with lock-matched dependencies without mutating another checkout's install.
+
+### 2026-11-01 — Tutorial recordings must prove the visible player result
+
+**What happened**: First-pass Paul recordings showed an admin wallet in a contestant lesson, an empty Desktop Items shelf that contradicted a read-only live check, a cursor stranded when actions entered game and art iframes, and a side-quest success notice beside an unchanged claim state and zero reward balance. A browser assertion also expected Help to unmount after Show Desktop, though wtfOS keeps minimized windows mounted.
+
+**Correction and proof**: Used a contestant with no wallet, labeled recorder-only catalog examples, made the isolated claim fixture return the claimed quest and updated WTF balance, positioned the guide cursor across iframe boundaries, and parked Paul away from targets and results. The desktop test now asserts Help is hidden and the desktop is visible. All ten final walkthrough frames were reviewed against the spoken steps; the media validator passed every MP4, caption cue, poster, audio stream, catalog entry, and checksum; the focused browser spec passed all four cases.
+
+**Rule**: For instructional media, verify the action and its final visible result, not just a toast or a scripted click. Compare recording fixtures with the live product before describing availability, label synthetic examples, keep cursor and character overlays clear across iframes, and test OS window visibility according to minimize semantics. Review rerendered screenshots under a new filename when image viewers cache an older file at the same path.
+
+### 2026-11-01 — Mobile help needs a visible path between lessons
+
+**What happened**: The first narrow-screen Paul Help view displayed the current video and steps, but the episode cards began below the initial viewport. A player could reach Help from the welcome and still miss that more lessons existed. Reggie's fixed assistant also covered part of the lesson on the right.
+
+**Correction and proof**: Added a labeled episode chooser above the video at narrow widths while retaining the full cards below, and hid Reggie only on narrow `/faq` views. The focused browser test at 390 × 844 verifies the chooser is inside the initial viewport, can select the last episode, and Reggie returns after following Try this in wtfOS.
+
+**Rule**: On small screens, make the next meaningful choice visible before scrolling through the current lesson, and verify persistent assistants cannot obscure instructional controls or results.
+
+### 2026-11-02 — Welcome acknowledgement is not a video watch receipt
+
+**What happened**: The existing `welcomedToWtfOs` flag was set when a player chose a destination or skipped Paul's intro. Treating that flag as proof of playback would have marked skipped videos as watched. Showing every unseen intro on auth hydration would also have interrupted a player again on a same-session refresh after Skip.
+
+**Correction and proof**: Added a unique account-and-video completion row written only after the player reaches `ended`, with a server-derived title and first-watch timestamp. The auth response derives intro history from that row. An explicit later login shows the intro again if it remains unseen or a brief boot screen if it was completed; ordinary hydration respects the current session's welcome acknowledgement. Focused browser coverage proved skip, partial play, completion, replay idempotency, profile ownership, roster permissions, and reduced-motion boot. A disposable local PostgreSQL run proved row uniqueness, user isolation, roster lookup, and cascade deletion.
+
+**Rule**: Keep welcome acknowledgement, video completion, and daily greeting state separate. Base the returning-login choice on a durable watch receipt, preserve the first completion on replay, and distinguish a new login from a page refresh.
+
+### 2026-11-02 — Keep the desktop teacher and quest guide in separate roles
+
+**What happened**: On the live desktop, clicking Reggie opened a generic greeting and a free-form "Ask Reggie a question" field, and an idle timer could produce nag speech. Paul was already responsible for teaching desktop controls and app use, so the two characters offered overlapping guidance. The first Paul desktop-lesson recording also lacked `/api/reggie/quest` fixture data; Reggie could only show a loading bubble and the promised "Take me there" action was absent.
+
+**Correction and proof**: Reggie now stays quiet during idle use and gives only current quest-path guidance when clicked or summoned. Removed his broad knowledge base, generic greeting, Ask form, and nag timer while keeping quest log, progress, destinations, checkpoints, WIM persistence, hide, and a silent ten-minute snooze wake. The OS Navigator quest now names its exact icon-open and Dashboard proof and sends control instruction to Paul. Paul's welcome and desktop lesson introduce Reggie's role; the recording seeds an available quest step and shows the real bubble and destination action. The welcome scene reuses the actual Reggie sprite. Focused Reggie tests passed 19/19, the browser role and behavior tests passed 3/3, the full inventory browser suite passed 810/810, and both narrated videos, captions, posters, and catalog entries passed media validation. The browser test clicks the animated sprite deliberately and asserts its resulting quest UI; it checks guidance and the quest-log title separately because authored speech does not repeat the API title verbatim.
+
+**Rule**: Give Paul the OS how-to and Reggie the player's current quest objective, proof, progress, and destination. Keep Reggie's idle presence silent. When recording or testing quest guidance, seed a real available quest state before entry and prove the visible destination action, not just the presence of the character.
+
+---
+
+## 2026-11-02 — Reconcile canonical IDs and generator order when integrating a stale branch
+
+**What happened**: Paul Ghost and current `main` had independently assigned different bug bounty findings to the same two canonical IDs. During the merge, environment inventory generation also ran alongside API reference generation, so the first inventory check saw a source-file set different from the one it scanned.
+
+**Why it mattered**: Keeping either side's generated board alone would silently discard findings. Running dependent generators concurrently made a valid merge appear stale.
+
+**Rule**: Preserve both sides' canonical records by assigning unique IDs and recomputing the generated board. Regenerate API sources before scanning them for the environment inventory, then run both `--check` gates against the final staged tree.
+
+---
+
+## 2026-11-02 — Keep Playwright runs serial within one checkout
+
+**What happened**: A focused Paul login-handoff browser test overlapped with the broad inventory run in the same worktree. Playwright reused `test-results` for both commands, deleting trace files during the focused run and causing one handoff assertion to time out amid runner interference. The same Reggie and watched-video tests passed 9/9 on a fresh harness after the broad run stopped, including the handoff case.
+
+**Why it mattered**: A shared runner output directory made a passing feature look unstable and destroyed the trace needed to diagnose the first failure.
+
+**Rule**: Run Playwright suites serially in one checkout, or give truly independent runs separate output directories and harness ports. Recheck an interrupted case alone before changing application code.

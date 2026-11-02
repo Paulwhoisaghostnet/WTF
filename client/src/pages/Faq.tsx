@@ -5,10 +5,12 @@ import styled from "styled-components";
 import { useLocation } from "wouter";
 import { AppWindow } from "../components/layout/AppWindow";
 import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
+import { PaulWelcomeVideo } from "../features/onboarding/PaulWelcomeVideo";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import { FaqTutorials } from "../features/faq/FaqTutorials";
 import { FaqPromos } from "../features/faq/FaqPromos";
+import { PaulTutorialSeries } from "../features/faq/PaulTutorialSeries";
 
 const StartPanel = styled.section`
   margin-bottom: 16px;
@@ -19,6 +21,26 @@ const StartPanel = styled.section`
   h2,
   p {
     margin: 0 0 8px;
+  }
+`;
+
+const WelcomeReplay = styled.section`
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 2px inset #fff;
+  background: #f4f4f4;
+
+  h2,
+  p {
+    margin: 0 0 8px;
+  }
+
+  button {
+    min-height: 40px;
+  }
+
+  > div {
+    margin-top: 10px;
   }
 `;
 
@@ -77,6 +99,7 @@ const Answer = styled.div`
 export function Faq() {
   const [, setLocation] = useLocation();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showWelcomeVideo, setShowWelcomeVideo] = useState(false);
 
   useEffect(() => {
     void logClientSystemEvent({ eventType: "faq.viewed" });
@@ -86,13 +109,6 @@ export function Faq() {
     queryKey: ["faq"],
     queryFn: () => api.get<any[]>("/api/faq"),
   });
-
-  if (isLoading)
-    return (
-      <AppWindow title="Help & Start Here">
-        <Hourglass size={32} />
-      </AppWindow>
-    );
 
   const toggle = (id: number) =>
     setExpandedId(expandedId === id ? null : id);
@@ -116,9 +132,25 @@ export function Faq() {
 
   return (
     <AppWindow title="Help & Start Here">
+      <WelcomeReplay aria-labelledby="paul-welcome-replay-title">
+        <h2 id="paul-welcome-replay-title">paulwhoisaclippy's welcome</h2>
+        <p>Watch the desktop introduction again whenever you need a refresher.</p>
+        <Button
+          type="button"
+          aria-expanded={showWelcomeVideo}
+          aria-controls="paul-welcome-replay-player"
+          onClick={() => setShowWelcomeVideo((current) => !current)}
+        >
+          {showWelcomeVideo ? "Close welcome video" : "Replay paulwhoisaclippy's welcome"}
+        </Button>
+        <div id="paul-welcome-replay-player" hidden={!showWelcomeVideo}>
+          {showWelcomeVideo && <PaulWelcomeVideo />}
+        </div>
+      </WelcomeReplay>
+      <PaulTutorialSeries />
       <StartPanel aria-labelledby="start-here-title">
         <h2 id="start-here-title">What do you want to do?</h2>
-        <p>Choose a task. The same five choices stay available in the Start menu.</p>
+        <p>Choose a task. The same five choices stay in the Stuffs menu on the taskbar.</p>
         <TaskGrid>
           {CLASSIC_TASK_WAYFINDER.map((task) => (
             <TaskCard key={task.id} type="button" onClick={() => setLocation(task.route)}>
@@ -130,7 +162,7 @@ export function Faq() {
       </StartPanel>
       <FaqPromos />
       <FaqTutorials />
-      {categories.length > 0
+      {isLoading ? <Hourglass size={32} /> : categories.length > 0
         ? categories.map((cat) => (
             <GroupBox
               key={cat as string}
@@ -144,7 +176,7 @@ export function Faq() {
           ))
         : renderItems(faqItems || [])}
 
-      {(!faqItems || faqItems.length === 0) && (
+      {!isLoading && (!faqItems || faqItems.length === 0) && (
         <p>More help articles are being prepared. The task buttons above are ready now.</p>
       )}
     </AppWindow>

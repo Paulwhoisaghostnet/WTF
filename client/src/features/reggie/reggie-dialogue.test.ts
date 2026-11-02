@@ -2,16 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantStateLine,
-  emptyQuestionReply,
-  greeting,
-  nag,
   pickLine,
   questCompleteLine,
   REGGIE_ASSISTANT_SCRIPT,
-  REGGIE_EMPTY_QUESTION_REPLIES,
-  REGGIE_SMARTASS_REPLIES,
   REGGIE_STEP_DIALOGUE,
-  smartAssReply,
   stepLine,
 } from "./reggie-dialogue";
 
@@ -65,46 +59,21 @@ test("every quest step has intro, nudge, and congrats dialogue", () => {
 });
 
 test("dialogue selection is deterministic for the same seed", () => {
-  assert.equal(greeting("user-1:day-1"), greeting("user-1:day-1"));
   assert.equal(
     stepLine("wallet", "intro", "user-1:0"),
     stepLine("wallet", "intro", "user-1:0")
   );
-  assert.equal(smartAssReply("user-1:q1"), smartAssReply("user-1:q1"));
+  assert.equal(
+    assistantStateLine("summon", "user-1"),
+    assistantStateLine("summon", "user-1")
+  );
   assert.ok(questCompleteLine("user-1").length > 0);
 });
 
 test("avoid parameter prevents back-to-back repeats", () => {
-  const first = nag("seed-a");
-  const second = nag("seed-a", first);
+  const first = stepLine("wallet", "intro", "seed-a");
+  const second = stepLine("wallet", "intro", "seed-a", first);
   assert.notEqual(first, second);
-
-  const reply = smartAssReply("seed-b");
-  const next = smartAssReply("seed-b", reply);
-  assert.notEqual(reply, next);
-});
-
-test("smart-ass pool is deep enough to feel endless", () => {
-  assert.ok(
-    REGGIE_SMARTASS_REPLIES.length >= 40,
-    `smart-ass pool too shallow: ${REGGIE_SMARTASS_REPLIES.length}`
-  );
-  assert.equal(
-    new Set(REGGIE_SMARTASS_REPLIES).size,
-    REGGIE_SMARTASS_REPLIES.length,
-    "duplicate smart-ass replies"
-  );
-});
-
-test("empty question replies have more than one bit of attitude", () => {
-  assert.ok(REGGIE_EMPTY_QUESTION_REPLIES.length >= 5);
-  assert.equal(
-    new Set(REGGIE_EMPTY_QUESTION_REPLIES).size,
-    REGGIE_EMPTY_QUESTION_REPLIES.length,
-    "duplicate empty-question replies"
-  );
-  const first = emptyQuestionReply("blank-seed");
-  assert.notEqual(emptyQuestionReply("blank-seed", first), first);
 });
 
 test("assistant state scripts have varied sassy copy without losing placeholders", () => {
@@ -126,12 +95,15 @@ test("assistant state scripts have varied sassy copy without losing placeholders
   );
 });
 
-test("different seeds walk the pools", () => {
-  const lines = new Set<string>();
-  for (let i = 0; i < 40; i += 1) {
-    lines.add(smartAssReply(`walk:${i}`));
+test("summon and navigation quest scripts keep Reggie on quest guidance", () => {
+  for (const line of REGGIE_ASSISTANT_SCRIPT.summon) {
+    assert.match(line, /quest|step/i);
   }
-  assert.ok(lines.size >= 10, `pool walk too narrow: ${lines.size}`);
+  for (const line of REGGIE_STEP_DIALOGUE.navigator.intro) {
+    assert.match(line, /Paul/);
+    assert.match(line, /desktop icon/);
+    assert.match(line, /Dashboard/);
+  }
 });
 
 test("pickLine handles degenerate pools", () => {
@@ -140,7 +112,7 @@ test("pickLine handles degenerate pools", () => {
   assert.equal(pickLine(["only"], "seed", "only"), "only");
 });
 
-test("unknown step keys fall back to nags rather than crashing", () => {
+test("unknown step keys fall back to quest guidance rather than crashing", () => {
   const line = stepLine("not_a_step", "intro", "seed");
-  assert.ok(line.length > 0);
+  assert.match(line, /quest step/);
 });

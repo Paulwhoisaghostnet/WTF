@@ -154,9 +154,22 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
     userVisibleAssertion:
-      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices, keep their icon/label/description text contained at desktop and mobile widths, and route each choice to its commissioned application.",
+      "The classic OS welcome introduces paulwhoisaclippy's video and a primary Mission Control action, with the shared Play, Create, Shop, Events, and Talk choices available in an expandable list; Help & Start Here and the Stuffs menu retain the same destinations at desktop and mobile widths.",
     durableSideEffectAssertion:
-      "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
+      "The shared wayfinder regression locks the five route mappings; the browser harness expands and follows a welcome choice, persists one-time completion before navigation, verifies stale-session recovery, and confirms the mobile Help route exposes the same task map as full-width, non-overlapping controls.",
+  },
+  {
+    id: "auth.paulwhoisaclippy-welcome-video",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "tests/playwright/inventory/auth-session.spec.mjs; tests/playwright/inventory/paulwhoisaclippy.spec.mjs; tests/playwright/inventory/reggie-quest-guide.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/paulwhoisaclippy.spec.mjs tests/playwright/inventory/reggie-quest-guide.spec.mjs",
+    userVisibleAssertion:
+      "A first-time signed-in player sees paulwhoisaclippy's captioned welcome video with play controls on classic and direct full-screen wtfOS entry, a visible path to Mission Control, and a way to continue; Paul explains that he teaches the desktop while Reggie quietly guides the authored Reggie quest path. Help & Start Here can replay the same video and written guidance later.",
+    durableSideEffectAssertion:
+      "Explicit first-entry navigation persists the existing one-time welcomedToWtfOs state and emits auth.welcome.completed. The browser harness verifies the video decodes, the welcome appears on direct full-screen entry, and replay from Help leaves the completed state unchanged.",
   },
   {
     id: "auth.faq-registration-tutorials",
@@ -169,6 +182,30 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The public FAQ previews short, captioned how-to videos for the full registration journey, and every tutorial visibly uses the TommyTezos account.",
     durableSideEffectAssertion:
       "The checked-in catalog binds each tutorial to private S3 object keys while the public API exposes only same-origin streaming routes; the browser harness proves all eight guides, English captions, transcripts, selection behavior, and mobile containment.",
+  },
+  {
+    id: "faq.paul-tutorial-series",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "faq",
+    ownerSpec: "tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    userVisibleAssertion:
+      "The first-entry welcome links directly to Help & Start Here's Paul-led, captioned, step-by-step videos for desktop navigation, mission discovery, a ready side quest claim, games, creation, messaging, marketplace, events, and appearance; selecting an episode shows one player, transcript, written steps, and a Try this in wtfOS action at desktop and narrow widths. A labeled episode chooser is within the first narrow-screen viewport, and Reggie does not cover the Help content there.",
+    durableSideEffectAssertion:
+      "The browser harness loads every checked-in episode asset and verifies selected, played, and completed events retain the tutorial slug and paulwhoisaclippy series identity; Try this in wtfOS follows the episode's registered route without granting rewards or changing account state.",
+  },
+  {
+    id: "auth.watched-video-history-and-boot",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec: "tests/playwright/inventory/video-watch-history.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/video-watch-history.spec.mjs",
+    userVisibleAssertion:
+      "Finishing a known Help video records it once on the signed-in account and lists it on My Profile. A returning account that has completed Paul's intro sees a short wtfOS boot animation after login; an account that skipped the intro sees the intro again. Reduced-motion users can enter directly.",
+    durableSideEffectAssertion:
+      "The watched-video roster is keyed by user and canonical video ID, survives logout and login, is idempotent on replay, and cannot be written by a guest or for an unknown video. The per-video viewer roster requires manage_users permission, while each profile can read only its own history.",
   },
   {
     id: "wtfos.guide-promo-channel",
@@ -1648,13 +1685,25 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS",
     ownerSurfaceIds: ["desktop-reggie", "wim", "messages", "mail"],
     ownerSpec:
-      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/playwright/inventory/reggie-quest-guide.spec.mjs; tests/e2e/inventory/domain-workflows.mjs",
     verificationCommand:
-      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run test:e2e:inventory:coverage",
+      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/reggie-quest-guide.spec.mjs && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
-      "The desktop context menu exposes Summon Reggie, Reggie can be hidden or snoozed and later pops back in with a temporary speech bubble, and WIM identifies assistant-authored messages as Reggie messages.",
+      "Reggie stays quiet on the signed-in desktop until the player clicks or summons him. His bubble offers a current step in the authored Reggie quest path, quest log, progress check, Quest HQ, and quest destination, without a general question field or periodic nags. The player can hide and later summon him from the desktop context menu, or snooze him for ten minutes and see him wake without a bubble. WIM identifies his quest messages as Reggie messages.",
     durableSideEffectAssertion:
       "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
+  },
+  {
+    id: "desktop-paulwhoisaclippy.ambient-whisper",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-ambient",
+    ownerSpec: "tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    userVisibleAssertion:
+      "paulwhoisaclippy floats in unobstructed desktop space wearing red glasses, speaks a short optional whisper on click or keyboard activation, stays beneath app windows, and becomes still when reduced motion is requested.",
+    durableSideEffectAssertion:
+      "The click uses the existing desktop.object.clicked event with objectId paulwhoisaclippy; the inventory harness records the accepted event while no pet-care, reward, or account state changes.",
   },
   {
     id: "desktop.app-store-ranked-unlocks",

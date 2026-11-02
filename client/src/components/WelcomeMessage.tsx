@@ -4,6 +4,8 @@ import { Button, Window, WindowContent, WindowHeader } from "react95";
 import { useLocation } from "wouter";
 import { useAuth } from "../lib/auth-context";
 import { CLASSIC_TASK_WAYFINDER } from "../features/onboarding/classic-task-wayfinder";
+import { PaulWelcomeVideo } from "../features/onboarding/PaulWelcomeVideo";
+import { WtfOsBootScreen } from "../features/onboarding/WtfOsBootScreen";
 
 const Backdrop = styled.div`
   position: fixed;
@@ -17,6 +19,17 @@ const Backdrop = styled.div`
 
 const WelcomeWindow = styled(Window)`
   width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const ScrollContent = styled(WindowContent)`
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 `;
 
 const Body = styled.div`
@@ -35,15 +48,19 @@ const Intro = styled.p`
   margin: 0;
 `;
 
-const TaskPrompt = styled.p`
-  margin: 0;
-  font-weight: 700;
+const MorePlaces = styled.details`
+  summary {
+    cursor: pointer;
+    min-height: 32px;
+    font-weight: 700;
+  }
 `;
 
 const TaskGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
+  margin-top: 8px;
 
   @media (max-width: 620px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -70,9 +87,21 @@ const TaskIcon = styled.span`
 `;
 
 const HelpText = styled.p`
-  margin: 0;
+  margin: 8px 0 0;
   color: #333;
   font-size: 12px;
+`;
+
+const SecondaryLinks = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+
+  button {
+    min-height: 40px;
+    white-space: normal;
+  }
 `;
 
 const GmFrame = styled.figure`
@@ -99,14 +128,27 @@ const Caption = styled.figcaption`
 `;
 
 const Footer = styled.div`
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+  padding: 10px 0 0;
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
 
   button {
     max-width: 100%;
+    min-height: 40px;
     white-space: normal;
+  }
+
+  @media (max-width: 480px) {
+    button {
+      flex: 1 1 100%;
+    }
   }
 `;
 
@@ -117,9 +159,15 @@ const ErrorText = styled.p`
 `;
 
 export function WelcomeMessage() {
-  const { user, completeWelcome, completeGmWelcome } = useAuth();
+  const { user, loginEntry, completeWelcome, completeGmWelcome } = useAuth();
   const [, setLocation] = useLocation();
+  const [entryDecision, setEntryDecision] = useState<{
+    userId: number;
+    hasSeenIntroVideo: boolean;
+  } | null>(null);
+  const [bootFinishedForLoginNonce, setBootFinishedForLoginNonce] = useState<number | null>(null);
   const [hiddenForUserId, setHiddenForUserId] = useState<number | null>(null);
+  const [introSavePending, setIntroSavePending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -127,11 +175,36 @@ export function WelcomeMessage() {
     setError("");
     setSaving(false);
     setHiddenForUserId(null);
+    setBootFinishedForLoginNonce(null);
+    setIntroSavePending(false);
   }, [user?.id]);
 
-  if (!user || hiddenForUserId === user.id) return null;
+  useEffect(() => {
+    if (!user) {
+      setEntryDecision(null);
+      return;
+    }
+    setEntryDecision((current) => current?.userId === user.id
+      ? current
+      : {
+          userId: user.id,
+          hasSeenIntroVideo: user.hasSeenIntroVideo === true,
+        });
+  }, [user]);
 
-  const needsWtfWelcome = user.welcomedToWtfOs !== true;
+  if (!user || entryDecision?.userId !== user.id || hiddenForUserId === user.id) return null;
+
+  if (
+    entryDecision.hasSeenIntroVideo &&
+    loginEntry?.userId === user.id &&
+    bootFinishedForLoginNonce !== loginEntry.nonce
+  ) {
+    return <WtfOsBootScreen onFinish={() => setBootFinishedForLoginNonce(loginEntry.nonce)} />;
+  }
+
+  const explicitLogin = loginEntry?.userId === user.id;
+  const needsWtfWelcome = !entryDecision.hasSeenIntroVideo &&
+    (user.welcomedToWtfOs !== true || explicitLogin);
   const gmWelcome = user.gmWelcome?.shouldShow ? user.gmWelcome : null;
 
   if (!needsWtfWelcome && !gmWelcome) return null;
@@ -139,10 +212,11 @@ export function WelcomeMessage() {
   const chosenUsername = user.username;
 
   const acknowledge = async (route?: string) => {
+    if (introSavePending) return;
     setSaving(true);
     setError("");
     try {
-      if (needsWtfWelcome) {
+      if (needsWtfWelcome && user.welcomedToWtfOs !== true) {
         await completeWelcome();
       }
       if (gmWelcome) {
@@ -163,7 +237,7 @@ export function WelcomeMessage() {
         <WindowHeader>
           <span>Welcome Event</span>
         </WindowHeader>
-        <WindowContent>
+        <ScrollContent>
           <Body>
             <Title id="wtf-welcome-title">
               {needsWtfWelcome
@@ -173,63 +247,83 @@ export function WelcomeMessage() {
             {needsWtfWelcome && (
               <>
                 <Intro>
-                  This is your community desktop. Choose what you want to do first;
-                  every destination is also available from the Start menu.
+                  Your desktop is a game world. Start in Mission Control for your first
+                  challenge, or explore through the icons and Stuffs menu. Meet
+                  paulwhoisaclippy—he will show you around.
                 </Intro>
-                <TaskPrompt>What do you want to do?</TaskPrompt>
-                <TaskGrid aria-label="Choose your first task">
-                  {CLASSIC_TASK_WAYFINDER.map((task) => (
-                    <TaskButton
-                      key={task.id}
-                      type="button"
-                      title={task.description}
-                      onClick={() => acknowledge(task.route)}
-                      disabled={saving}
-                    >
-                      <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
-                      <strong>{task.label}</strong>
-                    </TaskButton>
-                  ))}
-                </TaskGrid>
-                <HelpText>
-                  Not sure yet? Open Help &amp; Start Here at any time, or personalize
-                  your account from Profile.
-                </HelpText>
+                <PaulWelcomeVideo autoPlay onSavePendingChange={setIntroSavePending} />
+                <Button
+                  type="button"
+                  onClick={() => acknowledge("/faq")}
+                  disabled={saving || introSavePending}
+                  style={{ minHeight: 40, whiteSpace: "normal" }}
+                >
+                  Watch Paul's step-by-step videos
+                </Button>
+                <MorePlaces>
+                  <summary>More places to go</summary>
+                  <TaskGrid aria-label="Choose your first task">
+                    {CLASSIC_TASK_WAYFINDER.map((task) => (
+                      <TaskButton
+                        key={task.id}
+                        type="button"
+                        title={task.description}
+                        onClick={() => acknowledge(task.route)}
+                        disabled={saving || introSavePending}
+                      >
+                        <TaskIcon aria-hidden="true">{task.icon}</TaskIcon>
+                        <strong>{task.label}</strong>
+                      </TaskButton>
+                    ))}
+                  </TaskGrid>
+                  <HelpText>
+                    Help &amp; Start Here lets you replay this welcome. Profile lets you
+                    personalize your account.
+                  </HelpText>
+                  <SecondaryLinks>
+                    <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving || introSavePending}>
+                      Help &amp; Start Here
+                    </Button>
+                    <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving || introSavePending}>
+                      Profile
+                    </Button>
+                  </SecondaryLinks>
+                </MorePlaces>
               </>
             )}
             {gmWelcome && (
-              <GmFrame>
-                <GmImage
-                  src={gmWelcome.asset.imageUrl}
-                  alt={`${gmWelcome.asset.name} by ${gmWelcome.authorName}`}
-                  width={gmWelcome.asset.width ?? 720}
-                  height={gmWelcome.asset.height ?? 720}
-                />
-                <Caption>
-                  {gmWelcome.asset.name} from{" "}
-                  <a
-                    href={gmWelcome.collectionUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {gmWelcome.projectName}
-                  </a>{" "}
-                  by {gmWelcome.authorName}
-                </Caption>
-              </GmFrame>
+              <MorePlaces open>
+                <summary>Today's GM artwork</summary>
+                <GmFrame>
+                  <GmImage
+                    src={gmWelcome.asset.imageUrl}
+                    alt={`${gmWelcome.asset.name} by ${gmWelcome.authorName}`}
+                    width={gmWelcome.asset.width ?? 720}
+                    height={gmWelcome.asset.height ?? 720}
+                  />
+                  <Caption>
+                    {gmWelcome.asset.name} from{" "}
+                    <a
+                      href={gmWelcome.collectionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {gmWelcome.projectName}
+                    </a>{" "}
+                    by {gmWelcome.authorName}
+                  </Caption>
+                </GmFrame>
+              </MorePlaces>
             )}
             {error && <ErrorText>{error}</ErrorText>}
             <Footer>
               {needsWtfWelcome ? (
                 <>
-                  <Button type="button" onClick={() => acknowledge()} disabled={saving}>
-                    {saving ? "Saving..." : "Explore Desktop"}
+                  <Button type="button" primary onClick={() => acknowledge("/mission-control")} disabled={saving || introSavePending}>
+                    {saving ? "Saving..." : "Open Mission Control"}
                   </Button>
-                  <Button type="button" onClick={() => acknowledge("/faq")} disabled={saving}>
-                    Help &amp; Start Here
-                  </Button>
-                  <Button type="button" onClick={() => acknowledge("/profile")} disabled={saving}>
-                    Profile
+                  <Button type="button" onClick={() => acknowledge()} disabled={saving || introSavePending}>
+                    Skip and enter desktop
                   </Button>
                 </>
               ) : (
@@ -239,7 +333,7 @@ export function WelcomeMessage() {
               )}
             </Footer>
           </Body>
-        </WindowContent>
+        </ScrollContent>
       </WelcomeWindow>
     </Backdrop>
   );

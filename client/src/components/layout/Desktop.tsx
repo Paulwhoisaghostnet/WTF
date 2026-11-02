@@ -43,6 +43,7 @@ import {
   type DesktopIconDef,
 } from "../../features/desktop/DesktopIcons";
 import { SundayGrass } from "../../features/desktop/SundayGrass";
+import { PaulWhoIsAClippy } from "../../features/desktop/PaulWhoIsAClippy";
 import { useDesktopIconPhysics } from "../../features/desktop/useDesktopPhysics";
 import {
   DesktopItemActors,
@@ -1316,6 +1317,21 @@ export function Desktop({
         {!suspendDesktopEffects ? (
           <>
             <DesktopSurface>
+              {surfaceMeasured && (
+                <PaulWhoIsAClippy
+                  bounds={surfaceSize}
+                  obstacles={desktopPetObstacles}
+                  interactive={activeDesktopTool === "standard"}
+                  onInteract={() =>
+                    reportDesktopEvent({
+                      eventType: "desktop.object.clicked",
+                      objectId: "paulwhoisaclippy",
+                      objectKind: "ambient_ghost",
+                      action: "speak",
+                    })
+                  }
+                />
+              )}
               {localizedRenderedVisibleIcons.map((def) => (
                 <DraggableIcon
                   key={def.key}
