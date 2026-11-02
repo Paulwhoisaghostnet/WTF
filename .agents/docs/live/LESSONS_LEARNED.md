@@ -13316,3 +13316,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A sponsor could not offer ordered prize choice even though the contract had a settlement mode for it. A completed match could not settle until each lot was assigned to a verified human finisher.
 
 **Rule**: For every escrow prize mode, test the room creation UI, server acceptance, authenticated post-match action, persisted choice order, and exact result submitted to escrow. A contract entrypoint alone is not a finished game feature.
+
+---
+
+## 2026-11-02 — Wait for the host's finalized block before judging a sponsor deposit or claim
+
+**What happened**: The Shadownet WTF sponsor deposit and winner claim both confirmed and appeared in TzKT, while the host chain reader initially returned the earlier state. The reader intentionally snapshots `head~2`, which had not yet reached each freshly included operation. The journaled test resumed without resending the operation and passed once the snapshot advanced.
+
+**Why it mattered**: Treating an expected finality delay as failed custody could prompt an unsafe duplicate transaction or a false player-facing funding error.
+
+**Rule**: For sponsor escrow live proofs, wait until the `head~2` snapshot includes the operation before asserting the reader state. Preserve the operation journal and reconcile confirmed hashes before any retry; never interpret a stale read as proof that a deposit or payout did not occur.
+
+---
+
+## 2026-11-02 — Show settlement state after an FA2 prize leaves escrow
+
+**What happened**: The prize panel used the current escrow FA2 balance to show whether sponsor funding was verified. Once an FA2 prize was claimed, that balance correctly fell to zero, but the settled room could then display a warning that prize custody was pending and the match could not start.
+
+**Why it mattered**: A completed payout looked like an unfunded room to players returning to check their winnings.
+
+**Rule**: Use current custody checks to gate a room before combat. After settlement or void, show the chain lifecycle and claim or refund state instead of interpreting the remaining escrow balance as a new funding failure.

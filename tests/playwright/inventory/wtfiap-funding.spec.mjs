@@ -102,6 +102,13 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(panel).toContainText("Place 1 · 1 XTZ");
     await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Pay entry" })).toHaveCount(0);
+    room.status = "settled";
+    room.sponsorFunded = false;
+    room.lotVerification = { funded: 1, verified: 0, required: 1, pending: true };
+    await page.reload();
+    await expect(panel).toContainText("Results settled on chain. Prize payouts are shown below.");
+    await expect(panel).not.toContainText("Waiting for sponsor prizes to be verified in escrow.");
+    await expect(panel).not.toContainText("The room cannot start until the transfer and escrow balance are confirmed.");
   });
 
   test("sponsored Party setup offers paid entry and ordered FA2 prize picks", async ({ page }) => {

@@ -151,6 +151,10 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
   const exitDisabled = busy || !!pending || !room?.roomId;
   const fundingDisabled = exitDisabled || !room?.config.enabled;
   const entry = room?.terms.entry;
+  const fundingSummary = room?.status === "settled" ? "Results settled on chain. Prize payouts are shown below." :
+    room?.status === "voided" ? "Room voided. Refunds are shown below." :
+    room?.sponsorFunded ? "Sponsor prizes verified in escrow." :
+    "Waiting for sponsor prizes to be verified in escrow.";
   return <Surface aria-label="Prize escrow" aria-busy={busy}>
     <h2>Room prizes</h2>
     <p>{room ? `Tezos ${room.network} · ${room.terms.minimumHumans} human entrants needed to start` : "Checking room rules…"}</p>
@@ -186,8 +190,8 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
           </button>)}</div>}
       </section>}
       <section className="step"><h3>Fund and enter</h3>
-        <p>{room.sponsorFunded ? "Sponsor prizes verified in escrow." : "Waiting for sponsor prizes to be verified in escrow."} {room.depositedCount} entrant deposits verified.</p>
-        {room.lotVerification?.pending && <p role="status">FA2 prize transfer seen on Tezos; token custody verification is pending. The room cannot start until the transfer and escrow balance are confirmed.</p>}
+        <p>{fundingSummary} {room.depositedCount} entrant deposits verified.</p>
+        {room.lotVerification?.pending && room.status !== "settled" && room.status !== "voided" && <p role="status">FA2 prize transfer seen on Tezos; token custody verification is pending. The room cannot start until the transfer and escrow balance are confirmed.</p>}
         <div className="actions">
           {room.self.canBind && <button className="primary" disabled={fundingDisabled} onClick={() => void run(bind)}>Connect and bind wallet</button>}
           {room.self.canOpen && <button className="primary" disabled={fundingDisabled} onClick={() => void run(async () => { await post("open"); setMessage("Prize escrow creation requested; check status before depositing."); })}>Open prize escrow</button>}

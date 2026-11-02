@@ -11,9 +11,29 @@ changed by these originations.
 
 The Shadownet paid XTZ lifecycle (`58bbd8a2…49b4be`) and free-entry sponsor
 lifecycle (`41d2d345…11c9a6f`) each reached settlement, paid their claims,
-and ended with zero held XTZ. Mainnet origination is not a funded Mainnet
-match proof. The host still must enable its network-specific signer allowlists,
-environment settings, and game UI before players can use these contracts.
+and ended with zero held XTZ. A separate Shadownet room
+(`ddeab04a…e2d3f31`) deposited 1,000,000 atomic units of the configured
+Dummy WTF test token in operation `op85p2XfefPpseeGofXuXqA2ZoEdnxxzFPJeUGcRJdBW8XobsdX`.
+The hosted chain reader verified its funded flag and held amount, then verified
+the settled winner claim as paid with zero WTF held after operation
+`ooZao8YybjoSJUqG7mCbrzqbMtQ8bgCLvh9jM8rVK1wUtC1BUHc`. TzKT shows
+the winner received the exact amount. Mainnet origination is not a funded
+Mainnet match proof. The host still must enable its network-specific settings
+and game UI before players can use these contracts.
+
+An indexed FA2 lot also completed the Shadownet custody-to-winner path in room
+`c1a5b5ee01069111a46359ddb9a7e451e8fa85267843a681c6d0c8c08248edc4`.
+Funding operation `oo5uX9qDdkg1NUbf31ERjPvGfbeHJcxa5H6MKqNrJYzyJFfW7di`
+transferred one unit of the standard Dummy WTF FA2 token
+`KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg`, token ID 0, into this escrow.
+The production `verifySponsorLotCustody` accepted its indexed transfer at
+Shadownet level 5755499 and reported escrow balance 1. After settlement,
+`claim_lot` operation `op6APhzVrzaaiyrevd1Aigai5RMJ3HU6kBkUk6Su89GJv3c2hZG`
+delivered that unit to the winner; TzKT showed recipient balance 1,000,001
+and escrow balance 0. The larger recipient balance includes an earlier WTF
+cash-prize award. This uses a fungible FA2 test token as a lot, so it verifies
+the common FA2 transfer and indexed custody path, not NFT artwork metadata
+or every third-party FA2 implementation.
 
 This is a new escrow contract. It leaves the deployed Duel and Tournament
 entry-pot contracts untouched. The hosted game must not offer sponsored rooms
@@ -109,8 +129,19 @@ Tezos Shadownet primary RPC; Taquito local forging measured 22,240 bytes for
 the sample origination. The deployment scripts encoded the exact constructor
 storage, checked chain ID and fees, and verified the finalized script and
 storage after origination. A real Shadownet paid and free XTZ custody-to-claim
-lifecycle followed. WTF and arbitrary FA2 token custody still require their
-own live network receipts before those assets can be called live-tested.
+lifecycle followed. The configured Shadownet Dummy WTF cash-prize path has
+also passed deposit, hosted chain-reader verification, settlement, payout, and
+zero-reserve checks. This verifies the deployed Shadownet contract and chain
+reader; the game room's `open`/`observe`/`reconcile`/`start` integration still
+requires a test through the newly deployed host. A funded Mainnet WTF room and
+arbitrary third-party FA2 token custody still need their own live receipts.
+
+`test-shadownet-wtf.ts` is the journaled Shadownet cash-prize proof. Its
+`--preflight` checks the configured indexed Dummy WTF balance, signers, RPC
+chain ID, and contract artifact. Its `--execute` path is resume-safe after
+confirmed writes and calls the exact hosted chain reader before and after
+the winner claim. The reader snapshots `head~2`; wait for the operation's
+third confirmation before treating a just-written state as absent.
 
 The Shadownet FA2 lot proof script uses the compiled `DummyPrizeFA2.py` fixture
 in `artifacts/dummy-prize-fa2-contract.json` and checks its SHA-256 before any
@@ -120,6 +151,16 @@ reviewing the Shadownet fee and balance estimate. Its journal prevents a
 second send after an uncertain operation. It tests one NFT lot from sponsor
 custody through a winner claim; the proof does not stand in for a live WTF
 token transfer or for an arbitrary third-party FA2's TzKT classification.
+
+The separate `seed-shadownet-indexed-fa2.ts` transfers test units from the
+existing local Shadownet holder to the hosted referee; the confirmed seed
+operation was `onyNdasgw8wmVRkaC8vRSw7oByBtcGzDRxzibzAa7B8PQvSqd8f`.
+`test-shadownet-indexed-fa2.ts` then runs a free sponsored room against the
+existing indexed Dummy WTF token, requires the exact production custody
+verifier to accept the funded lot before play starts, and checks the indexed
+winner transfer after settlement. Its journal prevents duplicate writes if
+the indexer lags or a process stops mid-run. Neither proof exercises the
+hosted room UI or changes the Mainnet escrow.
 
 ## Trust boundary
 
