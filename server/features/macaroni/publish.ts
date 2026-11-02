@@ -84,6 +84,9 @@ export function sanitizeMacaroniConfigForPublish(
   const royalties = asRecord(input.minterRoyalties);
   const secureV35 = String(profile.id || input.contractVersion) === "macaroni-secure-v35";
   const network = input.network === "mainnet" ? "mainnet" : "shadownet";
+  if (secureV35 && network !== "shadownet") {
+    throw new Error("Macaroni V3.5 alpha is Shadownet-only; Mainnet publishing is unavailable");
+  }
   const contract = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(input.contract || ""))
     ? String(input.contract)
     : "";

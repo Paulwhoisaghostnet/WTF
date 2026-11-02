@@ -24,6 +24,7 @@ import type { UserRoleInput } from "@shared/types";
 import { hasPermission } from "../../lib/permissions";
 import { listRolesForUserSnapshot } from "../../lib/user-roles";
 import {
+  assertMacaroniV35AlphaNetwork,
   buildMacaroniV35Capabilities,
   hashMacaroniV35Payload,
   MACARONI_V35_MANAGED_PERMISSION,
@@ -442,6 +443,7 @@ export async function registerManagedMacaroniDrop(input: {
   registration: Omit<MacaroniV35Registration, "proof">;
   administratorPublicKey: string;
 }) {
+  assertMacaroniV35AlphaNetwork(input.registration.network);
   const registrationDigest = hashMacaroniV35Payload(input.registration);
   const readiness = managedMacaroniRuntimeReadiness(input.registration.network);
   const reserve = managedReserveEstimate();
@@ -1048,10 +1050,12 @@ function creatorStepExpectedPostcondition(input: {
 }
 
 async function ownedMacaroniV35Drop(input: { ownerUserId: number; dropId: number }) {
-  return (await db.select().from(macaroniV35Drops).where(and(
+  const drop = (await db.select().from(macaroniV35Drops).where(and(
     eq(macaroniV35Drops.id, input.dropId),
     eq(macaroniV35Drops.ownerUserId, input.ownerUserId)
   )).limit(1))[0] ?? null;
+  if (drop) assertMacaroniV35AlphaNetwork(drop.network);
+  return drop;
 }
 
 export async function attachManagedMacaroniV35Contract(input: {

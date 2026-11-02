@@ -368,6 +368,9 @@ function assertProfileActionReady(action) {
 
 function assertConfigActionReady(cfg, action) {
   const configProfile = cfg?.profile?.id || cfg?.contractVersion || "";
+  if (configProfile === MACARONI_SECURE_PROFILE_ID && cfg?.network !== "shadownet") {
+    throw new Error(`Secure V3.5 alpha ${action} is Shadownet-only.`);
+  }
   if (configProfile === MACARONI_SECURE_PROFILE_ID && !state.infrastructure.readiness?.ready) {
     throw new Error(`Secure V3.5 ${action} is blocked until contract and fulfillment readiness are verified.`);
   }
@@ -1567,7 +1570,12 @@ async function companionReadiness() {
 async function refreshSecureV35Readiness() {
   secureArtifactAvailable = await v35ArtifactIsAvailable();
   let readiness;
-  if (!secureArtifactAvailable) {
+  if (state.network !== "shadownet") {
+    readiness = secureReadinessFailure(
+      "alpha_shadownet_only",
+      "Secure V3.5 alpha is Shadownet-only. Switch to Shadownet before setup, funding, launch, or publishing."
+    );
+  } else if (!secureArtifactAvailable) {
     readiness = secureReadinessFailure(
       "contract_artifact_unavailable",
       "The validated Secure V3.5 contract artifact is not available in this build. Deployment, publishing, and export stay locked; Macaroni will not substitute Legacy."

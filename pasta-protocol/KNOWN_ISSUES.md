@@ -2,6 +2,8 @@
 
 This is a developer review, not a release-readiness or security signoff. The `1.0.1-alpha.1` Suite bundles all eight tools. CH-EASE, Macaroni V3.5, and Spaghetti are marked alpha supported; Gnocchi, Ravioli, Rotini, Penne, and Lasagna are visibly preview. The alpha package permits Shadownet toolkit setup only.
 
+The hosted Macaroni V3.5 alpha also blocks Mainnet creator setup, funding, export, and publishing. Managed registration, worker execution, and site publishing reject Mainnet even if Mainnet signer and RPC credentials are configured. Existing Macaroni compatibility profiles retain their separate network behavior.
+
 ## Macaroni V3.5: review first
 
 The [2026-09-03 assessment](../PASTA_PROTOCOL_ALPHA_READINESS_2026-09-03.md) predates the candidate fixes below. The installed-artifact funded Shadownet path was rehearsed on 2026-10-27; the remaining public-release boundaries are stated after this list:

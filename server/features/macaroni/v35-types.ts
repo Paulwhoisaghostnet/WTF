@@ -5,6 +5,13 @@ import { z } from "zod";
 import { managedMacaroniV35CarPublisherConfig } from "./v35-runtime-config";
 
 export const MACARONI_V35_MANAGED_PERMISSION = "use_managed_macaroni" as const;
+export const MACARONI_V35_ALPHA_NETWORK = "shadownet" as const;
+
+export function assertMacaroniV35AlphaNetwork(network: string) {
+  if (network !== MACARONI_V35_ALPHA_NETWORK) {
+    throw new Error("Macaroni V3.5 alpha is Shadownet-only; Mainnet setup and fulfillment are unavailable");
+  }
+}
 export const MACARONI_V35_CAPABILITY_SCHEMA = "wtfos.macaroni-v35-capabilities.v1";
 export const MACARONI_V35_PUBLIC_STATUS_SCHEMA = "wtfos.macaroni-v35-public-status.v1";
 export const MACARONI_V35_SETUP_SCHEMA = "wtfos.macaroni-v35-setup.v1";
@@ -413,15 +420,13 @@ export function managedMacaroniRuntimeReadiness(network?: "mainnet" | "shadownet
       abiReady = false;
     }
   }
-  const networkSignerReady = network
-    ? signerConfigured(network)
-    : signerConfigured("mainnet") || signerConfigured("shadownet");
-  const trustedRpcReady = network
-    ? trustedManagedRpcConfigured(network)
-    : trustedManagedRpcConfigured("mainnet") || trustedManagedRpcConfigured("shadownet");
+  const alphaNetworkReady = network == null || network === MACARONI_V35_ALPHA_NETWORK;
+  const networkSignerReady = signerConfigured(network ?? MACARONI_V35_ALPHA_NETWORK);
+  const trustedRpcReady = trustedManagedRpcConfigured(network ?? MACARONI_V35_ALPHA_NETWORK);
   const measuredFunding = measuredMacaroniV35FundingPolicy();
   const runtimeReady = Boolean(
-    positiveEnvInteger("MACARONI_V35_WORKER_INTERVAL_MS")
+    alphaNetworkReady
+    && positiveEnvInteger("MACARONI_V35_WORKER_INTERVAL_MS")
     && positiveEnvInteger("MACARONI_V35_WORKER_LEASE_MS")
     // Tenderbake deterministic finality needs two blocks after inclusion. A
     // shallower setting could publish private CARs after a reorgable settle.
@@ -440,12 +445,14 @@ export function managedMacaroniRuntimeReadiness(network?: "mainnet" | "shadownet
     && trustedRpcReady
   );
   const missing = [
+    !alphaNetworkReady && "alpha_shadownet_only",
     !abiReady && "reviewed_contract_abi",
     !runtimeReady && "managed_runtime_environment",
   ].filter(Boolean);
   return {
     ready: abiReady && runtimeReady,
-    code: abiReady && runtimeReady ? "ready" as const : "fulfillment_pipeline_unavailable" as const,
+    code: !alphaNetworkReady ? "alpha_shadownet_only" as const
+      : abiReady && runtimeReady ? "ready" as const : "fulfillment_pipeline_unavailable" as const,
     reason: abiReady && runtimeReady
       ? "Managed claim scanning, durable settlement signing, independent entropy recovery, and post-mint CAR publication are configured. Each drop still requires its live recovery, balance, duplicate, signer, and contract checks before activation."
       : `Managed fulfillment remains fail-closed until these checks are configured: ${missing.join(", ")}.`,

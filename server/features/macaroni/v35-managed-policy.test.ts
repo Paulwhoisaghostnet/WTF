@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import express from "express";
 import {
+  assertMacaroniV35AlphaNetwork,
   buildMacaroniV35Capabilities,
   managedMacaroniRuntimeReadiness,
   publicMacaroniV35DropStatus,
@@ -14,8 +16,10 @@ import {
   macaroniV35RemoteWalletAbortCanTerminalize,
   macaroniV35SignedOperationBytes,
   macaroniV35StudioPaddedLimits,
+  registerManagedMacaroniDrop,
 } from "./v35-service";
 import { sanitizeMacaroniConfigForPublish } from "./publish";
+import macaroniRoutes from "../../routes/macaroni";
 import {
   assertUniqueManagedMacaroniV35ArtifactRows,
   buildPublishedMacaroniV35CidCandidates,
@@ -54,6 +58,7 @@ test("managed CAR availability verification recovers after a FileShip response f
   }
 });
 import {
+  managedMacaroniV35WorkerEnvironment,
   macaroniV35SignedBranchIsIrreversiblyExpired,
   macaroniV35ClosedArmDisposition,
   pendingMacaroniV35OperationContainsHash,
@@ -92,7 +97,7 @@ test("managed runtime stays fail-closed when production worker configuration is 
   const prior = process.env.MACARONI_V35_WORKER_INTERVAL_MS;
   delete process.env.MACARONI_V35_WORKER_INTERVAL_MS;
   try {
-    const readiness = managedMacaroniRuntimeReadiness("mainnet");
+    const readiness = managedMacaroniRuntimeReadiness("shadownet");
     assert.equal(readiness.ready, false);
     assert.equal(readiness.code, "fulfillment_pipeline_unavailable");
   } finally {
@@ -101,7 +106,7 @@ test("managed runtime stays fail-closed when production worker configuration is 
   }
 });
 
-test("managed capabilities report readiness for the creator's selected network", () => {
+test("managed capabilities and creator entrypoints reject Mainnet with complete runtime configuration", async () => {
   const names = [
     "MACARONI_V35_WORKER_INTERVAL_MS",
     "MACARONI_V35_WORKER_LEASE_MS",
@@ -143,10 +148,10 @@ test("managed capabilities report readiness for the creator's selected network",
       MACARONI_V35_PINATA_JWT: "pinata-test-jwt",
       MACARONI_V35_IPFS_GATEWAY: "https://gateway.example.test/ipfs/",
       MACARONI_V35_FINALIZER_SHADOWNET_SECRET_KEY: "encrypted-test-secret",
+      MACARONI_V35_FINALIZER_MAINNET_SECRET_KEY: "mainnet-test-secret",
       MACARONI_V35_TRUSTED_SHADOWNET_RPC_URL: "https://tezos-shadownet.octez.io/",
+      MACARONI_V35_TRUSTED_MAINNET_RPC_URL: "https://tezos-mainnet.octez.io/",
     });
-    delete process.env.MACARONI_V35_FINALIZER_MAINNET_SECRET_KEY;
-    delete process.env.MACARONI_V35_TRUSTED_MAINNET_RPC_URL;
     const shadownet = buildMacaroniV35Capabilities({
       authenticated: true,
       allowed: true,
@@ -161,6 +166,62 @@ test("managed capabilities report readiness for the creator's selected network",
     assert.equal(shadownet.managed.service.ready, true);
     assert.equal(mainnet.network, "mainnet");
     assert.equal(mainnet.managed.service.ready, false);
+    assert.equal(mainnet.managed.service.code, "alpha_shadownet_only");
+    assert.match(mainnet.managed.service.reason, /alpha_shadownet_only/);
+    assert.equal(managedMacaroniV35WorkerEnvironment("mainnet").checks.alphaNetwork, false);
+    assert.equal(managedMacaroniV35WorkerEnvironment("mainnet").ready, false);
+    assert.throws(() => assertMacaroniV35AlphaNetwork("mainnet"), /Shadownet-only/);
+    await assert.rejects(
+      registerManagedMacaroniDrop({
+        ownerUserId: 1,
+        registration: { network: "mainnet" } as never,
+        administratorPublicKey: "unused",
+      }),
+      /Shadownet-only/,
+    );
+    assert.throws(
+      () => sanitizeMacaroniConfigForPublish({
+        network: "mainnet",
+        contractVersion: "macaroni-secure-v35",
+      }),
+      /Shadownet-only/,
+    );
+    const app = express();
+    app.use(express.json());
+    app.use((request, _response, next) => {
+      if (request.path === "/api/macaroni/v35/registration/challenge") {
+        Object.assign(request, { isAuthenticated: () => true, user: { id: 1 } });
+      } else {
+        Object.assign(request, { isAuthenticated: () => false });
+      }
+      next();
+    });
+    app.use(macaroniRoutes);
+    const server = app.listen(0, "127.0.0.1");
+    try {
+      await new Promise<void>((resolve) => server.once("listening", resolve));
+      const address = server.address();
+      assert.ok(address && typeof address !== "string");
+      const origin = `http://127.0.0.1:${address.port}`;
+      const capabilityResponse = await fetch(`${origin}/api/macaroni/v35/capabilities?network=mainnet`);
+      assert.equal(capabilityResponse.status, 200);
+      const capabilityBody = await capabilityResponse.json() as { managed: { service: { ready: boolean; code: string } } };
+      assert.equal(capabilityBody.managed.service.ready, false);
+      assert.equal(capabilityBody.managed.service.code, "alpha_shadownet_only");
+      const challengeResponse = await fetch(`${origin}/api/macaroni/v35/registration/challenge`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientSetupId: "00000000-0000-4000-8000-000000000001",
+          network: "mainnet",
+          administrator: "tz1burnburnburnburnburnburnburjAYjjX",
+        }),
+      });
+      assert.equal(challengeResponse.status, 409);
+      assert.match((await challengeResponse.json() as { error: string }).error, /Shadownet-only/);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
   } finally {
     for (const name of names) {
       const value = prior.get(name);
@@ -576,7 +637,7 @@ test("hosted secure publish uses a strict non-secret public configuration allowl
     contractVersion: "macaroni-secure-v35",
     contract: "KT1XvNYseNDJJ6Kw27qhSEDF8ys8JhDopzfG",
     profile: { id: "macaroni-secure-v35", collectorUnpredictable: true },
-    network: "mainnet",
+    network: "shadownet",
     service: { provider: "wtfos_managed", secretKey: "must-not-survive" },
     tokens: [{ id: 0, displayId: 1, quantity: 2, metadata: "ipfs://private" }],
     entropyPreimage: "must-not-survive",
@@ -585,7 +646,7 @@ test("hosted secure publish uses a strict non-secret public configuration allowl
   assert.equal("secretKey" in (output.service as Record<string, unknown>), false);
   assert.deepEqual(output.tokens, [{ id: 0, displayId: 1, quantity: 2 }]);
   assert.equal((output.service as Record<string, unknown>).publicStatusUrl,
-    "https://example.wtf/api/macaroni/v35/status/mainnet/KT1XvNYseNDJJ6Kw27qhSEDF8ys8JhDopzfG");
+    "https://example.wtf/api/macaroni/v35/status/shadownet/KT1XvNYseNDJJ6Kw27qhSEDF8ys8JhDopzfG");
 });
 
 test("versioned asset keyring decrypts staged CAR manifests and signed bytes after rotation", () => {

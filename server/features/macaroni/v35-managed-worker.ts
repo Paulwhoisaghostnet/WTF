@@ -46,7 +46,7 @@ import {
   macaroniV35DrawIndex,
   macaroniV35MetadataCommitment,
 } from "./v35-crypto";
-import { hashMacaroniV35Payload, measuredMacaroniV35FundingPolicy } from "./v35-types";
+import { assertMacaroniV35AlphaNetwork, hashMacaroniV35Payload, measuredMacaroniV35FundingPolicy } from "./v35-types";
 
 type V35Network = "mainnet" | "shadownet";
 type V35Drop = typeof macaroniV35Drops.$inferSelect;
@@ -112,8 +112,9 @@ function operatorGasMinimumMutez(phase: "arm" | "settlement" = "arm") {
 }
 
 export function managedMacaroniV35WorkerEnvironment(network?: V35Network) {
-  const networks = network ? [network] : (["mainnet", "shadownet"] as const);
+  const networks = network ? [network] : (["shadownet"] as const);
   const checks = {
+    alphaNetwork: networks.every((item) => item === "shadownet"),
     pollInterval: macaroniV35ManagedWorkerPollIntervalMs() != null,
     durableLease: macaroniV35ManagedLeaseMs() != null,
     indexerConfirmations: macaroniV35IndexerConfirmations() != null,
@@ -1721,6 +1722,10 @@ async function verifyClaimReady(work: MacaroniV35LeasedWork) {
 
 async function processManagedWork(work: MacaroniV35LeasedWork) {
   try {
+    const drop = (await db.select({ network: macaroniV35Drops.network }).from(macaroniV35Drops)
+      .where(eq(macaroniV35Drops.id, work.dropId)).limit(1))[0];
+    if (!drop) throw new Error("Managed work references a missing drop");
+    assertMacaroniV35AlphaNetwork(drop.network);
     switch (work.workType) {
       case "scan_claims": {
         const drop = (await db.select().from(macaroniV35Drops).where(eq(macaroniV35Drops.id, work.dropId)).limit(1))[0];
@@ -1739,7 +1744,7 @@ async function processManagedWork(work: MacaroniV35LeasedWork) {
         throw new Error("V3.5 final sweep is atomic in the final successful settlement and has no standalone worker call");
     }
   } catch (error) {
-    const invariant = /differs|mismatch|forbidden|missing|outside|not bound|does not match|failed immutable/i.test(
+    const invariant = /differs|mismatch|forbidden|missing|outside|not bound|does not match|failed immutable|Shadownet-only/i.test(
       error instanceof Error ? error.message : String(error)
     );
     if (invariant) await manualReview(work, error);
@@ -1783,6 +1788,7 @@ export async function runManagedMacaroniV35Worker() {
   }
   const drops = await db.select().from(macaroniV35Drops).where(and(
     eq(macaroniV35Drops.provider, "wtfos_managed"),
+    eq(macaroniV35Drops.network, "shadownet"),
     inArray(macaroniV35Drops.status, ["active", "closed"]),
     eq(macaroniV35Drops.serviceReady, true)
   ));

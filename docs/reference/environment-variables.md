@@ -364,7 +364,7 @@ Variables: **1309**. Source files scanned: **2558**.
 | `MACARONI_V35_ENTROPY_ENCRYPTION_KEY` | server/macaroni | server-runtime | none (secret value intentionally omitted) | yes | enumerated / compared | legacy compatibility | 1 (server/features/macaroni/v35-types.ts) |
 | `MACARONI_V35_ENTROPY_KEY_VERSION` | server/macaroni | server-runtime | none | no | enumerated / compared | legacy compatibility | 1 (server/features/macaroni/v35-types.ts) |
 | `MACARONI_V35_ENTROPY_KEYRING_JSON` | platform | shared-runtime | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (.env.example) |
-| `MACARONI_V35_FINALIZER_MAINNET_SECRET_KEY` | platform, server/macaroni | server-runtime, shared-runtime, test | none (secret value intentionally omitted) | yes | no explicit validation found | active | 2 (.env.example, server/features/macaroni/v35-managed-policy.test.ts) |
+| `MACARONI_V35_FINALIZER_MAINNET_SECRET_KEY` | platform | shared-runtime | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (.env.example) |
 | `MACARONI_V35_FINALIZER_SHADOWNET_SECRET_KEY` | platform | shared-runtime | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (.env.example) |
 | `MACARONI_V35_INDEX_MIN_CONFIRMATIONS` | platform, server/macaroni | server-runtime, shared-runtime | 2 | no | required / fail-closed | active | 2 (.env.example, server/features/macaroni/v35-service.ts) |
 | `MACARONI_V35_IPFS_GATEWAY` | platform, server/macaroni | server-runtime, shared-runtime, test | https://ipfs.fileship.xyz/ | no | enumerated / compared | active | 4 (.env.example, server/features/macaroni/v35-managed-assets.ts, server/features/macaroni/v35-managed-policy.test.ts, ...) |
@@ -373,7 +373,7 @@ Variables: **1309**. Source files scanned: **2558**.
 | `MACARONI_V35_RECOVERY_ENCRYPTION_KEY` | server/macaroni | server-runtime | none (secret value intentionally omitted) | yes | enumerated / compared | legacy compatibility | 1 (server/features/macaroni/v35-types.ts) |
 | `MACARONI_V35_RECOVERY_KEY_VERSION` | server/macaroni | server-runtime | none | no | enumerated / compared | legacy compatibility | 1 (server/features/macaroni/v35-types.ts) |
 | `MACARONI_V35_RECOVERY_KEYRING_JSON` | platform | shared-runtime | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (.env.example) |
-| `MACARONI_V35_TRUSTED_MAINNET_RPC_URL` | platform, server/macaroni | server-runtime, shared-runtime, test | none | no | no explicit validation found | active | 2 (.env.example, server/features/macaroni/v35-managed-policy.test.ts) |
+| `MACARONI_V35_TRUSTED_MAINNET_RPC_URL` | platform | shared-runtime | none | no | no explicit validation found | active | 1 (.env.example) |
 | `MACARONI_V35_TRUSTED_SHADOWNET_RPC_URL` | platform | shared-runtime | none | no | no explicit validation found | active | 1 (.env.example) |
 | `MACARONI_V35_WORKER_INTERVAL_MS` | platform, server/macaroni | server-runtime, shared-runtime, test | none | no | no explicit validation found | active | 2 (.env.example, server/features/macaroni/v35-managed-policy.test.ts) |
 | `MACARONI_V35_WORKER_LEASE_MS` | platform | shared-runtime | none | no | no explicit validation found | active | 1 (.env.example) |

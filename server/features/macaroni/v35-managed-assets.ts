@@ -22,7 +22,7 @@ import {
   verifyMacaroniPrivateCar,
 } from "./v35-private-staging";
 import { macaroniV35MetadataCommitment, sha256Hex } from "./v35-crypto";
-import { hashMacaroniV35Payload } from "./v35-types";
+import { assertMacaroniV35AlphaNetwork, hashMacaroniV35Payload } from "./v35-types";
 import { managedMacaroniV35CarPublisherConfig } from "./v35-runtime-config";
 import { macaroniV35ProcessingRoot } from "./v35-temp-storage";
 
@@ -316,6 +316,7 @@ export async function stageManagedMacaroniV35Token(input: {
     eq(macaroniV35Drops.ownerUserId, input.ownerUserId)
   )).limit(1))[0];
   if (!drop) return null;
+  assertMacaroniV35AlphaNetwork(drop.network);
   if (drop.registrationDigest !== input.registrationDigest) throw new Error("Registration digest does not match this setup");
   if (drop.contract || drop.status !== "setup_required") {
     throw new Error("Private inventory is frozen once contract origination is attached or setup has advanced");

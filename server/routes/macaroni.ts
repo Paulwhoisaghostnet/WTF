@@ -62,6 +62,7 @@ import {
   wakePublicMacaroniV35Drop,
 } from "../features/macaroni/v35-service";
 import {
+  assertMacaroniV35AlphaNetwork,
   macaroniV35IdentitySchema,
   macaroniV35NextCreatorActionSchema,
   macaroniV35AttachSchema,
@@ -1034,6 +1035,11 @@ router.post("/api/macaroni/v35/registration/challenge", isAuthenticated, async (
   const parsed = macaroniV35IdentitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Macaroni V3.5 setup identity" });
   try {
+    assertMacaroniV35AlphaNetwork(parsed.data.network);
+  } catch (error) {
+    return res.status(409).json({ error: error instanceof Error ? error.message : "V3.5 alpha network unavailable" });
+  }
+  try {
     const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
     if (!gate.allowed) return res.status(403).json(gate.capabilities);
     res.setHeader("Cache-Control", "no-store");
@@ -1051,6 +1057,9 @@ router.post("/api/macaroni/v35/drops", isAuthenticated, async (req, res) => {
       error: "Invalid Macaroni V3.5 managed setup",
       issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
     });
+  }
+  if (parsed.data.network !== "shadownet") {
+    return res.status(409).json({ error: "Macaroni V3.5 alpha is Shadownet-only; Mainnet setup and fulfillment are unavailable" });
   }
   try {
     const gate = await userCanUseManagedMacaroni(req.user as { id?: number; role?: string; roles?: string[] });
@@ -1184,6 +1193,14 @@ router.post(
       return res.status(400).json({
         error: `A private file exceeds the ${uploadLimitLabel(maxBytes)} Macaroni V3.5 upload limit`,
       });
+    }
+    const drop = (await db.select({ network: macaroniV35Drops.network }).from(macaroniV35Drops).where(and(
+      eq(macaroniV35Drops.id, dropId),
+      eq(macaroniV35Drops.ownerUserId, Number((req.user as { id?: number }).id))
+    )).limit(1))[0];
+    if (!drop) return res.status(404).json({ error: "Macaroni V3.5 setup not found" });
+    if (drop.network !== "shadownet") {
+      return res.status(409).json({ error: "Macaroni V3.5 alpha is Shadownet-only; Mainnet setup and fulfillment are unavailable" });
     }
     const { token, ticket } = createMacaroniV35PrivateUploadTicket({
       userId: Number((req.user as { id?: number }).id),
@@ -1597,14 +1614,20 @@ router.post(
       const service = config.service && typeof config.service === "object"
         ? config.service as Record<string, unknown>
         : {};
-      if (String(profile.id || config.contractVersion) === "macaroni-secure-v35"
-        && service.provider === "wtfos_managed") {
+      const secureV35 = String(profile.id || config.contractVersion) === "macaroni-secure-v35";
+      if (secureV35 && config.network !== "shadownet") {
+        return res.status(409).json({ error: "Macaroni V3.5 alpha is Shadownet-only; Mainnet publishing is unavailable" });
+      }
+      if (secureV35 && service.provider === "wtfos_managed") {
         const managedDrop = (await db.select().from(macaroniV35Drops).where(and(
           eq(macaroniV35Drops.ownerUserId, user.id),
           eq(macaroniV35Drops.contract, contract)
         )).limit(1))[0];
         if (!managedDrop) {
           return res.status(409).json({ error: "This secure managed KT1 is not registered to your wtfOS account" });
+        }
+        if (managedDrop.network !== "shadownet") {
+          return res.status(409).json({ error: "Macaroni V3.5 alpha is Shadownet-only; Mainnet publishing is unavailable" });
         }
         config.network = managedDrop.network;
         config.assetStrategy = managedDrop.assetStrategy;

@@ -962,6 +962,8 @@ test("Macaroni V3.5 UI defaults secure, separates compatibility, and fails close
   assert.doesNotMatch(studioHtml, /value="no-broadcast"/);
 
   assert.match(studioSource, /MACARONI_SECURE_PROFILE_ID = "macaroni-secure-v35"/);
+  assert.match(studioSource, /configProfile === MACARONI_SECURE_PROFILE_ID && cfg\?\.network !== "shadownet"/);
+  assert.match(studioSource, /if \(state\.network !== "shadownet"\) \{\s*readiness = secureReadinessFailure\(/);
   assert.match(studioSource, /MACARONI_V35_REQUIRED_CAPABILITY = "use_managed_macaroni"/);
   assert.match(studioSource, /managedMacaroniCapability\?\.managed\?\.requiredPermission/);
   assert.match(studioSource, /denial\?\.adminInboxPath/);

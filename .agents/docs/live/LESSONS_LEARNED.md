@@ -13026,3 +13026,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
 
 **Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
+
+---
+
+## 2026-11-02 — Alpha network restrictions must include the hosted service
+
+**What happened**: Macaroni V3.5 alpha desktop packaging disabled Mainnet in its copied Studio and Companion adapter, but the hosted Studio source still offered Mainnet and managed registration/worker code accepted it when separately configured.
+
+**Why it mattered**: A package-specific Shadownet guard did not enforce the documented alpha boundary on the public hosted path. A privileged creator and configured production signer could have started a Mainnet setup before the release review approved that path.
+
+**Rule**: Put alpha network guards in the authoritative server registration, creator action, publishing, and worker paths, and in the hosted UI. Test denial with otherwise complete Mainnet runtime configuration; keep compatibility-profile behavior explicit and separate.
